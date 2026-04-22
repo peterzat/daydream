@@ -6,7 +6,7 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 MIGRATIONS_DIR = PROJECT_ROOT / "migrations"
-WEB_DIST_DIR = PROJECT_ROOT / "web" / "dist"
+WEB_DIR = PROJECT_ROOT / "web"  # v0 ships hand-written assets here; v1 may add Vite -> web/dist/
 
 
 def env() -> str:

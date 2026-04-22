@@ -43,17 +43,17 @@ async def login_form() -> HTMLResponse:
 async def root(request: Request):
     if not request.session.get("authed"):
         return RedirectResponse(url="/login", status_code=302)
-    index = config.WEB_DIST_DIR / "index.html"
+    index = config.WEB_DIR / "index.html"
     if index.exists():
         return HTMLResponse(index.read_text())
     return HTMLResponse(_PRE_FRONTEND_HTML)
 
 
 # Serve frontend static assets if a build exists (Inc 7+).
-if config.WEB_DIST_DIR.exists():
+if config.WEB_DIR.exists():
     app.mount(
         "/assets",
-        StaticFiles(directory=str(config.WEB_DIST_DIR / "assets")),
+        StaticFiles(directory=str(config.WEB_DIR / "assets")),
         name="assets",
     )
 

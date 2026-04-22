@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>daydream</title>
+  <link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+  <main id="app">
+    <header id="room-header">
+      <img id="room-bg" src="/assets/placeholder-meadow.png" alt="">
+      <h1 id="room-title">drifting...</h1>
+    </header>
+    <section id="toons" aria-label="present"></section>
+    <section id="chat" aria-live="polite"></section>
+    <form id="input-form">
+      <input id="input-text" type="text" placeholder="speak, friend..." autofocus autocomplete="off" spellcheck="false">
+    </form>
+    <nav id="skill-bar" aria-label="skills"></nav>
+    <footer><a href="/api/logout">leave the dream</a></footer>
+  </main>
+  <script src="/assets/main.js"></script>
+</body>
+</html>
