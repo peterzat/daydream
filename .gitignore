@@ -1,0 +1,32 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# SQLite (canonical state lives under ~/data/daydream/, never in tree)
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+
+# Frontend build
+web/dist/
+web/node_modules/
+
+# Local config (secrets sourced from ~/.config/daydream/secrets.env)
+.env
+.env.local
+
+# IDE / editor
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Per-project Claude state
+.claude/
