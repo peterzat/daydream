@@ -1,0 +1,142 @@
+#!/usr/bin/env bash
+# bin/game — daydream lifecycle dispatcher.
+#
+# Subcommands:
+#   up       start the FastAPI server (and announce vLLM presence)
+#   down     stop running processes
+#   status   report what is running, on which port, and where state lives
+#   logs     tail recent process logs (default: fastapi)
+#
+# State (PID + log files) lives under $XDG_RUNTIME_DIR (or /tmp/daydream-<uid>)
+# in a per-env subdir, so dev/preview/prod (DAYDREAM_ENV) coexist when
+# multi-env lands in v2. v0 only knows about the FastAPI process; vLLM warm
+# is documented as a separate launch step until v1 wires the GPU arbiter.
+
+set -euo pipefail
+
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ENV_NAME="${DAYDREAM_ENV:-dev}"
+PORT="${DAYDREAM_PORT:-8080}"
+RUN_BASE="${XDG_RUNTIME_DIR:-/tmp/daydream-$(id -u)}"
+RUNDIR="${RUN_BASE}/daydream-${ENV_NAME}"
+mkdir -p "$RUNDIR"
+
+VENV_PY="$PROJECT_ROOT/.venv/bin/python"
+SECRETS_FILE="${HOME}/.config/daydream/secrets.env"
+LIVE_DB="${DAYDREAM_DATA_DIR:-$HOME/data/daydream}/worlds-${ENV_NAME}/live.db"
+
+if [[ -f "$SECRETS_FILE" ]]; then
+    # shellcheck disable=SC1090
+    source "$SECRETS_FILE"
+fi
+
+_pid_file()  { printf '%s/%s.pid'  "$RUNDIR" "$1"; }
+_log_file()  { printf '%s/%s.log'  "$RUNDIR" "$1"; }
+
+_is_running() {
+    local pidf; pidf="$(_pid_file "$1")"
+    [[ -f "$pidf" ]] && kill -0 "$(cat "$pidf" 2>/dev/null)" 2>/dev/null
+}
+
+_require_venv() {
+    [[ -x "$VENV_PY" ]] || {
+        echo "venv missing at $VENV_PY"
+        echo "run: python3 -m venv .venv && .venv/bin/pip install -e .[dev]"
+        exit 2
+    }
+}
+
+_start_fastapi() {
+    if _is_running "fastapi"; then
+        echo "fastapi: already running (pid $(cat "$(_pid_file fastapi)"))"
+        return 0
+    fi
+    _require_venv
+    local logf; logf="$(_log_file "fastapi")"
+    nohup "$VENV_PY" -m uvicorn daydream.server:app \
+        --host 0.0.0.0 --port "$PORT" \
+        > "$logf" 2>&1 < /dev/null &
+    echo $! > "$(_pid_file fastapi)"
+    echo "fastapi: started (pid $!, port $PORT, log $logf)"
+}
+
+_stop_one() {
+    local name="$1"
+    local pidf; pidf="$(_pid_file "$name")"
+    if ! _is_running "$name"; then
+        echo "$name: not running"
+        rm -f "$pidf"
+        return 0
+    fi
+    local pid; pid="$(cat "$pidf")"
+    kill "$pid" 2>/dev/null || true
+    local i
+    for i in 1 2 3 4 5 6 7 8; do
+        kill -0 "$pid" 2>/dev/null || break
+        sleep 0.4
+    done
+    if kill -0 "$pid" 2>/dev/null; then
+        kill -9 "$pid" 2>/dev/null || true
+        sleep 0.2
+    fi
+    rm -f "$pidf"
+    echo "$name: stopped"
+}
+
+cmd_up() {
+    _start_fastapi
+    if command -v vllm >/dev/null 2>&1; then
+        echo "vllm: binary present (start with 'vllm serve Qwen/Qwen2.5-7B-Instruct --port 8000' separately; v1 wires the warm/arbiter)"
+    else
+        echo "vllm: not installed; game runs with LLM-down 'foggy' fallback (SPEC criterion 7)"
+    fi
+    sleep 0.4
+    cmd_status
+}
+
+cmd_down() {
+    _stop_one fastapi
+}
+
+cmd_status() {
+    if _is_running "fastapi"; then
+        local pid; pid="$(cat "$(_pid_file fastapi)")"
+        local reach="unreachable"
+        if command -v curl >/dev/null 2>&1 \
+            && curl -sS -o /dev/null --max-time 1 "http://0.0.0.0:${PORT}/login"; then
+            reach="reachable"
+        fi
+        echo "fastapi: running (pid $pid, port $PORT, $reach)"
+    else
+        echo "fastapi: stopped"
+    fi
+    if command -v vllm >/dev/null 2>&1; then
+        echo "vllm: binary present"
+    else
+        echo "vllm: not installed"
+    fi
+    echo "env: $ENV_NAME"
+    echo "port: $PORT"
+    echo "rundir: $RUNDIR"
+    echo "live db: $LIVE_DB"
+}
+
+cmd_logs() {
+    local what="${1:-fastapi}"
+    local logf; logf="$(_log_file "$what")"
+    if [[ -f "$logf" ]]; then
+        tail -n 80 "$logf"
+    else
+        echo "no log at $logf"
+        return 1
+    fi
+}
+
+case "${1:-}" in
+    up)     shift; cmd_up "$@" ;;
+    down)   shift; cmd_down "$@" ;;
+    status) shift; cmd_status "$@" ;;
+    logs)   shift; cmd_logs "$@" ;;
+    "")     echo "usage: bin/game {up|down|status|logs}" >&2; exit 2 ;;
+    *)      echo "usage: bin/game {up|down|status|logs} (got: $1)" >&2; exit 2 ;;
+esac
