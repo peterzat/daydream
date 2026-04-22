@@ -1,0 +1,126 @@
+"""Append-only event log: the spine of all state mutations.
+
+append() writes one row to the events table and notifies live subscribers.
+fetch_since() pulls events newer than a given seq for hydration and reconnect.
+subscribe() / unsubscribe() let websocket sessions get pushed events as they happen.
+
+The event log is the canonical persistence target. Every state change writes
+here first; derived state (rooms, toons, items) is updated by handlers that
+read events. Snapshots are (db file, max(seq)).
+"""
+
+import asyncio
+import json
+from dataclasses import dataclass
+from typing import Any
+
+from daydream import db
+
+
+@dataclass(frozen=True)
+class Event:
+    seq: int
+    created_at: str
+    actor_type: str
+    actor_id: str | None
+    kind: str
+    payload: dict[str, Any]
+    room_id: str | None
+
+    @classmethod
+    def from_row(cls, row) -> "Event":
+        return cls(
+            seq=row["seq"],
+            created_at=row["created_at"],
+            actor_type=row["actor_type"],
+            actor_id=row["actor_id"],
+            kind=row["kind"],
+            payload=json.loads(row["payload_json"]),
+            room_id=row["room_id"],
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "seq": self.seq,
+            "created_at": self.created_at,
+            "actor_type": self.actor_type,
+            "actor_id": self.actor_id,
+            "kind": self.kind,
+            "payload": self.payload,
+            "room_id": self.room_id,
+        }
+
+
+_subscribers: list[asyncio.Queue] = []
+
+
+def append(
+    actor_type: str,
+    actor_id: str | None,
+    kind: str,
+    payload: dict[str, Any] | None = None,
+    room_id: str | None = None,
+) -> Event:
+    conn = db.get_conn()
+    cur = conn.execute(
+        "INSERT INTO events(actor_type, actor_id, kind, payload_json, room_id) "
+        "VALUES (?, ?, ?, ?, ?)",
+        (actor_type, actor_id, kind, json.dumps(payload or {}), room_id),
+    )
+    seq = cur.lastrowid
+    row = conn.execute(
+        "SELECT seq, created_at, actor_type, actor_id, kind, payload_json, room_id "
+        "FROM events WHERE seq = ?",
+        (seq,),
+    ).fetchone()
+    event = Event.from_row(row)
+    _broadcast(event)
+    return event
+
+
+def fetch_since(
+    last_seq: int = 0,
+    room_id: str | None = None,
+    limit: int | None = None,
+) -> list[Event]:
+    conn = db.get_conn()
+    if room_id is None:
+        sql = "SELECT * FROM events WHERE seq > ? ORDER BY seq"
+        params: tuple = (last_seq,)
+    else:
+        sql = "SELECT * FROM events WHERE seq > ? AND room_id = ? ORDER BY seq"
+        params = (last_seq, room_id)
+    if limit is not None:
+        sql += f" LIMIT {int(limit)}"
+    rows = conn.execute(sql, params).fetchall()
+    return [Event.from_row(r) for r in rows]
+
+
+def max_seq() -> int:
+    conn = db.get_conn()
+    row = conn.execute("SELECT MAX(seq) FROM events").fetchone()
+    return row[0] or 0
+
+
+def subscribe() -> asyncio.Queue:
+    q: asyncio.Queue = asyncio.Queue()
+    _subscribers.append(q)
+    return q
+
+
+def unsubscribe(q: asyncio.Queue) -> None:
+    if q in _subscribers:
+        _subscribers.remove(q)
+
+
+def _broadcast(event: Event) -> None:
+    """Fan out an event to every live subscriber. Unbounded queues, so
+    put_nowait never blocks; the slow-consumer escape hatch lands in v2
+    once we have real CCU to worry about."""
+    for q in list(_subscribers):
+        q.put_nowait(event)
+
+
+def reset_subscribers() -> None:
+    """Test helper: drop all subscribers. Not for production paths."""
+    _subscribers.clear()

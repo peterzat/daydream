@@ -82,6 +82,9 @@ CREATE TABLE seeds (
     created_by  TEXT NOT NULL DEFAULT 'system'
 );
 
+-- events.room_id intentionally has no FK: the log is append-only history and
+-- must outlive its referenced rooms (e.g., a room is deleted in v1, its prior
+-- events still exist). actor_id likewise tags rather than references.
 CREATE TABLE events (
     seq          INTEGER PRIMARY KEY AUTOINCREMENT,
     created_at   TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -89,7 +92,7 @@ CREATE TABLE events (
     actor_id     TEXT,
     kind         TEXT NOT NULL,
     payload_json TEXT NOT NULL DEFAULT '{}',
-    room_id      TEXT REFERENCES rooms(id)
+    room_id      TEXT
 );
 
 CREATE INDEX idx_events_room_seq ON events(room_id, seq);
