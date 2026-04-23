@@ -55,6 +55,20 @@ function renderSnapshot(snap) {
     btn.onclick = () => sendInput(s.name);
     bar.appendChild(btn);
   }
+  // Exit buttons: one per direction in the current room's exits_json.
+  // Clicks send `go <direction>` which hits the canonical bypass too —
+  // no LLM on navigation.
+  const exitBar = document.getElementById("exit-bar");
+  exitBar.innerHTML = "";
+  const exits = (snap.room && snap.room.exits) || {};
+  for (const dir of Object.keys(exits)) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.textContent = dir;
+    btn.dataset.direction = dir;
+    btn.onclick = () => sendInput("go " + dir);
+    exitBar.appendChild(btn);
+  }
 }
 
 function renderEvent(e) {
@@ -77,6 +91,9 @@ function renderEvent(e) {
     )}&rdquo;`;
   } else if (e.kind === "narrate") {
     div.textContent = e.payload.text || "";
+  } else if (e.kind === "move") {
+    const dir = e.payload.direction || "somewhere";
+    div.textContent = "you go " + dir + ".";
   } else {
     div.textContent = `[${e.kind}] ${JSON.stringify(e.payload)}`;
   }

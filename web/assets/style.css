@@ -152,6 +152,33 @@ html, body {
   color: var(--paper);
 }
 
+/* Exit bar mirrors the skill bar but tinted differently so the two
+ * categories (skills vs navigation) read at a glance. */
+#exit-bar {
+  display: flex;
+  gap: 0.4em;
+  flex-wrap: wrap;
+  margin-bottom: 1.4em;
+}
+
+#exit-bar button {
+  padding: 0.4em 0.95em;
+  background: var(--paper);
+  border: 1px dashed var(--sage);
+  color: var(--sage-deep);
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.95em;
+  font-style: italic;
+  transition: background 0.15s, color 0.15s;
+}
+
+#exit-bar button:hover {
+  background: var(--sage);
+  color: var(--paper);
+}
+
 footer { text-align: center; font-size: 0.85em; opacity: 0.7; }
 footer a { color: var(--sage-deep); text-decoration: none; }
 footer a:hover { text-decoration: underline; }

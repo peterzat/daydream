@@ -151,3 +151,92 @@ def test_ws_snapshot_includes_prior_events_after_say():
         if e["kind"] == "say" and e["payload"].get("text") == "hello"
     ]
     assert len(say_events) == 1
+
+
+# ---- multi-room navigation ----------------------------------------------
+
+
+def test_ws_snapshot_includes_room_exits():
+    """SPEC criterion 2: state_snapshot.room.exits is the single source of
+    truth for navigation UI. Meadow has north -> forge and east -> bridge
+    per 004_multi_room.sql."""
+    with TestClient(app) as client:
+        _login(client)
+        with client.websocket_connect("/ws") as ws:
+            snap = ws.receive_json()
+    assert snap["room"]["slug"] == "meadow"
+    exits = snap["room"]["exits"]
+    assert exits == {"north": "r-forge", "east": "r-bridge"}
+
+
+def test_ws_go_north_moves_toon_and_refreshes_snapshot():
+    """SPEC criterion 1: `go north` emits a move event and the server
+    pushes a fresh snapshot pinned to the new room."""
+    with TestClient(app) as client:
+        _login(client)
+        with client.websocket_connect("/ws") as ws:
+            ws.receive_json()  # initial snapshot (meadow)
+            ws.send_json({"kind": "input", "text": "go north"})
+            # The server sends the move event first, then a fresh
+            # state_snapshot for the destination.
+            move_msg = ws.receive_json()
+            snap2 = ws.receive_json()
+    assert move_msg["kind"] == "event"
+    move = move_msg["event"]
+    assert move["kind"] == "move"
+    assert move["payload"] == {
+        "from_room": "r-meadow",
+        "to_room": "r-forge",
+        "direction": "north",
+    }
+    assert snap2["kind"] == "state_snapshot"
+    assert snap2["room"]["slug"] == "forge"
+    # The new room's exits are the forge's own — NOT the meadow's.
+    assert snap2["room"]["exits"] == {"south": "r-meadow", "up": "r-attic"}
+
+
+def test_ws_go_unknown_direction_narrates_and_does_not_move():
+    """SPEC criterion 1 failure path: a direction not in exits_json emits
+    a narrate event and NO move event and NO fresh snapshot."""
+    with TestClient(app) as client:
+        _login(client)
+        with client.websocket_connect("/ws") as ws:
+            ws.receive_json()  # initial snapshot
+            ws.send_json({"kind": "input", "text": "go diagonal"})
+            evt_msg = ws.receive_json()
+    assert evt_msg["kind"] == "event"
+    assert evt_msg["event"]["kind"] == "narrate"
+    assert "can't go diagonal" in evt_msg["event"]["payload"]["text"]
+
+
+def test_ws_navigation_persists_across_reconnect():
+    """SPEC criterion 5: `go north` then reconnect -> the snapshot the
+    new connection receives reflects the destination room, proving the
+    toon's current_room_id was written through and survives a session
+    boundary (simulating bin/game down && bin/game up)."""
+    with TestClient(app) as client:
+        _login(client)
+        with client.websocket_connect("/ws") as ws:
+            ws.receive_json()
+            ws.send_json({"kind": "input", "text": "go north"})
+            ws.receive_json()  # move event
+            ws.receive_json()  # refreshed snapshot (forge)
+        # New WS connection on the same DB — current_room_id should
+        # now persist as r-forge.
+        with client.websocket_connect("/ws") as ws2:
+            snap = ws2.receive_json()
+    assert snap["room"]["slug"] == "forge"
+    assert snap["room"]["exits"] == {"south": "r-meadow", "up": "r-attic"}
+
+
+def test_ws_skills_include_go_navigation():
+    """Criterion 2 corollary: the `go` skill is in the registry and
+    therefore appears in the snapshot's skills list so the UI can
+    route clicks (though nav clicks actually go through the exit-bar
+    path, which sends `go <direction>` as input)."""
+    with TestClient(app) as client:
+        _login(client)
+        with client.websocket_connect("/ws") as ws:
+            snap = ws.receive_json()
+    skill_names = {s["name"] for s in snap["skills"]}
+    assert "go" in skill_names
