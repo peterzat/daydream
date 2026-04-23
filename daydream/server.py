@@ -14,6 +14,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from daydream import config, db
 from daydream.api import auth, ws
 from daydream.api.access import AccessMiddleware
+from daydream.api.nocache import NoCacheAssetsMiddleware
 from daydream.images import cache as image_cache
 
 # Image cache root must exist before the StaticFiles mount below so /cache/
@@ -36,6 +37,13 @@ app.add_middleware(
     session_cookie="daydream_session",
     https_only=False,  # friend-scope; box is on a private LAN/Tailscale only
 )
+# NoCacheAssetsMiddleware stamps Cache-Control: no-store on /assets/*
+# responses so browser hard-refresh stops being required after web/
+# edits. See daydream/api/nocache.py for why the scope is narrow.
+# Order is not load-bearing (it only rewrites response headers), but
+# placing it before AccessMiddleware keeps the Access rejection path
+# clean of unnecessary header rewrites on 403s.
+app.add_middleware(NoCacheAssetsMiddleware)
 # AccessMiddleware added LAST so it sits at the outer edge of the stack
 # (middleware added later runs earlier per request). When DAYDREAM_ACCESS
 # is 'tailscale' (default), non-tailnet clients see 403 / WS close 1008

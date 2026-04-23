@@ -112,3 +112,41 @@ def test_logout_link_posts_not_gets():
     assert 'action="/api/logout"' in r.text
     assert 'method="post"' in r.text
     assert ">leave the dream<" in r.text
+
+
+# ---- no-cache on /assets/ ----------------------------------------------
+
+
+def test_assets_served_with_no_store_cache_control():
+    """Regression for the hard-refresh-after-web-edit workflow. Browsers
+    (Safari especially) aggressively cache /assets/main.js; stamping
+    Cache-Control: no-store on every /assets/* response lets Cmd+R pick
+    up edits without a hard-reload. See daydream/api/nocache.py for why
+    the scope is narrow (only /assets/, not /cache/ or the SPA shell)."""
+    with TestClient(app) as client:
+        _login(client)
+        for path in ("/assets/main.js", "/assets/style.css", "/assets/placeholder-meadow.png"):
+            r = client.get(path)
+            assert r.status_code == 200, f"{path} returned {r.status_code}"
+            assert r.headers.get("cache-control") == "no-store", (
+                f"{path} has cache-control={r.headers.get('cache-control')!r}"
+            )
+
+
+def test_non_assets_paths_unaffected_by_nocache_middleware():
+    """The middleware must NOT touch /, /login, /api/*, or /cache/. Those
+    follow FastAPI's default header behavior (no Cache-Control set by
+    us). A bug in the path filter that stamped no-store broadly would
+    degrade the SPA shell and, in future, cacheability of content-
+    addressed generated images."""
+    with TestClient(app) as client:
+        r = client.get("/login")
+        # The login form is a small HTML blob; no Cache-Control from us.
+        assert r.headers.get("cache-control") is None
+        _login(client)
+        r = client.get("/")
+        # The SPA shell should also be un-stamped: it's already cheap to
+        # fetch (re-pulls /assets/main.js as a child request), and
+        # stamping here would fight the OS-level file cache on the box
+        # for no benefit.
+        assert r.headers.get("cache-control") is None
