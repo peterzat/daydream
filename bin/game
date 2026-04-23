@@ -16,7 +16,13 @@ set -euo pipefail
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ENV_NAME="${DAYDREAM_ENV:-dev}"
-PORT="${DAYDREAM_PORT:-8080}"
+# Daydream FastAPI port. 54321 is memorable, clearly non-default; modest
+# security-by-obscurity for a user-visible service. Override via DAYDREAM_PORT.
+PORT="${DAYDREAM_PORT:-54321}"
+# Network access mode (informational here; the AccessMiddleware in
+# daydream/api/access.py is what enforces). 'tailscale' rejects clients
+# outside 100.64.0.0/10; 'public' lets all through (also requires UFW open).
+ACCESS_MODE="${DAYDREAM_ACCESS:-tailscale}"
 RUN_BASE="${XDG_RUNTIME_DIR:-/tmp/daydream-$(id -u)}"
 RUNDIR="${RUN_BASE}/daydream-${ENV_NAME}"
 mkdir -p "$RUNDIR"
@@ -37,11 +43,21 @@ COMFY_URL="${DAYDREAM_COMFYUI_BASE_URL:-http://localhost:$COMFY_PORT}"
 VLLM_DIR="$PROJECT_ROOT/external/vLLM"
 VLLM_BIN="$VLLM_DIR/.venv/bin/vllm"
 VLLM_PORT="${DAYDREAM_VLLM_PORT:-8000}"
+# vLLM binds 127.0.0.1 by default — daydream is the only consumer, no
+# tailnet member needs direct access. Override DAYDREAM_VLLM_HOST=0.0.0.0
+# to expose on the tailnet (e.g., for an external monitoring tool).
+VLLM_HOST="${DAYDREAM_VLLM_HOST:-127.0.0.1}"
 VLLM_URL="${DAYDREAM_LLM_BASE_URL:-http://localhost:$VLLM_PORT/v1}"
 VLLM_MODEL="${DAYDREAM_VLLM_MODEL:-Qwen/Qwen2.5-7B-Instruct-AWQ}"
 # 0.45 = ~9 GB on a 20 GB card; leaves room for SDXL during inference.
 VLLM_GPU_FRACTION="${DAYDREAM_VLLM_GPU_FRACTION:-0.45}"
 VLLM_MAX_LEN="${DAYDREAM_VLLM_MAX_LEN:-8192}"
+
+COMFY_HOST="${DAYDREAM_COMFYUI_HOST:-127.0.0.1}"
+# Note on COMFY_HOST: 127.0.0.1 default means ComfyUI's web UI is not
+# reachable from your laptop directly. SSH tunnel works:
+#   ssh -L 8188:localhost:8188 dev
+# Override DAYDREAM_COMFYUI_HOST=0.0.0.0 to expose on the tailnet.
 
 # Load env vars from the project .env (gitignored) first, then any per-host
 # secrets file. The host file wins so an operator can override per machine.
@@ -81,11 +97,13 @@ _start_fastapi() {
     fi
     _require_venv
     local logf; logf="$(_log_file "fastapi")"
+    # Always bind 0.0.0.0 so tailnet clients can reach it; the
+    # AccessMiddleware filters by source IP per DAYDREAM_ACCESS.
     nohup "$VENV_PY" -m uvicorn daydream.server:app \
         --host 0.0.0.0 --port "$PORT" \
         > "$logf" 2>&1 < /dev/null &
     echo $! > "$(_pid_file fastapi)"
-    echo "fastapi: started (pid $!, port $PORT, log $logf)"
+    echo "fastapi: started (pid $!, port $PORT, access=$ACCESS_MODE, log $logf)"
 }
 
 _stop_one() {
@@ -173,7 +191,10 @@ cmd_status() {
         echo "comfyui: not bootstrapped (run 'bin/comfyui-bootstrap')"
     fi
     echo "env: $ENV_NAME"
-    echo "port: $PORT"
+    echo "port: $PORT (access=$ACCESS_MODE)"
+    if [[ "$ACCESS_MODE" == "public" ]]; then
+        echo "  WARN: DAYDREAM_ACCESS=public - confirm UFW also allows ${PORT}/tcp"
+    fi
     echo "rundir: $RUNDIR"
     echo "live db: $LIVE_DB"
 }
@@ -206,10 +227,10 @@ cmd_comfyui_up() {
     fi
     local logf; logf="$(_log_file "comfyui")"
     cd "$COMFY_DIR"
-    nohup "$COMFY_PY" main.py --listen 0.0.0.0 --port "$COMFY_PORT" \
+    nohup "$COMFY_PY" main.py --listen "$COMFY_HOST" --port "$COMFY_PORT" \
         > "$logf" 2>&1 < /dev/null &
     echo $! > "$(_pid_file comfyui)"
-    echo "comfyui: started (pid $!, port $COMFY_PORT, log $logf)"
+    echo "comfyui: started (pid $!, $COMFY_HOST:$COMFY_PORT, log $logf)"
 }
 
 cmd_comfyui_down() {
@@ -248,13 +269,13 @@ cmd_vllm_up() {
     local logging_level="${VLLM_LOG_LEVEL:-ERROR}"
     VLLM_LOGGING_LEVEL="$logging_level" \
     nohup "$VLLM_BIN" serve "$VLLM_MODEL" \
-        --host 0.0.0.0 --port "$VLLM_PORT" \
+        --host "$VLLM_HOST" --port "$VLLM_PORT" \
         --gpu-memory-utilization "$VLLM_GPU_FRACTION" \
         --max-model-len "$VLLM_MAX_LEN" \
         --enforce-eager \
         > "$logf" 2>&1 < /dev/null &
     echo $! > "$(_pid_file vllm)"
-    echo "vllm: started (pid $!, port $VLLM_PORT, model $VLLM_MODEL, log $logf)"
+    echo "vllm: started (pid $!, $VLLM_HOST:$VLLM_PORT, model $VLLM_MODEL, log $logf)"
 }
 
 cmd_vllm_down() {

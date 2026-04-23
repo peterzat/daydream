@@ -15,7 +15,18 @@ def env() -> str:
 
 
 def port() -> int:
-    return int(os.environ.get("DAYDREAM_PORT", "8080"))
+    """Daydream FastAPI server port. Default is 54321 (memorable, non-default;
+    modest security-by-obscurity for a user-visible port). Override via
+    DAYDREAM_PORT."""
+    return int(os.environ.get("DAYDREAM_PORT", "54321"))
+
+
+def access_mode() -> str:
+    """Network access mode. Either 'tailscale' (default, the access middleware
+    rejects clients outside the Tailscale CGNAT range 100.64.0.0/10 and
+    localhost) or 'public' (middleware lets all through; operator must also
+    open UFW for traffic to arrive). Override via DAYDREAM_ACCESS in .env."""
+    return os.environ.get("DAYDREAM_ACCESS", "tailscale").strip().lower()
 
 
 def data_dir() -> Path:

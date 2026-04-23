@@ -23,6 +23,12 @@ os.environ.setdefault("DAYDREAM_SESSION_SECRET", "test-session-secret-not-for-pr
 # .env holds in production so tests never depend on or leak the real value.
 os.environ.setdefault("DAYDREAM_PASSWORD", "test-password")
 
+# TestClient connects from "testclient" (not a real IP). Bypass the
+# AccessMiddleware in tests so we don't have to forge a tailnet IP for
+# every TestClient call. tests/test_access_middleware.py exercises the
+# middleware contract directly with mocked scope.client.
+os.environ.setdefault("DAYDREAM_ACCESS", "public")
+
 # Redirect HOME to a session-scoped temp dir as a belt-and-suspenders measure:
 # any other code that resolves `~/...` during tests writes under this dir,
 # which the OS reaps. Use mkdtemp (not TemporaryDirectory) so the dir lives

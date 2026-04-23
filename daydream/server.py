@@ -13,6 +13,7 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from daydream import config, db
 from daydream.api import auth, ws
+from daydream.api.access import AccessMiddleware
 from daydream.images import cache as image_cache
 
 # Image cache root must exist before the StaticFiles mount below so /cache/
@@ -35,6 +36,11 @@ app.add_middleware(
     session_cookie="daydream_session",
     https_only=False,  # friend-scope; box is on a private LAN/Tailscale only
 )
+# AccessMiddleware added LAST so it sits at the outer edge of the stack
+# (middleware added later runs earlier per request). When DAYDREAM_ACCESS
+# is 'tailscale' (default), non-tailnet clients see 403 / WS close 1008
+# before any session or auth machinery runs.
+app.add_middleware(AccessMiddleware)
 app.include_router(auth.router)
 app.include_router(ws.router)
 

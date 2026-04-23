@@ -6,7 +6,8 @@ A small atmospheric multiplayer web game running on a single dev box. Players en
 
 - Python venv at `.venv/`. Never `pip install` outside the venv (`PIP_REQUIRE_VIRTUALENV=true` is set globally).
 - Python 3.10. Pin `requires-python = ">=3.10"` in `pyproject.toml`.
-- Bind services to `0.0.0.0` so Tailscale clients can reach them. Default port 8080. Per-env ports land in v2.
+- User-visible services (the daydream FastAPI server) bind `0.0.0.0` so tailnet clients can reach them; default port `54321` (memorable, non-default — modest security-by-obscurity on a user-visible service). Override via `DAYDREAM_PORT`. Per-env ports land in v2.
+- Internal services (vLLM, ComfyUI) bind `127.0.0.1` by default since daydream is their only consumer. Override with `DAYDREAM_VLLM_HOST` / `DAYDREAM_COMFYUI_HOST` to expose on the tailnet (e.g., for the ComfyUI web UI). For ComfyUI specifically, an SSH tunnel from your laptop is usually the right move: `ssh -L 8188:localhost:8188 <host>`.
 - Persistent state lives under `~/data/daydream/`, never in the project tree. Per-env layout (`worlds-dev/`, `worlds-preview/`, `worlds-prod/`) lands in v2; v0 just uses `worlds-dev/live.db`.
 - HuggingFace cache is shared at `~/.cache/huggingface`. Never override `HF_HOME`.
 - All `*.db`, `*.db-wal`, `*.db-shm` are gitignored. Live state never gets committed.
@@ -17,7 +18,18 @@ A small atmospheric multiplayer web game running on a single dev box. Players en
 
 ## Auth
 
-Single shared password sourced from the `DAYDREAM_PASSWORD` env var. `bin/game` loads `.env` at the project root (gitignored; see `.env.example`) and then `~/.config/daydream/secrets.env` (per-host overrides win). If neither sets `DAYDREAM_PASSWORD`, the auth endpoint refuses every login with a 503 — empty default never grants access. No per-user identity. Cookie-based session, no expiry in v0. The session-cookie signing secret comes from `DAYDREAM_SESSION_SECRET`; if unset, a per-install random secret is generated on first boot and persisted at `~/.config/daydream/session_secret` (mode 0600, gitignored). Friend-scope only; access to the box itself is the real gate (Tailscale, not Tailscale Funnel; not exposed to public DNS).
+Single shared password sourced from the `DAYDREAM_PASSWORD` env var. `bin/game` loads `.env` at the project root (gitignored; see `.env.example`) and then `~/.config/daydream/secrets.env` (per-host overrides win). If neither sets `DAYDREAM_PASSWORD`, the auth endpoint refuses every login with a 503 — empty default never grants access. No per-user identity. Cookie-based session, no expiry in v0. The session-cookie signing secret comes from `DAYDREAM_SESSION_SECRET`; if unset, a per-install random secret is generated on first boot and persisted at `~/.config/daydream/session_secret` (mode 0600, gitignored).
+
+## Network access
+
+`DAYDREAM_ACCESS` in `.env` (default `tailscale`) controls the `AccessMiddleware` in `daydream/api/access.py`:
+
+- **`tailscale`**: middleware rejects any HTTP/WS client whose source IP is not in Tailscale's CGNAT range (`100.64.0.0/10`) or loopback. 403 on HTTP, WebSocket close 1008 on WS. This is the safe default and is enforced at the app layer regardless of UFW state.
+- **`public`**: middleware lets all clients through. This is an "agree to be public" flag — flipping it does NOT also open UFW. For traffic to actually arrive you must also `sudo ufw allow ${DAYDREAM_PORT}/tcp` and have public DNS pointing at the box. Without UFW open, public clients still can't reach the bind, so the toggle is harmless if mis-flipped.
+
+The middleware sits at the outer edge of the FastAPI middleware stack (added LAST so it runs FIRST per request) — non-tailnet clients get rejected before any session cookie or password gate machinery runs. Tests opt into pass-through by default via `tests/conftest.py` (sets `DAYDREAM_ACCESS=public` for `TestClient`); the middleware contract itself is exercised in `tests/test_access_middleware.py` with mocked ASGI scopes.
+
+The 100.64.0.0/10 hardcoding is correct because Tailscale's CGNAT range is fixed by their design. A self-hosted Headscale with a custom range would need that constant updated.
 
 ## GPU posture
 

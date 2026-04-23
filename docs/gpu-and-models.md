@@ -10,6 +10,7 @@ If you only read one section, read [The fp8-KV story](#the-fp8-kv-story) and [Th
 - **CPU/RAM:** Intel i5-13500 (14 cores, 20 threads), 64 GB DDR4. Plenty for inference servers' Python sides.
 - **OS:** Ubuntu 22.04, CUDA driver 13.x, Python 3.10. ComfyUI venv carries torch 2.11+cu130; vLLM venv carries whatever vllm 0.19.1 pins.
 - **Singleness:** This box is assumed dedicated to daydream. The only prior GPU consumer (`~/src/qwen-2.5-localreview`'s warm server) is off in its `.env` and stays off; see [CLAUDE.md "GPU posture"](../CLAUDE.md). Every tuning decision below assumes no external contention for VRAM.
+- **Network exposure:** vLLM and ComfyUI bind `127.0.0.1` by default — daydream is their only consumer, so they don't need to be on the tailnet. The user-visible game port (`54321` by default) is filtered by the `AccessMiddleware` per `DAYDREAM_ACCESS=tailscale|public`. See [CLAUDE.md "Network access"](../CLAUDE.md#network-access).
 
 ## The VRAM budget
 

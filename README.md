@@ -29,15 +29,26 @@ $EDITOR .env   # set DAYDREAM_PASSWORD to whatever shared word you like
 Daily:
 
 ```sh
-bin/game up        # start the FastAPI server on 0.0.0.0:8080 (override with DAYDREAM_PORT)
-bin/game status    # what is running, port reachability, where state lives
+bin/game up        # start the FastAPI server on 0.0.0.0:54321 (override with DAYDREAM_PORT)
+bin/game status    # what is running, port reachability, access mode, where state lives
 bin/game logs      # tail recent FastAPI output
 bin/game down      # stop
 ```
 
-Then visit `http://0.0.0.0:8080` (from the box) or `http://<host>:8080` (from another tailnet device) and enter your password. Re-running `up` while already up, or `down` while already down, is a no-op.
+Then visit `http://<host>:54321` from another tailnet device (or `http://localhost:54321` from the box) and enter your password. Re-running `up` while already up, or `down` while already down, is a no-op.
 
 `DAYDREAM_PASSWORD` is the only required setting. If `.env` is missing or that variable is unset, the auth endpoint refuses every login (503) — there is no published default. `~/.config/daydream/secrets.env` (per-host, gitignored) overrides anything set in project `.env`.
+
+### Network access
+
+`DAYDREAM_ACCESS` in `.env` controls who the FastAPI server will talk to:
+
+- **`tailscale`** (default): the `AccessMiddleware` rejects any HTTP/WS client whose source IP is not in Tailscale's CGNAT range (`100.64.0.0/10`) or loopback. Tailnet members reach the game; the wider internet sees a 403 (or a WebSocket close 1008) even if the port is somehow exposed.
+- **`public`**: middleware lets all clients through.
+
+`DAYDREAM_ACCESS=public` is an "agree to be public" flag at the app layer — flipping it does NOT also open UFW. For traffic to actually arrive from the internet you also need to `sudo ufw allow 54321/tcp` and (probably) point public DNS at the box.
+
+Internal services (vLLM, ComfyUI) bind `127.0.0.1` by default — daydream is their only consumer. To reach ComfyUI's web UI from another machine, SSH-tunnel: `ssh -L 8188:localhost:8188 <host>`. Override with `DAYDREAM_COMFYUI_HOST=0.0.0.0` if you want it on the tailnet directly.
 
 ## LLM (optional)
 
