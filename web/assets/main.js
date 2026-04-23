@@ -2,6 +2,7 @@
 
 const wsUrl =
   (location.protocol === "https:" ? "wss://" : "ws://") + location.host + "/ws";
+const PLACEHOLDER_BG = "/assets/placeholder-meadow.png";
 let ws = null;
 let lastSeq = 0;
 let actorNames = {};
@@ -24,6 +25,7 @@ function connect() {
 function renderSnapshot(snap) {
   document.getElementById("room-title").textContent =
     snap.room ? snap.room.title : "drifting...";
+  setRoomBackground(snap.room);
   // Map actor IDs to display names so 'say' events can name the speaker.
   actorNames = {};
   const toons = document.getElementById("toons");
@@ -58,6 +60,13 @@ function renderSnapshot(snap) {
 function renderEvent(e) {
   if (e.seq <= lastSeq && lastSeq > 0) return; // dedupe on reconnect overlap
   lastSeq = Math.max(lastSeq, e.seq);
+
+  // room_image_ready does not flow into the chat log; it just updates the bg.
+  if (e.kind === "room_image_ready") {
+    handleRoomImageReady(e);
+    return;
+  }
+
   const chat = document.getElementById("chat");
   const div = document.createElement("div");
   div.className = "evt evt-" + e.kind;
@@ -73,6 +82,29 @@ function renderEvent(e) {
   }
   chat.appendChild(div);
   chat.scrollTop = chat.scrollHeight;
+}
+
+function setRoomBackground(room) {
+  const bg = document.getElementById("room-bg");
+  const overlay = document.getElementById("painting-overlay");
+  if (room && room.image_url) {
+    bg.src = room.image_url;
+    overlay.classList.add("hidden");
+  } else {
+    bg.src = PLACEHOLDER_BG;
+    overlay.classList.remove("hidden");
+  }
+}
+
+function handleRoomImageReady(event) {
+  const bg = document.getElementById("room-bg");
+  const overlay = document.getElementById("painting-overlay");
+  overlay.classList.add("hidden");
+  if (event.payload && event.payload.image_url) {
+    bg.src = event.payload.image_url;
+  }
+  // image_url null means generation failed; leave the placeholder showing.
+  // The error string is in event.payload.error if anything wants to surface it.
 }
 
 function sendInput(text) {

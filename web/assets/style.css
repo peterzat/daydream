@@ -54,6 +54,31 @@ html, body {
   text-shadow: 0 1px 6px rgba(0, 0, 0, 0.45);
 }
 
+#painting-overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: var(--paper);
+  font-style: italic;
+  font-size: 1.05em;
+  letter-spacing: 0.05em;
+  background: rgba(58, 74, 68, 0.55);
+  padding: 0.4em 1.1em;
+  border-radius: 4px;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  animation: painting-pulse 2.4s ease-in-out infinite;
+}
+
+#painting-overlay.hidden {
+  display: none;
+}
+
+@keyframes painting-pulse {
+  0%, 100% { opacity: 0.75; }
+  50%      { opacity: 1.0; }
+}
+
 #toons {
   margin-bottom: 0.7em;
   padding: 0.4em 0.8em;

@@ -66,6 +66,16 @@ def test_main_js_served_with_websocket_logic():
     assert "kind" in r.text
 
 
+def test_main_js_handles_room_image_ready_and_painting_state():
+    """SPA hooks for SPEC criterion 5: painting overlay + bg swap."""
+    with TestClient(app) as client:
+        _login(client)
+        r = client.get("/assets/main.js")
+    assert "room_image_ready" in r.text
+    assert "setRoomBackground" in r.text or "image_url" in r.text
+    assert "painting-overlay" in r.text
+
+
 def test_style_css_served_with_cozy_palette():
     with TestClient(app) as client:
         _login(client)
@@ -74,3 +84,17 @@ def test_style_css_served_with_cozy_palette():
     # Sage/cream palette tokens locked in by the WHIMSY anchor.
     assert "--sage" in r.text
     assert "--paper" in r.text
+
+
+def test_style_css_has_painting_overlay():
+    with TestClient(app) as client:
+        _login(client)
+        r = client.get("/assets/style.css")
+    assert "#painting-overlay" in r.text
+
+
+def test_index_html_has_painting_overlay_element():
+    with TestClient(app) as client:
+        _login(client)
+        r = client.get("/")
+    assert 'id="painting-overlay"' in r.text
