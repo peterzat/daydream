@@ -29,7 +29,7 @@
     "inputs": {
       "model": ["1", 0],
       "clip": ["1", 1],
-      "lora_name": "watercolor.safetensors",
+      "lora_name": "watercolor_v1_sdxl.safetensors",
       "strength_model": 0.85,
       "strength_clip": 0.85
     }
