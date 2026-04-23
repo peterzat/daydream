@@ -3,7 +3,11 @@ configured (not still the unconfigured placeholder) and points at a real
 .safetensors file. Catches the mistake of pasting a fresh upstream
 workflow and forgetting to set the LoRA name during install."""
 
+import pytest
+
 from daydream.images import client
+
+pytestmark = pytest.mark.tier_short
 
 # This is the explicit "I have not configured a LoRA yet" sentinel that
 # painterly_room.json shipped with originally. If it ever reappears in

@@ -13,6 +13,8 @@ from daydream import assets, config, db
 from daydream.images import cache as image_cache
 from daydream.images import client as image_client
 
+pytestmark = pytest.mark.tier_short
+
 
 @pytest.fixture
 def conn(tmp_path: Path):

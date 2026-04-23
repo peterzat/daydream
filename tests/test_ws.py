@@ -13,6 +13,8 @@ from starlette.websockets import WebSocketDisconnect
 from daydream import db, events
 from daydream.server import app
 
+pytestmark = pytest.mark.tier_medium
+
 
 @pytest.fixture(autouse=True)
 def fresh_state(tmp_path: Path, monkeypatch):

@@ -33,6 +33,11 @@ testpaths = ["tests"]
 asyncio_mode = "auto"
 markers = [
     "real_image_gen: test exercises the real ws._generate_and_emit path; opts out of the conftest auto-mock and is responsible for mocking the ComfyUI client itself.",
+    "tier_short: unit / fast; no app boot, no subprocess, no GPU. Target for pre-commit runs.",
+    "tier_medium: integration; boots TestClient, spawns subprocesses, or does heavy filesystem I/O. Mocks GPU calls. Target for pre-push runs.",
+    "tier_long: real-GPU drift probe or live end-to-end; requires vLLM and/or ComfyUI reachable. Expensive; pair with requires_vllm / requires_comfyui so absent engines skip cleanly.",
+    "requires_vllm: skip if vLLM is unreachable at DAYDREAM_LLM_BASE_URL. Checked once per test session.",
+    "requires_comfyui: skip if ComfyUI is unreachable at DAYDREAM_COMFYUI_BASE_URL. Checked once per test session.",
 ]
 
 [tool.ruff]

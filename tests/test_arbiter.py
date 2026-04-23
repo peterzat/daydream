@@ -7,6 +7,8 @@ import pytest
 
 from daydream.gpu import arbiter
 
+pytestmark = pytest.mark.tier_short
+
 
 @pytest.fixture(autouse=True)
 def fresh_arbiter():

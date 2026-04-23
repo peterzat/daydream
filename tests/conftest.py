@@ -21,13 +21,22 @@ os.environ.setdefault("DAYDREAM_SESSION_SECRET", "test-session-secret-not-for-pr
 
 # Stable test value for the shared site password. Decoupled from whatever
 # .env holds in production so tests never depend on or leak the real value.
-os.environ.setdefault("DAYDREAM_PASSWORD", "test-password")
+# Force-override for the same reason DAYDREAM_ACCESS does: a developer
+# .env sourced by `bin/game test` would otherwise set DAYDREAM_PASSWORD
+# to the real value and tests' hardcoded "test-password" would fail auth.
+os.environ["DAYDREAM_PASSWORD"] = "test-password"
 
 # TestClient connects from "testclient" (not a real IP). Bypass the
 # AccessMiddleware in tests so we don't have to forge a tailnet IP for
 # every TestClient call. tests/test_access_middleware.py exercises the
 # middleware contract directly with mocked scope.client.
-os.environ.setdefault("DAYDREAM_ACCESS", "public")
+#
+# Force-override (not setdefault): when `bin/game test` sources the
+# project .env before running pytest, a developer's DAYDREAM_ACCESS=
+# tailscale would otherwise leak into TestClient boots and cause 403s.
+# Test-wide invariant wins over caller env here; per-test tailscale
+# exercises go through monkeypatch.setenv as they already do.
+os.environ["DAYDREAM_ACCESS"] = "public"
 
 # Redirect HOME to a session-scoped temp dir as a belt-and-suspenders measure:
 # any other code that resolves `~/...` during tests writes under this dir,

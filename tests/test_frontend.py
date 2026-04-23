@@ -11,6 +11,8 @@ from daydream.server import app
 
 WEB = Path(__file__).resolve().parent.parent / "web"
 
+pytestmark = pytest.mark.tier_medium
+
 
 @pytest.fixture(autouse=True)
 def fresh_state(tmp_path: Path, monkeypatch):

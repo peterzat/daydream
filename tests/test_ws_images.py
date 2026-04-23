@@ -15,6 +15,8 @@ from daydream.images import cache as image_cache
 from daydream.images import client as image_client
 from daydream.server import app
 
+pytestmark = pytest.mark.tier_medium
+
 
 @pytest.fixture(autouse=True)
 def fresh_state(tmp_path: Path, monkeypatch):

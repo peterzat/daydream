@@ -14,6 +14,8 @@ import pytest
 
 from daydream.api.access import AccessMiddleware, is_tailscale_or_local
 
+pytestmark = pytest.mark.tier_short
+
 
 # ---- is_tailscale_or_local ---------------------------------------------
 

@@ -11,6 +11,8 @@ import pytest
 from daydream.llm import client
 from daydream.skills import interpreter, registry
 
+pytestmark = pytest.mark.tier_short
+
 
 def _available():
     return registry.list_available_for_room("r-meadow")

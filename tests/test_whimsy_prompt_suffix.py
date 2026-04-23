@@ -16,6 +16,8 @@ import pytest
 
 from daydream.images import client
 
+pytestmark = pytest.mark.tier_short
+
 WHIMSY = Path(__file__).resolve().parent.parent / "WHIMSY.md"
 
 

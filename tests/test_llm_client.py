@@ -7,6 +7,8 @@ import pytest
 
 from daydream.llm import client
 
+pytestmark = pytest.mark.tier_short
+
 
 @pytest.mark.asyncio
 async def test_acompletion_json_happy_path():

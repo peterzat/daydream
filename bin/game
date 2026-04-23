@@ -290,6 +290,14 @@ cmd_world() {
     "$VENV_PY" -m daydream.admin "$@"
 }
 
+cmd_test() {
+    # Thin shell over python -m daydream.testing for tiered test dispatch.
+    # Subcommands: short | medium | long | ci (human lands via commit 4).
+    # See TESTING.md for the tier contract; --help is forwarded.
+    _require_venv
+    "$VENV_PY" -m daydream.testing "$@"
+}
+
 case "${1:-}" in
     up)            shift; cmd_up "$@" ;;
     down)          shift; cmd_down "$@" ;;
@@ -301,6 +309,7 @@ case "${1:-}" in
     vllm-up)       shift; cmd_vllm_up "$@" ;;
     vllm-down)     shift; cmd_vllm_down "$@" ;;
     world)         shift; cmd_world "$@" ;;
-    "")            echo "usage: bin/game {up|down|status|logs|image-test|comfyui-up|comfyui-down|vllm-up|vllm-down|world}" >&2; exit 2 ;;
-    *)             echo "usage: bin/game {up|down|status|logs|image-test|comfyui-up|comfyui-down|vllm-up|vllm-down|world} (got: $1)" >&2; exit 2 ;;
+    test)          shift; cmd_test "$@" ;;
+    "")            echo "usage: bin/game {up|down|status|logs|image-test|comfyui-up|comfyui-down|vllm-up|vllm-down|world|test}" >&2; exit 2 ;;
+    *)             echo "usage: bin/game {up|down|status|logs|image-test|comfyui-up|comfyui-down|vllm-up|vllm-down|world|test} (got: $1)" >&2; exit 2 ;;
 esac

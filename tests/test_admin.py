@@ -11,6 +11,8 @@ import pytest
 from daydream import admin, assets, config, db
 from daydream.images import cache as image_cache
 
+pytestmark = pytest.mark.tier_medium
+
 
 @pytest.fixture
 def live_world(tmp_path: Path, monkeypatch):

@@ -14,6 +14,8 @@ import pytest
 
 from daydream.images import client
 
+pytestmark = pytest.mark.tier_short
+
 
 @pytest.fixture(autouse=True)
 def tmp_data_dir(tmp_path: Path, monkeypatch):

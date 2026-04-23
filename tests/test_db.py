@@ -6,6 +6,8 @@ import pytest
 
 from daydream import config, db
 
+pytestmark = pytest.mark.tier_short
+
 
 @pytest.fixture(autouse=True)
 def reset_db_singleton():

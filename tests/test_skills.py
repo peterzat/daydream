@@ -12,6 +12,8 @@ import pytest
 from daydream import config, db, events
 from daydream.skills import core, registry
 
+pytestmark = pytest.mark.tier_short
+
 
 @pytest.fixture(autouse=True)
 def fresh_db(tmp_path: Path):

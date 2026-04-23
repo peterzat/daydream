@@ -9,6 +9,8 @@ from pathlib import Path
 
 import pytest
 
+pytestmark = pytest.mark.tier_medium
+
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 GAME = PROJECT_ROOT / "bin" / "game"
 SMOKE_SH = PROJECT_ROOT / "tests" / "test_game_script.sh"
