@@ -131,13 +131,26 @@ _stop_one() {
 
 cmd_up() {
     _start_fastapi
-    if command -v vllm >/dev/null 2>&1; then
-        echo "vllm: binary present (start with 'vllm serve Qwen/Qwen2.5-7B-Instruct --port 8000' separately; v1 wires the warm/arbiter)"
-    else
-        echo "vllm: not installed; game runs with LLM-down 'foggy' fallback (SPEC criterion 7)"
-    fi
-    sleep 0.4
+    # Poll for readiness rather than fixed-sleep + a noisy curl probe in
+    # cmd_status that fires before uvicorn binds. uvicorn typically binds
+    # in well under 1s; fall through after ~3s either way so cmd_status
+    # reports whatever state we end up in (stuck/crashed still surfaces).
+    local i
+    for i in 1 2 3 4 5 6 7 8 9 10; do
+        if curl -s -o /dev/null --max-time 1 "http://127.0.0.1:${PORT}/login"; then
+            break
+        fi
+        sleep 0.3
+    done
     cmd_status
+    echo
+    echo "listening:"
+    echo "  http://localhost:${PORT}   (from this box)"
+    # Tailnet hostname is how tailnet peers resolve this box; works
+    # regardless of DAYDREAM_ACCESS. In 'public' mode the same URL is
+    # also reachable from the wider internet if UFW is open.
+    local host; host="$(hostname 2>/dev/null || echo "<this-host>")"
+    echo "  http://${host}:${PORT}     (from any tailnet device)"
 }
 
 cmd_down() {
@@ -149,7 +162,7 @@ cmd_status() {
         local pid; pid="$(cat "$(_pid_file fastapi)")"
         local reach="unreachable"
         if command -v curl >/dev/null 2>&1 \
-            && curl -sS -o /dev/null --max-time 1 "http://0.0.0.0:${PORT}/login"; then
+            && curl -s -o /dev/null --max-time 1 "http://0.0.0.0:${PORT}/login"; then
             reach="reachable"
         fi
         echo "fastapi: running (pid $pid, port $PORT, $reach)"
@@ -160,7 +173,7 @@ cmd_status() {
     # probe so externally-launched instances are still detected.
     local vllm_reach="unreachable"
     if command -v curl >/dev/null 2>&1 \
-        && curl -sS -o /dev/null --max-time 1 "${VLLM_URL}/models"; then
+        && curl -s -o /dev/null --max-time 1 "${VLLM_URL}/models"; then
         vllm_reach="reachable"
     fi
     if _is_running "vllm"; then
@@ -177,7 +190,7 @@ cmd_status() {
     # probe so externally-launched instances are still detected.
     local reach="unreachable"
     if command -v curl >/dev/null 2>&1 \
-        && curl -sS -o /dev/null --max-time 1 "${COMFY_URL}/system_stats"; then
+        && curl -s -o /dev/null --max-time 1 "${COMFY_URL}/system_stats"; then
         reach="reachable"
     fi
     if _is_running "comfyui"; then
