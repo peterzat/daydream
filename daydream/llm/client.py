@@ -12,6 +12,7 @@ import json
 import litellm
 
 from daydream import config
+from daydream.gpu import arbiter
 
 
 class LLMUnavailable(Exception):
@@ -33,20 +34,24 @@ async def acompletion_json(
 
     Raises LLMUnavailable on any backend failure or unparseable output. The
     caller decides how to recover (typically by narrating 'the dream is foggy')."""
+    # Hold the GPU arbiter for the duration of the LLM call so vLLM and
+    # any in-flight image-gen on ComfyUI never run simultaneously on the
+    # 20 GB GPU. The lock is in-process; see daydream/gpu/arbiter.py.
     try:
-        response = await litellm.acompletion(
-            model=model or config.llm_model(),
-            api_base=config.llm_base_url(),
-            api_key=config.llm_api_key(),
-            messages=[
-                {"role": "system", "content": system},
-                {"role": "user", "content": user},
-            ],
-            temperature=temperature,
-            max_tokens=max_tokens,
-            timeout=timeout,
-            response_format={"type": "json_object"},
-        )
+        async with arbiter.acquire():
+            response = await litellm.acompletion(
+                model=model or config.llm_model(),
+                api_base=config.llm_base_url(),
+                api_key=config.llm_api_key(),
+                messages=[
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": user},
+                ],
+                temperature=temperature,
+                max_tokens=max_tokens,
+                timeout=timeout,
+                response_format={"type": "json_object"},
+            )
     except Exception as e:
         raise LLMUnavailable(f"LLM call failed: {e}") from e
 

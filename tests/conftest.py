@@ -10,6 +10,9 @@ because `session_secret()` falls back to writing there when no env var is set.
 
 import os
 import tempfile
+from unittest.mock import AsyncMock
+
+import pytest
 
 # Stable test value for the session-cookie signing secret. Set before any
 # `from daydream.server import app` runs, so SessionMiddleware never triggers
@@ -25,3 +28,37 @@ os.environ.setdefault("DAYDREAM_PASSWORD", "test-password")
 # which the OS reaps. Use mkdtemp (not TemporaryDirectory) so the dir lives
 # for the whole pytest process; pytest's own tmp_path fixture is unaffected.
 os.environ.setdefault("HOME", tempfile.mkdtemp(prefix="daydream-test-home-"))
+
+
+@pytest.fixture(autouse=True)
+def _no_real_image_gen(request, monkeypatch):
+    """Suppress the WS auto-enqueue path so tests never fire ComfyUI.
+
+    Tests that exercise the image-gen flow opt out via the
+    @pytest.mark.real_image_gen marker; they are then responsible for
+    mocking daydream.images.client.generate_room_background themselves."""
+    if request.node.get_closest_marker("real_image_gen"):
+        return
+    monkeypatch.setattr("daydream.api.ws._generate_and_emit", AsyncMock(return_value=None))
+
+
+@pytest.fixture(autouse=True)
+def _reset_arbiter():
+    """The GPU arbiter is a process-wide singleton; reset between tests so
+    a leaked acquire in one test cannot block the next."""
+    from daydream.gpu import arbiter
+
+    arbiter.reset()
+    yield
+    arbiter.reset()
+
+
+@pytest.fixture(autouse=True)
+def _reset_in_flight():
+    """The WS layer dedups in-flight image gen via a module-level set;
+    reset between tests so prior state never bleeds through."""
+    from daydream.api import ws
+
+    ws.reset_in_flight()
+    yield
+    ws.reset_in_flight()

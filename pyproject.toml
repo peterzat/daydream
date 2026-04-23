@@ -31,6 +31,9 @@ exclude = ["tests*", "web*", "migrations*"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+markers = [
+    "real_image_gen: test exercises the real ws._generate_and_emit path; opts out of the conftest auto-mock and is responsible for mocking the ComfyUI client itself.",
+]
 
 [tool.ruff]
 line-length = 100

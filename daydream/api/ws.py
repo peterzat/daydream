@@ -15,18 +15,39 @@ v0 hardcodes the human controller to the single seeded toon (Wren) in the
 single seeded room (the meadow). Slot management lands in v1."""
 
 import asyncio
+import logging
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, status
 
 from daydream import events, items, rooms, toons
 from daydream.api import auth
+from daydream.gpu import arbiter
+from daydream.images import cache as image_cache
+from daydream.images import client as image_client
 from daydream.skills import interpreter, registry
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 HUMAN_TOON_ID = "t-wren"
 HUMAN_ROOM_ID = "r-meadow"
 SNAPSHOT_HISTORY_DEPTH = 50
+
+# Prompt suffix appended to every room-background generation. The full
+# string lives in WHIMSY.md (## Prompt suffix); kept here as a code
+# constant for now and will move to daydream/llm/prompts.py in v1's
+# safety-baseline-v1 increment.
+WHIMSY_PROMPT_SUFFIX = (
+    "soft watercolor, painterly, warm late-day light, cozy storybook "
+    "illustration, gentle composition, no text, no logos, no people in "
+    "modern dress, no machinery, no harsh edges, Spiritfarer-adjacent, "
+    "A Short Hike-adjacent, low-saturation cream and sage palette"
+)
+
+# Per-room generation dedup. Keys are (world_id, room_id, seed_hash).
+# Set membership check + add is atomic under asyncio's cooperative model
+# as long as no `await` sits between them.
+_generating: set[tuple[str, str, str]] = set()
 
 
 def _state_snapshot(last_seq: int) -> dict:
@@ -41,6 +62,11 @@ def _state_snapshot(last_seq: int) -> dict:
         max(0, last_seq - SNAPSHOT_HISTORY_DEPTH), room_id=HUMAN_ROOM_ID
     )
     available = registry.list_available_for_room(HUMAN_ROOM_ID)
+
+    image_url: str | None = None
+    if room is not None and image_cache.is_cached(room.world_id, room.id, room.seed):
+        image_url = image_cache.cache_url(room.world_id, room.id, room.seed)
+
     return {
         "kind": "state_snapshot",
         "room": (
@@ -49,6 +75,7 @@ def _state_snapshot(last_seq: int) -> dict:
                 "slug": room.slug,
                 "title": room.title,
                 "description": room.description_cached,
+                "image_url": image_url,
             }
             if room
             else None
@@ -59,6 +86,51 @@ def _state_snapshot(last_seq: int) -> dict:
         "events": [e.to_dict() for e in recent],
         "last_seq": last_seq,
     }
+
+
+def _maybe_enqueue_image_gen(world_id: str, room_id: str, room_seed: str) -> None:
+    """If the room has no cached background and no in-flight job, spawn one.
+    Idempotent across concurrent connections: dedup keyed on seed hash."""
+    if image_cache.is_cached(world_id, room_id, room_seed):
+        return
+    key = (world_id, room_id, image_cache.seed_hash(room_seed))
+    if key in _generating:
+        return
+    _generating.add(key)
+    asyncio.create_task(_generate_and_emit(world_id, room_id, room_seed))
+
+
+async def _generate_and_emit(world_id: str, room_id: str, room_seed: str) -> None:
+    """Run image gen under the GPU arbiter, then append room_image_ready.
+    On ComfyUI failure, emit room_image_ready with image_url=None and the
+    error string so the SPA can fall back to the placeholder."""
+    payload: dict = {}
+    try:
+        async with arbiter.acquire():
+            await image_client.generate_room_background(
+                world_id, room_id, room_seed, prompt_suffix=WHIMSY_PROMPT_SUFFIX
+            )
+        payload["image_url"] = image_cache.cache_url(world_id, room_id, room_seed)
+    except image_client.ComfyUIError as e:
+        logger.warning("room image gen failed for %s/%s: %s", world_id, room_id, e)
+        payload["image_url"] = None
+        payload["error"] = str(e)
+    except Exception as e:  # broad catch: this runs as a fire-and-forget task
+        logger.exception("unexpected error in room image gen for %s/%s", world_id, room_id)
+        payload["image_url"] = None
+        payload["error"] = f"unexpected error: {e}"
+    finally:
+        _generating.discard((world_id, room_id, image_cache.seed_hash(room_seed)))
+    try:
+        events.append("system", None, "room_image_ready", payload, room_id=room_id)
+    except RuntimeError:
+        # DB closed (server shutting down). Drop the event silently.
+        pass
+
+
+def reset_in_flight() -> None:
+    """Test helper: clear the in-flight generation set."""
+    _generating.clear()
 
 
 async def _handle_input(text: str) -> None:
@@ -98,6 +170,12 @@ async def ws_endpoint(ws: WebSocket):
     try:
         last_seq = events.max_seq()
         await ws.send_json(_state_snapshot(last_seq))
+        # Kick off image gen for the current room if the cache is cold.
+        # Fire-and-forget; the resulting room_image_ready event reaches the
+        # client through the broadcast loop below.
+        room = rooms.get_room(HUMAN_ROOM_ID)
+        if room is not None:
+            _maybe_enqueue_image_gen(room.world_id, room.id, room.seed)
         receive_task = asyncio.create_task(_receive_loop(ws))
         broadcast_task = asyncio.create_task(_broadcast_loop(ws, queue, last_seq))
         done, pending = await asyncio.wait(

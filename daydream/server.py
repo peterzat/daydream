@@ -6,13 +6,18 @@ verify the auth flow end to end."""
 
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
 from daydream import config, db
 from daydream.api import auth, ws
+from daydream.images import cache as image_cache
+
+# Image cache root must exist before the StaticFiles mount below so /cache/
+# can serve generated room backgrounds. Idempotent; safe at module import.
+image_cache.ensure_cache_root()
 
 
 @asynccontextmanager
@@ -56,6 +61,22 @@ if config.WEB_DIR.exists():
         StaticFiles(directory=str(config.WEB_DIR / "assets")),
         name="assets",
     )
+
+# Serve generated room backgrounds from the image cache. A route handler
+# (not a StaticFiles mount) resolves the cache root per request, so tests
+# that override DAYDREAM_DATA_DIR pick up the right path. Path components
+# are validated to block traversal even though friend-scope security is the
+# real gate.
+@app.get("/cache/{world}/{room}/{filename}")
+async def serve_cached_image(world: str, room: str, filename: str):
+    if "/" in world or ".." in world or "/" in room or ".." in room:
+        raise HTTPException(status_code=404)
+    if "/" in filename or ".." in filename or not filename.endswith(".png"):
+        raise HTTPException(status_code=404)
+    p = image_cache.cache_dir() / world / room / filename
+    if not p.is_file():
+        raise HTTPException(status_code=404)
+    return FileResponse(p, media_type="image/png")
 
 
 _LOGIN_HTML = """<!doctype html>
