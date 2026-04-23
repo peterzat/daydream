@@ -326,6 +326,21 @@ async def test_non_dict_response_is_tolerated():
         await data.execute_by_name("forge", "t-wren", "r-forge", "x")
 
 
+@pytest.mark.asyncio
+async def test_empty_effects_list_emits_fallback_narrate():
+    # UX safety: the LLM returning {"effects": []} must still produce
+    # feedback for the player. Otherwise a malformed / minimal response
+    # would be silently absorbed and the player would wonder if the
+    # input was lost.
+    _insert_skill(name="forge", predicate='{"room_slug": "forge"}')
+    before_seq = events.max_seq()
+    with patch("daydream.llm.client.acompletion_json",
+               new=AsyncMock(return_value={"effects": []})):
+        await data.execute_by_name("forge", "t-wren", "r-forge", "something")
+    narrations = [e for e in events.fetch_since(before_seq) if e.kind == "narrate"]
+    assert narrations, "empty effects should emit a fallback narrate"
+
+
 # ---- set_mood integration through the full pipeline ----------------------
 
 

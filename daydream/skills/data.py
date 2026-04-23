@@ -265,12 +265,17 @@ async def execute(
     # (6) Dispatch effects through the allowlist.
     room = rooms.get_room(room_id)
     world_id = room.world_id if room else ""
-    effects.dispatch_effects(
+    applied = effects.dispatch_effects(
         effects_list,
         actor_id=actor_id,
         room_id=room_id,
         world_id=world_id,
     )
+    # UX safety: if the LLM returned an empty / shape-less effects
+    # list, the player would otherwise see nothing happen. Emit a soft
+    # narrate so the input always has a visible outcome.
+    if not any(a.event is not None for a in applied):
+        _emit_narrate("The dream is quiet; nothing stirs just yet.", room_id)
 
 
 async def execute_by_name(

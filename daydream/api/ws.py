@@ -190,12 +190,18 @@ async def _handle_input(text: str) -> None:
     parts = text.split(None, 1)
     head = parts[0].lower()
     room_id = _current_room_id()
-    spec = registry.find(head)
+    # Use the room-filtered candidate list for BOTH the canonical bypass
+    # and the interpreter fallback, so a data skill whose context
+    # predicate hides it in the current room does not dispatch when the
+    # player types its name. Core skills always pass the filter (they
+    # have no predicate); this only affects data skills.
+    available = registry.list_available_for_room(room_id)
+    available_by_name = {s.name: s for s in available}
+    spec = available_by_name.get(head)
     if spec is not None:
         rest = parts[1] if len(parts) > 1 else ""
         await _dispatch_spec(spec, HUMAN_TOON_ID, room_id, rest)
         return
-    available = registry.list_available_for_room(room_id)
     decision = await interpreter.interpret(text, available)
     if decision.skill == "none":
         if decision.error:
@@ -204,7 +210,7 @@ async def _handle_input(text: str) -> None:
             out = f"You think to yourself: \"{text}\". The daydream answers softly."
         events.append("system", None, "narrate", {"text": out}, room_id=room_id)
         return
-    spec = registry.find(decision.skill)
+    spec = available_by_name.get(decision.skill)
     if spec is None:
         return  # race: skill was disabled between interpret and dispatch
     await _dispatch_spec(spec, HUMAN_TOON_ID, room_id, decision.args)
