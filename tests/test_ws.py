@@ -52,6 +52,40 @@ def test_ws_sends_state_snapshot_on_connect():
     assert {"look", "say", "examine"}.issubset(skill_names)
 
 
+def test_ws_snapshot_does_not_include_npc_when_player_is_elsewhere():
+    """SPEC 2026-04-23 criterion 2: Rook (migration 006) is at r-forge.
+    On initial connect the player starts at r-meadow, so the snapshot's
+    toons list must not leak the NPC across room boundaries."""
+    with TestClient(app) as client:
+        _login(client)
+        with client.websocket_connect("/ws") as ws:
+            msg = ws.receive_json()
+    assert msg["room"]["slug"] == "meadow"
+    toon_names = {t["name"] for t in msg["toons"]}
+    assert "Rook" not in toon_names
+    assert "Wren" in toon_names
+
+
+def test_ws_snapshot_includes_npc_after_entering_npc_room():
+    """SPEC 2026-04-23 criterion 2: after `go north` from the meadow
+    the player is at r-forge; the refreshed snapshot's toons list
+    must include Rook (the NPC) alongside Wren (the player)."""
+    with TestClient(app) as client:
+        _login(client)
+        with client.websocket_connect("/ws") as ws:
+            ws.receive_json()  # initial snapshot (meadow)
+            ws.send_json({"kind": "input", "text": "go north"})
+            ws.receive_json()  # move event
+            snap = ws.receive_json()  # refreshed snapshot (forge)
+    assert snap["kind"] == "state_snapshot"
+    assert snap["room"]["slug"] == "forge"
+    toon_names = {t["name"] for t in snap["toons"]}
+    assert {"Wren", "Rook"}.issubset(toon_names)
+    # The NPC's mood (from the migration seed) flows into the snapshot.
+    rook = next(t for t in snap["toons"] if t["name"] == "Rook")
+    assert rook["mood"] == "content"
+
+
 def test_ws_canonical_look_emits_narrate_event():
     with TestClient(app) as client:
         _login(client)
