@@ -24,6 +24,7 @@ from daydream.api import auth
 from daydream.gpu import arbiter
 from daydream.images import cache as image_cache
 from daydream.images import client as image_client
+from daydream.skills import data as data_skills
 from daydream.skills import interpreter, registry
 
 logger = logging.getLogger(__name__)
@@ -189,9 +190,10 @@ async def _handle_input(text: str) -> None:
     parts = text.split(None, 1)
     head = parts[0].lower()
     room_id = _current_room_id()
-    if registry.find(head) is not None:
+    spec = registry.find(head)
+    if spec is not None:
         rest = parts[1] if len(parts) > 1 else ""
-        registry.execute(head, HUMAN_TOON_ID, room_id, rest)
+        await _dispatch_spec(spec, HUMAN_TOON_ID, room_id, rest)
         return
     available = registry.list_available_for_room(room_id)
     decision = await interpreter.interpret(text, available)
@@ -202,7 +204,22 @@ async def _handle_input(text: str) -> None:
             out = f"You think to yourself: \"{text}\". The daydream answers softly."
         events.append("system", None, "narrate", {"text": out}, room_id=room_id)
         return
-    registry.execute(decision.skill, HUMAN_TOON_ID, room_id, decision.args)
+    spec = registry.find(decision.skill)
+    if spec is None:
+        return  # race: skill was disabled between interpret and dispatch
+    await _dispatch_spec(spec, HUMAN_TOON_ID, room_id, decision.args)
+
+
+async def _dispatch_spec(
+    spec: "registry.SkillSpec", actor_id: str, room_id: str, args: str
+) -> None:
+    """Dispatch a resolved SkillSpec. Core skills run synchronously
+    through the registry; data skills run through the async
+    safety + LLM + effects pipeline in daydream.skills.data."""
+    if spec.kind == "core":
+        registry.execute(spec.name, actor_id, room_id, args)
+        return
+    await data_skills.execute_by_name(spec.name, actor_id, room_id, args)
 
 
 @router.websocket("/ws")

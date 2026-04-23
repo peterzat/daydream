@@ -1,8 +1,13 @@
-"""Skill registry: name -> handler + metadata. Data skills join in v1.
+"""Skill registry: name -> handler + metadata. Core skills live in this
+module; data skills are loaded from the `skills` table (see
+`daydream.skills.data`) and merged into the registry's read API at
+runtime.
 
-The registry is the single source of "what can the player do right now."
-The websocket layer asks list_available_for_room() to assemble UI buttons
-and to give the LLM interpreter the candidate set."""
+The websocket layer asks list_available_for_room() to assemble UI
+buttons and to give the LLM interpreter the candidate set. Data skills
+extend that view without restarting the server — the registry re-reads
+the DB on each call, so `bin/game world skill add` takes effect
+immediately on the next snapshot (SPEC criterion 8)."""
 
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -17,9 +22,13 @@ SkillHandler = Callable[[str, str, str], list[events.Event]]
 class SkillSpec:
     name: str
     kind: str  # 'core' or 'data'
-    handler: SkillHandler
     ui_hint: str
     description: str  # one-line summary the interpreter sees as a candidate
+    # `handler` is only set for core skills. Data skills dispatch via
+    # `daydream.skills.data.execute_by_name` because the execution is
+    # async (LLM call) while this dataclass describes both kinds
+    # uniformly for list / find purposes.
+    handler: SkillHandler | None = None
 
 
 CORE_SKILLS: dict[str, SkillSpec] = {
@@ -55,20 +64,40 @@ CORE_SKILLS: dict[str, SkillSpec] = {
 
 
 def find(name: str) -> SkillSpec | None:
-    return CORE_SKILLS.get(name.strip().lower())
+    """Return a SkillSpec by name — core first, then data. Names are
+    case-insensitive and whitespace-trimmed; the stored names are
+    lowercase."""
+    needle = name.strip().lower()
+    core_spec = CORE_SKILLS.get(needle)
+    if core_spec is not None:
+        return core_spec
+    # Data skills live in the DB; degrade gracefully if not initialized
+    # (tests sometimes exercise the interpreter without a DB).
+    from daydream.skills import data
+    pair = data.find(needle)
+    return pair[0] if pair is not None else None
 
 
 def list_available_for_room(room_id: str) -> list[SkillSpec]:
-    """Return skills available in this room context.
+    """Return skills available in this room context: every core skill
+    plus every enabled data skill whose context predicate matches.
 
-    v0: every core skill is available everywhere. Data-skill predicates land
-    in v1 (data-skills-cli backlog entry)."""
-    return list(CORE_SKILLS.values())
+    The registry degrades gracefully when the DB is not initialized
+    (returns core only), so test paths that exercise the interpreter
+    without a fresh_db fixture keep working."""
+    specs: list[SkillSpec] = list(CORE_SKILLS.values())
+    from daydream.skills import data
+    specs.extend(spec for spec, _ in data.available_for_room(room_id))
+    return specs
 
 
 def execute(name: str, actor_id: str, room_id: str, args: str) -> list[events.Event] | None:
-    """Look up a skill by name and run it. Returns None if no such skill."""
-    spec = find(name)
+    """Dispatch a CORE skill by name. Returns None if no such core skill;
+    raises if called on a data skill — data skills must be dispatched
+    via `await data.execute_by_name(...)` from the async WS handler."""
+    spec = CORE_SKILLS.get(name.strip().lower())
     if spec is None:
         return None
+    if spec.handler is None:  # defensive: only data has None handler
+        raise RuntimeError(f"skill {name!r} has no sync handler")
     return spec.handler(actor_id, room_id, args)
