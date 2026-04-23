@@ -1,75 +1,59 @@
-## Spec — 2026-04-22 — v0: the smallest dream
+## Spec — 2026-04-23 — v1: image-gen pipeline
 
-**Goal:** Stand up the smallest playable Daydream slice. One human in a browser authenticates with the password `REDACTED`, sees one room with a committed watercolor placeholder background, types free-form text that an LLM routes through a tiny skill registry, and has the resulting events persist across `bin/game down && bin/game up`. This proves the spine (lifecycle, auth, DB, websocket, LLM routing, persistence) end to end before adding image generation, multi-room navigation, NPC memory, or any other v1/v2 feature.
+**Goal:** Replace the v0 watercolor placeholder with real per-room AI-generated backgrounds using SDXL base + a watercolor LoRA via ComfyUI, gated by a flock-based GPU arbiter that serializes vLLM and image-gen on the single 20 GB GPU. Anchor the aesthetic with a committed `WHIMSY.md` tone bible and a `bin/game image-test` harness so swapping models or LoRAs stays a one-liner.
 
 ### Acceptance Criteria
 
-- [x] **Lifecycle commands work and are idempotent.** `bin/game up` starts the vLLM warm process and the FastAPI server. `bin/game status` reports both as running and the configured port (default 8080) as reachable. `bin/game down` stops both cleanly. Re-running `up` while up, or `down` while down, is a no-op.
-- [x] **Password gate enforces `REDACTED`.** Unauthenticated requests to the SPA root are redirected to a login page. POSTing the password `REDACTED` to the auth endpoint sets a session cookie and grants subsequent access; any other password is rejected without setting a cookie.
-- [x] **Database initializes from a checked-in migration.** On first start, `~/data/daydream/worlds-dev/live.db` is created from `migrations/001_initial.sql` containing one world row, one room, one toon, and at least one examinable item (e.g., a lantern with a non-empty seed). On subsequent starts the migration does not re-apply; existing rows are untouched.
-- [x] **Websocket protocol carries `state_snapshot`, `input`, and `event`.** On connect after auth, the client receives one `state_snapshot` describing the current room and inventory. Sending `{kind: "input", text: "..."}` results in one or more `event` messages broadcast back. Reconnecting receives a current `state_snapshot` reflecting any persisted state.
-- [x] **Three core skills work without invoking the LLM.** `look` returns the room's stored description. `examine the lantern` returns deterministic text that incorporates the lantern's stored seed (verifiable by setting a sentinel string in the seed and asserting it appears in the output). `say hello` produces a `say` event with the player text visible in the chat log. None of these three exercise the LLM client; the GPU and vLLM can be down and they still pass.
-- [x] **LLM-driven free-form interpreter routes phrases.** A phrase that maps to a known skill (e.g., "look around") is routed to `look` and produces the same `event` sequence as typing `look`. A phrase with no matching skill (e.g., "sing a song") causes the interpreter to return `none`, and the server broadcasts a `narrate` event with non-empty fallback text rather than dispatching a wrong skill or returning an error. The LLM call goes through `litellm.acompletion` against the local vLLM endpoint.
-- [x] **LLM-backend failure is graceful.** When vLLM is not running or returns an error, free-form inputs that require LLM routing produce a `narrate` event with a recognizable in-game error message ("the dream is foggy" or similar) rather than crashing the websocket or returning an HTTP 500. Core skills (criterion 5) continue to work in this state.
-- [x] **State persists across restart.** After typing `say hello`, then `bin/game down && bin/game up`, then reloading the SPA, the chat log shows the prior `say hello` event sourced from the persisted event log. The `events` table is the canonical persistence target; clients hydrate from it on reconnect.
-- [x] **Watercolor placeholder background renders in the room view.** A committed PNG asset in the repo (not generated at runtime, no image gen subsystem in v0) is displayed at the top of the room view in the SPA. The image's aesthetic matches WHIMSY (Spiritfarer / A Short Hike: cozy, soft, painterly; not pixel art, not crunchy 8-bit).
-- [x] **Test suite exists and passes without GPU.** `pytest` runs to green with the LLM client stubbed/mocked. Coverage at minimum: migration + DB schema test, event-log append/fetch test, core-skills test, skill-interpreter test (with a mocked LLM returning canned JSON), and a graceful-failure test for the unreachable-LLM path. Tests do not require vLLM or the GPU.
+- [ ] **WHIMSY.md drafted as the tone bible.** `WHIMSY.md` at the project root contains: aesthetic touchstones (Spiritfarer, A Short Hike), explicit warm-painterly palette guidance, 1-2 narration voice samples, banned moods (pixel-art, crunchy 8-bit, grimdark, sexual, violence-toward-toons), and a reusable "prompt suffix" string. A test verifies the file exists and contains each named section.
+- [ ] **`bin/game image-test "<prompt>"` produces a painterly PNG.** The harness writes a PNG at a deterministic path under `~/data/daydream/images/`, at least 512x512 px, in under 30 s end-to-end on this box. Output is visibly painterly (soft, warm; not pixel-art, not crunchy 8-bit) per the WHIMSY anchor (human-verified). `--model X` and `--lora Y` flags swap pipeline pieces without code edits.
+- [ ] **Flock-based GPU arbiter serializes vLLM and image-gen.** `daydream/gpu/arbiter.py` (ported from `~/src/qwen-2.5-localreview/gpu_lock.py`) provides an exclusive lock that both LLM and image-gen call sites acquire and release. A live-GPU smoke test (5 alternating requests: LLM, image, LLM, image, LLM) completes without OOM, without a stuck "permanently fogged" LLM state, and within 90 s wall-clock total on this box.
+- [ ] **Room backgrounds generate and cache per `(world_id, room_id, seed_hash)`.** First entry to a room without a cached background enqueues an async generation job. The cached image lives at a deterministic path under `~/data/daydream/images/cache/{world}/{room}/{hash}.{png|webp}`. Subsequent visits with the same room seed serve the cached file without re-generating. Editing the room's seed changes the hash and re-triggers generation; the previously cached file remains on disk (no destructive deletes).
+- [ ] **SPA shows a "painting..." state and swaps the background when the image is ready.** When a room has no cached image, the SPA renders an explicit placeholder (textual "painting..." or animated indicator) at the room background slot. When the server emits a new `room_image_ready` event, the SPA swaps the background `<img>` `src` to the generated file without a full page reload.
+- [ ] **LLM continues to work after image-gen cycles.** Following any image-gen run, the next LLM-routed input (e.g., "look around") completes within 15 s cold-load latency on this box and routes correctly (returns a known skill or `none` as appropriate). No permanent "the dream is foggy" state from a stuck arbiter or perpetually unloaded model.
+- [ ] **ComfyUI workflow JSON is committed and used by both call sites.** A workflow file under `daydream/images/workflows/` defines the SDXL base + watercolor LoRA pipeline. Both `bin/game image-test` and the room-background generator load the same workflow file (no inline duplication of the pipeline definition). Replacing the workflow file changes both call sites' output.
+- [ ] **Test suite stays green without a GPU.** `pytest` passes with image-gen mocked at the client boundary. New coverage at minimum: cache-key hashing test, cache hit/miss path test, GPU arbiter contract test (acquire/release order, double-acquire blocks the second caller), and the `room_image_ready` event flow with a stub image client. No new test requires vLLM, ComfyUI, or the GPU.
 
 ### Context
 
-**Adopted from plan** `let-s-design-a-fairly-giggly-narwhal` (in `~/.claude/plans/`). Read that plan for v1/v2 milestones, the GPU arbiter design, the skill-system data model, the v2 skills-as-data security boundary, the NPC drift/memory model, and the bootstrap-via-Opus flow. v0 deliberately omits all of these.
+**Adopted from BACKLOG entry** `image-gen-pipeline` (now annotated `(ACTIVE in spec 2026-04-23)` in BACKLOG.md). Long-form architectural detail lives in `~/.claude/plans/let-s-design-a-fairly-giggly-narwhal.md` (Architecture / Top risks sections especially).
 
-**Aesthetic compass.** Spiritfarer / A Short Hike: cozy, warm, painterly, soft edges. NOT pixel art, NOT crunchy 8-bit, NOT melancholic. Even the placeholder PNG and any narration copy in v0 must reflect this so the tone does not have to be retroactively reset in v1.
+**Aesthetic compass (locked in v0; do not drift).** Spiritfarer / A Short Hike: cozy, warm, painterly, soft edges. WHIMSY.md is the durable home for this; every prompt template downstream references it. Explicitly NOT pixel-art, NOT crunchy 8-bit, NOT melancholic. Per the plan's risk #1, this rules out SDXL Turbo (its distillation fights soft-watercolor wash) and pixel-art LoRAs. Default to SDXL base + a watercolor / storybook LoRA at 20-25 steps; if the per-image latency is unworkable, the documented fallback is SD 1.5 + watercolor LoRA (lower VRAM, often more Spiritfarer-y).
 
-**Operational shape.** Single Python process tree (FastAPI + uvicorn + websockets) plus a vLLM warm process running Qwen 2.5 7B Instruct (Q4_K_M), gated by a `bin/game` shell dispatcher. Bind `0.0.0.0`, default port 8080, accessible only on the dev box (no Tailscale Funnel, no public DNS, single shared password). LiteLLM is imported as a Python library (not run as a proxy) so the same call site works against vLLM today and Cloudflare Workers AI / OpenAI / Anthropic later. SQLite at `~/data/daydream/worlds-dev/live.db` in WAL mode with `synchronous=NORMAL`; v0 has no world swap, no symlink dance, no multi-env layout (those land in v1/v2).
+**GPU posture (the load-bearing risk).** 20 GB VRAM ceiling. The existing `qwen-2.5-localreview` warm server already shows that a Qwen-class LLM holds ~18 GB at idle on this box, so SDXL and vLLM cannot coexist resident. Serialization is mandatory, not optional. The arbiter pattern lives in `~/src/qwen-2.5-localreview/gpu_lock.py` (flock + Unix-domain runtime dir) and `gpu-release` (signal the warm server to release VRAM). Port both. The `daydream/llm/client.py` call site already exists as a single chokepoint specifically so this wrap-in is one diff.
 
-**GPU posture.** v0 only ever loads the LLM. SDXL and the full GPU arbiter come in v1. The LLM client must be structured so the v1 arbiter slots in without changing call sites: route every LLM call through one async client module that can later acquire and release a flock-based GPU lock (the pattern lives in `/home/peter/src/qwen-2.5-localreview/gpu_lock.py`).
+**ComfyUI as a separate process.** ComfyUI runs in its own venv as a separate daemon (default port 8188), called via HTTP. Mirror the vLLM pattern in `bin/game`: detect ComfyUI presence in `status`, document the launch command, do not auto-start in `bin/game up` for v1 (separate sub-command or just a documented manual launch). Image-gen requests serialize through the GPU arbiter regardless of which process runs them.
 
-**zat.env conventions to respect.** Bind `0.0.0.0` (per `~/src/zat.env/claude/references/networking.md`). HF model cache shared at `~/.cache/huggingface`; never override `HF_HOME` (per `ml-gpu.md`). Python venv at `.venv/`, never `pip install` outside it (`PIP_REQUIRE_VIRTUALENV=true` is set globally). All commits must use the configured `user.name` only; never add Co-Authored-By trailers (per `~/.claude/CLAUDE.md`). Persistent state goes under `~/data/daydream/`, never inside the project tree. Mirror project skeleton from `~/src/qpeek/` (FastAPI, layout, CLAUDE.md style) and `~/src/qwen-2.5-localreview/` (`warm.py` lifecycle pattern, ready to lift in v1).
+**Where cached images live and how they are served.** `~/data/daydream/images/cache/{world}/{room}/{hash}.{png|webp}` (never in the project tree). FastAPI mounts a static route over the cache root so `<img src="/cache/{world}/{room}/{hash}.png">` works from the SPA. Path traversal protection is acceptable at "validate-world-and-room-IDs" level given friend-scope security; the v2 multi-user spec will tighten if needed.
 
-**Coding practices (zat.env carry-overs).** Work in small committable increments; verify build + tests pass before adding new work. When adding or changing functionality, write or update tests in the same increment. After each functional change, run the relevant test subset. Do not push or modify remote state without explicit user instruction. Spec is code: every acceptance criterion above is testable, and `/codereview` will check the implementation against this spec before any push.
+**zat.env conventions to respect.** HF model cache shared at `~/.cache/huggingface`; never override `HF_HOME` (per `ml-gpu.md`). SDXL base + the chosen watercolor LoRA download into that cache and are reusable across projects. Bind `0.0.0.0`. Single shared password (`REDACTED`) still gates everything. No Co-Authored-By trailers in commits. Persistent state lives under `~/data/daydream/`, never in the project tree.
 
-**Out of scope for v0** (deferred; do not build):
-- Image generation (SDXL, ComfyUI, watercolor LoRA, GPU arbiter sharing). v1.
-- Multiple rooms; navigation between rooms. v1.
-- Toon slot management (5 slots, kick to NPC promotion). v1.
-- NPC drift, NPC memory, embeddings, LanceDB. v1.
-- World snapshot, world swap, world bootstrap, hot reload of skills. v1/v2.
-- Multi-environment layout (dev/preview/prod ports + worlds dirs). v2.
-- Skill authoring UI, six-layer security pipeline (Jinja sandbox, content filter, audit/undo). v2.
-- Painterly Svelte UI polish (v0 ships plain HTML: chat log, input, placeholder PNG). v1.
-- Per-user identity beyond the shared password. Out of scope for the foreseeable future.
+**Coding practices (zat.env carry-overs).** Work in small committable increments; verify build + tests pass before adding new work. When adding or changing functionality, write or update tests in the same increment. Do not push or modify remote state without explicit user instruction. The `bin/game image-test` harness exists specifically so aesthetic A/B swaps stay cheap (plan's risk #1 mitigation): use it before locking in any LoRA choice.
 
-**Critical files to create in v0:**
+**Out of scope for this spec** (deferred; do not build):
+- **Item sprites.** BACKLOG entry's description includes them, but the room-background path is the v1 demo. Item sprites can be a tiny follow-up backlog entry once the cache + workflow patterns are in place.
+- **Multi-room navigation.** Separate backlog entry; without it, image-gen demos with one room only.
+- **Bootstrap-via-Opus.** Separate backlog entry; this spec uses the existing hand-seeded bunny world.
+- **Data skills, NPC drift, NPC memory, world snapshot, multi-env layout.** All separate backlog entries.
+- **Painterly Svelte UI polish.** Vanilla TS SPA stays for v1; the "painting..." placeholder is a one-line CSS state, not a component refactor.
+- **Per-character sprite consistency (IP-Adapter).** Plan calls this out but it is item-sprite territory; defer with item sprites.
 
-- `/home/peter/src/daydream/bin/game` (and `bin/game-up`, `bin/game-down`, `bin/game-status`)
-- `/home/peter/src/daydream/daydream/server.py` (FastAPI app, lifespan, websocket endpoint)
-- `/home/peter/src/daydream/daydream/db.py` (SQLite pool, WAL, migration runner)
-- `/home/peter/src/daydream/daydream/events.py` (append-only log, fetch_since, broadcast)
-- `/home/peter/src/daydream/daydream/skills/{core,registry,interpreter}.py`
-- `/home/peter/src/daydream/daydream/llm/client.py` (litellm wrapper; designed for v1 arbiter swap-in)
-- `/home/peter/src/daydream/daydream/api/{ws,auth}.py`
-- `/home/peter/src/daydream/web/` (Vite + minimal HTML/JS; no Svelte yet)
-- `/home/peter/src/daydream/migrations/001_initial.sql`
-- `/home/peter/src/daydream/tests/`
-- `/home/peter/src/daydream/CLAUDE.md`, `pyproject.toml`, `.gitignore`, `README.md`, placeholder watercolor PNG asset
+**Critical files to create or modify:**
+
+- `/home/peter/src/daydream/WHIMSY.md` (new)
+- `/home/peter/src/daydream/daydream/gpu/__init__.py` (new)
+- `/home/peter/src/daydream/daydream/gpu/arbiter.py` (new; port from `~/src/qwen-2.5-localreview/gpu_lock.py`)
+- `/home/peter/src/daydream/daydream/images/__init__.py` (new)
+- `/home/peter/src/daydream/daydream/images/client.py` (new; ComfyUI HTTP client)
+- `/home/peter/src/daydream/daydream/images/cache.py` (new; cache key, paths, async enqueue)
+- `/home/peter/src/daydream/daydream/images/workflows/painterly_room.json` (new; ComfyUI workflow)
+- `/home/peter/src/daydream/daydream/llm/client.py` (modify; acquire/release the arbiter lock around `litellm.acompletion`)
+- `/home/peter/src/daydream/daydream/api/ws.py` (modify; on `state_snapshot`, check cache; if miss, enqueue image-gen and emit `room_image_ready` when done)
+- `/home/peter/src/daydream/daydream/server.py` (modify; mount `/cache` static route over `~/data/daydream/images/cache/`)
+- `/home/peter/src/daydream/web/assets/main.js` (modify; render "painting..." when no cached image; swap `room-bg` `src` on `room_image_ready`)
+- `/home/peter/src/daydream/bin/game` (modify; add `image-test` subcommand and ComfyUI presence detection in `status`)
+- `/home/peter/src/daydream/tests/test_arbiter.py`, `tests/test_images.py`, `tests/test_whimsy.py` (new; all GPU/network-free via mocks and file checks)
 
 ---
+*Prior spec (2026-04-22): v0 (the smallest dream) shipped 10/10 acceptance criteria — lifecycle, auth, DB, websocket, LLM-routed skills, persistence, watercolor placeholder, mocked-LLM tests.*
 
-### Proposal (2026-04-22)
-
-**What happened.** v0 (the smallest dream) shipped 10/10 in one turn across 8 increments. Each commit was test-green: project skeleton (84fc373), DB + migration with sentinel-bearing seed (fce8772), append-only event log (d24b5d1), look/say/examine core skills (a9c4480), litellm wrapper + LLM-driven interpreter with mocked tests (ba09985), FastAPI app with REDACTED password gate and the state_snapshot/input/event websocket protocol (3a208c7), vanilla TS SPA with a 118 KB hand-generated watercolor PNG (9771ec1), bin/game lifecycle dispatcher (007ead6). 66 pytest tests pass with no GPU or network. Live integration check confirmed bin/game up launches uvicorn, REDACTED sets a signed session cookie, GET / serves the SPA, /assets/ serves the PNG, idempotent up/down works, and live.db persists across restart.
-
-**Questions and directions.** v1 is genuinely unblocked. Three natural next slices, each a different tradeoff:
-- **Most cinematic:** `image-gen-pipeline` (SDXL + watercolor LoRA + ComfyUI + GPU arbiter). Highest operational impact, biggest "feels real" payoff.
-- **Most game-feeling:** `data-skills-cli` + `safety-baseline-v1` + `world-bootstrap-opus`, in that order. Unlocks content variety; brings Opus into world authoring; defers GPU work.
-- **Smallest committable:** `multi-room-navigation` (add `go` skill, a second room). Quick win, no LLM/GPU contract changes.
-
-A natural sequence: multi-room first (proves navigation in a day), then image-gen (the GPU arbiter is the biggest unknown), then data-skills + safety-baseline + bootstrap (content unlock that benefits from the arbiter being stable).
-
-**Revisit candidates** (criteria now plausibly hold):
-- `image-gen-pipeline` — v0 demo loop works end to end and survives restart.
-- `multi-room-navigation` — v0 done; ready to seed a second room.
-- `data-skills-cli` — core skills + LLM interpreter stable; forge not yet authored (partial).
-
-<!-- SPEC_META: {"date":"2026-04-22","title":"v0: the smallest dream","criteria_total":10,"criteria_met":10} -->
+<!-- SPEC_META: {"date":"2026-04-23","title":"v1: image-gen pipeline","criteria_total":8,"criteria_met":0} -->
