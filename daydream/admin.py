@@ -294,7 +294,19 @@ def cmd_restore(archive_path: Path, yes: bool) -> int:
         for m in t.getmembers():
             if m.name == "MANIFEST.json":
                 continue
-            t.extract(m, path=data_dir)
+            # Belt-and-suspenders against CVE-2007-4559: reject obvious
+            # path-traversal entries before letting tarfile's data filter
+            # do the authoritative check. Archives are an
+            # operator-shipped-bundle workflow, so externally-produced
+            # archives are in scope.
+            if m.name.startswith("/") or ".." in Path(m.name).parts:
+                print(
+                    f"error: archive {archive_path.name} contains unsafe "
+                    f"member path {m.name!r}; refusing to extract",
+                    file=sys.stderr,
+                )
+                return 2
+            t.extract(m, path=data_dir, filter="data")
 
     print(
         f"restored {archive_path.name} -> {data_dir} "

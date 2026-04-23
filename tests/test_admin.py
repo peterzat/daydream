@@ -181,6 +181,42 @@ def test_restore_rejects_unknown_archive(tmp_path, monkeypatch, capsys):
     assert "not found" in capsys.readouterr().err
 
 
+def test_restore_rejects_path_traversal_member(live_world, tmp_path, monkeypatch, capsys):
+    """Regression for CVE-2007-4559: an archive containing a member whose
+    name escapes the data dir (e.g. '../../../tmp/x') must be rejected
+    before any payload bytes are written outside data_dir."""
+    import io
+
+    rc = admin.main(["archive", "w-bunny"])
+    assert rc == 0
+    archive = next((live_world / "archives").iterdir())
+
+    # Build a tampered copy with an extra ../escape member alongside the
+    # legitimate manifest.
+    fresh = tmp_path / "tampered"
+    fresh.mkdir()
+    tampered = fresh / "evil.tar.gz"
+    with tarfile.open(archive, "r:gz") as src, tarfile.open(tampered, "w:gz") as dst:
+        for m in src.getmembers():
+            f = src.extractfile(m)
+            dst.addfile(m, f)
+        evil_payload = b"escaped"
+        info = tarfile.TarInfo("../../../tmp/daydream-restore-escape-test.txt")
+        info.size = len(evil_payload)
+        dst.addfile(info, io.BytesIO(evil_payload))
+
+    db.close_db()
+    elsewhere = tmp_path / "elsewhere"
+    elsewhere.mkdir()
+    monkeypatch.setenv("DAYDREAM_DATA_DIR", str(elsewhere))
+    rc = admin.main(["restore", str(tampered), "--yes"])
+    assert rc == 2
+    err = capsys.readouterr().err
+    assert "unsafe" in err
+    # And the payload was NOT written to /tmp.
+    assert not Path("/tmp/daydream-restore-escape-test.txt").exists()
+
+
 def test_restore_rejects_archive_with_newer_schema(live_world, tmp_path, monkeypatch, capsys):
     """If the archive's manifest claims a schema_version higher than what
     this code's migrations know, refuse."""
