@@ -78,10 +78,13 @@ For the live LLM ↔ image-gen serialization smoke (boots both engines, runs 5 a
 ## Tests
 
 ```sh
-.venv/bin/pytest
+bin/game test short     # unit / fast (~10s)     — pre-commit gate
+bin/game test medium    # integration (~90s)     — pre-push gate
+bin/game test long      # real-GPU drift (~15min) — on-demand / pre-release
+bin/game test human     # aesthetic rubric via qpeek — async human review
 ```
 
-Tests do not require GPU, vLLM, or ComfyUI — the LLM client is mocked, the image client is mocked, and `tests/conftest.py` opts the test runner into `DAYDREAM_ACCESS=public` so TestClient passes through the access middleware. **153 passing** as of this commit, including the access-middleware contract (`tests/test_access_middleware.py`), the WHIMSY drift catcher (`tests/test_whimsy_prompt_suffix.py`), and the workflow-LoRA real-name check (`tests/test_workflow_real_lora.py`).
+One entry point; four tiers; durations scale with what the tier verifies. Bare `.venv/bin/pytest` still runs every test (backward compat). The drift probes under `tests/drift/` exercise the real LLM + image-gen paths and compare to git-committed baselines under `tests/baselines/*.golden.json` — a divergence fails the test with a diff and the operator ratifies a new baseline with `mv .latest .golden` + commit. The durable philosophy and extension guide live in [`TESTING.md`](TESTING.md); read it before adding a test or bumping a model / LoRA / workflow.
 
 ## Tech sketch
 

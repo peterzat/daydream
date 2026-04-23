@@ -90,10 +90,10 @@ context for every entry below lives in `~/.claude/plans/let-s-design-a-fairly-gi
 
 Captured from the comprehensive GPU/ML doc pass; full rationale per item lives in `docs/gpu-and-models.md` "Things we have not tried yet".
 
-### voice-and-aesthetic-audit-trail
+### voice-and-aesthetic-audit-trail (PARTIALLY LANDED 2026-04-23)
 - **One-line description:** Add `tools/voice-bench.py` (and image counterpart) that renders 3-5 anchor LLM prompts to `docs/pretty/voice-samples/<date>.md` and 3-5 anchor image prompts to `docs/pretty/aesthetic-samples/<date>/`. Not pass/fail; a dated chronology you can scroll back through to see when the vibe shifted, and a side-by-side substrate when swapping models or LoRAs.
-- **Why deferred:** v1 closed without it. Today the only quality check is human eyes-on; the smoke catches output-format regressions but not voice/aesthetic drift. Cheap to build (under an hour) but the absence is currently "before our second user" risk, not "right now" risk.
-- **Revisit criteria:** First time someone asks "did the new model get worse?" and we have no answer; OR first vLLM/LoRA bump where we want a side-by-side; OR first non-author player joins and we want a baseline to compare against.
+- **Status:** The aesthetic half landed via `bin/game test human` (commit 2026-04-23): renders the 3 `tests/drift/aesthetics/*.json` anchors, routes through qpeek for rubric capture, writes a dated `docs/pretty/aesthetic-samples/<date>/review.md`. The LLM-voice half (anchored narration samples to `docs/pretty/voice-samples/`) is still deferred — see `voice-samples-capture` below.
+- **Revisit criteria for the voice half:** `npc-drift-loop` or `data-skills-cli` lands and produces real NPC narration; then the voice anchors have something meaningful to watch drift against.
 - **Origin:** docs/gpu-and-models.md (Quality guardrails)
 
 ### qwen-2.5-7b-rp-ink-trial
@@ -113,6 +113,82 @@ Captured from the comprehensive GPU/ML doc pass; full rationale per item lives i
 - **Why deferred:** Real engineering work (calibration dataset, vLLM scale-export pipeline, validation run). Only worth it if LLM throughput becomes a bottleneck. Today single-stream decode latency is sub-second warm; no user-visible pressure.
 - **Revisit criteria:** LLM round-trip latency starts gating UX (e.g., NPC dialogue chains feel laggy with multiple humans connected); OR vLLM ships an official calibration recipe for Qwen 2.5 family that drops the engineering cost meaningfully.
 - **Origin:** docs/gpu-and-models.md (The fp8-KV story, condition #2)
+
+## Test architecture follow-ups
+
+Captured from the test-architecture landing (2026-04-23); scaffolding for these is in place, the work itself is deferred until the triggering signal arrives. See `TESTING.md` for the full architecture and philosophy.
+
+### claude-vision-quality-gate
+- **One-line description:** Add a `tier_long` probe under `tests/drift/` that submits each rendered anchor image to Claude Opus 4.7 vision with the WHIMSY rubric, asserts a minimum rating. Cost-gated behind an env flag (e.g. `DAYDREAM_CLAUDE_VISION_GATE=1`) so routine runs don't burn tokens.
+- **Why deferred:** Human qpeek review (commit 2026-04-23) is the v0 human-in-the-loop. A Claude-vision gate is complementary but costs API tokens per run; only earns its keep when human bandwidth is the bottleneck (multiple daily workflow tweaks, or a second contributor).
+- **Revisit criteria:** We start doing ≥3 LoRA/workflow/sampler A/Bs per week and qpeek interactive review becomes the rate limit; OR a second contributor needs machine-verifiable aesthetic gating without interactive review.
+- **Origin:** test architecture plan (2026-04-23)
+
+### voice-samples-capture
+- **One-line description:** The LLM half of `voice-and-aesthetic-audit-trail`: render 5 anchor narration prompts (once real NPC dialogue exists) to `docs/pretty/voice-samples/<date>.md` as a dated chronology. Distinct from `test_llm_json_adherence.py` which checks schema adherence — this is free-form text you scroll back through to see when the voice shifted.
+- **Why deferred:** v0 has no NPC dialogue; the anchors have nothing meaningful to capture. Blocked on `npc-drift-loop` or `data-skills-cli`.
+- **Revisit criteria:** First NPC dialogue lands; first model bump where side-by-side voice comparison would help.
+- **Origin:** test architecture plan (2026-04-23), splits the LLM half off from `voice-and-aesthetic-audit-trail`
+
+### archive-restore-roundtrip-test
+- **One-line description:** Add a `tier_long` test that archives a world via `bin/game world archive`, deletes it, restores from the archive, then diffs the restored DB + cache against the pre-archive state. Goes deeper than the current `test_admin.py` unit coverage (belt-and-suspenders on the E2E flow).
+- **Why deferred:** `test_admin.py` already covers archive + restore individually with the round-trip construct in `test_restore_round_trip`; a dedicated drift-tier end-to-end would be redundant until we have multi-world state + a non-trivial cache to diff.
+- **Revisit criteria:** First Opus-bootstrapped world worth keeping; OR first operator incident where archive/restore loses state and the existing unit coverage didn't catch it.
+- **Origin:** test architecture plan (2026-04-23)
+
+### security-tests-tier
+- **One-line description:** Dedicated `tests/security/` directory covering banned-word filter regression, session-cookie tamper detection, AccessMiddleware fuzz (invalid CGNAT edge cases), `daydream/admin.py` path-traversal edge cases beyond the current CVE-2007-4559 coverage. Marker mix: some `tier_short`, some `tier_medium`.
+- **Why deferred:** Couples to `safety-baseline-v1` (no LLM-driven state mutation in v0 means no banned-word surface to regress against). AccessMiddleware fuzz is lower-priority since the middleware is heavily tested already.
+- **Revisit criteria:** `data-skills-cli` + `safety-baseline-v1` land; OR a security-review pass surfaces a class of risk not covered today.
+- **Origin:** test architecture plan (2026-04-23)
+
+### load-test-harness
+- **One-line description:** Add a `tier_long` capacity test: 10 simulated bots holding WS connections for 10 minutes, sending a modest input cadence, assert no OOM / no arbiter deadlock / bounded room-image queue depth. Under `tests/load/` to keep it distinct from drift.
+- **Why deferred:** v0 has 1 user per world; capacity is a v2 concern. Arbiter smoke already exercises serialization; this is the multi-user extension.
+- **Revisit criteria:** `multi-user-shared-world` lands; OR oncall starts seeing WS queue backpressure in real usage.
+- **Origin:** test architecture plan (2026-04-23)
+
+### ci-pipeline
+- **One-line description:** Add `.github/workflows/test.yml` that runs `bin/game test ci` on push / PR. Skips `tier_long` unless the runner has a GPU (AWS EC2 G-family or a self-hosted runner).
+- **Why deferred:** Single-dev box today; `bin/game test ci` is run locally. CI earns its keep when a second contributor lands or when we need to enforce green-on-push across branches.
+- **Revisit criteria:** Second contributor joins; OR cross-branch churn makes local-only verification feel unsafe.
+- **Origin:** test architecture plan (2026-04-23)
+
+### mypy-gate
+- **One-line description:** Add `[tool.mypy]` to `pyproject.toml` with `strict = true` and include a mypy pass in `tier_short`. Probably needs typing backfill across `daydream/` first.
+- **Why deferred:** The typing work itself is weeks. Ruff B + UP already catches ~80% of what mypy would on this codebase today. Low marginal signal per hour invested.
+- **Revisit criteria:** A typing-related bug slips past ruff and causes real damage; OR a contributor with typing momentum lands.
+- **Origin:** test architecture plan (2026-04-23)
+
+### staging-probes
+- **One-line description:** Implement the `DAYDREAM_TARGET=staging` tier_medium probes. Today the knob is scaffolded (`config.target()` + `_resolve_target` fixture in `tests/conftest.py`) but all tier_medium tests skip with "staging not yet wired" under that target. The real probes would hit `/healthz`, login flow, WS handshake against a deployed staging URL — read-safe, no DB mutation.
+- **Why deferred:** No staging environment yet.
+- **Revisit criteria:** Staging env exists; `multi-env-layout` lands.
+- **Origin:** test architecture plan (2026-04-23)
+
+### prod-verify-probes
+- **One-line description:** Implement the `DAYDREAM_TARGET=prod_verify` tier_long probes. Read-only; hits health, auth form, public asset endpoints to confirm a deploy is live after a push. Never writes DB state.
+- **Why deferred:** Prod is one box today; there is no "deploy" to verify beyond a local restart.
+- **Revisit criteria:** Multi-box prod deploy lands (whether as Cloudflare Workers per the tech-sketch plan or a second physical box).
+- **Origin:** test architecture plan (2026-04-23)
+
+### drift-alarms
+- **One-line description:** When a baseline diff lands on main, auto-open a Claude Code session (via the `schedule` skill or a push-notification hook) with the diff as context. Keeps the "baseline changed — why?" review loop warm without relying on a human noticing the commit.
+- **Why deferred:** Today there's one contributor; every baseline update passes through that person's eyes by construction. The alarm becomes valuable when ratified drift happens on branches that the author doesn't review.
+- **Revisit criteria:** Second contributor joins AND starts ratifying baselines independently.
+- **Origin:** test architecture plan (2026-04-23)
+
+### gameplay-scenario-tests
+- **One-line description:** Upgrade `test_ws.py` with scripted multi-step scenarios: a toon enters meadow → goes north → narrates the new room → leaves an item → reconnects, snapshot reflects the state. Tests the narration + cache + persistence spine as one story rather than three unit assertions.
+- **Why deferred:** `multi-room-navigation` just landed; scenarios want to stabilize before being canonicalized as tests. And individual correctness is already covered by the existing WS tests.
+- **Revisit criteria:** `multi-room-navigation` feels stable for a few turns; first regression in the flow that single-step tests didn't catch.
+- **Origin:** test architecture plan (2026-04-23)
+
+### latency-regression-corpus
+- **One-line description:** Tighten the per-call latency windows in `tests/drift/*.py` as multi-run trend data accumulates. Today wall-clock fields are recorded to `.latest.json` but not gated (too noisy on a single sample). Once we have ~10 same-config runs, derive p50 + p95 from the trend and set windows at (p50 / 2, p95 * 2).
+- **Why deferred:** Need samples. Until then, recorded values are the substrate, not the contract.
+- **Revisit criteria:** 10+ `bin/game test long` runs in `.latest.json` history (moved to a branch-local scratch dir since `.latest.json` is gitignored — maybe add a `tests/baselines/history/` append-only log as part of this work); OR a regression in wall-clock that eyeballs caught but no probe alarmed on.
+- **Origin:** test architecture plan (2026-04-23)
 
 ## Open questions
 
