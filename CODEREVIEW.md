@@ -1,32 +1,29 @@
-## Review — 2026-04-23 (commit: 9c37a0d)
+## Review — 2026-04-23 (commit: 1243402)
 
-**Review scope:** Refresh review. Focus: 4 files changed since prior review (commit 293a4a4): `bin/game`, `tests/test_frontend.py`, `web/assets/style.css`, `web/index.html`. All 4 are new modifications since the prior review; full-depth review applied to all.
+**Review scope:** Refresh review. Focus: 1 file changed since prior review (commit 9c37a0d): `daydream/server.py`. No already-reviewed files touched since; the focus file is the only diff. Full-depth review applied.
 
-**Summary:** Two small commits since `293a4a4`: `881a6dc` (logout control fix — GET `<a>` to POST `<form>` + test) and `9c37a0d` (`bin/game up` UX polish — readiness poll, quieter curl probes, tailnet URL emit, drop of the wrong `command -v vllm` check). ~45 lines across 4 files. Tests remain green: short=156, medium=212 (+1 for new `test_logout_link_posts_not_gets`), long=221 available. Security scan ran over the 3 files new to the scanned surface (`tests/test_frontend.py`, `web/assets/style.css`, `web/index.html`) plus `bin/game`; zero findings. No BLOCK or WARN in this review; 3 new NOTEs (two follow-ons from the logout fix — a dormant fallback and an orphan CSS rule — plus a comment-precision nit in the `bin/game` poll). The 9 NOTEs from the prior review all remain in-scope carry-forwards (unchanged files).
+**Summary:** One commit unpushed (`1243402` — "Fix _PRE_FRONTEND_HTML fallback: POST form for logout"). Four lines changed in `daydream/server.py`: the fallback HTML's `<a href="/api/logout">leave</a>` became a POST `<form>` with an unbuttoned `<button>`, resolving the dormant NOTE from the 9c37a0d review. Endpoint is POST-only in `daydream/api/auth.py:41`; form shape matches the committed one in `web/index.html:22-25`. Tests remain green at 212/212 in 2.59s (same as baseline). Security scan ran over `daydream/server.py` (new to the scanned surface); zero findings. No BLOCK/WARN/NOTE for this diff.
 
 **External reviewers:**
 None reported findings (review-external.sh ran with empty stdout and no cost log content).
 
 ### Findings
 
-[NOTE] daydream/server.py:124 — `_PRE_FRONTEND_HTML` fallback still uses `<a href="/api/logout">leave</a>`. This fallback is rendered only when `web/index.html` is missing from disk (server.py:57-60). Today `web/index.html` is git-committed and always present, so the fallback never fires in practice. However, the exact bug that commit `881a6dc` just fixed in `web/index.html` (GET on POST-only endpoint produces 405) is still latent in this fallback. If a future refactor deletes or moves `web/index.html`, the fallback's "leave" link would 405.
-  Suggested fix: Either replace with `<form action="/api/logout" method="post" style="display:inline"><button type="submit">leave</button></form>`, or delete `_PRE_FRONTEND_HTML` outright since the v1 SPA has shipped and `web/index.html` is a permanent tree artifact.
+No issues found.
 
-[NOTE] web/assets/style.css:156-157 — `footer a` and `footer a:hover` rules are dead after `881a6dc`. No anchor tags exist anywhere in `web/` (`grep '<a ' web/` returns nothing). The rules will only re-activate if someone adds an `<a>` to the footer, which would likely want fresh styling anyway.
-  Suggested fix: Delete lines 156-157. One-line cleanup, no functional impact either direction.
+### Carry-forwards (still applicable from the 2026-04-23 entry against 9c37a0d)
 
-[NOTE] bin/game:132-144 — `cmd_up` readiness-poll comment says "~3s" but the worst-case wall-clock is ~13s (10 curl calls × 1s `--max-time` + 10 × 0.3s sleeps) when curl hangs rather than refusing fast. In practice curl against an unbound port returns ECONNREFUSED within milliseconds, so the "~3s" estimate matches the normal case — just a comment-precision nit.
-  Suggested fix: Either drop the "~3s" estimate or note that it's the typical case (fast-refuse) rather than worst-case.
+The prior NOTE on `daydream/server.py:124` is resolved by this commit and drops off. The remaining 11 NOTEs apply unchanged to files the current diff does not touch:
 
-### Carry-forwards (still applicable, from the 2026-04-23 entry against 293a4a4)
+[NOTE] web/assets/style.css:156-157 — `footer a` / `footer a:hover` rules dead after 881a6dc. One-line cleanup, no functional impact.
 
-None of these were touched by `881a6dc`/`9c37a0d`; they apply unchanged to the current HEAD:
+[NOTE] bin/game:132-144 — `cmd_up` readiness-poll comment says "~3s" but worst-case is ~13s. Matches normal case (curl fast-refuse against unbound ports); comment-precision nit.
 
 [NOTE] daydream/images/client.py:59 — Stale comment references `tests/test_whimsy_prompt_suffix.py`; actual drift catcher is `tests/drift/test_drift_constants.py::test_whimsy_prompt_suffix_matches_code_constant`.
 
 [NOTE] tests/drift/aesthetics/{cozy_room,forest_path,meadow_dusk}.json — Each declares `"expected_resolution": [1024, 1024]` but the workflow produces 1024x384. Field is currently dead (unread); wiring it up would trip all three probes.
 
-[NOTE] tests/drift/conftest.py:148 — `assert_within` docstring claims compare-keys semantics the implementation does not provide. Doc/impl drift, not a detection gap for the advertised tripwire.
+[NOTE] tests/drift/conftest.py:148 — `assert_within` docstring claims compare-keys semantics the implementation does not provide. Doc/impl drift, not a detection gap.
 
 [NOTE] tests/drift/conftest.py:59 — `img.getdata()` triggers Pillow DeprecationWarning (removal in Pillow 14 / 2027-10-15); `pyproject.toml` pins `Pillow>=10.0` with no upper bound.
 
@@ -42,13 +39,13 @@ None of these were touched by `881a6dc`/`9c37a0d`; they apply unchanged to the c
 
 ### Fixes Applied
 
-None. Only NOTE-level findings; no auto-fix by policy.
+None. No BLOCK or WARN findings; no auto-fix by policy.
 
 ### Accepted Risks
 
-The following remain documented in SECURITY.md's Accepted Risks and are not re-reported here: `https_only=False` cookie (LAN/Tailscale only), no CSRF token on `/api/login` and `/api/logout` (friend-scope phishing impact only), the 100.64.0.0/10 hardcoding for Tailscale CGNAT, `AccessMiddleware` reading `scope["client"][0]` directly (secure default; documented operator caveat for reverse-proxy deployments), `bin/game` sourcing `.env` + `secrets.env` as shell (operator-controlled gitignored files), and `bin/qpeek-bootstrap` cloning + installing from `github.com/peterzat/qpeek` (supply-chain trust on the project owner's own account).
+Unchanged from prior entry. Documented in SECURITY.md: `https_only=False` cookie (friend-scope LAN/Tailscale), no CSRF token on `/api/login` and `/api/logout`, the 100.64.0.0/10 Tailscale CGNAT hardcoding, `AccessMiddleware` reading `scope["client"][0]` directly (secure default; documented operator caveat for reverse-proxy deployments), the intentionally-unauthenticated `/cache/...` static route (added in the 1243402 security review), `bin/game` sourcing `.env` + `secrets.env` as shell (operator-controlled gitignored files), and `bin/qpeek-bootstrap` cloning from `github.com/peterzat/qpeek` (self-trust boundary).
 
 ---
-*Prior review (2026-04-23, commit 293a4a4): no BLOCK or WARN findings; 9 NOTEs covering doc/impl drift in drift-probe corpora, Pillow deprecation, README/CLAUDE path references, a latent override-path cache-key inconsistency, a non-atomic delete cascade, and carry-forwards from earlier reviews. The prior entry before that (commit 5de20c9) found one BLOCK (tar path-traversal, CVE-2007-4559) which was auto-fixed in 88e1763.*
+*Prior review (2026-04-23, commit 9c37a0d): no BLOCK or WARN findings; 3 new NOTEs (fallback-HTML logout GET, dead footer-anchor CSS, cmd_up comment-precision) plus 9 carry-forwards. The fallback-HTML NOTE is fixed by 1243402 and drops off this entry.*
 
-<!-- REVIEW_META: {"date":"2026-04-23","commit":"9c37a0d","reviewed_up_to":"9c37a0db38992e66a3a3c485ec18aef150fc5cb0","base":"origin/main","tier":"refresh","block":0,"warn":0,"note":12} -->
+<!-- REVIEW_META: {"date":"2026-04-23","commit":"1243402","reviewed_up_to":"124340273a40dc2ec29fb403a81e93ef866da98b","base":"origin/main","tier":"refresh","block":0,"warn":0,"note":11} -->
