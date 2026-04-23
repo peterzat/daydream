@@ -39,7 +39,7 @@ import sys
 import pytest
 
 
-_TIERS = ("short", "medium", "long", "ci")
+_TIERS = ("short", "medium", "long", "ci", "human")
 
 _TIER_MARKERS: dict[str, str] = {
     "short": "tier_short",
@@ -87,6 +87,14 @@ def main(argv: list[str] | None = None) -> int:
     args, pytest_args = p.parse_known_args(argv)
     if pytest_args and pytest_args[0] == "--":
         pytest_args = pytest_args[1:]
+
+    if args.tier == "human":
+        # Human-eval doesn't run pytest; it renders the anchor corpus
+        # and hands off to qpeek for interactive rating. See
+        # daydream.testing.human_eval.
+        from daydream.testing import human_eval
+        print(f"tier=human target={args.target}", file=sys.stderr, flush=True)
+        return human_eval.main(pytest_args)
 
     return _run_pytest(args.tier, args.target, pytest_args)
 

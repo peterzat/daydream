@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+# bin/qpeek-bootstrap — one-time, idempotent qpeek install for daydream.
+#
+# qpeek is the human-eval tool for the test architecture's `bin/game
+# test human` subcommand: a transient Python web server that displays
+# PNGs for aesthetic review and emits the ratings as JSON to stdout.
+# Fresh clone into external/qpeek/ per CLAUDE.md's "External engines"
+# pattern; we do NOT reuse ~/src/qpeek so this project's install is
+# self-contained and versioned against our code.
+#
+# After this completes, run:  bin/game test human
+
+set -euo pipefail
+
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+QPEEK_DIR="$PROJECT_ROOT/external/qpeek"
+QPEEK_REPO="https://github.com/peterzat/qpeek"
+
+mkdir -p "$PROJECT_ROOT/external"
+
+echo "==> qpeek repo"
+if [[ -d "$QPEEK_DIR/.git" ]]; then
+    echo "    present at $QPEEK_DIR"
+else
+    echo "    cloning $QPEEK_REPO ..."
+    git clone --quiet "$QPEEK_REPO" "$QPEEK_DIR"
+fi
+
+echo "==> qpeek venv"
+if [[ -x "$QPEEK_DIR/.venv/bin/python" ]]; then
+    echo "    present"
+else
+    echo "    creating with python3 ..."
+    python3 -m venv "$QPEEK_DIR/.venv"
+    "$QPEEK_DIR/.venv/bin/python" -m pip install --quiet --upgrade pip wheel
+fi
+
+echo "==> qpeek install"
+# pip install -e is idempotent; safe to re-run.
+"$QPEEK_DIR/.venv/bin/python" -m pip install --quiet -e "$QPEEK_DIR"
+echo "    installed (or already satisfied)"
+
+echo
+echo "qpeek bootstrap complete. Next: bin/game test human"

@@ -65,6 +65,10 @@ Engines that use HuggingFace's model hub (vLLM is the obvious case) put their mo
 
 ComfyUI does NOT use the HF cache (its `models/` dir lives under `external/ComfyUI/`); vLLM does. Future engines decide case by case.
 
+### Pattern exception: foreground engines (qpeek)
+
+Not every external engine is a daemon. `qpeek` (the human-aesthetic-eval engine used by `bin/game test human`) is a **foreground** process: `bin/qpeek-bootstrap` clones and installs like every other engine, but there is no `bin/game qpeek-up/down` and no PID file — `bin/game test human` invokes qpeek directly as a blocking subprocess and parses the JSON rating array from its stdout. Design reason: qpeek is transient by nature (human-interactive, one-shot per review). Forcing it through a daemon lifecycle would add complexity the use case doesn't need.
+
 ## ComfyUI (v1 image gen)
 
 The first engine on the pattern. Binds `127.0.0.1:8188` by default since daydream is the only consumer; override `DAYDREAM_COMFYUI_HOST=0.0.0.0` to expose on the tailnet (e.g., for the ComfyUI web UI from another machine), or SSH-tunnel: `ssh -L 8188:localhost:8188 <host>`. Override the URL daydream calls with `DAYDREAM_COMFYUI_BASE_URL` or the port via `DAYDREAM_COMFYUI_PORT`.
