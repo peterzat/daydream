@@ -39,9 +39,19 @@ Then visit `http://0.0.0.0:8080` (from the box) or `http://<host>:8080` (from an
 
 `DAYDREAM_PASSWORD` is the only required setting. If `.env` is missing or that variable is unset, the auth endpoint refuses every login (503) — there is no published default. `~/.config/daydream/secrets.env` (per-host, gitignored) overrides anything set in project `.env`.
 
-## LLM (optional in v0)
+## LLM (optional)
 
-The three baked-in skills (`look`, `say`, `examine`) work without GPU. Free-form text that does not match a baked-in skill is routed through an LLM interpreter; with no vLLM running, those inputs gracefully narrate "the dream is foggy" instead of crashing. To enable LLM routing, run a vLLM warm process serving an OpenAI-compatible endpoint at `http://localhost:8000/v1` (default; override with `DAYDREAM_LLM_BASE_URL` / `DAYDREAM_LLM_MODEL`).
+The three baked-in skills (`look`, `say`, `examine`) work without GPU. Free-form text that does not match a baked-in skill is routed through an LLM interpreter; with no vLLM running, those inputs gracefully narrate "the dream is foggy" instead of crashing.
+
+vLLM follows the same `external/` engine pattern as ComfyUI:
+
+```sh
+bin/vllm-bootstrap           # one-time install: venv, pip install vllm, Qwen 2.5 7B AWQ (~5 GB)
+bin/game vllm-up             # start the daemon (~10 s warmup)
+bin/game vllm-down           # stop
+```
+
+Override the endpoint or model with `DAYDREAM_LLM_BASE_URL` / `DAYDREAM_VLLM_MODEL`. Operator notes in [CLAUDE.md](CLAUDE.md) under "vLLM".
 
 ## Image gen (v1, optional)
 

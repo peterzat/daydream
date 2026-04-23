@@ -45,9 +45,15 @@ Each engine gets:
 
 `external/` is gitignored entirely. No submodules, no nested .git tracking — bootstrap re-creates the whole thing from a single command, so losing it is cheap.
 
+### Pattern exception: HF cache
+
+Engines that use HuggingFace's model hub (vLLM is the obvious case) put their model files in `~/.cache/huggingface/hub`, NOT under `external/<engine>/models/`. The shared HF cache is a zat.env convention (never override `HF_HOME`) and trumps the per-engine self-containment when the two collide. Bootstraps for HF-backed engines pre-cache via `huggingface_hub.snapshot_download` so first-launch is fast.
+
+ComfyUI does NOT use the HF cache (its `models/` dir lives under `external/ComfyUI/`); vLLM does. Future engines decide case by case.
+
 ## ComfyUI (v1 image gen)
 
-ComfyUI is the first engine on the pattern above. Default endpoint `http://localhost:8188`; override with `DAYDREAM_COMFYUI_BASE_URL` or `DAYDREAM_COMFYUI_PORT`.
+The first engine on the pattern. Default endpoint `http://localhost:8188`; override with `DAYDREAM_COMFYUI_BASE_URL` or `DAYDREAM_COMFYUI_PORT`.
 
 One-time install:
 
@@ -64,6 +70,27 @@ bin/game status              # shows pid + reachability when running
 ```
 
 The shared workflow JSON at `daydream/images/workflows/painterly_room.json` is read by both `daydream/images/client.py` (room backgrounds) and `daydream/images/cli.py` (`bin/game image-test`). The current pick is SDXL base 1.0 + `ostris/watercolor_style_lora_sdxl` (`watercolor_v1_sdxl.safetensors`); to swap, edit `lora_name` in the workflow and both call sites pick it up. Use `bin/game image-test "<prompt>" --lora <new>.safetensors` for cheap A/B before committing the swap.
+
+## vLLM (v1 LLM)
+
+The second engine on the pattern. Different from ComfyUI in that vLLM is a pip package (no upstream clone), and its model weights live in the shared HF cache (per the exception above). Default endpoint `http://localhost:8000/v1`; override with `DAYDREAM_LLM_BASE_URL` or `DAYDREAM_VLLM_PORT`. Default model is Qwen 2.5 7B Instruct AWQ (`DAYDREAM_VLLM_MODEL` to override).
+
+One-time install:
+
+```sh
+bin/vllm-bootstrap           # venv, pip install vllm, pre-cache Qwen 2.5 7B AWQ (~5 GB)
+```
+
+Daily lifecycle:
+
+```sh
+bin/game vllm-up             # start daemon (PID owned by daydream)
+bin/game vllm-down           # stop daemon
+```
+
+`bin/game vllm-up` launches with `--gpu-memory-utilization 0.45` (~9 GB on the 20 GB card) leaving headroom for SDXL during inference. Both daemons can stay resident under the arbiter; the arbiter's lock means only one inference runs at a time, so the peak is bounded by whichever inference is in flight, not the sum. `--max-model-len 8192` is the default context window; increase if v2 long-context needs warrant it (raises KV cache memory).
+
+daydream calls vLLM through `daydream/llm/client.py` via `litellm.acompletion` against the OpenAI-compatible endpoint, all wrapped in `daydream.gpu.arbiter.acquire()` so it serializes with image-gen on the same GPU.
 
 ## Aesthetic
 

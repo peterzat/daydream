@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+# bin/vllm-bootstrap — one-time, idempotent vLLM install for daydream.
+#
+# Creates external/vLLM/.venv, installs vllm, pre-downloads the default
+# model (Qwen 2.5 7B Instruct AWQ ~5 GB) into the shared HuggingFace cache
+# (~/.cache/huggingface; per zat.env never override HF_HOME). Re-runs are
+# no-ops on every step.
+#
+# Note vs. the ComfyUI pattern: vLLM is a pip package, not a clone-and-run
+# repo. There is no upstream git clone step. The "external/vLLM/" dir is
+# just the venv home; models live in the shared HF cache (not under the
+# external/ tree) because zat.env's HF cache convention overrides the
+# default per-engine models/ dir for engines that use it.
+#
+# After this completes, bring the daemon up with:  bin/game vllm-up
+
+set -euo pipefail
+
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+VLLM_DIR="$PROJECT_ROOT/external/vLLM"
+MODEL="${DAYDREAM_VLLM_MODEL:-Qwen/Qwen2.5-7B-Instruct-AWQ}"
+
+mkdir -p "$VLLM_DIR"
+
+echo "==> vLLM venv"
+if [[ -x "$VLLM_DIR/.venv/bin/python" ]]; then
+    echo "    present at $VLLM_DIR/.venv"
+else
+    echo "    creating with python3 ..."
+    python3 -m venv "$VLLM_DIR/.venv"
+    "$VLLM_DIR/.venv/bin/python" -m pip install --quiet --upgrade pip wheel
+fi
+
+echo "==> vLLM package"
+if "$VLLM_DIR/.venv/bin/python" -c "import vllm" 2>/dev/null; then
+    INSTALLED_VER="$("$VLLM_DIR/.venv/bin/python" -c 'import vllm; print(vllm.__version__)' 2>/dev/null || echo unknown)"
+    echo "    installed (vllm $INSTALLED_VER)"
+else
+    echo "    installing vllm (~3 GB of torch + deps; ~5 min) ..."
+    "$VLLM_DIR/.venv/bin/python" -m pip install --quiet vllm
+fi
+
+echo "==> Model: $MODEL"
+# Pre-cache via huggingface_hub so vllm serve starts fast (else it blocks
+# while downloading on first launch). Stored in ~/.cache/huggingface/hub.
+"$VLLM_DIR/.venv/bin/python" - <<PY
+from huggingface_hub import snapshot_download
+import os, sys
+try:
+    p = snapshot_download("$MODEL")
+    sz = sum(os.path.getsize(os.path.join(d, f))
+             for d, _, fs in os.walk(p) for f in fs)
+    print(f"    cached at {p} ({sz/1_000_000_000:.1f} GB)")
+except Exception as e:
+    print(f"    download failed: {e}", file=sys.stderr)
+    sys.exit(1)
+PY
+
+echo
+echo "vLLM bootstrap complete. Next: bin/game vllm-up"

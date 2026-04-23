@@ -34,6 +34,15 @@ COMFY_PY="$COMFY_DIR/.venv/bin/python"
 COMFY_PORT="${DAYDREAM_COMFYUI_PORT:-8188}"
 COMFY_URL="${DAYDREAM_COMFYUI_BASE_URL:-http://localhost:$COMFY_PORT}"
 
+VLLM_DIR="$PROJECT_ROOT/external/vLLM"
+VLLM_BIN="$VLLM_DIR/.venv/bin/vllm"
+VLLM_PORT="${DAYDREAM_VLLM_PORT:-8000}"
+VLLM_URL="${DAYDREAM_LLM_BASE_URL:-http://localhost:$VLLM_PORT/v1}"
+VLLM_MODEL="${DAYDREAM_VLLM_MODEL:-Qwen/Qwen2.5-7B-Instruct-AWQ}"
+# 0.45 = ~9 GB on a 20 GB card; leaves room for SDXL during inference.
+VLLM_GPU_FRACTION="${DAYDREAM_VLLM_GPU_FRACTION:-0.45}"
+VLLM_MAX_LEN="${DAYDREAM_VLLM_MAX_LEN:-8192}"
+
 # Load env vars from the project .env (gitignored) first, then any per-host
 # secrets file. The host file wins so an operator can override per machine.
 if [[ -f "$PROJECT_ENV" ]]; then
@@ -129,10 +138,22 @@ cmd_status() {
     else
         echo "fastapi: stopped"
     fi
-    if command -v vllm >/dev/null 2>&1; then
-        echo "vllm: binary present"
+    # vLLM: prefer the daydream-managed PID; fall back to a reachability
+    # probe so externally-launched instances are still detected.
+    local vllm_reach="unreachable"
+    if command -v curl >/dev/null 2>&1 \
+        && curl -sS -o /dev/null --max-time 1 "${VLLM_URL}/models"; then
+        vllm_reach="reachable"
+    fi
+    if _is_running "vllm"; then
+        local pid; pid="$(cat "$(_pid_file vllm)")"
+        echo "vllm: running (pid $pid, port $VLLM_PORT, $vllm_reach)"
+    elif [[ "$vllm_reach" == "reachable" ]]; then
+        echo "vllm: reachable at $VLLM_URL (managed externally)"
+    elif [[ -x "$VLLM_BIN" ]]; then
+        echo "vllm: stopped (run 'bin/game vllm-up')"
     else
-        echo "vllm: not installed"
+        echo "vllm: not bootstrapped (run 'bin/vllm-bootstrap')"
     fi
     # ComfyUI: prefer the daydream-managed PID; fall back to a reachability
     # probe so externally-launched instances are still detected.
@@ -195,6 +216,30 @@ cmd_comfyui_down() {
     _stop_one comfyui
 }
 
+cmd_vllm_up() {
+    if _is_running "vllm"; then
+        echo "vllm: already running (pid $(cat "$(_pid_file vllm)"))"
+        return 0
+    fi
+    if [[ ! -x "$VLLM_BIN" ]]; then
+        echo "vllm: not bootstrapped at $VLLM_DIR" >&2
+        echo "run 'bin/vllm-bootstrap' first." >&2
+        return 2
+    fi
+    local logf; logf="$(_log_file "vllm")"
+    nohup "$VLLM_BIN" serve "$VLLM_MODEL" \
+        --host 0.0.0.0 --port "$VLLM_PORT" \
+        --gpu-memory-utilization "$VLLM_GPU_FRACTION" \
+        --max-model-len "$VLLM_MAX_LEN" \
+        > "$logf" 2>&1 < /dev/null &
+    echo $! > "$(_pid_file vllm)"
+    echo "vllm: started (pid $!, port $VLLM_PORT, model $VLLM_MODEL, log $logf)"
+}
+
+cmd_vllm_down() {
+    _stop_one vllm
+}
+
 case "${1:-}" in
     up)            shift; cmd_up "$@" ;;
     down)          shift; cmd_down "$@" ;;
@@ -203,6 +248,8 @@ case "${1:-}" in
     image-test)    shift; cmd_image_test "$@" ;;
     comfyui-up)    shift; cmd_comfyui_up "$@" ;;
     comfyui-down)  shift; cmd_comfyui_down "$@" ;;
-    "")            echo "usage: bin/game {up|down|status|logs|image-test|comfyui-up|comfyui-down}" >&2; exit 2 ;;
-    *)             echo "usage: bin/game {up|down|status|logs|image-test|comfyui-up|comfyui-down} (got: $1)" >&2; exit 2 ;;
+    vllm-up)       shift; cmd_vllm_up "$@" ;;
+    vllm-down)     shift; cmd_vllm_down "$@" ;;
+    "")            echo "usage: bin/game {up|down|status|logs|image-test|comfyui-up|comfyui-down|vllm-up|vllm-down}" >&2; exit 2 ;;
+    *)             echo "usage: bin/game {up|down|status|logs|image-test|comfyui-up|comfyui-down|vllm-up|vllm-down} (got: $1)" >&2; exit 2 ;;
 esac

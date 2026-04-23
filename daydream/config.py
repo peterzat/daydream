@@ -35,7 +35,10 @@ def llm_base_url() -> str:
 
 
 def llm_model() -> str:
-    return os.environ.get("DAYDREAM_LLM_MODEL", "hosted_vllm/Qwen/Qwen2.5-7B-Instruct")
+    """litellm-prefixed model name. Default matches bin/vllm-bootstrap's
+    default model (Qwen 2.5 7B Instruct AWQ); override via DAYDREAM_LLM_MODEL
+    if vLLM is serving something else."""
+    return os.environ.get("DAYDREAM_LLM_MODEL", "hosted_vllm/Qwen/Qwen2.5-7B-Instruct-AWQ")
 
 
 def llm_api_key() -> str:
