@@ -56,6 +56,22 @@ def get_toons_in_room(room_id: str) -> list[Toon]:
     return [Toon.from_row(r) for r in rows]
 
 
+def find_toon_in_room_by_name(room_id: str, name: str) -> Toon | None:
+    """Case-insensitive exact-name match within a room. Mirrors
+    items.find_item_in_room_by_name so the examine core skill can try
+    both lookups with the same shape. Kicked toons are excluded (they
+    have been promoted to NPC-carrier-sentinel status but their
+    current_room_id may still be set; kicked_at IS NOT NULL filters
+    them out in get_toons_in_room)."""
+    needle = name.strip().lower()
+    if not needle:
+        return None
+    for t in get_toons_in_room(room_id):
+        if t.name.lower() == needle:
+            return t
+    return None
+
+
 def set_current_room(toon_id: str, room_id: str) -> None:
     """Move a toon into `room_id`. No FK enforcement beyond SQLite's
     default (REFERENCES rooms(id)); if `room_id` doesn't exist the

@@ -78,9 +78,24 @@ def test_init_schema_seeds_starter_world(temp_db_path: Path):
         ).fetchall()
         assert not orphans, f"rooms with no exits: {[r['id'] for r in orphans]}"
 
-        toon = conn.execute("SELECT name, slot FROM toons").fetchone()
-        assert toon["name"] == "Wren"
-        assert toon["slot"] == 1
+        # Wren is the player's toon (slot 1). Select by id so the test
+        # isn't sensitive to insertion order once NPCs land.
+        wren = conn.execute(
+            "SELECT name, slot, is_human_controlled FROM toons WHERE id = 't-wren'"
+        ).fetchone()
+        assert wren["name"] == "Wren"
+        assert wren["slot"] == 1
+        # 006_first_npc adds Rook, the forge-keeper (slot 100, NPC
+        # convention). Both presence and flag checked here so the
+        # migration's intent is pinned.
+        rook = conn.execute(
+            "SELECT name, slot, current_room_id, is_human_controlled "
+            "FROM toons WHERE id = 't-rook'"
+        ).fetchone()
+        assert rook["name"] == "Rook"
+        assert rook["slot"] == 100
+        assert rook["current_room_id"] == "r-forge"
+        assert rook["is_human_controlled"] == 0
 
         item = conn.execute("SELECT name, seed FROM items").fetchone()
         assert item["name"] == "lantern"
@@ -100,7 +115,8 @@ def test_init_schema_is_idempotent(temp_db_path: Path):
         # And re-running did not duplicate seed rows.
         assert conn.execute("SELECT COUNT(*) FROM worlds").fetchone()[0] == 1
         assert conn.execute("SELECT COUNT(*) FROM rooms").fetchone()[0] == 5
-        assert conn.execute("SELECT COUNT(*) FROM toons").fetchone()[0] == 1
+        # Wren (slot 1, human) + Rook (slot 100, NPC from 006_first_npc).
+        assert conn.execute("SELECT COUNT(*) FROM toons").fetchone()[0] == 2
         assert conn.execute("SELECT COUNT(*) FROM items").fetchone()[0] == 1
     finally:
         conn.close()
