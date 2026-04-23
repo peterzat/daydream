@@ -1,0 +1,7 @@
+{
+  "_doc": "Anchor prompt #1: the canonical meadow at dusk. Mirrors the v0 placeholder-meadow.png aesthetic; this is the reference for 'does current LoRA still look like the world we shipped?'.",
+  "name": "meadow_dusk",
+  "prompt": "a small grassy meadow at dusk, fireflies just beginning, soft watercolor edges",
+  "expected_resolution": [1024, 1024],
+  "phash_tolerance": 12
+}

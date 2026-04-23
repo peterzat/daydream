@@ -1,0 +1,7 @@
+{
+  "_doc": "Anchor prompt #2: a different palette (greens, dappled shade) so drift in one hue family doesn't hide under an average.",
+  "name": "forest_path",
+  "prompt": "a narrow forest path with dappled afternoon light, moss-covered stones, still air",
+  "expected_resolution": [1024, 1024],
+  "phash_tolerance": 12
+}

@@ -1,0 +1,8 @@
+{
+  "captured_at": "2026-04-23T14:10:43+00:00",
+  "latency_ms": 156.54384897788987,
+  "model": "hosted_vllm/Qwen/Qwen2.5-7B-Instruct-AWQ",
+  "observed_keys": [
+    "n"
+  ]
+}

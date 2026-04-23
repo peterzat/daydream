@@ -1,0 +1,7 @@
+{
+  "_doc": "Narration probe. Produce a short painterly sentence about a cozy scene as structured JSON. Tests that the model follows the painterly/cozy voice (WHIMSY.md) even in strict-JSON mode.",
+  "system": "You write one short, cozy, painterly sentence of narration. Reply with JSON: {\"text\": \"<one sentence>\"}. No prose outside the JSON.",
+  "user": "Scene: a wooden footbridge over a quiet creek at dusk.",
+  "expected_schema_keys": ["text"],
+  "max_tokens": 96
+}

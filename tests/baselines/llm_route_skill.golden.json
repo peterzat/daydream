@@ -1,0 +1,9 @@
+{
+  "captured_at": "2026-04-23T14:10:44+00:00",
+  "latency_ms": 310.44589198427275,
+  "model": "hosted_vllm/Qwen/Qwen2.5-7B-Instruct-AWQ",
+  "observed_keys": [
+    "args",
+    "skill"
+  ]
+}

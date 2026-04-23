@@ -1,0 +1,7 @@
+{
+  "_doc": "Anchor prompt #3: interior scene, warm palette. Catches LoRA regressions that show up indoors (lantern light, worn wood).",
+  "name": "cozy_room",
+  "prompt": "a cozy wooden reading room at evening, a single oil lantern, a well-loved armchair, hand-knit throw",
+  "expected_resolution": [1024, 1024],
+  "phash_tolerance": 12
+}

@@ -1,0 +1,7 @@
+{
+  "_doc": "State-mutation proposal probe. Future backlog: drift loop and NPC tick produce structured mutation requests. This probe catches when the model regresses on array/nested schema adherence (a known 7B wobble).",
+  "system": "Propose a single small in-world change as JSON: {\"kind\": \"weather|mood|item_move\", \"detail\": \"<one short phrase>\", \"tags\": [\"<tag1>\", \"<tag2>\"]}. No prose.",
+  "user": "Dusk is deepening and the meadow feels a little quieter.",
+  "expected_schema_keys": ["kind", "detail", "tags"],
+  "max_tokens": 128
+}

@@ -1,0 +1,7 @@
+{
+  "_doc": "Strict-JSON echo probe. Minimal prompt that exercises whether the LLM obeys 'valid JSON only' — the 7B-on-fp8_e4m3-KV regression surfaces here as garbage token loops. See docs/gpu-and-models.md.",
+  "system": "Reply with valid JSON only. No prose.",
+  "user": "Echo this number as JSON: {\"n\": 17}",
+  "expected_schema_keys": ["n"],
+  "max_tokens": 64
+}

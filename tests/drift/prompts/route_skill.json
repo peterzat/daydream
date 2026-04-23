@@ -1,0 +1,7 @@
+{
+  "_doc": "Skill router probe. Mirrors daydream/skills/interpreter.py shape: route a user utterance to one of (look, say, examine, none).",
+  "system": "You route user input to one skill. Reply with JSON: {\"skill\": \"look|say|examine|none\", \"args\": \"<string>\"}. No prose.",
+  "user": "look around the meadow",
+  "expected_schema_keys": ["skill", "args"],
+  "max_tokens": 64
+}

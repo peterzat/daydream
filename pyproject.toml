@@ -22,6 +22,10 @@ dev = [
     "pytest>=8.0",
     "pytest-asyncio>=0.23",
     "ruff>=0.4",
+    # Pillow: drift probes under tests/drift/ compute a perceptual dHash
+    # from generated PNGs. Pillow was already transitively present in the
+    # venv; pinning here makes it explicit and durable.
+    "Pillow>=10.0",
 ]
 
 [tool.setuptools.packages.find]

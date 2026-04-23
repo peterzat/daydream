@@ -35,3 +35,8 @@ web/node_modules/
 # External engines (ComfyUI, vLLM, etc.) — cloned + populated by bin/<engine>-bootstrap.
 # Project tree stays self-contained on disk but git-light. Re-bootstrap is cheap.
 external/
+
+# Drift baselines: *.golden.json is git-tracked (the contract); *.latest.json
+# is written on every `bin/game test long` run as the observation to review
+# before ratifying a new golden. See TESTING.md "The drift loop".
+tests/baselines/*.latest.json
