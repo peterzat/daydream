@@ -6,10 +6,10 @@
 
 - [x] **WHIMSY.md drafted as the tone bible.** `WHIMSY.md` at the project root contains: aesthetic touchstones (Spiritfarer, A Short Hike), explicit warm-painterly palette guidance, 1-2 narration voice samples, banned moods (pixel-art, crunchy 8-bit, grimdark, sexual, violence-toward-toons), and a reusable "prompt suffix" string. A test verifies the file exists and contains each named section.
 - [x] **`bin/game image-test "<prompt>"` produces a painterly PNG.** The harness writes a PNG at a deterministic path under `~/data/daydream/images/`, at least 512x512 px, in under 30 s end-to-end on this box. Output is visibly painterly (soft, warm; not pixel-art, not crunchy 8-bit) per the WHIMSY anchor (human-verified). `--model X` and `--lora Y` flags swap pipeline pieces without code edits.
-- [ ] **Flock-based GPU arbiter serializes vLLM and image-gen.** `daydream/gpu/arbiter.py` (ported from `~/src/qwen-2.5-localreview/gpu_lock.py`) provides an exclusive lock that both LLM and image-gen call sites acquire and release. A live-GPU smoke test (5 alternating requests: LLM, image, LLM, image, LLM) completes without OOM, without a stuck "permanently fogged" LLM state, and within 90 s wall-clock total on this box.
+- [x] **Flock-based GPU arbiter serializes vLLM and image-gen.** `daydream/gpu/arbiter.py` (ported from `~/src/qwen-2.5-localreview/gpu_lock.py`) provides an exclusive lock that both LLM and image-gen call sites acquire and release. A live-GPU smoke test (5 alternating requests: LLM, image, LLM, image, LLM) completes without OOM, without a stuck "permanently fogged" LLM state, and within 90 s wall-clock total on this box.
 - [x] **Room backgrounds generate and cache per `(world_id, room_id, seed_hash)`.** First entry to a room without a cached background enqueues an async generation job. The cached image lives at a deterministic path under `~/data/daydream/images/cache/{world}/{room}/{hash}.{png|webp}`. Subsequent visits with the same room seed serve the cached file without re-generating. Editing the room's seed changes the hash and re-triggers generation; the previously cached file remains on disk (no destructive deletes).
 - [x] **SPA shows a "painting..." state and swaps the background when the image is ready.** When a room has no cached image, the SPA renders an explicit placeholder (textual "painting..." or animated indicator) at the room background slot. When the server emits a new `room_image_ready` event, the SPA swaps the background `<img>` `src` to the generated file without a full page reload.
-- [ ] **LLM continues to work after image-gen cycles.** Following any image-gen run, the next LLM-routed input (e.g., "look around") completes within 15 s cold-load latency on this box and routes correctly (returns a known skill or `none` as appropriate). No permanent "the dream is foggy" state from a stuck arbiter or perpetually unloaded model.
+- [x] **LLM continues to work after image-gen cycles.** Following any image-gen run, the next LLM-routed input (e.g., "look around") completes within 15 s cold-load latency on this box and routes correctly (returns a known skill or `none` as appropriate). No permanent "the dream is foggy" state from a stuck arbiter or perpetually unloaded model.
 - [x] **ComfyUI workflow JSON is committed and used by both call sites.** A workflow file under `daydream/images/workflows/` defines the SDXL base + watercolor LoRA pipeline. Both `bin/game image-test` and the room-background generator load the same workflow file (no inline duplication of the pipeline definition). Replacing the workflow file changes both call sites' output.
 - [x] **Test suite stays green without a GPU.** `pytest` passes with image-gen mocked at the client boundary. New coverage at minimum: cache-key hashing test, cache hit/miss path test, GPU arbiter contract test (acquire/release order, double-acquire blocks the second caller), and the `room_image_ready` event flow with a stub image client. No new test requires vLLM, ComfyUI, or the GPU.
 
@@ -56,4 +56,24 @@
 ---
 *Prior spec (2026-04-22): v0 (the smallest dream) shipped 10/10 acceptance criteria — lifecycle, auth, DB, websocket, LLM-routed skills, persistence, watercolor placeholder, mocked-LLM tests.*
 
-<!-- SPEC_META: {"date":"2026-04-23","title":"v1: image-gen pipeline","criteria_total":8,"criteria_met":6} -->
+### Proposal (2026-04-23)
+
+**What happened.** v1 image-gen pipeline shipped 8/8. Eight Inc commits (1-8) plus four follow-up infrastructure commits this turn: README hero with the first real watercolor; ComfyUI moved inside the project as `external/ComfyUI/` with `bin/comfyui-bootstrap`, the same shape documented in CLAUDE.md as the "External engines" pattern; `docs/pretty/` established as the keeper-images dir with the `pretty <filename>` shorthand convention; vLLM bootstrapped onto the same engine pattern (`external/vLLM/`, `bin/vllm-bootstrap`, `bin/game vllm-up`/`down`) with HF-cache exception documented; password externalized to `.env` and "mellon" cleartext purged from git history via `git-filter-repo`. `tools/arbiter-smoke.py` runs 5 alternating LLM/image requests through the real call paths in 9.0 s on this box (budget was 90 s); both daemons stay resident under the asyncio.Lock arbiter, no OOM, no permanently-fogged LLM. 128/128 tests green throughout.
+
+**Questions and directions.** With image-gen + LLM + arbiter all live and the external-engines pattern locked in, the next turns are content-side work that does not add new infrastructure:
+
+- **Smallest:** `multi-room-navigation` — `go` skill, second seeded room, render exits in the SPA. Quick demo win; proves the navigation primitive.
+- **Most game-feeling:** `data-skills-cli` + `safety-baseline-v1` — first authored data skill (forge), Jinja-sandboxed prompt template, refusal-schema enforcement. Unlocks content variety; the LLM stack is now real so authored skills can actually produce effects.
+- **Most cinematic:** `npc-drift-loop` — the arbiter dependency that was blocking it now exists, so drift can land. Needs at least 2 NPCs to be interesting; could be co-shipped with toon-slot-management or a couple of hand-authored NPCs.
+
+A natural sequence: multi-room (proves nav, cheap) → data-skills + safety (content unlock, paired) → drift + memory (liveness).
+
+**Revisit candidates** (criteria now plausibly hold):
+- `multi-room-navigation` — v0 done; ready to seed a second room.
+- `data-skills-cli` — core skills + LLM interpreter live (vLLM running); forge not yet authored (partial).
+- `npc-drift-loop` — arbiter dependency met; needs ≥2 NPCs (can co-ship).
+
+### Backlog Sweep
+- **Delete:** `image-gen-pipeline` — shipped this turn; spec closed 8/8.
+
+<!-- SPEC_META: {"date":"2026-04-23","title":"v1: image-gen pipeline","criteria_total":8,"criteria_met":8} -->
