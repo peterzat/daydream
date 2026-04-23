@@ -41,7 +41,7 @@ Cycle 2 (codefix):
 
 None carried forward (no prior review).
 
-The following are documented in SECURITY.md's Accepted Risks and not re-reported here: hardcoded `REDACTED` default password (intentional friend-scope), `https_only=False` cookie (LAN/Tailscale only), no CSRF token on `/api/login` (friend-scope phishing impact only).
+The following are documented in SECURITY.md's Accepted Risks and not re-reported here: `https_only=False` cookie (LAN/Tailscale only) and no CSRF token on `/api/login` (friend-scope phishing impact only). The previously accepted hardcoded-default-password risk is now resolved: source carries no default; the password lives in `.env`.
 
 ---
 

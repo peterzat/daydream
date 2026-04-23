@@ -5,7 +5,7 @@
 ### Findings
 
 [WARN] daydream/config.py:48-49 — SessionMiddleware secret defaults to a publicly known string
-  Attack vector: An attacker who reaches the FastAPI port (anyone on the box's tailnet, plus anyone who later widens exposure or runs locally) can craft a session cookie signed with the published default and present it to /ws or /. SessionMiddleware accepts it as `{"authed": True}`, fully bypassing the documented `REDACTED` password gate. The default is labeled "not_prod" in source but nothing at startup refuses to boot with it, and bin/game does not enforce that DAYDREAM_SESSION_SECRET is set in the sourced secrets.env.
+  Attack vector: An attacker who reaches the FastAPI port (anyone on the box's tailnet, plus anyone who later widens exposure or runs locally) can craft a session cookie signed with the published default and present it to /ws or /. SessionMiddleware accepts it as `{"authed": True}`, fully bypassing the documented password gate. The default is labeled "not_prod" in source but nothing at startup refuses to boot with it, and bin/game does not enforce that DAYDREAM_SESSION_SECRET is set in the sourced secrets.env.
   Evidence: `daydream/config.py:48-49` returns `os.environ.get("DAYDREAM_SESSION_SECRET", "daydream-dev-secret-not-prod")`; `daydream/server.py:29` passes it directly to SessionMiddleware; `bin/game:25-31` sources `~/.config/daydream/secrets.env` but never checks the variable is set.
   Remediation: Either (a) generate a per-install random secret on first boot and persist it under `~/.config/daydream/` (mirrors the password-source pattern), or (b) make `session_secret()` raise at startup when the env var is unset / equals the default sentinel, with a one-line message pointing at the secrets.env file. Document the variable next to `DAYDREAM_PASSWORD` in CLAUDE.md / README so operators know to set both.
 
@@ -16,7 +16,7 @@
 
 ### Accepted Risks
 
-- Hardcoded default password `"REDACTED"` in `daydream/config.py:45` is intentional per CLAUDE.md ("Single shared password (default `REDACTED`) sourced from `~/.config/daydream/secrets.env` (gitignored)") and the friend-scope, Tailscale-only threat model.
+- ~~Hardcoded default password in `daydream/config.py:45` is intentional per the friend-scope, Tailscale-only threat model.~~ **Resolved 2026-04-23:** the source no longer carries any default password. `password()` returns `""` when `DAYDREAM_PASSWORD` is unset and the auth endpoint refuses logins with a 503. The shared password lives in `.env` (gitignored, sourced by `bin/game`) or `~/.config/daydream/secrets.env`.
 - Cookie `https_only=False` in `daydream/server.py:32` is documented inline ("friend-scope; box is on a private LAN/Tailscale only").
 - No CSRF token on `/api/login` and `/api/logout`. Worst-case impact under the documented threat model is forced-logout from a phishing page; consistent with friend-scope posture.
 

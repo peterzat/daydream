@@ -26,7 +26,7 @@ def fresh_state(tmp_path: Path, monkeypatch):
 
 def _login(client: TestClient) -> None:
     # TestClient follows the 303 to / by default, so accept either status.
-    r = client.post("/api/login", data={"password": "REDACTED"})
+    r = client.post("/api/login", data={"password": "test-password"})
     assert r.status_code in (200, 303), f"login failed: {r.status_code} {r.text}"
 
 

@@ -23,7 +23,7 @@ def fresh_state(tmp_path: Path, monkeypatch):
 
 
 def _login(client: TestClient) -> None:
-    r = client.post("/api/login", data={"password": "REDACTED"})
+    r = client.post("/api/login", data={"password": "test-password"})
     assert r.status_code in (200, 303)
 
 

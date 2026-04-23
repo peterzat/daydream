@@ -79,7 +79,7 @@ _LOGIN_HTML = """<!doctype html>
 <body>
 <h1>daydream</h1>
 <form method="post" action="/api/login">
-<input type="password" name="password" placeholder="speak, friend" autofocus autocomplete="current-password">
+<input type="password" name="password" autofocus autocomplete="current-password">
 <button type="submit">enter</button>
 </form>
 </body>

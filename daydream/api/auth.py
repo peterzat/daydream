@@ -1,8 +1,10 @@
-"""Password gate ('REDACTED' by default), session cookie via SessionMiddleware.
+"""Password gate (DAYDREAM_PASSWORD from .env), session cookie via SessionMiddleware.
 
 Friend-scope security only: a single shared password, no per-user identity.
 The session cookie just records "this browser may play"; the real gate is
-network access to the box (Tailscale, not Tailscale Funnel)."""
+network access to the box (Tailscale, not Tailscale Funnel). The shared
+password lives in .env at the project root (gitignored), sourced by
+bin/game; if unset the server refuses all logins with a 503."""
 
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -16,7 +18,15 @@ router = APIRouter()
 async def login(request: Request):
     data = await request.form()
     password = str(data.get("password", ""))
-    if password != config.password():
+    expected = config.password()
+    if not expected:
+        # No password configured; refuse with a clear operator-facing message.
+        # Empty would otherwise match an empty form field, granting access.
+        return HTMLResponse(
+            "no password configured. set DAYDREAM_PASSWORD in .env at the project root.",
+            status_code=503,
+        )
+    if password != expected:
         # 401 with no session mutation. SessionMiddleware writes Set-Cookie only
         # when scope['session'] has been modified, so a wrong password leaves
         # the browser with no daydream_session cookie set to authed=True.

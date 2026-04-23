@@ -17,7 +17,7 @@ A small atmospheric multiplayer web game running on a single dev box. Players en
 
 ## Auth
 
-Single shared password (default `REDACTED`) sourced from `~/.config/daydream/secrets.env` (gitignored). No per-user identity. Cookie-based session, no expiry in v0. The session-cookie signing secret comes from `DAYDREAM_SESSION_SECRET`; if unset, a per-install random secret is generated on first boot and persisted at `~/.config/daydream/session_secret` (mode 0600, gitignored). The published source default is never used to sign real cookies. Friend-scope only; access to the box itself is the real gate (Tailscale, not Tailscale Funnel; not exposed to public DNS).
+Single shared password sourced from the `DAYDREAM_PASSWORD` env var. `bin/game` loads `.env` at the project root (gitignored; see `.env.example`) and then `~/.config/daydream/secrets.env` (per-host overrides win). If neither sets `DAYDREAM_PASSWORD`, the auth endpoint refuses every login with a 503 — empty default never grants access. No per-user identity. Cookie-based session, no expiry in v0. The session-cookie signing secret comes from `DAYDREAM_SESSION_SECRET`; if unset, a per-install random secret is generated on first boot and persisted at `~/.config/daydream/session_secret` (mode 0600, gitignored). Friend-scope only; access to the box itself is the real gate (Tailscale, not Tailscale Funnel; not exposed to public DNS).
 
 ## GPU posture
 

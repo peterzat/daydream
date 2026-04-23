@@ -43,7 +43,11 @@ def llm_api_key() -> str:
 
 
 def password() -> str:
-    return os.environ.get("DAYDREAM_PASSWORD", "REDACTED")
+    """Source the shared site password from DAYDREAM_PASSWORD. Empty string
+    means no password is configured; the auth endpoint refuses logins in
+    that state. Set in .env at the project root (sourced by bin/game) or
+    in ~/.config/daydream/secrets.env."""
+    return os.environ.get("DAYDREAM_PASSWORD", "")
 
 
 def session_secret() -> str:

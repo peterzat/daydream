@@ -25,7 +25,7 @@
 
 **Where cached images live and how they are served.** `~/data/daydream/images/cache/{world}/{room}/{hash}.{png|webp}` (never in the project tree). FastAPI mounts a static route over the cache root so `<img src="/cache/{world}/{room}/{hash}.png">` works from the SPA. Path traversal protection is acceptable at "validate-world-and-room-IDs" level given friend-scope security; the v2 multi-user spec will tighten if needed.
 
-**zat.env conventions to respect.** HF model cache shared at `~/.cache/huggingface`; never override `HF_HOME` (per `ml-gpu.md`). SDXL base + the chosen watercolor LoRA download into that cache and are reusable across projects. Bind `0.0.0.0`. Single shared password (`REDACTED`) still gates everything. No Co-Authored-By trailers in commits. Persistent state lives under `~/data/daydream/`, never in the project tree.
+**zat.env conventions to respect.** HF model cache shared at `~/.cache/huggingface`; never override `HF_HOME` (per `ml-gpu.md`). SDXL base + the chosen watercolor LoRA download into that cache and are reusable across projects. Bind `0.0.0.0`. Single shared password (`DAYDREAM_PASSWORD` from `.env`) still gates everything. No Co-Authored-By trailers in commits. Persistent state lives under `~/data/daydream/`, never in the project tree.
 
 **Coding practices (zat.env carry-overs).** Work in small committable increments; verify build + tests pass before adding new work. When adding or changing functionality, write or update tests in the same increment. Do not push or modify remote state without explicit user instruction. The `bin/game image-test` harness exists specifically so aesthetic A/B swaps stay cheap (plan's risk #1 mitigation): use it before locking in any LoRA choice.
 

@@ -16,6 +16,10 @@ import tempfile
 # the on-disk fallback during tests.
 os.environ.setdefault("DAYDREAM_SESSION_SECRET", "test-session-secret-not-for-production")
 
+# Stable test value for the shared site password. Decoupled from whatever
+# .env holds in production so tests never depend on or leak the real value.
+os.environ.setdefault("DAYDREAM_PASSWORD", "test-password")
+
 # Redirect HOME to a session-scoped temp dir as a belt-and-suspenders measure:
 # any other code that resolves `~/...` during tests writes under this dir,
 # which the OS reaps. Use mkdtemp (not TemporaryDirectory) so the dir lives

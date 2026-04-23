@@ -22,12 +22,23 @@ RUNDIR="${RUN_BASE}/daydream-${ENV_NAME}"
 mkdir -p "$RUNDIR"
 
 VENV_PY="$PROJECT_ROOT/.venv/bin/python"
+PROJECT_ENV="$PROJECT_ROOT/.env"
 SECRETS_FILE="${HOME}/.config/daydream/secrets.env"
 LIVE_DB="${DAYDREAM_DATA_DIR:-$HOME/data/daydream}/worlds-${ENV_NAME}/live.db"
 
+# Load env vars from the project .env (gitignored) first, then any per-host
+# secrets file. The host file wins so an operator can override per machine.
+if [[ -f "$PROJECT_ENV" ]]; then
+    set -a
+    # shellcheck disable=SC1090
+    source "$PROJECT_ENV"
+    set +a
+fi
 if [[ -f "$SECRETS_FILE" ]]; then
+    set -a
     # shellcheck disable=SC1090
     source "$SECRETS_FILE"
+    set +a
 fi
 
 _pid_file()  { printf '%s/%s.pid'  "$RUNDIR" "$1"; }
