@@ -32,6 +32,18 @@ DEFAULT_WORKFLOW = WORKFLOWS_DIR / "painterly_room.json"
 # If the workflow JSON layout changes, the _meta.node_ids block in that
 # file is the source of truth; this constant must stay in sync.
 POSITIVE_PROMPT_NODE = "3"
+CHECKPOINT_NODE = "1"
+LORA_NODE = "2"
+
+# Per WHIMSY.md ## Prompt suffix. Kept here as the single source of truth
+# for image-gen call sites; daydream/llm/prompts.py will gain its own copy
+# for narration prompts in v1's safety-baseline-v1 increment.
+WHIMSY_PROMPT_SUFFIX = (
+    "soft watercolor, painterly, warm late-day light, cozy storybook "
+    "illustration, gentle composition, no text, no logos, no people in "
+    "modern dress, no machinery, no harsh edges, Spiritfarer-adjacent, "
+    "A Short Hike-adjacent, low-saturation cream and sage palette"
+)
 
 
 class ComfyUIError(Exception):
@@ -138,3 +150,29 @@ async def generate_room_background(
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_bytes(image_bytes)
     return out
+
+
+async def generate_to_path(
+    prompt: str,
+    out_path: Path,
+    model: str | None = None,
+    lora: str | None = None,
+    seed: int = 0,
+    base_url: str | None = None,
+) -> Path:
+    """Generic image gen with optional model and LoRA overrides. Used by the
+    bin/game image-test harness so aesthetic A/B swaps stay one-liners; the
+    room-background path always uses the workflow's defaults. Caller is
+    responsible for any GPU coordination (the harness typically runs while
+    vLLM is not active, so no arbiter dance is required)."""
+    workflow = load_workflow()
+    if model:
+        workflow[CHECKPOINT_NODE]["inputs"]["ckpt_name"] = model
+    if lora:
+        workflow[LORA_NODE]["inputs"]["lora_name"] = lora
+    workflow = build_prompt_workflow(workflow, prompt, seed=seed)
+    history = await submit_and_wait(workflow, base_url=base_url)
+    image_bytes = await fetch_output_image(history, base_url=base_url)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_bytes(image_bytes)
+    return out_path

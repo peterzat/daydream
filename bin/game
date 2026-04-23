@@ -143,11 +143,17 @@ cmd_logs() {
     fi
 }
 
+cmd_image_test() {
+    _require_venv
+    "$VENV_PY" -m daydream.images.cli "$@"
+}
+
 case "${1:-}" in
-    up)     shift; cmd_up "$@" ;;
-    down)   shift; cmd_down "$@" ;;
-    status) shift; cmd_status "$@" ;;
-    logs)   shift; cmd_logs "$@" ;;
-    "")     echo "usage: bin/game {up|down|status|logs}" >&2; exit 2 ;;
-    *)      echo "usage: bin/game {up|down|status|logs} (got: $1)" >&2; exit 2 ;;
+    up)         shift; cmd_up "$@" ;;
+    down)       shift; cmd_down "$@" ;;
+    status)     shift; cmd_status "$@" ;;
+    logs)       shift; cmd_logs "$@" ;;
+    image-test) shift; cmd_image_test "$@" ;;
+    "")         echo "usage: bin/game {up|down|status|logs|image-test}" >&2; exit 2 ;;
+    *)          echo "usage: bin/game {up|down|status|logs|image-test} (got: $1)" >&2; exit 2 ;;
 esac

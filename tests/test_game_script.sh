@@ -21,6 +21,15 @@ fail() { echo "FAIL: $*" >&2; exit 1; }
 if "$GAME" 2>/dev/null; then fail "no-args invocation should exit non-zero"; fi
 if "$GAME" bogus 2>/dev/null; then fail "bogus subcommand should exit non-zero"; fi
 
+# image-test subcommand should be in the usage line.
+out="$("$GAME" 2>&1 || true)"
+echo "$out" | grep -q "image-test" || fail "usage line should mention image-test; got: $out"
+
+# image-test --help should not crash (uses argparse, exits 0).
+if ! "$GAME" image-test --help >/dev/null 2>&1; then
+    fail "image-test --help should exit 0"
+fi
+
 # status when nothing is running.
 out="$("$GAME" status 2>&1)"
 echo "$out" | grep -q "fastapi: stopped" || fail "status: expected 'fastapi: stopped'; got: $out"

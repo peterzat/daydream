@@ -33,17 +33,6 @@ HUMAN_TOON_ID = "t-wren"
 HUMAN_ROOM_ID = "r-meadow"
 SNAPSHOT_HISTORY_DEPTH = 50
 
-# Prompt suffix appended to every room-background generation. The full
-# string lives in WHIMSY.md (## Prompt suffix); kept here as a code
-# constant for now and will move to daydream/llm/prompts.py in v1's
-# safety-baseline-v1 increment.
-WHIMSY_PROMPT_SUFFIX = (
-    "soft watercolor, painterly, warm late-day light, cozy storybook "
-    "illustration, gentle composition, no text, no logos, no people in "
-    "modern dress, no machinery, no harsh edges, Spiritfarer-adjacent, "
-    "A Short Hike-adjacent, low-saturation cream and sage palette"
-)
-
 # Per-room generation dedup. Keys are (world_id, room_id, seed_hash).
 # Set membership check + add is atomic under asyncio's cooperative model
 # as long as no `await` sits between them.
@@ -108,7 +97,8 @@ async def _generate_and_emit(world_id: str, room_id: str, room_seed: str) -> Non
     try:
         async with arbiter.acquire():
             await image_client.generate_room_background(
-                world_id, room_id, room_seed, prompt_suffix=WHIMSY_PROMPT_SUFFIX
+                world_id, room_id, room_seed,
+                prompt_suffix=image_client.WHIMSY_PROMPT_SUFFIX,
             )
         payload["image_url"] = image_cache.cache_url(world_id, room_id, room_seed)
     except image_client.ComfyUIError as e:
