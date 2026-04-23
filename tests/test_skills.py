@@ -105,6 +105,7 @@ def test_registry_finds_core_skills():
     assert registry.find("look") is not None
     assert registry.find("say") is not None
     assert registry.find("examine") is not None
+    assert registry.find("go") is not None
     assert registry.find("nonexistent") is None
 
 
@@ -116,7 +117,7 @@ def test_registry_find_is_case_insensitive():
 def test_list_available_for_room_returns_all_core():
     available = registry.list_available_for_room("r-meadow")
     names = {s.name for s in available}
-    assert names == {"look", "say", "examine"}
+    assert names == {"look", "say", "examine", "go"}
 
 
 def test_execute_dispatches_to_handler():
@@ -128,6 +129,79 @@ def test_execute_dispatches_to_handler():
 def test_execute_unknown_returns_none():
     out = registry.execute("not-a-skill", "t-wren", "r-meadow", "")
     assert out is None
+
+
+# ---- go -----------------------------------------------------------------
+
+
+def test_go_happy_path_emits_move_and_updates_current_room():
+    """SPEC criterion 1: valid direction emits a move event with the
+    right payload AND updates the toon's current_room_id."""
+    from daydream import toons
+    out = core.go("t-wren", "r-meadow", "north")
+    assert len(out) == 1
+    e = out[0]
+    assert e.kind == "move"
+    assert e.actor_id == "t-wren"
+    # The move event is rooted in the DEPARTURE room so WS broadcast
+    # filters route it correctly (otherwise the client never learns it
+    # moved once its current_room flips).
+    assert e.room_id == "r-meadow"
+    assert e.payload == {
+        "from_room": "r-meadow",
+        "to_room": "r-forge",
+        "direction": "north",
+    }
+    # Side effect: current_room_id has flipped.
+    toon = toons.get_toon("t-wren")
+    assert toon is not None and toon.current_room_id == "r-forge"
+
+
+def test_go_is_case_insensitive():
+    from daydream import toons
+    out = core.go("t-wren", "r-meadow", "NORTH")
+    assert out[0].kind == "move"
+    assert out[0].payload["direction"] == "north"
+    toon = toons.get_toon("t-wren")
+    assert toon is not None and toon.current_room_id == "r-forge"
+
+
+def test_go_unknown_direction_narrates_and_does_not_move():
+    from daydream import toons
+    out = core.go("t-wren", "r-meadow", "diagonal")
+    assert len(out) == 1
+    e = out[0]
+    assert e.kind == "narrate"
+    assert "can't go diagonal" in e.payload["text"]
+    # No side effect.
+    toon = toons.get_toon("t-wren")
+    assert toon is not None and toon.current_room_id == "r-meadow"
+
+
+def test_go_with_empty_args_prompts():
+    out = core.go("t-wren", "r-meadow", "   ")
+    assert out[0].kind == "narrate"
+    assert "Go where" in out[0].payload["text"]
+
+
+def test_go_bidirectional_round_trip():
+    """Criterion 3: bidirectional exits. Walk north then south; end
+    state should match the starting state."""
+    from daydream import toons
+    core.go("t-wren", "r-meadow", "north")
+    t_mid = toons.get_toon("t-wren")
+    assert t_mid is not None and t_mid.current_room_id == "r-forge"
+    out = core.go("t-wren", "r-forge", "south")
+    assert out[0].kind == "move"
+    assert out[0].payload["to_room"] == "r-meadow"
+    t_end = toons.get_toon("t-wren")
+    assert t_end is not None and t_end.current_room_id == "r-meadow"
+
+
+def test_go_from_unknown_room_narrates():
+    out = core.go("t-wren", "r-nowhere", "north")
+    assert out[0].kind == "narrate"
+    assert "nowhere" in out[0].payload["text"].lower()
 
 
 # ---- LLM-free guarantee -------------------------------------------------

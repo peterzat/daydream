@@ -44,6 +44,13 @@ CORE_SKILLS: dict[str, SkillSpec] = {
         ui_hint="Examine",
         description="Examine an item present in the current room. Args: the item name.",
     ),
+    "go": SkillSpec(
+        name="go",
+        kind="core",
+        handler=core.go,
+        ui_hint="Go",
+        description="Move through an exit in the current room. Args: a direction name (e.g. 'north', 'down', 'in').",
+    ),
 }
 
 

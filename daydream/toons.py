@@ -54,3 +54,17 @@ def get_toons_in_room(room_id: str) -> list[Toon]:
         .fetchall()
     )
     return [Toon.from_row(r) for r in rows]
+
+
+def set_current_room(toon_id: str, room_id: str) -> None:
+    """Move a toon into `room_id`. No FK enforcement beyond SQLite's
+    default (REFERENCES rooms(id)); if `room_id` doesn't exist the
+    UPDATE fails loud with IntegrityError, which is what we want —
+    a caller passing an unknown room is a programming bug, not a
+    runtime condition. Callers that parse user input (go skill)
+    validate the direction against the source room's exits_json
+    before calling this."""
+    db.get_conn().execute(
+        "UPDATE toons SET current_room_id = ? WHERE id = ?",
+        (room_id, toon_id),
+    )
