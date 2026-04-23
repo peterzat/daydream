@@ -29,11 +29,14 @@ HUMAN_ROOM_ID = "r-meadow"
 SNAPSHOT_HISTORY_DEPTH = 50
 
 
-def _state_snapshot() -> dict:
+def _state_snapshot(last_seq: int) -> dict:
+    """Build a snapshot pinned to the given last_seq. Caller subscribes first
+    (so concurrent appends fan out to this connection's queue), then captures
+    last_seq, then calls this; any queued events with seq <= last_seq are
+    drained as duplicates of what the snapshot already contains."""
     room = rooms.get_room(HUMAN_ROOM_ID)
     items_in = items.get_items_in_room(HUMAN_ROOM_ID)
     toons_in = toons.get_toons_in_room(HUMAN_ROOM_ID)
-    last_seq = events.max_seq()
     recent = events.fetch_since(
         max(0, last_seq - SNAPSHOT_HISTORY_DEPTH), room_id=HUMAN_ROOM_ID
     )
@@ -88,12 +91,15 @@ async def ws_endpoint(ws: WebSocket):
         await ws.close(code=status.WS_1008_POLICY_VIOLATION)
         return
     await ws.accept()
-    await ws.send_json(_state_snapshot())
-
+    # Subscribe before snapshot so any events that land while we yield to send
+    # the snapshot are captured in the queue; pin last_seq here, then drop any
+    # queued events with seq <= last_seq before the broadcast loop starts.
     queue = events.subscribe()
     try:
+        last_seq = events.max_seq()
+        await ws.send_json(_state_snapshot(last_seq))
         receive_task = asyncio.create_task(_receive_loop(ws))
-        broadcast_task = asyncio.create_task(_broadcast_loop(ws, queue))
+        broadcast_task = asyncio.create_task(_broadcast_loop(ws, queue, last_seq))
         done, pending = await asyncio.wait(
             [receive_task, broadcast_task],
             return_when=asyncio.FIRST_COMPLETED,
@@ -114,10 +120,16 @@ async def _receive_loop(ws: WebSocket) -> None:
         pass
 
 
-async def _broadcast_loop(ws: WebSocket, queue: asyncio.Queue) -> None:
+async def _broadcast_loop(
+    ws: WebSocket, queue: asyncio.Queue, snapshot_seq: int
+) -> None:
     try:
         while True:
             event = await queue.get()
+            # Drop events already covered by the snapshot to avoid duplicates
+            # from the subscribe-before-snapshot ordering.
+            if event.seq <= snapshot_seq:
+                continue
             if event.room_id is not None and event.room_id != HUMAN_ROOM_ID:
                 continue
             await ws.send_json({"kind": "event", "event": event.to_dict()})

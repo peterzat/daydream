@@ -2,6 +2,7 @@
 so tests can monkeypatch env vars and re-read."""
 
 import os
+import secrets
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -46,7 +47,24 @@ def password() -> str:
 
 
 def session_secret() -> str:
-    return os.environ.get("DAYDREAM_SESSION_SECRET", "daydream-dev-secret-not-prod")
+    """Source the session-cookie signing secret. Env var wins; otherwise fall
+    back to a per-install random secret persisted under ~/.config/daydream/.
+    Mirrors the password-source pattern (~/.config/daydream/secrets.env) so
+    the published default never signs real cookies, even if an operator forgets
+    to set DAYDREAM_SESSION_SECRET."""
+    env_val = os.environ.get("DAYDREAM_SESSION_SECRET")
+    if env_val:
+        return env_val
+    secret_path = Path.home() / ".config" / "daydream" / "session_secret"
+    if secret_path.exists():
+        existing = secret_path.read_text().strip()
+        if existing:
+            return existing
+    secret_path.parent.mkdir(parents=True, exist_ok=True)
+    new_secret = secrets.token_urlsafe(48)
+    secret_path.write_text(new_secret + "\n")
+    secret_path.chmod(0o600)
+    return new_secret
 
 
 def ensure_dirs() -> None:
