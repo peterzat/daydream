@@ -82,6 +82,31 @@ _is_running() {
     [[ -f "$pidf" ]] && kill -0 "$(cat "$pidf" 2>/dev/null)" 2>/dev/null
 }
 
+# URLs must be clickable from a remote browser (typically a Mac running
+# Safari on the tailnet). Short hostnames like "dev" trigger Safari's
+# https auto-upgrade, which fails against an HTTP-only server. "localhost"
+# is useless when the operator is not on this box. So prefer the tailnet
+# FQDN (from `tailscale status --json`) and the tailnet IPv4 (from
+# `tailscale ip -4`) in that order, and fall back to `hostname -f` only
+# when tailscale is unavailable.
+_tailnet_fqdn() {
+    if command -v tailscale >/dev/null 2>&1; then
+        # Grep the DNSName field out of `tailscale status --json` without
+        # needing jq. Strip the FQDN's trailing dot if present.
+        # Group the pipeline so `|| true` applies to the full pipeline, not
+        # just sed — otherwise `set -euo pipefail` aborts the script when
+        # the tailscale daemon is down or logged out.
+        { tailscale status --json 2>/dev/null \
+            | awk -F'"' '/"DNSName"/{print $4; exit}' \
+            | sed 's/\.$//' ; } || true
+    fi
+}
+_tailnet_ip() {
+    if command -v tailscale >/dev/null 2>&1; then
+        tailscale ip -4 2>/dev/null | head -1 || true
+    fi
+}
+
 _require_venv() {
     [[ -x "$VENV_PY" ]] || {
         echo "venv missing at $VENV_PY"
@@ -145,12 +170,26 @@ cmd_up() {
     cmd_status
     echo
     echo "listening:"
-    echo "  http://localhost:${PORT}   (from this box)"
-    # Tailnet hostname is how tailnet peers resolve this box; works
-    # regardless of DAYDREAM_ACCESS. In 'public' mode the same URL is
-    # also reachable from the wider internet if UFW is open.
-    local host; host="$(hostname 2>/dev/null || echo "<this-host>")"
-    echo "  http://${host}:${PORT}     (from any tailnet device)"
+    # Emit in clickable-from-Safari form: tailnet FQDN + tailnet IP.
+    # Short hostnames trigger Safari's https auto-upgrade; localhost is
+    # useless on a headless box. Skip loopback entirely — if you're on
+    # the box you can type it yourself.
+    local fqdn; fqdn="$(_tailnet_fqdn)"
+    local ip; ip="$(_tailnet_ip)"
+    if [[ -n "$fqdn" ]]; then
+        echo "  http://${fqdn}:${PORT}"
+    fi
+    if [[ -n "$ip" ]]; then
+        echo "  http://${ip}:${PORT}"
+    fi
+    if [[ -z "$fqdn" && -z "$ip" ]]; then
+        # Tailscale not installed / not up. Fall back to hostname -f
+        # which on a properly-configured box gives an FQDN; if that
+        # also fails, short name is the last resort (may still be
+        # Safari-unfriendly).
+        local host; host="$(hostname -f 2>/dev/null || hostname 2>/dev/null || echo '<this-host>')"
+        echo "  http://${host}:${PORT}"
+    fi
 }
 
 cmd_down() {
