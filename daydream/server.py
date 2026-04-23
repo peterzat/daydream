@@ -121,6 +121,8 @@ _PRE_FRONTEND_HTML = """<!doctype html>
 <html><body style="font-family: Georgia, serif; max-width: 600px; margin: 5em auto; color: #3a4a44; background: #f6f3ec;">
 <h1 style="color: #5a7a6a; font-weight: normal;">daydream</h1>
 <p>You are in the daydream. The frontend lands in Inc 7.</p>
-<p><a href="/api/logout">leave</a></p>
+<form action="/api/logout" method="post" style="margin:0;">
+  <button type="submit" style="background:none;border:none;padding:0;font:inherit;cursor:pointer;color:#5a7a6a;">leave</button>
+</form>
 </body></html>
 """
