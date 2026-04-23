@@ -36,18 +36,6 @@ context for every entry below lives in `~/.claude/plans/let-s-design-a-fairly-gi
 - **Revisit criteria:** First Opus-bootstrapped world worth preserving via fast hot-swap (as opposed to a full archive).
 - **Origin:** plan let-s-design-a-fairly-giggly-narwhal
 
-### data-skills-cli (ACTIVE in spec 2026-04-23)
-- **One-line description:** Add `bin/game world skill add path/to/skill.json` plus hot-reload in `daydream/skills/registry.py`; data skills carry `context_predicate_json`, `prompt_template` (Jinja sandboxed), `effects_schema_json`, `ui_hint`. The `forge` skill is the v1 showcase. Pairs with `safety-baseline-v1` (must land together).
-- **Why deferred:** v0 ships only baked-in core skills (look/say/examine). Data skills are the v1 unlock for content variety, but need the safety baseline alongside before player exposure.
-- **Revisit criteria:** Core skills + LLM interpreter stable in v0; first non-trivial data skill (forge) authored by hand.
-- **Origin:** plan let-s-design-a-fairly-giggly-narwhal
-
-### safety-baseline-v1 (ACTIVE in spec 2026-04-23)
-- **One-line description:** Add the v1 safety floor in `daydream/llm/safety.py`: banned-words filter (regex banlist informed by WHIMSY.md), refusal-schema enforcement (`refused: true` in skill output propagates as a `narrate` event instead of effects), and prompt-injection containment via `<player_input>...</player_input>` tag wrapping in skill prompt templates. Distinct from the v2 full pipeline (Jinja sandbox, content classifier, audit/undo) which lives in `skills-authoring-and-security`.
-- **Why deferred:** v0 has no LLM-driven state mutation (only LLM-driven free-text routing with a `narrate` chat fallback). Safety becomes load-bearing the moment `data-skills-cli` ships, because data skills can propose effects.
-- **Revisit criteria:** Ship in the same change as `data-skills-cli`; first authored data skill (forge) is the smoke test.
-- **Origin:** plan let-s-design-a-fairly-giggly-narwhal
-
 ## v2: shared world + skill authoring
 
 ### world-hot-swap
