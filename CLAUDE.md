@@ -1,6 +1,6 @@
 # CLAUDE.md — daydream
 
-A small atmospheric multiplayer web game running on a single dev box. Players enter a procedurally generated world that all players share and persistently mutate. See `SPEC.md` for the current v0 acceptance contract, `BACKLOG.md` for v1/v2, `README.md` for orientation.
+A small atmospheric multiplayer web game running on a single dev box. Players enter a procedurally generated world that all players share and persistently mutate. See `SPEC.md` for the current acceptance contract, `BACKLOG.md` for the deferred-ideas register, `README.md` for orientation, and [`docs/gpu-and-models.md`](docs/gpu-and-models.md) for the full GPU/ML decision narrative (model picks, what we tried and rejected, what to try later).
 
 ## Conventions
 
@@ -13,7 +13,7 @@ A small atmospheric multiplayer web game running on a single dev box. Players en
 
 ## Lifecycle
 
-`bin/game up`, `bin/game down`, `bin/game status` are the only supported entry points. They drive a tmux- or systemd-user-unit-backed process group containing the FastAPI server and a vLLM warm process. Lands in increment 8 of v0.
+`bin/game up`, `bin/game down`, `bin/game status`, `bin/game logs` are the supported daydream-server entry points; `bin/game comfyui-up`/`down` and `bin/game vllm-up`/`down` manage the inference engines (see "External engines" below). Each command writes a PID file to `$XDG_RUNTIME_DIR/daydream-<env>/<process>.pid` and a log alongside; `bin/game status` reports liveness and reachability for all three.
 
 ## Auth
 
@@ -21,9 +21,11 @@ Single shared password sourced from the `DAYDREAM_PASSWORD` env var. `bin/game` 
 
 ## GPU posture
 
-20 GB VRAM ceiling on this box (RTX 4000 SFF Ada). Qwen 2.5 7B Q4 (~6-8 GB) is the v0 LLM. v1 adds SDXL base + a watercolor LoRA via ComfyUI behind a flock-free in-process arbiter at `daydream/gpu/arbiter.py` that serializes vLLM and image-gen calls. Keep all LLM calls behind `daydream/llm/client.py` and all image-gen behind `daydream/images/client.py` so the arbiter has exactly two call sites.
+20 GB VRAM ceiling on this box (RTX 4000 SFF Ada, compute capability 8.9). vLLM (Qwen 2.5 7B Instruct AWQ, ~5 GB resident) and ComfyUI (SDXL base + watercolor LoRA, ~6 GB resident, ~10-12 GB peak during inference) coexist behind a flock-free in-process arbiter at `daydream/gpu/arbiter.py` (`asyncio.Lock`) that serializes inference requests. All LLM calls flow through `daydream/llm/client.py` and all image-gen through `daydream/images/client.py` so the arbiter has exactly two call sites.
 
 This project assumes Daydream is the only GPU consumer on this box. The `qwen-2.5-localreview` warm server is off (per its `.env`) and is assumed to stay off indefinitely; no external process competes for VRAM. The arbiter therefore needs only in-process coordination (asyncio.Lock is sufficient; flock is still a fine code template at `~/src/qwen-2.5-localreview/gpu_lock.py`).
+
+**Full narrative — VRAM math, model selection rationale, things we tried and rejected (the fp8-KV story especially), things to try later — lives in [`docs/gpu-and-models.md`](docs/gpu-and-models.md).** Read that before bumping a model, swapping an engine, or adding a tuning flag.
 
 ## External engines
 
@@ -94,7 +96,7 @@ daydream calls vLLM through `daydream/llm/client.py` via `litellm.acompletion` a
 
 ### vLLM tunings on Ada
 
-These flags ride on every `bin/game vllm-up`. Most are inherited from `~/src/qwen-2.5-localreview`, which did careful experiments on this same RTX 4000 SFF Ada (compute capability 8.9). Treat them as load-bearing: don't drop one without re-running `tools/arbiter-smoke.py` and confirming both decode latency AND output quality (the smoke prompts a tight-format JSON echo specifically to catch quality regressions).
+These flags ride on every `bin/game vllm-up`. Most are inherited from `~/src/qwen-2.5-localreview`, which did careful experiments on this same RTX 4000 SFF Ada (compute capability 8.9). Treat them as load-bearing: don't drop one without re-running `tools/arbiter-smoke.py` and confirming both decode latency AND output quality (the smoke prompts a tight-format JSON echo specifically to catch quality regressions). Full rationale per flag, plus the alternatives we considered, lives in [`docs/gpu-and-models.md`](docs/gpu-and-models.md).
 
 | Flag | Why |
 |---|---|
@@ -117,11 +119,13 @@ The smoke harness's choice of a strict-JSON LLM probe is intentional precisely s
 
 ## Aesthetic
 
-Cozy, soft, painterly. Spiritfarer / A Short Hike. NOT pixel art, NOT crunchy 8-bit. Bake this into placeholder PNGs and any narration prompts. WHIMSY.md (the tone bible) drafts in v1 alongside the image-gen pipeline.
+Cozy, soft, painterly. Spiritfarer / A Short Hike. NOT pixel art, NOT crunchy 8-bit. Bake this into placeholder PNGs and any narration prompts. The durable tone bible is [`WHIMSY.md`](WHIMSY.md) at the project root — read it before drafting any narration prompt template, image-gen prompt suffix, or asset choice. The image-gen prompt suffix lives both in `WHIMSY.md` (`## Prompt suffix`) and as `WHIMSY_PROMPT_SUFFIX` in `daydream/images/client.py`; `tests/test_whimsy_prompt_suffix.py` catches drift between the two.
 
 ## Tests
 
-`pytest` from the project root. Tests must not require GPU or a running vLLM; mock the LLM client. Slow/integration tests that boot the server with a stubbed LLM are fine if marked.
+`pytest` from the project root. Tests must not require GPU or a running vLLM; mock the LLM client. Slow/integration tests that boot the server with a stubbed LLM are fine if marked. Tests that need the real arbiter path opt in via `@pytest.mark.real_image_gen` (see `tests/conftest.py`).
+
+For live-stack verification (vLLM and ComfyUI both up), `tools/arbiter-smoke.py` runs 5 alternating LLM + image requests through the real call paths, asserts no OOM under a 90 s wall-clock budget, AND probes LLM output quality with a strict-JSON echo. The JSON probe is what caught the fp8-KV regression on 7B models documented in [`docs/gpu-and-models.md`](docs/gpu-and-models.md). Re-run the smoke after any vLLM version bump, model swap, or tuning-flag change.
 
 ## Commits
 
@@ -136,4 +140,4 @@ Per global convention: attribute commits to `user.name` only, no Co-Authored-By 
 ## Reference projects on this box
 
 - `~/src/qpeek/`: FastAPI server skeleton, project layout, CLAUDE.md style.
-- `~/src/qwen-2.5-localreview/`: vLLM warm-process lifecycle (`warm.py`), flock GPU mutex (`gpu_lock.py`), `gpu-release` handshake script. v1 arbiter ports from here.
+- `~/src/qwen-2.5-localreview/`: vLLM warm-process lifecycle (`warm.py`), flock GPU mutex (`gpu_lock.py`), `gpu-release` handshake script. The arbiter pattern was inspired here; their commit history is the prior art for our Ada tunings (their `setup.sh` pins `vllm==0.19.0`, the `LLM(...)` call site in `review.py` documents their `kv_cache_dtype="fp8_e4m3"` + `enforce_eager=True` choices and the experiment commits that justify them).

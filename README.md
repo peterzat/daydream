@@ -78,8 +78,10 @@ Tests do not require GPU or a running vLLM (the LLM client is mocked). 67 passin
 
 - Backend: Python 3.10 + FastAPI + websockets, single process tree
 - Persistence: SQLite per world (WAL), append-only event log as the spine; snapshots via file copy land in v1
-- LLM (optional v0; required v1+): vLLM serving Qwen 2.5 7B Instruct (Q4_K_M), called via `litellm` as a Python library
-- Image gen (v1): SDXL base + watercolor LoRA via ComfyUI, GPU arbiter shared with vLLM
+- LLM (optional in v0): vLLM 0.19.1 serving Qwen 2.5 7B Instruct AWQ, called via `litellm` so the same code path works against vLLM today and Cloudflare / OpenAI / Anthropic later
+- Image gen (v1): SDXL base + `ostris/watercolor_style_lora_sdxl` via ComfyUI, GPU arbiter shared with vLLM
 - Frontend: vanilla HTML / CSS / JS under `web/`, plain `<img>` tags for sprites and backgrounds (no Vite yet; Svelte polish is a v1 backlog item)
 - Friend-scope auth: shared password from `.env` on a single port behind `bin/game up`/`down`
 - Target hardware: single Linux dev box (RTX 4000 SFF Ada, 20 GB VRAM); designed to port to Cloudflare and containers later
+
+The full GPU/ML narrative — VRAM math, model selection rationale, what we tried and rejected (the fp8-KV-cache story especially), what to try later — lives in [`docs/gpu-and-models.md`](docs/gpu-and-models.md).

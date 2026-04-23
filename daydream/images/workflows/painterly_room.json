@@ -14,8 +14,10 @@
     },
     "operator_notes": [
       "ckpt_name expects sd_xl_base_1.0.safetensors in ComfyUI's models/checkpoints/.",
-      "lora_name is a placeholder; choose a watercolor / storybook LoRA at install time and update this field.",
-      "Width/height default to 1024x384 to match the SPA's room-background slot."
+      "lora_name is the file you dropped into models/loras/ (see bin/comfyui-bootstrap).",
+      "Width/height default to 1024x384 to match the SPA's room-background slot.",
+      "Why these picks: see docs/gpu-and-models.md 'Image gen stack'.",
+      "To A/B a different LoRA: bin/game image-test '<prompt>' --lora <new>.safetensors"
     ]
   },
   "1": {

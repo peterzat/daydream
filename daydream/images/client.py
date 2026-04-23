@@ -35,9 +35,12 @@ POSITIVE_PROMPT_NODE = "3"
 CHECKPOINT_NODE = "1"
 LORA_NODE = "2"
 
-# Per WHIMSY.md ## Prompt suffix. Kept here as the single source of truth
-# for image-gen call sites; daydream/llm/prompts.py will gain its own copy
-# for narration prompts in v1's safety-baseline-v1 increment.
+# The verbatim string from WHIMSY.md "## Prompt suffix" section. WHIMSY.md
+# is the durable source of truth for the project's tone; this constant
+# mirrors it for the image-gen call sites. tests/test_whimsy_prompt_suffix.py
+# is the drift catcher — if you edit one without the other, that test fails.
+# daydream/llm/prompts.py will gain its own mirror for narration prompts
+# when v1's safety-baseline-v1 increment lands.
 WHIMSY_PROMPT_SUFFIX = (
     "soft watercolor, painterly, warm late-day light, cozy storybook "
     "illustration, gentle composition, no text, no logos, no people in "

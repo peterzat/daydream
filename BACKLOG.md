@@ -92,6 +92,34 @@ context for every entry below lives in `~/.claude/plans/let-s-design-a-fairly-gi
 - **Revisit criteria:** Want to add Cloudflare Workers AI as a third backend, OR want automatic fallback when local vLLM is unreachable, OR multiple environments need shared rate-limiting.
 - **Origin:** plan let-s-design-a-fairly-giggly-narwhal
 
+## Quality and tooling (GPU/ML follow-ups)
+
+Captured from the comprehensive GPU/ML doc pass; full rationale per item lives in `docs/gpu-and-models.md` "Things we have not tried yet".
+
+### voice-and-aesthetic-audit-trail
+- **One-line description:** Add `tools/voice-bench.py` (and image counterpart) that renders 3-5 anchor LLM prompts to `docs/pretty/voice-samples/<date>.md` and 3-5 anchor image prompts to `docs/pretty/aesthetic-samples/<date>/`. Not pass/fail; a dated chronology you can scroll back through to see when the vibe shifted, and a side-by-side substrate when swapping models or LoRAs.
+- **Why deferred:** v1 closed without it. Today the only quality check is human eyes-on; the smoke catches output-format regressions but not voice/aesthetic drift. Cheap to build (under an hour) but the absence is currently "before our second user" risk, not "right now" risk.
+- **Revisit criteria:** First time someone asks "did the new model get worse?" and we have no answer; OR first vLLM/LoRA bump where we want a side-by-side; OR first non-author player joins and we want a baseline to compare against.
+- **Origin:** docs/gpu-and-models.md (Quality guardrails)
+
+### qwen-2.5-7b-rp-ink-trial
+- **One-line description:** A/B `Qwen/Qwen2.5-7B-RP-Ink` (or successor creative-writing finetune) against the current `Qwen/Qwen2.5-7B-Instruct-AWQ` for narration voice. Drop-in `DAYDREAM_VLLM_MODEL` swap; same compute, same VRAM. The original Plan-agent research called it out for cozy/atmospheric narration specifically.
+- **Why deferred:** v1 has no NPC dialogue yet (data-skills + drift land in later turns). Without representative narration, the A/B has nothing meaningful to compare. Also blocked on `voice-and-aesthetic-audit-trail` for clean side-by-side capture.
+- **Revisit criteria:** `npc-drift-loop` or `data-skills-cli` lands and produces real NPC narration; voice-bench fixture exists.
+- **Origin:** docs/gpu-and-models.md (Things we have not tried yet)
+
+### watercolor-lora-ab
+- **One-line description:** Try `ntc-ai/SDXL-LoRA-slider.watercolor` (slider-style; lets you dial intensity) and `lora-library/B-LoRA-watercolor` (decoupled style/content via B-LoRA technique) against the current `ostris/watercolor_style_lora_sdxl`. 12 MB each. Use `bin/game image-test "<prompt>" --lora <new>.safetensors` for the A/B.
+- **Why deferred:** Current pick (`ostris`) produces visibly painterly output that matches the WHIMSY anchor; no concrete complaint to fix. Worth doing once when there's an audit-trail fixture so the comparison is durable.
+- **Revisit criteria:** `voice-and-aesthetic-audit-trail` lands; OR a specific aesthetic complaint ("the trees are too sharp", "skies look uniform") that we want a different LoRA to address.
+- **Origin:** docs/gpu-and-models.md (Image-gen alternatives we considered and did not test)
+
+### calibrated-fp8-kv-scales
+- **One-line description:** Run vLLM's FP8 calibration pass over a representative dataset to produce per-channel FP8 KV scales for `Qwen/Qwen2.5-7B-Instruct-AWQ`, then re-enable `--kv-cache-dtype fp8_e4m3` in `bin/game cmd_vllm_up`. Recovers localreview's documented +58% decode TPS / ~0.9 GB freed VRAM win that was lost when we rejected naive fp8_e4m3 on the 7B (model looped garbage tokens).
+- **Why deferred:** Real engineering work (calibration dataset, vLLM scale-export pipeline, validation run). Only worth it if LLM throughput becomes a bottleneck. Today single-stream decode latency is sub-second warm; no user-visible pressure.
+- **Revisit criteria:** LLM round-trip latency starts gating UX (e.g., NPC dialogue chains feel laggy with multiple humans connected); OR vLLM ships an official calibration recipe for Qwen 2.5 family that drops the engineering cost meaningfully.
+- **Origin:** docs/gpu-and-models.md (The fp8-KV story, condition #2)
+
 ## Open questions
 
 ### player-authored-skills

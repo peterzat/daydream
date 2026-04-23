@@ -22,9 +22,9 @@ MODEL="${DAYDREAM_VLLM_MODEL:-Qwen/Qwen2.5-7B-Instruct-AWQ}"
 
 # Pin to the version the qwen-2.5-localreview project ran their Ada
 # experiments against (0.19.0/0.19.1 are interchangeable for our flags).
-# Bumping this is fine if the next vLLM keeps fp8_e4m3 KV + enforce-eager
-# behavior, but treat it as a tunable: re-run tools/arbiter-smoke.py
-# after any bump and check decode TPS hasn't regressed.
+# Bumping this is fine but treat as a tunable: re-run tools/arbiter-smoke.py
+# after any bump and check decode TPS + output quality have not regressed.
+# Full rationale: docs/gpu-and-models.md "vLLM stack".
 VLLM_VERSION="${DAYDREAM_VLLM_PACKAGE_VERSION:-0.19.1}"
 
 mkdir -p "$VLLM_DIR"
