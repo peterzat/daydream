@@ -1,6 +1,10 @@
 # Daydream
 
+![A quiet meadow at dusk, watercolor — generated locally via SDXL + watercolor LoRA on the v1 image-gen pipeline](docs/meadow-at-dusk.png)
+
 A small atmospheric multiplayer web game running on a single dev box. Players enter a procedurally-generated daydream world that all players share and persistently mutate over time. Cozy goals (Animal Crossing-like self-driven storytelling) with MUD-style gameplay (Zork-like text, free-form input, contextual UI buttons).
+
+The image above is the v1 pipeline's first real output: prompt seeded from the meadow room, SDXL base + a watercolor LoRA via local ComfyUI, gated by the GPU arbiter. ~6 s of render on the dev box's RTX 4000 SFF Ada. The aesthetic anchor is in [WHIMSY.md](WHIMSY.md): Spiritfarer / A Short Hike, soft and painterly.
 
 ## Status
 
