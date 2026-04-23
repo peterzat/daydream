@@ -78,3 +78,112 @@ def test_logout_clears_session():
         r2 = client.get("/")
         assert r2.status_code == 302
         assert r2.headers["location"] == "/login"
+
+
+# ---- tailscale mode: password bypassed ----------------------------------
+#
+# In DAYDREAM_ACCESS=tailscale (the default), tailnet membership IS the
+# auth: the AccessMiddleware rejects any non-tailnet source IP at the
+# outer edge, so by the time a request reaches the auth layer the
+# password would be belt-and-suspenders that costs UX every login.
+#
+# These tests exercise the full TestClient integration path in
+# tailscale mode by monkey-patching daydream.api.access.is_tailscale_or_local
+# to always return True. That's what simulates "TestClient came in from
+# the tailnet" without having to forge ASGI client tuples; the middleware
+# contract itself is covered by tests/test_access_middleware.py.
+
+
+def _make_tailnet(monkeypatch):
+    from daydream.api import access
+    monkeypatch.setenv("DAYDREAM_ACCESS", "tailscale")
+    # AccessMiddleware caches nothing; each request re-reads access_mode.
+    # Flip the CGNAT check so TestClient's synthetic source IP passes.
+    monkeypatch.setattr(access, "is_tailscale_or_local", lambda host: True)
+
+
+def test_is_authed_returns_true_in_tailscale_regardless_of_session(monkeypatch):
+    """The unit-level contract: tailscale mode skips the session check."""
+    from daydream.api.auth import is_authed
+    monkeypatch.setenv("DAYDREAM_ACCESS", "tailscale")
+    assert is_authed({}) is True
+    assert is_authed({"authed": False}) is True
+    assert is_authed({"authed": True}) is True
+
+
+def test_is_authed_requires_session_in_public_mode(monkeypatch):
+    from daydream.api.auth import is_authed
+    monkeypatch.setenv("DAYDREAM_ACCESS", "public")
+    assert is_authed({}) is False
+    assert is_authed({"authed": False}) is False
+    assert is_authed({"authed": True}) is True
+
+
+def test_tailscale_root_serves_spa_without_login(monkeypatch):
+    """GET / in tailscale mode serves the SPA directly — no redirect to
+    /login. The user's main request: don't show the 'mellon' prompt."""
+    _make_tailnet(monkeypatch)
+    with TestClient(app, follow_redirects=False) as client:
+        r = client.get("/")
+    assert r.status_code == 200
+    assert "daydream" in r.text.lower()
+
+
+def test_tailscale_login_form_redirects_home(monkeypatch):
+    """GET /login in tailscale mode redirects to / rather than rendering
+    a password form a tailnet user can't usefully submit. Covers stale
+    bookmarks and any cached link."""
+    _make_tailnet(monkeypatch)
+    with TestClient(app, follow_redirects=False) as client:
+        r = client.get("/login")
+    assert r.status_code == 302
+    assert r.headers["location"] == "/"
+
+
+def test_tailscale_login_post_succeeds_regardless_of_password(monkeypatch):
+    """A cached login form that somehow still gets submitted must not
+    bounce the user with 401 — the auth model has changed under them.
+    Tailscale mode accepts any POST to /api/login and hands back a
+    session + redirect home."""
+    _make_tailnet(monkeypatch)
+    with TestClient(app, follow_redirects=False) as client:
+        r = client.post("/api/login", data={"password": "anything-or-nothing"})
+        assert r.status_code == 303
+        assert r.headers["location"] == "/"
+
+
+def test_tailscale_ws_accepts_without_prior_login(monkeypatch):
+    """WebSocket endpoint uses the same is_authed helper; tailscale mode
+    means no session cookie is required."""
+    from starlette.websockets import WebSocketDisconnect
+    _make_tailnet(monkeypatch)
+    with TestClient(app) as client:
+        try:
+            with client.websocket_connect("/ws") as ws:
+                snap = ws.receive_json()
+            assert snap["kind"] == "state_snapshot"
+        except WebSocketDisconnect as e:
+            raise AssertionError(
+                f"tailscale WS should accept without login, got disconnect {e}"
+            ) from e
+
+
+def test_tailscale_logout_redirects_home_not_to_login(monkeypatch):
+    """POST /api/logout in tailscale mode is a de-facto no-op (the very
+    next request re-authes), so the redirect should go home rather
+    than to a login form that will itself bounce home."""
+    _make_tailnet(monkeypatch)
+    with TestClient(app, follow_redirects=False) as client:
+        r = client.post("/api/logout")
+    assert r.status_code == 303
+    assert r.headers["location"] == "/"
+
+
+def test_public_mode_still_requires_login(monkeypatch):
+    """Belt-and-suspenders for the public-mode contract: nothing the
+    tailscale branch does should leak into the public-mode password
+    gate. Explicit public mode + wrong password still 401s."""
+    monkeypatch.setenv("DAYDREAM_ACCESS", "public")
+    with TestClient(app, follow_redirects=False) as client:
+        r = client.post("/api/login", data={"password": "wrong"})
+    assert r.status_code == 401

@@ -54,13 +54,19 @@ app.include_router(ws.router)
 
 
 @app.get("/login")
-async def login_form() -> HTMLResponse:
+async def login_form():
+    # Tailscale-mode clients never need to see this form — tailnet
+    # membership is the auth boundary. Redirect a stale bookmark (or
+    # an agent-driven GET) home rather than rendering a password
+    # prompt that wouldn't meaningfully gate anything.
+    if config.access_mode() == "tailscale":
+        return RedirectResponse(url="/", status_code=302)
     return HTMLResponse(_LOGIN_HTML)
 
 
 @app.get("/")
 async def root(request: Request):
-    if not request.session.get("authed"):
+    if not auth.is_authed(request.session):
         return RedirectResponse(url="/login", status_code=302)
     index = config.WEB_DIR / "index.html"
     if index.exists():

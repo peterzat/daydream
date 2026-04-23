@@ -1,10 +1,20 @@
 """Password gate (DAYDREAM_PASSWORD from .env), session cookie via SessionMiddleware.
 
-Friend-scope security only: a single shared password, no per-user identity.
-The session cookie just records "this browser may play"; the real gate is
-network access to the box (Tailscale, not Tailscale Funnel). The shared
-password lives in .env at the project root (gitignored), sourced by
-bin/game; if unset the server refuses all logins with a 503."""
+Two auth postures, selected by `DAYDREAM_ACCESS`:
+
+- `tailscale` (default): tailnet membership IS the auth. The AccessMiddleware
+  already rejects non-tailnet source IPs at the outer edge of the stack;
+  layering a password on top is belt-and-suspenders that costs UX every time
+  someone opens the game. In this mode, is_authed() returns True unconditionally,
+  and POST /api/login short-circuits to a redirect so a cached login form still
+  "works."
+- `public`: there is no network boundary, so the shared password IS the gate.
+  The friend-scope session cookie records "this browser may play"; wrong or
+  empty passwords refuse access.
+
+The shared password lives in .env at the project root (gitignored), sourced
+by bin/game; if unset the server refuses all password-mode logins with a 503.
+In tailscale mode the password is unused and can stay unset without effect."""
 
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -16,6 +26,13 @@ router = APIRouter()
 
 @router.post("/api/login")
 async def login(request: Request):
+    # Tailnet-trusted callers bypass the password check entirely. The
+    # AccessMiddleware has already enforced CGNAT membership by the time
+    # we get here, so the password check would be redundant ceremony.
+    if config.access_mode() == "tailscale":
+        request.session["authed"] = True
+        return RedirectResponse(url="/", status_code=303)
+
     data = await request.form()
     password = str(data.get("password", ""))
     expected = config.password()
@@ -40,9 +57,22 @@ async def login(request: Request):
 
 @router.post("/api/logout")
 async def logout(request: Request):
+    # In tailscale mode, logging out is meaningless (the next request
+    # re-authes via is_authed()'s tailscale branch). Still clear the
+    # session cookie so a later switch to public mode doesn't inherit
+    # a stale authed=True, and redirect home rather than to a login
+    # form the user wouldn't see anyway.
     request.session.pop("authed", None)
+    if config.access_mode() == "tailscale":
+        return RedirectResponse(url="/", status_code=303)
     return RedirectResponse(url="/login", status_code=303)
 
 
 def is_authed(scope_session: dict) -> bool:
+    """Tailscale-mode clients are implicitly authed — the middleware
+    already rejected any non-tailnet source IP, so getting this far IS
+    the authorization. Public mode requires a valid session cookie set
+    by a prior successful POST /api/login."""
+    if config.access_mode() == "tailscale":
+        return True
     return bool(scope_session.get("authed"))
