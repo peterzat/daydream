@@ -30,8 +30,23 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 HUMAN_TOON_ID = "t-wren"
-HUMAN_ROOM_ID = "r-meadow"
+# Starting room for the seeded toon; also the fallback used if the toon
+# somehow has a NULL current_room_id. After multi-room-navigation lands
+# the session's room is read dynamically via _current_room_id() per input
+# so a player can walk around.
+DEFAULT_ROOM_ID = "r-meadow"
 SNAPSHOT_HISTORY_DEPTH = 50
+
+
+def _current_room_id() -> str:
+    """Authoritative 'where is the controlled toon right now' for this
+    session. Reads from DB on each call; the room flips as the player
+    moves. Falls back to DEFAULT_ROOM_ID only if the toon has no
+    current_room_id (programming bug, not a normal state)."""
+    t = toons.get_toon(HUMAN_TOON_ID)
+    if t is None or t.current_room_id is None:
+        return DEFAULT_ROOM_ID
+    return t.current_room_id
 
 # Per-room generation dedup. Keys are returned by image_client.target_dedup_key
 # (world_id, target_kind, target_id, combined_hash). Set membership check +
@@ -57,14 +72,19 @@ def _state_snapshot(last_seq: int) -> dict:
     """Build a snapshot pinned to the given last_seq. Caller subscribes first
     (so concurrent appends fan out to this connection's queue), then captures
     last_seq, then calls this; any queued events with seq <= last_seq are
-    drained as duplicates of what the snapshot already contains."""
-    room = rooms.get_room(HUMAN_ROOM_ID)
-    items_in = items.get_items_in_room(HUMAN_ROOM_ID)
-    toons_in = toons.get_toons_in_room(HUMAN_ROOM_ID)
+    drained as duplicates of what the snapshot already contains.
+
+    Room is resolved dynamically from the controlled toon's
+    current_room_id so that post-move snapshots reflect the new room
+    without the caller having to pass the id in."""
+    room_id = _current_room_id()
+    room = rooms.get_room(room_id)
+    items_in = items.get_items_in_room(room_id)
+    toons_in = toons.get_toons_in_room(room_id)
     recent = events.fetch_since(
-        max(0, last_seq - SNAPSHOT_HISTORY_DEPTH), room_id=HUMAN_ROOM_ID
+        max(0, last_seq - SNAPSHOT_HISTORY_DEPTH), room_id=room_id
     )
-    available = registry.list_available_for_room(HUMAN_ROOM_ID)
+    available = registry.list_available_for_room(room_id)
 
     image_url: str | None = None
     if room is not None:
@@ -83,6 +103,10 @@ def _state_snapshot(last_seq: int) -> dict:
                 "slug": room.slug,
                 "title": room.title,
                 "description": room.description_cached,
+                # exits is the SPA's source of truth for nav buttons;
+                # room.exits is the parsed dict shape of exits_json
+                # (migration 004 populates it bidirectionally).
+                "exits": room.exits,
                 "image_url": image_url,
             }
             if room
@@ -154,26 +178,31 @@ def reset_in_flight() -> None:
 
 async def _handle_input(text: str) -> None:
     """Route player input. Canonical form (skill word + args) bypasses the LLM
-    so button clicks and exact commands don't pay round-trip latency."""
+    so button clicks and exact commands don't pay round-trip latency.
+
+    Each invocation re-reads the toon's current room so the routing
+    applies to where the player is NOW, not where they were when the
+    connection opened."""
     text = text.strip()
     if not text:
         return
     parts = text.split(None, 1)
     head = parts[0].lower()
+    room_id = _current_room_id()
     if registry.find(head) is not None:
         rest = parts[1] if len(parts) > 1 else ""
-        registry.execute(head, HUMAN_TOON_ID, HUMAN_ROOM_ID, rest)
+        registry.execute(head, HUMAN_TOON_ID, room_id, rest)
         return
-    available = registry.list_available_for_room(HUMAN_ROOM_ID)
+    available = registry.list_available_for_room(room_id)
     decision = await interpreter.interpret(text, available)
     if decision.skill == "none":
         if decision.error:
             out = "The dream is foggy right now; that thought slips away."
         else:
             out = f"You think to yourself: \"{text}\". The daydream answers softly."
-        events.append("system", None, "narrate", {"text": out}, room_id=HUMAN_ROOM_ID)
+        events.append("system", None, "narrate", {"text": out}, room_id=room_id)
         return
-    registry.execute(decision.skill, HUMAN_TOON_ID, HUMAN_ROOM_ID, decision.args)
+    registry.execute(decision.skill, HUMAN_TOON_ID, room_id, decision.args)
 
 
 @router.websocket("/ws")
@@ -192,7 +221,7 @@ async def ws_endpoint(ws: WebSocket):
         # Kick off image gen for the current room if the cache is cold.
         # Fire-and-forget; the resulting room_image_ready event reaches the
         # client through the broadcast loop below.
-        room = rooms.get_room(HUMAN_ROOM_ID)
+        room = rooms.get_room(_current_room_id())
         if room is not None:
             _maybe_enqueue_image_gen(room.world_id, room.id, room.seed)
         receive_task = asyncio.create_task(_receive_loop(ws))
@@ -227,8 +256,31 @@ async def _broadcast_loop(
             # from the subscribe-before-snapshot ordering.
             if event.seq <= snapshot_seq:
                 continue
-            if event.room_id is not None and event.room_id != HUMAN_ROOM_ID:
-                continue
+            # Room filter follows the player: events in rooms the toon is
+            # NOT currently in get dropped. The toon's own events always
+            # pass — a move event has room_id=<departure>, which wouldn't
+            # match current_room after the move otherwise, and the client
+            # would never learn it moved.
+            own_event = event.actor_id == HUMAN_TOON_ID
+            if not own_event and event.room_id is not None:
+                if event.room_id != _current_room_id():
+                    continue
             await ws.send_json({"kind": "event", "event": event.to_dict()})
+            # After a move of the controlled toon, push a fresh snapshot
+            # so the client's authoritative room state flips (title,
+            # description, items, exits, image_url). Advance snapshot_seq
+            # so any events already queued for the new room aren't
+            # dropped as "covered by snapshot" when they weren't.
+            if event.kind == "move" and event.actor_id == HUMAN_TOON_ID:
+                snapshot_seq = events.max_seq()
+                await ws.send_json(_state_snapshot(snapshot_seq))
+                # Kick image gen for the new room if the cache is cold;
+                # the room_image_ready event flows back through this
+                # same loop.
+                new_room = rooms.get_room(_current_room_id())
+                if new_room is not None:
+                    _maybe_enqueue_image_gen(
+                        new_room.world_id, new_room.id, new_room.seed
+                    )
     except (WebSocketDisconnect, RuntimeError):
         pass
