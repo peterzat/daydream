@@ -100,3 +100,15 @@ def test_index_html_has_painting_overlay_element():
         _login(client)
         r = client.get("/")
     assert 'id="painting-overlay"' in r.text
+
+
+def test_logout_link_posts_not_gets():
+    """Regression: the logout control must POST (endpoint is POST-only).
+    A plain <a href="/api/logout"> GET would produce 405 when clicked,
+    so the control has to be a form with method='post'."""
+    with TestClient(app) as client:
+        _login(client)
+        r = client.get("/")
+    assert 'action="/api/logout"' in r.text
+    assert 'method="post"' in r.text
+    assert ">leave the dream<" in r.text

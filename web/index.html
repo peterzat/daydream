@@ -19,7 +19,11 @@
       <input id="input-text" type="text" placeholder="speak, friend..." autofocus autocomplete="off" spellcheck="false">
     </form>
     <nav id="skill-bar" aria-label="skills"></nav>
-    <footer><a href="/api/logout">leave the dream</a></footer>
+    <footer>
+      <form action="/api/logout" method="post">
+        <button type="submit" class="logout">leave the dream</button>
+      </form>
+    </footer>
   </main>
   <script src="/assets/main.js"></script>
 </body>

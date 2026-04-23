@@ -155,3 +155,9 @@ html, body {
 footer { text-align: center; font-size: 0.85em; opacity: 0.7; }
 footer a { color: var(--sage-deep); text-decoration: none; }
 footer a:hover { text-decoration: underline; }
+footer form { margin: 0; display: inline; }
+footer .logout {
+  background: none; border: none; padding: 0; font: inherit; cursor: pointer;
+  color: var(--sage-deep); text-decoration: none;
+}
+footer .logout:hover { text-decoration: underline; }
