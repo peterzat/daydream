@@ -92,6 +92,29 @@ bin/game vllm-down           # stop daemon
 
 daydream calls vLLM through `daydream/llm/client.py` via `litellm.acompletion` against the OpenAI-compatible endpoint, all wrapped in `daydream.gpu.arbiter.acquire()` so it serializes with image-gen on the same GPU.
 
+### vLLM tunings on Ada
+
+These flags ride on every `bin/game vllm-up`. Most are inherited from `~/src/qwen-2.5-localreview`, which did careful experiments on this same RTX 4000 SFF Ada (compute capability 8.9). Treat them as load-bearing: don't drop one without re-running `tools/arbiter-smoke.py` and confirming both decode latency AND output quality (the smoke prompts a tight-format JSON echo specifically to catch quality regressions).
+
+| Flag | Why |
+|---|---|
+| `--enforce-eager` | Disables CUDA-graph capture. Avoids a graph-induced OOM localreview hit on this card (their commit 8321af1). Trades a small bit of perf for stability; keep until proven unnecessary. |
+| `VLLM_LOGGING_LEVEL=ERROR` | Suppresses vLLM's verbose startup banner. Override with `VLLM_LOG_LEVEL=INFO bin/game vllm-up` when debugging. |
+| `vllm==0.19.1` (pinned in bootstrap) | The version localreview validated against. Bumping is allowed but should be paired with a re-run of the arbiter smoke. |
+
+**Model choice (Qwen 2.5 7B Instruct AWQ).** AWQ INT4 weights are the right pick on this VRAM budget: ~5 GB resident leaves room for SDXL's 7-10 GB during image-gen inference. Switching to FP8 weights (Ada-supported) would push past 7 GB resident with marginal gain over AWQ + Marlin kernels at single-stream decode latency.
+
+### `--kv-cache-dtype fp8_e4m3` deliberately NOT enabled
+
+Localreview gets a documented **+58% decode TPS / ~0.9 GB freed VRAM** from FP8 KV cache on their 14B Coder. We tried it on Qwen 2.5 7B Instruct AWQ and it deterministically broke tight-format JSON adherence — the model started fine then looped `!***` garbage tokens. The 14B has the parameter capacity to absorb FP8 KV's precision loss; the 7B does not.
+
+Re-enable FP8 KV cache only after one of:
+1. Moving to a >=14B model that fits our VRAM budget (would require swapping SDXL out during LLM inference; significantly more arbiter complexity).
+2. Shipping calibrated per-channel FP8 KV scales (vLLM supports loading them; needs a one-time calibration pass over a representative dataset).
+3. Confirming a future Qwen / Llama 7B variant tolerates fp8_e4m3 KV by re-running `tools/arbiter-smoke.py` and getting clean JSON across all five turns.
+
+The smoke harness's choice of a strict-JSON LLM probe is intentional precisely so this regression surfaces immediately when someone tries to re-add the flag.
+
 ## Aesthetic
 
 Cozy, soft, painterly. Spiritfarer / A Short Hike. NOT pixel art, NOT crunchy 8-bit. Bake this into placeholder PNGs and any narration prompts. WHIMSY.md (the tone bible) drafts in v1 alongside the image-gen pipeline.

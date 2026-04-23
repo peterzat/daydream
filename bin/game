@@ -227,10 +227,31 @@ cmd_vllm_up() {
         return 2
     fi
     local logf; logf="$(_log_file "vllm")"
+    # Tunings inherited from ~/src/qwen-2.5-localreview's Ada experiments.
+    # See CLAUDE.md "vLLM tunings on Ada" for the rationale + the fp8 KV
+    # cache decision.
+    #
+    #   --enforce-eager           : disables CUDA graphs; avoids a
+    #                               graph-induced OOM localreview hit on
+    #                               this card. Tiny perf cost, big
+    #                               stability win for serial-inference.
+    #
+    # NOT enabled (deliberately, despite localreview using it):
+    #   --kv-cache-dtype fp8_e4m3 : breaks tight-format adherence on
+    #                               Qwen 2.5 7B Instruct AWQ (verified
+    #                               via tools/arbiter-smoke.py: model
+    #                               loops "!***" garbage). Localreview's
+    #                               14B Coder absorbs the precision loss;
+    #                               our 7B does not. Re-enable only if we
+    #                               either (a) move to a >=14B model or
+    #                               (b) ship calibrated FP8 KV scales.
+    local logging_level="${VLLM_LOG_LEVEL:-ERROR}"
+    VLLM_LOGGING_LEVEL="$logging_level" \
     nohup "$VLLM_BIN" serve "$VLLM_MODEL" \
         --host 0.0.0.0 --port "$VLLM_PORT" \
         --gpu-memory-utilization "$VLLM_GPU_FRACTION" \
         --max-model-len "$VLLM_MAX_LEN" \
+        --enforce-eager \
         > "$logf" 2>&1 < /dev/null &
     echo $! > "$(_pid_file vllm)"
     echo "vllm: started (pid $!, port $VLLM_PORT, model $VLLM_MODEL, log $logf)"
