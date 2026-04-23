@@ -66,8 +66,8 @@ def _rows() -> list[dict]:
     except RuntimeError:
         return []
     rows = conn.execute(
-        "SELECT name, ui_hint, context_predicate_json, prompt_template, "
-        "       effects_schema_json, enabled "
+        "SELECT name, ui_hint, description, context_predicate_json, "
+        "       prompt_template, effects_schema_json, enabled "
         "FROM skills WHERE kind = 'data' AND enabled = 1 "
         "ORDER BY name"
     ).fetchall()
@@ -88,12 +88,18 @@ def _parse_pair(row: dict) -> tuple[SkillSpec, DataSkillBody] | None:
         predicate = {}
     if not isinstance(effects_schema, dict):
         effects_schema = {}
+    # Prefer the authored `description` column (added in migration 005)
+    # so the interpreter sees the author's intent. Fall back to a
+    # generic string only when the column is NULL / empty (pre-005 row
+    # that hasn't been re-installed yet).
+    stored_desc = row.get("description") if isinstance(row, dict) else None
+    desc = stored_desc.strip() if isinstance(stored_desc, str) and stored_desc.strip() else f"A data skill: {row['name']}."
     spec = SkillSpec(
         name=row["name"],
         kind="data",
         handler=None,
         ui_hint=row["ui_hint"] or row["name"],
-        description=f"A data skill: {row['name']}.",
+        description=desc,
     )
     body = DataSkillBody(
         context_predicate=predicate,
@@ -181,12 +187,16 @@ def _narrative_text(effects_list: list) -> str:
     """Concatenate text-ish fields across every effect in the LLM's
     response so the output-side banlist scan sees every narrative
     surface in one pass. Non-dict entries are skipped (the allowlist
-    dispatcher already handles them)."""
+    dispatcher already handles them).
+
+    `mood` is included because `set_mood` writes the string through to
+    `toons.mood`, which surfaces to the SPA as `${name} (${mood})` — a
+    banned category there would bypass the output scan otherwise."""
     parts: list[str] = []
     for e in effects_list:
         if not isinstance(e, dict):
             continue
-        for k in ("text", "seed", "name"):
+        for k in ("text", "seed", "name", "mood"):
             v = e.get(k)
             if isinstance(v, str):
                 parts.append(v)

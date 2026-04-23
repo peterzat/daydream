@@ -4,7 +4,7 @@
 
 ### Acceptance Criteria
 
-- [ ] **A new migration seeds one hand-authored NPC into an existing room.** A migration file at `migrations/005_*.sql` (or the next sequential number) INSERTs one new row into `toons` with `is_human_controlled=0`, a WHIMSY-toned `seed` + `appearance_seed`, and a `current_room_id` that places the NPC in one of the five existing rooms. The migration is idempotent (re-running via `db.init_live` leaves exactly one row for that NPC) and does not clobber Wren (`t-wren`) or any existing room.
+- [ ] **A new migration seeds one hand-authored NPC into an existing room.** A migration file at `migrations/006_*.sql` (005 is now held by the `skills.description` column added during the codereview of the data-skills turn) INSERTs one new row into `toons` with `is_human_controlled=0`, a WHIMSY-toned `seed` + `appearance_seed`, and a `current_room_id` that places the NPC in one of the five existing rooms. The migration is idempotent (re-running via `db.init_live` leaves exactly one row for that NPC) and does not clobber Wren (`t-wren`) or any existing room.
 - [ ] **The NPC appears in `state_snapshot.toons` when and only when the player is in the NPC's room.** The WS snapshot's `toons` list includes an entry for the NPC (id, name, mood) when the controlled toon is co-located with the NPC. When the player is in any other room, the snapshot's `toons` list does NOT include the NPC. This criterion is a regression guard on the existing `get_toons_in_room` behavior extended to cover a non-human toon.
 - [ ] **`examine <npc-name>` narrates the NPC.** At a room where the NPC is present, typing `examine <name>` emits a `narrate` event whose text describes the NPC using both the `seed` and `appearance_seed` fields so a human reader can distinguish this NPC from any other toon. Match is case-insensitive and article-tolerant (`examine the <name>` / `examine <NAME>` / `examine <name>` all work). If the current room contains both a toon and an item with matching names, the toon takes priority; the item is only considered when no toon matches. A name that matches neither emits the existing "you don't see X here" narration — failure behavior unchanged.
 - [ ] **NPC presence does not regress existing skills.** `go`, `look`, `say`, and the existing `forge` data skill behave identically whether or not the NPC is in the current room. No new NPC-specific branches in core-skill handlers beyond the `examine` extension above. The whole existing test suite (short + medium) stays green both before and after the migration runs.
@@ -20,7 +20,7 @@
 - `daydream.skills.core.examine` currently uses `items.find_item_in_room_by_name`. The extension adds a `toons.find_toon_in_room_by_name` lookup and checks it first.
 
 **Where things live.**
-- `migrations/005_first_npc.sql` (new). Hand-authored NPC row. WHIMSY-toned seed + appearance_seed. The forge room (`r-forge`) is a natural choice — the authored `skills/forge.json` prompt already hints at "someone has stepped away from the anvil" — so the first NPC could be that keeper returning. Implementer's judgment on which room; the criterion is satisfied in any of the five.
+- `migrations/006_first_npc.sql` (new). Hand-authored NPC row. WHIMSY-toned seed + appearance_seed. The forge room (`r-forge`) is a natural choice — the authored `skills/forge.json` prompt already hints at "someone has stepped away from the anvil" — so the first NPC could be that keeper returning. Implementer's judgment on which room; the criterion is satisfied in any of the five.
 - `daydream/toons.py` — add `find_toon_in_room_by_name(room_id, name) -> Toon | None` alongside the existing `get_toons_in_room`. Same case-insensitive / article-stripped matching shape as `items.find_item_in_room_by_name` (keeps the two lookups symmetric).
 - `daydream/skills/core.py` — extend `examine`: strip article, try toons first, then items, then fall through to "you don't see X here." Compose the toon narration from seed + appearance_seed in a readable form.
 - `tests/test_skills.py` — add `examine`-on-NPC cases (happy path, case-insensitive, article-tolerant, name-collision).
@@ -42,7 +42,7 @@
 
 **Critical files to create or modify:**
 
-- `migrations/005_first_npc.sql` (new)
+- `migrations/006_first_npc.sql` (new)
 - `daydream/toons.py` (modify; add `find_toon_in_room_by_name`)
 - `daydream/skills/core.py` (modify; `examine` checks toons first, then items)
 - `tests/test_skills.py` (modify; examine-on-NPC coverage)

@@ -86,6 +86,12 @@ _CLOSE_TAG = "</player_input>"
 # closing tag works; this one is cheap and obviously intentional in
 # a log line when it shows up.
 _CLOSE_TAG_NEUTRALIZED = "<!player_input>"
+# Case-insensitive + whitespace-tolerant closing-tag matcher. A 7B LLM
+# often pattern-matches on surface form, so a case-variant or
+# whitespace-padded closer like `</PLAYER_INPUT>` or `< / player_input >`
+# is as dangerous as the lowercase-exact form. This regex catches all
+# of them in one pass.
+_CLOSE_TAG_RE = re.compile(r"</\s*player_input\s*>", re.IGNORECASE)
 
 
 def wrap_player_input(text: str) -> str:
@@ -94,9 +100,12 @@ def wrap_player_input(text: str) -> str:
 
     Neutralizes any literal `</player_input>` inside `text` so the
     player cannot close the wrapper early and escape the quoted
-    region. The output is guaranteed to contain exactly one opening
-    tag and exactly one closing tag — the legitimate wrapper itself."""
-    safe = text.replace(_CLOSE_TAG, _CLOSE_TAG_NEUTRALIZED)
+    region. Matching is case-insensitive and whitespace-tolerant so
+    case-variant / padded close attempts (e.g. `</PLAYER_INPUT>`,
+    `< / player_input >`) are also neutralized. The output is
+    guaranteed to contain exactly one opening tag and exactly one
+    closing tag — the legitimate wrapper itself."""
+    safe = _CLOSE_TAG_RE.sub(_CLOSE_TAG_NEUTRALIZED, text)
     return f"<player_input>{safe}</player_input>"
 
 

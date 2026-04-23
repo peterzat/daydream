@@ -97,6 +97,20 @@ def test_skill_add_lowercases_name(live_world):
     assert row["name"] == "forge"
 
 
+def test_skill_add_stores_authored_description(live_world):
+    # The `description` field is REQUIRED by validation and must be
+    # persisted so the interpreter sees the author's one-line summary
+    # (not a generic "A data skill: <name>." fallback). Verified via
+    # the registry read path so the DB write + loader + SkillSpec are
+    # exercised end to end.
+    authored = "Work something small at the quiet forge. Args: a short note."
+    p = _write(live_world / "forge.json", _sample_payload(description=authored))
+    admin.main(["skill", "add", str(p)])
+    spec = registry.find("forge")
+    assert spec is not None
+    assert spec.description == authored
+
+
 def test_skill_add_respects_custom_author(live_world):
     p = _write(live_world / "forge.json", _sample_payload(author="peter"))
     admin.main(["skill", "add", str(p)])

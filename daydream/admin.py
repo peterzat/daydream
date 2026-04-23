@@ -512,13 +512,14 @@ def cmd_skill_add(path: Path) -> int:
     conn.execute(
         "INSERT INTO skills "
         "(id, name, kind, context_predicate_json, prompt_template, ui_hint, "
-        " effects_schema_json, author, enabled) "
-        "VALUES (?, ?, 'data', ?, ?, ?, ?, ?, 1) "
+        " description, effects_schema_json, author, enabled) "
+        "VALUES (?, ?, 'data', ?, ?, ?, ?, ?, ?, 1) "
         "ON CONFLICT(name) DO UPDATE SET "
         " kind = 'data',"
         " context_predicate_json = excluded.context_predicate_json,"
         " prompt_template = excluded.prompt_template,"
         " ui_hint = excluded.ui_hint,"
+        " description = excluded.description,"
         " effects_schema_json = excluded.effects_schema_json,"
         " author = excluded.author,"
         " enabled = 1",
@@ -528,6 +529,7 @@ def cmd_skill_add(path: Path) -> int:
             json.dumps(validated["context_predicate"]),
             validated["prompt_template"],
             validated["ui_hint"],
+            validated["description"],
             json.dumps(validated["effects_schema"]),
             validated["author"],
         ),

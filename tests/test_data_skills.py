@@ -199,6 +199,22 @@ async def test_banned_output_drops_effects():
 
 
 @pytest.mark.asyncio
+async def test_banned_mood_value_drops_set_mood_effect():
+    # `set_mood` writes the `mood` string through to `toons.mood`, which
+    # surfaces in the SPA. A banned category smuggled via `mood` must
+    # not bypass the output-side scan just because it isn't in
+    # ("text", "seed", "name").
+    _insert_skill(name="forge", predicate='{"room_slug": "forge"}')
+    before = toons.get_toon("t-wren").mood
+    canned = {"effects": [{"kind": "set_mood", "mood": "grimdark"}]}
+    with patch("daydream.llm.client.acompletion_json",
+               new=AsyncMock(return_value=canned)):
+        await data.execute_by_name("forge", "t-wren", "r-forge", "brood")
+    after = toons.get_toon("t-wren").mood
+    assert after == before  # mutation dropped by output banlist
+
+
+@pytest.mark.asyncio
 async def test_refused_response_narrates_reason_and_drops_effects():
     _insert_skill(name="forge", predicate='{"room_slug": "forge"}')
     canned = {
