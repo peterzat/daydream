@@ -12,6 +12,7 @@ import os
 import tempfile
 from unittest.mock import AsyncMock
 
+import httpx
 import pytest
 
 # Stable test value for the session-cookie signing secret. Set before any
@@ -77,3 +78,75 @@ def _reset_in_flight():
     ws.reset_in_flight()
     yield
     ws.reset_in_flight()
+
+
+# ---- operational target + engine liveness ------------------------------
+#
+# Two scaffolds landing together:
+# 1. _resolve_target: skip tier_medium/tier_long tests cleanly when the
+#    DAYDREAM_TARGET is not 'local'. Probes for staging / prod_verify
+#    are scaffolded for a later commit; until then, the skip reason
+#    makes the gap explicit instead of running a local-only test
+#    against a remote env and erroring mysteriously.
+# 2. _vllm_live / _comfyui_live: one HTTP probe per session, cached.
+#    Tests carrying requires_vllm / requires_comfyui consult the cached
+#    result via _check_required_engines and skip with a clear reason
+#    when the engine is not reachable.
+
+
+@pytest.fixture(autouse=True)
+def _resolve_target(request):
+    """Skip tier_medium / tier_long tests when the operational target
+    is not 'local'. tier_short is target-agnostic; never skipped here."""
+    from daydream import config
+
+    t = config.target()
+    if t == "local":
+        return
+    for tier in ("tier_medium", "tier_long"):
+        if request.node.get_closest_marker(tier):
+            pytest.skip(f"{t} target not yet wired for {tier} tests")
+
+
+@pytest.fixture(scope="session")
+def _vllm_live() -> bool:
+    """One-shot liveness probe for vLLM. Cached per session, reused by
+    every requires_vllm test; no test pays the HTTP cost more than once.
+    Short 2s timeout so 'not running' doesn't stall test start-up."""
+    from daydream import config
+
+    url = config.llm_base_url().rstrip("/") + "/models"
+    try:
+        r = httpx.get(url, timeout=2.0)
+        return r.status_code < 500
+    except httpx.HTTPError:
+        return False
+
+
+@pytest.fixture(scope="session")
+def _comfyui_live() -> bool:
+    """One-shot liveness probe for ComfyUI. Cached per session."""
+    from daydream import config
+
+    url = config.comfyui_base_url().rstrip("/") + "/system_stats"
+    try:
+        r = httpx.get(url, timeout=2.0)
+        return r.status_code < 500
+    except httpx.HTTPError:
+        return False
+
+
+@pytest.fixture(autouse=True)
+def _check_required_engines(request):
+    """Gate tests carrying requires_vllm / requires_comfyui markers on
+    the session-scoped liveness probes. Lazy fixture resolution: the
+    HTTP probe only runs when a test actually needs it. Without the
+    marker, this is a no-op."""
+    from daydream import config
+
+    if request.node.get_closest_marker("requires_vllm"):
+        if not request.getfixturevalue("_vllm_live"):
+            pytest.skip(f"vLLM unreachable at {config.llm_base_url()}")
+    if request.node.get_closest_marker("requires_comfyui"):
+        if not request.getfixturevalue("_comfyui_live"):
+            pytest.skip(f"ComfyUI unreachable at {config.comfyui_base_url()}")

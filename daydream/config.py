@@ -14,6 +14,25 @@ def env() -> str:
     return os.environ.get("DAYDREAM_ENV", "dev")
 
 
+def target() -> str:
+    """Operational test target for the current run. One of:
+
+      local         full test behavior (default).
+      staging       probes against a deployed staging env.
+      prod_verify   read-only probes against production.
+
+    v0 implements only 'local'. When DAYDREAM_TARGET is staging or
+    prod_verify, tests carrying tier_medium / tier_long markers skip
+    cleanly with a 'not yet wired' reason (see tests/conftest.py's
+    _resolve_target fixture). tier_short tests stay target-agnostic by
+    construction. Unknown values fall back to 'local' rather than
+    erroring, so a typo never silently runs the wrong suite."""
+    v = os.environ.get("DAYDREAM_TARGET", "local").strip().lower()
+    if v not in ("local", "staging", "prod_verify"):
+        return "local"
+    return v
+
+
 def port() -> int:
     """Daydream FastAPI server port. Default is 54321 (memorable, non-default;
     modest security-by-obscurity for a user-visible port). Override via
