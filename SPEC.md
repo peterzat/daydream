@@ -1,79 +1,62 @@
-## Spec — 2026-04-23 — v1: image-gen pipeline
+## Spec — 2026-04-23 — multi-room navigation
 
-**Goal:** Replace the v0 watercolor placeholder with real per-room AI-generated backgrounds using SDXL base + a watercolor LoRA via ComfyUI, gated by a flock-based GPU arbiter that serializes vLLM and image-gen on the single 20 GB GPU. Anchor the aesthetic with a committed `WHIMSY.md` tone bible and a `bin/game image-test` harness so swapping models or LoRAs stays a one-liner.
+**Goal:** Replace the hardcoded one-room meadow with a hand-seeded ≥5-room world the player can walk through. Adds a `go <direction>` core skill, populates `rooms.exits_json` as the source of truth, and renders exits as clickable buttons in the SPA. The image-gen pipeline (v1) renders a fresh background per new room visited; the GPU arbiter and cache need no changes (cache key already includes `room_id`).
 
 ### Acceptance Criteria
 
-- [x] **WHIMSY.md drafted as the tone bible.** `WHIMSY.md` at the project root contains: aesthetic touchstones (Spiritfarer, A Short Hike), explicit warm-painterly palette guidance, 1-2 narration voice samples, banned moods (pixel-art, crunchy 8-bit, grimdark, sexual, violence-toward-toons), and a reusable "prompt suffix" string. A test verifies the file exists and contains each named section.
-- [x] **`bin/game image-test "<prompt>"` produces a painterly PNG.** The harness writes a PNG at a deterministic path under `~/data/daydream/images/`, at least 512x512 px, in under 30 s end-to-end on this box. Output is visibly painterly (soft, warm; not pixel-art, not crunchy 8-bit) per the WHIMSY anchor (human-verified). `--model X` and `--lora Y` flags swap pipeline pieces without code edits.
-- [x] **Flock-based GPU arbiter serializes vLLM and image-gen.** `daydream/gpu/arbiter.py` (ported from `~/src/qwen-2.5-localreview/gpu_lock.py`) provides an exclusive lock that both LLM and image-gen call sites acquire and release. A live-GPU smoke test (5 alternating requests: LLM, image, LLM, image, LLM) completes without OOM, without a stuck "permanently fogged" LLM state, and within 90 s wall-clock total on this box.
-- [x] **Room backgrounds generate and cache per `(world_id, room_id, seed_hash)`.** First entry to a room without a cached background enqueues an async generation job. The cached image lives at a deterministic path under `~/data/daydream/images/cache/{world}/{room}/{hash}.{png|webp}`. Subsequent visits with the same room seed serve the cached file without re-generating. Editing the room's seed changes the hash and re-triggers generation; the previously cached file remains on disk (no destructive deletes).
-- [x] **SPA shows a "painting..." state and swaps the background when the image is ready.** When a room has no cached image, the SPA renders an explicit placeholder (textual "painting..." or animated indicator) at the room background slot. When the server emits a new `room_image_ready` event, the SPA swaps the background `<img>` `src` to the generated file without a full page reload.
-- [x] **LLM continues to work after image-gen cycles.** Following any image-gen run, the next LLM-routed input (e.g., "look around") completes within 15 s cold-load latency on this box and routes correctly (returns a known skill or `none` as appropriate). No permanent "the dream is foggy" state from a stuck arbiter or perpetually unloaded model.
-- [x] **ComfyUI workflow JSON is committed and used by both call sites.** A workflow file under `daydream/images/workflows/` defines the SDXL base + watercolor LoRA pipeline. Both `bin/game image-test` and the room-background generator load the same workflow file (no inline duplication of the pipeline definition). Replacing the workflow file changes both call sites' output.
-- [x] **Test suite stays green without a GPU.** `pytest` passes with image-gen mocked at the client boundary. New coverage at minimum: cache-key hashing test, cache hit/miss path test, GPU arbiter contract test (acquire/release order, double-acquire blocks the second caller), and the `room_image_ready` event flow with a stub image client. No new test requires vLLM, ComfyUI, or the GPU.
+- [ ] **`go <direction>` core skill moves the toon between rooms.** Typing `go north` when the current room has a `north` exit emits a `move` event (with `from_room`, `to_room`, `direction` in the payload), updates the toon's `current_room_id`, and the next `state_snapshot` reflects the new room (title, description, items, exits, image_url). Typing `go <direction>` for a direction not in the current room's `exits_json` emits a `narrate` event ("you can't go that way" or similar) and emits no `move` event.
+- [ ] **`exits_json` is the single source of truth for navigation.** The `rooms.exits_json` field maps direction names (e.g. `north`, `south`, `east`, `west`, plus `up` / `down` / `in` / `out` if a room uses them) to target `room_id`s. The `go` skill reads it; the WS snapshot includes `room.exits` derived from it. No room adjacency hardcoded outside the SQL migration that seeds it.
+- [ ] **A new migration seeds ≥5 connected rooms with bidirectional exits.** `migrations/002_*.sql` (or whatever the next number is) extends the v0 meadow into a connected world of at least 5 rooms. Every exit is bidirectional: if room A's `exits_json` maps `north → B`, then B's maps `south → A`. Each room has a meaningful `seed` that the image-gen and LLM pipelines can use. The migration is idempotent (won't double-seed on re-run) and does not destroy the existing meadow row.
+- [ ] **The SPA renders exits as clickable buttons.** `state_snapshot.room.exits` flows into the SPA, which renders one button per exit alongside the existing skill bar. Clicking an exit button sends `{kind: "input", text: "go <direction>"}` — the canonical-bypass path, no LLM round-trip. When the room changes, the exit button set updates without a page reload.
+- [ ] **Persistence across restart preserves the player's current room.** After `go north` followed by `bin/game down && bin/game up` and a reconnect, the snapshot reflects the destination room (not the starting meadow). The `move` event is in the events log; the toon's `current_room_id` was updated.
+- [ ] **Image-gen and cache work per-room with no regression.** Each new room's first visit triggers async image gen (cold cache → SPA shows "painting...") and caches under `~/data/daydream/images/cache/{world}/{room}/{hash}.png`. The meadow's existing cached image continues to serve. No changes to `daydream/images/cache.py` or `daydream/images/client.py` required (the cache key already includes `room_id`); this criterion is a regression guard.
+- [ ] **Tests cover the navigation contract without GPU.** New unit tests in `tests/test_skills.py` for the `go` skill (happy-path move event + side effect on `toons.current_room_id`; rejection narration for unknown direction; case-insensitive direction). New WS integration test in `tests/test_ws.py` for the navigation flow (connect → snapshot has exits → send `go north` → receive move event → next snapshot has the new room). Updates to `tests/test_db.py` if its existing room-count assertions break under the new migration. All new tests are LLM/GPU/network-free via the existing mocks.
 
 ### Context
 
-**Adopted from BACKLOG entry** `image-gen-pipeline` (now annotated `(ACTIVE in spec 2026-04-23)` in BACKLOG.md). Long-form architectural detail lives in `~/.claude/plans/let-s-design-a-fairly-giggly-narwhal.md` (Architecture / Top risks sections especially).
+**Adopted from BACKLOG entry** `multi-room-navigation` (now annotated `(ACTIVE in spec 2026-04-23)` in BACKLOG.md). This is the smallest of the three slices the v1 close-out proposal recommended, and explicitly the suggested first slice ("proves nav, cheap"). The other two — `data-skills-cli` + `safety-baseline-v1`, and `npc-drift-loop` — remain in BACKLOG and become the natural follow-up turns.
 
-**Aesthetic compass (locked in v0; do not drift).** Spiritfarer / A Short Hike: cozy, warm, painterly, soft edges. WHIMSY.md is the durable home for this; every prompt template downstream references it. Explicitly NOT pixel-art, NOT crunchy 8-bit, NOT melancholic. Per the plan's risk #1, this rules out SDXL Turbo (its distillation fights soft-watercolor wash) and pixel-art LoRAs. Default to SDXL base + a watercolor / storybook LoRA at 20-25 steps; if the per-image latency is unworkable, the documented fallback is SD 1.5 + watercolor LoRA (lower VRAM, often more Spiritfarer-y).
+**State coming in (since the proposal was written).** Beyond what the proposal's "What happened" describes, this turn also lands on top of: (a) ComfyUI moved into `external/ComfyUI/` with `bin/comfyui-bootstrap`; vLLM on the same external-engines pattern (CLAUDE.md "External engines"). (b) Port hygiene: daydream FastAPI on `54321`, vLLM and ComfyUI on `127.0.0.1` defaults; `DAYDREAM_ACCESS=tailscale|public` toggle with the `AccessMiddleware` enforcing at the HTTP/WS layer. (c) Comprehensive GPU/ML doc pass at `docs/gpu-and-models.md`; drift-catcher tests for the WHIMSY suffix and the workflow LoRA name. (d) 153/153 tests green across all of the above. The new `go` skill should fit cleanly into all of this — no new infrastructure required.
 
-**GPU posture.** 20 GB VRAM ceiling on this box. Daydream is assumed to be the only GPU consumer (qwen-2.5-localreview's warm server is off in its `.env` and stays that way; see CLAUDE.md). Daydream's own Qwen 2.5 7B Q4 (~6-8 GB) plus SDXL base during inference (~10-12 GB) sums to roughly 16-20 GB, tight enough that resident coexistence risks OOM under burst, so serialize via the arbiter is the safe default. If a careful VRAM budget later shows resident coexistence is reliable, that is an acceptable optimization, but ship serialize first. The arbiter scope is in-process only (no external process to coordinate with); the flock pattern at `~/src/qwen-2.5-localreview/gpu_lock.py` is still a clean code template, but `asyncio.Lock` would work equally well here. The `daydream/llm/client.py` call site already exists as a single chokepoint so the wrap-in is one diff.
+**Where things live.**
+- Existing core skills (`look`, `say`, `examine`) in `daydream/skills/core.py`. Add `go` next to them, register in `daydream/skills/registry.py`.
+- Room read helpers in `daydream/rooms.py` (already has `get_room`, `get_room_by_slug`); add `move_toon(toon_id, room_id)` or do it inline in `go`. Toon write goes through `daydream/toons.py`.
+- WS snapshot composition is in `daydream/api/ws.py:_state_snapshot`; extend the `room` dict with `exits`. The canonical-bypass router (first-word-matches-skill-name → direct dispatch) already handles `go north` without LLM (no change needed).
+- SPA shell is `web/index.html`; rendering JS is `web/assets/main.js`; styles in `web/assets/style.css`. Add an exits container alongside the skill bar.
 
-**ComfyUI as a separate process.** ComfyUI runs in its own venv as a separate daemon (default port 8188), called via HTTP. Mirror the vLLM pattern in `bin/game`: detect ComfyUI presence in `status`, document the launch command, do not auto-start in `bin/game up` for v1 (separate sub-command or just a documented manual launch). Image-gen requests serialize through the GPU arbiter regardless of which process runs them.
+**Migration shape recommendation.** `migrations/002_multi_room.sql` should `INSERT` four new rooms (with seeds matching the WHIMSY anchor — soft, painterly, cozy) and `UPDATE` the meadow's `exits_json` plus each new room's so the world graph is connected. SQL `ON CONFLICT` clauses or `INSERT OR IGNORE` keep the migration idempotent.
 
-**Where cached images live and how they are served.** `~/data/daydream/images/cache/{world}/{room}/{hash}.{png|webp}` (never in the project tree). FastAPI mounts a static route over the cache root so `<img src="/cache/{world}/{room}/{hash}.png">` works from the SPA. Path traversal protection is acceptable at "validate-world-and-room-IDs" level given friend-scope security; the v2 multi-user spec will tighten if needed.
-
-**zat.env conventions to respect.** HF model cache shared at `~/.cache/huggingface`; never override `HF_HOME` (per `ml-gpu.md`). SDXL base + the chosen watercolor LoRA download into that cache and are reusable across projects. Bind `0.0.0.0`. Single shared password (`DAYDREAM_PASSWORD` from `.env`) still gates everything. No Co-Authored-By trailers in commits. Persistent state lives under `~/data/daydream/`, never in the project tree.
-
-**Coding practices (zat.env carry-overs).** Work in small committable increments; verify build + tests pass before adding new work. When adding or changing functionality, write or update tests in the same increment. Do not push or modify remote state without explicit user instruction. The `bin/game image-test` harness exists specifically so aesthetic A/B swaps stay cheap (plan's risk #1 mitigation): use it before locking in any LoRA choice.
+**Aesthetic anchor (locked, do not drift).** Spiritfarer / A Short Hike. New room seeds should read like the meadow seed does: small, sensory, unhurried. Examples to match the tone: "the quiet forge with embers drifting like sleepy fireflies"; "a wooden bridge over a slow stream, dragonflies"; "an attic with afternoon dust in slanting light". Avoid grandiose, urgent, or modern-tech language. WHIMSY.md is the authority.
 
 **Out of scope for this spec** (deferred; do not build):
-- **Item sprites.** BACKLOG entry's description includes them, but the room-background path is the v1 demo. Item sprites can be a tiny follow-up backlog entry once the cache + workflow patterns are in place.
-- **Multi-room navigation.** Separate backlog entry; without it, image-gen demos with one room only.
-- **Bootstrap-via-Opus.** Separate backlog entry; this spec uses the existing hand-seeded bunny world.
-- **Data skills, NPC drift, NPC memory, world snapshot, multi-env layout.** All separate backlog entries.
-- **Painterly Svelte UI polish.** Vanilla TS SPA stays for v1; the "painting..." placeholder is a one-line CSS state, not a component refactor.
-- **Per-character sprite consistency (IP-Adapter).** Plan calls this out but it is item-sprite territory; defer with item sprites.
+- **Toon slot management.** v1 still has one hardcoded toon (Wren). Movement applies to that toon. `toon-slot-management` BACKLOG entry stays deferred.
+- **NPC drift / NPC dialogue.** No NPCs move or speak in this spec. `npc-drift-loop` and `npc-memory-retrieval` stay deferred.
+- **World bootstrap via Opus.** Hand-seed the 5 rooms via SQL. `world-bootstrap-opus` stays deferred.
+- **Per-room LLM voice or image-gen prompt variation.** The single workflow JSON + WHIMSY suffix is sufficient — each room's seed already differentiates the output.
+- **Skill authoring (data skills).** No data-skill registry changes here. `data-skills-cli` + `safety-baseline-v1` stay deferred.
+- **Painterly Svelte UI polish.** Vanilla TS SPA stays. Exits rendered as buttons reusing the existing skill-bar styling pattern.
+
+**zat.env conventions to respect** (familiar from v0/v1; carried for the implementing agent's convenience):
+- Bind `0.0.0.0` for daydream (port 54321 by default; access middleware filters by source IP).
+- HF cache shared at `~/.cache/huggingface`; persistent state under `~/data/daydream/`.
+- Python venv at `.venv/`; `PIP_REQUIRE_VIRTUALENV=true` is set globally.
+- Commits attribute to `user.name` only; no Co-Authored-By trailers. Push only when explicitly asked.
+- Work in small committable increments; tests in the same increment as code; re-run pytest after each change. Per zat.env, "Spec is code": `/codereview` will check the implementation against these criteria before any push.
 
 **Critical files to create or modify:**
 
-- `/home/peter/src/daydream/WHIMSY.md` (new)
-- `/home/peter/src/daydream/daydream/gpu/__init__.py` (new)
-- `/home/peter/src/daydream/daydream/gpu/arbiter.py` (new; port from `~/src/qwen-2.5-localreview/gpu_lock.py`)
-- `/home/peter/src/daydream/daydream/images/__init__.py` (new)
-- `/home/peter/src/daydream/daydream/images/client.py` (new; ComfyUI HTTP client)
-- `/home/peter/src/daydream/daydream/images/cache.py` (new; cache key, paths, async enqueue)
-- `/home/peter/src/daydream/daydream/images/workflows/painterly_room.json` (new; ComfyUI workflow)
-- `/home/peter/src/daydream/daydream/llm/client.py` (modify; acquire/release the arbiter lock around `litellm.acompletion`)
-- `/home/peter/src/daydream/daydream/api/ws.py` (modify; on `state_snapshot`, check cache; if miss, enqueue image-gen and emit `room_image_ready` when done)
-- `/home/peter/src/daydream/daydream/server.py` (modify; mount `/cache` static route over `~/data/daydream/images/cache/`)
-- `/home/peter/src/daydream/web/assets/main.js` (modify; render "painting..." when no cached image; swap `room-bg` `src` on `room_image_ready`)
-- `/home/peter/src/daydream/bin/game` (modify; add `image-test` subcommand and ComfyUI presence detection in `status`)
-- `/home/peter/src/daydream/tests/test_arbiter.py`, `tests/test_images.py`, `tests/test_whimsy.py` (new; all GPU/network-free via mocks and file checks)
+- `migrations/002_multi_room.sql` (new; 4 rooms + meadow exits update; idempotent)
+- `daydream/skills/core.py` (modify; add `go` handler)
+- `daydream/skills/registry.py` (modify; register `go`)
+- `daydream/rooms.py` and/or `daydream/toons.py` (modify; `current_room_id` update helper)
+- `daydream/api/ws.py` (modify; `_state_snapshot` includes `room.exits`)
+- `web/assets/main.js` (modify; render exits, route clicks to `go <direction>` input)
+- `web/assets/style.css` (modify; exit-button styling, mirrors `#skill-bar button`)
+- `tests/test_skills.py` (modify; `go` skill tests)
+- `tests/test_ws.py` (modify; navigation flow test)
+- `tests/test_db.py` (modify; update room-count assertions if they're now wrong)
 
 ---
-*Prior spec (2026-04-22): v0 (the smallest dream) shipped 10/10 acceptance criteria — lifecycle, auth, DB, websocket, LLM-routed skills, persistence, watercolor placeholder, mocked-LLM tests.*
+*Prior spec (2026-04-23): v1 image-gen pipeline shipped 8/8 — WHIMSY tone bible, GPU arbiter (asyncio.Lock, in-process), ComfyUI workflow + bin/game image-test, cache + WS room-image flow, SPA painting state + bg swap, vLLM serving Qwen 2.5 7B Instruct AWQ, live arbiter smoke at 9 s for 5 alternating LLM↔image requests.*
 
-### Proposal (2026-04-23)
-
-**What happened.** v1 image-gen pipeline shipped 8/8. Eight Inc commits (1-8) plus four follow-up infrastructure commits this turn: README hero with the first real watercolor; ComfyUI moved inside the project as `external/ComfyUI/` with `bin/comfyui-bootstrap`, the same shape documented in CLAUDE.md as the "External engines" pattern; `docs/pretty/` established as the keeper-images dir with the `pretty <filename>` shorthand convention; vLLM bootstrapped onto the same engine pattern (`external/vLLM/`, `bin/vllm-bootstrap`, `bin/game vllm-up`/`down`) with HF-cache exception documented; password externalized to `.env` and "mellon" cleartext purged from git history via `git-filter-repo`. `tools/arbiter-smoke.py` runs 5 alternating LLM/image requests through the real call paths in 9.0 s on this box (budget was 90 s); both daemons stay resident under the asyncio.Lock arbiter, no OOM, no permanently-fogged LLM. 128/128 tests green throughout.
-
-**Questions and directions.** With image-gen + LLM + arbiter all live and the external-engines pattern locked in, the next turns are content-side work that does not add new infrastructure:
-
-- **Smallest:** `multi-room-navigation` — `go` skill, second seeded room, render exits in the SPA. Quick demo win; proves the navigation primitive.
-- **Most game-feeling:** `data-skills-cli` + `safety-baseline-v1` — first authored data skill (forge), Jinja-sandboxed prompt template, refusal-schema enforcement. Unlocks content variety; the LLM stack is now real so authored skills can actually produce effects.
-- **Most cinematic:** `npc-drift-loop` — the arbiter dependency that was blocking it now exists, so drift can land. Needs at least 2 NPCs to be interesting; could be co-shipped with toon-slot-management or a couple of hand-authored NPCs.
-
-A natural sequence: multi-room (proves nav, cheap) → data-skills + safety (content unlock, paired) → drift + memory (liveness).
-
-**Revisit candidates** (criteria now plausibly hold):
-- `multi-room-navigation` — v0 done; ready to seed a second room.
-- `data-skills-cli` — core skills + LLM interpreter live (vLLM running); forge not yet authored (partial).
-- `npc-drift-loop` — arbiter dependency met; needs ≥2 NPCs (can co-ship).
-
-### Backlog Sweep
-- **Delete:** `image-gen-pipeline` — shipped this turn; spec closed 8/8.
-
-<!-- SPEC_META: {"date":"2026-04-23","title":"v1: image-gen pipeline","criteria_total":8,"criteria_met":8} -->
+<!-- SPEC_META: {"date":"2026-04-23","title":"multi-room navigation","criteria_total":7,"criteria_met":0} -->

@@ -6,13 +6,7 @@ context for every entry below lives in `~/.claude/plans/let-s-design-a-fairly-gi
 
 ## v1: cozy single-player loop
 
-### image-gen-pipeline (ACTIVE in spec 2026-04-23)
-- **One-line description:** Draft `WHIMSY.md` first (Spiritfarer / A Short Hike tone bible: aesthetic refs, voice samples, banned moods) to anchor every prompt. Then add SDXL base + watercolor LoRA via ComfyUI for room backgrounds and item sprites under `daydream/images/`; integrate flock-based GPU arbiter at `daydream/gpu/arbiter.py` (port from `~/src/qwen-2.5-localreview/gpu_lock.py`) so vLLM and image-gen serialize cleanly on the 20 GB GPU. Includes the `bin/game image-test "prompt" --model X --lora Y` aesthetic A/B harness for swapping LoRAs cheaply.
-- **Why deferred:** Out of scope for v0 (ships one committed placeholder PNG only). The spine (lifecycle, auth, DB, websocket, LLM routing) must prove out before adding GPU contention. WHIMSY.md folds in here because every image and narration prompt template will reference it.
-- **Revisit criteria:** All v0 acceptance criteria met; one-room demo loop runs end to end and survives restart.
-- **Origin:** plan let-s-design-a-fairly-giggly-narwhal
-
-### multi-room-navigation
+### multi-room-navigation (ACTIVE in spec 2026-04-23)
 - **One-line description:** Add `go <direction>` core skill in `daydream/skills/core.py`, populate `rooms.exits_json`, render exits in the SPA, and migrate to a 5-room hand-seeded world for the v1 demo.
 - **Why deferred:** v0 is hardcoded one-room; navigation has no value until persistence and the skill spine work.
 - **Revisit criteria:** v0 done; ready to seed a second room in `migrations/`.
