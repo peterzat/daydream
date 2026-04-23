@@ -98,6 +98,82 @@ def test_examine_with_empty_args_prompts():
     assert "Examine what" in out[0].payload["text"]
 
 
+# ---- examine on toons (first-NPC spec, 2026-04-23) ---------------------
+
+
+def test_examine_npc_includes_seed_and_appearance():
+    """SPEC 2026-04-23 criterion 3: examining an NPC narrates both their
+    seed and appearance_seed so a reader can tell them apart from any
+    other toon."""
+    out = core.examine("t-wren", "r-forge", "Rook")
+    assert len(out) == 1
+    e = out[0]
+    assert e.kind == "narrate"
+    text = e.payload["text"]
+    assert "Rook" in text
+    # Appearance details (stocky, apron, spectacles) come from
+    # appearance_seed; character details (forge-keeper, bellows) come
+    # from seed. Both must reach the narration.
+    assert "apron" in text
+    assert "forge-keeper" in text
+
+
+def test_examine_npc_is_case_insensitive():
+    out_lower = core.examine("t-wren", "r-forge", "rook")
+    out_upper = core.examine("t-wren", "r-forge", "ROOK")
+    out_title = core.examine("t-wren", "r-forge", "Rook")
+    for o in (out_lower, out_upper, out_title):
+        assert "apron" in o[0].payload["text"]
+
+
+def test_examine_npc_strips_leading_article():
+    out = core.examine("t-wren", "r-forge", "the Rook")
+    assert "apron" in out[0].payload["text"]
+    out2 = core.examine("t-wren", "r-forge", "a Rook")
+    assert "apron" in out2[0].payload["text"]
+
+
+def test_examine_npc_in_wrong_room_narrates_not_seen():
+    """Rook is at r-forge; examine-ing them from r-meadow falls
+    through to the existing 'you don't see X here' narration — no
+    leakage of NPC data across rooms."""
+    out = core.examine("t-wren", "r-meadow", "Rook")
+    text = out[0].payload["text"]
+    assert "don't see" in text.lower()
+    # And the NPC's details are NOT in the narration.
+    assert "apron" not in text
+    assert "forge-keeper" not in text
+
+
+def test_examine_name_collision_toon_wins():
+    """SPEC 2026-04-23 criterion 3: when a room holds both a toon and
+    an item with matching names, the toon takes priority. Insert a
+    decoy item named 'Rook' at r-forge and verify the narration still
+    surfaces the NPC's appearance/seed, not the item's seed."""
+    from daydream import db
+    db.get_conn().execute(
+        "INSERT INTO items (id, world_id, name, seed, room_id) "
+        "VALUES (?, ?, ?, ?, ?)",
+        ("i-rook-decoy", "w-bunny", "Rook",
+         "a bird-carved wooden decoy with glass bead eyes", "r-forge"),
+    )
+    out = core.examine("t-wren", "r-forge", "rook")
+    text = out[0].payload["text"]
+    # Toon narration includes the NPC's appearance vocabulary.
+    assert "apron" in text or "spectacles" in text
+    # The item's seed text must NOT be what the player sees.
+    assert "bird-carved" not in text
+    assert "glass bead" not in text
+
+
+def test_examine_toon_falls_back_to_item_on_miss():
+    """Ensure the examine->toon pathway does NOT swallow valid item
+    lookups: 'lantern' is an item in r-meadow and must still narrate
+    via the item branch."""
+    out = core.examine("t-wren", "r-meadow", "lantern")
+    assert "hairline crack" in out[0].payload["text"]
+
+
 # ---- registry -----------------------------------------------------------
 
 

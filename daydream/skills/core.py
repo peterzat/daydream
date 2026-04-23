@@ -51,11 +51,15 @@ def say(actor_id: str, room_id: str, args: str) -> list[events.Event]:
 
 
 def examine(actor_id: str, room_id: str, args: str) -> list[events.Event]:
-    """Examine a named item in the current room.
+    """Examine a named item OR toon in the current room.
 
-    The item's stored seed is echoed in the narration so the LLM-free path
-    remains deterministic (SPEC criterion 5 verifies a sentinel string in the
-    seed reaches the player verbatim)."""
+    Lookup order: toons first, then items. If a room contains both a
+    toon and an item with the same name, the toon wins (people are
+    more salient than objects in a cozy dream; also documented in SPEC
+    2026-04-23 criterion 3). The item's / toon's seed is echoed in the
+    narration so the LLM-free path remains deterministic (SPEC v0
+    criterion 5 verifies a sentinel string in the lantern's seed
+    reaches the player verbatim)."""
     target = _strip_article(args)
     if not target:
         return [
@@ -65,6 +69,10 @@ def examine(actor_id: str, room_id: str, args: str) -> list[events.Event]:
                 room_id=room_id,
             )
         ]
+    toon = toons.find_toon_in_room_by_name(room_id, target)
+    if toon is not None:
+        text = f"You see {toon.name}: {toon.appearance_seed}. {toon.seed}."
+        return [events.append("system", None, "narrate", {"text": text}, room_id=room_id)]
     item = items.find_item_in_room_by_name(room_id, target)
     if item is None:
         return [
