@@ -1,5 +1,50 @@
 # TESTING.md — daydream
 
+## Test Strategy Review — 2026-04-23
+
+**Summary:** Test architecture just shipped in commits C1-C5 (`4d606e6`..`844884e`). Three-tier dispatcher (`bin/game test short|medium|long|ci|human`) with 156/211/220 tests respectively; short in 2.06s, medium in 2.65s — well under budget. Drift loop is fully implemented with in-tree golden baselines, a perceptual-hash image corpus, a JSON-adherence LLM corpus, and an arbiter-held tripwire for real-GPU tests. The strategy is appropriate and proportionate for a single-contributor project at v1.
+
+**Test infrastructure found:**
+- Framework: pytest 8+ with pytest-asyncio (auto mode)
+- Tier markers: `tier_short`, `tier_medium`, `tier_long` (budgets in pyproject.toml markers)
+- Liveness gates: `requires_vllm`, `requires_comfyui` (session-cached 2s HTTP probes)
+- Dispatcher: `daydream.testing.__main__` (`bin/game test <tier>`) with `--target=local|staging|prod_verify`
+- Drift framework: `tests/drift/conftest.py` (dHash, baseline assert helpers, arbiter-held tripwire)
+- Baselines: `tests/baselines/*.golden.json` (in-tree, PR-reviewable) + `*.latest.json` (gitignored)
+- Corpora: 5 LLM prompts (`tests/drift/prompts/`) + 3 image aesthetics (`tests/drift/aesthetics/`)
+- Fixtures: tmp_path DB isolation, HOME redirected to tmp, autouse arbiter/in-flight resets, TestClient-bypass of AccessMiddleware via `DAYDREAM_ACCESS=public`
+- Human-eval: `daydream.testing.human_eval` → qpeek rubric loop (commit C4)
+- Coverage tools: none configured (deliberate — TESTING.md explicitly rejects coverage-for-coverage)
+- CI system: none configured; single-contributor project (deferred per `## Future refinements`)
+- Pre-commit/pre-push hooks: none installed
+
+### Findings
+
+[NOTE] Automatic test execution — No pre-commit hook, no pre-push hook, no CI.
+  Current state: `.git/hooks/` holds only the default `.sample` files. No `.github/workflows/`, no `.pre-commit-config.yaml`. Tests run only when an operator types `bin/game test <tier>`. TESTING.md documents this gap explicitly under `## Future refinements` ("CI pipeline when a second contributor lands") and calls short "pre-commit, every save" as intent, not as an enforced gate. Proportional for a single-contributor box where every change comes through Claude Code sessions that already run tests, but worth revisiting when a second contributor lands or before the first non-local target goes live.
+  Recommendation: When adding a second contributor or wiring staging, install a pre-push hook invoking `bin/game test medium` at minimum. The test suite is fast enough (under 3s) that a pre-commit hook running `bin/game test short` is also viable and would catch the cheap class of breakage before it enters the working tree. Both can be added as one-line scripts under `.git/hooks/` and optionally shipped via a `bin/install-hooks` helper so fresh clones pick them up.
+
+[NOTE] SPEC.md — 0/7 acceptance criteria have tests yet for the active spec (`multi-room navigation`, 2026-04-23).
+  Current state: The current SPEC.md is open (criteria_met: 0). No `test_go_*` in `tests/test_skills.py`; no navigation flow test in `tests/test_ws.py`; no new assertion in `tests/test_db.py` for the pending `migrations/002_multi_room.sql`. This is the expected state immediately after `/spec consume` — the spec has been adopted but implementation plus paired tests haven't landed. Flagging so the next implementer knows the test obligations are already itemized in the spec's criterion 7 and should ship in the same increments as the code.
+  Recommendation: No change to test infrastructure. When implementing, follow the zat.env coding rule: write tests in the same increment as the code they cover. The spec's criterion 7 enumerates exactly what's needed (`go` happy-path, unknown-direction rejection, case-insensitivity, WS navigation flow), all GPU/network-free via existing mocks. No new infrastructure required.
+
+[NOTE] `tier_medium` suite at ~3s leaves substantial headroom against its 90s documented budget.
+  Current state: `bin/game test medium` runs 211 tests in 2.65s — about 3% of the 90s target. The spare budget is healthy for the pending spec work (new WS integration test, new migration-effect assertions), and is deliberate: TESTING.md's tier contracts are "per-test budgets," not aggregate, and the aggregate has room to grow by 30x before hitting the pre-push pain threshold.
+  Recommendation: None. Mentioned only so the reviewer doesn't miss that the current figure isn't an accident — it's room left for the next several quarters of feature work without needing to re-tier.
+
+### Status of Prior Recommendations
+
+No prior dated review entry existed. The existing durable-doc content of this file (the philosophy + tier contract, preserved below) was written by the test-architecture commit series (C1-C5) and is the authoritative reference this review validates against.
+
+---
+*Prior review (none): this is the first dated test-strategy review. The rest of this file is the durable test-architecture contract introduced by commits 4d606e6..844884e; treat it as the spec this review measured against.*
+
+<!-- TESTING_META: {"date":"2026-04-23","commit":"844884e","block":0,"warn":0,"note":3} -->
+
+---
+
+# Durable test-architecture contract
+
 Durable philosophy + concrete contract for the test architecture. Read this before adding a test, changing how tests are run, or bumping a model / LoRA / workflow. A fresh Claude session should be able to cold-open this file and execute the loop without reading anything else.
 
 ## Cold-open
