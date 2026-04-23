@@ -18,6 +18,21 @@ A small atmospheric multiplayer web game running on a single dev box. Players en
 
 Tests are tiered under a single entry point: `bin/game test {short,medium,long,ci,human}`. The durable contract (tier budgets, drift-loop semantics, adding a new test) lives in [`TESTING.md`](TESTING.md); read that before adding tests or bumping a model / LoRA / workflow. `bin/game test short` is the pre-commit gate (~10 s); `bin/game test long` runs the real-GPU drift probes under `tests/drift/` and compares against git-committed baselines at `tests/baselines/*.golden.json` (the baseline-update loop is the primary drift-detection mechanism, so a PR that changes a golden is a review event by design). The pytest-ified arbiter smoke replaces `tools/arbiter-smoke.py` as the authoritative source; the standalone script is still usable but reads the same probe corpus from `tests/drift/prompts/`.
 
+### Coding turn vs. live server
+
+Default: `bin/game down` before a coding turn. The server isn't required for any part of the dev loop — `bin/game test short/medium` boots its own TestClient against tmp state (`DAYDREAM_DATA_DIR` is overridden in `tests/conftest.py`), so nothing touches the live DB or the running server. Bring the game up only when you need to eyeball the SPA in a browser or demo something.
+
+Safe to do with the game up:
+- **Python edits.** uvicorn is NOT started with `--reload`; edits are inert until the next `bin/game up`. That's a feature: you can't accidentally half-apply a change.
+- **Static asset edits** under `web/` (HTML, CSS, JS). FastAPI's StaticFiles re-reads from disk each request; a browser refresh picks up the change.
+- **`bin/game test short` / `medium`.** Isolated via tmp data dir.
+- **Commits, git work, file shuffling.**
+
+Three reasons to bring it down first:
+1. **`bin/game test long` while the game is up.** The GPU arbiter is an in-process lock — the server and the pytest process each have their own. Concurrent image-gen from both can OOM on the 20 GB card. Low-prob if the game is idle, but the arbiter exists specifically to prevent this class of bug.
+2. **Migration work.** A new migration file is inert until `bin/game up` runs `init_live`. Control when it fires against `~/data/daydream/worlds-dev/live.db` by keeping the server down while iterating on the SQL. A wrong migration against live state means recovering from `~/data/daydream/archives/` or wiping and re-seeding.
+3. **Schema / data-model refactors.** A connected WS session holds stale dataclasses (`Room`, `Toon`) in memory even after the DB has been migrated; the client sees pre-refactor shapes until restart. Confusing to debug.
+
 ## Auth
 
 Single shared password sourced from the `DAYDREAM_PASSWORD` env var. `bin/game` loads `.env` at the project root (gitignored; see `.env.example`) and then `~/.config/daydream/secrets.env` (per-host overrides win). If neither sets `DAYDREAM_PASSWORD`, the auth endpoint refuses every login with a 503 — empty default never grants access. No per-user identity. Cookie-based session, no expiry in v0. The session-cookie signing secret comes from `DAYDREAM_SESSION_SECRET`; if unset, a per-install random secret is generated on first boot and persisted at `~/.config/daydream/session_secret` (mode 0600, gitignored).
