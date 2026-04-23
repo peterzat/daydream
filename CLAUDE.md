@@ -23,6 +23,8 @@ Single shared password (default `REDACTED`) sourced from `~/.config/daydream/sec
 
 20 GB VRAM ceiling on this box (RTX 4000 SFF Ada). Qwen 2.5 7B Q4 (~6-8 GB) is the v0 LLM. v0 only loads the LLM; SDXL and the GPU arbiter come in v1. Keep all LLM calls behind `daydream/llm/client.py` so the v1 arbiter can swap in without touching call sites. The flock pattern to copy lives at `~/src/qwen-2.5-localreview/gpu_lock.py`.
 
+This project assumes Daydream is the only GPU consumer on this box. The `qwen-2.5-localreview` warm server is off (per its `.env`) and is assumed to stay off indefinitely; no external process competes for VRAM. The v1 arbiter therefore needs only in-process coordination (asyncio.Lock is sufficient; flock is still a fine code template).
+
 ## Aesthetic
 
 Cozy, soft, painterly. Spiritfarer / A Short Hike. NOT pixel art, NOT crunchy 8-bit. Bake this into placeholder PNGs and any narration prompts. WHIMSY.md (the tone bible) drafts in v1 alongside the image-gen pipeline.
