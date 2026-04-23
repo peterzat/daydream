@@ -60,8 +60,23 @@ def test_init_schema_seeds_starter_world(temp_db_path: Path):
         assert world["slug"] == "bunny-world"
         assert "painterly" in world["aesthetic_seed"]
 
-        room = conn.execute("SELECT slug, title FROM rooms").fetchone()
-        assert room["slug"] == "meadow"
+        # Meadow is the player's starting room; other rooms land via 004.
+        meadow = conn.execute(
+            "SELECT slug, title FROM rooms WHERE id = 'r-meadow'"
+        ).fetchone()
+        assert meadow["slug"] == "meadow"
+        # 004_multi_room extends the world to 5 connected rooms with
+        # bidirectional exits. Keep this count in sync with the migration.
+        room_count = conn.execute("SELECT COUNT(*) FROM rooms").fetchone()[0]
+        assert room_count == 5
+        # Every room has a non-empty exits_json (at minimum the reverse
+        # of whatever points to it), so navigation can't dead-end on
+        # load. '{}' is the DEFAULT from the schema; any row still at
+        # '{}' means 004 missed it.
+        orphans = conn.execute(
+            "SELECT id FROM rooms WHERE exits_json = '{}'"
+        ).fetchall()
+        assert not orphans, f"rooms with no exits: {[r['id'] for r in orphans]}"
 
         toon = conn.execute("SELECT name, slot FROM toons").fetchone()
         assert toon["name"] == "Wren"
@@ -84,7 +99,7 @@ def test_init_schema_is_idempotent(temp_db_path: Path):
         assert second == []
         # And re-running did not duplicate seed rows.
         assert conn.execute("SELECT COUNT(*) FROM worlds").fetchone()[0] == 1
-        assert conn.execute("SELECT COUNT(*) FROM rooms").fetchone()[0] == 1
+        assert conn.execute("SELECT COUNT(*) FROM rooms").fetchone()[0] == 5
         assert conn.execute("SELECT COUNT(*) FROM toons").fetchone()[0] == 1
         assert conn.execute("SELECT COUNT(*) FROM items").fetchone()[0] == 1
     finally:
