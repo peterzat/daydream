@@ -39,6 +39,23 @@ Then visit `http://0.0.0.0:8080` (from the box) or `http://<host>:8080` (from an
 
 The three baked-in skills (`look`, `say`, `examine`) work without GPU. Free-form text that does not match a baked-in skill is routed through an LLM interpreter; with no vLLM running, those inputs gracefully narrate "the dream is foggy" instead of crashing. To enable LLM routing, run a vLLM warm process serving an OpenAI-compatible endpoint at `http://localhost:8000/v1` (default; override with `DAYDREAM_LLM_BASE_URL` / `DAYDREAM_LLM_MODEL`).
 
+## Image gen (v1, optional)
+
+When a room has no cached background, the SPA shows a "painting..." overlay and the server enqueues an image-gen job. With no ComfyUI running the overlay disappears after the failed call and the placeholder stays; the rest of the game keeps working.
+
+To enable real image gen, install ComfyUI as a separate process and point it at SDXL base + a watercolor LoRA. Full operator notes are in [CLAUDE.md](CLAUDE.md) under "ComfyUI"; the short version is:
+
+```sh
+git clone https://github.com/comfyanonymous/ComfyUI ~/src/ComfyUI
+cd ~/src/ComfyUI && python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+# Download sd_xl_base_1.0.safetensors to models/checkpoints/
+# Download a watercolor LoRA to models/loras/ and update lora_name in
+# daydream/images/workflows/painterly_room.json
+.venv/bin/python main.py --listen 0.0.0.0 --port 8188
+```
+
+`bin/game status` reports whether ComfyUI is reachable. The aesthetic A/B harness is `bin/game image-test "<prompt>" [--model X --lora Y]`; use it before locking in any LoRA choice.
+
 ## Tests
 
 ```sh

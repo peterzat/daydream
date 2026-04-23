@@ -21,9 +21,31 @@ Single shared password sourced from the `DAYDREAM_PASSWORD` env var. `bin/game` 
 
 ## GPU posture
 
-20 GB VRAM ceiling on this box (RTX 4000 SFF Ada). Qwen 2.5 7B Q4 (~6-8 GB) is the v0 LLM. v0 only loads the LLM; SDXL and the GPU arbiter come in v1. Keep all LLM calls behind `daydream/llm/client.py` so the v1 arbiter can swap in without touching call sites. The flock pattern to copy lives at `~/src/qwen-2.5-localreview/gpu_lock.py`.
+20 GB VRAM ceiling on this box (RTX 4000 SFF Ada). Qwen 2.5 7B Q4 (~6-8 GB) is the v0 LLM. v1 adds SDXL base + a watercolor LoRA via ComfyUI behind a flock-free in-process arbiter at `daydream/gpu/arbiter.py` that serializes vLLM and image-gen calls. Keep all LLM calls behind `daydream/llm/client.py` and all image-gen behind `daydream/images/client.py` so the arbiter has exactly two call sites.
 
-This project assumes Daydream is the only GPU consumer on this box. The `qwen-2.5-localreview` warm server is off (per its `.env`) and is assumed to stay off indefinitely; no external process competes for VRAM. The v1 arbiter therefore needs only in-process coordination (asyncio.Lock is sufficient; flock is still a fine code template).
+This project assumes Daydream is the only GPU consumer on this box. The `qwen-2.5-localreview` warm server is off (per its `.env`) and is assumed to stay off indefinitely; no external process competes for VRAM. The arbiter therefore needs only in-process coordination (asyncio.Lock is sufficient; flock is still a fine code template at `~/src/qwen-2.5-localreview/gpu_lock.py`).
+
+## ComfyUI (v1 image gen)
+
+ComfyUI runs as a separate process at `http://localhost:8188` (override with `DAYDREAM_COMFYUI_BASE_URL`). `bin/game status` reports its presence; `bin/game up` does not auto-start it.
+
+Operator install (one-time):
+
+```sh
+# Choose a directory outside this repo, e.g. ~/src/ComfyUI
+git clone https://github.com/comfyanonymous/ComfyUI ~/src/ComfyUI
+cd ~/src/ComfyUI
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+# SDXL base (~7 GB) -> models/checkpoints/sd_xl_base_1.0.safetensors
+# Pick a watercolor / storybook LoRA from HF and drop in models/loras/
+# Then update lora_name in daydream/images/workflows/painterly_room.json
+.venv/bin/python main.py --listen 0.0.0.0 --port 8188
+```
+
+Operator launch (every session): the same `.venv/bin/python main.py --listen 0.0.0.0 --port 8188`. Daydream connects on demand and serializes via the arbiter so a player input is never racing an image-gen request for the same VRAM.
+
+The shared workflow JSON at `daydream/images/workflows/painterly_room.json` is read by both `daydream/images/client.py` (room backgrounds) and `daydream/images/cli.py` (`bin/game image-test`). Update the LoRA name there once and both call sites pick it up.
 
 ## Aesthetic
 

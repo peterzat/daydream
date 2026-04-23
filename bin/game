@@ -126,6 +126,13 @@ cmd_status() {
     else
         echo "vllm: not installed"
     fi
+    local comfy_url="${DAYDREAM_COMFYUI_BASE_URL:-http://localhost:8188}"
+    if command -v curl >/dev/null 2>&1 \
+        && curl -sS -o /dev/null --max-time 1 "${comfy_url}/system_stats"; then
+        echo "comfyui: reachable at ${comfy_url}"
+    else
+        echo "comfyui: unreachable at ${comfy_url} (image gen will fail gracefully)"
+    fi
     echo "env: $ENV_NAME"
     echo "port: $PORT"
     echo "rundir: $RUNDIR"
