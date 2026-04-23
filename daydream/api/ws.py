@@ -31,6 +31,14 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 HUMAN_TOON_ID = "t-wren"
+# Event kinds emitted by `daydream.skills.effects` allowlist handlers
+# that mutate observable room state. When one of these reaches the
+# broadcast loop, the WS layer pushes a fresh state_snapshot so the
+# SPA's items/toons panels reflect the change without the player
+# having to navigate away and back. Keep in sync with effects.ALLOWED_KINDS
+# minus the pure-narrative kinds (narrate changes no observable
+# panel state beyond the event log itself).
+_EFFECT_MUTATION_KINDS = frozenset({"item_added", "mood_set"})
 # Starting room for the seeded toon; also the fallback used if the toon
 # somehow has a NULL current_room_id. After multi-room-navigation lands
 # the session's room is read dynamically via _current_room_id() per input
@@ -289,21 +297,28 @@ async def _broadcast_loop(
                 if event.room_id != _current_room_id():
                     continue
             await ws.send_json({"kind": "event", "event": event.to_dict()})
-            # After a move of the controlled toon, push a fresh snapshot
-            # so the client's authoritative room state flips (title,
-            # description, items, exits, image_url). Advance snapshot_seq
-            # so any events already queued for the new room aren't
-            # dropped as "covered by snapshot" when they weren't.
-            if event.kind == "move" and event.actor_id == HUMAN_TOON_ID:
+            # After a mutation of observable room state, push a fresh
+            # snapshot so the client's items / toons / exits / image
+            # panel reflect the new truth. `move` covers controlled-toon
+            # navigation; `item_added` and `mood_set` cover data-skill
+            # effects (emitted by daydream.skills.effects). Without this,
+            # an authored skill that adds an item leaves the items panel
+            # stale until the next manual snapshot trigger. Advance
+            # snapshot_seq so any events already queued for the new state
+            # aren't dropped as "covered by snapshot" when they weren't.
+            is_controlled_move = event.kind == "move" and event.actor_id == HUMAN_TOON_ID
+            is_effect_mutation = event.kind in _EFFECT_MUTATION_KINDS
+            if is_controlled_move or is_effect_mutation:
                 snapshot_seq = events.max_seq()
                 await ws.send_json(_state_snapshot(snapshot_seq))
-                # Kick image gen for the new room if the cache is cold;
-                # the room_image_ready event flows back through this
-                # same loop.
-                new_room = rooms.get_room(_current_room_id())
-                if new_room is not None:
-                    _maybe_enqueue_image_gen(
-                        new_room.world_id, new_room.id, new_room.seed
-                    )
+                if is_controlled_move:
+                    # Kick image gen for the new room if the cache is cold;
+                    # the room_image_ready event flows back through this
+                    # same loop.
+                    new_room = rooms.get_room(_current_room_id())
+                    if new_room is not None:
+                        _maybe_enqueue_image_gen(
+                            new_room.world_id, new_room.id, new_room.seed
+                        )
     except (WebSocketDisconnect, RuntimeError):
         pass

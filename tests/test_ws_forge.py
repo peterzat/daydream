@@ -82,8 +82,9 @@ def test_forge_present_in_forge_snapshot_after_go_north():
 def test_forge_happy_path_end_to_end():
     """SPEC criterion 2 happy path: at r-forge, `forge a ring` dispatches
     through the pipeline, the (mocked) LLM returns narrate + add_item,
-    both events fan out to the client AND the item lands in the forge
-    room's item list."""
+    both events fan out to the client, AND the broadcast loop re-pushes
+    a state_snapshot after the mutation so the SPA's items panel
+    reflects the new item without a navigation round-trip."""
     canned = {
         "effects": [
             {"kind": "narrate",
@@ -102,14 +103,21 @@ def test_forge_happy_path_end_to_end():
                 ws.receive_json()  # meadow snapshot
                 ws.send_json({"kind": "input", "text": "go north"})
                 ws.receive_json()  # move event
-                ws.receive_json()  # forge snapshot
+                ws.receive_json()  # forge snapshot (post-move)
                 ws.send_json({"kind": "input", "text": "forge a ring"})
-                # The LLM returns 2 effects, so we expect 2 event frames.
+                # The LLM returns narrate + add_item. The item_added
+                # event triggers a fresh state_snapshot from the broadcast
+                # loop so the SPA's items panel picks up the new item.
                 msg_a = ws.receive_json()
                 msg_b = ws.receive_json()
-        kinds = {msg_a["event"]["kind"], msg_b["event"]["kind"]}
-        assert kinds == {"narrate", "item_added"}
-        # The forge room has the new item (not just an event log entry).
+                msg_c = ws.receive_json()
+        event_kinds = [msg_a["event"]["kind"], msg_b["event"]["kind"]]
+        assert set(event_kinds) == {"narrate", "item_added"}
+        assert msg_c["kind"] == "state_snapshot"
+        # The refreshed snapshot includes the freshly-forged item.
+        snap_names = {it["name"] for it in msg_c["items"]}
+        assert "bronze ring" in snap_names
+        # And the DB reflects the same truth (belt + suspenders).
         names = {i.name for i in items.get_items_in_room("r-forge")}
         assert "bronze ring" in names
 
@@ -139,6 +147,30 @@ def test_forge_does_not_dispatch_in_wrong_room():
         # Exactly one LLM call: the interpreter. A second call would
         # indicate the forge skill ran after the bypass misrouted.
         assert mock_llm.call_count == 1
+
+
+def test_forge_set_mood_refreshes_snapshot_with_new_mood():
+    """Parallel to the add_item path: a mood_set effect should also
+    trigger a snapshot refresh so the SPA's toons panel picks up the
+    new mood without a navigation round-trip."""
+    canned = {"effects": [{"kind": "set_mood", "mood": "kindled"}]}
+    with TestClient(app) as client:
+        admin.main(["skill", "add", str(FORGE_JSON)])
+        _login(client)
+        with patch("daydream.llm.client.acompletion_json",
+                   new=AsyncMock(return_value=canned)):
+            with client.websocket_connect("/ws") as ws:
+                ws.receive_json()  # meadow snapshot
+                ws.send_json({"kind": "input", "text": "go north"})
+                ws.receive_json()  # move event
+                ws.receive_json()  # forge snapshot
+                ws.send_json({"kind": "input", "text": "forge a thing"})
+                mood_msg = ws.receive_json()
+                snap = ws.receive_json()
+    assert mood_msg["event"]["kind"] == "mood_set"
+    assert snap["kind"] == "state_snapshot"
+    wren = next((t for t in snap["toons"] if t["name"] == "Wren"), None)
+    assert wren is not None and wren["mood"] == "kindled"
 
 
 def test_forge_refusal_short_circuits_effects():
