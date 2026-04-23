@@ -25,27 +25,45 @@ Single shared password sourced from the `DAYDREAM_PASSWORD` env var. `bin/game` 
 
 This project assumes Daydream is the only GPU consumer on this box. The `qwen-2.5-localreview` warm server is off (per its `.env`) and is assumed to stay off indefinitely; no external process competes for VRAM. The arbiter therefore needs only in-process coordination (asyncio.Lock is sufficient; flock is still a fine code template at `~/src/qwen-2.5-localreview/gpu_lock.py`).
 
-## ComfyUI (v1 image gen)
+## External engines
 
-ComfyUI runs as a separate process at `http://localhost:8188` (override with `DAYDREAM_COMFYUI_BASE_URL`). `bin/game status` reports its presence; `bin/game up` does not auto-start it.
+External engines that daydream calls over HTTP but does not vendor as code (ComfyUI, vLLM, future image-gen / LLM backends) follow one pattern so the project tree stays self-contained on disk while staying git-light:
 
-Operator install (one-time):
-
-```sh
-# Choose a directory outside this repo, e.g. ~/src/ComfyUI
-git clone https://github.com/comfyanonymous/ComfyUI ~/src/ComfyUI
-cd ~/src/ComfyUI
-python3 -m venv .venv
-.venv/bin/pip install -r requirements.txt
-# SDXL base (~7 GB) -> models/checkpoints/sd_xl_base_1.0.safetensors
-# Pick a watercolor / storybook LoRA from HF and drop in models/loras/
-# Then update lora_name in daydream/images/workflows/painterly_room.json
-.venv/bin/python main.py --listen 0.0.0.0 --port 8188
+```
+external/<engine>/         # upstream repo, gitignored; cloned by bootstrap
+external/<engine>/.venv/   # the engine's own python venv (separate from daydream's .venv)
+external/<engine>/models/  # large model files where the engine expects them
 ```
 
-Operator launch (every session): the same `.venv/bin/python main.py --listen 0.0.0.0 --port 8188`. Daydream connects on demand and serializes via the arbiter so a player input is never racing an image-gen request for the same VRAM.
+Each engine gets:
+- `bin/<engine>-bootstrap` — idempotent: clone if missing, venv if missing, pip install requirements, download model files. Re-runs are no-ops on every step. Safe to invoke whenever you're not sure if it's installed.
+- `bin/game <engine>-up` / `<engine>-down` — daemon lifecycle, mirroring `bin/game up` / `down` for FastAPI. PID file under `$XDG_RUNTIME_DIR/daydream-<env>/<engine>.pid`, log alongside.
+- `bin/game status` — shows the daydream-managed PID when up; falls back to a reachability probe so externally-launched instances are still detected.
+- A config function in `daydream/config.py` (e.g. `comfyui_base_url()`) that returns the endpoint, overridable via env var, so daydream Python code never hardcodes `localhost:<port>`.
 
-The shared workflow JSON at `daydream/images/workflows/painterly_room.json` is read by both `daydream/images/client.py` (room backgrounds) and `daydream/images/cli.py` (`bin/game image-test`). Update the LoRA name there once and both call sites pick it up.
+`bin/game up` does NOT auto-start engines (they're heavy: ComfyUI loads SDXL into VRAM, vLLM loads Qwen). Operator brings them up explicitly when needed. Daydream's graceful-failure paths (`narrate "the dream is foggy"` for LLM down, "painting..." overlay for ComfyUI down) mean the game still runs without them.
+
+`external/` is gitignored entirely. No submodules, no nested .git tracking — bootstrap re-creates the whole thing from a single command, so losing it is cheap.
+
+## ComfyUI (v1 image gen)
+
+ComfyUI is the first engine on the pattern above. Default endpoint `http://localhost:8188`; override with `DAYDREAM_COMFYUI_BASE_URL` or `DAYDREAM_COMFYUI_PORT`.
+
+One-time install:
+
+```sh
+bin/comfyui-bootstrap        # clones, venv, pip install, downloads SDXL + LoRA (~10 min, ~13 GB)
+```
+
+Daily lifecycle:
+
+```sh
+bin/game comfyui-up          # start daemon (PID owned by daydream)
+bin/game comfyui-down        # stop daemon
+bin/game status              # shows pid + reachability when running
+```
+
+The shared workflow JSON at `daydream/images/workflows/painterly_room.json` is read by both `daydream/images/client.py` (room backgrounds) and `daydream/images/cli.py` (`bin/game image-test`). The current pick is SDXL base 1.0 + `ostris/watercolor_style_lora_sdxl` (`watercolor_v1_sdxl.safetensors`); to swap, edit `lora_name` in the workflow and both call sites pick it up. Use `bin/game image-test "<prompt>" --lora <new>.safetensors` for cheap A/B before committing the swap.
 
 ## Aesthetic
 

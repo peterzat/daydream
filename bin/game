@@ -26,6 +26,14 @@ PROJECT_ENV="$PROJECT_ROOT/.env"
 SECRETS_FILE="${HOME}/.config/daydream/secrets.env"
 LIVE_DB="${DAYDREAM_DATA_DIR:-$HOME/data/daydream}/worlds-${ENV_NAME}/live.db"
 
+# External engines (see CLAUDE.md "External engines" pattern). Each engine
+# lives at external/<name>/ with its own venv; bin/<name>-bootstrap installs
+# it; bin/game <name>-up/down owns the daemon lifecycle.
+COMFY_DIR="$PROJECT_ROOT/external/ComfyUI"
+COMFY_PY="$COMFY_DIR/.venv/bin/python"
+COMFY_PORT="${DAYDREAM_COMFYUI_PORT:-8188}"
+COMFY_URL="${DAYDREAM_COMFYUI_BASE_URL:-http://localhost:$COMFY_PORT}"
+
 # Load env vars from the project .env (gitignored) first, then any per-host
 # secrets file. The host file wins so an operator can override per machine.
 if [[ -f "$PROJECT_ENV" ]]; then
@@ -126,12 +134,22 @@ cmd_status() {
     else
         echo "vllm: not installed"
     fi
-    local comfy_url="${DAYDREAM_COMFYUI_BASE_URL:-http://localhost:8188}"
+    # ComfyUI: prefer the daydream-managed PID; fall back to a reachability
+    # probe so externally-launched instances are still detected.
+    local reach="unreachable"
     if command -v curl >/dev/null 2>&1 \
-        && curl -sS -o /dev/null --max-time 1 "${comfy_url}/system_stats"; then
-        echo "comfyui: reachable at ${comfy_url}"
+        && curl -sS -o /dev/null --max-time 1 "${COMFY_URL}/system_stats"; then
+        reach="reachable"
+    fi
+    if _is_running "comfyui"; then
+        local pid; pid="$(cat "$(_pid_file comfyui)")"
+        echo "comfyui: running (pid $pid, port $COMFY_PORT, $reach)"
+    elif [[ "$reach" == "reachable" ]]; then
+        echo "comfyui: reachable at $COMFY_URL (managed externally)"
+    elif [[ -x "$COMFY_PY" ]]; then
+        echo "comfyui: stopped (run 'bin/game comfyui-up')"
     else
-        echo "comfyui: unreachable at ${comfy_url} (image gen will fail gracefully)"
+        echo "comfyui: not bootstrapped (run 'bin/comfyui-bootstrap')"
     fi
     echo "env: $ENV_NAME"
     echo "port: $PORT"
@@ -155,12 +173,36 @@ cmd_image_test() {
     "$VENV_PY" -m daydream.images.cli "$@"
 }
 
+cmd_comfyui_up() {
+    if _is_running "comfyui"; then
+        echo "comfyui: already running (pid $(cat "$(_pid_file comfyui)"))"
+        return 0
+    fi
+    if [[ ! -x "$COMFY_PY" ]]; then
+        echo "comfyui: not bootstrapped at $COMFY_DIR" >&2
+        echo "run 'bin/comfyui-bootstrap' first." >&2
+        return 2
+    fi
+    local logf; logf="$(_log_file "comfyui")"
+    cd "$COMFY_DIR"
+    nohup "$COMFY_PY" main.py --listen 0.0.0.0 --port "$COMFY_PORT" \
+        > "$logf" 2>&1 < /dev/null &
+    echo $! > "$(_pid_file comfyui)"
+    echo "comfyui: started (pid $!, port $COMFY_PORT, log $logf)"
+}
+
+cmd_comfyui_down() {
+    _stop_one comfyui
+}
+
 case "${1:-}" in
-    up)         shift; cmd_up "$@" ;;
-    down)       shift; cmd_down "$@" ;;
-    status)     shift; cmd_status "$@" ;;
-    logs)       shift; cmd_logs "$@" ;;
-    image-test) shift; cmd_image_test "$@" ;;
-    "")         echo "usage: bin/game {up|down|status|logs|image-test}" >&2; exit 2 ;;
-    *)          echo "usage: bin/game {up|down|status|logs|image-test} (got: $1)" >&2; exit 2 ;;
+    up)            shift; cmd_up "$@" ;;
+    down)          shift; cmd_down "$@" ;;
+    status)        shift; cmd_status "$@" ;;
+    logs)          shift; cmd_logs "$@" ;;
+    image-test)    shift; cmd_image_test "$@" ;;
+    comfyui-up)    shift; cmd_comfyui_up "$@" ;;
+    comfyui-down)  shift; cmd_comfyui_down "$@" ;;
+    "")            echo "usage: bin/game {up|down|status|logs|image-test|comfyui-up|comfyui-down}" >&2; exit 2 ;;
+    *)             echo "usage: bin/game {up|down|status|logs|image-test|comfyui-up|comfyui-down} (got: $1)" >&2; exit 2 ;;
 esac

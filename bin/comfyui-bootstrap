@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+# bin/comfyui-bootstrap — one-time, idempotent ComfyUI install for daydream.
+#
+# Clones ComfyUI into external/ComfyUI/, creates its own venv, installs
+# requirements, downloads SDXL base + the watercolor LoRA. Re-runs are no-ops
+# on every step so it's safe to invoke whenever you're not sure.
+#
+# After this completes, bring the daemon up with:  bin/game comfyui-up
+
+set -euo pipefail
+
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+COMFY_DIR="$PROJECT_ROOT/external/ComfyUI"
+COMFY_REPO="https://github.com/comfyanonymous/ComfyUI"
+
+SDXL_NAME="sd_xl_base_1.0.safetensors"
+SDXL_URL="https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0/resolve/main/${SDXL_NAME}"
+SDXL_PATH="$COMFY_DIR/models/checkpoints/$SDXL_NAME"
+
+LORA_NAME="watercolor_v1_sdxl.safetensors"
+LORA_URL="https://huggingface.co/ostris/watercolor_style_lora_sdxl/resolve/main/${LORA_NAME}"
+LORA_PATH="$COMFY_DIR/models/loras/$LORA_NAME"
+
+mkdir -p "$PROJECT_ROOT/external"
+
+echo "==> ComfyUI repo"
+if [[ -d "$COMFY_DIR/.git" ]]; then
+    echo "    present at $COMFY_DIR"
+else
+    echo "    cloning $COMFY_REPO ..."
+    git clone --quiet "$COMFY_REPO" "$COMFY_DIR"
+fi
+
+echo "==> ComfyUI venv"
+if [[ -x "$COMFY_DIR/.venv/bin/python" ]]; then
+    echo "    present"
+else
+    echo "    creating with python3 ..."
+    python3 -m venv "$COMFY_DIR/.venv"
+    "$COMFY_DIR/.venv/bin/python" -m pip install --quiet --upgrade pip wheel
+fi
+
+echo "==> ComfyUI requirements"
+# pip install on already-satisfied requirements is fast and harmless.
+"$COMFY_DIR/.venv/bin/python" -m pip install --quiet -r "$COMFY_DIR/requirements.txt"
+echo "    installed (or already satisfied)"
+
+echo "==> SDXL base checkpoint (~7 GB)"
+mkdir -p "$(dirname "$SDXL_PATH")"
+if [[ -f "$SDXL_PATH" ]]; then
+    echo "    present at $SDXL_PATH"
+else
+    echo "    downloading from huggingface.co/stabilityai/stable-diffusion-xl-base-1.0 ..."
+    wget --quiet --show-progress -O "$SDXL_PATH" "$SDXL_URL"
+fi
+
+echo "==> Watercolor LoRA"
+mkdir -p "$(dirname "$LORA_PATH")"
+if [[ -f "$LORA_PATH" ]]; then
+    echo "    present at $LORA_PATH"
+else
+    echo "    downloading from huggingface.co/ostris/watercolor_style_lora_sdxl ..."
+    wget --quiet -O "$LORA_PATH" "$LORA_URL"
+fi
+
+echo
+echo "ComfyUI bootstrap complete. Next: bin/game comfyui-up"

@@ -31,3 +31,7 @@ web/node_modules/
 
 # Per-project Claude state
 .claude/
+
+# External engines (ComfyUI, vLLM, etc.) — cloned + populated by bin/<engine>-bootstrap.
+# Project tree stays self-contained on disk but git-light. Re-bootstrap is cheap.
+external/
