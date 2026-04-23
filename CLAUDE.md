@@ -77,6 +77,12 @@ Cozy, soft, painterly. Spiritfarer / A Short Hike. NOT pixel art, NOT crunchy 8-
 
 Per global convention: attribute commits to `user.name` only, no Co-Authored-By trailers. Work in small committable increments; verify build + tests pass before adding new work. Push only when explicitly asked.
 
+## Keeper images (`docs/pretty/`)
+
+`docs/pretty/` is the durable, git-tracked home for image outputs worth keeping (README hero shots, future docs illustrations). Day-to-day output of `bin/game image-test` and the room-background cache live under `~/data/daydream/images/` and are ephemeral.
+
+**Convention:** when the user says **`pretty <filename-or-fragment>`** in conversation, that means: find the file (typically under `~/data/daydream/images/test/<name>` or `~/data/daydream/images/cache/...`, glob-match the fragment if needed), copy it to `docs/pretty/` with a clean human-readable name, and commit. If the user does not specify where it should be referenced, ask once before adding it to README.md or other docs.
+
 ## Reference projects on this box
 
 - `~/src/qpeek/`: FastAPI server skeleton, project layout, CLAUDE.md style.
