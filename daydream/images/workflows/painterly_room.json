@@ -1,0 +1,88 @@
+{
+  "_meta": {
+    "name": "painterly_room",
+    "purpose": "Daydream v1 room background. SDXL base + watercolor LoRA at 22 steps.",
+    "node_ids": {
+      "checkpoint": "1",
+      "lora": "2",
+      "positive_prompt": "3",
+      "negative_prompt": "4",
+      "latent": "5",
+      "ksampler": "6",
+      "vae_decode": "7",
+      "save": "8"
+    },
+    "operator_notes": [
+      "ckpt_name expects sd_xl_base_1.0.safetensors in ComfyUI's models/checkpoints/.",
+      "lora_name is a placeholder; choose a watercolor / storybook LoRA at install time and update this field.",
+      "Width/height default to 1024x384 to match the SPA's room-background slot."
+    ]
+  },
+  "1": {
+    "class_type": "CheckpointLoaderSimple",
+    "inputs": {
+      "ckpt_name": "sd_xl_base_1.0.safetensors"
+    }
+  },
+  "2": {
+    "class_type": "LoraLoader",
+    "inputs": {
+      "model": ["1", 0],
+      "clip": ["1", 1],
+      "lora_name": "watercolor.safetensors",
+      "strength_model": 0.85,
+      "strength_clip": 0.85
+    }
+  },
+  "3": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "clip": ["2", 1],
+      "text": "PROMPT_PLACEHOLDER"
+    }
+  },
+  "4": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "clip": ["2", 1],
+      "text": "harsh edges, pixel art, 8-bit, neon, photorealistic, modern technology, machinery, vehicle, computer, text, watermark, signature, deformed, low quality"
+    }
+  },
+  "5": {
+    "class_type": "EmptyLatentImage",
+    "inputs": {
+      "width": 1024,
+      "height": 384,
+      "batch_size": 1
+    }
+  },
+  "6": {
+    "class_type": "KSampler",
+    "inputs": {
+      "model": ["2", 0],
+      "positive": ["3", 0],
+      "negative": ["4", 0],
+      "latent_image": ["5", 0],
+      "seed": 0,
+      "steps": 22,
+      "cfg": 5.5,
+      "sampler_name": "dpmpp_2m",
+      "scheduler": "karras",
+      "denoise": 1.0
+    }
+  },
+  "7": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": ["6", 0],
+      "vae": ["1", 2]
+    }
+  },
+  "8": {
+    "class_type": "SaveImage",
+    "inputs": {
+      "images": ["7", 0],
+      "filename_prefix": "daydream"
+    }
+  }
+}

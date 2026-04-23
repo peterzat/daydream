@@ -42,6 +42,12 @@ def llm_api_key() -> str:
     return os.environ.get("DAYDREAM_LLM_API_KEY", "unused")
 
 
+def comfyui_base_url() -> str:
+    """ComfyUI HTTP server endpoint (default ComfyUI port). Override with
+    DAYDREAM_COMFYUI_BASE_URL when running ComfyUI on a non-default port."""
+    return os.environ.get("DAYDREAM_COMFYUI_BASE_URL", "http://localhost:8188")
+
+
 def password() -> str:
     """Source the shared site password from DAYDREAM_PASSWORD. Empty string
     means no password is configured; the auth endpoint refuses logins in
