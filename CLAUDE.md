@@ -8,13 +8,13 @@ A small atmospheric multiplayer web game running on a single dev box. Players en
 - Python 3.10. Pin `requires-python = ">=3.10"` in `pyproject.toml`.
 - User-visible services (the daydream FastAPI server) bind `0.0.0.0` so tailnet clients can reach them; default port `54321` (memorable, non-default — modest security-by-obscurity on a user-visible service). Override via `DAYDREAM_PORT`. Per-env ports land in v2.
 - Internal services (vLLM, ComfyUI) bind `127.0.0.1` by default since daydream is their only consumer. Override with `DAYDREAM_VLLM_HOST` / `DAYDREAM_COMFYUI_HOST` to expose on the tailnet (e.g., for the ComfyUI web UI). For ComfyUI specifically, an SSH tunnel from your laptop is usually the right move: `ssh -L 8188:localhost:8188 <host>`.
-- Persistent state lives under `~/data/daydream/`, never in the project tree. Per-env layout (`worlds-dev/`, `worlds-preview/`, `worlds-prod/`) lands in v2; v0 just uses `worlds-dev/live.db`.
+- Persistent state lives under `~/data/daydream/`, never in the project tree. The active world is `worlds-dev/live.db`; per-env layout (`worlds-dev/`, `worlds-preview/`, `worlds-prod/`) lands in v2.
 - HuggingFace cache is shared at `~/.cache/huggingface`. Never override `HF_HOME`.
 - All `*.db`, `*.db-wal`, `*.db-shm` are gitignored. Live state never gets committed.
 
 ## Lifecycle
 
-`bin/game up`, `bin/game down`, `bin/game status`, `bin/game logs` are the supported daydream-server entry points; `bin/game comfyui-up`/`down` and `bin/game vllm-up`/`down` manage the inference engines (see "External engines" below). Each command writes a PID file to `$XDG_RUNTIME_DIR/daydream-<env>/<process>.pid` and a log alongside; `bin/game status` reports liveness and reachability for all three.
+`bin/game up`, `bin/game down`, `bin/game status`, `bin/game logs` are the supported daydream-server entry points; `bin/game comfyui-up`/`down` and `bin/game vllm-up`/`down` manage the inference engines (see "External engines" below); `bin/game image-test "<prompt>"` is the aesthetic A/B harness for image gen. Each daemon command writes a PID file to `$XDG_RUNTIME_DIR/daydream-<env>/<process>.pid` and a log alongside; `bin/game status` reports liveness and reachability for all three processes plus the current `DAYDREAM_ACCESS` mode and a UFW-reminder warning when `public`.
 
 ## Auth
 
@@ -67,7 +67,7 @@ ComfyUI does NOT use the HF cache (its `models/` dir lives under `external/Comfy
 
 ## ComfyUI (v1 image gen)
 
-The first engine on the pattern. Default endpoint `http://localhost:8188`; override with `DAYDREAM_COMFYUI_BASE_URL` or `DAYDREAM_COMFYUI_PORT`.
+The first engine on the pattern. Binds `127.0.0.1:8188` by default since daydream is the only consumer; override `DAYDREAM_COMFYUI_HOST=0.0.0.0` to expose on the tailnet (e.g., for the ComfyUI web UI from another machine), or SSH-tunnel: `ssh -L 8188:localhost:8188 <host>`. Override the URL daydream calls with `DAYDREAM_COMFYUI_BASE_URL` or the port via `DAYDREAM_COMFYUI_PORT`.
 
 One-time install:
 
@@ -87,7 +87,7 @@ The shared workflow JSON at `daydream/images/workflows/painterly_room.json` is r
 
 ## vLLM (v1 LLM)
 
-The second engine on the pattern. Different from ComfyUI in that vLLM is a pip package (no upstream clone), and its model weights live in the shared HF cache (per the exception above). Default endpoint `http://localhost:8000/v1`; override with `DAYDREAM_LLM_BASE_URL` or `DAYDREAM_VLLM_PORT`. Default model is Qwen 2.5 7B Instruct AWQ (`DAYDREAM_VLLM_MODEL` to override).
+The second engine on the pattern. Different from ComfyUI in that vLLM is a pip package (no upstream clone), and its model weights live in the shared HF cache (per the exception above). Binds `127.0.0.1:8000` by default since daydream is the only consumer; override `DAYDREAM_VLLM_HOST=0.0.0.0` to expose on the tailnet. Override the URL daydream calls with `DAYDREAM_LLM_BASE_URL` or the port via `DAYDREAM_VLLM_PORT`. Default model is Qwen 2.5 7B Instruct AWQ (`DAYDREAM_VLLM_MODEL` to override).
 
 One-time install:
 
