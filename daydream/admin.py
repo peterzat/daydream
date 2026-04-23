@@ -437,6 +437,105 @@ def cmd_delete(world_id: str, yes: bool) -> int:
     return 0
 
 
+# ---- skill add ---------------------------------------------------------
+
+
+# JSON author-file shape. Values are already parsed (dict for predicate
+# and effects_schema, not JSON strings) — the CLI re-serializes them
+# for the `_json` TEXT columns on write. This keeps the author file
+# readable and diffable.
+_SKILL_REQUIRED_STR = ("name", "ui_hint", "description", "prompt_template")
+_SKILL_REQUIRED_DICT = ("context_predicate", "effects_schema")
+
+
+def _skill_validate(payload: object) -> dict | str:
+    """Return a normalized dict on success, an error message on failure.
+    Validation is deliberately strict so a misauthored skill JSON fails
+    at the CLI with a clear diagnostic rather than landing a bad row in
+    the `skills` table that the executor would later skip silently."""
+    if not isinstance(payload, dict):
+        return "top-level JSON must be an object"
+    for field in _SKILL_REQUIRED_STR:
+        v = payload.get(field)
+        if not isinstance(v, str) or not v.strip():
+            return f"missing or empty required string field: {field!r}"
+    for field in _SKILL_REQUIRED_DICT:
+        v = payload.get(field)
+        if not isinstance(v, dict):
+            return f"missing or non-object required field: {field!r}"
+    return {
+        "name": payload["name"].strip().lower(),
+        "ui_hint": payload["ui_hint"].strip(),
+        "description": payload["description"].strip(),
+        "prompt_template": payload["prompt_template"],
+        "context_predicate": payload["context_predicate"],
+        "effects_schema": payload["effects_schema"],
+        "author": str(payload.get("author", "admin")).strip() or "admin",
+    }
+
+
+def cmd_skill_add(path: Path) -> int:
+    """Install a data skill from a JSON author file.
+
+    Author-file schema (validated):
+        name              (str, non-empty; lowercased before storage)
+        ui_hint           (str, non-empty; button label)
+        description       (str, non-empty; one-line summary for the interpreter)
+        prompt_template   (str, non-empty; Jinja template)
+        context_predicate (object; e.g. {} or {"room_slug": "forge"})
+        effects_schema    (object; documentation/provenance in v1)
+        author            (str, optional; defaults to 'admin')
+
+    Writes to the skills table with kind='data'. Upsert on name: re-running
+    with an edited JSON file updates the row in place (idempotent) while
+    preserving the row's id. Exit 0 on success, 2 on any failure; no
+    partial writes.
+    """
+    if err := _require_live_db():
+        return err
+    if not path.exists():
+        print(f"error: {path}: no such file", file=sys.stderr)
+        return 2
+    try:
+        payload = json.loads(path.read_text())
+    except json.JSONDecodeError as e:
+        print(f"error: {path}: invalid JSON: {e}", file=sys.stderr)
+        return 2
+    validated = _skill_validate(payload)
+    if isinstance(validated, str):
+        print(f"error: {path}: {validated}", file=sys.stderr)
+        return 2
+    conn = db.init_live()
+    # Use ON CONFLICT(name) upsert so re-runs update the existing row in
+    # place, preserving the PK and letting operators edit the JSON file
+    # without the row's id churning.
+    conn.execute(
+        "INSERT INTO skills "
+        "(id, name, kind, context_predicate_json, prompt_template, ui_hint, "
+        " effects_schema_json, author, enabled) "
+        "VALUES (?, ?, 'data', ?, ?, ?, ?, ?, 1) "
+        "ON CONFLICT(name) DO UPDATE SET "
+        " kind = 'data',"
+        " context_predicate_json = excluded.context_predicate_json,"
+        " prompt_template = excluded.prompt_template,"
+        " ui_hint = excluded.ui_hint,"
+        " effects_schema_json = excluded.effects_schema_json,"
+        " author = excluded.author,"
+        " enabled = 1",
+        (
+            f"skill-{validated['name']}",
+            validated["name"],
+            json.dumps(validated["context_predicate"]),
+            validated["prompt_template"],
+            validated["ui_hint"],
+            json.dumps(validated["effects_schema"]),
+            validated["author"],
+        ),
+    )
+    print(f"installed skill {validated['name']!r} from {path}")
+    return 0
+
+
 # ---- main ---------------------------------------------------------------
 
 
@@ -464,6 +563,11 @@ def main(argv: list[str] | None = None) -> int:
     p_del.add_argument("world_id")
     p_del.add_argument("--yes", action="store_true", help="confirm destructive op")
 
+    p_skill = sub.add_parser("skill", help="manage data skills")
+    p_skill_sub = p_skill.add_subparsers(dest="skill_cmd", required=True)
+    p_skill_add = p_skill_sub.add_parser("add", help="install/upsert a data skill from a JSON author file")
+    p_skill_add.add_argument("path", type=Path, help="path to skill.json")
+
     args = p.parse_args(argv)
     if args.cmd == "list":
         return cmd_list()
@@ -475,6 +579,9 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_verify(args.world_id)
     if args.cmd == "delete":
         return cmd_delete(args.world_id, args.yes)
+    if args.cmd == "skill":
+        if args.skill_cmd == "add":
+            return cmd_skill_add(args.path)
     p.print_help()
     return 2
 
