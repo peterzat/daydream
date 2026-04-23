@@ -14,7 +14,6 @@ class Room:
     title: str
     seed: str
     description_cached: str | None
-    image_cache_key: str | None
     exits: dict
     parent_id: str | None
 
@@ -27,7 +26,6 @@ class Room:
             title=row["title"],
             seed=row["seed"],
             description_cached=row["description_cached"],
-            image_cache_key=row["image_cache_key"],
             exits=json.loads(row["exits_json"]),
             parent_id=row["parent_id"],
         )

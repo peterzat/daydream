@@ -282,6 +282,14 @@ cmd_vllm_down() {
     _stop_one vllm
 }
 
+cmd_world() {
+    # Thin shell over python -m daydream.admin so the heavy lifting (sqlite
+    # cascade, archive bundling) lives in tested Python rather than here.
+    # See daydream/admin.py for the contract; --help is forwarded.
+    _require_venv
+    "$VENV_PY" -m daydream.admin "$@"
+}
+
 case "${1:-}" in
     up)            shift; cmd_up "$@" ;;
     down)          shift; cmd_down "$@" ;;
@@ -292,6 +300,7 @@ case "${1:-}" in
     comfyui-down)  shift; cmd_comfyui_down "$@" ;;
     vllm-up)       shift; cmd_vllm_up "$@" ;;
     vllm-down)     shift; cmd_vllm_down "$@" ;;
-    "")            echo "usage: bin/game {up|down|status|logs|image-test|comfyui-up|comfyui-down|vllm-up|vllm-down}" >&2; exit 2 ;;
-    *)             echo "usage: bin/game {up|down|status|logs|image-test|comfyui-up|comfyui-down|vllm-up|vllm-down} (got: $1)" >&2; exit 2 ;;
+    world)         shift; cmd_world "$@" ;;
+    "")            echo "usage: bin/game {up|down|status|logs|image-test|comfyui-up|comfyui-down|vllm-up|vllm-down|world}" >&2; exit 2 ;;
+    *)             echo "usage: bin/game {up|down|status|logs|image-test|comfyui-up|comfyui-down|vllm-up|vllm-down|world} (got: $1)" >&2; exit 2 ;;
 esac

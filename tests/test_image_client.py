@@ -1,5 +1,9 @@
 """ComfyUI client: workflow loading, prompt substitution, mocked end-to-end
-flow, error wrapping. No real ComfyUI required; httpx calls are patched."""
+flow, error wrapping. No real ComfyUI required; httpx calls are patched.
+
+The end-to-end recording tests for generate_image live in test_assets.py
+(they exercise the persistent path's interaction with the DB). This file
+covers the workflow plumbing and ComfyUI HTTP layer."""
 
 import json
 from pathlib import Path
@@ -8,7 +12,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 
-from daydream.images import cache, client
+from daydream.images import client
 
 
 @pytest.fixture(autouse=True)
@@ -23,7 +27,6 @@ def tmp_data_dir(tmp_path: Path, monkeypatch):
 def test_workflow_file_exists_and_parses():
     raw = json.loads(client.DEFAULT_WORKFLOW.read_text())
     assert isinstance(raw, dict)
-    # Strip _meta to mirror what load_workflow() sends to ComfyUI
     wf = {k: v for k, v in raw.items() if not k.startswith("_")}
     assert client.POSITIVE_PROMPT_NODE in wf
 
@@ -31,7 +34,6 @@ def test_workflow_file_exists_and_parses():
 def test_load_workflow_strips_meta():
     wf = client.load_workflow()
     assert "_meta" not in wf
-    # All remaining keys are node ids with class_type
     for k, v in wf.items():
         assert "class_type" in v
 
@@ -81,6 +83,55 @@ def test_build_prompt_workflow_rejects_missing_node():
         client.build_prompt_workflow(bad, "x")
 
 
+# ---- override application ----------------------------------------------
+
+
+def test_apply_overrides_swaps_model_and_lora():
+    wf = client.load_workflow()
+    out = client._apply_overrides(wf, model="custom.safetensors", lora="custom_lora.safetensors")
+    assert out[client.CHECKPOINT_NODE]["inputs"]["ckpt_name"] == "custom.safetensors"
+    assert out[client.LORA_NODE]["inputs"]["lora_name"] == "custom_lora.safetensors"
+
+
+def test_apply_overrides_preserves_input_when_none():
+    wf = client.load_workflow()
+    original_ckpt = wf[client.CHECKPOINT_NODE]["inputs"]["ckpt_name"]
+    out = client._apply_overrides(wf, model=None, lora=None)
+    assert out[client.CHECKPOINT_NODE]["inputs"]["ckpt_name"] == original_ckpt
+
+
+# ---- ephemeral_path -----------------------------------------------------
+
+
+def test_ephemeral_path_is_deterministic():
+    p1 = client.ephemeral_path("a quiet meadow", "a quiet meadow soft watercolor")
+    p2 = client.ephemeral_path("a quiet meadow", "a quiet meadow soft watercolor")
+    assert p1 == p2
+
+
+def test_ephemeral_path_changes_with_prompt():
+    p1 = client.ephemeral_path("name", "prompt one")
+    p2 = client.ephemeral_path("name", "prompt two")
+    assert p1 != p2
+
+
+def test_ephemeral_path_includes_name_slug():
+    p = client.ephemeral_path("a quiet meadow", "anything")
+    assert "quiet" in p.name or "meadow" in p.name
+    assert p.suffix == ".png"
+
+
+def test_ephemeral_path_handles_long_or_messy_names():
+    p = client.ephemeral_path("x" * 200 + " ! @ # $ %", "any")
+    assert p.suffix == ".png"
+    assert len(p.name) < 100
+
+
+def test_ephemeral_path_lives_under_images_ephemeral():
+    p = client.ephemeral_path("x", "y")
+    assert "ephemeral" in p.parts
+
+
 # ---- submit_and_wait (mocked HTTP) -------------------------------------
 
 
@@ -114,7 +165,6 @@ async def test_submit_and_wait_returns_history_entry():
 @pytest.mark.asyncio
 async def test_submit_and_wait_times_out():
     submit_resp = _mock_http_response({"prompt_id": "abc"})
-    # /history returns empty dict forever
     history_resp = _mock_http_response({})
 
     with patch("httpx.AsyncClient") as mock_client:
@@ -155,41 +205,3 @@ async def test_fetch_output_image_returns_bytes():
 async def test_fetch_output_image_raises_on_no_images():
     with pytest.raises(client.ComfyUIError, match="no images"):
         await client.fetch_output_image({"outputs": {}})
-
-
-# ---- generate_room_background end-to-end (mocked) ----------------------
-
-
-@pytest.mark.asyncio
-async def test_generate_room_background_writes_to_cache_path(tmp_path: Path, monkeypatch):
-    monkeypatch.setenv("DAYDREAM_DATA_DIR", str(tmp_path))
-
-    fake_history = {"outputs": {"8": {"images": [{"filename": "x.png"}]}}}
-    fake_bytes = b"\x89PNG\r\n\x1a\nfake-image-bytes-here"
-
-    with (
-        patch.object(client, "submit_and_wait", new=AsyncMock(return_value=fake_history)),
-        patch.object(client, "fetch_output_image", new=AsyncMock(return_value=fake_bytes)),
-    ):
-        out = await client.generate_room_background("w-1", "r-1", "a meadow at dusk")
-
-    assert out.exists()
-    assert out.read_bytes() == fake_bytes
-    assert out == cache.cache_path("w-1", "r-1", "a meadow at dusk")
-
-
-@pytest.mark.asyncio
-async def test_generate_room_background_short_circuits_on_cache_hit(tmp_path: Path, monkeypatch):
-    monkeypatch.setenv("DAYDREAM_DATA_DIR", str(tmp_path))
-    p = cache.cache_path("w-1", "r-1", "seed")
-    p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_bytes(b"already cached")
-
-    submit = AsyncMock()
-    fetch = AsyncMock()
-    with patch.object(client, "submit_and_wait", new=submit), patch.object(client, "fetch_output_image", new=fetch):
-        out = await client.generate_room_background("w-1", "r-1", "seed")
-
-    assert out.read_bytes() == b"already cached"
-    submit.assert_not_awaited()
-    fetch.assert_not_awaited()

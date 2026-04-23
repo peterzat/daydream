@@ -33,10 +33,24 @@ HUMAN_TOON_ID = "t-wren"
 HUMAN_ROOM_ID = "r-meadow"
 SNAPSHOT_HISTORY_DEPTH = 50
 
-# Per-room generation dedup. Keys are (world_id, room_id, seed_hash).
-# Set membership check + add is atomic under asyncio's cooperative model
-# as long as no `await` sits between them.
-_generating: set[tuple[str, str, str]] = set()
+# Per-room generation dedup. Keys are returned by image_client.target_dedup_key
+# (world_id, target_kind, target_id, combined_hash). Set membership check +
+# add is atomic under asyncio's cooperative model as long as no `await`
+# sits between them.
+_generating: set[tuple[str, str, str, str]] = set()
+
+
+def _room_target(world_id: str, room_id: str, room_seed: str) -> "image_client.PersistentTarget":
+    """Build the canonical PersistentTarget for a room background. One
+    helper so the prompt_suffix / target_kind never drift between the
+    is_cached check, the dedup key, and the actual generate call."""
+    return image_client.PersistentTarget(
+        world_id=world_id,
+        target_kind="room",
+        target_id=room_id,
+        seed=room_seed,
+        prompt_suffix=image_client.WHIMSY_PROMPT_SUFFIX,
+    )
 
 
 def _state_snapshot(last_seq: int) -> dict:
@@ -53,8 +67,13 @@ def _state_snapshot(last_seq: int) -> dict:
     available = registry.list_available_for_room(HUMAN_ROOM_ID)
 
     image_url: str | None = None
-    if room is not None and image_cache.is_cached(room.world_id, room.id, room.seed):
-        image_url = image_cache.cache_url(room.world_id, room.id, room.seed)
+    if room is not None:
+        target = _room_target(room.world_id, room.id, room.seed)
+        if image_client.is_persistent_cached(target):
+            workflow = image_client.load_workflow()
+            image_url = image_cache.cache_url(
+                room.world_id, "room", room.id, room.seed, workflow
+            )
 
     return {
         "kind": "state_snapshot",
@@ -79,40 +98,50 @@ def _state_snapshot(last_seq: int) -> dict:
 
 def _maybe_enqueue_image_gen(world_id: str, room_id: str, room_seed: str) -> None:
     """If the room has no cached background and no in-flight job, spawn one.
-    Idempotent across concurrent connections: dedup keyed on seed hash."""
-    if image_cache.is_cached(world_id, room_id, room_seed):
+    Idempotent across concurrent connections: dedup keyed on the cache
+    combined_hash (which factors in seed + workflow JSON)."""
+    target = _room_target(world_id, room_id, room_seed)
+    if image_client.is_persistent_cached(target):
         return
-    key = (world_id, room_id, image_cache.seed_hash(room_seed))
+    key = image_client.target_dedup_key(target)
     if key in _generating:
         return
     _generating.add(key)
-    asyncio.create_task(_generate_and_emit(world_id, room_id, room_seed))
+    asyncio.create_task(_generate_and_emit(target, key))
 
 
-async def _generate_and_emit(world_id: str, room_id: str, room_seed: str) -> None:
+async def _generate_and_emit(
+    target: "image_client.PersistentTarget",
+    dedup_key: tuple[str, str, str, str],
+) -> None:
     """Run image gen under the GPU arbiter, then append room_image_ready.
     On ComfyUI failure, emit room_image_ready with image_url=None and the
     error string so the SPA can fall back to the placeholder."""
     payload: dict = {}
     try:
         async with arbiter.acquire():
-            await image_client.generate_room_background(
-                world_id, room_id, room_seed,
-                prompt_suffix=image_client.WHIMSY_PROMPT_SUFFIX,
-            )
-        payload["image_url"] = image_cache.cache_url(world_id, room_id, room_seed)
+            path = await image_client.generate_image(target)
+        payload["image_url"] = image_cache.url_for_cache_path(path)
     except image_client.ComfyUIError as e:
-        logger.warning("room image gen failed for %s/%s: %s", world_id, room_id, e)
+        logger.warning(
+            "room image gen failed for %s/%s: %s",
+            target.world_id, target.target_id, e,
+        )
         payload["image_url"] = None
         payload["error"] = str(e)
     except Exception as e:  # broad catch: this runs as a fire-and-forget task
-        logger.exception("unexpected error in room image gen for %s/%s", world_id, room_id)
+        logger.exception(
+            "unexpected error in room image gen for %s/%s",
+            target.world_id, target.target_id,
+        )
         payload["image_url"] = None
         payload["error"] = f"unexpected error: {e}"
     finally:
-        _generating.discard((world_id, room_id, image_cache.seed_hash(room_seed)))
+        _generating.discard(dedup_key)
     try:
-        events.append("system", None, "room_image_ready", payload, room_id=room_id)
+        events.append(
+            "system", None, "room_image_ready", payload, room_id=target.target_id,
+        )
     except RuntimeError:
         # DB closed (server shutting down). Drop the event silently.
         pass

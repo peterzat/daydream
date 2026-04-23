@@ -1,8 +1,6 @@
-"""bin/game image-test CLI: arg parsing, deterministic output paths,
+"""bin/game image-test CLI: arg parsing, EphemeralTarget construction,
 mocked end-to-end. No real ComfyUI needed."""
 
-import asyncio
-import hashlib
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
@@ -17,29 +15,7 @@ def tmp_data_dir(tmp_path: Path, monkeypatch):
     yield
 
 
-def test_derive_out_path_is_deterministic():
-    p1 = cli.derive_out_path("a quiet meadow")
-    p2 = cli.derive_out_path("a quiet meadow")
-    assert p1 == p2
-
-
-def test_derive_out_path_changes_with_prompt():
-    p1 = cli.derive_out_path("a quiet meadow")
-    p2 = cli.derive_out_path("a noisy meadow")
-    assert p1 != p2
-
-
-def test_derive_out_path_includes_prompt_slug():
-    p = cli.derive_out_path("a quiet meadow")
-    assert "quiet" in p.name or "meadow" in p.name
-    assert p.suffix == ".png"
-
-
-def test_derive_out_path_handles_long_or_messy_prompts():
-    long_prompt = "x" * 200 + " ! @ # $ %"
-    p = cli.derive_out_path(long_prompt)
-    assert p.suffix == ".png"
-    assert len(p.name) < 100  # safety filter caps the slug portion
+# ---- arg parsing -------------------------------------------------------
 
 
 def test_parse_args_minimal():
@@ -60,88 +36,84 @@ def test_parse_args_full():
     assert args.seed == 42
 
 
-def test_main_appends_whimsy_suffix_by_default(tmp_path: Path, capsys):
-    captured_prompt: dict[str, str] = {}
+# ---- main: target construction + plumbing ------------------------------
 
-    async def fake_gen(prompt, out_path, model, lora, seed, base_url=None):
-        captured_prompt["full"] = prompt
-        out_path.parent.mkdir(parents=True, exist_ok=True)
-        out_path.write_bytes(b"fake")
-        return out_path
 
-    with patch.object(client, "generate_to_path", new=AsyncMock(side_effect=fake_gen)):
+def _capture_target_mock(captured: dict):
+    """Build a generate_image mock that records the target and kwargs."""
+    async def _gen(target, *, model=None, lora=None, seed=None, base_url=None):
+        captured["target"] = target
+        captured["model"] = model
+        captured["lora"] = lora
+        captured["seed"] = seed
+        # Materialize the file at the target's resolved path so
+        # downstream existence checks pass.
+        out = target.out_path or client.ephemeral_path(
+            target.name,
+            target.prompt + (
+                " " + client.WHIMSY_PROMPT_SUFFIX if target.with_whimsy_suffix else ""
+            ),
+        )
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_bytes(b"fake")
+        return out
+    return AsyncMock(side_effect=_gen)
+
+
+def test_main_appends_whimsy_suffix_by_default(capsys):
+    captured: dict = {}
+    with patch.object(client, "generate_image", new=_capture_target_mock(captured)):
         rc = cli.main(["a meadow at dusk"])
     assert rc == 0
-    assert "soft watercolor" in captured_prompt["full"]
-    assert "a meadow at dusk" in captured_prompt["full"]
+    assert captured["target"].with_whimsy_suffix is True
+    assert captured["target"].prompt == "a meadow at dusk"
 
 
 def test_main_omits_suffix_with_no_suffix_flag():
-    captured_prompt: dict[str, str] = {}
-
-    async def fake_gen(prompt, out_path, model, lora, seed, base_url=None):
-        captured_prompt["full"] = prompt
-        out_path.parent.mkdir(parents=True, exist_ok=True)
-        out_path.write_bytes(b"fake")
-        return out_path
-
-    with patch.object(client, "generate_to_path", new=AsyncMock(side_effect=fake_gen)):
+    captured: dict = {}
+    with patch.object(client, "generate_image", new=_capture_target_mock(captured)):
         rc = cli.main(["a meadow", "--no-suffix"])
     assert rc == 0
-    assert captured_prompt["full"] == "a meadow"
+    assert captured["target"].with_whimsy_suffix is False
 
 
 def test_main_passes_model_and_lora_overrides():
     captured: dict = {}
-
-    async def fake_gen(prompt, out_path, model, lora, seed, base_url=None):
-        captured["model"] = model
-        captured["lora"] = lora
-        captured["seed"] = seed
-        out_path.parent.mkdir(parents=True, exist_ok=True)
-        out_path.write_bytes(b"fake")
-        return out_path
-
-    with patch.object(client, "generate_to_path", new=AsyncMock(side_effect=fake_gen)):
-        rc = cli.main(["a meadow", "--model", "MyCkpt.safetensors", "--lora", "MyLora.safetensors", "--seed", "99"])
+    with patch.object(client, "generate_image", new=_capture_target_mock(captured)):
+        rc = cli.main(
+            ["a meadow", "--model", "MyCkpt.safetensors",
+             "--lora", "MyLora.safetensors", "--seed", "99"]
+        )
     assert rc == 0
     assert captured["model"] == "MyCkpt.safetensors"
     assert captured["lora"] == "MyLora.safetensors"
     assert captured["seed"] == 99
 
 
-def test_main_writes_to_default_path(tmp_path: Path):
-    async def fake_gen(prompt, out_path, model, lora, seed, base_url=None):
-        out_path.parent.mkdir(parents=True, exist_ok=True)
-        out_path.write_bytes(b"fake-bytes")
-        return out_path
-
-    with patch.object(client, "generate_to_path", new=AsyncMock(side_effect=fake_gen)):
+def test_main_writes_to_default_ephemeral_path():
+    captured: dict = {}
+    with patch.object(client, "generate_image", new=_capture_target_mock(captured)):
         rc = cli.main(["a meadow"])
     assert rc == 0
-    expected = cli.derive_out_path("a meadow")
+    expected = client.ephemeral_path("a meadow", "a meadow " + client.WHIMSY_PROMPT_SUFFIX)
     assert expected.exists()
-    assert expected.read_bytes() == b"fake-bytes"
+    assert expected.read_bytes() == b"fake"
 
 
 def test_main_writes_to_explicit_out_path(tmp_path: Path):
-    target = tmp_path / "explicit.png"
-
-    async def fake_gen(prompt, out_path, model, lora, seed, base_url=None):
-        out_path.parent.mkdir(parents=True, exist_ok=True)
-        out_path.write_bytes(b"fake")
-        return out_path
-
-    with patch.object(client, "generate_to_path", new=AsyncMock(side_effect=fake_gen)):
-        rc = cli.main(["a meadow", "--out", str(target)])
+    target_path = tmp_path / "explicit.png"
+    captured: dict = {}
+    with patch.object(client, "generate_image", new=_capture_target_mock(captured)):
+        rc = cli.main(["a meadow", "--out", str(target_path)])
     assert rc == 0
-    assert target.exists()
+    assert target_path.exists()
+    assert captured["target"].out_path == target_path
 
 
 def test_main_returns_2_on_comfyui_error(capsys):
     with patch.object(
         client,
-        "generate_to_path",
+        "generate_image",
         new=AsyncMock(side_effect=client.ComfyUIError("connection refused")),
     ):
         rc = cli.main(["a meadow"])

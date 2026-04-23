@@ -42,7 +42,7 @@ def _no_real_image_gen(request, monkeypatch):
 
     Tests that exercise the image-gen flow opt out via the
     @pytest.mark.real_image_gen marker; they are then responsible for
-    mocking daydream.images.client.generate_room_background themselves."""
+    mocking daydream.images.client.generate_image themselves."""
     if request.node.get_closest_marker("real_image_gen"):
         return
     monkeypatch.setattr("daydream.api.ws._generate_and_emit", AsyncMock(return_value=None))

@@ -37,9 +37,9 @@ context for every entry below lives in `~/.claude/plans/let-s-design-a-fairly-gi
 - **Origin:** plan let-s-design-a-fairly-giggly-narwhal
 
 ### snapshot-restore-commands
-- **One-line description:** Add `bin/game world snapshot NAME` (cp live db to `~/data/daydream/snapshots/{world}-{ts}.db`) and `bin/game world restore` matching it; `bin/game world list` enumerates known worlds.
-- **Why deferred:** v0 has no irreplaceable state; first interesting bootstrap is the moment a snapshot becomes worth taking.
-- **Revisit criteria:** First Opus-bootstrapped world worth preserving.
+- **One-line description:** Add `bin/game world snapshot NAME` (cp live db to `~/data/daydream/snapshots/{world}-{ts}.db`) — fast DB-only point-in-time snapshots for hot-swap, distinct from the existing `bin/game world archive/restore` which bundles DB + per-world cache dir into a full tarball. The snapshot flow is what `world-hot-swap` (below) needs: atomic rename of live → snapshot, reopen pool, broadcast `world_changed`. Archive/restore is for shelving a world off the box entirely.
+- **Why deferred:** v0 has no irreplaceable state; first interesting bootstrap is the moment a snapshot becomes worth taking. `archive/restore` is already sufficient for the "ship a world to a friend" use case.
+- **Revisit criteria:** First Opus-bootstrapped world worth preserving via fast hot-swap (as opposed to a full archive).
 - **Origin:** plan let-s-design-a-fairly-giggly-narwhal
 
 ### data-skills-cli

@@ -129,6 +129,51 @@ Re-enable FP8 KV cache only after one of:
 
 The smoke harness's choice of a strict-JSON LLM probe is intentional precisely so this regression surfaces immediately when someone tries to re-add the flag.
 
+## Image generation API
+
+Single entry point: `daydream.images.client.generate_image(target, *, model=None, lora=None, seed=None, base_url=None) -> Path`. The target is a discriminated union — `PersistentTarget` or `EphemeralTarget` — and the persistent vs ephemeral distinction lives there as a first-class concept rather than as two parallel functions.
+
+**`PersistentTarget(world_id, target_kind, target_id, seed, prompt_suffix="")`** is bound to an in-world entity (a room, in v1; toons / items later via `target_kind`). Output lands at `images/cache/{world}/{kind}/{id}/{combined_hash}.png` where the combined hash folds in seed text + canonical workflow JSON. On cache miss: render, write, record to `generated_assets`. On cache hit: return immediately, no re-record. Recording is REQUIRED here — if the DB isn't initialized, the call raises (production WS path always has DB initialized; this catches programming bugs).
+
+**`EphemeralTarget(name, prompt, with_whimsy_suffix=True, out_path=None)`** is for one-off output: aesthetic A/B, debugging, scratch. Output lands at `images/ephemeral/{safe_name}-{prompt_hash}.png` (deterministic per prompt so re-runs overwrite, which is what A/B work wants). Never recorded. Works with no DB initialized — the `bin/game image-test` CLI takes this path.
+
+Both paths share the same workflow build, the same ComfyUI HTTP layer (`_execute_workflow` is the single mock point), and the same arbiter contract: callers MUST hold `daydream.gpu.arbiter.acquire()` for the duration of any `generate_image` call. The two callers in production (WS layer, image-test CLI) do this; `tools/arbiter-smoke.py` does it; tests bypass via `@pytest.mark.real_image_gen` and mock `_execute_workflow`.
+
+## Generated assets
+
+Every persistent generation lands a row in the per-world `generated_assets` table. The table is the durable provenance index over the cache layout — given a world, you can answer "what was generated, with which model + LoRA + workflow, from which prompt, how big on disk, when?" without scanning the filesystem.
+
+**File layout:**
+```
+~/data/daydream/
+  worlds-{env}/live.db                                # per-env DB; holds generated_assets
+  images/cache/{world}/{kind}/{id}/{combined_hash}.png   # persistent output
+  images/ephemeral/{safe_name}-{prompt_hash}.png      # ephemeral output (no row)
+  archives/{world}-{ts}.tar.gz                        # bin/game world archive output
+```
+
+The cache key `combined_hash = sha256(seed_hash + workflow_hash)` so editing the seed OR the workflow JSON (sampler tweaks, LoRA strength, resolution) busts the cache and triggers regen. The recorded `workflow_hash` column lets you query "which assets came from which workflow version" later. The `target_kind` segment in the path prevents slug collision when NPC portraits land alongside room backgrounds.
+
+**Schema (per-world):** `id, asset_kind, target_kind, target_id, target_seed, seed_hash, file_relpath, model, lora, prompt_text, generated_at, file_bytes, world_id, pinned, workflow_hash`. The `pinned` column is the future-GC escape hatch: a hero image that should never be auto-cleaned can be marked via `assets.pin_asset(id)`. Used by zero code today; in place so the first gardening pass needs no migration.
+
+**Operator commands** (all under `bin/game world`, dispatch via `daydream/admin.py`):
+
+```sh
+bin/game world list                              # worlds + per-world asset count + cache footprint
+bin/game world archive <world_id>                # checkpoint WAL, tar DB + cache + manifest → archives/
+bin/game world restore <archive.tar.gz> --yes    # validate manifest, untar into data_dir (refuses if live DB exists)
+bin/game world verify [world_id]                 # report orphan rows (file missing) + orphan files (no row)
+bin/game world delete <world_id> --yes           # cascade DELETE rows (filtered by world_id) + rm -rf cache dir
+```
+
+`archive` runs `PRAGMA wal_checkpoint(TRUNCATE)` before the tar so a hot DB's most recent transactions are captured (without this, anything in `live.db-wal` would be missed). It writes a `MANIFEST.json` to the archive root recording `archive_format_version`, `schema_version`, `world_id`, `asset_count`, `asset_bytes`, `created_at`. `restore` validates the manifest before extracting; refuses archives produced by a newer schema than this code knows about, and refuses to overwrite an existing live DB.
+
+`verify` is diagnostic only — it never deletes. Reports two kinds of inconsistencies: rows whose `file_relpath` no longer exists on disk, and PNG files in the cache dir that have no matching row. Both happen naturally: the legacy meadow PNG from before this turn's cache layout change is exactly an orphan-file. Future GC tooling will read these reports.
+
+**Extending to other asset kinds.** The schema's `asset_kind` (`'image'` for now) and `target_kind` (`'room'`, `'toon'`, `'item'`) columns are the extensibility hooks. NPC portraits land as `target_kind='toon'` rows, no migration needed. Regenerated text outputs (e.g., room descriptions written back into `rooms.description_cached`) would be `asset_kind='text'` and need a small schema relaxation (`file_relpath` becomes nullable; an inline-text column joins it). That's the next migration whenever LLM-driven text caching becomes load-bearing.
+
+**Distinct from `snapshot-restore-commands` (BACKLOG).** That entry plans hot-swap-grade DB-only snapshots for the `world-hot-swap` flow. `archive/restore` here is the heavyweight bundle — full DB + per-world cache + manifest, suitable for shipping a world to another box.
+
 ## Aesthetic
 
 Cozy, soft, painterly. Spiritfarer / A Short Hike. NOT pixel art, NOT crunchy 8-bit. Bake this into placeholder PNGs and any narration prompts. The durable tone bible is [`WHIMSY.md`](WHIMSY.md) at the project root — read it before drafting any narration prompt template, image-gen prompt suffix, or asset choice. The image-gen prompt suffix lives both in `WHIMSY.md` (`## Prompt suffix`) and as `WHIMSY_PROMPT_SUFFIX` in `daydream/images/client.py`; `tests/test_whimsy_prompt_suffix.py` catches drift between the two.

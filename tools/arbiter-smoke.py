@@ -3,8 +3,9 @@
 Runs 5 alternating LLM + image-gen requests through the same code paths
 the WS layer uses (LLM via daydream.llm.client.acompletion_json which
 acquires the arbiter internally; image-gen via daydream.images.client
-.generate_room_background under an external arbiter.acquire(), mirroring
-daydream/api/ws.py's _generate_and_emit).
+.generate_image under an external arbiter.acquire(), mirroring
+daydream/api/ws.py's _generate_and_emit). Uses an EphemeralTarget to
+avoid needing a live DB; the arbiter contract is the same either way.
 
 Verifies SPEC criteria 3 (5 alternating requests, no OOM, under 90 s
 wall-clock) and 6 (LLM still routes correctly after image-gen cycles).
@@ -50,14 +51,20 @@ async def llm_call(n: int) -> float:
 
 
 async def image_call(n: int) -> float:
-    """One image-gen round-trip. Mirrors WS _generate_and_emit: caller wraps."""
+    """One image-gen round-trip. Mirrors WS _generate_and_emit: caller wraps.
+
+    Uses an EphemeralTarget so the smoke does not need a live DB initialized
+    (the persistent path requires recording, which needs a DB conn). The
+    arbiter contract is identical between persistent and ephemeral targets;
+    this exercise verifies the contract, not the cache layer."""
     t = time.monotonic()
     async with arbiter.acquire():
-        path = await image_client.generate_room_background(
-            world_id="smoke",
-            room_id=f"r-{n}",
-            room_seed=f"a quiet meadow at dusk, take {n}, fireflies and warm sunset",
-            prompt_suffix=image_client.WHIMSY_PROMPT_SUFFIX,
+        path = await image_client.generate_image(
+            image_client.EphemeralTarget(
+                name=f"smoke-{n}",
+                prompt=f"a quiet meadow at dusk, take {n}, fireflies and warm sunset",
+                with_whimsy_suffix=True,
+            ),
         )
     if not path.exists():
         raise RuntimeError(f"image #{n}: missing output {path}")

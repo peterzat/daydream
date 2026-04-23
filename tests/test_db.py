@@ -40,7 +40,11 @@ def test_init_schema_creates_all_tables(temp_db_path: Path):
         tables = {
             row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")
         }
-        expected = {"worlds", "rooms", "toons", "items", "skills", "seeds", "events", "_migrations"}
+        expected = {
+            "worlds", "rooms", "toons", "items", "skills", "seeds", "events",
+            "generated_assets",
+            "_migrations",
+        }
         assert expected.issubset(tables), f"missing tables: {expected - tables}"
     finally:
         conn.close()

@@ -68,18 +68,22 @@ if config.WEB_DIR.exists():
         name="assets",
     )
 
-# Serve generated room backgrounds from the image cache. A route handler
-# (not a StaticFiles mount) resolves the cache root per request, so tests
-# that override DAYDREAM_DATA_DIR pick up the right path. Path components
-# are validated to block traversal even though friend-scope security is the
-# real gate.
-@app.get("/cache/{world}/{room}/{filename}")
-async def serve_cached_image(world: str, room: str, filename: str):
-    if "/" in world or ".." in world or "/" in room or ".." in room:
-        raise HTTPException(status_code=404)
+# Serve generated assets from the image cache. A route handler (not a
+# StaticFiles mount) resolves the cache root per request, so tests that
+# override DAYDREAM_DATA_DIR pick up the right path. Path components are
+# validated to block traversal even though friend-scope security is the
+# real gate. The four-segment shape mirrors the cache layout
+# {world}/{target_kind}/{target_id}/{hash}.png.
+@app.get("/cache/{world}/{target_kind}/{target_id}/{filename}")
+async def serve_cached_image(
+    world: str, target_kind: str, target_id: str, filename: str
+):
+    for seg in (world, target_kind, target_id):
+        if "/" in seg or ".." in seg:
+            raise HTTPException(status_code=404)
     if "/" in filename or ".." in filename or not filename.endswith(".png"):
         raise HTTPException(status_code=404)
-    p = image_cache.cache_dir() / world / room / filename
+    p = image_cache.cache_dir() / world / target_kind / target_id / filename
     if not p.is_file():
         raise HTTPException(status_code=404)
     return FileResponse(p, media_type="image/png")
