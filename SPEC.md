@@ -1,62 +1,71 @@
-## Spec — 2026-04-23 — multi-room navigation
+## Spec — 2026-04-23 — data skills + safety baseline
 
-**Goal:** Replace the hardcoded one-room meadow with a hand-seeded ≥5-room world the player can walk through. Adds a `go <direction>` core skill, populates `rooms.exits_json` as the source of truth, and renders exits as clickable buttons in the SPA. The image-gen pipeline (v1) renders a fresh background per new room visited; the GPU arbiter and cache need no changes (cache key already includes `room_id`).
+**Goal:** Unlock LLM-driven content variety by letting JSON-authored "data skills" extend the skill registry (with `forge` as the v1 showcase), and land the v1 safety floor (banned-words filter, refusal-schema handling, prompt-injection tag wrapping) in the same slice so no LLM-driven state mutation ever runs unprotected. Smallest change that moves the game beyond `look`/`say`/`examine`/`go` into a world where skills can mutate state under a reviewed safety contract.
 
 ### Acceptance Criteria
 
-- [x] **`go <direction>` core skill moves the toon between rooms.** Typing `go north` when the current room has a `north` exit emits a `move` event (with `from_room`, `to_room`, `direction` in the payload), updates the toon's `current_room_id`, and the next `state_snapshot` reflects the new room (title, description, items, exits, image_url). Typing `go <direction>` for a direction not in the current room's `exits_json` emits a `narrate` event ("you can't go that way" or similar) and emits no `move` event.
-- [x] **`exits_json` is the single source of truth for navigation.** The `rooms.exits_json` field maps direction names (e.g. `north`, `south`, `east`, `west`, plus `up` / `down` / `in` / `out` if a room uses them) to target `room_id`s. The `go` skill reads it; the WS snapshot includes `room.exits` derived from it. No room adjacency hardcoded outside the SQL migration that seeds it.
-- [x] **A new migration seeds ≥5 connected rooms with bidirectional exits.** `migrations/002_*.sql` (or whatever the next number is) extends the v0 meadow into a connected world of at least 5 rooms. Every exit is bidirectional: if room A's `exits_json` maps `north → B`, then B's maps `south → A`. Each room has a meaningful `seed` that the image-gen and LLM pipelines can use. The migration is idempotent (won't double-seed on re-run) and does not destroy the existing meadow row.
-- [x] **The SPA renders exits as clickable buttons.** `state_snapshot.room.exits` flows into the SPA, which renders one button per exit alongside the existing skill bar. Clicking an exit button sends `{kind: "input", text: "go <direction>"}` — the canonical-bypass path, no LLM round-trip. When the room changes, the exit button set updates without a page reload.
-- [x] **Persistence across restart preserves the player's current room.** After `go north` followed by `bin/game down && bin/game up` and a reconnect, the snapshot reflects the destination room (not the starting meadow). The `move` event is in the events log; the toon's `current_room_id` was updated.
-- [x] **Image-gen and cache work per-room with no regression.** Each new room's first visit triggers async image gen (cold cache → SPA shows "painting...") and caches under `~/data/daydream/images/cache/{world}/{room}/{hash}.png`. The meadow's existing cached image continues to serve. No changes to `daydream/images/cache.py` or `daydream/images/client.py` required (the cache key already includes `room_id`); this criterion is a regression guard.
-- [x] **Tests cover the navigation contract without GPU.** New unit tests in `tests/test_skills.py` for the `go` skill (happy-path move event + side effect on `toons.current_room_id`; rejection narration for unknown direction; case-insensitive direction). New WS integration test in `tests/test_ws.py` for the navigation flow (connect → snapshot has exits → send `go north` → receive move event → next snapshot has the new room). Updates to `tests/test_db.py` if its existing room-count assertions break under the new migration. All new tests are LLM/GPU/network-free via the existing mocks.
+- [ ] **`bin/game world skill add <path>` installs a data skill from JSON.** Reads the file, validates the declared shape (required fields: `name`, `ui_hint`, `description`, `context_predicate_json`, `prompt_template`, `effects_schema_json`), and upserts a row in the existing `skills` table with `kind='data'` and `author` recorded. Malformed JSON or a missing required field exits non-zero with a diagnostic and writes nothing. Re-running with the same `name` updates in place (idempotent). The command runs with the server down; no requirement on a running FastAPI process.
+- [ ] **The `forge` data skill ships as JSON and works end-to-end against a mocked LLM.** A checked-in `skills/forge.json` carries a non-trivial `prompt_template` that matches the WHIMSY tone. When the controlled toon is at `r-forge` and types `forge <something>`, the skill dispatches: the LLM returns JSON matching the skill's `effects_schema_json`, at least one effect beyond `narrate` is applied (e.g., an item is added to the forge room), and the player sees a `narrate` event describing the outcome. `forge` does NOT appear in `state_snapshot.skills` when the toon is in a non-forge room (the meadow, bridge, attic, or hollow).
+- [ ] **Context predicates gate data-skill availability.** `registry.list_available_for_room(room_id)` returns every core skill plus every `enabled=1` data skill whose `context_predicate_json` matches the room. The v1 predicate format supports at minimum `{"room_slug": "<slug>"}`; an empty predicate `{}` means always-available. The WS `state_snapshot.skills` list and the LLM interpreter's candidate set both reflect the filtered view. A predicate the implementation does not understand fails safe (skill hidden, not leaked).
+- [ ] **Effects execute through an explicit allowlist, not dynamic dispatch.** A data skill's LLM output is JSON shaped per its `effects_schema_json`. Only effect kinds enumerated in an allowlist in `daydream/skills/effects.py` are executed; the v1 allowlist covers at minimum `narrate`, `add_item`, and `set_mood` (the exact final set is the implementer's call but must be explicitly enumerated). An effect kind not on the allowlist is dropped with a log warning and replaced by a tone-appropriate `narrate` fallback; state is not mutated.
+- [ ] **Banned-words filter blocks both input and LLM output.** A regex banlist in `daydream/llm/safety.py` (curated against WHIMSY.md: no modern-tech, no urgent/violent, no pixel-art / crunchy vocabulary) is applied at two points: **(a)** the player's free-text args reaching a data skill's prompt template — a hit short-circuits to a `narrate` "the dream won't hold that thought" (or similar), and no LLM call is made; **(b)** the LLM's narrate-text fields before effects apply — a hit drops effects and emits the same fallback. A tiny canonical banlist is checked in (enough to demonstrate both paths in tests); expanding it is not part of this spec.
+- [ ] **Prompt-injection containment wraps player_input in role-separator tags.** When a data skill's `prompt_template` renders, the value bound to the `player_input` variable is wrapped in `<player_input>...</player_input>` tags before the LLM sees it, and any literal `</player_input>` inside the player text is neutralized (escaped, stripped, or equivalent — implementer's choice) so the player cannot break out of the tag. Template rendering uses Jinja2's `SandboxedEnvironment` so the template itself cannot reach protected attributes (`__class__`, `__globals__`, etc.).
+- [ ] **Refusal schema short-circuits effects.** When the LLM's JSON response has `{"refused": true, "reason": "..."}` (the keys may be nested under `safety` or similar — the schema is the implementer's call), the executor emits a `narrate` event carrying the reason (or a tone-rewritten version) and applies NO effects from the same response, even when effects are present in the payload. Tests cover: refused-with-effects (effects dropped), refused-without-reason (generic tone-fallback narrate), non-refused-with-effects (effects applied normally).
+- [ ] **Data skills load without a server restart.** After `bin/game world skill add <path>` (or an equivalent direct DB write) against a running server, the next WS snapshot reflects the new skill's availability without needing `bin/game down && up`. The mechanism (per-call DB read, registry refresh hook, something else) is the implementer's call; the observable is the criterion.
+- [ ] **Tests cover the full path without GPU or network.** New unit tests in `tests/test_safety.py` exercise the banlist on input and output, the `player_input` tag-wrapping and break-out neutralization, and the refusal schema. New integration tests for the `forge` path with a mocked LLM client cover happy path, banned-input short-circuit, banned-output short-circuit, refused-response, and unknown-effect-kind. `tests/test_game_script.sh` (or an equivalent unit) covers `bin/game world skill add` success and malformed-JSON failure. All new tests run in the `tier_short` tier. `bin/game test short` passes before and after the change; no new `tier_medium` or `tier_long` cost.
 
 ### Context
 
-**Adopted from BACKLOG entry** `multi-room-navigation` (now annotated `(ACTIVE in spec 2026-04-23)` in BACKLOG.md). This is the smallest of the three slices the v1 close-out proposal recommended, and explicitly the suggested first slice ("proves nav, cheap"). The other two — `data-skills-cli` + `safety-baseline-v1`, and `npc-drift-loop` — remain in BACKLOG and become the natural follow-up turns.
+**Adopted from BACKLOG entries** `data-skills-cli` and `safety-baseline-v1` (both now annotated `(ACTIVE in spec 2026-04-23)`). The backlog is explicit that these two must ship together: data skills let the LLM propose effects, and safety is load-bearing the moment that happens. Shipping data-skills-cli without safety-baseline-v1 leaves LLM-authored content mutating game state with no filter; shipping safety without data-skills leaves the filter with nothing to guard. The forge skill doubles as the v1 showcase and the smoke test.
 
-**State coming in (since the proposal was written).** Beyond what the proposal's "What happened" describes, this turn also lands on top of: (a) ComfyUI moved into `external/ComfyUI/` with `bin/comfyui-bootstrap`; vLLM on the same external-engines pattern (CLAUDE.md "External engines"). (b) Port hygiene: daydream FastAPI on `54321`, vLLM and ComfyUI on `127.0.0.1` defaults; `DAYDREAM_ACCESS=tailscale|public` toggle with the `AccessMiddleware` enforcing at the HTTP/WS layer. (c) Comprehensive GPU/ML doc pass at `docs/gpu-and-models.md`; drift-catcher tests for the WHIMSY suffix and the workflow LoRA name. (d) 153/153 tests green across all of the above. The new `go` skill should fit cleanly into all of this — no new infrastructure required.
+**State coming in.** Multi-room-navigation shipped 7/7 (SPEC 2026-04-23), extending the world to 5 hand-seeded rooms. The existing `r-forge` room — "the quiet forge with embers drifting like sleepy fireflies" — is where the showcase `forge` skill will activate. The broader skill spine (`daydream/skills/core.py` + `registry.py` + `interpreter.py`) is stable: core skills `look`/`say`/`examine`/`go` are in place, the WS layer already asks `registry.list_available_for_room()` to build the skill list, and the LLM interpreter already receives that list as its candidate set. Adding data skills to the registry's return is the cleanest extension point.
 
-**Where things live.**
-- Existing core skills (`look`, `say`, `examine`) in `daydream/skills/core.py`. Add `go` next to them, register in `daydream/skills/registry.py`.
-- Room read helpers in `daydream/rooms.py` (already has `get_room`, `get_room_by_slug`); add `move_toon(toon_id, room_id)` or do it inline in `go`. Toon write goes through `daydream/toons.py`.
-- WS snapshot composition is in `daydream/api/ws.py:_state_snapshot`; extend the `room` dict with `exits`. The canonical-bypass router (first-word-matches-skill-name → direct dispatch) already handles `go north` without LLM (no change needed).
-- SPA shell is `web/index.html`; rendering JS is `web/assets/main.js`; styles in `web/assets/style.css`. Add an exits container alongside the skill bar.
+**Schema already anticipates this.** `migrations/001_initial.sql` defined `skills(id, name, kind, context_predicate_json, prompt_template, ui_hint, effects_schema_json, author, safety_rating, enabled)` — every column this spec needs is already present. No new migration is required unless the implementer adds a column. Keep that option open if the prompt-injection containment or effect logging wants a dedicated field.
 
-**Migration shape recommendation.** `migrations/002_multi_room.sql` should `INSERT` four new rooms (with seeds matching the WHIMSY anchor — soft, painterly, cozy) and `UPDATE` the meadow's `exits_json` plus each new room's so the world graph is connected. SQL `ON CONFLICT` clauses or `INSERT OR IGNORE` keep the migration idempotent.
+**Where things live (guidance, not prescription).**
+- `daydream/skills/registry.py` — extend to load from DB alongside `CORE_SKILLS`; today the dict is hardcoded.
+- `daydream/skills/data.py` (new, likely) — JSON-to-SkillSpec loader, context-predicate matching, the effect-dispatch loop.
+- `daydream/skills/effects.py` (new) — allowlisted effect kinds (at minimum `narrate`, `add_item`, `set_mood`) + a dispatch function that mutates state + emits events. Every game-state mutation by a data skill goes through here.
+- `daydream/llm/safety.py` (new) — regex banlist + `wrap_player_input()` helper + refusal-schema parser.
+- `daydream/admin.py` — add a `cmd_skill_add` alongside the existing world commands, wired into `bin/game world skill add ...` (mirrors the `world archive/restore/delete` dispatch pattern).
+- `skills/forge.json` (new, checked in) — the showcase data skill.
+- `tests/test_safety.py`, `tests/test_data_skills.py` — new test modules.
 
-**Aesthetic anchor (locked, do not drift).** Spiritfarer / A Short Hike. New room seeds should read like the meadow seed does: small, sensory, unhurried. Examples to match the tone: "the quiet forge with embers drifting like sleepy fireflies"; "a wooden bridge over a slow stream, dragonflies"; "an attic with afternoon dust in slanting light". Avoid grandiose, urgent, or modern-tech language. WHIMSY.md is the authority.
+**Aesthetic anchor (locked).** Spiritfarer / A Short Hike. Any `prompt_template`, refusal reason, fallback narration, and banlist entry needs to match the WHIMSY tone. The `forge` skill should read like a slow, warm ritual, not a crafting-sim mechanic. Banlist regex entries should target the anti-tones WHIMSY.md already names (urgent, pixel-art, modern-tech, violent). `WHIMSY.md` is the authority.
 
-**Out of scope for this spec** (deferred; do not build):
-- **Toon slot management.** v1 still has one hardcoded toon (Wren). Movement applies to that toon. `toon-slot-management` BACKLOG entry stays deferred.
-- **NPC drift / NPC dialogue.** No NPCs move or speak in this spec. `npc-drift-loop` and `npc-memory-retrieval` stay deferred.
-- **World bootstrap via Opus.** Hand-seed the 5 rooms via SQL. `world-bootstrap-opus` stays deferred.
-- **Per-room LLM voice or image-gen prompt variation.** The single workflow JSON + WHIMSY suffix is sufficient — each room's seed already differentiates the output.
-- **Skill authoring (data skills).** No data-skill registry changes here. `data-skills-cli` + `safety-baseline-v1` stay deferred.
-- **Painterly Svelte UI polish.** Vanilla TS SPA stays. Exits rendered as buttons reusing the existing skill-bar styling pattern.
+**Out of scope for this spec** (deferred; do NOT build):
+- **Web UI for skill authoring.** Stays in `skills-authoring-and-security` (v2 BACKLOG). v1 authors via JSON files on disk.
+- **`audit` table + `bin/game world undo --invocation N`.** Stays in v2. v1 trusts the allowlist + safety filter.
+- **Content-safety ML classifier.** v1 is regex-only; the classifier is v2.
+- **Strict `jsonschema` validation of every effect payload.** v1 validates effect *kind* against the allowlist; shape beyond that is the skill author's responsibility. Full `jsonschema` is v2.
+- **Player-authored skills.** `player-authored-skills` BACKLOG entry stays deferred; v1 is admin-JSON-authored only.
+- **Hot-reload cache invalidation across multiple worker processes.** Single-process daydream only.
+- **NPC-authored skills / NPC dialogue.** No NPCs in v1 per `npc-drift-loop` still being deferred.
 
-**zat.env conventions to respect** (familiar from v0/v1; carried for the implementing agent's convenience):
-- Bind `0.0.0.0` for daydream (port 54321 by default; access middleware filters by source IP).
-- HF cache shared at `~/.cache/huggingface`; persistent state under `~/data/daydream/`.
-- Python venv at `.venv/`; `PIP_REQUIRE_VIRTUALENV=true` is set globally.
+**zat.env conventions to respect.**
+- Python venv at `.venv/`; `PIP_REQUIRE_VIRTUALENV=true` is global. Add `jinja2` to `pyproject.toml` if not already present.
 - Commits attribute to `user.name` only; no Co-Authored-By trailers. Push only when explicitly asked.
-- Work in small committable increments; tests in the same increment as code; re-run pytest after each change. Per zat.env, "Spec is code": `/codereview` will check the implementation against these criteria before any push.
+- Work in small committable increments; tests in the same increment as code; re-run `bin/game test short` after each functional change.
+- Per zat.env "Spec is code": `/codereview` will check this implementation against the nine criteria before any push.
 
 **Critical files to create or modify:**
 
-- `migrations/002_multi_room.sql` (new; 4 rooms + meadow exits update; idempotent)
-- `daydream/skills/core.py` (modify; add `go` handler)
-- `daydream/skills/registry.py` (modify; register `go`)
-- `daydream/rooms.py` and/or `daydream/toons.py` (modify; `current_room_id` update helper)
-- `daydream/api/ws.py` (modify; `_state_snapshot` includes `room.exits`)
-- `web/assets/main.js` (modify; render exits, route clicks to `go <direction>` input)
-- `web/assets/style.css` (modify; exit-button styling, mirrors `#skill-bar button`)
-- `tests/test_skills.py` (modify; `go` skill tests)
-- `tests/test_ws.py` (modify; navigation flow test)
-- `tests/test_db.py` (modify; update room-count assertions if they're now wrong)
+- `daydream/skills/data.py` (new; JSON loader, predicate matcher, dispatcher)
+- `daydream/skills/effects.py` (new; effect allowlist + mutators)
+- `daydream/skills/registry.py` (modify; union core + DB-loaded data skills)
+- `daydream/llm/safety.py` (new; banlist, input wrapping, refusal parser)
+- `daydream/llm/prompts.py` (modify; expose player_input wrapping helper for data-skill templates)
+- `daydream/admin.py` (modify; add `cmd_skill_add`)
+- `bin/game` (modify; dispatch `world skill add <path>`)
+- `daydream/api/ws.py` (modify if registry API changes require it; the current `list_available_for_room` call site should not need to change if the API stays the same)
+- `skills/forge.json` (new; the showcase data skill)
+- `pyproject.toml` (modify; add `jinja2` if missing)
+- `tests/test_safety.py` (new)
+- `tests/test_data_skills.py` (new; forge end-to-end with mocked LLM)
+- `tests/test_game_script.sh` (modify; skill-add CLI coverage)
+- `WHIMSY.md` (optionally modify; codify the banlist's anti-tone vocabulary if it isn't already there)
 
 ---
-*Prior spec (2026-04-23): v1 image-gen pipeline shipped 8/8 — WHIMSY tone bible, GPU arbiter (asyncio.Lock, in-process), ComfyUI workflow + bin/game image-test, cache + WS room-image flow, SPA painting state + bg swap, vLLM serving Qwen 2.5 7B Instruct AWQ, live arbiter smoke at 9 s for 5 alternating LLM↔image requests.*
+*Prior spec (2026-04-23): multi-room navigation shipped 7/7 — migration 004 seeds 5-room world with bidirectional exits, `go` core skill + `set_current_room` helper, WS `_state_snapshot` exposes `current_room_id` + `room.exits` dynamically, SPA renders exits as clickable buttons via the canonical-bypass path.*
 
-<!-- SPEC_META: {"date":"2026-04-23","title":"multi-room navigation","criteria_total":7,"criteria_met":7} -->
+<!-- SPEC_META: {"date":"2026-04-23","title":"data skills + safety baseline","criteria_total":9,"criteria_met":0} -->
