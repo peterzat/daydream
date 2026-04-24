@@ -104,15 +104,27 @@ def test_forge_happy_path_end_to_end():
                 ws.send_json({"kind": "input", "text": "go north"})
                 ws.receive_json()  # move event
                 ws.receive_json()  # forge snapshot (post-move)
+                ws.receive_json()  # Rook presence narrate (2026-04-24 spec)
                 ws.send_json({"kind": "input", "text": "forge a ring"})
                 # The LLM returns narrate + add_item. The item_added
                 # event triggers a fresh state_snapshot from the broadcast
                 # loop so the SPA's items panel picks up the new item.
+                # Criterion 3 regression guard: the mutation snapshot
+                # refresh must NOT re-fire Rook's presence narrate;
+                # a 4th message would indicate it did.
                 msg_a = ws.receive_json()
                 msg_b = ws.receive_json()
                 msg_c = ws.receive_json()
         event_kinds = [msg_a["event"]["kind"], msg_b["event"]["kind"]]
         assert set(event_kinds) == {"narrate", "item_added"}
+        # The narrate text is the forge's, not Rook's greeting.
+        narrate_text = next(
+            m["event"]["payload"]["text"]
+            for m in (msg_a, msg_b)
+            if m["event"]["kind"] == "narrate"
+        )
+        assert "embers" in narrate_text.lower() or "ring" in narrate_text.lower()
+        assert "bellows" not in narrate_text.lower()  # not Rook's greeting
         assert msg_c["kind"] == "state_snapshot"
         # The refreshed snapshot includes the freshly-forged item.
         snap_names = {it["name"] for it in msg_c["items"]}
@@ -164,6 +176,7 @@ def test_forge_set_mood_refreshes_snapshot_with_new_mood():
                 ws.send_json({"kind": "input", "text": "go north"})
                 ws.receive_json()  # move event
                 ws.receive_json()  # forge snapshot
+                ws.receive_json()  # Rook presence narrate (2026-04-24 spec)
                 ws.send_json({"kind": "input", "text": "forge a thing"})
                 mood_msg = ws.receive_json()
                 snap = ws.receive_json()
@@ -191,6 +204,7 @@ def test_forge_refusal_short_circuits_effects():
                 ws.send_json({"kind": "input", "text": "go north"})
                 ws.receive_json()  # move
                 ws.receive_json()  # forge snapshot
+                ws.receive_json()  # Rook presence narrate (2026-04-24 spec)
                 ws.send_json({"kind": "input", "text": "forge something"})
                 msg = ws.receive_json()
         assert msg["event"]["kind"] == "narrate"

@@ -185,6 +185,38 @@ def reset_in_flight() -> None:
     _generating.clear()
 
 
+def _emit_npc_presence_narrates(controlled_toon_id: str, room_id: str) -> None:
+    """Emit one narrate per co-located NPC with non-empty presence_text.
+
+    Called from the broadcast loop's controlled-move branch after the
+    post-move state_snapshot has been sent, so the narrates land in
+    chat-log order AFTER the move event + snapshot pair. Three filters:
+    the controlled toon is skipped (self-greeting is meaningless);
+    toons with NULL / empty / whitespace-only `presence_text` are
+    skipped silently (authoring a greeting is optional per toon);
+    kicked toons are already excluded by `get_toons_in_room`.
+
+    Events are appended via events.append; they flow back through the
+    same broadcast loop's queue and reach the client as normal
+    `narrate` event frames. Not called on initial connect (the
+    snapshot's events field already carries prior narrates on
+    reconnect, so firing fresh would duplicate on the chat log) nor
+    on effect-mutation snapshot refreshes (which would spam the log
+    during data-skill dispatch in a populated room). See SPEC
+    2026-04-24 criterion 3."""
+    for t in toons.get_toons_in_room(room_id):
+        if t.id == controlled_toon_id:
+            continue
+        greeting = (t.presence_text or "").strip()
+        if not greeting:
+            continue
+        events.append(
+            "system", None, "narrate",
+            {"text": greeting},
+            room_id=room_id,
+        )
+
+
 async def _handle_input(text: str) -> None:
     """Route player input. Canonical form (skill word + args) bypasses the LLM
     so button clicks and exact commands don't pay round-trip latency.
@@ -320,5 +352,11 @@ async def _broadcast_loop(
                         _maybe_enqueue_image_gen(
                             new_room.world_id, new_room.id, new_room.seed
                         )
+                    # Greet any co-located NPCs (SPEC 2026-04-24). This
+                    # is inside the controlled-move branch only, not
+                    # the effect-mutation branch, so dispatching a
+                    # data skill at r-forge doesn't re-greet Rook on
+                    # every snapshot refresh.
+                    _emit_npc_presence_narrates(HUMAN_TOON_ID, _current_room_id())
     except (WebSocketDisconnect, RuntimeError):
         pass

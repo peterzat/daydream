@@ -66,6 +66,49 @@ def test_ws_snapshot_does_not_include_npc_when_player_is_elsewhere():
     assert "Wren" in toon_names
 
 
+def test_ws_go_into_npc_room_emits_presence_narrate():
+    """SPEC 2026-04-24 criterion 2: entering r-forge (where Rook lives)
+    emits Rook's presence_text as a narrate event, after the move event
+    and the post-move snapshot. Order: move -> snapshot -> narrate."""
+    with TestClient(app) as client:
+        _login(client)
+        with client.websocket_connect("/ws") as ws:
+            ws.receive_json()  # meadow snapshot
+            ws.send_json({"kind": "input", "text": "go north"})
+            move_msg = ws.receive_json()
+            snap = ws.receive_json()
+            narrate = ws.receive_json()
+    assert move_msg["event"]["kind"] == "move"
+    assert snap["kind"] == "state_snapshot" and snap["room"]["slug"] == "forge"
+    assert narrate["kind"] == "event"
+    assert narrate["event"]["kind"] == "narrate"
+    assert narrate["event"]["actor_type"] == "system"
+    # Greeting text carries Rook-specific vocabulary from migration 007.
+    text = narrate["event"]["payload"]["text"]
+    assert "Rook" in text
+    assert "bellows" in text or "sooty" in text or "humming" in text
+
+
+def test_ws_initial_connect_to_empty_room_emits_no_presence_narrate():
+    """SPEC 2026-04-24 criterion 3: connecting to the meadow (no NPCs)
+    does NOT fire a presence narrate, and more broadly, initial connect
+    never fires one — the snapshot's `events` field already carries
+    prior narrates on reconnect. Verified by sending `say` after the
+    snapshot and asserting the FIRST event received is the say event,
+    not a stray narrate ahead of it."""
+    with TestClient(app) as client:
+        _login(client)
+        with client.websocket_connect("/ws") as ws:
+            snap = ws.receive_json()
+            assert snap["room"]["slug"] == "meadow"
+            # Send a `say` to prove the next event we receive is that
+            # say, not a queued presence narrate that leaked through.
+            ws.send_json({"kind": "input", "text": "say hello"})
+            evt = ws.receive_json()
+    assert evt["event"]["kind"] == "say"
+    assert evt["event"]["payload"]["text"] == "hello"
+
+
 def test_ws_snapshot_includes_npc_after_entering_npc_room():
     """SPEC 2026-04-23 criterion 2: after `go north` from the meadow
     the player is at r-forge; the refreshed snapshot's toons list
