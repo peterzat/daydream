@@ -20,9 +20,20 @@ class Toon:
     inventory: list
     mood: str
     kicked_at: str | None
+    # Optional one-line greeting fired by the WS broadcast loop when
+    # the controlled toon walks into this toon's room. NULL / empty /
+    # whitespace-only = silent presence (no greeting). Added in
+    # migration 007 alongside Rook's value; pre-007 rows load as None.
+    presence_text: str | None = None
 
     @classmethod
     def from_row(cls, row) -> "Toon":
+        # row is a sqlite3.Row; use a safe accessor so this code can
+        # load from a legacy DB that hasn't applied migration 007 yet.
+        try:
+            presence_text = row["presence_text"]
+        except (IndexError, KeyError):
+            presence_text = None
         return cls(
             id=row["id"],
             world_id=row["world_id"],
@@ -36,6 +47,7 @@ class Toon:
             inventory=json.loads(row["inventory_json"]),
             mood=row["mood"],
             kicked_at=row["kicked_at"],
+            presence_text=presence_text,
         )
 
 

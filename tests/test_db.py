@@ -88,14 +88,25 @@ def test_init_schema_seeds_starter_world(temp_db_path: Path):
         # 006_first_npc adds Rook, the forge-keeper (slot 100, NPC
         # convention). Both presence and flag checked here so the
         # migration's intent is pinned.
+        # 007_npc_presence adds the `presence_text` column and Rook's
+        # greeting; assert the column exists AND Rook's value is set.
         rook = conn.execute(
-            "SELECT name, slot, current_room_id, is_human_controlled "
+            "SELECT name, slot, current_room_id, is_human_controlled, "
+            "       presence_text "
             "FROM toons WHERE id = 't-rook'"
         ).fetchone()
         assert rook["name"] == "Rook"
         assert rook["slot"] == 100
         assert rook["current_room_id"] == "r-forge"
         assert rook["is_human_controlled"] == 0
+        assert isinstance(rook["presence_text"], str) and rook["presence_text"].strip()
+        # Wren's presence_text stays NULL (controlled toon is filtered
+        # out of the greeting iteration anyway; authoring a greeting
+        # here would be dead data).
+        wren_presence = conn.execute(
+            "SELECT presence_text FROM toons WHERE id = 't-wren'"
+        ).fetchone()["presence_text"]
+        assert wren_presence is None
 
         item = conn.execute("SELECT name, seed FROM items").fetchone()
         assert item["name"] == "lantern"
