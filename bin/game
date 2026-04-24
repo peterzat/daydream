@@ -350,6 +350,15 @@ cmd_test() {
     "$VENV_PY" -m daydream.testing "$@"
 }
 
+cmd_voice_samples() {
+    # Render the voice-samples corpus against the live vLLM, write a
+    # dated model-slugged markdown file under docs/pretty/voice-samples/.
+    # See SPEC 2026-04-24 ("voice-bench + Qwen RP-Ink A/B") and the
+    # harness docstring in daydream/voice_samples.py.
+    _require_venv
+    "$VENV_PY" -m daydream.voice_samples "$@"
+}
+
 case "${1:-}" in
     up)            shift; cmd_up "$@" ;;
     down)          shift; cmd_down "$@" ;;
@@ -362,6 +371,7 @@ case "${1:-}" in
     vllm-down)     shift; cmd_vllm_down "$@" ;;
     world)         shift; cmd_world "$@" ;;
     test)          shift; cmd_test "$@" ;;
-    "")            echo "usage: bin/game {up|down|status|logs|image-test|comfyui-up|comfyui-down|vllm-up|vllm-down|world|test}" >&2; exit 2 ;;
-    *)             echo "usage: bin/game {up|down|status|logs|image-test|comfyui-up|comfyui-down|vllm-up|vllm-down|world|test} (got: $1)" >&2; exit 2 ;;
+    voice-samples) shift; cmd_voice_samples "$@" ;;
+    "")            echo "usage: bin/game {up|down|status|logs|image-test|comfyui-up|comfyui-down|vllm-up|vllm-down|world|test|voice-samples}" >&2; exit 2 ;;
+    *)             echo "usage: bin/game {up|down|status|logs|image-test|comfyui-up|comfyui-down|vllm-up|vllm-down|world|test|voice-samples} (got: $1)" >&2; exit 2 ;;
 esac

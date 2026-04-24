@@ -1,0 +1,6 @@
+{
+  "_doc": "Anchor #1: simplest possible conversational opener. Probes the baseline 'Rook notices you and says something short' voice. Most models handle this; differences here are usually pacing, warmth, and how quickly they drift into flowery prose.",
+  "name": "greeting",
+  "skill": "rook",
+  "player_input": "hello"
+}

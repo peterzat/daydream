@@ -1,0 +1,6 @@
+{
+  "_doc": "Anchor #2: factual question about Rook's immediate work. Invites concrete sensory detail (what's on the anvil, what the embers are doing). Creative-writing finetunes should land specific, grounded prose here; instruct-tunes tend toward generic 'working hard' answers.",
+  "name": "forge_question",
+  "skill": "rook",
+  "player_input": "what are you making today"
+}

@@ -1,0 +1,6 @@
+{
+  "_doc": "Anchor #3: invitation to introspection. The 'what do you think about' form asks Rook for something beyond surface description. The WHIMSY tone (not chatty, but warm and observant) is hardest to hold here — it's where a model that 'gets' the persona shines, and where an instruct-tune may turn philosophical or preachy.",
+  "name": "inner_life",
+  "skill": "rook",
+  "player_input": "what do you think about while you work"
+}

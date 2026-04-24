@@ -21,6 +21,32 @@ class LLMUnavailable(Exception):
     this by narrating a 'foggy' fallback via the event log (SPEC criterion 7)."""
 
 
+# Optional side channel for observability tools that need token-usage
+# metrics from the last call (e.g. voice-samples harness). Module-global
+# because acompletion_json is awaited from various layers and threading
+# the usage through every caller would leak implementation detail
+# through the whole skill pipeline. Cleared at the TOP of each call;
+# populated only on successful response. Not thread-safe by design —
+# the consumer reads this synchronously after awaiting a single
+# acompletion_json call. See SPEC 2026-04-24 criterion 2.
+_last_usage: dict | None = None
+
+
+def reset_last_usage() -> None:
+    """Clear the last-usage side channel. Callers that care about their
+    own call's usage should call this, then acompletion_json, then
+    get_last_usage() to read a clean record."""
+    global _last_usage
+    _last_usage = None
+
+
+def get_last_usage() -> dict | None:
+    """Return {prompt_tokens, completion_tokens} from the most recent
+    acompletion_json response, or None if the last call was never made,
+    failed before response, or the backend omitted a usage field."""
+    return _last_usage
+
+
 async def acompletion_json(
     system: str,
     user: str,
@@ -34,6 +60,10 @@ async def acompletion_json(
 
     Raises LLMUnavailable on any backend failure or unparseable output. The
     caller decides how to recover (typically by narrating 'the dream is foggy')."""
+    # Clear any stale usage from a prior call before the side channel
+    # could leak into a failed call's observability.
+    global _last_usage
+    _last_usage = None
     # Hold the GPU arbiter for the duration of the LLM call so vLLM and
     # any in-flight image-gen on ComfyUI never run simultaneously on the
     # 20 GB GPU. The lock is in-process; see daydream/gpu/arbiter.py.
@@ -59,6 +89,16 @@ async def acompletion_json(
         text = response.choices[0].message.content or ""
     except (AttributeError, IndexError) as e:
         raise LLMUnavailable(f"LLM returned no message: {e}") from e
+
+    # Capture usage after a successful response, BEFORE JSON parsing,
+    # so even a malformed-JSON LLMUnavailable raise still leaves
+    # diagnostic metrics behind for a caller to read.
+    usage_obj = getattr(response, "usage", None)
+    if usage_obj is not None:
+        _last_usage = {
+            "prompt_tokens": getattr(usage_obj, "prompt_tokens", None),
+            "completion_tokens": getattr(usage_obj, "completion_tokens", None),
+        }
 
     try:
         return json.loads(text)

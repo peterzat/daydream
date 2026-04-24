@@ -1,0 +1,6 @@
+{
+  "_doc": "Anchor #4: a small-talk prompt about the rhythm of the day. Invites a weather-or-time observation. The quiet reply ('it has been; the forge takes its own hours') is the target tone; failure modes include over-explaining or asking the player a follow-up question instead of reflecting.",
+  "name": "small_talk",
+  "skill": "rook",
+  "player_input": "has it been quiet today"
+}

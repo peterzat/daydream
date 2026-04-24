@@ -1,0 +1,6 @@
+{
+  "_doc": "Anchor #5: open-ended, slightly vague. No specific question; Rook has to choose what to notice. Good models compose a small sensory observation; weaker ones default to 'how may I help you' service-desk phrasing that fails the WHIMSY tone.",
+  "name": "open_invitation",
+  "skill": "rook",
+  "player_input": "tell me something"
+}
