@@ -52,6 +52,35 @@ else
     "$VLLM_DIR/.venv/bin/python" -m pip install --quiet "vllm==$VLLM_VERSION"
 fi
 
+echo "==> gguf metadata patch (workaround for upstream packaging bug)"
+# transformers' is_gguf_available() reads gguf's version via
+# importlib.metadata.packages_distributions() and falls back to
+# getattr(gguf, '__version__'). For every gguf version in vLLM's
+# supported range (>=0.17.0 through 0.19.0, verified 2026-05-06),
+# packages_distributions() does NOT register the gguf import name AND
+# the gguf module exposes no __version__ attr. Result: the fallback
+# yields "N/A" which version.parse rejects, crashing vLLM startup
+# any time it tries to load a GGUF model. We append __version__ to
+# the installed gguf package after pip install, derived from the
+# distribution metadata (which is correct; only the import-name
+# mapping is broken). Idempotent: re-runs detect the prior patch
+# and skip. See SPEC 2026-05-06 "RP-Ink A/B + tic-detection probe"
+# for the diagnosis chain. Remove this block whenever upstream gguf
+# fixes its packaging metadata.
+GGUF_VER="$("$VLLM_DIR/.venv/bin/python" -c 'import importlib.metadata; print(importlib.metadata.version("gguf"))' 2>/dev/null || echo)"
+GGUF_INIT="$("$VLLM_DIR/.venv/bin/python" -c 'import gguf, os; print(os.path.join(os.path.dirname(gguf.__file__), "__init__.py"))' 2>/dev/null || echo)"
+if [[ -z "$GGUF_VER" || -z "$GGUF_INIT" || ! -f "$GGUF_INIT" ]]; then
+    echo "    skipped (gguf not importable in venv)" >&2
+elif grep -q "^__version__" "$GGUF_INIT"; then
+    echo "    already patched (gguf $GGUF_VER, $GGUF_INIT)"
+else
+    {
+        echo ""
+        echo "__version__ = \"$GGUF_VER\"  # daydream patch: transformers is_gguf_available compat"
+    } >> "$GGUF_INIT"
+    echo "    patched __version__ = $GGUF_VER into $GGUF_INIT"
+fi
+
 echo "==> Model: $MODEL"
 # Pre-cache via huggingface_hub so vllm serve starts fast (else it blocks
 # while downloading on first launch). Stored in ~/.cache/huggingface/hub.
