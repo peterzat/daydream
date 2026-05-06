@@ -1,9 +1,9 @@
-## Review — 2026-04-24 (commit: 1b045a6)
+## Review — 2026-05-06 (commit: 2c3edb5)
 
-**Summary:** Refresh review of the 5 code-bearing commits landed since the prior review (`1a92aaa`): `6f014d0` (migration 006 seeds Rook + `find_toon_in_room_by_name`), `93ab08e` (core.examine extends to toons with toon-wins-on-collision), `f6ddf66` (WS snapshot reflects NPC co-location), `f32037a` (migration 007 adds `toons.presence_text`), `2a93236` (broadcast loop emits presence narrates after controlled moves). Two SPEC turn-close + consume commits landed alongside. Focus set matches full set (9 files): `daydream/api/ws.py`, `daydream/skills/core.py`, `daydream/toons.py`, `migrations/006_first_npc.sql`, `migrations/007_npc_presence.sql`, plus 4 test files. 253/253 short + 335/335 medium green. `/security` scanned the same 9 files and returned 0 findings (SECURITY.md refreshed; Rook/Wren are fictional, `presence_text` lands in `narrate` payloads not LLM prompts, SQL is parameterized, migrations are static DDL/DML). External reviewers configured but no API keys active, so `review-external.sh` exited silently. Independent review: examine-on-toon branches (lookup order, article-stripping, case-insensitivity, room scoping) are correct; the new `_emit_npc_presence_narrates` correctly sits inside the controlled-move branch with `snapshot_seq = events.max_seq()` captured BEFORE the narrate emission so the narrates pass the snapshot-duplicate filter, narrate events thread through the per-queue broadcast back to the client with the room filter correctly dropping narrates whose player has already left the room; `presence_text` is loaded defensively on pre-007 rows; migration 006's `INSERT OR IGNORE` + migration 007's add-column-with-NULL-default are both idempotent under the `_migrations`-table guard. No new BLOCK, no new WARN, no new NOTE.
+**Summary:** Refresh review of the 12 unpushed commits since `1b045a6`. Eight commits ship the NPC dialogue + voice-bench + prompt-template-variety + tic-detection chain across three SPEC turns: `b00c884` (NPC dialogue: Rook speaks via the data-skill pipeline), `601cffa`+`12216e4` (voice-bench harness, corpus, AWQ baseline), `102d6aa`+`6013b6c` (Rook prompt-template variety pass + 2026-05-06 AWQ baseline showing 5/5 distinct openers), `c41d534` (tic-detection probe), `2c3edb5` (vLLM GGUF blocker for the active spec's RP-Ink leg). Four SPEC consume/evolve commits (`f41606a`, `4d2392f`, `cd68c22`, `1375232`) carry the meta state forward. Focus set = full set (12 paths): `bin/game` (voice-samples dispatch), `daydream/llm/client.py` (token-usage side channel), `daydream/voice_samples.py` (new harness), `skills/rook.json` (prompt template revised for opener variety), 5 corpus files at `tests/drift/voice/*.json`, and 3 test files (`tests/test_voice_baseline.py` new, `tests/test_voice_samples.py` new, `tests/test_ws_rook.py` new). 271/271 short + 360/360 medium green at HEAD. `/security` scanned the same 12 paths and returned 0 BLOCK/WARN/NOTE (SECURITY.md refreshed at `2c3edb5`; the new `_last_usage` side channel stores only token counts not prompt content; voice-samples harness is operator-only with proper env-var save/restore + tmpdir 0700 isolation; data-skill pipeline reuses `safety.wrap_player_input` + Jinja `SandboxedEnvironment`; corpus JSON is static + validated). External reviewers configured but no API keys active; `review-external.sh` exited silently (fail-open). Independent review: `voice_samples.py`'s tmp-DB lifecycle correctly restores `DAYDREAM_DATA_DIR` even on exception via try/finally; the LLM-client side channel clears at the top of each call so failed calls don't leak stale metrics; `_DIALOG_QUOTE_RE = (?<![A-Za-z])'` correctly skips apostrophes inside words ("Rook's", "today's") and matches dialog-opening single-quotes; the 04-24/05-06 parametrized regression-detection demo is a clean way to assert both the post-fix property AND the pre-fix counterexample; the C2 blocker is surfaced cleanly per the SPEC's "fails clean" language with a full traceback chain captured in commit body and SPEC.md `### Findings`. No new BLOCK, no new WARN, no new NOTE.
 
 **External reviewers:**
-Configured but all provider API keys are commented out in `~/.config/claude-reviewers/.env`; script exited 0 with no output (fail-open).
+Configured but no provider API keys active in `~/.config/claude-reviewers/.env`; script exited 0 with no output (fail-open).
 
 ### Findings
 
@@ -15,9 +15,9 @@ None.
 
 ### Carry-forwards (unchanged vs prior entry)
 
-All 12 NOTEs from the prior entry still apply. The only one whose file is in this round's focus set is the subscriber-queue / unbounded-queue NOTE on `daydream/api/ws.py`; the new `_emit_npc_presence_narrates` calls `events.append` which enqueues to the same unbounded subscriber queues, so the concern is unchanged. Other NOTEs:
+All 12 NOTEs from the prior entry (`1b045a6`) still apply. None of their file patterns are in this round's focus set, but each remains present in the codebase:
 
-[NOTE] daydream/llm/safety.py:83 — `_CLOSE_TAG = "</player_input>"` dead after the switch to `_CLOSE_TAG_RE`. Unchanged.
+[NOTE] daydream/llm/safety.py:83 — `_CLOSE_TAG = "</player_input>"` dead after the switch to `_CLOSE_TAG_RE`.
 
 [NOTE] web/assets/style.css:183-184 — `footer a` / `footer a:hover` rules dead after 881a6dc.
 
@@ -51,9 +51,9 @@ Unchanged from prior entry:
 
 ### Note for next turn
 
-Active SPEC (NPC dialogue — Rook speaks, 2026-04-24) calls for `skills/rook.json` + a new `tests/test_ws_rook.py`. The NPC-presence-narrate machinery this review covered is a prerequisite feature (Rook feels present in the room) and lands cleanly; the dialogue pipeline re-uses the existing data-skill executor so the next increment is largely content + tests.
+Active SPEC (RP-Ink A/B + tic-detection probe, 2026-05-06) is at 2/5 with C2-C4 BLOCKED on a vLLM 0.19.1 + transformers 5.6.0 + gguf packaging-metadata bug. C1 (probe) and C5 (tests green) shipped. The blocker chain (`packages_distributions()` → `getattr(gguf, '__version__', 'N/A')` → `version.parse('N/A')`) and four resolution paths are durably documented in SPEC.md `### Findings (2026-05-06)` and BACKLOG.md `qwen-2.5-7b-rp-ink-trial` status note, so the next turn doesn't need conversation context to revisit. Operator decision required to unblock.
 
 ---
-*Prior review (2026-04-23, commit 1a92aaa): refresh review of `c33fdaa` (three WARN fixes from the prior round: narrative-text mood coverage, case-insensitive close-tag regex, `skills.description` persistence) + `1a92aaa` (docs refresh). 0 BLOCK / 0 WARN; one new NOTE (dead `_CLOSE_TAG` constant); 11 NOTEs carried forward.*
+*Prior review (2026-04-24, commit 1b045a6): refresh review of the NPC presence narration chain (migration 006 seed Rook + `find_toon_in_room_by_name`, `core.examine` extends to toons, WS snapshot reflects NPC co-location, migration 007 adds `toons.presence_text`, broadcast loop emits presence narrates after controlled moves). 0 BLOCK / 0 WARN / 12 NOTEs (all carried forward).*
 
-<!-- REVIEW_META: {"date":"2026-04-24","commit":"1b045a6","reviewed_up_to":"1b045a66576e4c55f214ec51d1d390bc737c784a","base":"origin/main","tier":"refresh","block":0,"warn":0,"note":12} -->
+<!-- REVIEW_META: {"date":"2026-05-06","commit":"2c3edb5","reviewed_up_to":"2c3edb58b99385a0d8a3a4e0f015a2c62b383b41","base":"origin/main","tier":"refresh","block":0,"warn":0,"note":12} -->
