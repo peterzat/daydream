@@ -72,13 +72,7 @@ context for every entry below lives in `~/.claude/plans/let-s-design-a-fairly-gi
 
 Captured from the comprehensive GPU/ML doc pass; full rationale per item lives in `docs/gpu-and-models.md` "Things we have not tried yet".
 
-### voice-and-aesthetic-audit-trail (PARTIALLY LANDED 2026-04-23)
-- **One-line description:** Add `tools/voice-bench.py` (and image counterpart) that renders 3-5 anchor LLM prompts to `docs/pretty/voice-samples/<date>.md` and 3-5 anchor image prompts to `docs/pretty/aesthetic-samples/<date>/`. Not pass/fail; a dated chronology you can scroll back through to see when the vibe shifted, and a side-by-side substrate when swapping models or LoRAs.
-- **Status:** The aesthetic half landed via `bin/game test human` (commit 2026-04-23): renders the 3 `tests/drift/aesthetics/*.json` anchors, routes through qpeek for rubric capture, writes a dated `docs/pretty/aesthetic-samples/<date>/review.md`. The LLM-voice half (anchored narration samples to `docs/pretty/voice-samples/`) is still deferred — see `voice-samples-capture` below.
-- **Revisit criteria for the voice half:** `npc-drift-loop` or `data-skills-cli` lands and produces real NPC narration; then the voice anchors have something meaningful to watch drift against.
-- **Origin:** docs/gpu-and-models.md (Quality guardrails)
-
-### qwen-2.5-7b-rp-ink-trial
+### qwen-2.5-7b-rp-ink-trial (ACTIVE in spec 2026-05-06)
 - **One-line description:** A/B `Qwen/Qwen2.5-7B-RP-Ink` (or successor creative-writing finetune) against the current `Qwen/Qwen2.5-7B-Instruct-AWQ` for narration voice. Drop-in `DAYDREAM_VLLM_MODEL` swap; same compute, same VRAM. The original Plan-agent research called it out for cozy/atmospheric narration specifically.
 - **Why deferred:** v1 has no NPC dialogue yet (data-skills + drift land in later turns). Without representative narration, the A/B has nothing meaningful to compare. Also blocked on `voice-and-aesthetic-audit-trail` for clean side-by-side capture.
 - **Revisit criteria:** `npc-drift-loop` or `data-skills-cli` lands and produces real NPC narration; voice-bench fixture exists.
@@ -106,12 +100,6 @@ Captured from the test-architecture landing (2026-04-23); scaffolding for these 
 - **Why deferred:** Human qpeek review (commit 2026-04-23) is the v0 human-in-the-loop. A Claude-vision gate is complementary but costs API tokens per run; only earns its keep when human bandwidth is the bottleneck (multiple daily workflow tweaks, or a second contributor).
 - **Revisit criteria:** We start doing ≥3 LoRA/workflow/sampler A/Bs per week and qpeek interactive review becomes the rate limit; OR a second contributor needs machine-verifiable aesthetic gating without interactive review.
 - **Origin:** test architecture plan (2026-04-23)
-
-### voice-samples-capture
-- **One-line description:** The LLM half of `voice-and-aesthetic-audit-trail`: render 5 anchor narration prompts (once real NPC dialogue exists) to `docs/pretty/voice-samples/<date>.md` as a dated chronology. Distinct from `test_llm_json_adherence.py` which checks schema adherence — this is free-form text you scroll back through to see when the voice shifted.
-- **Why deferred:** v0 has no NPC dialogue; the anchors have nothing meaningful to capture. Blocked on `npc-drift-loop` or `data-skills-cli`.
-- **Revisit criteria:** First NPC dialogue lands; first model bump where side-by-side voice comparison would help.
-- **Origin:** test architecture plan (2026-04-23), splits the LLM half off from `voice-and-aesthetic-audit-trail`
 
 ### archive-restore-roundtrip-test
 - **One-line description:** Add a `tier_long` test that archives a world via `bin/game world archive`, deletes it, restores from the archive, then diffs the restored DB + cache against the pre-archive state. Goes deeper than the current `test_admin.py` unit coverage (belt-and-suspenders on the E2E flow).
