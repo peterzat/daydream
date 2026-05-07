@@ -24,6 +24,7 @@ if "$GAME" bogus 2>/dev/null; then fail "bogus subcommand should exit non-zero";
 # image-test subcommand should be in the usage line.
 out="$("$GAME" 2>&1 || true)"
 echo "$out" | grep -q "image-test" || fail "usage line should mention image-test; got: $out"
+echo "$out" | grep -q "up-all" || fail "usage line should mention up-all; got: $out"
 
 # image-test --help should not crash (uses argparse, exits 0).
 if ! "$GAME" image-test --help >/dev/null 2>&1; then

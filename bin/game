@@ -3,6 +3,8 @@
 #
 # Subcommands:
 #   up       start the FastAPI server (and announce vLLM presence)
+#   up-all   start FastAPI + kick off vLLM and ComfyUI in the background
+#            (engines load over ~30-60 s; game is reachable immediately)
 #   down     stop running processes
 #   status   report what is running, on which port, and where state lives
 #   logs     tail recent process logs (default: fastapi)
@@ -190,6 +192,28 @@ cmd_up() {
         local host; host="$(hostname -f 2>/dev/null || hostname 2>/dev/null || echo '<this-host>')"
         echo "  http://${host}:${PORT}"
     fi
+}
+
+cmd_up_all() {
+    # Bring up FastAPI synchronously, then kick off vLLM and ComfyUI in
+    # the background. The game is reachable as soon as cmd_up's readiness
+    # poll returns (~3 s); engines load over the next ~30-60 s. Watch
+    # progress via `bin/game status`.
+    #
+    # Engine startup failures (not bootstrapped, port in use, model file
+    # missing) print their diagnostic and are skipped — daydream's
+    # graceful-failure paths ("the dream is foggy" for LLM down,
+    # "painting..." overlay for image-gen down) mean the game still runs
+    # at every engine combination. There is no `down-all` counterpart yet;
+    # `bin/game down` stops only FastAPI, so engines started by `up-all`
+    # need explicit `vllm-down` / `comfyui-down`.
+    cmd_up
+    echo
+    echo "==> Starting GPU engines in the background"
+    cmd_vllm_up || echo "  vllm: skipped (see diagnostic above)" >&2
+    cmd_comfyui_up || echo "  comfyui: skipped (see diagnostic above)" >&2
+    echo
+    echo "Engines load over ~30-60 s. Run 'bin/game status' to track readiness."
 }
 
 cmd_down() {
@@ -383,6 +407,7 @@ cmd_drift_samples() {
 
 case "${1:-}" in
     up)            shift; cmd_up "$@" ;;
+    up-all)        shift; cmd_up_all "$@" ;;
     down)          shift; cmd_down "$@" ;;
     status)        shift; cmd_status "$@" ;;
     logs)          shift; cmd_logs "$@" ;;
@@ -395,6 +420,6 @@ case "${1:-}" in
     test)          shift; cmd_test "$@" ;;
     voice-samples) shift; cmd_voice_samples "$@" ;;
     drift-samples) shift; cmd_drift_samples "$@" ;;
-    "")            echo "usage: bin/game {up|down|status|logs|image-test|comfyui-up|comfyui-down|vllm-up|vllm-down|world|test|voice-samples|drift-samples}" >&2; exit 2 ;;
-    *)             echo "usage: bin/game {up|down|status|logs|image-test|comfyui-up|comfyui-down|vllm-up|vllm-down|world|test|voice-samples|drift-samples} (got: $1)" >&2; exit 2 ;;
+    "")            echo "usage: bin/game {up|up-all|down|status|logs|image-test|comfyui-up|comfyui-down|vllm-up|vllm-down|world|test|voice-samples|drift-samples}" >&2; exit 2 ;;
+    *)             echo "usage: bin/game {up|up-all|down|status|logs|image-test|comfyui-up|comfyui-down|vllm-up|vllm-down|world|test|voice-samples|drift-samples} (got: $1)" >&2; exit 2 ;;
 esac
