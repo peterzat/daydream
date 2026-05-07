@@ -8,12 +8,13 @@ The image above is the image-gen pipeline's first real output: prompt seeded fro
 
 ## Status
 
-Latest stable cut: **v0.1.0**. Runs on a single Linux dev box (RTX 4000 SFF Ada, 20 GB VRAM); designed to port to Cloudflare and containers later. Test gates: 277 fast tests (`bin/game test short`, ~3 s) and 376 integration tests (`bin/game test medium`, ~4 s); both 100% green at v0.1.0. Real-GPU drift probes run on-demand under `bin/game test long`.
+Latest stable cut: **v0.1.0**. Runs on a single Linux dev box (RTX 4000 SFF Ada, 20 GB VRAM); designed to port to Cloudflare and containers later. Test gates on current `main`: 290 fast tests (`bin/game test short`, ~3 s) and 400 integration tests (`bin/game test medium`, ~4 s); both 100% green. Real-GPU drift probes run on-demand under `bin/game test long`.
 
 What works today:
 
 - Multi-room world (5 rooms, bidirectional exits) with two hand-authored NPCs (Rook the forge-keeper at `r-forge`; Iris the attic archivist at `r-attic`) you can talk to via the data-skill pipeline.
 - NPC drift loop emits per-NPC narrate ticks while the player is elsewhere (every 5 min idle, 30 min when humans are connected).
+- NPC dialogue memory: each Rook / Iris exchange is captured to a per-world `memories` table with a 384-dim CPU embedding (BGE-small via `sentence-transformers`), and the next turn pulls top-K by `cosine_similarity * exp(-age/24h)` and weaves them into the prompt as context. Fail-closed (capture/retrieve return `None` / `[]` if the embedder isn't installed) so the dialogue path stays warm even before `bin/memory-bootstrap` runs. CPU-only by construction; no GPU arbiter contention.
 - Watercolor SDXL backgrounds for any room, generated locally via ComfyUI behind the GPU arbiter. vLLM (Qwen 2.5 7B Instruct AWQ) serves narration. Both engines optional; the game runs at all engine combinations.
 - Voice-bench audit-trail harness (`bin/game voice-samples`) captures dated narrate samples for any model swap; four baselines in tree under `docs/pretty/voice-samples/` (pre-fix and post-fix AWQ plus two Mistral-Nemo Q4 failure modes — see Release notes).
 - World admin: `bin/game world list / archive / restore / verify / delete` covers per-world archival, full-bundle ship-to-friend, integrity checks, cascade delete.
@@ -88,11 +89,21 @@ For the live LLM ↔ image-gen serialization smoke (boots both engines, runs 5 a
 .venv/bin/python tools/arbiter-smoke.py
 ```
 
+## NPC memory (optional)
+
+NPC dialogue retrieval needs a CPU embedder (`sentence-transformers` BGE-small, ~100 MB). One-time install:
+
+```sh
+bin/memory-bootstrap     # ~200 MB CPU torch wheels + the BGE-small model
+```
+
+The script installs `sentence-transformers` against the PyTorch CPU wheel index (avoids the ~1.5 GB CUDA libs we never use; embedding runs on CPU by construction so the GPU stays free for vLLM + ComfyUI under the arbiter). Re-runs are no-ops. Skip it and the dialogue path still works — capture / retrieve fail closed and NPCs just have no memory until the bootstrap lands. Toggle the whole subsystem with `DAYDREAM_MEMORY_ENABLED` (default `1` in production, `0` in `tests/conftest.py`).
+
 ## Tests
 
 ```sh
-bin/game test short     # unit / fast (~3s)      — pre-commit gate (277 tests at v0.1.0)
-bin/game test medium    # integration (~4s)      — pre-push gate (376 tests at v0.1.0)
+bin/game test short     # unit / fast (~3s)      — pre-commit gate (290 tests on main)
+bin/game test medium    # integration (~4s)      — pre-push gate (400 tests on main)
 bin/game test long      # real-GPU drift (~15min) — on-demand / pre-release
 bin/game test human     # aesthetic rubric via qpeek — async human review
 ```
@@ -146,6 +157,7 @@ v0.1.0 takes the v1 image-gen pipeline as a substrate and builds a multi-room wo
 | Image gen (optional) | SDXL base + `ostris/watercolor_style_lora_sdxl` via ComfyUI, GPU arbiter shared with vLLM |
 | GPU arbiter | `daydream/gpu/arbiter.py` (`asyncio.Lock`); serializes LLM and image-gen on the 20 GB card |
 | World content | Five rooms; two NPCs (Rook at `r-forge`, Iris at `r-attic`) authored as data-skills under `skills/<name>.json` with `context_predicate` room-scoping; `daydream/drift.py` emits per-NPC narrate ticks on the gentle-drift cadence (5 min idle / 30 min when humans are connected) |
+| NPC memory (optional) | Per-world `memories` table at `daydream/memories.py`; sentence-transformers BGE-small on CPU lazy-loaded on first call; embeddings stored as float32 BLOBs; retrieval ranks by `cosine_similarity * exp(-age_hours/24)`; `bin/memory-bootstrap` is the one-time CPU-torch + model install. v0 is SQLite-only; LanceDB is the v1 path once memory counts cross ~10K per NPC |
 | Frontend | Vanilla HTML / CSS / JS under `web/`, plain `<img>` tags (no Vite yet; Svelte polish is a backlog item) |
 | Auth | Friend-scope: shared password from `.env` on a single port |
 | Network access | `DAYDREAM_ACCESS` toggle in `.env`: `tailscale` (default) or `public` |

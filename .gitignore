@@ -40,3 +40,6 @@ external/
 # is written on every `bin/game test long` run as the observation to review
 # before ratifying a new golden. See TESTING.md "The drift loop".
 tests/baselines/*.latest.json
+
+# Original design prompt — local-only working copy.
+ORIGINAL-PROMPT.md
