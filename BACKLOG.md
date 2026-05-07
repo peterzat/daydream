@@ -12,12 +12,6 @@ context for every entry below lives in `~/.claude/plans/let-s-design-a-fairly-gi
 - **Revisit criteria:** v0 persistence verified; second human player wants in, or first NPC needs to be authored.
 - **Origin:** plan let-s-design-a-fairly-giggly-narwhal
 
-### npc-drift-loop (ACTIVE in spec 2026-05-07)
-- **One-line description:** Add APScheduler-driven background ticks in `daydream/drift.py` (weather, NPC mood, in-world calendar) on the "gentle drift" cadence (every ~5 min when empty, ~30 min when humans present); drift loop must yield the GPU lock immediately on player input.
-- **Why deferred:** v0 has no NPCs to drift; cadence design needs the GPU arbiter from image-gen-pipeline to be in place.
-- **Revisit criteria:** image-gen-pipeline landed (arbiter exists); at least 2 NPCs in the world.
-- **Origin:** plan let-s-design-a-fairly-giggly-narwhal
-
 ### npc-memory-retrieval
 - **One-line description:** Add `memories` SQLite table + LanceDB vector store at `daydream/memories.py`; embed events near NPCs with sentence-transformers BGE-small on CPU; NPC dialogue retrieves top-K by salience+recency before generating.
 - **Why deferred:** Requires multiple NPCs and a stable LLM dialogue path; v1 milestone after drift lands.
@@ -74,9 +68,9 @@ Captured from the comprehensive GPU/ML doc pass; full rationale per item lives i
 
 ### watercolor-lora-ab
 - **One-line description:** Try `ntc-ai/SDXL-LoRA-slider.watercolor` (slider-style; lets you dial intensity) and `lora-library/B-LoRA-watercolor` (decoupled style/content via B-LoRA technique) against the current `ostris/watercolor_style_lora_sdxl`. 12 MB each. Use `bin/game image-test "<prompt>" --lora <new>.safetensors` for the A/B.
-- **Why deferred:** Current pick (`ostris`) produces visibly painterly output that matches the WHIMSY anchor; no concrete complaint to fix. Worth doing once when there's an audit-trail fixture so the comparison is durable.
-- **Revisit criteria:** `voice-and-aesthetic-audit-trail` lands; OR a specific aesthetic complaint ("the trees are too sharp", "skies look uniform") that we want a different LoRA to address.
-- **Origin:** docs/gpu-and-models.md (Image-gen alternatives we considered and did not test)
+- **Why deferred:** Current pick (`ostris`) produces visibly painterly output matching the WHIMSY anchor; no concrete complaint to fix. Surfaced as a revisit candidate in 6 prior proposals (2026-04 through 2026-05) without ever being selected — the audit-trail-substrate-landed gate alone has consistently failed to motivate the work, so the criterion is tightened to require an actual aesthetic complaint before resurfacing.
+- **Revisit criteria:** A specific aesthetic complaint about current renders (e.g., "trees too sharp", "skies look uniform", "watercolor edges feel inconsistent across rooms") that we want to address by trying a different LoRA. The audit-trail substrate is in tree (`bin/game test human` qpeek output to `docs/pretty/aesthetic-samples/`) and ready to capture before/after comparisons whenever this entry activates.
+- **Origin:** docs/gpu-and-models.md (Image-gen alternatives we considered and did not test); revisit-criteria refresh 2026-05-07 (was double-gated; tightened to single complaint-driven gate after 6 declines).
 
 ### calibrated-fp8-kv-scales
 - **One-line description:** Run vLLM's FP8 calibration pass over a representative dataset to produce per-channel FP8 KV scales for `Qwen/Qwen2.5-7B-Instruct-AWQ`, then re-enable `--kv-cache-dtype fp8_e4m3` in `bin/game cmd_vllm_up`. Recovers localreview's documented +58% decode TPS / ~0.9 GB freed VRAM win that was lost when we rejected naive fp8_e4m3 on the 7B (model looped garbage tokens).
@@ -179,3 +173,4 @@ Captured from the test-architecture landing (2026-04-23); scaffolding for these 
 - **Why deferred:** Diminishing returns after 3 turns of voice-bench work. The Nemo Q4 result already shrunk the answer space; a 7B Instruct A/B would close a specific axis question (is the failure quant or arch?) rather than answer the original "does a creative-writing finetune flex?" question. Worth doing only if a future decision needs that closure.
 - **Revisit criteria:** Operator wants definitive closure on Mistral arch suitability before authoring a different LLM-pipeline change; OR a Mistral 7B creative-writing finetune publishes on HF (which would make the Mistral-vs-Qwen axis question load-bearing).
 - **Origin:** spec 2026-05-07
+

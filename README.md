@@ -8,7 +8,7 @@ The image above is the image-gen pipeline's first real output: prompt seeded fro
 
 ## Status
 
-v0 (*the smallest dream*) shipped 10/10. v1 (*image-gen pipeline*: SDXL base + watercolor LoRA via ComfyUI behind a GPU arbiter, vLLM serving Qwen 2.5 7B Instruct AWQ) shipped 8/8 with `tools/arbiter-smoke.py` validating live LLM ↔ image-gen serialization in 9 s on this hardware. Currently between spec turns; the v1 close-out proposal in [`SPEC.md`](SPEC.md) names three candidate next slices (`multi-room-navigation`, `data-skills-cli` + `safety-baseline-v1`, or `npc-drift-loop`). Roadmap and deferred entries live in [`BACKLOG.md`](BACKLOG.md).
+**v0.1.0 — first stable cut.** v0 (*the smallest dream*) shipped 10/10; v1 (*image-gen pipeline*: SDXL base + watercolor LoRA via ComfyUI behind a GPU arbiter, vLLM serving Qwen 2.5 7B Instruct AWQ) shipped 8/8 with `tools/arbiter-smoke.py` validating live LLM ↔ image-gen serialization in ~9 s on this hardware. Since then, twelve more spec turns have closed at 5/5 each, building out multi-room navigation, the data-skill safety baseline, two hand-authored NPCs (Rook the forge-keeper at `r-forge`; Iris the attic archivist at `r-attic`) talking via the data-skill pipeline, an asyncio-based NPC drift loop emitting per-NPC narrate ticks while the player is elsewhere, and a voice-bench audit-trail harness that captures dated narrate samples for any model swap. See `## Release notes` below for the v0.1.0 narrative. Roadmap and deferred items live in [`BACKLOG.md`](BACKLOG.md).
 
 ## Aesthetic
 
@@ -69,6 +69,8 @@ bin/game vllm-up            # bin/game vllm-down to stop
 
 The aesthetic A/B harness `bin/game image-test "<prompt>" [--model X --lora Y]` produces a one-shot PNG via the same workflow JSON the room-bg generator uses. Use it before locking in any LoRA choice. Output lands at `~/data/daydream/images/test/`; promote keepers to `docs/pretty/` (see [CLAUDE.md "Keeper images"](CLAUDE.md#keeper-images-docspretty)).
 
+The voice-bench A/B harness `bin/game voice-samples` renders the 5-prompt corpus at `tests/drift/voice/*.json` against the current `DAYDREAM_LLM_MODEL` (vLLM must be up) and writes a dated, model-slugged markdown file under `docs/pretty/voice-samples/`. Same idea as the image A/B but for narration: each capture documents the vLLM flag set, per-prompt latency + token counts, and the rendered narrate verbatim, so a future bump can be eyeball-diffed against the prior baseline. Three baselines ship in tree (one Qwen-AWQ, two Mistral-Nemo Q4 failure modes from the 2026-05-06/05-07 experiments).
+
 For the live LLM ↔ image-gen serialization smoke (boots both engines, runs 5 alternating requests, asserts no OOM and clean output):
 
 ```sh
@@ -78,23 +80,53 @@ For the live LLM ↔ image-gen serialization smoke (boots both engines, runs 5 a
 ## Tests
 
 ```sh
-bin/game test short     # unit / fast (~10s)     — pre-commit gate
-bin/game test medium    # integration (~90s)     — pre-push gate
+bin/game test short     # unit / fast (~3s)      — pre-commit gate (277 tests at v0.1.0)
+bin/game test medium    # integration (~4s)      — pre-push gate (376 tests at v0.1.0)
 bin/game test long      # real-GPU drift (~15min) — on-demand / pre-release
 bin/game test human     # aesthetic rubric via qpeek — async human review
 ```
 
-One entry point; four tiers; durations scale with what the tier verifies. Bare `.venv/bin/pytest` still runs every test (backward compat). The drift probes under `tests/drift/` exercise the real LLM + image-gen paths and compare to git-committed baselines under `tests/baselines/*.golden.json` — a divergence fails the test with a diff and the operator ratifies a new baseline with `mv .latest .golden` + commit. The durable philosophy and extension guide live in [`TESTING.md`](TESTING.md); read it before adding a test or bumping a model / LoRA / workflow.
+One entry point; four tiers; durations scale with what the tier verifies. Bare `.venv/bin/pytest` still runs every test (backward compat). The drift probes under `tests/drift/` exercise the real LLM + image-gen paths and compare to git-committed baselines under `tests/baselines/*.golden.json` — a divergence fails the test with a diff and the operator ratifies a new baseline with `mv .latest .golden` + commit. The tic-detection probe at `tests/test_voice_baseline.py` parses captured voice-bench markdown and asserts pairwise-distinct body-language openers across the 5 corpus prompts; a parametrized regression-detection demo proves the probe catches the 04-24 prompt-template tic that motivated it. The durable philosophy and extension guide live in [`TESTING.md`](TESTING.md); read it before adding a test or bumping a model / LoRA / workflow.
+
+## Release notes
+
+### v0.1.0 — first stable cut
+
+The smallest dream is now a small inhabited dream. v0.1.0 takes the v1 image-gen pipeline as a substrate and builds a multi-room world with two hand-authored NPCs, a data-skill safety baseline, an asyncio drift loop emitting per-NPC narrate ticks while the player is elsewhere, and a voice-bench audit-trail harness that captures dated narrate samples for any model swap. Tier_short and tier_medium both green at every closed turn (277 / 376 tests). Bare-mocked-LLM tests cover the data-skill safety pipeline + WS dispatch end-to-end; real-GPU drift probes run on-demand under `bin/game test long` against committed golden baselines.
+
+**What works:**
+
+- *World.* Five rooms (`r-meadow` spawn, `r-forge`, `r-bridge`, `r-attic`, `r-hollow`) connected by bidirectional `exits_json`; a player can `go north`, `go up`, etc., and the SPA renders the snapshot's exits as clickable buttons.
+- *NPCs.* Rook (forge-keeper, slot 100, at `r-forge`) and Iris (attic archivist, slot 101, at `r-attic`). Each has a `presence_text` line that fires when the player enters the room, plus a `skills/<npc>.json` data-skill that handles dialogue (`rook hello` at `r-forge` dispatches Rook's voice via the LLM; the same `iris hello` at `r-meadow` falls through to the chat fallback because the `context_predicate` scopes to `room_slug=attic`).
+- *Drift loop.* `daydream/drift.py` runs as an asyncio.Task in the FastAPI lifespan, sleeps `DAYDREAM_DRIFT_IDLE_SECONDS` (300 s) when no WS subscribers are connected and `DAYDREAM_DRIFT_BUSY_SECONDS` (1800 s) when ≥1 is. Each tick picks a random NPC, draws a line from a per-NPC pre-canned pool of 4 lines, emits a `narrate` event to the NPC's room. v0 is pre-canned — no LLM call, no GPU arbiter contention by design — so the BACKLOG entry's "yield arbiter on player input" requirement is vacuously satisfied until v1 introduces LLM-driven drift.
+- *Safety baseline.* `daydream/llm/safety.py` plus the data-skill effect-allowlist in `daydream/skills/effects.py` give us: input-banlist short-circuit (banned mood / pixel-art / urgency triggers a soft-narrate fallback before the LLM is called), Jinja `SandboxedEnvironment` template render with `<player_input>` role-separator tags, JSON `response_format` constraint at the LLM call site, refusal schema with default-reason fallback, and an output-banlist check on the parsed effects payload before any state mutation.
+- *Voice-bench audit trail.* `bin/game voice-samples` writes `docs/pretty/voice-samples/<today>-<model_slug>.md`. Three durable baselines in tree: `2026-05-06-qwen2.5-7b-instruct-awq.md` (the working substrate after the prompt-template variety pass), `2026-05-06-mn-12b-rp-ink-q4_k_m.md` (RP-Ink failure mode), `2026-05-07-mistral-nemo-instruct-2407.md` (Instruct controlled-base failure mode). Plus a regression-detection probe at `tests/test_voice_baseline.py` that parametrizes over the pre-fix and post-fix AWQ baselines.
+- *World admin.* `bin/game world list / archive / restore / verify / delete` covers per-world archival, full-bundle ship-to-friend, on-disk integrity checks, and cascade deletion. State lives under `~/data/daydream/`, never the project tree; archive bundles include a `MANIFEST.json` recording schema_version + asset counts.
+
+**Engines and operational notes:**
+
+- *vLLM.* 0.19.1 pinned, serving Qwen 2.5 7B Instruct AWQ on the RTX 4000 SFF Ada (compute capability 8.9). Tunings: `--enforce-eager` (avoids a CUDA-graph OOM hit on this card), `--gpu-memory-utilization 0.45` (~9 GB ceiling so SDXL fits alongside), `--max-model-len 8192`, `VLLM_LOGGING_LEVEL=ERROR`. **No `--kv-cache-dtype fp8_e4m3`**: deterministically broke tight-format JSON adherence on Qwen 2.5 7B AWQ during the `tools/arbiter-smoke.py` strict-JSON probe (model looped `!***` garbage tokens after one clean turn). Re-enabling the flag is gated on a calibration pass per the BACKLOG `calibrated-fp8-kv-scales` entry.
+- *gguf packaging-bug workaround.* `bin/vllm-bootstrap` includes an idempotent post-install patch that injects `__version__` into the installed `gguf/__init__.py`. transformers 5.6's `is_gguf_available()` reads the version via `importlib.metadata.packages_distributions()` and falls back to `getattr(gguf, '__version__', 'N/A')`; every gguf release in vLLM's supported range (0.17.0 through 0.19.0) fails to register the import name and exposes no `__version__`, so the fallback returns "N/A" and `version.parse` rejects it, crashing vLLM startup any time it tries to load a GGUF model. Patch is applied unmodified across two GGUF model loads (RP-Ink + Instruct, both Mistral-arch) so it generalizes; remove the patch block when upstream gguf fixes its packaging metadata. See [`docs/gpu-and-models.md`](docs/gpu-and-models.md) "Things we tried and rejected" for the full diagnosis chain.
+- *Image gen.* SDXL base 1.0 + `ostris/watercolor_style_lora_sdxl` via ComfyUI. ~6 GB resident, ~10-12 GB peak during inference. Coexists with vLLM behind the in-process arbiter (`asyncio.Lock`) at `daydream/gpu/arbiter.py`.
+
+**What we learned (and what didn't work):**
+
+- *Prompt-template variety.* The first AWQ baseline showed 4 of 5 narrate responses opening with the same 14-word phrase ("Rook pauses the steady rhythm of the bellows, wiping hands on the apron, and says,") — a template-induced tic from a flat list of candidate sensory beats. Eight prompt-template iterations later, the working configuration is: kind-specific input-anchor mapping (5 input kinds map to 5 distinct opener anchors), 3 illustrative exemplars showing varied openers + concrete spoken lines, explicit ban on the originating tic phrase by name. PREFER lists trigger direct phrase copying; AVOID lists prime the topics they ban; over-constrained prompts cause truncation. Iris was authored with these lessons baked in from version 1, no iteration needed.
+- *Greedy decoding tax.* vLLM's `acompletion_json` defaults to `temperature=0.0`, which makes capture deterministic but funnels the model into ONE preferred response shape regardless of input. Variety has to come from the prompt's input-differentiating signals, not from sampling.
+- *Mistral Nemo Q4 + data-skill pipeline = no.* Both `bartowski/MN-12b-RP-Ink-GGUF/MN-12b-RP-Ink-Q4_K_M.gguf` (creative-writing finetune) and `bartowski/Mistral-Nemo-Instruct-2407-GGUF/Mistral-Nemo-Instruct-2407-Q4_K_M.gguf` (controlled-base) fail the data-skill pipeline at our prompt template. RP-Ink returns `{"effects":[{}]}` (content-empty) deterministically; MN-Instruct fragments behavior across inputs (some non-JSON output, some `{"refused":true}` minimal refusals, some timeouts), and a direct probe with a simpler system prompt confirms it ALSO returns `{"effects":[{}]}` like RP-Ink. The pipeline incompatibility is base-architecture + Q4-quantization + prompt-shape, not RP-Ink-specific. The original "does a creative-writing finetune flex on Rook's voice?" question is parked under three forward-path BACKLOG entries (`creative-finetune-json-fluent-base`, `free-form-prose-pipeline`, `mistral-7b-instruct-fp16-ab`).
+
+**What's next (per `BACKLOG.md`):** `npc-memory-retrieval` (LanceDB + sentence-transformers BGE-small embedding events near NPCs; gated on drift-loop landing — gate now met). Then anything else operator-driven.
 
 ## Tech sketch
 
 | Layer | Choice |
 |---|---|
 | Backend | Python 3.10 + FastAPI + websockets, single process tree |
-| Persistence | SQLite per world (WAL), append-only event log as the spine; snapshots via file copy land in v1+ |
-| LLM (optional) | vLLM 0.19.1 serving Qwen 2.5 7B Instruct AWQ, called via `litellm` so the same code path works against vLLM today and Cloudflare / OpenAI / Anthropic later |
+| Persistence | SQLite per world (WAL), append-only event log as the spine; world archive/restore via tarball bundling DB + per-world cache + manifest (`bin/game world archive/restore`) |
+| LLM (optional) | vLLM 0.19.1 serving Qwen 2.5 7B Instruct AWQ, called via `litellm` so the same code path works against vLLM today and Cloudflare / OpenAI / Anthropic later. GGUF support in vLLM is patched-in via `bin/vllm-bootstrap`'s post-install workaround for the upstream gguf packaging-metadata bug — see Release notes above |
 | Image gen (optional) | SDXL base + `ostris/watercolor_style_lora_sdxl` via ComfyUI, GPU arbiter shared with vLLM |
 | GPU arbiter | `daydream/gpu/arbiter.py` (`asyncio.Lock`); serializes LLM and image-gen on the 20 GB card |
+| World content | Five rooms; two NPCs (Rook at `r-forge`, Iris at `r-attic`) authored as data-skills under `skills/<name>.json` with `context_predicate` room-scoping; `daydream/drift.py` emits per-NPC narrate ticks on the gentle-drift cadence (5 min idle / 30 min when humans are connected) |
 | Frontend | Vanilla HTML / CSS / JS under `web/`, plain `<img>` tags (no Vite yet; Svelte polish is a backlog item) |
 | Auth | Friend-scope: shared password from `.env` on a single port |
 | Network access | `DAYDREAM_ACCESS` toggle in `.env`: `tailscale` (default) or `public` |
