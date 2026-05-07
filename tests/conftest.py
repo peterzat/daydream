@@ -47,6 +47,14 @@ os.environ["DAYDREAM_ACCESS"] = "public"
 # that exercise drift opt in via monkeypatch.setenv.
 os.environ["DAYDREAM_DRIFT_ENABLED"] = "0"
 
+# LLM-driven drift narrates default ON in production but OFF in tests:
+# the existing 5 drift tests exercise the canned-pool path, and tests
+# that exercise the LLM path opt in via monkeypatch.setenv("DAYDREAM_DRIFT_LLM_ENABLED", "1")
+# AND mock daydream.llm.client.acompletion_json. Without this default,
+# any drift tick fired by a TestClient lifespan would try to import
+# litellm and contact a vLLM endpoint.
+os.environ["DAYDREAM_DRIFT_LLM_ENABLED"] = "0"
+
 # NPC memory subsystem (capture + retrieve via BGE-small on CPU). Off
 # by default in tests so the existing 16 Rook/Iris dialogue tests don't
 # pay the embedder cost or load sentence-transformers; tests that
