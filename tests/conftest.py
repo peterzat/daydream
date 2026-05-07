@@ -47,6 +47,13 @@ os.environ["DAYDREAM_ACCESS"] = "public"
 # that exercise drift opt in via monkeypatch.setenv.
 os.environ["DAYDREAM_DRIFT_ENABLED"] = "0"
 
+# NPC memory subsystem (capture + retrieve via BGE-small on CPU). Off
+# by default in tests so the existing 16 Rook/Iris dialogue tests don't
+# pay the embedder cost or load sentence-transformers; tests that
+# exercise memory opt in via monkeypatch.setenv("DAYDREAM_MEMORY_ENABLED", "1")
+# AND mock daydream.memories._embed to avoid loading the real model.
+os.environ["DAYDREAM_MEMORY_ENABLED"] = "0"
+
 # Redirect HOME to a session-scoped temp dir as a belt-and-suspenders measure:
 # any other code that resolves `~/...` during tests writes under this dir,
 # which the OS reaps. Use mkdtemp (not TemporaryDirectory) so the dir lives

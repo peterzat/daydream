@@ -1,110 +1,84 @@
-## Spec — 2026-05-07 — NPC drift loop (v0: pre-canned narrates)
+## Spec — 2026-05-07 — NPC memory retrieval (v0: SQLite-blob embeddings)
 
-**Goal:** Add a background drift loop in `daydream/drift.py` that periodically emits soft narrate events from each NPC, integrated into FastAPI's lifespan. v0 pulls drift lines from a pre-canned per-NPC pool (no LLM call) so the loop never contends for the GPU arbiter, leaving the "drift uses LLM → must yield arbiter on player input" question for a future spec. Realizes the BACKLOG `npc-drift-loop` entry's gentle-drift cadence requirement (~5 min idle, ~30 min when humans present) and unblocks `npc-memory-retrieval` (gated on drift-loop landing).
+**Goal:** Give Rook and Iris a working memory of past exchanges so dialogue stops feeling goldfish. Add `daydream/memories.py` with capture + retrieve APIs backed by a per-world `memories` SQLite table; embed with `sentence-transformers` BGE-small on CPU; data-skill pipeline retrieves top-K by similarity + recency before LLM render and captures the exchange after dispatch. v0 deliberately defers LanceDB — embeddings are stored as BLOBs on each row and ranked with in-Python cosine + recency decay, which is sufficient at single-user scale and removes a dependency. Realizes the BACKLOG `npc-memory-retrieval` entry; closes the v1 NPC depth chain after `npc-drift-loop`.
 
 ### Acceptance Criteria
 
-- [x] **`daydream/drift.py` ships an asyncio drift loop with FastAPI lifespan integration.** New module exposes `start_drift_loop()` (returns a handle the lifespan can later stop) and `stop_drift_loop(handle)` (cancels the task and awaits cleanup). `daydream/server.py`'s `lifespan` calls these symmetrically: `start` after `db.init_live()`, `stop` before `db.close_db()`. The loop is a single `asyncio.Task`; cancellation handled gracefully (`CancelledError` caught, task exits cleanly within ~1 s, no resource leaks). Each tick body is wrapped in a try/except that logs and continues, so one bad tick does not kill the loop.
+- [ ] **`daydream/memories.py` exposes capture and retrieve APIs that fail closed.** Module ships at minimum `capture(npc_id: str, world_id: str, text: str, source_event_seq: int | None = None) -> int | None` (returns the new memory id, or `None` on embedder/DB failure) and `retrieve(npc_id: str, world_id: str, query_text: str, k: int = 3) -> list[Memory]` (returns top-K by combined similarity + recency; empty list on failure). Both are sync; the CPU embedder doesn't need to be awaited and the data-skill pipeline calls them at well-defined points (see C4). Failures (embedder unavailable, model file missing, DB closed) are caught at the module boundary and logged via the existing `logging` pattern; never raised. The returned `Memory` shape carries at least `text`, `created_at`, `source_event_seq`, and a derived `age_seconds` field that the prompt template can render. Module DOES NOT take the GPU arbiter — embedding is CPU-only by construction.
 
-- [x] **Cadence rule.** The loop sleeps `DAYDREAM_DRIFT_IDLE_SECONDS` (default 300, i.e., 5 min) when zero WS subscribers are connected; sleeps `DAYDREAM_DRIFT_BUSY_SECONDS` (default 1800, i.e., 30 min) when >=1 subscriber. The cadence decision is made at each wake-up (NOT at task start), so a connection that arrives mid-sleep takes effect on the next iteration. Subscriber count is read via `daydream.events` (currently `_subscribers` is a module-private list — implementer can add a small public `events.subscriber_count() -> int` accessor or read the existing API; the public/private call is the implementer's). The cadence calc is unit-testable with a mocked subscriber count.
+- [ ] **Embedding via sentence-transformers BGE-small on CPU, lazy-loaded, lives in the shared HF cache.** Default model is `BAAI/bge-small-en-v1.5` (384-dim float32, ~1.5 KB per embedding); override via `DAYDREAM_MEMORY_MODEL`. Model loads on first capture/retrieve call (NOT at import or at server lifespan startup), cached as a module-level singleton thereafter. `device='cpu'` is set explicitly so a future GPU-aware default in `sentence-transformers` cannot accidentally pull the model onto the 20 GB card. The model file lives in `~/.cache/huggingface` per the zat.env shared-cache convention; a new `bin/memory-bootstrap` helper pre-downloads via `huggingface_hub.snapshot_download` and is idempotent (re-runs are a no-op when the model is already cached). `bin/memory-bootstrap` does NOT need to run at game start — `bin/game up` works without it; the first dialogue exchange triggers an on-demand download if the cache is cold (slow first call, fast thereafter). New runtime dependency added to `pyproject.toml`: `sentence-transformers` (and its transitive deps).
 
-- [x] **Each tick emits exactly one soft narrate event** via `daydream.events.append`, addressed to the chosen NPC's current room. Behavior: (a) select an NPC at random from the world's NPCs (toons with `is_human_controlled=0`); (b) draw a drift line from a per-NPC pool of >=3 lines for that NPC (where the pool lives is the implementer's call — `daydream/drift.py` constant dict, a new `toons.drift_lines_json` column, or per-NPC `skills/<npc>-drift.json` — picking the cheapest path that reads cleanly); (c) emit one `narrate` event for the NPC's `current_room_id`, broadcast to in-room WS subscribers via existing machinery. Empty pool for an NPC: skip and try the next NPC. World with zero NPCs (or all NPCs have empty pools): tick is a no-op, no events appended. NO LLM CALL — drift ticks are pre-canned text so the v0 loop never takes the GPU arbiter, satisfying the BACKLOG entry's "yield arbiter on player input" requirement vacuously. Pool size for the two existing NPCs (Rook, Iris) is at least 3 distinct lines each, in WHIMSY tone matching their voices.
+- [ ] **`migrations/009_memories.sql` adds the per-world memories table and is idempotent.** Columns: `id` (INTEGER PRIMARY KEY AUTOINCREMENT), `world_id` (TEXT NOT NULL REFERENCES worlds(id)), `npc_id` (TEXT NOT NULL — references toons but not as an FK so a deleted NPC's memories survive in the log; mirrors the events-table pattern), `text` (TEXT NOT NULL), `embedding` (BLOB — raw float32 bytes from the embedder, expected length 384*4 = 1536 bytes for BGE-small but column does not enforce), `created_at` (TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP), `source_event_seq` (INTEGER NULL — soft pointer to the event row that triggered capture, useful for traceability). Index on `(npc_id, world_id, created_at DESC)` so recency-ordered retrieval scales when memory counts grow. Migration uses `CREATE TABLE IF NOT EXISTS` + `CREATE INDEX IF NOT EXISTS` so re-runs converge.
 
-- [x] **Tests cover cadence, tick emission, empty-world no-op, cancellation, and pool quality.** New `tests/test_drift.py` (`tier_short` where possible; `tier_medium` for the lifespan integration if needed):
-   - Cadence: with subscriber count = 0, next-sleep-interval == idle default; with count >= 1, == busy default. Env-var override of either default takes effect.
-   - Tick: with Rook and Iris seeded, one tick produces exactly one narrate event whose `room_id` matches the chosen NPC's `current_room_id` and whose text is from the NPC's drift pool. Random selection covered with a seeded `random` (or by stubbing the picker).
-   - Empty-world: with no NPCs (or all pools empty), tick produces no events.
-   - Cancellation: starting the loop, cancelling it, awaiting the task completes within ~1 s without unhandled exceptions.
-   - Pool quality: each NPC's pool has >=3 distinct strings; no string is empty or whitespace-only. (Lightweight content-shape check, not WHIMSY-tone assertion.)
+- [ ] **NPC dialogue captures and retrieves memories around the LLM call in `daydream/skills/data.py`.** Skill-name → NPC-id mapping uses the toons table (look up the row whose name matches the skill's `ui_hint` or whose id is `f"t-{spec.name}"` — implementer picks the cheaper path that reads cleanly). If the skill has no matching NPC row (e.g., `forge` data skill, which is room-anchored not NPC-anchored), the memory retrieval/capture phases are skipped and the existing pipeline is unchanged.
+  - **BEFORE Jinja render:** call `memories.retrieve(npc_id, world_id, args, k=DAYDREAM_MEMORY_TOP_K)` (default `k=3`); inject result into the template context as `memories` (a list of objects with `text`, `created_at`, `age_seconds`). Templates that don't reference `memories` are unaffected — the existing forge skill stays green.
+  - **AFTER successful effects dispatch (i.e., not on refusal, not on empty-effects, not on banlist hit):** capture two memories — one for the player input (e.g., text formatted as "the visitor said: <args>") and one for the NPC's narration text extracted from the resulting `narrate` effect. Both tagged with the NPC's id. Capture is fire-and-forget at the function level: any failure inside `memories.capture` is swallowed by the module's own error handling (C1) and never propagates back into the skill pipeline.
+  - The retrieval and capture phases run inside the same `arbiter.acquire()` window as the LLM call only insofar as that's where they're already invoked from; they themselves do NOT acquire the arbiter (CPU-only).
 
-- [x] **Existing test suite stays green.** `bin/game test short` and `bin/game test medium` pass. Drift loop's default sleep interval (300 s idle) is far above any test's wall-clock budget, so the first tick never fires inside a test run by accident; if any test does run long enough or timing-sensitive enough that drift events leak in, the implementer adds an opt-out (e.g., `DAYDREAM_DRIFT_ENABLED=0` with a default of `1` and the tests' `conftest.py` setting it to `0`). `tests/test_ws_rook.py` and `tests/test_ws_iris.py` continue green; their event-draining helpers are not perturbed by drift events arriving during the short test windows. No new tier_long tests; no GPU-dependent tests added.
+- [ ] **Rook and Iris prompt templates use the `memories` context variable when present and degrade silently when absent.** Both `skills/rook.json` and `skills/iris.json` updated to include a Jinja-conditional block — concretely something like `{% if memories %}You remember from earlier:\n{% for m in memories %}- {{ m.text }} ({{ m.age_seconds }}s ago)\n{% endfor %}{% endif %}`. The block is treated as **context the NPC may reference, not a literal recital**: the surrounding prompt-template language directs the NPC to weave one detail in naturally, NOT to quote or list memories. With `memories` empty (first-ever encounter, fresh world, retrieval-failed), the block renders to nothing and the existing Rook/Iris voices come through unchanged. Templates remain WHIMSY-tone-locked; no urgency, no modern tech, no harsh edges. The 1-2-sentence response shape and single-quoted dialogue convention are unchanged.
+
+- [ ] **Tests cover capture + retrieve, scoping, ranking, and graceful failure; existing suites stay green.** New `tests/test_memories.py`:
+   - **Roundtrip (tier_medium):** capture two memories with deterministic mocked embeddings, then retrieve with a query whose mock embedding has a known similarity ranking; assert the right memory is first.
+   - **Per-NPC scoping (tier_medium):** capture for `t-rook` and `t-iris`; retrieve for `t-rook` returns only Rook's memories.
+   - **Per-world scoping (tier_medium):** capture in `w-bunny` and a second test world; retrieve in one world doesn't leak the other.
+   - **Top-K honored (tier_short with mocked retrieve internals OR tier_medium):** retrieve with `k=2` from a 5-memory store returns 2 entries.
+   - **Recency tiebreaker (tier_medium):** two memories with identical similarity, the more recent one ranks higher.
+   - **Empty store (tier_medium):** `retrieve` on an NPC with zero memories returns `[]`.
+   - **Embedder failure (tier_short):** mock the embedder to raise; `retrieve` returns `[]`; `capture` returns `None`; both log a warning; no exception propagates.
+   - **Integration (tier_medium, in `tests/test_ws_rook.py` or new):** end-to-end via TestClient — first turn captures memories, second turn's mocked LLM call sees a non-empty `memories` block in the rendered prompt. Mock the LLM to capture the `user` argument and assert the rendered-prompt contains the memory text. The existing 8 Rook tests + 8 Iris tests stay green by default (they run with memory disabled or with capture mocked, so no leak).
+
+- [ ] **`bin/game test short` and `bin/game test medium` stay green; no new GPU-required tests.** Memory subsystem is opt-in for tests via `DAYDREAM_MEMORY_ENABLED` (default `1` in production code, default `0` in `tests/conftest.py`). When disabled, `memories.capture` and `memories.retrieve` short-circuit to no-op / `[]` so existing tests that don't care never load the embedder. Tests that exercise the memory path opt in via `monkeypatch.setenv("DAYDREAM_MEMORY_ENABLED", "1")` and mock `daydream.memories._embed` (or the `SentenceTransformer` class) to return deterministic vectors — no real BGE-small load anywhere in the test suite. `bin/memory-bootstrap` is a manual one-time tool, not invoked by any test; CI/test runs never touch the network or HF cache.
 
 ### Context
 
-**Adopted from `### Proposal (2026-05-07)` option 1** (NPC drift loop). User explicitly chose this direction over the also-surfaced `watercolor-lora-ab` revisit candidate. BACKLOG manifest at consume: `npc-drift-loop` annotated ACTIVE in spec 2026-05-07 via `spec-backlog-apply.sh`'s adopt op (no deletes).
+**Why the v0 simplification (no LanceDB).** The BACKLOG entry calls for "LanceDB vector store at `daydream/memories.py`". v0 instead stores the embedding as a BLOB column on the `memories` row and computes cosine similarity in Python at query time. At single-user scale (one human, two NPCs, conversation depth measured in dozens of exchanges), a linear scan over a per-NPC slice is sub-millisecond and adds zero new dependencies. LanceDB belongs in v1 once memory counts cross ~10K per NPC OR a second NPC archetype (cross-NPC retrieval, world-wide search) makes a proper index pay for itself. The future migration path is mechanical: read all rows, write to a Lance table, swap the retrieve internals. The BLOB column carries forward unchanged.
 
-**Why now and what's actually possible.** The BACKLOG `npc-drift-loop` entry called for "APScheduler-driven background ticks (weather, NPC mood, in-world calendar) on the gentle drift cadence." For v0 we narrow to NPC narrate emissions only — the simplest tick that's recognizable as "the world is alive." Weather and in-world calendar are not currently modeled in the schema; adding them is a separate scope. NPC mood drift (`toons.mood` UPDATE) is also feasible but invisible without a snapshot refresh; narrate emission is more directly demonstrable and reuses the existing room-broadcast machinery. APScheduler is heavier than v0 needs: a single `asyncio.Task` with a sleep loop is sufficient and adds no new dependency.
+**Why CPU-only embedding.** BGE-small is ~100 MB, runs ~10-30 ms per query on CPU, and freeing the GPU is the higher-value choice on this 20 GB card (vLLM + ComfyUI already saturate the budget under the arbiter). The CPU path also dodges the arbiter entirely — capture and retrieve never serialize against in-flight LLM/image-gen calls, which is what the BACKLOG entry's "embed events near NPCs" cadence requires.
 
-**Two NPCs are the activating signal.** Iris joined Rook in the just-shipped second-NPC spec (commit `8de1713`), satisfying the BACKLOG entry's `>=2 NPCs in the world` revisit gate. With a single NPC the drift loop would feel like a soliloquy; with two NPCs in different rooms (Rook at `r-forge`, Iris at `r-attic`), drift emits give the world a sense of activity even while the player is somewhere else.
+**Skill-name → NPC-id mapping.** The data-skill schema does not currently carry an `npc_id` field; the link is implicit via skill name + NPC name. v0 uses the cheapest of two paths — either `f"t-{spec.name}"` (works because Rook/Iris are `t-rook`/`t-iris`) or a query against `toons` by name match. Either is acceptable; the test for per-NPC scoping doesn't care about the mapping mechanism. Adding an explicit `npc_id` to the data-skill schema (heavier; touches `skills/*.json` + `daydream/skills/data.py` + DB schema) is deferred to v1 if the implicit mapping ever ambiguates.
 
-**No GPU arbiter contention by design (v0).** The BACKLOG entry's "drift loop must yield the GPU lock immediately on player input" requirement assumes drift ticks use the LLM. v0 ticks pull pre-canned text from a per-NPC pool, so they never call `daydream.gpu.arbiter.acquire()`; player input contention is impossible. When a future spec wants LLM-driven drift (richer voice, generated reactions, mood-aware narration), the arbiter-yielding requirement re-activates and lands as a separate increment.
+**Capture trigger choice.** v0 captures memories ONLY for NPC dialogue exchanges (player input + NPC narration), not for every event in the log. The BACKLOG entry's "embed events near NPCs" admits broader interpretations (room enter/leave, drift narrates, snapshot transitions) that would inflate capture volume without proportional dialogue-quality gain. The narrower trigger keeps the contract testable and the storage footprint small. Drift-narrate capture is a defensible v1 extension once the v0 baseline is in.
 
-**Subscriber count is the cadence signal.** The events module has `_subscribers: list[asyncio.Queue]` (line 54 of `daydream/events.py`); reading `len(events._subscribers)` gives the current count. The implementer either uses that directly or adds a small public `events.subscriber_count() -> int`. The choice doesn't change the contract; only the internal call site.
+**Salience formula.** The BACKLOG says "salience+recency". v0 collapses both into a single retrieval-time score: `score = cosine_similarity * exp(-age_hours / DECAY_HOURS)` with `DECAY_HOURS=24` (configurable via env if needed). Implementer is free to pick a different monotonic combination; the test contract only verifies "more similar wins" and "more recent wins on ties". Per-event salience tagging at capture (e.g., NPC speech > player input weighting) is deferred — adding a `salience` column is a one-migration future spec when needed.
 
-**Pool location** is a tradeoff the implementer picks:
-- A constant dict in `daydream/drift.py` (e.g., `DRIFT_POOLS = {"t-rook": [...], "t-iris": [...]}`) is cheapest. Lives close to the loop. Editing means a code change.
-- A new `toons.drift_lines_json` column (migration 009) puts the data with the NPC; editing means a migration or admin-CLI update. Heavier but more authorable.
-- Per-NPC `skills/<npc>-drift.json` follows the data-skill pattern; admin CLI handles install. Heaviest but matches how `skills/rook.json` and `skills/iris.json` are managed.
-
-For v0 the constant-dict path is a defensible default. If the implementer picks a column or skill file, that's also acceptable; the test for criterion 3 "draws from the pool" doesn't care where the pool lives.
+**Test isolation pattern.** Mirrors the established `DAYDREAM_DRIFT_ENABLED=0` pattern from the previous turn. The conftest disables memory by default; tests opt in via monkeypatch. This keeps the existing 16 Rook/Iris dialogue tests stable (their LLM mocks pass through whatever prompt arrives; the new memories block is benign).
 
 **zat.env conventions to respect.**
-- Small committable increments. Natural split: drift module + lifespan + tests as C1; pool-content polish (e.g., adding more lines or tone-tuning) as C2 if needed.
-- Commits attribute to `user.name` only; no Co-Authored-By trailers.
-- Verify build + tests pass before each commit.
-- Do not introduce abstractions for v0. No APScheduler, no plugin registry for tick types; one tick type (narrate emission), one cadence rule, one Task.
-- Do NOT take the GPU arbiter in v0 drift code. The arbiter wraps LLM and image-gen calls only; drift ticks don't do either.
+- Small committable increments. Natural split: C1+C2+C3 (module + embedder + migration) as one commit; C4 (data.py integration) as the next; C5 (template updates) as the next; C6+C7 (tests + green run) interleaved. Or bundle if a single commit reads cleanly.
+- Commits attribute to `user.name` only.
+- Verify `bin/game test short` and `bin/game test medium` pass before each commit.
+- Don't add abstractions for v0. No plugin registry for memory backends, no per-NPC memory configs, no in-process eviction policy. One concrete implementation, one storage layout.
+- Capture is fire-and-forget at the call site; no await dance, no try/except in the data.py call site beyond what the module already provides.
+- Do NOT take the GPU arbiter from `daydream/memories.py`.
+- HF cache (`~/.cache/huggingface`) is the model home — never override `HF_HOME`.
 
 **Out of scope for this spec** (deferred):
-- LLM-driven drift ticks (richer voice; would need GPU arbiter yielding + a different concurrency model). Separate future spec.
-- Weather and in-world calendar tick types. The BACKLOG entry references them; v0 ships the narrate emission tick only.
-- Mood transitions driven by drift (UPDATE `toons.mood`). Future spec.
-- Drift across multiple worlds. Single-world for v0.
-- Authoring UI for drift pools. Implementer picks the pool location; editing is operator-side.
-- Per-NPC cadence overrides. All NPCs drift at the same global cadence in v0.
-- Drift sensitivity to room state (e.g., suppress drift when player is in the NPC's room and just talked). Future polish.
-- Updating `npc-memory-retrieval` BACKLOG status note to reflect the drift-loop landing. Implicit when this spec ships; no entry-text edit required.
+- LanceDB vector store. Defer until single-user scale outgrows the linear scan.
+- Memory pruning / GC. Few-dozen memories per NPC is fine forever at v0 scale.
+- Per-event salience tagging at capture time.
+- Cross-NPC memory sharing (Rook referencing what Iris was told). Per-NPC scoping is the v0 contract.
+- Memory-driven mood updates (drift updating `toons.mood` from emotional memory cues).
+- Drift-loop integration with memory (drift narrates as memory-aware) — current drift is pre-canned and stays so for v0.
+- Ephemeral / forgotten memories (decay below a threshold → soft-delete). v0 keeps everything.
+- Author-time memory editing tools / admin CLI.
+- Voice-bench refresh against memory-augmented prompts. Existing voice baselines hold; if memory-bearing prompts visibly shift voice quality, that's a future spec.
 
 **Critical files to create:**
-- `daydream/drift.py` (criterion 1)
-- `tests/test_drift.py` (criterion 4)
+- `daydream/memories.py` (C1, C2)
+- `migrations/009_memories.sql` (C3)
+- `tests/test_memories.py` (C6)
+- `bin/memory-bootstrap` (C2; thin wrapper around `huggingface_hub.snapshot_download`)
 
 **Critical files to modify:**
-- `daydream/server.py` (criterion 1; lifespan hook)
-- Possibly `daydream/events.py` (small public `subscriber_count()` accessor; implementer's call)
-
-### Findings (2026-05-07)
-
-All five criteria met in one pass; drift loop ships in v0 shape with the design constraints from the spec held intact.
-
-- **C1 (`daydream/drift.py` + lifespan):** New module with `start_drift_loop()` / `stop_drift_loop(handle)`; the loop body is a `while True: sleep → tick → loop`, with `asyncio.CancelledError` propagation handled via try/except patterns that re-raise the cancel signal but swallow normal tick exceptions. `daydream/server.py:lifespan` wires it: `start` after `db.init_live()`, `stop` in a `finally` block before `db.close_db()`. The disabled-via-env-var path returns `None` so `stop_drift_loop(None)` is a clean no-op.
-- **C2 (cadence rule):** `_compute_next_interval(subscriber_count)` is a pure function reading the env var on each call; tests cover both branches at default and with overrides.
-- **C3 (tick behavior):** `_tick(rng=None)` picks a random eligible NPC (filtered to those with non-empty pools), draws a line, emits one `narrate` via `events.append`. Pool location: constant dict at module top (`_DRIFT_POOLS`) — the cheapest of the three documented options. Rook + Iris each have 4 pre-canned lines in their voice register (matching the prompt-template variety lessons: kind-specific anchors, no shared opener phrases). Empty-world is a no-op (`_tick` returns False without appending).
-- **C4 (tests):** `tests/test_drift.py` with 8 tests (3 cadence pure-function, 2 tick DB-interaction, 1 pool-quality, 2 cancellation/disabled). Cadence + pool-quality + cancellation tests are `tier_short`; tick tests are `tier_medium` (touch the DB).
-- **C5 (tests stay green):** `bin/game test short` 277 passed (was 271; +6 new tier_short drift tests). `bin/game test medium` 376 passed (was 368; +8 new tier_medium drift tests + the tier_short ones run too). Drift is OFF in tests by default via `tests/conftest.py:42` setting `DAYDREAM_DRIFT_ENABLED=0`; tests that exercise drift (the cancellation test, `test_drift.py:test_drift_loop_cancels_cleanly`) opt in explicitly via `monkeypatch.setenv`.
-
-**Side effects.** Added `events.subscriber_count() -> int` (3-line public accessor) so drift doesn't reach into module-private state. No other API changes.
-
-**Unblocked.** BACKLOG `npc-memory-retrieval` revisit gate (`npc-drift-loop landed`) now satisfied. Natural next-turn candidate.
+- `daydream/skills/data.py` (C4; retrieval before render, capture after dispatch)
+- `skills/rook.json` (C5; memories block)
+- `skills/iris.json` (C5; memories block)
+- `tests/conftest.py` (C7; `DAYDREAM_MEMORY_ENABLED=0`)
+- `tests/test_ws_rook.py` and/or `tests/test_ws_iris.py` (C6 integration test)
+- `pyproject.toml` (C2; add `sentence-transformers` runtime dep)
+- `CLAUDE.md` (brief subsection documenting the memory module + bootstrap path)
 
 ---
-*Prior spec (2026-05-07): Second NPC (Iris, the attic archivist) closed 5/5. `migrations/008_second_npc.sql` adds `t-iris` at slot 101 in `r-attic` (mood `thoughtful` to differentiate from Rook); `skills/iris.json` authors voice differentiated from Rook on role + topical anchors + register, with the 2026-05-06 prompt-template-variety lessons baked in from version 1; `tests/test_ws_iris.py` mirrors `test_ws_rook.py` with 8 tests covering install + happy path + scoping + safety + refusal. No `daydream/api/ws.py` or `daydream/skills/data.py` changes — the data-skill pipeline + snapshot machinery generalize across NPCs as predicted.*
+*Prior spec (2026-05-07): NPC drift loop (v0 pre-canned narrates) closed 5/5. `daydream/drift.py` ships an asyncio.Task drift loop with FastAPI lifespan integration (`start_drift_loop`/`stop_drift_loop`), env-overridable cadence (300 s idle / 1800 s busy), graceful cancellation, and a constant-dict pool of 4 lines per NPC (Rook + Iris). No GPU arbiter contention by design (no LLM call). `events.subscriber_count()` accessor added. Tests: 8 in `tests/test_drift.py`; tier_short 277 / tier_medium 376 green.*
 
-### Proposal (2026-05-07)
-
-**What happened (this turn).** Two commits closed the NPC drift loop spec at 5/5: `cc30a20` (SPEC consume), `8a3ade4` (C1-C5 in one bundled commit). `daydream/drift.py` ships an asyncio.Task drift loop with FastAPI lifespan integration, env-overridable cadence (300 s idle / 1800 s busy), per-tick try/except resilience, and graceful cancellation. Tick selects a random NPC, draws a line from a constant-dict pool (`_DRIFT_POOLS`, 4 lines each for Rook + Iris in voice register), emits one `narrate` to the NPC's room. NO LLM call → no GPU arbiter contention by design. `daydream/events.py` gains a small public `subscriber_count() -> int` accessor; `daydream/server.py` lifespan wires `start_drift_loop()` / `stop_drift_loop()` symmetrically. Tests: 8 new in `tests/test_drift.py` (cadence pure-function, tick DB-interaction, pool quality, cancellation, disabled-mode). `tests/conftest.py` sets `DAYDREAM_DRIFT_ENABLED=0` so other tests aren't perturbed; tests that exercise drift opt in via `monkeypatch.setenv`. Tier_short 277 / tier_medium 376 green.
-
-**What was learned.** Constant-dict pool was the right v0 default — clean to read, cheap to edit, no schema/migration cost. The "no LLM in v0 drift" choice paid off: the criterion 4 GPU-arbiter requirement is met vacuously rather than via a fragile preemption mechanism. Adding `events.subscriber_count()` (3-line accessor) is preferred over reaching into `_subscribers` directly; small public API hygiene win. The drift-disabled-in-tests pattern (`DAYDREAM_DRIFT_ENABLED=0` in conftest) keeps existing test_ws_rook/test_ws_iris event-draining helpers stable.
-
-**Questions and directions for the next turn.**
-
-1. **NPC memory retrieval.** BACKLOG `npc-memory-retrieval` revisit gate is NEWLY MET this turn (`npc-drift-loop landed`). The entry calls for `memories` SQLite table + LanceDB vector store + sentence-transformers BGE-small CPU embedding; NPC dialogue retrieves top-K by salience+recency before generating. Substantial: new dependency (LanceDB), new embedding model (~100 MB BGE-small), new module (`daydream/memories.py`), new schema (memories table). Natural next step in the NPC depth chain after drift, but biggest single turn since voice-bench.
-
-2. **LLM-driven drift (v1).** Now that the v0 pre-canned drift loop ships, the BACKLOG entry's "yield GPU arbiter on player input" requirement reactivates. v1 drift would let the LLM generate reactive narrates (e.g., Rook commenting on the weather, Iris noticing a returning visitor). Smaller than memory retrieval but introduces real GPU contention. Worth doing AFTER memory retrieval since memories enrich the LLM-driven prose.
-
-3. **Drift polish.** Smaller follow-on items: per-NPC cadence overrides, room-occupancy-based suppression (don't drift in a room while the player is there mid-conversation), mood-affecting drift (drift updates `toons.mood` via UPDATE → snapshot reflects). Each is a small turn; could cluster as a hygiene round.
-
-4. **`watercolor-lora-ab`** has been surfaced 5 times across proposals without selection. If it remains unselected here, worth a status note ("declined 6 times → effectively stale") or a new revisit criterion that's actually load-bearing.
-
-Strongest read: **option 1 (NPC memory retrieval)**. The natural follow-on; the entry's gate just opened; the project's NPC depth story is incomplete without memory. Heaviest single turn since voice-bench, but well-scoped (the BACKLOG entry has concrete tech choices already).
-
-### Revisit candidates
-
-- `npc-memory-retrieval` — gate `npc-drift-loop landed` newly satisfied this turn (commit `8a3ade4`). The entry's prior-turn deferral reason ("requires multiple NPCs and a stable LLM dialogue path; v1 milestone after drift lands") is fully addressed.
-- `watercolor-lora-ab` — 6th surfacing now. Has been declined in 5 prior proposals; a status note or revisit-criteria refresh might be worth a small turn, separate from selection as the active spec.
-
-### Backlog Sweep
-
-- **Delete:** `npc-drift-loop (ACTIVE in spec 2026-05-07)` — shipped this turn (commits `cc30a20`, `8a3ade4`). v0 pre-canned drift loop in `daydream/drift.py` is in tree; tier_short + tier_medium green; criterion 4's GPU-arbiter requirement met vacuously by the no-LLM design.
-
-<!-- SPEC_META: {"date":"2026-05-07","title":"NPC drift loop (v0: pre-canned narrates)","criteria_total":5,"criteria_met":5} -->
+<!-- SPEC_META: {"date":"2026-05-07","title":"NPC memory retrieval (v0: SQLite-blob embeddings)","criteria_total":7,"criteria_met":0} -->
