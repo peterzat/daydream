@@ -8,7 +8,7 @@ The image above is the image-gen pipeline's first real output: prompt seeded fro
 
 ## Status
 
-Latest stable cut: **v0.1.0**. Runs on a single Linux dev box (RTX 4000 SFF Ada, 20 GB VRAM); designed to port to Cloudflare and containers later. Test gates on current `main`: 290 fast tests (`bin/game test short`, ~3 s) and 400 integration tests (`bin/game test medium`, ~4 s); both 100% green. Real-GPU drift probes run on-demand under `bin/game test long`.
+Latest stable cut: **v0.1.0**. Runs on a single Linux dev box (RTX 4000 SFF Ada, 20 GB VRAM); designed to port to Cloudflare and containers later. Test gates: 290 fast tests (`bin/game test short`, ~3 s) and 401 integration tests (`bin/game test medium`, ~4 s); both 100% green. Real-GPU drift probes run on-demand under `bin/game test long`.
 
 What works today:
 
@@ -102,8 +102,8 @@ The script installs `sentence-transformers` against the PyTorch CPU wheel index 
 ## Tests
 
 ```sh
-bin/game test short     # unit / fast (~3s)      — pre-commit gate (290 tests on main)
-bin/game test medium    # integration (~4s)      — pre-push gate (400 tests on main)
+bin/game test short     # unit / fast (~3s)      — pre-commit gate (290 tests at v0.1.0)
+bin/game test medium    # integration (~4s)      — pre-push gate (401 tests at v0.1.0)
 bin/game test long      # real-GPU drift (~15min) — on-demand / pre-release
 bin/game test human     # aesthetic rubric via qpeek — async human review
 ```
@@ -122,16 +122,17 @@ SDXL base 1.0 + `ostris/watercolor_style_lora_sdxl` served by ComfyUI for room b
 
 ### v0.1.0 — first inhabited dream
 
-v0.1.0 takes the v1 image-gen pipeline as a substrate and builds a multi-room world with two hand-authored NPCs, a data-skill safety baseline, an asyncio drift loop emitting per-NPC narrate ticks while the player is elsewhere, and a voice-bench audit-trail harness that captures dated narrate samples for any model swap. Tier gates green throughout: 277 fast tests (`tier_short`) and 376 integration tests (`tier_medium`), each 100% passing. Bare-mocked-LLM tests cover the data-skill safety pipeline + WS dispatch end-to-end; real-GPU drift probes run on-demand under `bin/game test long` against committed golden baselines.
+v0.1.0 takes the v1 image-gen pipeline as a substrate and builds a multi-room world with two hand-authored NPCs, a data-skill safety baseline, an asyncio drift loop emitting per-NPC narrate ticks while the player is elsewhere, NPC dialogue memory so Rook and Iris remember past exchanges, and a voice-bench audit-trail harness that captures dated narrate samples for any model swap. Tier gates green throughout: 290 fast tests (`tier_short`) and 401 integration tests (`tier_medium`), each 100% passing. Bare-mocked-LLM tests cover the data-skill safety pipeline + WS dispatch end-to-end; real-GPU drift probes run on-demand under `bin/game test long` against committed golden baselines.
 
 **What works:**
 
 - *World.* Five rooms (`r-meadow` spawn, `r-forge`, `r-bridge`, `r-attic`, `r-hollow`) connected by bidirectional `exits_json`; a player can `go north`, `go up`, etc., and the SPA renders the snapshot's exits as clickable buttons.
 - *NPCs.* Rook (forge-keeper, slot 100, at `r-forge`) and Iris (attic archivist, slot 101, at `r-attic`). Each has a `presence_text` line that fires when the player enters the room, plus a `skills/<npc>.json` data-skill that handles dialogue (`rook hello` at `r-forge` dispatches Rook's voice via the LLM; the same `iris hello` at `r-meadow` falls through to the chat fallback because the `context_predicate` scopes to `room_slug=attic`).
 - *Drift loop.* `daydream/drift.py` runs as an asyncio.Task in the FastAPI lifespan, sleeps `DAYDREAM_DRIFT_IDLE_SECONDS` (300 s) when no WS subscribers are connected and `DAYDREAM_DRIFT_BUSY_SECONDS` (1800 s) when ≥1 is. Each tick picks a random NPC, draws a line from a per-NPC pre-canned pool of 4 lines, emits a `narrate` event to the NPC's room. v0 is pre-canned — no LLM call, no GPU arbiter contention by design — so the BACKLOG entry's "yield arbiter on player input" requirement is vacuously satisfied until v1 introduces LLM-driven drift.
-- *Safety baseline.* `daydream/llm/safety.py` plus the data-skill effect-allowlist in `daydream/skills/effects.py` give us: input-banlist short-circuit (banned mood / pixel-art / urgency triggers a soft-narrate fallback before the LLM is called), Jinja `SandboxedEnvironment` template render with `<player_input>` role-separator tags, JSON `response_format` constraint at the LLM call site, refusal schema with default-reason fallback, and an output-banlist check on the parsed effects payload before any state mutation.
+- *NPC dialogue memory.* Each Rook / Iris exchange is captured to a per-world `memories` table (migration 009) with a 384-dim CPU embedding via `sentence-transformers` BGE-small; the next turn pulls top-K by `cosine_similarity * exp(-age/24h)` and weaves them into the prompt as `<memory>...</memory>`-wrapped context. Capture short-circuits on the input banlist before INSERT (defense-in-depth against stored prompt-injection); retrieval is per-(npc, world) scoped. Fail-closed everywhere — capture/retrieve return `None` / `[]` if `bin/memory-bootstrap` hasn't run, so the dialogue path stays warm without the embedder. CPU-only by construction; the GPU stays free for vLLM + ComfyUI under the arbiter.
+- *Safety baseline.* `daydream/llm/safety.py` plus the data-skill effect-allowlist in `daydream/skills/effects.py` give us: input-banlist short-circuit (banned mood / pixel-art / urgency triggers a soft-narrate fallback before the LLM is called), Jinja `SandboxedEnvironment` template render with `<player_input>` and `<memory>` role-separator tags, JSON `response_format` constraint at the LLM call site, refusal schema with default-reason fallback, and an output-banlist check on the parsed effects payload before any state mutation.
 - *Voice-bench audit trail.* `bin/game voice-samples` writes `docs/pretty/voice-samples/<today>-<model_slug>.md`. Four durable baselines in tree: `2026-04-24-qwen2.5-7b-instruct-awq.md` (the pre-fix substrate, frozen as the regression-detection before-shot), `2026-05-06-qwen2.5-7b-instruct-awq.md` (the post-fix substrate after the prompt-template variety pass), `2026-05-06-mn-12b-rp-ink-q4_k_m.md` (RP-Ink failure mode), `2026-05-07-mistral-nemo-instruct-2407.md` (Instruct controlled-base failure mode). Plus a regression-detection probe at `tests/test_voice_baseline.py` that parametrizes over the pre-fix and post-fix AWQ baselines.
-- *World admin.* `bin/game world list / archive / restore / verify / delete` covers per-world archival, full-bundle ship-to-friend, on-disk integrity checks, and cascade deletion. State lives under `~/data/daydream/`, never the project tree; archive bundles include a `MANIFEST.json` recording schema_version + asset counts.
+- *World admin.* `bin/game world list / archive / restore / verify / delete` covers per-world archival, full-bundle ship-to-friend, on-disk integrity checks, and cascade deletion (memory rows included). State lives under `~/data/daydream/`, never the project tree; archive bundles include a `MANIFEST.json` recording schema_version + asset counts.
 
 **Engines and operational notes:**
 
@@ -145,7 +146,7 @@ v0.1.0 takes the v1 image-gen pipeline as a substrate and builds a multi-room wo
 - *Greedy decoding tax.* vLLM's `acompletion_json` defaults to `temperature=0.0`, which makes capture deterministic but funnels the model into ONE preferred response shape regardless of input. Variety has to come from the prompt's input-differentiating signals, not from sampling.
 - *Mistral Nemo Q4 + data-skill pipeline = no.* Both `bartowski/MN-12b-RP-Ink-GGUF/MN-12b-RP-Ink-Q4_K_M.gguf` (creative-writing finetune) and `bartowski/Mistral-Nemo-Instruct-2407-GGUF/Mistral-Nemo-Instruct-2407-Q4_K_M.gguf` (controlled-base) fail the data-skill pipeline at our prompt template. RP-Ink returns `{"effects":[{}]}` (content-empty) deterministically; MN-Instruct fragments behavior across inputs (some non-JSON output, some `{"refused":true}` minimal refusals, some timeouts), and a direct probe with a simpler system prompt confirms it ALSO returns `{"effects":[{}]}` like RP-Ink. The pipeline incompatibility is base-architecture + Q4-quantization + prompt-shape, not RP-Ink-specific. The original "does a creative-writing finetune flex on Rook's voice?" question is parked under three forward-path BACKLOG entries (`creative-finetune-json-fluent-base`, `free-form-prose-pipeline`, `mistral-7b-instruct-fp16-ab`).
 
-**What's next (per `BACKLOG.md`):** `npc-memory-retrieval` (LanceDB + sentence-transformers BGE-small embedding events near NPCs; gated on drift-loop landing — gate now met). Then anything else operator-driven.
+**What's next (per `BACKLOG.md`):** LLM-driven drift (v1 of the drift loop, replacing the pre-canned per-NPC pool with reactive narrates that yield the GPU arbiter on player input); drift polish (per-NPC cadence overrides, room-occupancy-based suppression, mood-affecting drift); LanceDB-backed retrieval once memory counts cross ~10K per NPC (v0 is SQLite-only). Then anything else operator-driven.
 
 ## Tech sketch
 
