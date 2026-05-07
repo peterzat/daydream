@@ -8,7 +8,7 @@ The image above is the image-gen pipeline's first real output: prompt seeded fro
 
 ## Status
 
-Latest stable cut: **v0.1.0**. Runs on a single Linux dev box (RTX 4000 SFF Ada, 20 GB VRAM); designed to port to Cloudflare and containers later. Test gates: 320 fast tests (`bin/game test short`, ~3 s) and 451 integration tests (`bin/game test medium`, ~4 s); both 100% green. Real-GPU drift probes run on-demand under `bin/game test long`.
+Latest stable cut: **v0.2.0**. Runs on a single Linux dev box (RTX 4000 SFF Ada, 20 GB VRAM); designed to port to Cloudflare and containers later. Test gates: 320 fast tests (`bin/game test short`, ~3 s) and 451 integration tests (`bin/game test medium`, ~4 s); both 100% green. Real-GPU drift probes run on-demand under `bin/game test long`.
 
 What works today:
 
@@ -120,6 +120,22 @@ The first dream that runs. Single hardcoded toon (Wren) in a single hardcoded me
 
 SDXL base 1.0 + `ostris/watercolor_style_lora_sdxl` served by ComfyUI for room backgrounds; vLLM 0.19.1 serving Qwen 2.5 7B Instruct AWQ for free-form narration; both gated by an in-process GPU arbiter (`asyncio.Lock` at `daydream/gpu/arbiter.py`) that serializes inference on the 20 GB RTX 4000 SFF Ada so the engines never OOM each other. `tools/arbiter-smoke.py` runs 5 alternating LLM + image-gen requests and asserts no OOM in ~9 s wall-clock on this hardware; that's the live-stack canary to run after any engine bump. The arbiter lock is asyncio-only (single process); cross-process concurrency would need a flock and isn't on the table at v1's CCU. The hero `meadow-at-dusk.png` at the project root is this pipeline's first real output.
 
+### v0.2.0 — second inhabited dream
+
+v0.2.0 keeps v0.1.0's foundation (multi-room world, two NPCs, dialogue memory, image gen) and layers reactive depth on top. Drift narrates now compose from the LLM with each NPC's recent memories + mood (mood-bucketed canned pool retained as offline fallback), drift is suppressed in any room a human currently occupies, and each tick has a small probability of nudging the NPC's mood to a different bucket so the world drifts over hours of play. A drift voice-bench harness mirrors the dialogue voice-bench so tone drift in LLM-composed drift output is eyeball-diffable across model swaps. Tier gates green throughout: 320 fast tests (`tier_short`) and 451 integration tests (`tier_medium`), each 100% passing.
+
+**What's new since v0.1.0:**
+
+- *LLM-driven drift narrates.* `daydream/drift.py:_tick` runs a two-path tick when `DAYDREAM_DRIFT_LLM_ENABLED=1`: pulls up to K memories via `memories.retrieve(query=npc.seed)`, renders a tight Jinja prompt (npc_name + seed + mood + `<memory>`-wrapped recents), calls `acompletion_json` (which holds the GPU arbiter), runs `safety.first_banned` on the parsed `narrate`, emits. On any failure (`LLMUnavailable`, banlist hit, empty/missing narrate) it falls through to the canned pool. The canned pool is now mood-bucketed (`dict[str, dict[str, list[str]]]`) — Rook's existing 4 lines carry into the `content` bucket, Iris's into `thoughtful`, plus 4 new lines per NPC across the other buckets so the offline path stays varied.
+
+- *Drift polish.* Per-NPC selection weights (`_NPC_DRIFT_WEIGHT` defaults equal; weight 0 excludes); room-occupancy suppression (`_occupied_room_ids` filter, default-on via `DAYDREAM_DRIFT_SUPPRESS_OCCUPIED`); probabilistic mood transitions (`_maybe_transition_mood` with `DAYDREAM_DRIFT_MOOD_DRIFT_PROB` default 0.2 + new `daydream/toons.py:set_mood` parameterized helper). The three compose: filter occupied rooms → weighted-pick from survivors → emit narrate → maybe-transition mood.
+
+- *Drift instrumentation.* `bin/game drift-samples` writes dated markdown under `docs/pretty/drift-voice-samples/` from a 5-prompt corpus at `tests/drift/drift-voice/*.json` (covers Rook/Iris × content/thoughtful × empty/with-memories + a non-bucketed `weary` mood). Hermetic by construction — no DB, synthetic memories from the corpus. Plus `_TICK_COUNTS` outcome counters (`llm_emit` / `canned_fallback` / `noop`) surfaced via the `/status/drift` plain-text endpoint and a one-liner in `bin/game status` when any counter is non-zero.
+
+- *Tooling.* `bin/install-hooks` (idempotent pre-commit + pre-push installer; marker-aware so user-written hooks aren't clobbered, refuses to overwrite hand-written hooks). Memory salience drift probe at `tests/drift/test_memory_ranking.py` pinning the `cosine_similarity * exp(-age/24h)` formula against `tests/baselines/memory_ranking.golden.json`.
+
+**What's next:** capture the first drift voice-bench baseline (operator session: bring vLLM up, run `bin/game drift-samples`, commit the markdown); LanceDB-backed memory retrieval once memory counts cross ~10K per NPC (v0 is SQLite-only); drift voice-bench corpus expansion once the first baseline reveals what patterns are worth probing. Then anything else operator-driven.
+
 ### v0.1.0 — first inhabited dream
 
 v0.1.0 takes the v1 image-gen pipeline as a substrate and builds a multi-room world with two hand-authored NPCs, a data-skill safety baseline, an asyncio drift loop emitting per-NPC narrate ticks while the player is elsewhere, NPC dialogue memory so Rook and Iris remember past exchanges, and a voice-bench audit-trail harness that captures dated narrate samples for any model swap. Tier gates green throughout: 290 fast tests (`tier_short`) and 401 integration tests (`tier_medium`), each 100% passing. Bare-mocked-LLM tests cover the data-skill safety pipeline + WS dispatch end-to-end; real-GPU drift probes run on-demand under `bin/game test long` against committed golden baselines.
@@ -145,8 +161,6 @@ v0.1.0 takes the v1 image-gen pipeline as a substrate and builds a multi-room wo
 - *Prompt-template variety.* The first AWQ baseline showed 4 of 5 narrate responses opening with the same 14-word phrase ("Rook pauses the steady rhythm of the bellows, wiping hands on the apron, and says,") — a template-induced tic from a flat list of candidate sensory beats. Eight prompt-template iterations later, the working configuration is: kind-specific input-anchor mapping (5 input kinds map to 5 distinct opener anchors), 3 illustrative exemplars showing varied openers + concrete spoken lines, explicit ban on the originating tic phrase by name. PREFER lists trigger direct phrase copying; AVOID lists prime the topics they ban; over-constrained prompts cause truncation. Iris was authored with these lessons baked in from version 1, no iteration needed.
 - *Greedy decoding tax.* vLLM's `acompletion_json` defaults to `temperature=0.0`, which makes capture deterministic but funnels the model into ONE preferred response shape regardless of input. Variety has to come from the prompt's input-differentiating signals, not from sampling.
 - *Mistral Nemo Q4 + data-skill pipeline = no.* Both `bartowski/MN-12b-RP-Ink-GGUF/MN-12b-RP-Ink-Q4_K_M.gguf` (creative-writing finetune) and `bartowski/Mistral-Nemo-Instruct-2407-GGUF/Mistral-Nemo-Instruct-2407-Q4_K_M.gguf` (controlled-base) fail the data-skill pipeline at our prompt template. RP-Ink returns `{"effects":[{}]}` (content-empty) deterministically; MN-Instruct fragments behavior across inputs (some non-JSON output, some `{"refused":true}` minimal refusals, some timeouts), and a direct probe with a simpler system prompt confirms it ALSO returns `{"effects":[{}]}` like RP-Ink. The pipeline incompatibility is base-architecture + Q4-quantization + prompt-shape, not RP-Ink-specific. The original "does a creative-writing finetune flex on Rook's voice?" question is parked under three forward-path BACKLOG entries (`creative-finetune-json-fluent-base`, `free-form-prose-pipeline`, `mistral-7b-instruct-fp16-ab`).
-
-**What's next:** drift polish round two (per-NPC cadence overrides, room-occupancy-based suppression, mood-affecting drift — moods are read-only at v1 LLM-driven drift); LanceDB-backed retrieval once memory counts cross ~10K per NPC (v0 is SQLite-only). Then anything else operator-driven.
 
 ## Tech sketch
 

@@ -55,7 +55,7 @@ Right now, before reading further, run:
 bin/game test short
 ```
 
-Expected: under 10 seconds, exits 0, ~291 tests pass (~2.7 s wall-clock at v0.1.0). If not, the venv is broken or the repo is in a weird state — fix that first. The rest of this document assumes you have a green `short` tier as a starting point.
+Expected: under 10 seconds, exits 0, ~320 tests pass (~2.7 s wall-clock at v0.2.0). If not, the venv is broken or the repo is in a weird state — fix that first. The rest of this document assumes you have a green `short` tier as a starting point.
 
 ## The single entry point
 
@@ -114,7 +114,7 @@ This project tilts deliberately toward **proxy** verification (a measurable numb
 ### `short` — the pre-commit gate
 
 - Marker expression: `tier_short`
-- Test count at v0.1.0: ~291. Wall-clock: ~2.7 s.
+- Test count at v0.2.0: ~320. Wall-clock: ~2.7 s.
 - What's in it: every test that doesn't boot `daydream.server.app`, spawn a subprocess, or do heavy filesystem I/O. Also the constants-drift probes under `tests/drift/test_drift_constants.py` (cheap; they just read files), the WHIMSY suffix probe, the voice-baseline tic-regression probe (`tests/test_voice_baseline.py`; parses captured markdown, asserts pairwise-distinct openers), and the memory-ranking drift probe (`tests/drift/test_memory_ranking.py`; tmp_path SQLite + mocked embeddings, fingerprints the salience formula's ordering and per-item scores).
 - What it catches: broken imports, wrong migration, skill-interpreter regression, cache-key math bug, WHIMSY.md drift, vllm-version doc drift, prompt-template tic regressions on the captured voice corpus, salience-formula drift in NPC memory.
 - When to run: every commit, every save if you've got a file-watcher. `bin/install-hooks` wires this to `.git/hooks/pre-commit` so it fires automatically.
@@ -122,7 +122,7 @@ This project tilts deliberately toward **proxy** verification (a measurable numb
 ### `medium` — the pre-push gate
 
 - Marker expression: `tier_short or tier_medium`
-- Test count at v0.1.0: ~402. Wall-clock: ~4.2 s.
+- Test count at v0.2.0: ~451. Wall-clock: ~4.2 s.
 - What's in it: everything from `short` plus tests that boot `TestClient` (auth, frontend, ws, ws_images, ws_rook, ws_iris), spawn `bin/game` as a subprocess, round-trip archives, or exercise the per-world DB schema (memories included). GPU calls are still mocked; the BGE-small embedder is mocked at `daydream.memories._embed`.
 - What it catches: WebSocket protocol regressions, auth flow breaks, admin CLI breaks, bash dispatcher breaks, NPC dialogue path regressions, memory capture/retrieve/scoping breaks.
 - When to run: before every push, after finishing a feature. `bin/install-hooks` wires this to `.git/hooks/pre-push` so it fires automatically.
@@ -130,7 +130,7 @@ This project tilts deliberately toward **proxy** verification (a measurable numb
 ### `long` — the drift + end-to-end gate
 
 - Marker expression: `tier_short or tier_medium or tier_long`
-- Test count at v0.1.0: ~411 (~402 + 9 real-engine drift probes). Wall-clock: ~30 s with vLLM + ComfyUI up.
+- Test count at v0.2.0: ~460 (~451 + 9 real-engine drift probes). Wall-clock: ~30 s with vLLM + ComfyUI up.
 - What's in it: everything from `medium` plus the `tests/drift/` probes. Real LLM calls through vLLM. Real image renders through ComfyUI. The arbiter smoke alternates the two under a 90-second budget.
 - What it catches: fp8-KV-style format-adherence regressions, LoRA-swap aesthetic drift, image-gen latency regressions, arbiter serialization bugs.
 - When to run: before a release, after swapping a model / LoRA / workflow, after any arbiter change.
@@ -264,7 +264,7 @@ Liveness gates are orthogonal:
 - `requires_vllm` marker: test skips if `{DAYDREAM_LLM_BASE_URL}/models` is unreachable (2 s timeout, one probe per session).
 - `requires_comfyui` marker: test skips if `{DAYDREAM_COMFYUI_BASE_URL}/system_stats` is unreachable.
 
-So `bin/game test long` with both engines down still runs ~401 tests (short + medium) and skips the 9 drift probes with a clear "engine unreachable" reason.
+So `bin/game test long` with both engines down still runs ~451 tests (short + medium) and skips the 9 drift probes with a clear "engine unreachable" reason.
 
 ## Glossary
 
