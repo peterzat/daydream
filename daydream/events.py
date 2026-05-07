@@ -124,3 +124,9 @@ def _broadcast(event: Event) -> None:
 def reset_subscribers() -> None:
     """Test helper: drop all subscribers. Not for production paths."""
     _subscribers.clear()
+
+
+def subscriber_count() -> int:
+    """Number of live WS subscribers. Read by daydream.drift to choose
+    its idle vs busy cadence."""
+    return len(_subscribers)

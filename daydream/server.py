@@ -11,7 +11,7 @@ from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
-from daydream import config, db
+from daydream import config, db, drift
 from daydream.api import auth, ws
 from daydream.api.access import AccessMiddleware
 from daydream.api.nocache import NoCacheAssetsMiddleware
@@ -26,8 +26,12 @@ image_cache.ensure_cache_root()
 async def lifespan(app: FastAPI):
     config.ensure_dirs()
     db.init_live()
-    yield
-    db.close_db()
+    drift_handle = drift.start_drift_loop()
+    try:
+        yield
+    finally:
+        await drift.stop_drift_loop(drift_handle)
+        db.close_db()
 
 
 app = FastAPI(lifespan=lifespan, title="daydream")

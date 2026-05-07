@@ -39,6 +39,14 @@ os.environ["DAYDREAM_PASSWORD"] = "test-password"
 # exercises go through monkeypatch.setenv as they already do.
 os.environ["DAYDREAM_ACCESS"] = "public"
 
+# Drift loop emits soft narrate events every 5-30 minutes by default.
+# In a test run nothing would fire (sleep intervals are far above test
+# wall-clock budgets), but the asyncio.Task gets created on every
+# TestClient lifespan startup and adds noise to traceback output if
+# the test happens to fail during cleanup. Disable by default; tests
+# that exercise drift opt in via monkeypatch.setenv.
+os.environ["DAYDREAM_DRIFT_ENABLED"] = "0"
+
 # Redirect HOME to a session-scoped temp dir as a belt-and-suspenders measure:
 # any other code that resolves `~/...` during tests writes under this dir,
 # which the OS reaps. Use mkdtemp (not TemporaryDirectory) so the dir lives
