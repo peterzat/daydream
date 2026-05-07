@@ -69,4 +69,27 @@ All five criteria met in one operational pass; Iris is now the second NPC, sitti
 ---
 *Prior spec (2026-05-07): voice-bench cleanup hygiene round closed 5/5. `docs/gpu-and-models.md` got a new `## Things we tried and rejected` section narrating the Mistral Nemo Q4 experiment + the gguf-`__version__` bootstrap patch with its removal trigger; `daydream/voice_samples.py` env-var converged on `DAYDREAM_VLLM_MAX_LEN`; three new BACKLOG entries (`creative-finetune-json-fluent-base`, `free-form-prose-pipeline`, `mistral-7b-instruct-fp16-ab`) capture the voice-A/B forward paths; ~30 GB freed from HF cache. Tier_short 271 / tier_medium 360 green throughout.*
 
+### Proposal (2026-05-07)
+
+**What happened (this turn).** Two commits closed the second-NPC spec at 5/5: `64afbfb` (SPEC consume), `8de1713` (C1-C5 in one bundled commit). Iris is now the second NPC at `r-attic`: `migrations/008_second_npc.sql` (slot 101, mood `thoughtful`, presence_text), `skills/iris.json` (voice differentiated from Rook on role + topical anchors + register, with the 2026-05-06 prompt-template-variety lessons baked in from version 1), `tests/test_ws_iris.py` (8 tests covering install + happy-path + scoping + safety + refusal). Tier_short 271 / tier_medium 368 green (was 360, +8 from the new iris tests).
+
+**What was learned.** The data-skill pipeline, snapshot machinery, broadcast loop, and admin CLI generalize across NPCs without code changes. Iris landed as content + a migration + tests only; `daydream/api/ws.py`, `daydream/skills/data.py`, `daydream/admin.py` stayed untouched. The "second NPC is content-only" hypothesis from the prior turn proved correct. One small over-specification surfaced (criterion 4's snapshot field list assumed `appearance/presence_text` exposure; reality is `id/name/mood` only, with `presence_text` firing as a separate narrate broadcast event); spec spirit met, contract noted in commit body for next codereview to flag if helpful.
+
+**Immediate next step (per user's pre-cleanup plan).** `/codereview` of the full unpushed branch (everything since `2c3edb5`, the last reviewed commit). Per the user's instruction: "If everything is clean after the second loop, close the turn and start a codereview." The codereview is a quality gate, not a spec turn — this proposal frames next-spec-turn options *after* that gate clears.
+
+**Next-turn directions (post-codereview).**
+
+1. **NPC drift loop.** BACKLOG `npc-drift-loop` gate is NEWLY MET this turn (`>=2 NPCs in the world` now satisfied with Iris joining Rook; arbiter has existed since the image-gen-pipeline landed). The entry calls for APScheduler-driven background ticks (weather, NPC mood, in-world calendar) on the "gentle drift" cadence (~5 min when empty, ~30 min when humans present), drift loop yielding the GPU lock immediately on player input. Concrete, well-scoped, big enough to be a substantive turn without being architectural.
+
+2. **`watercolor-lora-ab` revisit.** Image-side small A/B; 5th surfacing. Has been declined in 4 prior proposals; if declined again, worth a status note that the entry is becoming stale-revisit and may belong elsewhere.
+
+3. **NPC memory retrieval.** BACKLOG `npc-memory-retrieval` is still gated on drift-loop landing. Not yet eligible; the natural follow-on to option 1.
+
+Strongest read: **option 1 (NPC drift loop)** as the natural follow-on. Newly eligible; builds on the just-shipped two-NPC substrate; opens up the BACKLOG `npc-memory-retrieval` follow-on.
+
+### Revisit candidates
+
+- `npc-drift-loop` — gate `>=2 NPCs in the world` newly satisfied (Iris joined Rook this turn); arbiter already in place. Both revisit-criteria gates met. The entry's prior-turn deferral reason ("v0 has no NPCs to drift") no longer holds.
+- `watercolor-lora-ab` — image audit-trail half still landed; 5th surfacing. Declined in 4 prior proposals.
+
 <!-- SPEC_META: {"date":"2026-05-07","title":"Second NPC (Iris, the attic archivist)","criteria_total":5,"criteria_met":5} -->
