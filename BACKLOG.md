@@ -12,7 +12,7 @@ context for every entry below lives in `~/.claude/plans/let-s-design-a-fairly-gi
 - **Revisit criteria:** v0 persistence verified; second human player wants in, or first NPC needs to be authored.
 - **Origin:** plan let-s-design-a-fairly-giggly-narwhal
 
-### npc-drift-loop
+### npc-drift-loop (ACTIVE in spec 2026-05-07)
 - **One-line description:** Add APScheduler-driven background ticks in `daydream/drift.py` (weather, NPC mood, in-world calendar) on the "gentle drift" cadence (every ~5 min when empty, ~30 min when humans present); drift loop must yield the GPU lock immediately on player input.
 - **Why deferred:** v0 has no NPCs to drift; cadence design needs the GPU arbiter from image-gen-pipeline to be in place.
 - **Revisit criteria:** image-gen-pipeline landed (arbiter exists); at least 2 NPCs in the world.

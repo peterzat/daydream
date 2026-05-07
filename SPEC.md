@@ -1,95 +1,69 @@
-## Spec — 2026-05-07 — Second NPC (Iris, the attic archivist)
+## Spec — 2026-05-07 — NPC drift loop (v0: pre-canned narrates)
 
-**Goal:** Author the world's second NPC, Iris, at `r-attic` with their own voice via the data-skill pipeline. Mirrors the 2026-04-24 NPC dialogue spec that introduced Rook at `r-forge`, now with the prompt-template-variety lessons (2026-05-06) baked in from the start. Unblocks BACKLOG `npc-drift-loop` and `npc-memory-retrieval`, both gated on >=2 NPCs in the world.
+**Goal:** Add a background drift loop in `daydream/drift.py` that periodically emits soft narrate events from each NPC, integrated into FastAPI's lifespan. v0 pulls drift lines from a pre-canned per-NPC pool (no LLM call) so the loop never contends for the GPU arbiter, leaving the "drift uses LLM → must yield arbiter on player input" question for a future spec. Realizes the BACKLOG `npc-drift-loop` entry's gentle-drift cadence requirement (~5 min idle, ~30 min when humans present) and unblocks `npc-memory-retrieval` (gated on drift-loop landing).
 
 ### Acceptance Criteria
 
-- [x] **`migrations/008_second_npc.sql` adds Iris to `r-attic`, idempotent.** New migration that INSERT-OR-IGNOREs `t-iris` (slot 101 per the NPC slot-100+ convention; `is_human_controlled=0`; `world_id='w-bunny'`; `current_room_id='r-attic'`). The row carries `seed` (one-line role + voice + small specifying detail), `appearance_seed` (visual; SDXL-friendly), `mood` (start state; should NOT be "content" — different from Rook's mood for narrate variety), `inventory_json='[]'`, and `presence_text` (the line that fires when a player enters the attic; mirrors Rook's `presence_text` shape). Re-running the migration leaves the row unchanged. Test: `tests/test_db.py`'s migration-chain test picks up migration 008 with no new code (the existing migration framework handles ordered application; the chain just gets one longer).
+- [ ] **`daydream/drift.py` ships an asyncio drift loop with FastAPI lifespan integration.** New module exposes `start_drift_loop()` (returns a handle the lifespan can later stop) and `stop_drift_loop(handle)` (cancels the task and awaits cleanup). `daydream/server.py`'s `lifespan` calls these symmetrically: `start` after `db.init_live()`, `stop` before `db.close_db()`. The loop is a single `asyncio.Task`; cancellation handled gracefully (`CancelledError` caught, task exits cleanly within ~1 s, no resource leaks). Each tick body is wrapped in a try/except that logs and continues, so one bad tick does not kill the loop.
 
-- [x] **`skills/iris.json` authors Iris's voice as a data skill.** Same shape as `skills/rook.json`: `name=iris`, `ui_hint=Iris`, one-line `description`, `context_predicate={"room_slug":"attic"}`, `prompt_template` carrying Iris's voice, `effects_schema` documenting one `narrate` effect, `author=admin`. The prompt template carries the prompt-template-variety lessons from `skills/rook.json`'s 2026-05-06 revision: kind-specific input-anchor mapping (different opener style per input kind), at least 3 distinct exemplars (different sensory anchors + different concrete spoken lines), explicit ban on Iris's strongest sticky-opener risk if one emerges in iteration. Iris's voice DIFFERS from Rook's on at least three concrete axes: different *role* (archivist vs forge-keeper), different *topical anchors* (letters / ink / dust / round-window light / old correspondents vs iron / anvil / bellows / wildflowers), different *spoken-voice register* (slightly more bookish + curious + asks gentle questions back, vs Rook's "say less than they mean" laconic). Voice differentiation is subjective; the criterion verifies the *role + anchors + register* are visibly different in the prompt template content, not specific phrasing.
+- [ ] **Cadence rule.** The loop sleeps `DAYDREAM_DRIFT_IDLE_SECONDS` (default 300, i.e., 5 min) when zero WS subscribers are connected; sleeps `DAYDREAM_DRIFT_BUSY_SECONDS` (default 1800, i.e., 30 min) when >=1 subscriber. The cadence decision is made at each wake-up (NOT at task start), so a connection that arrives mid-sleep takes effect on the next iteration. Subscriber count is read via `daydream.events` (currently `_subscribers` is a module-private list — implementer can add a small public `events.subscriber_count() -> int` accessor or read the existing API; the public/private call is the implementer's). The cadence calc is unit-testable with a mocked subscriber count.
 
-- [x] **`tests/test_ws_iris.py` covers install + happy path + scoping + safety + refusal.** Mirrors `tests/test_ws_rook.py`'s 7-test structure (`tier_medium`): install via the admin CLI gate; happy path at `r-attic` dispatches through the data-skill pipeline and emits the canned narrate; hidden-elsewhere check (e.g., at `r-meadow`, `iris hello` falls through to interpreter — exactly one LLM call for the interpreter, not a second for iris); snapshot at `r-meadow` excludes iris from the `skills` list; banned-input short-circuit (e.g., a WHIMSY-banned word in the args yields the BANNED fallback, LLM never called); refusal short-circuit (`{"refused":true,"reason":...}` narrates the reason and drops accompanying effects); player_input wrap-tag verification (the user message reaching the LLM contains `<player_input>...</player_input>`). LLM is mocked for determinism.
+- [ ] **Each tick emits exactly one soft narrate event** via `daydream.events.append`, addressed to the chosen NPC's current room. Behavior: (a) select an NPC at random from the world's NPCs (toons with `is_human_controlled=0`); (b) draw a drift line from a per-NPC pool of >=3 lines for that NPC (where the pool lives is the implementer's call — `daydream/drift.py` constant dict, a new `toons.drift_lines_json` column, or per-NPC `skills/<npc>-drift.json` — picking the cheapest path that reads cleanly); (c) emit one `narrate` event for the NPC's `current_room_id`, broadcast to in-room WS subscribers via existing machinery. Empty pool for an NPC: skip and try the next NPC. World with zero NPCs (or all NPCs have empty pools): tick is a no-op, no events appended. NO LLM CALL — drift ticks are pre-canned text so the v0 loop never takes the GPU arbiter, satisfying the BACKLOG entry's "yield arbiter on player input" requirement vacuously. Pool size for the two existing NPCs (Rook, Iris) is at least 3 distinct lines each, in WHIMSY tone matching their voices.
 
-- [x] **WS snapshot reflects Iris's co-location at `r-attic`.** When the player toon is at `r-attic`, the snapshot's toons-in-room list includes `t-iris` with appearance/mood/presence_text fields populated. When the player is anywhere else, the snapshot does NOT include iris. Verified in `tests/test_ws_iris.py` (snapshot-content assertion) AND continues to work for Rook's existing snapshot at `r-forge` — i.e., the second NPC doesn't accidentally pollute the first NPC's snapshot rendering. No new code in `daydream/api/ws.py` should be needed; the existing snapshot machinery iterates all toons in the room.
+- [ ] **Tests cover cadence, tick emission, empty-world no-op, cancellation, and pool quality.** New `tests/test_drift.py` (`tier_short` where possible; `tier_medium` for the lifespan integration if needed):
+   - Cadence: with subscriber count = 0, next-sleep-interval == idle default; with count >= 1, == busy default. Env-var override of either default takes effect.
+   - Tick: with Rook and Iris seeded, one tick produces exactly one narrate event whose `room_id` matches the chosen NPC's `current_room_id` and whose text is from the NPC's drift pool. Random selection covered with a seeded `random` (or by stubbing the picker).
+   - Empty-world: with no NPCs (or all pools empty), tick produces no events.
+   - Cancellation: starting the loop, cancelling it, awaiting the task completes within ~1 s without unhandled exceptions.
+   - Pool quality: each NPC's pool has >=3 distinct strings; no string is empty or whitespace-only. (Lightweight content-shape check, not WHIMSY-tone assertion.)
 
-- [x] **Existing test suite stays green and tier budgets are unchanged.** `bin/game test short` and `bin/game test medium` pass. `tests/test_ws_rook.py` continues green (Rook's behavior is unchanged by adding Iris). Migration 008 lands in `tests/test_db.py`'s chain check without test modification (idempotent migrations are picked up automatically). No new tier_long tests; no GPU-dependent tests added.
+- [ ] **Existing test suite stays green.** `bin/game test short` and `bin/game test medium` pass. Drift loop's default sleep interval (300 s idle) is far above any test's wall-clock budget, so the first tick never fires inside a test run by accident; if any test does run long enough or timing-sensitive enough that drift events leak in, the implementer adds an opt-out (e.g., `DAYDREAM_DRIFT_ENABLED=0` with a default of `1` and the tests' `conftest.py` setting it to `0`). `tests/test_ws_rook.py` and `tests/test_ws_iris.py` continue green; their event-draining helpers are not perturbed by drift events arriving during the short test windows. No new tier_long tests; no GPU-dependent tests added.
 
 ### Context
 
-**Adopted from `### Proposal (2026-05-07)` option 1** (second NPC). User explicitly pre-authorized this turn after the cleanup hygiene round closed at 5/5. BACKLOG manifest at consume: NONE — the proposal had no `### Backlog Sweep` and `watercolor-lora-ab` (the only revisit candidate) was not selected for a 4th time running.
+**Adopted from `### Proposal (2026-05-07)` option 1** (NPC drift loop). User explicitly chose this direction over the also-surfaced `watercolor-lora-ab` revisit candidate. BACKLOG manifest at consume: `npc-drift-loop` annotated ACTIVE in spec 2026-05-07 via `spec-backlog-apply.sh`'s adopt op (no deletes).
 
-**Why Iris and why the attic.** Five rooms exist in the v0 world: `r-meadow` (player spawn), `r-forge` (Rook lives here), `r-bridge`, `r-attic`, `r-hollow`. The attic was chosen for the second NPC because: (a) the room seed already hints at a "someone-keeps-things-here" feeling (trunks, round window, cedar smell, dust); (b) it's the room most contrasted with the forge in mood (quiet, indoor, contemplative vs warm, indoor, working); (c) putting an NPC at the spawn room (`r-meadow`) would shift first-arrival UX, which is a separate scope. Iris (botanical name, fitting the gentle WHIMSY register) as an archivist gives the world a memory-keeper character — a different role-archetype from Rook's craftsperson.
+**Why now and what's actually possible.** The BACKLOG `npc-drift-loop` entry called for "APScheduler-driven background ticks (weather, NPC mood, in-world calendar) on the gentle drift cadence." For v0 we narrow to NPC narrate emissions only — the simplest tick that's recognizable as "the world is alive." Weather and in-world calendar are not currently modeled in the schema; adding them is a separate scope. NPC mood drift (`toons.mood` UPDATE) is also feasible but invisible without a snapshot refresh; narrate emission is more directly demonstrable and reuses the existing room-broadcast machinery. APScheduler is heavier than v0 needs: a single `asyncio.Task` with a sleep loop is sufficient and adds no new dependency.
 
-**Voice differentiation** is intentional. Two NPCs with the same voice register (both quiet, both wry) would feel like one personality wearing two costumes. Iris's voice should be visibly more bookish: longer sentences, references to letters/dates/names, willingness to ask the player a small question back. Rook's voice is "say less than they mean"; Iris's is more like "I have noticed something specific and would tell you about it." The 2026-05-06 prompt-template-variety lessons (kind-specific anchor mapping, multiple distinct exemplars, explicit no-sticky-opener instruction) apply directly to Iris's prompt template — bake them in from the first version, don't re-discover them.
+**Two NPCs are the activating signal.** Iris joined Rook in the just-shipped second-NPC spec (commit `8de1713`), satisfying the BACKLOG entry's `>=2 NPCs in the world` revisit gate. With a single NPC the drift loop would feel like a soliloquy; with two NPCs in different rooms (Rook at `r-forge`, Iris at `r-attic`), drift emits give the world a sense of activity even while the player is somewhere else.
 
-**Slot convention** (per migration 006_first_npc.sql comment): human-playable toons use slots 1-5; NPCs use slots 100+. Rook is slot 100; Iris is slot 101. This stays out of the way of future `toon-slot-management` work (the BACKLOG entry tracks the human-slot UI; NPCs' high slots don't conflict).
+**No GPU arbiter contention by design (v0).** The BACKLOG entry's "drift loop must yield the GPU lock immediately on player input" requirement assumes drift ticks use the LLM. v0 ticks pull pre-canned text from a per-NPC pool, so they never call `daydream.gpu.arbiter.acquire()`; player input contention is impossible. When a future spec wants LLM-driven drift (richer voice, generated reactions, mood-aware narration), the arbiter-yielding requirement re-activates and lands as a separate increment.
 
-**Idempotency follows migration 006/007 pattern:** INSERT-OR-IGNORE on the toon PK; UPDATE-by-id is fine for any later additions to the row. Migration 008 should NOT alter Rook's row, the rooms table, or any other state — it's a single-row append.
+**Subscriber count is the cadence signal.** The events module has `_subscribers: list[asyncio.Queue]` (line 54 of `daydream/events.py`); reading `len(events._subscribers)` gives the current count. The implementer either uses that directly or adds a small public `events.subscriber_count() -> int`. The choice doesn't change the contract; only the internal call site.
 
-**`presence_text`** (added by migration 007 to `toons.presence_text`): one short line that fires when a player enters Iris's room, narrated via the broadcast loop. Mirrors Rook's pattern. The text should be in WHIMSY register and Iris's voice — e.g., "Iris glances up from a sheaf of letters and offers a small nod, then returns to her sorting." Implementer's call on specifics; the criterion is that it exists and is non-empty.
+**Pool location** is a tradeoff the implementer picks:
+- A constant dict in `daydream/drift.py` (e.g., `DRIFT_POOLS = {"t-rook": [...], "t-iris": [...]}`) is cheapest. Lives close to the loop. Editing means a code change.
+- A new `toons.drift_lines_json` column (migration 009) puts the data with the NPC; editing means a migration or admin-CLI update. Heavier but more authorable.
+- Per-NPC `skills/<npc>-drift.json` follows the data-skill pattern; admin CLI handles install. Heaviest but matches how `skills/rook.json` and `skills/iris.json` are managed.
+
+For v0 the constant-dict path is a defensible default. If the implementer picks a column or skill file, that's also acceptable; the test for criterion 3 "draws from the pool" doesn't care where the pool lives.
 
 **zat.env conventions to respect.**
-- Small committable increments. Natural split: migration + skill + tests as C1; small follow-ups (e.g., a presence-text refinement after eyeball-checking a render) as C2 if needed.
+- Small committable increments. Natural split: drift module + lifespan + tests as C1; pool-content polish (e.g., adding more lines or tone-tuning) as C2 if needed.
 - Commits attribute to `user.name` only; no Co-Authored-By trailers.
 - Verify build + tests pass before each commit.
-- Do not introduce new abstractions. The change is content + a migration; the data-skill pipeline, snapshot machinery, presence-narrate broadcast, and admin CLI all already exist (Rook proved the pattern in 2026-04-24 NPC dialogue spec).
-- Iris's prompt template should follow the variety-pass shape from the start (kind-specific input mapping + ≥3 distinct exemplars + explicit no-sticky-opener) — re-discovering the lesson would be wasted iteration. See `skills/rook.json`'s current state for the working template.
+- Do not introduce abstractions for v0. No APScheduler, no plugin registry for tick types; one tick type (narrate emission), one cadence rule, one Task.
+- Do NOT take the GPU arbiter in v0 drift code. The arbiter wraps LLM and image-gen calls only; drift ticks don't do either.
 
 **Out of scope for this spec** (deferred):
-- Iris-specific drift behavior. BACKLOG `npc-drift-loop` is gated on ≥2 NPCs; this spec satisfies the gate but the drift-loop work itself is its own next-turn unit.
-- Iris memory retrieval. BACKLOG `npc-memory-retrieval`; gated on drift-loop landing.
-- Voice-bench corpus extension to cover Iris. The existing voice-bench corpus is Rook-specific (`tests/drift/voice/*.json` declare `"skill":"rook"`). A second-NPC corpus would need a small parameterization in the harness; out of this spec.
-- A third NPC or any NPC at the meadow / bridge / hollow.
-- Multi-NPC co-location narration. Rook and Iris are in different rooms; the design doesn't currently put them together.
-- Iris-specific narrate effects beyond the dialogue skill (e.g., handing items, mood-affecting reactions). Future work if Iris needs richer interaction.
-- SPA visual changes. The toons-in-room rendering already iterates whatever toons are in the room; no UI work needed.
-- Updating BACKLOG `npc-drift-loop` or `npc-memory-retrieval` status notes to reflect the gate-met state. The gate is met implicitly when this spec ships; no entry-text edit required.
+- LLM-driven drift ticks (richer voice; would need GPU arbiter yielding + a different concurrency model). Separate future spec.
+- Weather and in-world calendar tick types. The BACKLOG entry references them; v0 ships the narrate emission tick only.
+- Mood transitions driven by drift (UPDATE `toons.mood`). Future spec.
+- Drift across multiple worlds. Single-world for v0.
+- Authoring UI for drift pools. Implementer picks the pool location; editing is operator-side.
+- Per-NPC cadence overrides. All NPCs drift at the same global cadence in v0.
+- Drift sensitivity to room state (e.g., suppress drift when player is in the NPC's room and just talked). Future polish.
+- Updating `npc-memory-retrieval` BACKLOG status note to reflect the drift-loop landing. Implicit when this spec ships; no entry-text edit required.
 
 **Critical files to create:**
-- `migrations/008_second_npc.sql` (criterion 1)
-- `skills/iris.json` (criterion 2)
-- `tests/test_ws_iris.py` (criteria 3 + 4)
+- `daydream/drift.py` (criterion 1)
+- `tests/test_drift.py` (criterion 4)
 
 **Critical files to modify:**
-- None expected. The data-skill pipeline, snapshot machinery, broadcast loop, and admin CLI already handle the second-NPC case via existing code paths. Verify by code-reading — if any of these does need modification, surface as a finding.
-
-### Findings (2026-05-07)
-
-All five criteria met in one operational pass; Iris is now the second NPC, sitting at `r-attic`, with voice differentiated from Rook on role + topical anchors + register.
-
-- **C1 (migration 008):** `migrations/008_second_npc.sql` lands. INSERT-OR-IGNORE on `t-iris` (slot 101, mood `thoughtful` to differentiate from Rook's `content`), then UPDATE sets `presence_text` ("Iris glances up from a sheaf of old letters, marks her place with a strip of ribbon, and offers a small nod before returning to her sorting."). Idempotent: re-runs converge.
-- **C2 (skills/iris.json):** Iris's voice authored in 3.7K-char prompt template with the variety-pass lessons from 2026-05-06 baked in: kind-specific input-anchor mapping (5 input kinds → 5 anchor styles: paper / eyes / light / specific-object / room-listening), 3 distinct exemplars (letter/Brookmoor, postcards/window-light, button/keep-a-name), explicit no-sticky-opener instruction. Voice differentiated from Rook on the three required axes — role (archivist vs forge-keeper), topical anchors (letters/ink/dust/round-window vs iron/anvil/bellows), register (slightly more bookish + curious + asks questions back vs laconic).
-- **C3 + C4 (tests/test_ws_iris.py):** 8 tests covering install, happy-path-at-attic, empty-input, hidden-in-meadow (asserts `mock_llm.call_count == 1` so iris doesn't dispatch in scope-mismatched rooms), attic-snapshot-includes-iris, meadow-snapshot-excludes-iris, banned-input short-circuit, refusal short-circuit. Mirrors `tests/test_ws_rook.py`'s structure.
-- **C5 (tests stay green):** tier_short 271 passed, tier_medium 368 passed (was 360, +8 from `test_ws_iris.py`). One small touch needed in `tests/test_db.py:130` — the `test_init_schema_is_idempotent` test hardcoded `COUNT(*) FROM toons == 2` for "Wren + Rook"; updated to `== 3` covering Wren + Rook + Iris with a comment. Snapshot contract reality: `daydream/api/ws.py:125` exposes `id/name/mood` per toon, NOT `seed`/`appearance_seed`/`presence_text` — the criterion's wording about "appearance/presence_text fields populated" was over-specified; the actual snapshot contract is id/name/mood, with `presence_text` firing as a separate `narrate` broadcast event after the snapshot (per migration 007's design). The implemented test verifies what's actually exposed; spirit of criterion 4 (snapshot reflects co-location) is met.
-
-**Side effects.** No code changes to `daydream/api/ws.py`, `daydream/skills/data.py`, `daydream/admin.py`, or any other Python module. The whole second-NPC turn was content + a migration + tests. Confirms the data-skill pipeline + snapshot machinery + broadcast loop's claim-to-be-NPC-count-agnostic from the prior turn.
-
-**Unblocked.** BACKLOG `npc-drift-loop` and `npc-memory-retrieval` gates (`>=2 NPCs in the world`) now strictly satisfied. Either is a natural next-turn candidate.
+- `daydream/server.py` (criterion 1; lifespan hook)
+- Possibly `daydream/events.py` (small public `subscriber_count()` accessor; implementer's call)
 
 ---
-*Prior spec (2026-05-07): voice-bench cleanup hygiene round closed 5/5. `docs/gpu-and-models.md` got a new `## Things we tried and rejected` section narrating the Mistral Nemo Q4 experiment + the gguf-`__version__` bootstrap patch with its removal trigger; `daydream/voice_samples.py` env-var converged on `DAYDREAM_VLLM_MAX_LEN`; three new BACKLOG entries (`creative-finetune-json-fluent-base`, `free-form-prose-pipeline`, `mistral-7b-instruct-fp16-ab`) capture the voice-A/B forward paths; ~30 GB freed from HF cache. Tier_short 271 / tier_medium 360 green throughout.*
+*Prior spec (2026-05-07): Second NPC (Iris, the attic archivist) closed 5/5. `migrations/008_second_npc.sql` adds `t-iris` at slot 101 in `r-attic` (mood `thoughtful` to differentiate from Rook); `skills/iris.json` authors voice differentiated from Rook on role + topical anchors + register, with the 2026-05-06 prompt-template-variety lessons baked in from version 1; `tests/test_ws_iris.py` mirrors `test_ws_rook.py` with 8 tests covering install + happy path + scoping + safety + refusal. No `daydream/api/ws.py` or `daydream/skills/data.py` changes — the data-skill pipeline + snapshot machinery generalize across NPCs as predicted.*
 
-### Proposal (2026-05-07)
-
-**What happened (this turn).** Two commits closed the second-NPC spec at 5/5: `64afbfb` (SPEC consume), `8de1713` (C1-C5 in one bundled commit). Iris is now the second NPC at `r-attic`: `migrations/008_second_npc.sql` (slot 101, mood `thoughtful`, presence_text), `skills/iris.json` (voice differentiated from Rook on role + topical anchors + register, with the 2026-05-06 prompt-template-variety lessons baked in from version 1), `tests/test_ws_iris.py` (8 tests covering install + happy-path + scoping + safety + refusal). Tier_short 271 / tier_medium 368 green (was 360, +8 from the new iris tests).
-
-**What was learned.** The data-skill pipeline, snapshot machinery, broadcast loop, and admin CLI generalize across NPCs without code changes. Iris landed as content + a migration + tests only; `daydream/api/ws.py`, `daydream/skills/data.py`, `daydream/admin.py` stayed untouched. The "second NPC is content-only" hypothesis from the prior turn proved correct. One small over-specification surfaced (criterion 4's snapshot field list assumed `appearance/presence_text` exposure; reality is `id/name/mood` only, with `presence_text` firing as a separate narrate broadcast event); spec spirit met, contract noted in commit body for next codereview to flag if helpful.
-
-**Immediate next step (per user's pre-cleanup plan).** `/codereview` of the full unpushed branch (everything since `2c3edb5`, the last reviewed commit). Per the user's instruction: "If everything is clean after the second loop, close the turn and start a codereview." The codereview is a quality gate, not a spec turn — this proposal frames next-spec-turn options *after* that gate clears.
-
-**Next-turn directions (post-codereview).**
-
-1. **NPC drift loop.** BACKLOG `npc-drift-loop` gate is NEWLY MET this turn (`>=2 NPCs in the world` now satisfied with Iris joining Rook; arbiter has existed since the image-gen-pipeline landed). The entry calls for APScheduler-driven background ticks (weather, NPC mood, in-world calendar) on the "gentle drift" cadence (~5 min when empty, ~30 min when humans present), drift loop yielding the GPU lock immediately on player input. Concrete, well-scoped, big enough to be a substantive turn without being architectural.
-
-2. **`watercolor-lora-ab` revisit.** Image-side small A/B; 5th surfacing. Has been declined in 4 prior proposals; if declined again, worth a status note that the entry is becoming stale-revisit and may belong elsewhere.
-
-3. **NPC memory retrieval.** BACKLOG `npc-memory-retrieval` is still gated on drift-loop landing. Not yet eligible; the natural follow-on to option 1.
-
-Strongest read: **option 1 (NPC drift loop)** as the natural follow-on. Newly eligible; builds on the just-shipped two-NPC substrate; opens up the BACKLOG `npc-memory-retrieval` follow-on.
-
-### Revisit candidates
-
-- `npc-drift-loop` — gate `>=2 NPCs in the world` newly satisfied (Iris joined Rook this turn); arbiter already in place. Both revisit-criteria gates met. The entry's prior-turn deferral reason ("v0 has no NPCs to drift") no longer holds.
-- `watercolor-lora-ab` — image audit-trail half still landed; 5th surfacing. Declined in 4 prior proposals.
-
-<!-- SPEC_META: {"date":"2026-05-07","title":"Second NPC (Iris, the attic archivist)","criteria_total":5,"criteria_met":5} -->
+<!-- SPEC_META: {"date":"2026-05-07","title":"NPC drift loop (v0: pre-canned narrates)","criteria_total":5,"criteria_met":0} -->
