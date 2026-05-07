@@ -205,6 +205,16 @@ cmd_status() {
             reach="reachable"
         fi
         echo "fastapi: running (pid $pid, port $PORT, $reach)"
+        # Drift outcome counters when reachable AND drift has ticked.
+        # Endpoint returns empty body when all counters are zero, so
+        # the line is silent until drift fires for the first time.
+        if [[ "$reach" == "reachable" ]] && command -v curl >/dev/null 2>&1; then
+            local drift_line
+            drift_line="$(curl -s --max-time 1 "http://0.0.0.0:${PORT}/status/drift" 2>/dev/null)"
+            if [[ -n "$drift_line" ]]; then
+                printf "%s" "$drift_line"
+            fi
+        fi
     else
         echo "fastapi: stopped"
     fi
@@ -359,6 +369,18 @@ cmd_voice_samples() {
     "$VENV_PY" -m daydream.voice_samples "$@"
 }
 
+cmd_drift_samples() {
+    # Render the drift voice-bench corpus against the live vLLM, write
+    # a dated model-slugged markdown file under
+    # docs/pretty/drift-voice-samples/. Mirrors voice-samples but
+    # exercises the LLM-driven drift narrate path (single-sentence
+    # ambient body language, no quoted dialogue) instead of the
+    # dialogue path. Hermetic — no DB, synthetic memories from each
+    # corpus file. See daydream/drift_samples.py.
+    _require_venv
+    "$VENV_PY" -m daydream.drift_samples "$@"
+}
+
 case "${1:-}" in
     up)            shift; cmd_up "$@" ;;
     down)          shift; cmd_down "$@" ;;
@@ -372,6 +394,7 @@ case "${1:-}" in
     world)         shift; cmd_world "$@" ;;
     test)          shift; cmd_test "$@" ;;
     voice-samples) shift; cmd_voice_samples "$@" ;;
-    "")            echo "usage: bin/game {up|down|status|logs|image-test|comfyui-up|comfyui-down|vllm-up|vllm-down|world|test|voice-samples}" >&2; exit 2 ;;
-    *)             echo "usage: bin/game {up|down|status|logs|image-test|comfyui-up|comfyui-down|vllm-up|vllm-down|world|test|voice-samples} (got: $1)" >&2; exit 2 ;;
+    drift-samples) shift; cmd_drift_samples "$@" ;;
+    "")            echo "usage: bin/game {up|down|status|logs|image-test|comfyui-up|comfyui-down|vllm-up|vllm-down|world|test|voice-samples|drift-samples}" >&2; exit 2 ;;
+    *)             echo "usage: bin/game {up|down|status|logs|image-test|comfyui-up|comfyui-down|vllm-up|vllm-down|world|test|voice-samples|drift-samples} (got: $1)" >&2; exit 2 ;;
 esac

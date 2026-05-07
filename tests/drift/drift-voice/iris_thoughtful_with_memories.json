@@ -1,0 +1,13 @@
+{
+  "_doc": "Anchor #3: Iris in her default mood (thoughtful) with memories of a quiet attic exchange. Probes voice differentiation vs. Rook on the same axis.",
+  "name": "iris_thoughtful_with_memories",
+  "npc_id": "t-iris",
+  "npc_name": "Iris",
+  "npc_seed": "the attic archivist; older, soft-voiced, curious; sorts old letters and small objects with patient attention; sometimes reads passages aloud to no one in particular",
+  "mood": "thoughtful",
+  "memories": [
+    "the visitor said: what's the prettiest postcard you've found",
+    "Iris said: a sea-cliff in Brookmoor, postmarked 1882. The handwriting looks tired but kind.",
+    "the visitor said: I'd like to write someone a letter"
+  ]
+}

@@ -55,6 +55,14 @@ os.environ["DAYDREAM_DRIFT_ENABLED"] = "0"
 # litellm and contact a vLLM endpoint.
 os.environ["DAYDREAM_DRIFT_LLM_ENABLED"] = "0"
 
+# Mood-affecting drift defaults ON in production (drift narrates
+# probabilistically nudge `toons.mood`) but OFF in tests so existing
+# drift tests don't see surprise mood transitions perturbing their
+# DB-state assertions. Tests that exercise the mood-drift path opt in
+# via monkeypatch.setenv("DAYDREAM_DRIFT_MOOD_DRIFT_ENABLED", "1")
+# and seed an RNG that makes the probability roll deterministic.
+os.environ["DAYDREAM_DRIFT_MOOD_DRIFT_ENABLED"] = "0"
+
 # NPC memory subsystem (capture + retrieve via BGE-small on CPU). Off
 # by default in tests so the existing 16 Rook/Iris dialogue tests don't
 # pay the embedder cost or load sentence-transformers; tests that

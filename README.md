@@ -8,12 +8,12 @@ The image above is the image-gen pipeline's first real output: prompt seeded fro
 
 ## Status
 
-Latest stable cut: **v0.1.0**. Runs on a single Linux dev box (RTX 4000 SFF Ada, 20 GB VRAM); designed to port to Cloudflare and containers later. Test gates: 297 fast tests (`bin/game test short`, ~3 s) and 413 integration tests (`bin/game test medium`, ~4 s); both 100% green. Real-GPU drift probes run on-demand under `bin/game test long`.
+Latest stable cut: **v0.1.0**. Runs on a single Linux dev box (RTX 4000 SFF Ada, 20 GB VRAM); designed to port to Cloudflare and containers later. Test gates: 320 fast tests (`bin/game test short`, ~3 s) and 451 integration tests (`bin/game test medium`, ~4 s); both 100% green. Real-GPU drift probes run on-demand under `bin/game test long`.
 
 What works today:
 
 - Multi-room world (5 rooms, bidirectional exits) with two hand-authored NPCs (Rook the forge-keeper at `r-forge`; Iris the attic archivist at `r-attic`) you can talk to via the data-skill pipeline.
-- NPC drift loop emits per-NPC narrate ticks while the player is elsewhere (every 5 min idle, 30 min when humans are connected). Drift composes each tick via the LLM from the NPC's recent memories + mood, falling back to a mood-bucketed canned pool when vLLM is down or the response trips the WHIMSY banlist.
+- NPC drift loop emits per-NPC narrate ticks while the player is elsewhere (every 5 min idle, 30 min when humans are connected). Drift composes each tick via the LLM from the NPC's recent memories + mood, falling back to a mood-bucketed canned pool when vLLM is down or the response trips the WHIMSY banlist. Suppressed in any room a human is currently in (so it never feels intrusive in-frame); each tick has a small chance to nudge the NPC's mood to a different bucket so the world drifts over hours of play.
 - NPC dialogue memory: each Rook / Iris exchange is captured to a per-world `memories` table with a 384-dim CPU embedding (BGE-small via `sentence-transformers`), and the next turn pulls top-K by `cosine_similarity * exp(-age/24h)` and weaves them into the prompt as context. Fail-closed (capture/retrieve return `None` / `[]` if the embedder isn't installed) so the dialogue path stays warm even before `bin/memory-bootstrap` runs. CPU-only by construction; no GPU arbiter contention.
 - Watercolor SDXL backgrounds for any room, generated locally via ComfyUI behind the GPU arbiter. vLLM (Qwen 2.5 7B Instruct AWQ) serves narration. Both engines optional; the game runs at all engine combinations.
 - Voice-bench audit-trail harness (`bin/game voice-samples`) captures dated narrate samples for any model swap; four baselines in tree under `docs/pretty/voice-samples/` (pre-fix and post-fix AWQ plus two Mistral-Nemo Q4 failure modes — see Release notes).
@@ -102,8 +102,8 @@ The script installs `sentence-transformers` against the PyTorch CPU wheel index 
 ## Tests
 
 ```sh
-bin/game test short     # unit / fast (~3s)      — pre-commit gate (297 tests)
-bin/game test medium    # integration (~4s)      — pre-push gate (413 tests)
+bin/game test short     # unit / fast (~3s)      — pre-commit gate (320 tests)
+bin/game test medium    # integration (~4s)      — pre-push gate (451 tests)
 bin/game test long      # real-GPU drift (~15min) — on-demand / pre-release
 bin/game test human     # aesthetic rubric via qpeek — async human review
 ```

@@ -1,0 +1,9 @@
+{
+  "_doc": "Anchor #1: Rook in his default mood (content), zero memories. Probes the LLM's baseline drift voice — no recent context to lean on, just character + mood. The cleanest 'cold start' of drift narrate output.",
+  "name": "rook_content_empty",
+  "npc_id": "t-rook",
+  "npc_name": "Rook",
+  "npc_seed": "the forge-keeper; slow-moving and quiet; hums old songs while working the bellows, sleeves always a little sooty",
+  "mood": "content",
+  "memories": []
+}

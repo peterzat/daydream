@@ -1,0 +1,9 @@
+{
+  "_doc": "Anchor #5: Rook with a non-bucketed mood (weary) and empty memories. Probes how the LLM handles a mood label that has no canned-pool bucket — the LLM should still produce a drift narrate that reflects the mood verbally even though the canned-fallback path would land in `default`. Captures the LLM's freedom to interpret arbitrary mood strings.",
+  "name": "rook_weary_empty",
+  "npc_id": "t-rook",
+  "npc_name": "Rook",
+  "npc_seed": "the forge-keeper; slow-moving and quiet; hums old songs while working the bellows, sleeves always a little sooty",
+  "mood": "weary",
+  "memories": []
+}

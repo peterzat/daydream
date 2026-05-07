@@ -96,3 +96,16 @@ def set_current_room(toon_id: str, room_id: str) -> None:
         "UPDATE toons SET current_room_id = ? WHERE id = ?",
         (room_id, toon_id),
     )
+
+
+def set_mood(toon_id: str, mood: str) -> None:
+    """Update a toon's mood. Parameterized UPDATE; an unknown
+    `toon_id` matches zero rows and is a no-op (no exception). The
+    `mood` column has no FK or check-constraint, so any string is
+    persisted as-is. Currently used by the drift loop's
+    mood-affecting branch (`daydream/drift.py`) and by the
+    `set_mood` data-skill effect handler (`daydream/skills/effects.py`)."""
+    db.get_conn().execute(
+        "UPDATE toons SET mood = ? WHERE id = ?",
+        (mood, toon_id),
+    )

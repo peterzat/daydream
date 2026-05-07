@@ -57,6 +57,29 @@ app.include_router(auth.router)
 app.include_router(ws.router)
 
 
+@app.get("/status/drift")
+async def status_drift():
+    """Internal observability endpoint for `bin/game status`. Returns
+    a one-line summary of drift outcome counters when any are non-zero;
+    empty body (200 OK with empty payload) when drift hasn't ticked yet.
+
+    Plain-text rather than JSON so `bin/game cmd_status` can interpolate
+    the response directly without a JSON parser dependency. Loopback /
+    tailnet-only via AccessMiddleware (no session auth needed)."""
+    from fastapi.responses import PlainTextResponse
+
+    from daydream import drift
+
+    counts = drift.tick_counts()
+    if not any(counts.values()):
+        return PlainTextResponse("", status_code=200)
+    return PlainTextResponse(
+        f"drift: {counts['llm_emit']} emits"
+        f" / {counts['canned_fallback']} fallback"
+        f" / {counts['noop']} noop (since boot)\n"
+    )
+
+
 @app.get("/login")
 async def login_form():
     # Tailscale-mode clients never need to see this form — tailnet

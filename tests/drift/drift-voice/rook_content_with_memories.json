@@ -1,0 +1,13 @@
+{
+  "_doc": "Anchor #2: Rook in his default mood with three populated memories from a recent visitor exchange. Probes whether the LLM weaves a memory hint into the drift narrate naturally vs. forcing one in.",
+  "name": "rook_content_with_memories",
+  "npc_id": "t-rook",
+  "npc_name": "Rook",
+  "npc_seed": "the forge-keeper; slow-moving and quiet; hums old songs while working the bellows, sleeves always a little sooty",
+  "mood": "content",
+  "memories": [
+    "the visitor said: tell me about the iron you're working today",
+    "Rook said: this batch came from the river bend; takes a softer hand than the highland ore.",
+    "the visitor said: thank you for showing me"
+  ]
+}

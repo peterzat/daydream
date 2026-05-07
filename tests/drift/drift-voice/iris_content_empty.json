@@ -1,0 +1,9 @@
+{
+  "_doc": "Anchor #4: Iris off her default mood (content instead of thoughtful) with empty memories. Probes whether the LLM's drift narrate shifts subtly with mood when no other context is provided.",
+  "name": "iris_content_empty",
+  "npc_id": "t-iris",
+  "npc_name": "Iris",
+  "npc_seed": "the attic archivist; older, soft-voiced, curious; sorts old letters and small objects with patient attention; sometimes reads passages aloud to no one in particular",
+  "mood": "content",
+  "memories": []
+}

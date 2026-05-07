@@ -51,7 +51,7 @@ from typing import Any
 
 from jinja2.sandbox import SandboxedEnvironment
 
-from daydream import db, events, memories
+from daydream import db, events, memories, toons
 from daydream.llm import client as llm_client
 from daydream.llm import safety
 
@@ -113,6 +113,48 @@ _DRIFT_POOLS: dict[str, dict[str, list[str]]] = {
 _DEFAULT_IDLE_SECONDS = 300.0
 _DEFAULT_BUSY_SECONDS = 1800.0
 _DEFAULT_LLM_TOP_K = 3
+_DEFAULT_MOOD_DRIFT_PROB = 0.2
+
+
+# Per-NPC selection weight for the random tick draw. Higher weight = more
+# often picked when a tick fires. Defaults are equal so v0 behavior is
+# unchanged; tuning these is a soft lever for "Rook drifts more than
+# Iris" or vice versa without restructuring the loop. NPCs missing from
+# this dict default to weight 1.0; a weight of 0.0 excludes the NPC from
+# selection entirely (eligible-but-suppressed). The mechanism survives
+# adding new NPCs in v1+ — no migration, no schema change.
+_NPC_DRIFT_WEIGHT: dict[str, float] = {
+    "t-rook": 1.0,
+    "t-iris": 1.0,
+}
+
+
+# Outcome counters for drift ticks. Process-local; reset on `bin/game up`.
+# Mutually exclusive: every `_tick` call increments exactly one key.
+# - `llm_emit`: LLM path returned a non-None narrate AND it was emitted.
+# - `canned_fallback`: LLM path returned None (failure / banlist / empty)
+#   AND the canned-pool fallback emitted a narrate.
+# - `noop`: nothing emitted (no eligible NPCs, all-zero weights, all
+#   rooms occupied, all pools empty, etc.).
+# Surfaced via `bin/game status` when any value is non-zero. asyncio
+# single-thread means no lock is needed.
+_TICK_COUNTS: dict[str, int] = {
+    "llm_emit": 0,
+    "canned_fallback": 0,
+    "noop": 0,
+}
+
+
+def tick_counts() -> dict[str, int]:
+    """Return a copy of the drift outcome counters. Public accessor for
+    `bin/game status` and tests."""
+    return dict(_TICK_COUNTS)
+
+
+def reset_tick_counts() -> None:
+    """Test helper: zero all drift outcome counters."""
+    for k in _TICK_COUNTS:
+        _TICK_COUNTS[k] = 0
 
 
 # Module-level Jinja sandbox for the drift LLM user prompt. SandboxedEnvironment
@@ -154,6 +196,27 @@ def _is_llm_enabled() -> bool:
     and `DAYDREAM_MEMORY_ENABLED` so each axis is independently
     controllable when debugging."""
     return os.environ.get("DAYDREAM_DRIFT_LLM_ENABLED", "1") != "0"
+
+
+def _is_occupancy_suppression_enabled() -> bool:
+    """Don't drift in a room a player is currently in (would feel
+    intrusive). Default on in production; tests opt out per-test via
+    monkeypatch when they need the legacy "drift anywhere" behavior."""
+    return os.environ.get("DAYDREAM_DRIFT_SUPPRESS_OCCUPIED", "1") != "0"
+
+
+def _is_mood_drift_enabled() -> bool:
+    """Drift events occasionally nudge `toons.mood`. Default on in
+    production; off in tests (`tests/conftest.py`) so the existing 19
+    drift tests are unperturbed."""
+    return os.environ.get("DAYDREAM_DRIFT_MOOD_DRIFT_ENABLED", "1") != "0"
+
+
+def _mood_drift_prob() -> float:
+    try:
+        return float(os.environ.get("DAYDREAM_DRIFT_MOOD_DRIFT_PROB", _DEFAULT_MOOD_DRIFT_PROB))
+    except ValueError:
+        return _DEFAULT_MOOD_DRIFT_PROB
 
 
 def _llm_top_k() -> int:
@@ -228,17 +291,117 @@ def _pick_canned_line(
     return rng.choice(chosen)
 
 
+def _occupied_room_ids() -> set[str]:
+    """Rooms with at least one human-controlled, non-kicked toon
+    present. Drift suppresses narrates in these rooms when occupancy
+    suppression is enabled (default)."""
+    try:
+        rows = db.get_conn().execute(
+            "SELECT DISTINCT current_room_id FROM toons "
+            "WHERE is_human_controlled = 1 "
+            "AND kicked_at IS NULL "
+            "AND current_room_id IS NOT NULL"
+        ).fetchall()
+    except Exception as e:
+        logger.warning("drift: occupancy query failed: %s", e, exc_info=True)
+        return set()
+    return {r["current_room_id"] for r in rows}
+
+
 def _eligible_npcs(npcs: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Filter NPC list to those with at least one non-empty pool bucket.
-    Empty-pool NPCs are silently skipped rather than producing nothing."""
+    """Filter NPC list to those with at least one non-empty pool bucket
+    AND (when occupancy suppression is on) whose current room has no
+    human-controlled toon present. Empty-pool NPCs are silently skipped
+    rather than producing nothing."""
+    if _is_occupancy_suppression_enabled():
+        occupied = _occupied_room_ids()
+    else:
+        occupied = set()
     out = []
     for n in npcs:
         buckets = _DRIFT_POOLS.get(n["id"])
         if not buckets:
             continue
-        if any(lines for lines in buckets.values()):
-            out.append(n)
+        if not any(lines for lines in buckets.values()):
+            continue
+        if n["current_room_id"] in occupied:
+            continue
+        out.append(n)
     return out
+
+
+def _pick_npc(
+    eligible: list[dict[str, Any]], rng: random.Random | None = None
+) -> dict[str, Any] | None:
+    """Weighted random pick from eligible NPCs using `_NPC_DRIFT_WEIGHT`.
+    NPCs missing from the dict default to weight 1.0; weight 0.0 excludes.
+    Returns None when the eligible-set weights sum to 0 (all-zero edge
+    case) — caller treats as a no-op tick."""
+    if not eligible:
+        return None
+    rng = rng if rng is not None else random
+    weights = [_NPC_DRIFT_WEIGHT.get(n["id"], 1.0) for n in eligible]
+    if sum(weights) <= 0:
+        return None
+    return rng.choices(eligible, weights=weights, k=1)[0]
+
+
+def _maybe_transition_mood(
+    npc: dict[str, Any], rng: random.Random | None = None
+) -> str | None:
+    """Probabilistic mood transition. With probability
+    `DAYDREAM_DRIFT_MOOD_DRIFT_PROB` (default 0.2) and at least one
+    target bucket available (an `_DRIFT_POOLS[npc_id]` key other than
+    `default` and other than the current mood), pick a new mood and
+    persist via `toons.set_mood`. Returns the new mood string on
+    transition, or None when no transition fired (toggle off, roll
+    didn't land, no eligible target bucket, or persist failed).
+
+    Persist failures are caught and logged at warning; the tick has
+    already emitted its narrate by the time this runs and the loop
+    continues regardless."""
+    if not _is_mood_drift_enabled():
+        return None
+    rng = rng if rng is not None else random
+    if rng.random() >= _mood_drift_prob():
+        return None
+    buckets = _DRIFT_POOLS.get(npc["id"])
+    if not buckets:
+        return None
+    current_mood = npc.get("mood")
+    targets = [
+        m for m in buckets.keys() if m != "default" and m != current_mood
+    ]
+    if not targets:
+        return None
+    new_mood = rng.choice(targets)
+    try:
+        toons.set_mood(npc["id"], new_mood)
+    except Exception as e:
+        logger.warning(
+            "drift: mood transition persist failed for %s -> %s: %s",
+            npc["id"], new_mood, e,
+        )
+        return None
+    return new_mood
+
+
+def _render_drift_prompt(npc: dict[str, Any], retrieved_memories: list) -> str:
+    """Render the drift LLM user prompt. Pure: takes any dict-shaped
+    npc with `name`, `seed`, `mood` keys and an iterable of `Memory`-
+    shaped objects (uses `.text`); returns the rendered prompt string.
+
+    Extracted from `_llm_narrate` so the drift voice-bench harness
+    (`daydream/drift_samples.py`) can render the same prompt the
+    production code path would render, without DB state or memory
+    retrieval coupling."""
+    template = _jinja.from_string(_DRIFT_USER_TEMPLATE)
+    return template.render(
+        npc_name=npc["name"],
+        npc_seed=npc["seed"],
+        npc_mood=npc["mood"] or "calm",
+        memories=retrieved_memories,
+    )
 
 
 async def _llm_narrate(npc: dict[str, Any]) -> str | None:
@@ -261,13 +424,7 @@ async def _llm_narrate(npc: dict[str, Any]) -> str | None:
         logger.warning("drift LLM: memory retrieve failed: %s", e, exc_info=True)
         retrieved = []
     try:
-        template = _jinja.from_string(_DRIFT_USER_TEMPLATE)
-        prompt = template.render(
-            npc_name=npc["name"],
-            npc_seed=npc["seed"],
-            npc_mood=npc["mood"] or "calm",
-            memories=retrieved,
-        )
+        prompt = _render_drift_prompt(npc, retrieved)
     except Exception as e:
         logger.warning("drift LLM: template render failed: %s", e, exc_info=True)
         return None
@@ -295,25 +452,36 @@ async def _llm_narrate(npc: dict[str, Any]) -> str | None:
 
 async def _tick(rng: random.Random | None = None) -> bool:
     """One drift step. Returns True if a narrate was emitted, False
-    if the tick was a no-op (no NPCs, all pools empty, etc.).
+    if the tick was a no-op (no NPCs, all pools empty, all rooms
+    occupied, all weights zero, etc.).
 
     Async because the LLM-driven branch awaits `acompletion_json`. The
     canned branch could be sync but is awaited via the same coroutine
     so the loop body's contract stays uniform.
 
+    Order of operations:
+    1. List NPCs + filter for non-empty pool + room-occupancy suppression.
+    2. Weighted-random select from eligible.
+    3. Try LLM-driven narrate; on failure fall back to canned-pool.
+    4. Emit narrate event.
+    5. Probabilistically transition the chosen NPC's mood.
+
     `rng` injection lets tests seed selection deterministically."""
     rng = rng if rng is not None else random
     eligible = _eligible_npcs(_list_npcs())
-    if not eligible:
+    chosen = _pick_npc(eligible, rng=rng)
+    if chosen is None:
+        _TICK_COUNTS["noop"] += 1
         return False
-    chosen = rng.choice(eligible)
 
-    text: str | None = None
+    llm_text: str | None = None
     if _is_llm_enabled():
-        text = await _llm_narrate(chosen)
+        llm_text = await _llm_narrate(chosen)
+    text = llm_text if llm_text is not None else _pick_canned_line(
+        chosen["id"], chosen["mood"], rng=rng
+    )
     if text is None:
-        text = _pick_canned_line(chosen["id"], chosen["mood"], rng=rng)
-    if text is None:
+        _TICK_COUNTS["noop"] += 1
         return False
     events.append(
         actor_type="system",
@@ -322,6 +490,11 @@ async def _tick(rng: random.Random | None = None) -> bool:
         payload={"text": text},
         room_id=chosen["current_room_id"],
     )
+    if llm_text is not None:
+        _TICK_COUNTS["llm_emit"] += 1
+    else:
+        _TICK_COUNTS["canned_fallback"] += 1
+    _maybe_transition_mood(chosen, rng=rng)
     return True
 
 
