@@ -109,3 +109,192 @@ def set_mood(toon_id: str, mood: str) -> None:
         "UPDATE toons SET mood = ? WHERE id = ?",
         (mood, toon_id),
     )
+
+
+# ---- slot-picker helpers (toon-slot-management spec, 2026-05-07) -------
+#
+# The slot system is for HUMAN-controllable toons in slots 1-5 only.
+# Hand-authored NPCs in slots 100+ (Rook, Iris) are excluded from
+# every slot-picker query so they never appear in the UI's slot list
+# nor get accidentally claimed/kicked by the API.
+
+HUMAN_SLOT_RANGE = range(1, 6)  # slots 1..5 inclusive
+DEFAULT_HUMAN_WORLD_ID = "w-bunny"
+DEFAULT_HUMAN_ROOM_ID = "r-meadow"
+
+
+def get_toon_by_session(session_id: str) -> Toon | None:
+    """Return the toon currently controlled by the given session, or
+    None if no slot is claimed. A toon is 'controlled' when its
+    controller_session matches AND kicked_at IS NULL AND
+    is_human_controlled = 1. An empty / falsy session_id returns
+    None (the caller treats this as 'no claim, fall back to
+    legacy default')."""
+    if not session_id:
+        return None
+    row = (
+        db.get_conn()
+        .execute(
+            "SELECT * FROM toons "
+            "WHERE controller_session = ? "
+            "AND kicked_at IS NULL "
+            "AND is_human_controlled = 1 "
+            "LIMIT 1",
+            (session_id,),
+        )
+        .fetchone()
+    )
+    return Toon.from_row(row) if row else None
+
+
+def get_human_slots(session_id: str | None = None) -> list[dict]:
+    """Return a list of 5 slot descriptors for slots 1..5. Each entry is
+    `{"slot": N, "toon": <toon-dict>|None}`. The toon-dict includes
+    `claimed_by_me` derived against `session_id` (False when session_id
+    is None or doesn't match). Slot 100+ NPCs are excluded.
+
+    Slots are listed in order 1..5; an empty slot returns
+    `{"slot": N, "toon": None}`. When multiple rows share a slot due to
+    a kicked-then-recreated history (shouldn't happen at v1 since create
+    is gated on slot vacancy, but defense-in-depth), the most-recently
+    created row wins."""
+    rows = (
+        db.get_conn()
+        .execute(
+            "SELECT * FROM toons "
+            "WHERE slot BETWEEN 1 AND 5 "
+            "AND world_id = ? "
+            "ORDER BY slot, id",
+            (DEFAULT_HUMAN_WORLD_ID,),
+        )
+        .fetchall()
+    )
+    by_slot: dict[int, Toon] = {}
+    for row in rows:
+        t = Toon.from_row(row)
+        # Keep first-seen per slot — rows are ORDER BY slot, id so this
+        # is deterministic. v1 invariant: at most one row per slot.
+        by_slot.setdefault(t.slot, t)
+    out: list[dict] = []
+    for n in HUMAN_SLOT_RANGE:
+        t = by_slot.get(n)
+        if t is None:
+            out.append({"slot": n, "toon": None})
+            continue
+        out.append({
+            "slot": n,
+            "toon": {
+                "id": t.id,
+                "name": t.name,
+                "appearance_seed": t.appearance_seed,
+                "current_room_id": t.current_room_id,
+                "is_human_controlled": t.is_human_controlled,
+                "kicked_at": t.kicked_at,
+                "mood": t.mood,
+                "claimed_by_me": (
+                    bool(session_id)
+                    and t.controller_session == session_id
+                    and t.kicked_at is None
+                    and t.is_human_controlled
+                ),
+            },
+        })
+    return out
+
+
+def _slot_occupied(slot: int) -> Toon | None:
+    """Return the toon (if any) currently in `slot` for the default
+    world. Returns None for empty slots. Used by the create / claim /
+    kick endpoints to make their precondition checks against the same
+    slice the listing uses."""
+    row = (
+        db.get_conn()
+        .execute(
+            "SELECT * FROM toons "
+            "WHERE slot = ? AND world_id = ? "
+            "ORDER BY id LIMIT 1",
+            (slot, DEFAULT_HUMAN_WORLD_ID),
+        )
+        .fetchone()
+    )
+    return Toon.from_row(row) if row else None
+
+
+def create_toon_in_slot(
+    slot: int, name: str, appearance_seed: str, session_id: str
+) -> Toon | None:
+    """Create a new human-controlled toon in `slot` claimed by
+    `session_id`. Returns the new Toon, or None if the slot is already
+    occupied (precondition gate; caller turns this into 409). Toon id
+    is `t-slot{N}-<short-uuid>` for stability + uniqueness; the row's
+    starting state mirrors the v0 Wren seed (empty inventory, mood
+    'curious', current_room_id 'r-meadow'). Caller is responsible for
+    range-checking `slot` against HUMAN_SLOT_RANGE before calling."""
+    import uuid as _uuid
+
+    if _slot_occupied(slot) is not None:
+        return None
+    toon_id = f"t-slot{slot}-{_uuid.uuid4().hex[:8]}"
+    db.get_conn().execute(
+        "INSERT INTO toons "
+        "(id, world_id, slot, name, seed, appearance_seed, current_room_id, "
+        " is_human_controlled, controller_session, inventory_json, mood, kicked_at) "
+        "VALUES (?, ?, ?, ?, '', ?, ?, 1, ?, '[]', 'curious', NULL)",
+        (
+            toon_id,
+            DEFAULT_HUMAN_WORLD_ID,
+            slot,
+            name,
+            appearance_seed,
+            DEFAULT_HUMAN_ROOM_ID,
+            session_id,
+        ),
+    )
+    return get_toon(toon_id)
+
+
+def claim_slot(slot: int, session_id: str) -> tuple[Toon | None, str | None]:
+    """Adopt a kicked-NPC toon as the human player. Returns
+    `(toon, None)` on success, `(None, reason)` on failure where
+    reason is one of: 'empty' (no toon in slot), 'controlled'
+    (toon is currently human-controlled and not kicked).
+
+    Atomicity: SELECT-then-UPDATE under SQLite's single-writer
+    semantics is fine for v1. Two simultaneous claims hit the same
+    underlying file lock; one succeeds first, the second sees the
+    new controller_session and returns 'controlled'."""
+    t = _slot_occupied(slot)
+    if t is None:
+        return (None, "empty")
+    if t.is_human_controlled and t.kicked_at is None:
+        return (None, "controlled")
+    db.get_conn().execute(
+        "UPDATE toons SET controller_session = ?, "
+        "is_human_controlled = 1, kicked_at = NULL "
+        "WHERE id = ?",
+        (session_id, t.id),
+    )
+    return (get_toon(t.id), None)
+
+
+def kick_slot(slot: int) -> Toon | None:
+    """Release `slot` to a non-drifting NPC. Sets
+    controller_session=NULL, is_human_controlled=0, kicked_at=<UTC ISO>.
+    The toon stays in its current_room_id carrying inventory_json,
+    mood, and any accrued memories. Returns the kicked Toon, or None
+    if the slot is empty.
+
+    No per-session ownership check at v1 (friend-scope; any
+    authenticated session can kick any slot). v2 multi-user-shared-world
+    will tighten this once the threat model lands."""
+    t = _slot_occupied(slot)
+    if t is None:
+        return None
+    db.get_conn().execute(
+        "UPDATE toons SET controller_session = NULL, "
+        "is_human_controlled = 0, "
+        "kicked_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now') "
+        "WHERE id = ?",
+        (t.id,),
+    )
+    return get_toon(t.id)

@@ -8,7 +8,7 @@ The image above is the image-gen pipeline's first real output: prompt seeded fro
 
 ## Status
 
-Latest stable cut: **v0.2.0**. Runs on a single Linux dev box (RTX 4000 SFF Ada, 20 GB VRAM); designed to port to Cloudflare and containers later. Test gates: 320 fast tests (`bin/game test short`, ~3 s) and 451 integration tests (`bin/game test medium`, ~4 s); both 100% green. Real-GPU drift probes run on-demand under `bin/game test long`.
+Latest stable cut: **v0.2.0**. Runs on a single Linux dev box (RTX 4000 SFF Ada, 20 GB VRAM); designed to port to Cloudflare and containers later. Test gates: 320 fast tests (`bin/game test short`, ~3 s) and 469 integration tests (`bin/game test medium`, ~5 s); both 100% green. Real-GPU drift probes run on-demand under `bin/game test long`.
 
 What works today:
 
@@ -103,7 +103,7 @@ The script installs `sentence-transformers` against the PyTorch CPU wheel index 
 
 ```sh
 bin/game test short     # unit / fast (~3s)      — pre-commit gate (320 tests)
-bin/game test medium    # integration (~4s)      — pre-push gate (451 tests)
+bin/game test medium    # integration (~5s)      — pre-push gate (469 tests)
 bin/game test long      # real-GPU drift (~15min) — on-demand / pre-release
 bin/game test human     # aesthetic rubric via qpeek — async human review
 ```

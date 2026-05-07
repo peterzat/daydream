@@ -21,10 +21,16 @@
     <nav id="skill-bar" aria-label="skills"></nav>
     <nav id="exit-bar" aria-label="exits"></nav>
     <footer>
+      <button id="slots-toggle" type="button" class="slots-toggle">switch toon</button>
       <form action="/api/logout" method="post">
         <button type="submit" class="logout">leave the dream</button>
       </form>
     </footer>
+    <section id="slots-panel" class="slots-panel hidden" aria-label="toon slots">
+      <h2>toon slots</h2>
+      <ul id="slots-list"></ul>
+      <button id="slots-close" type="button">close</button>
+    </section>
   </main>
   <script src="/assets/main.js"></script>
 </body>

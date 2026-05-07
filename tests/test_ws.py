@@ -164,6 +164,41 @@ def test_ws_canonical_examine_echoes_seed_sentinel():
     assert "hairline crack" in evt["event"]["payload"]["text"]
 
 
+def test_ws_dispatch_uses_claimed_slot_toon_not_legacy_wren():
+    """After claiming a slot, the WS resolves the controlled toon to
+    that slot's toon. Subsequent input events have actor_id matching
+    the claimed toon, not 't-wren' (the legacy fallback)."""
+    with TestClient(app) as client:
+        _login(client)
+        # Claim slot 2 with a fresh toon.
+        r = client.post(
+            "/api/slots/2/create",
+            json={"name": "Mira", "appearance_seed": "a small fox in a wool hat"},
+        )
+        assert r.status_code == 200
+        claimed_id = r.json()["id"]
+        assert claimed_id != "t-wren"
+        with client.websocket_connect("/ws") as ws:
+            ws.receive_json()  # snapshot
+            ws.send_json({"kind": "input", "text": "say hello"})
+            evt = ws.receive_json()
+    assert evt["event"]["kind"] == "say"
+    assert evt["event"]["actor_id"] == claimed_id
+
+
+def test_ws_unclaimed_session_falls_back_to_t_wren():
+    """A session that hasn't claimed a slot dispatches as t-wren
+    (legacy fallback). Verifies the fallback path explicitly."""
+    with TestClient(app) as client:
+        _login(client)
+        # Do NOT claim a slot.
+        with client.websocket_connect("/ws") as ws:
+            ws.receive_json()  # snapshot
+            ws.send_json({"kind": "input", "text": "say hello"})
+            evt = ws.receive_json()
+    assert evt["event"]["actor_id"] == "t-wren"
+
+
 def test_ws_llm_routed_input_dispatches_skill():
     """SPEC criterion 6: 'look around' -> look skill via LLM interpreter."""
     canned = {"skill": "look", "args": "around"}

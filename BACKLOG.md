@@ -6,7 +6,7 @@ context for every entry below lives in `~/.claude/plans/let-s-design-a-fairly-gi
 
 ## v1: cozy single-player loop
 
-### toon-slot-management
+### toon-slot-management (ACTIVE in spec 2026-05-07)
 - **One-line description:** Add the 5-slot toon picker UI, slot CRUD endpoints in `daydream/api/`, and `kicked_at` promotion that turns a kicked toon into an NPC carrying its inventory and history.
 - **Why deferred:** v0 has one hardcoded toon; slot management only matters once a second human (or NPC) wants to occupy the world.
 - **Revisit criteria:** v0 persistence verified; second human player wants in, or first NPC needs to be authored.

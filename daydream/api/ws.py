@@ -11,8 +11,13 @@ Free-form input is routed by:
   2. Otherwise: pass through the LLM interpreter to pick a skill or 'none'.
      'none' produces a graceful narration fallback (SPEC criteria 6 and 7).
 
-v0 hardcodes the human controller to the single seeded toon (Wren) in the
-single seeded room (the meadow). Slot management lands in v1."""
+v1's toon-slot-management replaced the v0 hardcoded Wren-as-player
+assumption with a session-resolved controlled toon (see
+`daydream/api/slots.py`). When a session has claimed a slot, that
+toon is the actor for input dispatch and the room-filter anchor for
+the broadcast loop. Sessions that haven't claimed a slot fall through
+to the legacy default `t-wren` so existing tests + the single-session
+flow keep working."""
 
 import asyncio
 import logging
@@ -30,7 +35,11 @@ from daydream.skills import interpreter, registry
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-HUMAN_TOON_ID = "t-wren"
+# Legacy default actor when a session hasn't claimed a slot. Single-user
+# v1 friend-scope: the seeded Wren toon at slot 1 catches every
+# unclaimed session. Removed in v2 multi-user-shared-world (multiple
+# sessions can't share one default toon).
+LEGACY_TOON_ID = "t-wren"
 # Event kinds emitted by `daydream.skills.effects` allowlist handlers
 # that mutate observable room state. When one of these reaches the
 # broadcast loop, the WS layer pushes a fresh state_snapshot so the
@@ -47,12 +56,28 @@ DEFAULT_ROOM_ID = "r-meadow"
 SNAPSHOT_HISTORY_DEPTH = 50
 
 
-def _current_room_id() -> str:
-    """Authoritative 'where is the controlled toon right now' for this
-    session. Reads from DB on each call; the room flips as the player
-    moves. Falls back to DEFAULT_ROOM_ID only if the toon has no
-    current_room_id (programming bug, not a normal state)."""
-    t = toons.get_toon(HUMAN_TOON_ID)
+def _resolve_controlled_toon_id(session_id: str | None) -> str:
+    """Return the toon id this session controls. Looks up the toons
+    table for a row with matching `controller_session` (set by the
+    slot picker's create / claim endpoints); falls back to
+    `LEGACY_TOON_ID` when no row matches. The fallback covers
+    sessions that haven't claimed a slot (legacy single-user flow,
+    test fixtures that don't go through the slot picker, the WS
+    connection from a freshly-authed session before its first
+    slot interaction)."""
+    if session_id:
+        t = toons.get_toon_by_session(session_id)
+        if t is not None:
+            return t.id
+    return LEGACY_TOON_ID
+
+
+def _current_room_id(toon_id: str) -> str:
+    """Authoritative 'where is the controlled toon right now' for the
+    given toon. Reads from DB on each call; the room flips as the
+    player moves. Falls back to DEFAULT_ROOM_ID only if the toon has
+    no current_room_id (programming bug, not a normal state)."""
+    t = toons.get_toon(toon_id)
     if t is None or t.current_room_id is None:
         return DEFAULT_ROOM_ID
     return t.current_room_id
@@ -77,7 +102,7 @@ def _room_target(world_id: str, room_id: str, room_seed: str) -> "image_client.P
     )
 
 
-def _state_snapshot(last_seq: int) -> dict:
+def _state_snapshot(last_seq: int, toon_id: str) -> dict:
     """Build a snapshot pinned to the given last_seq. Caller subscribes first
     (so concurrent appends fan out to this connection's queue), then captures
     last_seq, then calls this; any queued events with seq <= last_seq are
@@ -86,7 +111,7 @@ def _state_snapshot(last_seq: int) -> dict:
     Room is resolved dynamically from the controlled toon's
     current_room_id so that post-move snapshots reflect the new room
     without the caller having to pass the id in."""
-    room_id = _current_room_id()
+    room_id = _current_room_id(toon_id)
     room = rooms.get_room(room_id)
     items_in = items.get_items_in_room(room_id)
     toons_in = toons.get_toons_in_room(room_id)
@@ -217,19 +242,20 @@ def _emit_npc_presence_narrates(controlled_toon_id: str, room_id: str) -> None:
         )
 
 
-async def _handle_input(text: str) -> None:
+async def _handle_input(text: str, toon_id: str) -> None:
     """Route player input. Canonical form (skill word + args) bypasses the LLM
     so button clicks and exact commands don't pay round-trip latency.
 
     Each invocation re-reads the toon's current room so the routing
     applies to where the player is NOW, not where they were when the
-    connection opened."""
+    connection opened. `toon_id` is resolved once at connect time
+    (`_resolve_controlled_toon_id`) and threaded through here."""
     text = text.strip()
     if not text:
         return
     parts = text.split(None, 1)
     head = parts[0].lower()
-    room_id = _current_room_id()
+    room_id = _current_room_id(toon_id)
     # Use the room-filtered candidate list for BOTH the canonical bypass
     # and the interpreter fallback, so a data skill whose context
     # predicate hides it in the current room does not dispatch when the
@@ -240,7 +266,7 @@ async def _handle_input(text: str) -> None:
     spec = available_by_name.get(head)
     if spec is not None:
         rest = parts[1] if len(parts) > 1 else ""
-        await _dispatch_spec(spec, HUMAN_TOON_ID, room_id, rest)
+        await _dispatch_spec(spec, toon_id, room_id, rest)
         return
     decision = await interpreter.interpret(text, available)
     if decision.skill == "none":
@@ -253,7 +279,7 @@ async def _handle_input(text: str) -> None:
     spec = available_by_name.get(decision.skill)
     if spec is None:
         return  # race: skill was disabled between interpret and dispatch
-    await _dispatch_spec(spec, HUMAN_TOON_ID, room_id, decision.args)
+    await _dispatch_spec(spec, toon_id, room_id, decision.args)
 
 
 async def _dispatch_spec(
@@ -270,9 +296,15 @@ async def _dispatch_spec(
 
 @router.websocket("/ws")
 async def ws_endpoint(ws: WebSocket):
-    if not auth.is_authed(ws.scope.get("session", {})):
+    session = ws.scope.get("session", {})
+    if not auth.is_authed(session):
         await ws.close(code=status.WS_1008_POLICY_VIOLATION)
         return
+    # Resolve the controlled toon for this connection. Slot picker's
+    # create / claim endpoints set controller_session = <session id>;
+    # an unclaimed session falls through to LEGACY_TOON_ID.
+    session_id = session.get("id") if isinstance(session, dict) else None
+    toon_id = _resolve_controlled_toon_id(session_id)
     await ws.accept()
     # Subscribe before snapshot so any events that land while we yield to send
     # the snapshot are captured in the queue; pin last_seq here, then drop any
@@ -280,15 +312,17 @@ async def ws_endpoint(ws: WebSocket):
     queue = events.subscribe()
     try:
         last_seq = events.max_seq()
-        await ws.send_json(_state_snapshot(last_seq))
+        await ws.send_json(_state_snapshot(last_seq, toon_id))
         # Kick off image gen for the current room if the cache is cold.
         # Fire-and-forget; the resulting room_image_ready event reaches the
         # client through the broadcast loop below.
-        room = rooms.get_room(_current_room_id())
+        room = rooms.get_room(_current_room_id(toon_id))
         if room is not None:
             _maybe_enqueue_image_gen(room.world_id, room.id, room.seed)
-        receive_task = asyncio.create_task(_receive_loop(ws))
-        broadcast_task = asyncio.create_task(_broadcast_loop(ws, queue, last_seq))
+        receive_task = asyncio.create_task(_receive_loop(ws, toon_id))
+        broadcast_task = asyncio.create_task(
+            _broadcast_loop(ws, queue, last_seq, toon_id)
+        )
         done, pending = await asyncio.wait(
             [receive_task, broadcast_task],
             return_when=asyncio.FIRST_COMPLETED,
@@ -299,18 +333,18 @@ async def ws_endpoint(ws: WebSocket):
         events.unsubscribe(queue)
 
 
-async def _receive_loop(ws: WebSocket) -> None:
+async def _receive_loop(ws: WebSocket, toon_id: str) -> None:
     try:
         while True:
             msg = await ws.receive_json()
             if msg.get("kind") == "input":
-                await _handle_input(str(msg.get("text", "")))
+                await _handle_input(str(msg.get("text", "")), toon_id)
     except WebSocketDisconnect:
         pass
 
 
 async def _broadcast_loop(
-    ws: WebSocket, queue: asyncio.Queue, snapshot_seq: int
+    ws: WebSocket, queue: asyncio.Queue, snapshot_seq: int, toon_id: str
 ) -> None:
     try:
         while True:
@@ -324,9 +358,9 @@ async def _broadcast_loop(
             # pass — a move event has room_id=<departure>, which wouldn't
             # match current_room after the move otherwise, and the client
             # would never learn it moved.
-            own_event = event.actor_id == HUMAN_TOON_ID
+            own_event = event.actor_id == toon_id
             if not own_event and event.room_id is not None:
-                if event.room_id != _current_room_id():
+                if event.room_id != _current_room_id(toon_id):
                     continue
             await ws.send_json({"kind": "event", "event": event.to_dict()})
             # After a mutation of observable room state, push a fresh
@@ -338,16 +372,16 @@ async def _broadcast_loop(
             # stale until the next manual snapshot trigger. Advance
             # snapshot_seq so any events already queued for the new state
             # aren't dropped as "covered by snapshot" when they weren't.
-            is_controlled_move = event.kind == "move" and event.actor_id == HUMAN_TOON_ID
+            is_controlled_move = event.kind == "move" and event.actor_id == toon_id
             is_effect_mutation = event.kind in _EFFECT_MUTATION_KINDS
             if is_controlled_move or is_effect_mutation:
                 snapshot_seq = events.max_seq()
-                await ws.send_json(_state_snapshot(snapshot_seq))
+                await ws.send_json(_state_snapshot(snapshot_seq, toon_id))
                 if is_controlled_move:
                     # Kick image gen for the new room if the cache is cold;
                     # the room_image_ready event flows back through this
                     # same loop.
-                    new_room = rooms.get_room(_current_room_id())
+                    new_room = rooms.get_room(_current_room_id(toon_id))
                     if new_room is not None:
                         _maybe_enqueue_image_gen(
                             new_room.world_id, new_room.id, new_room.seed
@@ -357,6 +391,6 @@ async def _broadcast_loop(
                     # the effect-mutation branch, so dispatching a
                     # data skill at r-forge doesn't re-greet Rook on
                     # every snapshot refresh.
-                    _emit_npc_presence_narrates(HUMAN_TOON_ID, _current_room_id())
+                    _emit_npc_presence_narrates(toon_id, _current_room_id(toon_id))
     except (WebSocketDisconnect, RuntimeError):
         pass

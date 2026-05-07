@@ -188,3 +188,37 @@ footer .logout {
   color: var(--sage-deep); text-decoration: none;
 }
 footer .logout:hover { text-decoration: underline; }
+
+/* Slot picker (toon-slot-management spec, 2026-05-07) */
+footer .slots-toggle {
+  background: none; border: none; padding: 0; font: inherit; cursor: pointer;
+  color: var(--sage-deep); text-decoration: none; margin-right: 1em;
+}
+footer .slots-toggle:hover { text-decoration: underline; }
+
+.slots-panel {
+  position: fixed; top: 4em; left: 50%; transform: translateX(-50%);
+  background: var(--paper); border: 1px solid var(--sage);
+  padding: 1em 1.5em; border-radius: 6px; min-width: 320px;
+  box-shadow: 0 4px 12px rgba(58, 74, 68, 0.12);
+}
+.slots-panel.hidden { display: none; }
+.slots-panel h2 {
+  margin: 0 0 0.6em 0; font-weight: normal; color: var(--sage-deep);
+  font-size: 1.1em; letter-spacing: 0.02em;
+}
+.slots-panel ul { list-style: none; padding: 0; margin: 0 0 0.8em 0; }
+.slots-panel .slot-row {
+  display: flex; align-items: center; gap: 0.6em;
+  padding: 0.35em 0; border-bottom: 1px dotted var(--sage);
+  font-size: 0.95em;
+}
+.slots-panel .slot-row:last-child { border-bottom: none; }
+.slots-panel .slot-num { opacity: 0.6; font-variant-numeric: tabular-nums; }
+.slots-panel .slot-empty { opacity: 0.5; font-style: italic; }
+.slots-panel button {
+  margin-left: auto; background: var(--paper); border: 1px solid var(--sage-deep);
+  color: var(--sage-deep); padding: 0.25em 0.7em; border-radius: 4px;
+  font: inherit; cursor: pointer;
+}
+.slots-panel button:hover { background: var(--sage); color: var(--paper); }

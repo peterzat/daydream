@@ -16,12 +16,27 @@ The shared password lives in .env at the project root (gitignored), sourced
 by bin/game; if unset the server refuses all password-mode logins with a 503.
 In tailscale mode the password is unused and can stay unset without effect."""
 
+import uuid
+
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 
 from daydream import config
 
 router = APIRouter()
+
+
+def _ensure_session_id(session: dict) -> str:
+    """Stamp a stable per-session UUID into the session dict on first
+    auth. Used by the slot-picker (`daydream/api/slots.py`) to identify
+    the controlling client and by `daydream/api/ws.py` to resolve the
+    session's claimed toon. Idempotent: if `id` is already set the
+    existing value is returned unchanged."""
+    sid = session.get("id")
+    if not isinstance(sid, str) or not sid:
+        sid = str(uuid.uuid4())
+        session["id"] = sid
+    return sid
 
 
 @router.post("/api/login")
@@ -31,6 +46,7 @@ async def login(request: Request):
     # we get here, so the password check would be redundant ceremony.
     if config.access_mode() == "tailscale":
         request.session["authed"] = True
+        _ensure_session_id(request.session)
         return RedirectResponse(url="/", status_code=303)
 
     data = await request.form()
@@ -52,6 +68,7 @@ async def login(request: Request):
             status_code=401,
         )
     request.session["authed"] = True
+    _ensure_session_id(request.session)
     return RedirectResponse(url="/", status_code=303)
 
 

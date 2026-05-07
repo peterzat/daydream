@@ -102,6 +102,39 @@ def test_index_html_has_painting_overlay_element():
     assert 'id="painting-overlay"' in r.text
 
 
+def test_index_html_has_slot_picker_elements():
+    """SPA exposes the slot-picker affordance per toon-slot-management
+    spec: a 'switch toon' toggle in the footer, a slots panel with the
+    slots list ul, and a close button."""
+    with TestClient(app) as client:
+        _login(client)
+        r = client.get("/")
+    assert 'id="slots-toggle"' in r.text
+    assert 'id="slots-panel"' in r.text
+    assert 'id="slots-list"' in r.text
+    assert 'id="slots-close"' in r.text
+
+
+def test_main_js_wires_slot_picker_endpoints():
+    """SPA's slot picker JS calls the four endpoints
+    (/api/slots, create, claim, kick)."""
+    with TestClient(app) as client:
+        _login(client)
+        r = client.get("/assets/main.js")
+    assert "/api/slots" in r.text
+    assert "create" in r.text
+    assert "claim" in r.text
+    assert "kick" in r.text
+
+
+def test_style_css_has_slot_panel():
+    with TestClient(app) as client:
+        _login(client)
+        r = client.get("/assets/style.css")
+    assert ".slots-panel" in r.text
+    assert ".slot-row" in r.text
+
+
 def test_logout_link_posts_not_gets():
     """Regression: the logout control must POST (endpoint is POST-only).
     A plain <a href="/api/logout"> GET would produce 405 when clicked,

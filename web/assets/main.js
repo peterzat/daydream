@@ -155,4 +155,127 @@ document.getElementById("input-form").addEventListener("submit", (ev) => {
   inp.value = "";
 });
 
+// ---- slot picker (toon-slot-management spec, 2026-05-07) -------------
+//
+// Toggles the slots panel; fetches /api/slots and renders one row per
+// slot with the appropriate action button. Create / claim / kick all
+// re-fetch and re-render. After a successful claim or create, the
+// player reconnects the WS so the new connection's session→toon
+// resolution picks up the new claim.
+
+async function fetchSlots() {
+  const r = await fetch("/api/slots", { credentials: "same-origin" });
+  if (!r.ok) {
+    systemLine(`(slots fetch failed: ${r.status})`);
+    return null;
+  }
+  return r.json();
+}
+
+async function postSlotAction(slot, action, body) {
+  const r = await fetch(`/api/slots/${slot}/${action}`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    credentials: "same-origin",
+    body: body ? JSON.stringify(body) : null,
+  });
+  if (!r.ok) {
+    let detail = `${r.status}`;
+    try {
+      const j = await r.json();
+      if (j.detail) detail = `${r.status} ${j.detail}`;
+    } catch (_) {}
+    systemLine(`(slot ${action} failed: ${detail})`);
+    return null;
+  }
+  return r.json();
+}
+
+async function renderSlots() {
+  const data = await fetchSlots();
+  const list = document.getElementById("slots-list");
+  list.innerHTML = "";
+  if (!data) return;
+  for (const entry of data.slots) {
+    const li = document.createElement("li");
+    li.className = "slot-row";
+    const t = entry.toon;
+    if (!t) {
+      li.innerHTML = `<span class="slot-num">slot ${entry.slot}</span> <span class="slot-empty">empty</span>`;
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.textContent = "create";
+      btn.onclick = () => createInSlot(entry.slot);
+      li.appendChild(btn);
+    } else if (t.claimed_by_me) {
+      li.innerHTML = `<span class="slot-num">slot ${entry.slot}</span> <strong>${escape(t.name)}</strong> <em>(yours)</em>`;
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.textContent = "kick";
+      btn.onclick = () => kickSlot(entry.slot);
+      li.appendChild(btn);
+    } else if (t.kicked_at) {
+      li.innerHTML = `<span class="slot-num">slot ${entry.slot}</span> ${escape(t.name)} <em>(resting)</em>`;
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.textContent = "claim";
+      btn.onclick = () => claimSlot(entry.slot);
+      li.appendChild(btn);
+    } else {
+      li.innerHTML = `<span class="slot-num">slot ${entry.slot}</span> ${escape(t.name)} <em>(taken)</em>`;
+    }
+    list.appendChild(li);
+  }
+}
+
+async function createInSlot(slot) {
+  const name = (window.prompt("name for the new toon?") || "").trim();
+  if (!name) return;
+  const appearance = (
+    window.prompt("a few words of appearance?") || ""
+  ).trim();
+  if (!appearance) return;
+  const result = await postSlotAction(slot, "create", {
+    name,
+    appearance_seed: appearance,
+  });
+  if (result) reconnectAfterSlotChange();
+}
+
+async function claimSlot(slot) {
+  const result = await postSlotAction(slot, "claim", null);
+  if (result) reconnectAfterSlotChange();
+}
+
+async function kickSlot(slot) {
+  const result = await postSlotAction(slot, "kick", null);
+  if (result) {
+    await renderSlots();
+    // After kicking yourself, the WS still holds the old toon for the
+    // current session until reconnect; reconnect so subsequent input
+    // routes to the legacy fallback (or whatever new claim follows).
+    reconnectAfterSlotChange();
+  }
+}
+
+function reconnectAfterSlotChange() {
+  if (ws) {
+    try { ws.close(); } catch (_) {}
+  }
+  // The onclose handler reconnects after a short delay; that path also
+  // refreshes the slots list once the new state_snapshot lands.
+  document.getElementById("slots-panel").classList.add("hidden");
+}
+
+document.getElementById("slots-toggle").addEventListener("click", async () => {
+  const panel = document.getElementById("slots-panel");
+  const opening = panel.classList.contains("hidden");
+  panel.classList.toggle("hidden");
+  if (opening) await renderSlots();
+});
+
+document.getElementById("slots-close").addEventListener("click", () => {
+  document.getElementById("slots-panel").classList.add("hidden");
+});
+
 connect();
