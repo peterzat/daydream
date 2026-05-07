@@ -73,4 +73,20 @@
 ---
 *Prior spec (2026-05-07): NPC memory retrieval (v0: SQLite-blob embeddings) closed 7/7. `daydream/memories.py` ships capture + retrieve APIs (fail-closed, CPU-only, no GPU arbiter); migration 009 adds the per-world `memories` table with float32 BLOB embeddings; BGE-small lazy-loads from the shared HF cache; ranking is `cosine_similarity * exp(-age_hours/24)`; Rook/Iris templates wrap retrieved text in `<memory>` role-separator tags; `bin/memory-bootstrap` is the one-time CPU-torch + model install. Tests: 8 in `tests/test_memories.py` + integration in `test_ws_rook.py`; tier_short 291 / tier_medium 402 green at v0.1.0.*
 
+### Proposal (2026-05-07)
+
+**What happened.** LLM-driven drift narrates landed in `220d4fc` and `cfcd5f1`, closing this turn's spec 7/7. `daydream/drift.py` now runs a two-path tick: when `DAYDREAM_DRIFT_LLM_ENABLED=1` it pulls up to K recent memories via `memories.retrieve(query=npc.seed)`, renders a tight Jinja prompt (npc_name + seed + mood + `<memory>`-wrapped recents), calls `acompletion_json` (which holds the existing GPU arbiter), runs `safety.first_banned` on the parsed `narrate`, and emits; on any failure (`LLMUnavailable`, banlist hit, empty/missing narrate) it falls through to the canned path. The canned pool is now `dict[str, dict[str, list[str]]]` keyed by NPC then mood — Rook's 4 lines + Iris's 4 carried forward into their primary mood buckets, 4 new lines per NPC across `thoughtful`/`content`/`default`. The toggle matrix of `(drift, memory, LLM)` is decoupled (each axis controllable). 14 new tests + 5 carry-forwards, all `await drift._tick(...)`. Tier counts: short 291→297, medium 402→413; both green. README rolled forward at status + tests sections; v0.1.0 release-notes counts kept historical.
+
+**Questions and directions.**
+
+- **Code review the drift work.** Two-commit feature with a moderate-sized rewrite of `drift.py` and a near-rewrite of `tests/test_drift.py`. The natural next move is `/codereview` to surface BLOCK/WARN issues before any v0.2.0 cut. Fast feedback while context is warm.
+
+- **Drift polish round two.** README "What's next" names three: per-NPC cadence overrides (Rook drifts faster than Iris if mood demands), room-occupancy-based suppression (don't drift in the room the player is currently in — could feel intrusive), mood-affecting drift (drift events nudge `toons.mood` over time so the canned-bucket selection drifts with the world). Largest UX impact is room-occupancy-based suppression. Likely 4-6 acceptance criteria.
+
+- **Voice-bench harness for drift narrates.** The voice-bench at `tests/drift/voice/*.json` is dialogue-shaped (5 dialogue prompts, captures third-person + quoted dialogue). Drift narrates have a different shape (single-sentence body language, no dialogue). A separate `tests/drift/drift-narrate/*.json` corpus + `bin/game drift-samples` capture path would catch tone drift in the LLM-composed drift output the same way the existing harness catches it for dialogue.
+
+- **v0.2.0 cut.** v0.1.0 is tagged at `6daea43`. LLM-driven drift + memory subsystem are the two big-ticket items since then. Worth a tag + release-notes pass once drift polish + a code review have landed.
+
+- **Drift LLM observability.** `_llm_narrate` logs at info/warning. With drift now hitting the LLM, an op-visible counter for "how often does the canned-fallback path fire?" would catch regressions early (e.g., if a future Qwen swap starts tripping the banlist or returning malformed JSON). Could be a couple of module-level counters surfaced via `bin/game status` or a new `bin/game drift-stats` subcommand.
+
 <!-- SPEC_META: {"date":"2026-05-07","title":"LLM-driven drift narrates with mood-aware canned fallback","criteria_total":7,"criteria_met":7} -->
