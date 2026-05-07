@@ -55,7 +55,7 @@ Right now, before reading further, run:
 bin/game test short
 ```
 
-Expected: under 10 seconds, exits 0, ~156 tests pass. If not, the venv is broken or the repo is in a weird state — fix that first. The rest of this document assumes you have a green `short` tier as a starting point.
+Expected: under 10 seconds, exits 0, ~291 tests pass (~2.7 s wall-clock at v0.1.0). If not, the venv is broken or the repo is in a weird state — fix that first. The rest of this document assumes you have a green `short` tier as a starting point.
 
 ## The single entry point
 
@@ -99,36 +99,38 @@ When `DAYDREAM_TARGET != local`, `tier_medium` and `tier_long` tests **skip clea
 
 ### 3. Quality dimension (test style)
 
-| Dimension     | What it asserts                                                     | Examples                                  |
-|---------------|---------------------------------------------------------------------|-------------------------------------------|
-| Correctness   | Pass/fail against concrete behavior.                                | All current pytest tests.                 |
-| Drift         | Current measurement within tolerance of a committed baseline.       | `tests/drift/*.py` + `tests/baselines/`.  |
-| Human eval    | Reviewer rates artifacts against a rubric; result is a durable log. | `bin/game test human` via qpeek.          |
+| Dimension     | What it asserts                                                     | Examples                                                                  |
+|---------------|---------------------------------------------------------------------|---------------------------------------------------------------------------|
+| Correctness   | Pass/fail against concrete behavior.                                | Most current pytest tests.                                                |
+| Drift         | Current measurement within tolerance of a committed baseline.       | `tests/drift/*.py` + `tests/baselines/`; `tests/test_voice_baseline.py`.  |
+| Human eval    | Reviewer rates artifacts against a rubric; result is a durable log. | `bin/game test human` via qpeek; `bin/game voice-samples`.                |
 
-Correctness is binary. Drift is statistical-ish. Human-eval is subjective-but-logged. Each tier may run any combination of the three.
+Correctness is binary. Drift is statistical-ish (perceptual hash, JSON schema, latency window, pairwise-distinct openers across a corpus). Human-eval is subjective-but-logged. Each tier may run any combination of the three.
+
+This project tilts deliberately toward **proxy** verification (a measurable number that stands in for the goal) over **critic** verification (another LLM reading the output). Proxies catch what the generator can't see — the voice-bench tic regression, the fp8-KV format-adherence breakage, the aesthetic dHash drift. Human-eval and the deferred Claude-vision gate are critics; they exist as supplements, not substitutes, and are explicitly cost-gated.
 
 ## Tier contracts in detail
 
 ### `short` — the pre-commit gate
 
 - Marker expression: `tier_short`
-- Test count today: ~156. Duration: ~2 s.
-- What's in it: every test that doesn't boot `daydream.server.app`, spawn a subprocess, or do heavy filesystem I/O. Also the constants-drift probes under `tests/drift/test_drift_constants.py` (cheap; they just read files).
-- What it catches: broken imports, wrong migration, skill-interpreter regression, cache-key math bug, WHIMSY.md drift, vllm-version doc drift.
+- Test count at v0.1.0: ~291. Wall-clock: ~2.7 s.
+- What's in it: every test that doesn't boot `daydream.server.app`, spawn a subprocess, or do heavy filesystem I/O. Also the constants-drift probes under `tests/drift/test_drift_constants.py` (cheap; they just read files), the WHIMSY suffix probe, the voice-baseline tic-regression probe (`tests/test_voice_baseline.py`; parses captured markdown, asserts pairwise-distinct openers), and the memory-ranking drift probe (`tests/drift/test_memory_ranking.py`; tmp_path SQLite + mocked embeddings, fingerprints the salience formula's ordering and per-item scores).
+- What it catches: broken imports, wrong migration, skill-interpreter regression, cache-key math bug, WHIMSY.md drift, vllm-version doc drift, prompt-template tic regressions on the captured voice corpus, salience-formula drift in NPC memory.
 - When to run: every commit, every save if you've got a file-watcher.
 
 ### `medium` — the pre-push gate
 
 - Marker expression: `tier_short or tier_medium`
-- Test count today: ~211. Duration: ~3 s.
-- What's in it: everything from `short` plus tests that boot `TestClient` (auth, frontend, ws, ws_images), spawn `bin/game` as a subprocess, or round-trip archives. GPU calls are still mocked.
-- What it catches: WebSocket protocol regressions, auth flow breaks, admin CLI breaks, bash dispatcher breaks.
+- Test count at v0.1.0: ~402. Wall-clock: ~4.2 s.
+- What's in it: everything from `short` plus tests that boot `TestClient` (auth, frontend, ws, ws_images, ws_rook, ws_iris), spawn `bin/game` as a subprocess, round-trip archives, or exercise the per-world DB schema (memories included). GPU calls are still mocked; the BGE-small embedder is mocked at `daydream.memories._embed`.
+- What it catches: WebSocket protocol regressions, auth flow breaks, admin CLI breaks, bash dispatcher breaks, NPC dialogue path regressions, memory capture/retrieve/scoping breaks.
 - When to run: before every push, after finishing a feature.
 
 ### `long` — the drift + end-to-end gate
 
 - Marker expression: `tier_short or tier_medium or tier_long`
-- Test count today: ~220 (211 + 9 drift probes). Duration: ~30 s with vLLM + ComfyUI up.
+- Test count at v0.1.0: ~411 (~402 + 9 real-engine drift probes). Wall-clock: ~30 s with vLLM + ComfyUI up.
 - What's in it: everything from `medium` plus the `tests/drift/` probes. Real LLM calls through vLLM. Real image renders through ComfyUI. The arbiter smoke alternates the two under a 90-second budget.
 - What it catches: fp8-KV-style format-adherence regressions, LoRA-swap aesthetic drift, image-gen latency regressions, arbiter serialization bugs.
 - When to run: before a release, after swapping a model / LoRA / workflow, after any arbiter change.
@@ -145,6 +147,8 @@ Semantic equivalent of `long` today. Kept distinct so CI invocations are a stabl
 - Requires: ComfyUI up, qpeek bootstrapped (`bin/qpeek-bootstrap`).
 - When to run: after a LoRA / checkpoint / workflow swap, monthly-ish as a vibe-check even without a change, whenever you feel the output has subtly drifted.
 - Blocks on human interaction. Don't run this in CI.
+
+The voice-bench audit-trail harness (`bin/game voice-samples`) is a sibling to `human`: same "render a corpus, eyeball-diff against the prior baseline" pattern but for narration prose. Output lands at `docs/pretty/voice-samples/<date>-<model_slug>.md`. Re-run after any vLLM model / flag swap; the tic-regression probe (`tests/test_voice_baseline.py`, `tier_short`) parses the committed markdown and asserts pairwise-distinct openers across the 5 corpus prompts so a future capture that regresses the 04-24 prompt-template tic fails the gate mechanically.
 
 ## The drift loop
 
@@ -164,12 +168,16 @@ A drift probe runs the real code path, measures something, and compares to a **g
 
 | Probe file                               | What it fingerprints                                                      | Corpus                                     |
 |------------------------------------------|---------------------------------------------------------------------------|--------------------------------------------|
-| `test_llm_json_adherence.py`             | JSON schema keys + latency window per prompt.                             | `tests/drift/prompts/*.json` (5 probes)    |
-| `test_image_perceptual.py`               | dHash + resolution + (model, lora, workflow_hash). Hamming tolerance.     | `tests/drift/aesthetics/*.json` (3 probes) |
-| `test_arbiter_smoke.py`                  | 5 alternating LLM + image calls; per-call + aggregate budgets.            | reuses prompts/                            |
-| `test_drift_constants.py` (`tier_short`) | WHIMSY_PROMPT_SUFFIX vs WHIMSY.md; vllm version; GPU fraction; model id.  | CLAUDE.md + bin/ scripts                   |
+| `tests/drift/test_llm_json_adherence.py` | JSON schema keys + latency window per prompt.                             | `tests/drift/prompts/*.json` (5 probes)    |
+| `tests/drift/test_image_perceptual.py`   | dHash + resolution + (model, lora, workflow_hash). Hamming tolerance.     | `tests/drift/aesthetics/*.json` (3 probes) |
+| `tests/drift/test_arbiter_smoke.py`      | 5 alternating LLM + image calls; per-call + aggregate budgets.            | reuses prompts/                            |
+| `tests/drift/test_drift_constants.py` (`tier_short`) | WHIMSY_PROMPT_SUFFIX vs WHIMSY.md; vllm version; GPU fraction; model id. | CLAUDE.md + bin/ scripts        |
+| `tests/test_voice_baseline.py` (`tier_short`) | Pairwise-distinct openers across 5 voice-corpus prompts; parses committed markdown. | `docs/pretty/voice-samples/*.md` |
+| `tests/drift/test_memory_ranking.py` (`tier_short`) | Salience-formula ordering + per-item scores for a fixed (sim, age) corpus; pins `cosine * exp(-age/24h)` math + `DECAY_HOURS` constant. | 5-row in-memory corpus + mocked embeddings |
 
 The dHash is a pure-Pillow difference hash — no numpy or scipy dep. For drift *detection* (not content ID) it is plenty sensitive: a material aesthetic shift moves many bits, not 1-2.
+
+The voice-baseline probe is unusual: it runs as `tier_short` (no GPU, just markdown parsing), and the "baseline" it gates against is the committed voice-bench markdown itself rather than a separate `.golden.json`. The probe's parametrized fixture covers both the pre-fix (regression-detection demo) and post-fix substrate so the regression catch is provable, not just claimed.
 
 ### Why baselines live in-tree
 
@@ -228,6 +236,8 @@ For `tier_long` tests, the `enforce_arbiter_held` fixture in `tests/drift/confte
 
 Why this matters: the 20 GB VRAM ceiling. vLLM and SDXL can coexist resident, but can't infer simultaneously. The arbiter is the only thing keeping us out of OOM-land.
 
+The NPC memory subsystem (`daydream/memories.py`) deliberately does NOT take the arbiter — embedding runs on CPU via BGE-small and capture/retrieve must never serialize against in-flight LLM/image-gen. Tests opt into the memory path via `monkeypatch.setenv("DAYDREAM_MEMORY_ENABLED", "1")` and mock `daydream.memories._embed` to inject deterministic vectors; the conftest disables memory by default so the suite never loads the real embedder model.
+
 ## What NOT to test
 
 Per zat.env: "prompts must earn their keep" and "false positives erode trust faster than false negatives." The same applies to tests.
@@ -237,6 +247,7 @@ Per zat.env: "prompts must earn their keep" and "false positives erode trust fas
 - **Impl detail churn.** Pinning internal state (dict ordering, log wording, tuple shape) without a SPEC claim invites churn without signal.
 - **Multi-provider fan-out for future flexibility.** daydream calls vLLM via litellm. We don't need tests against OpenAI / Anthropic providers until we actually run against them.
 - **Baselines for noisy single-shot measurements.** One-shot latency is too jittery to lock into a golden. Record it, but don't gate on it until you have trend data.
+- **Critic-only gates without a proxy.** A "does the LLM think this output is good" test is a critic; without a proxy alongside (latency, schema, opener-distinctness, dHash) the gate has shared blind spots with the generator and erodes signal over time.
 
 ## Operational posture
 
@@ -253,26 +264,30 @@ Liveness gates are orthogonal:
 - `requires_vllm` marker: test skips if `{DAYDREAM_LLM_BASE_URL}/models` is unreachable (2 s timeout, one probe per session).
 - `requires_comfyui` marker: test skips if `{DAYDREAM_COMFYUI_BASE_URL}/system_stats` is unreachable.
 
-So `bin/game test long` with both engines down still runs ~211 tests (short + medium) and skips the 9 drift probes with a clear "engine unreachable" reason.
+So `bin/game test long` with both engines down still runs ~401 tests (short + medium) and skips the 9 drift probes with a clear "engine unreachable" reason.
 
 ## Glossary
 
 - **Probe.** A test that measures something against a committed baseline, typically under `tests/drift/`. Distinct from a correctness test.
-- **Anchor corpus.** The small set of inputs a drift probe runs against. Lives in `tests/drift/prompts/` (LLM) and `tests/drift/aesthetics/` (image). Expanding the corpus is a positive act; the probes scale with it automatically.
+- **Anchor corpus.** The small set of inputs a drift probe runs against. Lives in `tests/drift/prompts/` (LLM), `tests/drift/aesthetics/` (image), and `tests/drift/voice/` (narration). Expanding the corpus is a positive act; the probes scale with it automatically.
 - **Gold baseline / `.golden.json`.** The git-committed reference values for a probe. Updated only via explicit `mv .latest .golden` + commit.
 - **Latest observation / `.latest.json`.** Gitignored; written on every probe run whether pass or fail. Visible in the working tree only.
 - **Tier.** The duration-tier marker (`tier_short`, `tier_medium`, `tier_long`). Contract: individual tests stay within the tier's per-test budget.
 - **Target.** The operational environment (`local`, `staging`, `prod_verify`). Today only `local` is wired; others skip cleanly.
-- **Arbiter.** The in-process GPU lock at `daydream/gpu/arbiter.py`. Every real-GPU call holds it.
+- **Arbiter.** The in-process GPU lock at `daydream/gpu/arbiter.py`. Every real-GPU call holds it. CPU-only paths (memory embedding) do NOT take it.
 - **Drift loop.** The cycle of: run probe → produce `.latest.json` → review → ratify via `mv .latest .golden` → commit. The commit is the ratification.
+- **Voice-bench audit trail.** Dated markdown captures of the 5-prompt corpus rendered by the current `DAYDREAM_LLM_MODEL` (via `bin/game voice-samples`), committed under `docs/pretty/voice-samples/`. Read by `tests/test_voice_baseline.py` for tic-regression detection.
+- **Proxy vs critic.** A proxy is a measurable number that stands in for the goal (latency window, perceptual-hash tolerance, JSON schema adherence, opener-distinctness). A critic is another LLM reading output. Proxies catch what the generator can't see; critics share the generator's blind spots. Daydream prefers proxies; critics are cost-gated supplements.
 
 ## Future refinements
 
-Tracked in `BACKLOG.md` under the `test-architecture-*` family. Worth naming the shape:
+Tracked in `BACKLOG.md`. Worth naming the shape:
 
-- Per-call LLM latency windows tighten as we collect multi-run trends.
-- Claude-vision aesthetic gate (Opus 4.7 vision rates each rendered image; asserts score ≥ threshold).
-- Staging / prod_verify probes when those environments exist.
-- CI pipeline when a second contributor lands.
-- mypy gate once the typing effort is worth it.
-- Drift alarms that auto-open a Claude Code session when a baseline diff lands on main.
+- Per-call LLM latency windows tighten as we collect multi-run trends (`latency-regression-corpus`).
+- Claude-vision aesthetic gate (Opus 4.7 vision rates each rendered image; asserts score ≥ threshold; cost-gated) (`claude-vision-quality-gate`).
+- Staging / prod_verify probes when those environments exist (`staging-probes`, `prod-verify-probes`).
+- CI pipeline when a second contributor lands (`ci-pipeline`).
+- mypy gate once the typing effort is worth it (`mypy-gate`).
+- Drift alarms that auto-open a Claude Code session when a baseline diff lands on main (`drift-alarms`).
+- Local pre-commit / pre-push hook installer for the single-contributor tighten-the-loop case (`pre-commit-hook-installer`).
+- Voice-baseline harness generalization so a new model adds to the regression-detection parametrization without code changes (`voice-baseline-add-model-helper`).

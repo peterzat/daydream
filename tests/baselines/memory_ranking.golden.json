@@ -1,0 +1,26 @@
+{
+  "captured_at": "2026-05-07T05:29:13+00:00",
+  "decay_hours": 24.0,
+  "ranked": [
+    {
+      "score": "0.8633",
+      "text": "high-sim recent"
+    },
+    {
+      "score": "0.6714",
+      "text": "med-sim recent"
+    },
+    {
+      "score": "0.3911",
+      "text": "high-sim old"
+    },
+    {
+      "score": "0.3837",
+      "text": "low-sim recent"
+    },
+    {
+      "score": "0.0473",
+      "text": "high-sim ancient"
+    }
+  ]
+}
