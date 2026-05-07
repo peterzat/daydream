@@ -1,0 +1,143 @@
+#!/usr/bin/env bash
+# bin/install-hooks — install or remove daydream's local git hooks.
+#
+# Default (no args): write .git/hooks/pre-commit (runs `bin/game test
+# short`, ~3 s) and .git/hooks/pre-push (runs `bin/game test medium`,
+# ~5 s). Idempotent — running twice is safe.
+#
+# --uninstall: remove the daydream-installed hooks. Leaves any
+# hand-written hooks alone (recognized by the marker comment).
+#
+# The marker comment "DAYDREAM-INSTALLED-HOOK v1" lets re-runs detect
+# previously-installed hooks vs. hooks the operator wrote by hand. If a
+# hook file exists without the marker, this script refuses to overwrite
+# it; remove the file manually first if you want daydream's version.
+
+set -euo pipefail
+
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+HOOKS_DIR="$PROJECT_ROOT/.git/hooks"
+MARKER="# DAYDREAM-INSTALLED-HOOK v1"
+
+if [[ ! -d "$PROJECT_ROOT/.git" ]]; then
+    echo "Not a git repo (no .git/ at $PROJECT_ROOT); nothing to install." >&2
+    exit 1
+fi
+
+action="install"
+case "${1:-}" in
+    "")          action="install" ;;
+    --uninstall) action="uninstall" ;;
+    -h|--help)
+        cat <<'EOF'
+Usage: bin/install-hooks [--uninstall]
+
+  (no args)    Install pre-commit (`bin/game test short`, ~3 s) and
+               pre-push (`bin/game test medium`, ~5 s). Idempotent.
+  --uninstall  Remove the daydream-installed hooks. Leaves any
+               hand-written hooks alone.
+
+Hooks are recognized by the "DAYDREAM-INSTALLED-HOOK v1" marker line.
+A non-marked hook is never overwritten or removed by this script;
+delete it manually first if you want daydream's version.
+EOF
+        exit 0
+        ;;
+    *)
+        echo "Usage: $(basename "$0") [--uninstall]" >&2
+        exit 1
+        ;;
+esac
+
+mkdir -p "$HOOKS_DIR"
+
+is_ours() {
+    local p="$1"
+    [[ -f "$p" ]] && head -5 "$p" | grep -qF "$MARKER"
+}
+
+write_pre_commit() {
+    local p="$HOOKS_DIR/pre-commit"
+    if [[ -f "$p" ]]; then
+        if is_ours "$p"; then
+            echo "    pre-commit: already installed (skipped)"
+            return 0
+        fi
+        echo "    pre-commit: EXISTS and is not daydream-installed." >&2
+        echo "    Refusing to overwrite $p." >&2
+        echo "    Remove it manually first if you want daydream's hook." >&2
+        exit 1
+    fi
+    cat > "$p" <<'EOF'
+#!/usr/bin/env bash
+# DAYDREAM-INSTALLED-HOOK v1
+# Runs `bin/game test short` (~3 s) before each commit. Bypass with
+# --no-verify if you must. Manage via bin/install-hooks [--uninstall].
+set -e
+cd "$(git rev-parse --show-toplevel)"
+exec bin/game test short
+EOF
+    chmod +x "$p"
+    echo "    pre-commit: installed -> bin/game test short"
+}
+
+write_pre_push() {
+    local p="$HOOKS_DIR/pre-push"
+    if [[ -f "$p" ]]; then
+        if is_ours "$p"; then
+            echo "    pre-push: already installed (skipped)"
+            return 0
+        fi
+        echo "    pre-push: EXISTS and is not daydream-installed." >&2
+        echo "    Refusing to overwrite $p." >&2
+        echo "    Remove it manually first if you want daydream's hook." >&2
+        exit 1
+    fi
+    cat > "$p" <<'EOF'
+#!/usr/bin/env bash
+# DAYDREAM-INSTALLED-HOOK v1
+# Runs `bin/game test medium` (~5 s) before each push. Bypass with
+# --no-verify if you must. Manage via bin/install-hooks [--uninstall].
+# Reads stdin (git supplies <local-ref local-sha remote-ref remote-sha>
+# lines) but does not consume it; the test suite is target-agnostic.
+set -e
+cd "$(git rev-parse --show-toplevel)"
+exec bin/game test medium
+EOF
+    chmod +x "$p"
+    echo "    pre-push: installed -> bin/game test medium"
+}
+
+remove_hook() {
+    local p="$1"
+    local name
+    name="$(basename "$p")"
+    if [[ ! -f "$p" ]]; then
+        echo "    $name: not present"
+        return 0
+    fi
+    if ! is_ours "$p"; then
+        echo "    $name: not daydream-installed (left alone)"
+        return 0
+    fi
+    rm "$p"
+    echo "    $name: removed"
+}
+
+case "$action" in
+install)
+    echo "==> Installing daydream git hooks into $HOOKS_DIR"
+    write_pre_commit
+    write_pre_push
+    echo
+    echo "Hooks installed. Each commit runs tier_short (~3 s); each push"
+    echo "runs tier_medium (~5 s). Bypass via 'git commit --no-verify' or"
+    echo "'git push --no-verify' when needed. Uninstall any time via"
+    echo "'bin/install-hooks --uninstall'."
+    ;;
+uninstall)
+    echo "==> Removing daydream git hooks from $HOOKS_DIR"
+    remove_hook "$HOOKS_DIR/pre-commit"
+    remove_hook "$HOOKS_DIR/pre-push"
+    ;;
+esac

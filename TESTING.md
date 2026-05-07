@@ -117,7 +117,7 @@ This project tilts deliberately toward **proxy** verification (a measurable numb
 - Test count at v0.1.0: ~291. Wall-clock: ~2.7 s.
 - What's in it: every test that doesn't boot `daydream.server.app`, spawn a subprocess, or do heavy filesystem I/O. Also the constants-drift probes under `tests/drift/test_drift_constants.py` (cheap; they just read files), the WHIMSY suffix probe, the voice-baseline tic-regression probe (`tests/test_voice_baseline.py`; parses captured markdown, asserts pairwise-distinct openers), and the memory-ranking drift probe (`tests/drift/test_memory_ranking.py`; tmp_path SQLite + mocked embeddings, fingerprints the salience formula's ordering and per-item scores).
 - What it catches: broken imports, wrong migration, skill-interpreter regression, cache-key math bug, WHIMSY.md drift, vllm-version doc drift, prompt-template tic regressions on the captured voice corpus, salience-formula drift in NPC memory.
-- When to run: every commit, every save if you've got a file-watcher.
+- When to run: every commit, every save if you've got a file-watcher. `bin/install-hooks` wires this to `.git/hooks/pre-commit` so it fires automatically.
 
 ### `medium` — the pre-push gate
 
@@ -125,7 +125,7 @@ This project tilts deliberately toward **proxy** verification (a measurable numb
 - Test count at v0.1.0: ~402. Wall-clock: ~4.2 s.
 - What's in it: everything from `short` plus tests that boot `TestClient` (auth, frontend, ws, ws_images, ws_rook, ws_iris), spawn `bin/game` as a subprocess, round-trip archives, or exercise the per-world DB schema (memories included). GPU calls are still mocked; the BGE-small embedder is mocked at `daydream.memories._embed`.
 - What it catches: WebSocket protocol regressions, auth flow breaks, admin CLI breaks, bash dispatcher breaks, NPC dialogue path regressions, memory capture/retrieve/scoping breaks.
-- When to run: before every push, after finishing a feature.
+- When to run: before every push, after finishing a feature. `bin/install-hooks` wires this to `.git/hooks/pre-push` so it fires automatically.
 
 ### `long` — the drift + end-to-end gate
 
@@ -289,5 +289,4 @@ Tracked in `BACKLOG.md`. Worth naming the shape:
 - CI pipeline when a second contributor lands (`ci-pipeline`).
 - mypy gate once the typing effort is worth it (`mypy-gate`).
 - Drift alarms that auto-open a Claude Code session when a baseline diff lands on main (`drift-alarms`).
-- Local pre-commit / pre-push hook installer for the single-contributor tighten-the-loop case (`pre-commit-hook-installer`).
 - Voice-baseline harness generalization so a new model adds to the regression-detection parametrization without code changes (`voice-baseline-add-model-helper`).
