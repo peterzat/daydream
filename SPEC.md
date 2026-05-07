@@ -74,4 +74,26 @@
 ---
 *Prior spec (2026-05-06): RP-Ink A/B + tic-detection probe closed 5/5. Tic-detection probe shipped at `tests/test_voice_baseline.py` (parametrized regression-detection over the 04-24 vs 05-06 AWQ baselines); `bin/vllm-bootstrap` extended with an idempotent post-install patch that injects `__version__` into the installed gguf package (fixing a transformers 5.6 + gguf >=0.17.0 packaging-metadata bug); MN-12b-RP-Ink Q4_K_M loaded under `--max-model-len 4096` and produced content-empty `{"effects":[{}]}` under strict-JSON, verbose roleplay continuation without — verdict: this finetune is not pipeline-fit. Captured at `docs/pretty/voice-samples/2026-05-06-mn-12b-rp-ink-q4_k_m.md`.*
 
+### Proposal (2026-05-07)
+
+**What happened (this turn).** Two commits closed the controlled-base A/B at 5/5: `3a2d58a` (SPEC consume of 2026-05-07 proposal option 1, with BACKLOG sweep deleting `qwen-2.5-7b-rp-ink-trial`), `55fffd0` (C1+C2: bootstrapped MN-Instruct GGUF, ran the harness, wrote the verdict in the captured markdown's `## Verdict` section + the commit body). The hypothesis was falsified: MN-Instruct (Q4_K_M GGUF, controlled-base, no creative-writing finetune) ALSO fails the data-skill pipeline. Failure mode varies per input under the actual harness prompt (3/5 non-JSON output that fails `json.loads`, 2/5 emit `{"refused":true}` resolved by the safety layer to its default reason text, 1 timeout at 10 s) but a direct probe with a simpler system prompt confirmed MN-Instruct ALSO returns `{"effects":[{}]}` like MN-RP-Ink — the harness's longer prompt template fragments behavior across inputs. Side-effect goal met: the `bin/vllm-bootstrap` gguf-`__version__` patch from `210bb51` applied unmodified to a second model, confirming generality.
+
+**What was learned.** Both Mistral Nemo Q4 legs fail the data-skill pipeline; failure modes differ but the conclusion is identical. Pipeline incompatibility is **base-architecture + Q4-quantization + prompt-shape**, not RP-Ink-specific. The original 2026-04-24 question (does a creative-writing finetune flex on Rook's voice?) remains open with shrunken forward paths, all operator-research or architectural. The voice-A/B thread is effectively closed against Nemo-arch; three baselines now exist in tree as durable audit-trail substrate (working AWQ + 2 Mistral failure modes).
+
+**Questions and directions for the next turn.**
+
+1. **Author a second NPC.** Was option 2 of the prior proposal; still the natural follow-on now that the voice-bench thread is closed. Concrete and well-scoped: one new JSON skill file + prompt template (with the 2026-05-06 prompt-template-variety lessons baked in), context_predicate scoping, tests mirroring `tests/test_ws_rook.py`. Unblocks BACKLOG `npc-drift-loop` and `npc-memory-retrieval` (both gated on >=2 NPCs). Independently improves the world's surface area regardless of the voice-A/B outcome.
+
+2. **`watercolor-lora-ab` revisit.** Image audit-trail half landed in 2026-04-23 (qpeek + `docs/pretty/aesthetic-samples/`); one of the entry's revisit OR-gates is met. Cheap A/B against `ntc-ai/SDXL-LoRA-slider.watercolor` and `lora-library/B-LoRA-watercolor` via `bin/game image-test`. Independent of the voice-bench thread, small turn.
+
+3. **Hygiene round.** Carry-over follow-ons from the recent voice-bench work: env-var-name mismatch (`voice_samples._vllm_config_snapshot` reads `DAYDREAM_VLLM_MAX_MODEL_LEN`, `bin/game vllm-up` honors `DAYDREAM_VLLM_MAX_LEN`); optional sampler tuning for voice-bench (non-zero temperature to reduce greedy-decoding tax); optionally extend the tic-detection probe to also check that any future captures don't reintroduce a tic. All small, independently committable, low-risk cleanup.
+
+4. **Mistral 7B Instruct A/B** (forward path iii from the spec's Findings). Definitively closes the voice-A/B question against Mistral arch by testing a 7B model at fp16 (~14 GB, just fits at `--gpu-memory-utilization 0.7` with ComfyUI down) — separating the quantization axis from the architecture axis. If 7B fp16 ALSO fails, the issue is base-arch + prompt (quant innocent). If it works, the issue is quant + arch (suggesting a 7B AWQ Mistral would be fine). Worth a half-turn only if the voice-A/B closure feels load-bearing for a future decision; otherwise diminishing returns after 3 turns of voice-bench work.
+
+Strongest read: **option 1** (author a second NPC). The voice-A/B infrastructure is now robust and the substrate is healthy; the natural pivot is to use it for content rather than continue investigating model fitness. Option 3 (hygiene) is a reasonable small companion if option 1 lands fast.
+
+### Revisit candidates
+
+- `watercolor-lora-ab` — image audit-trail half landed in 2026-04-23 (qpeek output to `docs/pretty/aesthetic-samples/`); one of the entry's revisit OR-gates is met. Was surfaced in the prior proposal too; user did not pick it then.
+
 <!-- SPEC_META: {"date":"2026-05-07","title":"MN-Instruct + MN-RP-Ink controlled-base A/B","criteria_total":5,"criteria_met":5} -->
