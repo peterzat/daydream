@@ -8,12 +8,12 @@ The image above is the image-gen pipeline's first real output: prompt seeded fro
 
 ## Status
 
-Latest stable cut: **v0.1.0**. Runs on a single Linux dev box (RTX 4000 SFF Ada, 20 GB VRAM); designed to port to Cloudflare and containers later. Test gates: 290 fast tests (`bin/game test short`, ~3 s) and 401 integration tests (`bin/game test medium`, ~4 s); both 100% green. Real-GPU drift probes run on-demand under `bin/game test long`.
+Latest stable cut: **v0.1.0**. Runs on a single Linux dev box (RTX 4000 SFF Ada, 20 GB VRAM); designed to port to Cloudflare and containers later. Test gates: 297 fast tests (`bin/game test short`, ~3 s) and 413 integration tests (`bin/game test medium`, ~4 s); both 100% green. Real-GPU drift probes run on-demand under `bin/game test long`.
 
 What works today:
 
 - Multi-room world (5 rooms, bidirectional exits) with two hand-authored NPCs (Rook the forge-keeper at `r-forge`; Iris the attic archivist at `r-attic`) you can talk to via the data-skill pipeline.
-- NPC drift loop emits per-NPC narrate ticks while the player is elsewhere (every 5 min idle, 30 min when humans are connected).
+- NPC drift loop emits per-NPC narrate ticks while the player is elsewhere (every 5 min idle, 30 min when humans are connected). Drift composes each tick via the LLM from the NPC's recent memories + mood, falling back to a mood-bucketed canned pool when vLLM is down or the response trips the WHIMSY banlist.
 - NPC dialogue memory: each Rook / Iris exchange is captured to a per-world `memories` table with a 384-dim CPU embedding (BGE-small via `sentence-transformers`), and the next turn pulls top-K by `cosine_similarity * exp(-age/24h)` and weaves them into the prompt as context. Fail-closed (capture/retrieve return `None` / `[]` if the embedder isn't installed) so the dialogue path stays warm even before `bin/memory-bootstrap` runs. CPU-only by construction; no GPU arbiter contention.
 - Watercolor SDXL backgrounds for any room, generated locally via ComfyUI behind the GPU arbiter. vLLM (Qwen 2.5 7B Instruct AWQ) serves narration. Both engines optional; the game runs at all engine combinations.
 - Voice-bench audit-trail harness (`bin/game voice-samples`) captures dated narrate samples for any model swap; four baselines in tree under `docs/pretty/voice-samples/` (pre-fix and post-fix AWQ plus two Mistral-Nemo Q4 failure modes — see Release notes).
@@ -102,8 +102,8 @@ The script installs `sentence-transformers` against the PyTorch CPU wheel index 
 ## Tests
 
 ```sh
-bin/game test short     # unit / fast (~3s)      — pre-commit gate (290 tests at v0.1.0)
-bin/game test medium    # integration (~4s)      — pre-push gate (401 tests at v0.1.0)
+bin/game test short     # unit / fast (~3s)      — pre-commit gate (297 tests)
+bin/game test medium    # integration (~4s)      — pre-push gate (413 tests)
 bin/game test long      # real-GPU drift (~15min) — on-demand / pre-release
 bin/game test human     # aesthetic rubric via qpeek — async human review
 ```
@@ -146,7 +146,7 @@ v0.1.0 takes the v1 image-gen pipeline as a substrate and builds a multi-room wo
 - *Greedy decoding tax.* vLLM's `acompletion_json` defaults to `temperature=0.0`, which makes capture deterministic but funnels the model into ONE preferred response shape regardless of input. Variety has to come from the prompt's input-differentiating signals, not from sampling.
 - *Mistral Nemo Q4 + data-skill pipeline = no.* Both `bartowski/MN-12b-RP-Ink-GGUF/MN-12b-RP-Ink-Q4_K_M.gguf` (creative-writing finetune) and `bartowski/Mistral-Nemo-Instruct-2407-GGUF/Mistral-Nemo-Instruct-2407-Q4_K_M.gguf` (controlled-base) fail the data-skill pipeline at our prompt template. RP-Ink returns `{"effects":[{}]}` (content-empty) deterministically; MN-Instruct fragments behavior across inputs (some non-JSON output, some `{"refused":true}` minimal refusals, some timeouts), and a direct probe with a simpler system prompt confirms it ALSO returns `{"effects":[{}]}` like RP-Ink. The pipeline incompatibility is base-architecture + Q4-quantization + prompt-shape, not RP-Ink-specific. The original "does a creative-writing finetune flex on Rook's voice?" question is parked under three forward-path BACKLOG entries (`creative-finetune-json-fluent-base`, `free-form-prose-pipeline`, `mistral-7b-instruct-fp16-ab`).
 
-**What's next (per `BACKLOG.md`):** LLM-driven drift (v1 of the drift loop, replacing the pre-canned per-NPC pool with reactive narrates that yield the GPU arbiter on player input); drift polish (per-NPC cadence overrides, room-occupancy-based suppression, mood-affecting drift); LanceDB-backed retrieval once memory counts cross ~10K per NPC (v0 is SQLite-only). Then anything else operator-driven.
+**What's next:** drift polish round two (per-NPC cadence overrides, room-occupancy-based suppression, mood-affecting drift — moods are read-only at v1 LLM-driven drift); LanceDB-backed retrieval once memory counts cross ~10K per NPC (v0 is SQLite-only). Then anything else operator-driven.
 
 ## Tech sketch
 
