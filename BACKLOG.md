@@ -6,18 +6,6 @@ context for every entry below lives in `~/.claude/plans/let-s-design-a-fairly-gi
 
 ## v1: cozy single-player loop
 
-### toon-slot-management (ACTIVE in spec 2026-05-07)
-- **One-line description:** Add the 5-slot toon picker UI, slot CRUD endpoints in `daydream/api/`, and `kicked_at` promotion that turns a kicked toon into an NPC carrying its inventory and history.
-- **Why deferred:** v0 has one hardcoded toon; slot management only matters once a second human (or NPC) wants to occupy the world.
-- **Revisit criteria:** v0 persistence verified; second human player wants in, or first NPC needs to be authored.
-- **Origin:** plan let-s-design-a-fairly-giggly-narwhal
-
-### world-bootstrap-opus
-- **One-line description:** Add `bin/game world bootstrap NAME --aesthetic "..."` that calls Anthropic Opus 4.7 via `litellm.acompletion(model="anthropic/claude-opus-4-7", ...)` from `daydream/llm/bootstrap.py` to author 5 rooms + 4 toons + initial seeds + 2 starter data skills into a fresh `.db` under `~/data/daydream/worlds-dev/`.
-- **Why deferred:** v0 ships hardcoded one-room migration. Bootstrap is the v1 way to author varied worlds quickly without writing SQL by hand.
-- **Revisit criteria:** multi-room-navigation and toon-slot-management landed; ready to populate a real "bunny world."
-- **Origin:** plan let-s-design-a-fairly-giggly-narwhal
-
 ### snapshot-restore-commands
 - **One-line description:** Add `bin/game world snapshot NAME` (cp live db to `~/data/daydream/snapshots/{world}-{ts}.db`) — fast DB-only point-in-time snapshots for hot-swap, distinct from the existing `bin/game world archive/restore` which bundles DB + per-world cache dir into a full tarball. The snapshot flow is what `world-hot-swap` (below) needs: atomic rename of live → snapshot, reopen pool, broadcast `world_changed`. Archive/restore is for shelving a world off the box entirely.
 - **Why deferred:** v0 has no irreplaceable state; first interesting bootstrap is the moment a snapshot becomes worth taking. `archive/restore` is already sufficient for the "ship a world to a friend" use case.

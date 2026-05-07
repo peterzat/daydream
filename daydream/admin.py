@@ -539,6 +539,52 @@ def cmd_skill_add(path: Path) -> int:
     return 0
 
 
+def cmd_world_bootstrap(
+    name: str,
+    aesthetic: str,
+    output: Path | None,
+    model: str,
+    force: bool,
+) -> int:
+    """Author a fresh daydream world via Claude Opus 4.7 (or another
+    model named via --model). Writes a new SQLite file at the chosen
+    output path. See ``daydream/llm/bootstrap.py`` for the full
+    pipeline (LLM call → JSON validate → DB write).
+
+    Exit codes:
+    - 0 on success.
+    - 2 if the LLM call fails (no ANTHROPIC_API_KEY, network error,
+      rate limit, malformed model name).
+    - 3 if the LLM's JSON envelope fails validation (wrong shape,
+      duplicate slugs, broken exits, etc.).
+    - 4 if the output path exists and --force was not given.
+    """
+    from daydream.llm import bootstrap as boot_mod
+
+    if output is None:
+        output = config.data_dir() / f"worlds-{config.env()}" / f"{name}.db"
+    output = Path(output).expanduser()
+    try:
+        result = boot_mod.bootstrap_world(
+            name=name,
+            aesthetic=aesthetic,
+            output_path=output,
+            model=model,
+            force=force,
+        )
+    except boot_mod.BootstrapOutputExistsError as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 4
+    except boot_mod.BootstrapValidationError as e:
+        print(f"error: bootstrap validation failed: {e}", file=sys.stderr)
+        return 3
+    except boot_mod.BootstrapLLMError as e:
+        print(f"error: bootstrap LLM call failed: {e}", file=sys.stderr)
+        return 2
+    print(f"bootstrapped world {name!r} -> {result}")
+    return 0
+
+
 # ---- main ---------------------------------------------------------------
 
 
@@ -571,6 +617,28 @@ def main(argv: list[str] | None = None) -> int:
     p_skill_add = p_skill_sub.add_parser("add", help="install/upsert a data skill from a JSON author file")
     p_skill_add.add_argument("path", type=Path, help="path to skill.json")
 
+    p_boot = sub.add_parser(
+        "bootstrap",
+        help="author a fresh world via Claude Opus 4.7 (writes a new .db)",
+    )
+    p_boot.add_argument("name", help="kebab-case world identifier")
+    p_boot.add_argument(
+        "--aesthetic", required=True,
+        help='free-text aesthetic description, e.g. "a foggy autumn forest village"',
+    )
+    p_boot.add_argument(
+        "--output", type=Path, default=None,
+        help="output path (default: ~/data/daydream/worlds-dev/<NAME>.db)",
+    )
+    p_boot.add_argument(
+        "--model", default="anthropic/claude-opus-4-7",
+        help="LiteLLM model identifier (default: anthropic/claude-opus-4-7)",
+    )
+    p_boot.add_argument(
+        "--force", action="store_true",
+        help="overwrite the output path if it already exists",
+    )
+
     args = p.parse_args(argv)
     if args.cmd == "list":
         return cmd_list()
@@ -585,6 +653,10 @@ def main(argv: list[str] | None = None) -> int:
     if args.cmd == "skill":
         if args.skill_cmd == "add":
             return cmd_skill_add(args.path)
+    if args.cmd == "bootstrap":
+        return cmd_world_bootstrap(
+            args.name, args.aesthetic, args.output, args.model, args.force,
+        )
     p.print_help()
     return 2
 
