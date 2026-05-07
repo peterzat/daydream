@@ -65,4 +65,30 @@ C1 (tic-detection probe) shipped as a durable independent gain — any future te
 ---
 *Prior spec (2026-05-06): Rook prompt-template variety pass closed 4/4. `skills/rook.json` revised with kind-specific input-mapping anchors + 3 distinct exemplars + explicit ban on the 04-24 tic phrase; new AWQ baseline at `docs/pretty/voice-samples/2026-05-06-qwen2.5-7b-instruct-awq.md` shows all 5 body-language openers exact-string distinct (the 04-24 tic phrase appears 1/5 vs 4/5 in the prior baseline). 8 prompt-template iterations under greedy decoding; lessons in commit bodies of 102d6aa and 6013b6c.*
 
+### Proposal (2026-05-07)
+
+**What happened (commits since SPEC consume cd68c22).** Six commits closed the RP-Ink A/B + tic-detection probe spec at 5/5: `c41d534` (C1: probe at `tests/test_voice_baseline.py`, parametrized regression-detection demo over the 04-24 vs 05-06 baselines), `2c3edb5` (C2 blocker surfacing — gguf packaging-metadata bug, full traceback chain captured), `1a5d99d` (codereview/security refresh that gated the push), `210bb51` (C2 fix — `bin/vllm-bootstrap` extended with an idempotent post-install patch that injects `__version__` into the installed gguf package), `4084bab` (C3+C4 — MN-12b-RP-Ink Q4_K_M GGUF capture + verdict).
+
+**What was learned.** Two distinct findings in order: (1) the gguf packaging bug reproduces at every gguf version in vLLM 0.19.1's supported `>=0.17.0` range (0.17.0, 0.17.1, 0.18.0, 0.19.0); `bin/vllm-bootstrap` is the right place to patch around it. (2) `MN-12b-RP-Ink` does not fit daydream's data-skill pipeline shape: under the strict-JSON `response_format` constraint it returns `{"effects":[{}]}` (content-empty), and without the constraint it produces verbose free-form roleplay continuation. RP-Ink-class finetunes optimize for prose continuation at the cost of structured-output capability relative to their Instruct base. Voice-quality A/B against the AWQ baseline is moot for this candidate.
+
+**Questions and directions for the next turn.**
+
+1. **Mistral Nemo Instruct + MN-RP-Ink controlled-base A/B.** The voice-quality question RP-Ink claims to answer is still open. Adding MN-Instruct as a third leg (also GGUF, same `bin/vllm-bootstrap` patch path now in place) yields two clean comparisons: Qwen-AWQ-Instruct vs MN-Instruct (Qwen-vs-Nemo voice, both Instruct-tuned, no finetune), AND MN-Instruct vs MN+RP-Ink (controlled-base, isolates the finetune contribution). Each leg captures via the existing harness. Confirms whether the JSON-following degradation is RP-Ink-specific or an axis of the Nemo arch generally, and whether RP-Ink offers any voice gain when the substrate works. Most directly answers the original 2026-04-24 question and exercises the `bin/vllm-bootstrap` patch on a second model.
+
+2. **Author a second NPC.** Unblocks BACKLOG `npc-drift-loop` and `npc-memory-retrieval` (both gated on ≥2 NPCs). Same shape as the Rook authoring (one JSON skill file, prompt template, context_predicate), now with the variety-pass lessons baked in from the start. Opens up multi-NPC narration territory.
+
+3. **`watercolor-lora-ab` revisit.** The image audit-trail half (`bin/game test human` qpeek output to `docs/pretty/aesthetic-samples/`) landed in 2026-04-23, satisfying one of the entry's revisit OR-gates. Cheap A/B against `ntc-ai/SDXL-LoRA-slider.watercolor` and `lora-library/B-LoRA-watercolor` via `bin/game image-test`. Independent of the voice-bench thread.
+
+4. **Hygiene fixes** as a small turn: env-var-name mismatch (`voice_samples._vllm_config_snapshot` reads `DAYDREAM_VLLM_MAX_MODEL_LEN`, `bin/game vllm-up` honors `DAYDREAM_VLLM_MAX_LEN`); optional sampler tuning for voice-bench (non-zero temperature to reduce greedy-decoding tax). Both small. Appropriate as a cleanup turn between bigger pieces, or folded into option 1 as a prerequisite.
+
+Strongest read: **option 1**. Definitively closes the voice-A/B thread by getting controlled-base data, exercises the just-shipped bootstrap patch on a second model (more confidence the patch generalizes), and uses the harness as-is. **Option 2** is the natural follow-on if option 1 reads as "voice-bench is done as a thread; move on to content."
+
+### Revisit candidates
+
+- `watercolor-lora-ab` — image audit-trail half landed in 2026-04-23 (qpeek output to `docs/pretty/aesthetic-samples/`); one of the entry's revisit OR-gates is met. Independent thread from the voice-bench work, small turn.
+
+### Backlog Sweep
+
+- **Delete:** `qwen-2.5-7b-rp-ink-trial (ACTIVE in spec 2026-05-06)` — fully tried and answered. The original premise (drop-in Qwen 2.5 7B finetune swap) was disproven 2026-04-24 (no such model exists on HF); the alt (Mistral Nemo finetune via GGUF) was disproven 2026-05-06 (not pipeline-fit). The three documented forward paths (i/ii/iii in the spec's Findings) are independent units of work that warrant new BACKLOG entries if anyone wants to revisit them.
+
 <!-- SPEC_META: {"date":"2026-05-06","title":"RP-Ink A/B + tic-detection probe","criteria_total":5,"criteria_met":5} -->
