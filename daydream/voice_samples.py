@@ -165,7 +165,7 @@ def _vllm_config_snapshot() -> dict:
         "model": config.llm_model(),
         "base_url": config.llm_base_url(),
         "gpu_memory_utilization": os.environ.get("DAYDREAM_VLLM_GMU", "0.45"),
-        "max_model_len": os.environ.get("DAYDREAM_VLLM_MAX_MODEL_LEN", "8192"),
+        "max_model_len": os.environ.get("DAYDREAM_VLLM_MAX_LEN", "8192"),
         "enforce_eager": "true",
         "kv_cache_dtype": "fp16 (auto; see docs/gpu-and-models.md)",
     }

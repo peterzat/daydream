@@ -156,15 +156,39 @@ The `voice-and-aesthetic-audit-trail` BACKLOG entry is the proposed cheap fix �
 
 Captured as BACKLOG entries (`BACKLOG.md`) so they survive turn-close. Listed here in rough ROI order:
 
-1. **`voice-and-aesthetic-audit-trail`** — the dated-fixture tool above. Cheap to build (under an hour). Pays back the next time someone asks "did the new model get worse?"
-2. **`qwen-2.5-7b-rp-ink-trial`** — drop-in `DAYDREAM_VLLM_MODEL` swap to a creative-writing-tuned Qwen 2.5 7B variant. Same compute, same VRAM. Worth a side-by-side once we have NPC dialogue (after `npc-drift-loop` or alongside `data-skills-cli`).
-3. **`watercolor-lora-ab`** — try `ntc-ai/SDXL-LoRA-slider.watercolor` and `lora-library/B-LoRA-watercolor` against the current ostris pick. 12 MB each.
-4. **`calibrated-fp8-kv-scales`** — recover localreview's 58% decode TPS win on our 7B by running vLLM's calibration pass and shipping per-channel scales. Real engineering work; only worth it if we ever bottleneck on LLM throughput.
+1. **`watercolor-lora-ab`** — try `ntc-ai/SDXL-LoRA-slider.watercolor` and `lora-library/B-LoRA-watercolor` against the current ostris pick. 12 MB each.
+2. **`calibrated-fp8-kv-scales`** — recover localreview's 58% decode TPS win on our 7B by running vLLM's calibration pass and shipping per-channel scales. Real engineering work; only worth it if we ever bottleneck on LLM throughput.
+3. **`creative-finetune-json-fluent-base`** — re-attempt the voice-quality A/B with a creative-writing finetune of a JSON-fluent base (Qwen 2.5, Llama 3.x). The Mistral Nemo attempts in 2026-05-06/05-07 (both finetune and controlled-base) failed the data-skill pipeline, so we know the next attempt needs a base that preserves structured-output capability. Blocked on a published finetune existing.
+4. **`free-form-prose-pipeline`** — daydream pipeline change so `daydream/skills/data.py` accepts free-form prose from the LLM and post-parses, instead of requiring strict-JSON `response_format`. Would enable prose-continuation finetunes (RP-Ink and similar) that don't fit the current pipeline. Architectural change; defer until a specific finetune is worth the work.
+5. **`mistral-7b-instruct-fp16-ab`** — Mistral 7B Instruct A/B at fp16 against Qwen 2.5 7B Instruct AWQ. Smaller (less Q4-sensitive), fits BF16 in our budget without GGUF. Would separate the quantization axis from the architecture axis after the 12B Q4 Nemo experiments came up inconclusive.
 
 We are also watching for:
 
 - Qwen 3 series releases. Already in vLLM recipes per recent search (Qwen 3.5/3.6 docs). Refresh the model pick every ~6 months.
 - New SDXL-class base models (SD3, etc.) once their licensing and tooling stabilize. SDXL is a known quantity; don't churn without reason.
+
+## Things we tried and rejected
+
+### Mistral Nemo 12B at Q4_K_M GGUF for creative-writing voice (2026-05-06 / 2026-05-07)
+
+Three turns of voice-bench work tested whether a creative-writing-tuned 12B model would produce more interesting Rook narration than our default Qwen 2.5 7B Instruct AWQ. Two legs across two spec turns:
+
+- **`bartowski/MN-12b-RP-Ink-GGUF`** (Q4_K_M, ~7 GB resident) — the RP-Ink creative-writing finetune. Captured at `docs/pretty/voice-samples/2026-05-06-mn-12b-rp-ink-q4_k_m.md`. Returns deterministic content-empty `{"effects":[{}]}` under our strict-JSON `response_format`; verbose free-form roleplay continuation without it. Trained for prose continuation; structured-output capability degraded relative to the Mistral Nemo Instruct base.
+- **`bartowski/Mistral-Nemo-Instruct-2407-GGUF`** (Q4_K_M, ~7 GB resident) — the controlled-base leg, no creative-writing finetune. Captured at `docs/pretty/voice-samples/2026-05-07-mistral-nemo-instruct-2407.md`. ALSO fails the data-skill pipeline under daydream's harness prompt: 3/5 non-JSON output (88, 74 tokens, plus 1 timeout), 2/5 emit `{"refused":true}` with no reason field that the safety layer resolves to its default refusal text. A direct vLLM probe with a simpler system prompt confirmed MN-Instruct ALSO returns `{"effects":[{}]}` — the harness's longer prompt template fragments behavior across inputs.
+
+**Conclusion: pipeline incompatibility is base-architecture + Q4-quantization + prompt-shape, NOT RP-Ink-specific.** The controlled-base leg confirms it: even without a creative-writing finetune, Mistral Nemo at Q4 fails the data-skill pipeline at our actual prompt template. The voice-quality A/B question (does a creative-writing finetune flex on Rook's voice?) remains open with shrunken forward paths captured as the BACKLOG entries above (`creative-finetune-json-fluent-base`, `free-form-prose-pipeline`, `mistral-7b-instruct-fp16-ab`).
+
+vLLM flag deviation captured for the GGUF legs: `--max-model-len 4096` (down from 8192). At `--gpu-memory-utilization 0.45` the 12B Q4 weights leave only ~1.11 GiB for KV cache, vLLM reports 8192 needs 1.25 GiB and the actual ceiling is 7248. 4096 is well within budget and far above this corpus's actual ~1100-token-per-call usage.
+
+Relevant commits: `4084bab` (RP-Ink leg), `55fffd0` (Instruct controlled-base leg).
+
+### gguf packaging-metadata bug in transformers (worked around in `bin/vllm-bootstrap`)
+
+Loading any GGUF in vLLM 0.19.1 originally crashed during config-load because `transformers.is_gguf_available()` reads gguf's version via `importlib.metadata.packages_distributions()` and falls back to `getattr(gguf, '__version__', 'N/A')`. Every gguf release in vLLM's supported `>=0.17.0` range (0.17.0, 0.17.1, 0.18.0, 0.19.0) fails to register the gguf import name in `packages_distributions()` AND exposes no `__version__` attr. Result: `version.parse('N/A')` raises `InvalidVersion: Invalid version: 'N/A'`.
+
+Workaround landed in `bin/vllm-bootstrap` (commit `210bb51`): after `pip install vllm`, the bootstrap appends `__version__ = "<installed-version>"` to the installed `gguf/__init__.py`. Idempotent (re-bootstrap detects the prior patch via `grep -q "^__version__"` and skips). Generalizes — verified across two GGUF model loads (RP-Ink and Instruct) with no patch modification.
+
+**Remove the patch block whenever upstream gguf fixes its packaging metadata.** Track via `pip show gguf` after a vLLM version bump: if a future gguf release registers the import name correctly in `packages_distributions()`, the patch is no longer needed and `bin/vllm-bootstrap`'s post-install step can be deleted.
 
 ## References
 

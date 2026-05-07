@@ -161,3 +161,21 @@ Captured from the test-architecture landing (2026-04-23); scaffolding for these 
 - **Why deferred:** Plan punts to v2 because the security surface is too large to design without first learning what skills feel good when admin-authored. Friend-scope security stops being load-bearing the moment a player can author LLM prompts that any other player triggers.
 - **Revisit criteria:** skills-authoring-and-security shipped (admin web UI + six-layer pipeline both done); clear desire to expand authoring beyond admin (a player asks "can I make a skill?").
 - **Origin:** plan let-s-design-a-fairly-giggly-narwhal
+
+### creative-finetune-json-fluent-base
+- **One-line description:** Re-attempt the voice-quality A/B with a creative-writing finetune of a JSON-fluent base (e.g., Qwen 2.5 7B/14B AWQ, Llama 3.x AWQ). Drop-in `DAYDREAM_LLM_MODEL` / `DAYDREAM_VLLM_MODEL` swap; same harness path (`bin/game voice-samples`); compare against `docs/pretty/voice-samples/2026-05-06-qwen2.5-7b-instruct-awq.md`.
+- **Why deferred:** As of 2026-05-07 no published creative-writing finetune of a JSON-fluent base is known to fit our 20 GB VRAM budget. Mistral Nemo 12B Q4 was the closest viable candidate and failed the data-skill pipeline (base-arch + Q4 + prompt-shape interaction; see `docs/gpu-and-models.md` "Things we tried and rejected"). A Qwen-family or Llama-family creative-writing finetune at AWQ or fp16 (where it fits) would close the original 2026-04-24 question.
+- **Revisit criteria:** A creative-writing finetune of a JSON-fluent base (Qwen 2.5 7B/14B, Llama 3.x 7B/8B, or comparable) publishes on HF AND fits under `--gpu-memory-utilization 0.45-0.7` at AWQ or fp16; OR voice quality becomes a UX-gating concern that justifies the search effort.
+- **Origin:** spec 2026-05-07
+
+### free-form-prose-pipeline
+- **One-line description:** Daydream pipeline change in `daydream/skills/data.py` to accept free-form prose responses from the LLM and post-parse for `narrate` effects, instead of requiring strict-JSON `response_format`. Would enable prose-continuation finetunes (RP-Ink and similar) that don't fit the current pipeline. Touches `acompletion_json` call site, safety layers (`safety.parse_refusal`, `safety.first_banned`, `_emit_narrate` fallbacks), and the effect-allowlist contract.
+- **Why deferred:** The Mistral Nemo experiments (2026-05-06/05-07) showed strict-JSON breaks prose-continuation finetunes, but the current pipeline depends on `json.loads` validation + the effect-allowlist for safety. A pipeline change is architectural and touches multiple components; defer until a specific finetune is worth the cost. The change would also need a new safety story for free-form text (no banned-word output filter today operates on raw LLM text before structured parsing).
+- **Revisit criteria:** A specific creative-writing finetune emerges that's worth using AND only works with free-form prose output (not JSON); OR the v2 `skills-authoring-and-security` work picks up this question as part of a broader pipeline refactor.
+- **Origin:** spec 2026-05-07
+
+### mistral-7b-instruct-fp16-ab
+- **One-line description:** A/B Mistral 7B Instruct at fp16 against the current Qwen 2.5 7B Instruct AWQ for narration voice. Mistral 7B fp16 is ~14 GB resident (fits at `--gpu-memory-utilization 0.7` with ComfyUI down); separates the quantization axis from the architecture axis after the 12B Q4 Nemo experiments came up inconclusive. Same harness path (`bin/game voice-samples`); compare against `docs/pretty/voice-samples/2026-05-06-qwen2.5-7b-instruct-awq.md`.
+- **Why deferred:** Diminishing returns after 3 turns of voice-bench work. The Nemo Q4 result already shrunk the answer space; a 7B Instruct A/B would close a specific axis question (is the failure quant or arch?) rather than answer the original "does a creative-writing finetune flex?" question. Worth doing only if a future decision needs that closure.
+- **Revisit criteria:** Operator wants definitive closure on Mistral arch suitability before authoring a different LLM-pipeline change; OR a Mistral 7B creative-writing finetune publishes on HF (which would make the Mistral-vs-Qwen axis question load-bearing).
+- **Origin:** spec 2026-05-07
