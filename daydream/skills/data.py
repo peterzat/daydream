@@ -36,7 +36,7 @@ from dataclasses import dataclass
 
 from jinja2.sandbox import SandboxedEnvironment
 
-from daydream import db, events, rooms
+from daydream import db, events, memories, rooms
 from daydream.llm import client as llm_client
 from daydream.llm import safety
 from daydream.skills import effects
@@ -183,6 +183,54 @@ _FOGGY_FALLBACK_TEXT = "The dream is foggy right now; that thought slips away."
 _RENDER_FAILURE_TEXT = "The dream loses the thread of that skill."
 
 
+def _resolve_npc_and_world(spec: SkillSpec, room_id: str) -> tuple[str | None, str | None]:
+    """Bind a data skill to its backing NPC for memory scoping.
+
+    Convention: skill name maps to ``f"t-{spec.name}"`` (Rook → t-rook,
+    Iris → t-iris). This is the cheapest v0 path; an explicit ``npc_id``
+    field on the skill schema lands when the convention ever ambiguates.
+    Returns ``(None, None)`` for skills with no matching NPC row (e.g.,
+    the room-anchored ``forge`` skill), so the caller can skip memory
+    capture/retrieve cleanly without affecting the rest of the pipeline.
+
+    Worlds that don't match the skill's room are also excluded — a row
+    that exists in a different world than the conversation is happening
+    in is treated as 'no NPC here', preserving the per-world scoping
+    contract."""
+    candidate_id = f"t-{spec.name.lower()}"
+    try:
+        conn = db.get_conn()
+    except RuntimeError:
+        return (None, None)
+    row = conn.execute(
+        "SELECT id, world_id FROM toons WHERE id = ?",
+        (candidate_id,),
+    ).fetchone()
+    if row is None:
+        return (None, None)
+    room = rooms.get_room(room_id)
+    room_world_id = room.world_id if room else None
+    if room_world_id and row["world_id"] != room_world_id:
+        return (None, None)
+    return (row["id"], row["world_id"])
+
+
+def _extract_narration(effects_list: list) -> str:
+    """Concatenate all ``narrate`` effect texts so the memory capture
+    has a single string to embed. Returns empty string if no narrate
+    effects were emitted (e.g., a data skill that only mutates state)."""
+    parts: list[str] = []
+    for e in effects_list:
+        if not isinstance(e, dict):
+            continue
+        if e.get("kind") != "narrate":
+            continue
+        text = e.get("text")
+        if isinstance(text, str) and text.strip():
+            parts.append(text.strip())
+    return " ".join(parts)
+
+
 def _narrative_text(effects_list: list) -> str:
     """Concatenate text-ish fields across every effect in the LLM's
     response so the output-side banlist scan sees every narrative
@@ -217,6 +265,17 @@ async def execute(
     """Run the full data-skill pipeline and emit events. No return
     value — the side effect is events in the log, matching the core
     skill convention."""
+    # (0) Bind the skill to its backing NPC (if any) and pull recent
+    # memories. Both retrieval and capture are no-ops for skills that
+    # don't have a matching NPC row (e.g., room-anchored skills like
+    # ``forge``). The retrieve call itself is fail-closed: a missing
+    # embedder, an uninitialized DB, or DAYDREAM_MEMORY_ENABLED=0 all
+    # produce an empty list rather than raising.
+    npc_id, world_id_for_mem = _resolve_npc_and_world(spec, room_id)
+    retrieved_memories: list[memories.Memory] = []
+    if npc_id is not None and world_id_for_mem is not None:
+        retrieved_memories = memories.retrieve(npc_id, world_id_for_mem, args)
+
     # (1) Input banlist. A hit short-circuits before the LLM is called.
     if (hit := safety.first_banned(args)) is not None:
         logger.info("skill %r blocked on input banlist category=%s", spec.name, hit)
@@ -226,12 +285,15 @@ async def execute(
     # (2) Render the template. SandboxedEnvironment protects against a
     # malicious template reaching __class__ / __globals__ etc. The
     # player's text is wrapped in role-separator tags before injection.
+    # The ``memories`` context variable is always provided (possibly an
+    # empty list); templates that don't reference it are unaffected.
     try:
         template = _jinja.from_string(body.prompt_template)
         prompt = template.render(
             player_input=safety.wrap_player_input(args),
             actor_id=actor_id,
             room_id=room_id,
+            memories=retrieved_memories,
         )
     except Exception as e:
         logger.warning("skill %r template render failed: %s", spec.name, e)
@@ -286,6 +348,23 @@ async def execute(
     # narrate so the input always has a visible outcome.
     if not any(a.event is not None for a in applied):
         _emit_narrate("The dream is quiet; nothing stirs just yet.", room_id)
+        return
+
+    # (7) Capture the exchange to NPC memory. Only fires for skills
+    # bound to an NPC and only when normal effects ran (refusal /
+    # banlist / empty-effects paths skipped via the early returns
+    # above). Both calls are fail-closed inside daydream.memories;
+    # capture failures never propagate back into the dialogue path.
+    if npc_id is not None and world_id_for_mem is not None:
+        narration = _extract_narration(effects_list)
+        if narration:
+            memories.capture(
+                npc_id, world_id_for_mem, f"the visitor said: {args}"
+            )
+            speaker = spec.ui_hint or spec.name
+            memories.capture(
+                npc_id, world_id_for_mem, f"{speaker} said: {narration}"
+            )
 
 
 async def execute_by_name(

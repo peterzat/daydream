@@ -152,6 +152,14 @@ Re-enable FP8 KV cache only after one of:
 
 The smoke harness's choice of a strict-JSON LLM probe is intentional precisely so this regression surfaces immediately when someone tries to re-add the flag.
 
+## NPC memory
+
+Per-world NPC dialogue memory at `daydream/memories.py`. `capture(npc_id, world_id, text, source_event_seq=None)` and `retrieve(npc_id, world_id, query, k=3)` are sync, fail-closed (None / [] + log on any failure), and CPU-only — they never take the GPU arbiter. Embeddings via `sentence-transformers` BGE-small (`BAAI/bge-small-en-v1.5`, 384-dim) on CPU, lazy-loaded on first call, stored as raw float32 BLOBs in the per-world `memories` table (migration 009). Retrieval ranks by `cosine_similarity * exp(-age_hours / 24)`; the constant lives in `DAYDREAM_MEMORY_DECAY_HOURS`. v0 deliberately keeps it SQLite-only; LanceDB is the v1 path once memory counts cross ~10K per NPC.
+
+The data-skill pipeline (`daydream/skills/data.py`) calls `retrieve` before Jinja render (the `memories` template variable is always present, possibly `[]`) and `capture` after a successful narrate-effect dispatch. Skill-name → NPC-id mapping is `f"t-{skill_name}"`; skills with no matching NPC row (e.g., `forge`) skip both phases.
+
+One-time setup: `bin/memory-bootstrap` installs `sentence-transformers` against the PyTorch CPU wheel index (~200 MB vs ~2 GB for default CUDA wheels) and pre-caches BGE-small in the shared HF cache. Idempotent; skip-if-present. Bootstrap is optional — the dialogue path keeps working without it (capture/retrieve fail closed and NPCs just have no memory). Toggle via `DAYDREAM_MEMORY_ENABLED` (default `1` in production; `0` in `tests/conftest.py`); tests that exercise memory monkeypatch `daydream.memories._embed` to inject deterministic vectors so the suite never loads the real model.
+
 ## Image generation API
 
 Single entry point: `daydream.images.client.generate_image(target, *, model=None, lora=None, seed=None, base_url=None) -> Path`. The target is a discriminated union — `PersistentTarget` or `EphemeralTarget` — and the persistent vs ephemeral distinction lives there as a first-class concept rather than as two parallel functions.
