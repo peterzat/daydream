@@ -126,8 +126,9 @@ def test_init_schema_is_idempotent(temp_db_path: Path):
         # And re-running did not duplicate seed rows.
         assert conn.execute("SELECT COUNT(*) FROM worlds").fetchone()[0] == 1
         assert conn.execute("SELECT COUNT(*) FROM rooms").fetchone()[0] == 5
-        # Wren (slot 1, human) + Rook (slot 100, NPC from 006_first_npc).
-        assert conn.execute("SELECT COUNT(*) FROM toons").fetchone()[0] == 2
+        # Wren (slot 1, human) + Rook (slot 100, NPC from 006_first_npc)
+        # + Iris (slot 101, NPC from 008_second_npc).
+        assert conn.execute("SELECT COUNT(*) FROM toons").fetchone()[0] == 3
         assert conn.execute("SELECT COUNT(*) FROM items").fetchone()[0] == 1
     finally:
         conn.close()
