@@ -426,6 +426,7 @@ def cmd_delete(world_id: str, yes: bool) -> int:
     # Now that generated_assets has world_id (migration 003), filter cleanly
     # rather than blanket-deleting. Multi-world DBs no longer get clobbered.
     conn.execute("DELETE FROM generated_assets WHERE world_id = ?", (world_id,))
+    conn.execute("DELETE FROM memories WHERE world_id = ?", (world_id,))
     conn.execute("DELETE FROM items WHERE world_id = ?", (world_id,))
     conn.execute("DELETE FROM toons WHERE world_id = ?", (world_id,))
     conn.execute("DELETE FROM rooms WHERE world_id = ?", (world_id,))

@@ -49,6 +49,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from daydream import db
+from daydream.llm import safety
 
 logger = logging.getLogger(__name__)
 
@@ -184,6 +185,16 @@ def capture(
     if not _is_enabled():
         return None
     if not text or not text.strip():
+        return None
+    # Defense-in-depth: skip capturing text that hits the WHIMSY banlist.
+    # Memory rows are rendered into future prompts at the memory-block
+    # position; never persist anything that already failed the
+    # tone/safety filter. The output banlist + effect allowlist still
+    # backstop downstream, but reducing the population of injected text
+    # at the source is cheaper than scrubbing it on every retrieval.
+    hit = safety.first_banned(text)
+    if hit is not None:
+        logger.warning("memory capture: banlist hit (%s); skipping persist", hit)
         return None
     try:
         vec = _embed(text)

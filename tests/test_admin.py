@@ -372,6 +372,32 @@ def test_delete_only_clears_target_world(live_world):
     assert len(surviving) == 1
 
 
+def test_delete_cascades_memories(live_world):
+    """Migration 009 added a `memories` table with FK on world_id.
+    The cascade must DELETE memory rows before the worlds row, otherwise
+    `PRAGMA foreign_keys = ON` raises IntegrityError. Regression for
+    CODEREVIEW BLOCK on admin.py:421-432."""
+    conn = db.get_conn()
+    # Insert a minimal memory row directly (bypass embedder) tied to
+    # the seeded world.
+    conn.execute(
+        "INSERT INTO memories(world_id, npc_id, text, embedding) "
+        "VALUES (?, ?, ?, ?)",
+        ("w-bunny", "t-rook", "the visitor said: hello", b"\x00" * 4),
+    )
+    assert conn.execute(
+        "SELECT COUNT(*) FROM memories WHERE world_id = 'w-bunny'"
+    ).fetchone()[0] == 1
+    rc = admin.main(["delete", "w-bunny", "--yes"])
+    assert rc == 0
+    assert conn.execute(
+        "SELECT COUNT(*) FROM worlds WHERE id = 'w-bunny'"
+    ).fetchone()[0] == 0
+    assert conn.execute(
+        "SELECT COUNT(*) FROM memories WHERE world_id = 'w-bunny'"
+    ).fetchone()[0] == 0
+
+
 # ---- guard: no live DB ---------------------------------------------------
 
 

@@ -15,11 +15,6 @@ dependencies = [
     "python-multipart>=0.0.9",
     "itsdangerous>=2.1",
     "httpx>=0.27",
-    # NPC memory retrieval. Brings torch + transformers + numpy
-    # transitively. Use `bin/memory-bootstrap` for the CPU-only torch
-    # wheel install path (~200 MB) so we don't pull the ~1.5 GB CUDA
-    # libs we never use; embedding runs on CPU by construction.
-    "sentence-transformers>=3.0",
 ]
 
 [project.optional-dependencies]
@@ -31,6 +26,15 @@ dev = [
     # from generated PNGs. Pillow was already transitively present in the
     # venv; pinning here makes it explicit and durable.
     "Pillow>=10.0",
+]
+# NPC memory retrieval. Pulled in via `bin/memory-bootstrap`, NOT via
+# `pip install -e '.[dev]'`, so the bootstrap's CPU-only torch wheel
+# install path (~200 MB) is the canonical installer instead of the
+# default GPU index (~2 GB CUDA libs we never use; embedding runs on
+# CPU by construction). Listed here so the dep is discoverable but
+# not auto-pulled.
+memory = [
+    "sentence-transformers>=3.0",
 ]
 
 [tool.setuptools.packages.find]
