@@ -331,12 +331,16 @@ def _validate_envelope(env: dict) -> WorldSpec:
         raise BootstrapValidationError(
             f"skills must be a list of exactly 2 entries (got {len(skills) if isinstance(skills, list) else type(skills).__name__})"
         )
+    seen_skill_names: set[str] = set()
     for i, s in enumerate(skills):
         if not isinstance(s, dict):
             raise BootstrapValidationError(f"skills[{i}] is not an object")
         for k in ("name", "ui_hint", "description", "prompt_template"):
             if not isinstance(s.get(k), str) or not s[k].strip():
                 raise BootstrapValidationError(f"skills[{i}].{k} must be a non-empty string")
+        if s["name"] in seen_skill_names:
+            raise BootstrapValidationError(f"skills[{i}].name duplicate: {s['name']!r}")
+        seen_skill_names.add(s["name"])
         if not isinstance(s.get("context_predicate"), dict):
             raise BootstrapValidationError(
                 f"skills[{i}].context_predicate must be an object"
