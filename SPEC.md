@@ -63,4 +63,26 @@ All five criteria met in one operational pass; durable narrative is now where fu
 ---
 *Prior spec (2026-05-07): MN-Instruct + MN-RP-Ink controlled-base A/B closed 5/5. Hypothesis falsified — both Mistral Nemo Q4 legs (RP-Ink finetune AND Instruct controlled-base) fail the data-skill pipeline; failure modes differ in shape (RP-Ink: deterministic content-empty `{"effects":[{}]}`; Instruct: varied per input) but the conclusion is identical (pipeline incompatibility is base-arch + Q4-quant + prompt-shape, not RP-Ink-specific). Voice-A/B thread effectively closed against Nemo-arch; three baselines durable in tree as audit-trail substrate. `bin/vllm-bootstrap` gguf-`__version__` patch from `210bb51` applied unmodified to the second model, confirming generality. Captured at `docs/pretty/voice-samples/2026-05-07-mistral-nemo-instruct-2407.md`.*
 
+### Proposal (2026-05-07)
+
+**What happened (this turn).** Two commits closed the cleanup hygiene round at 5/5: `ebb4e8a` (SPEC consume of the voice-bench cleanup brief, expanded scope per "do a full cleanup loop"), `8d6ff32` (C1-C5 in one bundled commit). Concretely landed: `docs/gpu-and-models.md` got a new `## Things we tried and rejected` section narrating the Mistral Nemo Q4 experiment + the gguf-`__version__` bootstrap patch with its removal trigger; `daydream/voice_samples.py` env-var rename converged on `DAYDREAM_VLLM_MAX_LEN` (the operator-facing name); three new BACKLOG entries (`creative-finetune-json-fluent-base`, `free-form-prose-pipeline`, `mistral-7b-instruct-fp16-ab`) capture the voice-A/B forward paths via `spec-backlog-apply.sh`'s `append:` op; ~30 GB freed from HF cache (the two unused bartowski GGUFs). Tier_short 271 / tier_medium 360 green throughout.
+
+**What was learned.** Nothing new about the model side; this was hygiene. The durable narrative is now in the canonical model-decisions doc + the BACKLOG, so a future operator bumping the LLM model finds what was learned without git-blame. The bootstrap patch's removal trigger is documented inline so it doesn't become a permanent kludge.
+
+**Questions and directions for the next turn.**
+
+1. **Author a second NPC.** Per the user's explicit pre-cleanup plan ("do a full cleanup loop, and if it exits successfully then do the second NPC loop"). Concrete and well-scoped: one new JSON skill file + prompt template (with the 2026-05-06 prompt-template-variety lessons baked in), context_predicate scoping to a specific room, tests mirroring `tests/test_ws_rook.py`. Unblocks BACKLOG `npc-drift-loop` and `npc-memory-retrieval` (both gated on >=2 NPCs). The natural follow-on now that voice-bench is fully closed.
+
+2. **`watercolor-lora-ab` revisit.** Image audit-trail half landed in 2026-04-23; one of the entry's revisit OR-gates is met. Cheap A/B against `ntc-ai/SDXL-LoRA-slider.watercolor` and `lora-library/B-LoRA-watercolor` via `bin/game image-test`. Independent of the voice-bench thread. Has been surfaced in 3 prior proposals without being picked; if it's not the right time, that's a fine answer too.
+
+3. **NPC drift loop (single-NPC version).** Smaller version of BACKLOG `npc-drift-loop` that doesn't wait for the second NPC. Rook hums when alone; weather drifts; time-of-day bumps Rook's mood. Adds atmosphere without touching the LLM substrate. Could be a bigger turn or a small follow-on after option 1.
+
+4. **Multi-room navigation expansion.** Add 1-2 more rooms beyond meadow + forge, giving NPCs and content more canvas. Less obviously motivated; would mostly serve options 1+3. Not recommended as a standalone direction.
+
+Strongest read: **option 1** (second NPC). User's stated plan; natural follow-on; concrete + well-scoped + unblocks two BACKLOG entries.
+
+### Revisit candidates
+
+- `watercolor-lora-ab` — image audit-trail half landed in 2026-04-23 (qpeek output to `docs/pretty/aesthetic-samples/`); one of the entry's revisit OR-gates is met. Surfaced in 3 prior proposals without selection; this is the fourth surfacing, so worth flagging as a stale-revisit candidate if it remains unselected after this turn.
+
 <!-- SPEC_META: {"date":"2026-05-07","title":"Voice-bench cleanup hygiene round","criteria_total":5,"criteria_met":5} -->
