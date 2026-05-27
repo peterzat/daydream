@@ -198,6 +198,16 @@ telemetry and were not captured here; the point is it was nowhere near the 12-tu
 Lesson: "turns" in the estimate conflated "phases of work" with "evaluator cycles." For a
 continuous worker those are not the same number.
 
+  On the wall-clock question specifically ("was ~25 min right?"): ~25 min was fine for the
+  work that was actually there, but that is the wrong axis to tune. The task was not too
+  short or too long, it was *too easy*. Because the condition prescribed the implementation
+  and the change was below the one-shot ceiling, the time went to transcription plus the
+  unplanned Wren fix, not to the convergence loop `/goal` exists for. So the lesson is not
+  "make the next run shorter or longer," it is "make it bigger and outcome-framed," so the
+  minutes are spent on convergence rather than dictation. A longer attempt 2 is a feature,
+  not a cost: the proposed cap is bumped to 20 turns precisely to give real convergence
+  room.
+
 **Did the evaluator track reality?** Yes. One evaluation, at completion, with the evidence
 (exit codes, footers, `git log`/`git status`) already in the transcript. No premature yes,
 no false no, no thrashing, because there was no mid-run stop for it to misjudge. The
