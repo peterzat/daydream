@@ -1,23 +1,24 @@
-## Review — 2026-05-27 (commit: c6c59c2)
+## Review — 2026-05-27 (commit: eb5fda5)
 
-**Summary:** Refresh review of one unpushed commit (`c6c59c2`, drift-bootstrapped-npcs 7/7) that opens the drift loop to every NPC, not just `t-rook` / `t-iris`. `daydream/drift.py` drops the `_DRIFT_POOLS` membership check from `_eligible_npcs`, adds a name-templated `_GENERIC_DRIFT_POOL` (4 mood buckets, 16 lines), routes `_pick_canned_line` / `_maybe_transition_mood` through the generic pool when an NPC has no per-NPC entry, and plumbs the toon name into the canned path via `str.replace`. `tests/test_drift.py` adds 6 tests + replaces the unknown-npc test; the seeded slot-1 Wren (r-meadow, no pool) is now drift-eligible, so the occupancy and Rook-isolation tick tests occupy r-meadow / delete Wren to keep their premises deterministic (assertions unchanged). README drift bullet + tier counts rolled forward.
+**Summary:** Light review of one unpushed docs-only commit (`eb5fda5`) that updates `GOAL.md` and `README.md` after the first `/goal` run. `GOAL.md` gains an honest attempt-1 retrospective (verdict: mechanically clean but fell short of testing `/goal` because it was below the one-shot ceiling, over-specified the implementation, carried a spec blind spot on the pool-less Wren toon, and leaned on a weak verification tier), a "bitter-lesson lens" lessons section, an attempt-2 plan with a ready-to-paste outcome-framed `/goal` condition targeting `snapshot-restore-commands`, and transferable callouts for other `/goal` users. `README.md` gains a "How this is built (zat.env + /goal)" section with the actual `/goal` command and a pointer to `GOAL.md`. No code or configuration touched.
 
-**Review scope:** Refresh review. Focus: 3 file(s) changed since prior review (commit `ed51c43`) — `daydream/drift.py`, `tests/test_drift.py`, `README.md`. 0 already-reviewed files checked for interactions only (focus set equals the full unpushed set vs `origin/main`). Test baseline: `bin/game test medium` 485 passed / 9 deselected (was 479 pre-change; +6 new), `short` 324 (was 320; +4). No regressions.
+**Review scope:** Light review (docs-only). Focus set since the prior review (`c6c59c2`): `GOAL.md`, `README.md` — both Markdown. Per light-tier rules, no test-suite run, no security chain, no external reviewers, and no fix loop. Reduced-scope checks applied: broken links/references, secret leaks in prose, factual accuracy.
 
-**External reviewers:** Skipped (session constraint: no GPU / no real LLM). `review-external.sh` is on PATH but would dispatch the diff to external cloud LLM reviewers and/or a local GPU Qwen — both disallowed by this session's explicit constraint and out of scope for the DONE criteria. Claude's own review + the `/security` chain stand as the review of record.
+**External reviewers:** Skipped (light review).
 
 ### Findings
 
-New this review:
+No issues found. Verified: every internal reference resolves (`GOAL.md`, `daydream/admin.py`, `daydream/drift.py`, `CLAUDE.md`, `BACKLOG.md`); the attempt-2 command's claims match reality (the `snapshot-restore-commands` BACKLOG entry exists and specifies the `~/data/daydream/snapshots/{world}-{ts}.db` path verbatim; CLAUDE.md documents `PRAGMA wal_checkpoint(TRUNCATE)`; `bin/game world archive`/`restore` live in `daydream/admin.py`); the cited test counts (320→324 short, 479→485 medium) and the `block:0 / warn:0 / note:1` footer for `c6c59c2` are accurate; the article quotes match the fetched source; the README `[GOAL.md](GOAL.md)` link resolves; no secrets in the prose (env vars referenced by name only). The attempt-1 review section's "two commits / ahead by 2" wording is a correct point-in-time record of that run's end state, not a claim about current HEAD.
 
-[NOTE] daydream/drift.py:119 — The `_GENERIC_DRIFT_POOL` comment says "Same dict-of-dicts shape ... as `_DRIFT_POOLS`", but the generic pool is `dict[str, list[str]]` (one level shallower); it matches the shape of a single `_DRIFT_POOLS` *value* (one NPC's bucket-dict), not the top-level dict. The code is correct (`_pick_canned_line` / `_maybe_transition_mood` consume `_DRIFT_POOLS.get(id) or _GENERIC_DRIFT_POOL`, where `.get(id)` already unwraps one level); only the comment phrasing is loose. Informational; no fix applied.
+### Fixes Applied
 
-No correctness, security, regression, or spec-alignment issues found in the focus set. The eligibility-opening behavior change was traced to its only call sites (all within `drift.py`) and to every drift test; the now-eligible Wren interaction is handled in the tests, not papered over.
+None.
 
 ### Carry-forwards (open NOTEs in untouched code, unchanged this review)
 
-These predate this commit and live in files outside the focus set; none were resolved or aggravated by the drift change:
+This docs-only review changed no code, so none of the prior entry's findings could be resolved or aggravated. The 1 NOTE new in `c6c59c2` plus the 18 older NOTEs remain open:
 
+[NOTE] daydream/drift.py:119 — `_GENERIC_DRIFT_POOL` comment says "Same dict-of-dicts shape ... as `_DRIFT_POOLS`", but the generic pool is `dict[str, list[str]]` (one level shallower); it matches the shape of a single `_DRIFT_POOLS` value, not the top-level dict. Comment phrasing only; code is correct.
 [NOTE] daydream/llm/bootstrap.py:366-474 — `_write_db` is not transactional (autocommit `isolation_level=None`); a mid-pipeline INSERT failure leaves a half-populated output DB.
 [NOTE] daydream/llm/bootstrap.py:340-343 — Skill `context_predicate.room_slug` is not cross-checked against the rooms list; a typo'd predicate yields a skill that never matches but inserts cleanly.
 [NOTE] tests/test_ws_iris.py:169-171 — Stale docstring re. snapshot toons-list contract.
@@ -37,17 +38,13 @@ These predate this commit and live in files outside the focus set; none were res
 [NOTE] tests/conftest.py:21 — `test-session-secret-not-for-production` placeholder is an accepted-risk test fixture, not a real secret.
 [NOTE] daydream/toons.py:create_toon_in_slot (lines ~165-185) — TOCTOU between `_slot_occupied` SELECT and the subsequent `INSERT`. Non-exploitable in single-process v1; v2 multi-process would need `try/except sqlite3.IntegrityError` mapping to 409.
 
-### Fixes Applied
-
-None. The single new finding is a NOTE (comment phrasing); NOTEs are not auto-fixed.
-
 ### Accepted Risks
 
 Unchanged vs prior entry:
 
 - Existing: cookie `https_only=False`, no CSRF token on `/api/login` or `/api/logout`, the 100.64.0.0/10 Tailscale CGNAT hardcoding, `AccessMiddleware` reading `scope["client"][0]` directly, the intentionally-unauthenticated `/cache/...` static route, `bin/game` sourcing `.env` + `secrets.env`, `bin/qpeek-bootstrap` cloning from `github.com/peterzat/qpeek`, and `bin/game cmd_logs` unvalidated path component.
 - Tailscale-mode login short-circuit (`daydream/api/auth.py:32-34` and `is_authed` bypass).
-- LLM-controllable `toon_id` in `set_mood` effects (effects.py:128-151). v2's per-effect jsonschema + target authorization lands under BACKLOG `skills-authoring-and-security`. (This review's drift change calls `toons.set_mood` only with hardcoded pool keys, never LLM/attacker input, so it does not widen this risk.)
+- LLM-controllable `toon_id` in `set_mood` effects (effects.py:128-151). v2's per-effect jsonschema + target authorization lands under BACKLOG `skills-authoring-and-security`.
 - `bin/vllm-bootstrap` and `bin/memory-bootstrap` interpolate `$MODEL` into an unquoted heredoc to invoke `huggingface_hub.snapshot_download`. Operator-trust class.
 - Stored prompt-injection via captured memory text (defense-in-depth gap surfaced earlier).
 - `/status/drift` endpoint is unauthenticated by design (`AccessMiddleware` is the gate). Same trust class as `/login` and `/cache/...`.
@@ -56,6 +53,6 @@ Unchanged vs prior entry:
 - Unbounded request body on `POST /api/slots/{slot}/create`. Accepted under documented friend-scope threat model; v2 may add explicit length caps.
 
 ---
-*Prior review (2026-05-27, commit ed51c43): light docs-only review of the `GOAL.md` journey-log commit. No issues found; no code touched. Carried forward 18 open NOTEs and the Accepted Risks set from the `dd983fa` refresh, all of which remain open here.*
+*Prior review (2026-05-27, commit c6c59c2): refresh review of the drift-bootstrapped-npcs feature (`daydream/drift.py` + `tests/test_drift.py` + `README.md`). 0 BLOCK / 0 WARN / 1 NOTE (the `_GENERIC_DRIFT_POOL` comment-shape nit, carried forward above). `/security` path-scan of the two code files returned 0/0/0. Verified the eligibility-opening change against its only call sites and every drift test; the now-eligible seeded Wren is handled in the tests. short 320→324, medium 479→485.*
 
-<!-- REVIEW_META: {"date":"2026-05-27","commit":"c6c59c2","reviewed_up_to":"c6c59c245824b4facd3287802b6be64b3213389d","base":"origin/main","tier":"refresh","block":0,"warn":0,"note":1} -->
+<!-- REVIEW_META: {"date":"2026-05-27","commit":"eb5fda5","reviewed_up_to":"eb5fda5ea33bdc74d2b894f0a790a8f632540daa","base":"origin/main","tier":"light","block":0,"warn":0,"note":0} -->
