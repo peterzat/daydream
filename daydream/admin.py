@@ -1,8 +1,8 @@
 """World admin CLI: list, archive, restore, verify, delete worlds and their
 generated assets.
 
-Invoked by `bin/game world {list,archive,restore,verify,delete}`. Five
-operations on the same (DB, cache-dir) pair:
+Invoked by `bin/game world {list,archive,restore,snapshot,snapshot-restore,
+verify,delete}`. Seven operations on the same (DB, cache-dir) pair:
 
   list                   - inventory: worlds in the live DB + per-world
                            asset count + per-world cache-dir size on disk.
@@ -15,6 +15,17 @@ operations on the same (DB, cache-dir) pair:
                            data_dir. Refuses if the live DB already
                            exists; refuses if the archive's schema_version
                            is newer than the highest known migration.
+  snapshot <world_id>    - fast point-in-time copy: WAL-checkpoint the live
+                           DB, then copy just the .db file to
+                           ~/data/daydream/snapshots/{world}-{ts}.db. No
+                           cache, no manifest. The lightweight sibling to
+                           archive; substrate for the future world-hot-swap
+                           flow. Read-only against live state.
+  snapshot-restore <snapshot.db> --yes
+                         - install a snapshot .db as the live DB. Refuses to
+                           overwrite an existing live DB; refuses a snapshot
+                           whose schema_version is newer than this code knows.
+                           --yes required.
   verify [world_id]      - walk DB rows checking each file_relpath exists,
                            walk the cache dir checking each PNG has a row.
                            Reports orphans on each side. Diagnostic only,
@@ -52,6 +63,10 @@ ARCHIVE_FORMAT_VERSION = 1
 
 def _archives_dir() -> Path:
     return config.data_dir() / "archives"
+
+
+def _snapshots_dir() -> Path:
+    return config.data_dir() / "snapshots"
 
 
 def _world_cache_dir(world_id: str) -> Path:
@@ -317,6 +332,124 @@ def cmd_restore(archive_path: Path, yes: bool) -> int:
     if src_schema < cur_schema:
         print(
             f"note: archive schema is older than current ({src_schema} < {cur_schema}); "
+            "next 'bin/game up' will run the missing migrations forward."
+        )
+    return 0
+
+
+# ---- snapshot -----------------------------------------------------------
+
+
+def cmd_snapshot(world_id: str) -> int:
+    """Fast, DB-only point-in-time copy of the live DB. The lightweight
+    sibling to archive: no per-world cache, no MANIFEST.json, no tarball —
+    just a WAL-checkpointed copy of live.db at snapshots/{world}-{ts}.db.
+
+    The snapshot is the WHOLE live DB file (every world's rows); world_id
+    labels the output filename and is validated to exist so a typo fails
+    loudly instead of writing a misnamed file. Read-only against live state.
+    """
+    rc = _require_live_db()
+    if rc is not None:
+        return rc
+    db.init_live()
+    conn = db.get_conn()
+    if conn.execute(
+        "SELECT id FROM worlds WHERE id = ?", (world_id,)
+    ).fetchone() is None:
+        print(f"error: no world with id {world_id} in live DB", file=sys.stderr)
+        return 2
+
+    # Checkpoint the WAL so the on-disk live.db reflects all committed writes
+    # before the copy. Without this, recent transactions live only in
+    # live.db-wal and a bare-.db snapshot would silently miss them. Same
+    # reasoning as cmd_archive.
+    conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+
+    out_dir = _snapshots_dir()
+    out_dir.mkdir(parents=True, exist_ok=True)
+    ts = datetime.now().strftime("%Y%m%d-%H%M%S")
+    out = out_dir / f"{world_id}-{ts}.db"
+    if out.exists():
+        print(
+            f"error: snapshot target {out} already exists; refusing to "
+            "overwrite (the per-second timestamp collided — retry)",
+            file=sys.stderr,
+        )
+        return 2
+
+    shutil.copyfile(config.live_db_path(), out)
+    size = out.stat().st_size
+    print(f"snapshot {world_id} -> {out} ({_format_bytes(size)})")
+    return 0
+
+
+def cmd_snapshot_restore(snapshot_path: Path, yes: bool) -> int:
+    """Install a snapshot .db as the live DB. Non-destructive by contract:
+    refuses to overwrite an existing live DB, refuses a snapshot from a
+    newer schema than this code knows, and refuses a file that is not a
+    readable daydream SQLite DB. --yes required (parity with restore/delete).
+    """
+    if not yes:
+        print(
+            f"refusing to restore {snapshot_path}: pass --yes to confirm.\n"
+            "this installs the snapshot as the live DB; the live DB must not "
+            "exist yet (snapshot-restore refuses to overwrite).",
+            file=sys.stderr,
+        )
+        return 2
+    if not snapshot_path.exists():
+        print(f"error: snapshot not found at {snapshot_path}", file=sys.stderr)
+        return 2
+
+    live = config.live_db_path()
+    if live.exists():
+        print(
+            f"error: live DB exists at {live}\n"
+            "snapshot-restore refuses to overwrite. archive or move it first "
+            "if you want to replace it.",
+            file=sys.stderr,
+        )
+        return 2
+
+    # Validate the candidate is a readable daydream SQLite DB and not from a
+    # newer schema than this code can run. A snapshot carries its own
+    # _migrations table (it is a copy of a live DB), so read the applied
+    # migration max directly from the file. Open read-only + immutable so the
+    # probe never creates -wal/-shm sidecars next to the snapshot.
+    try:
+        probe = sqlite3.connect(f"file:{snapshot_path}?mode=ro&immutable=1", uri=True)
+        try:
+            probe.row_factory = sqlite3.Row
+            src_schema = _applied_migration_max(probe)
+        finally:
+            probe.close()
+    except sqlite3.DatabaseError as e:
+        print(
+            f"error: {snapshot_path} is not a readable daydream DB: {e}",
+            file=sys.stderr,
+        )
+        return 2
+
+    cur_schema = _max_known_migration()
+    if src_schema > cur_schema:
+        print(
+            f"error: snapshot schema_version {src_schema} is newer than this "
+            f"code's max known migration {cur_schema}; refuse to restore "
+            "(the snapshot expects columns we don't know about)",
+            file=sys.stderr,
+        )
+        return 2
+
+    live.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(snapshot_path, live)
+    print(
+        f"restored snapshot {snapshot_path.name} -> {live} "
+        f"(schema_version={src_schema})"
+    )
+    if src_schema < cur_schema:
+        print(
+            f"note: snapshot schema is older than current ({src_schema} < {cur_schema}); "
             "next 'bin/game up' will run the missing migrations forward."
         )
     return 0
@@ -600,6 +733,18 @@ def main(argv: list[str] | None = None) -> int:
     p_rest.add_argument("archive_path", type=Path)
     p_rest.add_argument("--yes", action="store_true", help="confirm restore")
 
+    p_snap = sub.add_parser(
+        "snapshot", help="WAL-checkpointed DB-only copy to snapshots/{world}-{ts}.db"
+    )
+    p_snap.add_argument("world_id")
+
+    p_snaprest = sub.add_parser(
+        "snapshot-restore",
+        help="install a snapshot .db as the live DB (refuses to overwrite)",
+    )
+    p_snaprest.add_argument("snapshot_path", type=Path)
+    p_snaprest.add_argument("--yes", action="store_true", help="confirm restore")
+
     p_ver = sub.add_parser(
         "verify", help="report orphan rows and orphan files (diagnostic)"
     )
@@ -646,6 +791,10 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_archive(args.world_id)
     if args.cmd == "restore":
         return cmd_restore(args.archive_path, args.yes)
+    if args.cmd == "snapshot":
+        return cmd_snapshot(args.world_id)
+    if args.cmd == "snapshot-restore":
+        return cmd_snapshot_restore(args.snapshot_path, args.yes)
     if args.cmd == "verify":
         return cmd_verify(args.world_id)
     if args.cmd == "delete":

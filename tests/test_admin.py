@@ -3,6 +3,7 @@ CLI. Tests exercise admin.main() directly with a temp data dir; bash side
 is a thin shell over `python -m daydream.admin`."""
 
 import json
+import sqlite3
 import tarfile
 from pathlib import Path
 
@@ -252,6 +253,189 @@ def test_restore_rejects_archive_with_newer_schema(live_world, tmp_path, monkeyp
     rc = admin.main(["restore", str(tampered), "--yes"])
     assert rc == 2
     assert "newer than" in capsys.readouterr().err
+
+
+# ---- snapshot -----------------------------------------------------------
+
+
+def _snapshot_db_value(snap: Path, sql: str):
+    """Open a snapshot .db read-only + immutable (so the probe creates no
+    -wal/-shm sidecars) and return the first column of the first row."""
+    probe = sqlite3.connect(f"file:{snap}?mode=ro&immutable=1", uri=True)
+    try:
+        return probe.execute(sql).fetchone()[0]
+    finally:
+        probe.close()
+
+
+def test_snapshot_creates_db_only_file(live_world, capsys):
+    """snapshot writes a single .db file under snapshots/ — no tarball, no
+    manifest — that opens as a valid SQLite DB with the world's rows."""
+    rc = admin.main(["snapshot", "w-bunny"])
+    assert rc == 0
+    snaps = list((live_world / "snapshots").iterdir())
+    assert len(snaps) == 1
+    snap = snaps[0]
+    assert snap.name.startswith("w-bunny-")
+    assert snap.name.endswith(".db")
+    assert "snapshot w-bunny ->" in capsys.readouterr().out
+    # No tarball anywhere in the snapshots dir, and the file is real SQLite.
+    assert not any(s.name.endswith(".tar.gz") for s in snaps)
+    assert _snapshot_db_value(snap, "SELECT COUNT(*) FROM worlds WHERE id = 'w-bunny'") == 1
+
+
+def test_snapshot_checkpoints_wal_before_copy(live_world):
+    """A row committed to live just before the snapshot must appear in the
+    independently-opened snapshot file, proving snapshot ran
+    wal_checkpoint(TRUNCATE) before copying live.db (the row would otherwise
+    sit only in live.db-wal and be missed by a bare-.db copy)."""
+    db.get_conn().execute(
+        "INSERT INTO worlds (id, name, slug, aesthetic_seed) VALUES "
+        "('w-wal', 'wal', 'wal', 'x')"
+    )
+    rc = admin.main(["snapshot", "w-bunny"])
+    assert rc == 0
+    snap = next((live_world / "snapshots").iterdir())
+    assert _snapshot_db_value(snap, "SELECT COUNT(*) FROM worlds WHERE id = 'w-wal'") == 1
+
+
+def test_snapshot_refuses_unknown_world(live_world, capsys):
+    rc = admin.main(["snapshot", "w-nope"])
+    assert rc == 2
+    assert "no world with id" in capsys.readouterr().err
+    assert not (live_world / "snapshots").exists()
+
+
+def test_snapshot_refuses_without_live_db(tmp_path, monkeypatch, capsys):
+    monkeypatch.setenv("DAYDREAM_DATA_DIR", str(tmp_path))
+    db.close_db()
+    rc = admin.main(["snapshot", "w-bunny"])
+    assert rc == 2
+    assert "no live DB" in capsys.readouterr().err
+
+
+def test_snapshot_refuses_on_collision(live_world, monkeypatch, capsys):
+    """If the computed output path already exists, snapshot refuses rather
+    than silently overwriting. Freeze the per-second timestamp so the second
+    call collides deterministically."""
+    import datetime as _dt
+
+    class _FixedDatetime:
+        @staticmethod
+        def now():
+            return _dt.datetime(2026, 5, 27, 12, 0, 0)
+
+    monkeypatch.setattr(admin, "datetime", _FixedDatetime)
+    assert admin.main(["snapshot", "w-bunny"]) == 0
+    rc = admin.main(["snapshot", "w-bunny"])
+    assert rc == 2
+    assert "already exists" in capsys.readouterr().err
+    # Only the first snapshot landed; the collision wrote nothing.
+    assert len(list((live_world / "snapshots").iterdir())) == 1
+
+
+def test_snapshot_restore_round_trip(live_world, tmp_path, monkeypatch):
+    """The spec oracle: seed, snapshot, mutate, restore, assert restored ==
+    snapshot-time state and != mutated state. The mutation is the control
+    that proves restore reinstated the snapshot rather than live."""
+    # F0: snapshot-time state — the seeded world has exactly one asset.
+    assert len(assets.list_assets()) == 1
+
+    assert admin.main(["snapshot", "w-bunny"]) == 0
+    snap = next((live_world / "snapshots").iterdir())
+
+    # Mutate live so it diverges from the snapshot (F1 != F0).
+    db.get_conn().execute("DELETE FROM generated_assets WHERE world_id = 'w-bunny'")
+    assert len(assets.list_assets()) == 0
+
+    # The snapshot file, opened independently, still holds F0 (one asset).
+    assert _snapshot_db_value(snap, "SELECT COUNT(*) FROM generated_assets") == 1
+
+    # Restore into a fresh, empty data dir (no live DB to overwrite).
+    db.close_db()
+    fresh = tmp_path / "fresh"
+    fresh.mkdir()
+    monkeypatch.setenv("DAYDREAM_DATA_DIR", str(fresh))
+    assert admin.main(["snapshot-restore", str(snap), "--yes"]) == 0
+    assert config.live_db_path().exists()
+
+    # Restored == F0 (one asset, r-meadow), != F1 (zero assets).
+    db.init_live()
+    restored = assets.list_assets()
+    assert len(restored) == 1
+    assert restored[0].target_id == "r-meadow"
+    db.close_db()
+
+
+def test_snapshot_restore_refuses_without_yes(live_world, tmp_path, monkeypatch, capsys):
+    assert admin.main(["snapshot", "w-bunny"]) == 0
+    snap = next((live_world / "snapshots").iterdir())
+    db.close_db()
+    fresh = tmp_path / "fresh"
+    fresh.mkdir()
+    monkeypatch.setenv("DAYDREAM_DATA_DIR", str(fresh))
+    rc = admin.main(["snapshot-restore", str(snap)])
+    assert rc == 2
+    assert "refusing to restore" in capsys.readouterr().err
+    assert not config.live_db_path().exists()
+
+
+def test_snapshot_restore_refuses_when_live_db_exists(live_world, capsys):
+    """live_world has an existing live DB; snapshot-restore must refuse to
+    overwrite it (the data-loss guard)."""
+    assert admin.main(["snapshot", "w-bunny"]) == 0
+    snap = next((live_world / "snapshots").iterdir())
+    rc = admin.main(["snapshot-restore", str(snap), "--yes"])
+    assert rc == 2
+    assert "live DB exists" in capsys.readouterr().err
+
+
+def test_snapshot_restore_rejects_missing_file(tmp_path, monkeypatch, capsys):
+    monkeypatch.setenv("DAYDREAM_DATA_DIR", str(tmp_path))
+    db.close_db()
+    rc = admin.main(["snapshot-restore", str(tmp_path / "no-such.db"), "--yes"])
+    assert rc == 2
+    assert "not found" in capsys.readouterr().err
+
+
+def test_snapshot_restore_rejects_non_db_file(tmp_path, monkeypatch, capsys):
+    """A file that is not a SQLite DB is refused before any copy to live."""
+    db.close_db()
+    junk = tmp_path / "junk.db"
+    junk.write_text("this is plainly not a database")
+    fresh = tmp_path / "fresh"
+    fresh.mkdir()
+    monkeypatch.setenv("DAYDREAM_DATA_DIR", str(fresh))
+    rc = admin.main(["snapshot-restore", str(junk), "--yes"])
+    assert rc == 2
+    assert "not a readable daydream DB" in capsys.readouterr().err
+    assert not config.live_db_path().exists()
+
+
+def test_snapshot_restore_rejects_newer_schema(live_world, tmp_path, monkeypatch, capsys):
+    """A snapshot whose _migrations claims a higher number than this code
+    knows is refused (parity with archive restore)."""
+    assert admin.main(["snapshot", "w-bunny"]) == 0
+    snap = next((live_world / "snapshots").iterdir())
+
+    # Tamper: bump the snapshot's applied-migration max to a future number,
+    # then checkpoint so the row lands in the main file (an immutable-mode
+    # reader ignores any -wal sidecar).
+    tamper = sqlite3.connect(str(snap), isolation_level=None)
+    try:
+        tamper.execute("INSERT INTO _migrations(filename) VALUES ('9999_future.sql')")
+        tamper.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+    finally:
+        tamper.close()
+
+    db.close_db()
+    fresh = tmp_path / "fresh"
+    fresh.mkdir()
+    monkeypatch.setenv("DAYDREAM_DATA_DIR", str(fresh))
+    rc = admin.main(["snapshot-restore", str(snap), "--yes"])
+    assert rc == 2
+    assert "newer than" in capsys.readouterr().err
+    assert not config.live_db_path().exists()
 
 
 # ---- verify -------------------------------------------------------------

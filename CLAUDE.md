@@ -180,7 +180,8 @@ Every persistent generation lands a row in the per-world `generated_assets` tabl
   worlds-{env}/live.db                                # per-env DB; holds generated_assets
   images/cache/{world}/{kind}/{id}/{combined_hash}.png   # persistent output
   images/ephemeral/{safe_name}-{prompt_hash}.png      # ephemeral output (no row)
-  archives/{world}-{ts}.tar.gz                        # bin/game world archive output
+  archives/{world}-{ts}.tar.gz                        # bin/game world archive output (full bundle)
+  snapshots/{world}-{ts}.db                           # bin/game world snapshot output (DB-only)
 ```
 
 The cache key `combined_hash = sha256(seed_hash + workflow_hash)` so editing the seed OR the workflow JSON (sampler tweaks, LoRA strength, resolution) busts the cache and triggers regen. The recorded `workflow_hash` column lets you query "which assets came from which workflow version" later. The `target_kind` segment in the path prevents slug collision when NPC portraits land alongside room backgrounds.
@@ -193,6 +194,8 @@ The cache key `combined_hash = sha256(seed_hash + workflow_hash)` so editing the
 bin/game world list                              # worlds + per-world asset count + cache footprint
 bin/game world archive <world_id>                # checkpoint WAL, tar DB + cache + manifest → archives/
 bin/game world restore <archive.tar.gz> --yes    # validate manifest, untar into data_dir (refuses if live DB exists)
+bin/game world snapshot <world_id>               # checkpoint WAL, copy live DB → snapshots/{world}-{ts}.db (DB-only, no cache/manifest)
+bin/game world snapshot-restore <snap.db> --yes  # install a snapshot as the live DB (refuses to overwrite; refuses newer schema)
 bin/game world verify [world_id]                 # report orphan rows (file missing) + orphan files (no row)
 bin/game world delete <world_id> --yes           # cascade DELETE rows (filtered by world_id) + rm -rf cache dir
 ```
@@ -203,7 +206,7 @@ bin/game world delete <world_id> --yes           # cascade DELETE rows (filtered
 
 **Extending to other asset kinds.** The schema's `asset_kind` (`'image'` for now) and `target_kind` (`'room'`, `'toon'`, `'item'`) columns are the extensibility hooks. NPC portraits land as `target_kind='toon'` rows, no migration needed. Regenerated text outputs (e.g., room descriptions written back into `rooms.description_cached`) would be `asset_kind='text'` and need a small schema relaxation (`file_relpath` becomes nullable; an inline-text column joins it). That's the next migration whenever LLM-driven text caching becomes load-bearing.
 
-**Distinct from `snapshot-restore-commands` (BACKLOG).** That entry plans hot-swap-grade DB-only snapshots for the `world-hot-swap` flow. `archive/restore` here is the heavyweight bundle — full DB + per-world cache + manifest, suitable for shipping a world to another box.
+**`snapshot`/`snapshot-restore` vs `archive`/`restore`.** `snapshot` (above) is the fast, DB-only point-in-time copy: it WAL-checkpoints the live DB and copies just the `.db` file to `snapshots/{world}-{ts}.db` — no per-world cache, no `MANIFEST.json`, no tarball. `snapshot-restore` installs such a file as the live DB, refusing to overwrite an existing live DB and refusing a snapshot whose schema is newer than this code knows (it reads the snapshot's own `_migrations` table). These are the substrate for the deferred `world-hot-swap` flow (a v2 BACKLOG entry — atomic rename, pool reopen, `world_changed` broadcast; not built here). `archive`/`restore` is the heavyweight bundle — full DB + per-world cache + manifest, suitable for shipping a world to another box.
 
 ## Aesthetic
 
