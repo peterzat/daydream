@@ -16,10 +16,13 @@ addressed to the NPC's current room. Two paths produce the narrate text:
    or `LLMUnavailable` or empty narrate, falls through to the canned
    path.
 2. **Canned** (always available; the unconditional fallback). Picks
-   from a mood-bucketed pre-canned pool keyed by NPC id then by mood
-   bucket; falls back to the `default` bucket when the NPC's mood has
-   no dedicated bucket. Selection is `random.choice` from the chosen
-   bucket. NEVER calls the LLM, NEVER takes the arbiter.
+   from a mood-bucketed pre-canned pool: the NPC's hand-authored
+   per-NPC pool when one exists, else the name-templated
+   `_GENERIC_DRIFT_POOL` (the safety net for bootstrapped NPCs). Falls
+   back to the `default` bucket when the NPC's mood has no dedicated
+   bucket. Selection is `random.choice` from the chosen bucket, with
+   the toon's name substituted into any `{name}` token. NEVER calls the
+   LLM, NEVER takes the arbiter.
 
 The existing WS broadcast machinery routes the narrate to in-room
 subscribers; out-of-room subscribers are filtered.
@@ -107,6 +110,48 @@ _DRIFT_POOLS: dict[str, dict[str, list[str]]] = {
             "Iris draws a length of pale ribbon through her fingers, deciding which page deserves it next.",
         ],
     },
+}
+
+
+# Generic, name-templated drift pool. The safety net for any NPC without
+# a hand-authored `_DRIFT_POOLS` entry — bootstrapped NPCs (ids shaped
+# `t-<slug>-<uuid>`) in particular, whose per-character voice otherwise
+# comes through the LLM path. Same dict-of-dicts shape and same bucket
+# names as `_DRIFT_POOLS` so `_pick_canned_line` / `_maybe_transition_mood`
+# treat it identically; the only difference is the literal `{name}` token,
+# substituted at pick time via `str.replace` (never `str.format`, so a
+# generated name containing `{` or `}` cannot crash the substitution).
+#
+# Voice-neutral by necessity: these beats carry no per-character imagery
+# (no anvil, no letters) and use singular "they / their" so they read for
+# any name and any gender. Tone is still WHIMSY-locked — soft, painterly,
+# Spiritfarer / A Short Hike-adjacent, single-sentence third-person body
+# language, no quoted dialogue, no urgency, no modern tech.
+_GENERIC_DRIFT_POOL: dict[str, list[str]] = {
+    "content": [
+        "{name} hums a few notes under their breath, content with the quiet.",
+        "{name} lets their shoulders settle and watches dust turn slow in a beam of light.",
+        "{name} traces a small circle on a tabletop, in no hurry to be anywhere.",
+        "{name} warms their hands and lets the moment sit, unhurried.",
+    ],
+    "thoughtful": [
+        "{name} pauses to listen to the rafters, following a small sound to its end.",
+        "{name} runs a thumb along the back of their hand, distracted by a thought.",
+        "{name} gazes toward the window and lets a memory unspool at its own pace.",
+        "{name} turns something over slowly in their mind, then lets it go.",
+    ],
+    "curious": [
+        "{name} tilts their head at a shift in the light, quietly curious.",
+        "{name} leans toward a small detail, half-smiling at what they find.",
+        "{name} follows the drift of a dust mote with idle interest.",
+        "{name} peers into a corner as if it might be hiding something kind.",
+    ],
+    "default": [
+        "{name} draws a slow breath and lets the room go quiet around them.",
+        "{name} shifts their weight from one foot to the other, settling in.",
+        "{name} brushes a stray thread from their sleeve and lets it fall.",
+        "{name} glances about the room, taking its small measure.",
+    ],
 }
 
 
@@ -262,20 +307,33 @@ def _list_npcs() -> list[dict[str, Any]]:
 
 
 def _pick_canned_line(
-    npc_id: str, mood: str | None, rng: random.Random | None = None
+    npc_id: str,
+    mood: str | None,
+    rng: random.Random | None = None,
+    name: str | None = None,
 ) -> str | None:
-    """Pick one canned drift line for `(npc_id, mood)` from `_DRIFT_POOLS`.
+    """Pick one canned drift line for `(npc_id, mood)`.
 
-    Returns the picked string, or None if the NPC has no pool entry at
-    all (caller treats as no-op). Bucket selection: prefer the bucket
-    matching `mood` exactly when present and non-empty; otherwise fall
-    back to `default`. If `default` is also empty, walk all buckets and
-    pick from any non-empty one — this lets a future migration add a
-    new mood bucket without `default` and still produce output."""
+    Uses the NPC's hand-authored `_DRIFT_POOLS` entry when one exists;
+    otherwise falls through to `_GENERIC_DRIFT_POOL` (the safety net for
+    bootstrapped NPCs that have no per-NPC voice). Bucket selection is
+    identical for either pool: prefer the bucket matching `mood` exactly
+    when present and non-empty; otherwise fall back to `default`; if
+    `default` is also empty, walk all buckets and pick from any non-empty
+    one — this lets a future migration add a new mood bucket without
+    `default` and still produce output.
+
+    When `name` is provided, the chosen line's literal `{name}` token is
+    substituted via `str.replace` (NOT `str.format`, so a generated name
+    containing `{` or `}` cannot crash the call, and a line with no
+    `{name}` token is left untouched). When `name` is None the
+    substitution is skipped entirely.
+
+    Returns the picked string, or None only when both the per-NPC pool
+    and the generic pool yield no non-empty bucket — defense in depth,
+    not reachable while `_GENERIC_DRIFT_POOL` ships non-empty buckets."""
     rng = rng if rng is not None else random
-    buckets = _DRIFT_POOLS.get(npc_id)
-    if not buckets:
-        return None
+    buckets = _DRIFT_POOLS.get(npc_id) or _GENERIC_DRIFT_POOL
     chosen = None
     if mood and buckets.get(mood):
         chosen = buckets[mood]
@@ -288,7 +346,10 @@ def _pick_canned_line(
                 break
     if not chosen:
         return None
-    return rng.choice(chosen)
+    line = rng.choice(chosen)
+    if name is not None:
+        line = line.replace("{name}", name)
+    return line
 
 
 def _occupied_room_ids() -> set[str]:
@@ -309,25 +370,20 @@ def _occupied_room_ids() -> set[str]:
 
 
 def _eligible_npcs(npcs: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Filter NPC list to those with at least one non-empty pool bucket
-    AND (when occupancy suppression is on) whose current room has no
-    human-controlled toon present. Empty-pool NPCs are silently skipped
-    rather than producing nothing."""
+    """Filter NPC list to those eligible for a drift tick: every NPC
+    (the `_list_npcs` query already restricts to `is_human_controlled=0`
+    AND `kicked_at IS NULL`) whose current room has no human-controlled
+    toon present when occupancy suppression is on.
+
+    No per-NPC pool-membership check: bootstrapped NPCs with no
+    `_DRIFT_POOLS` entry are eligible because `_pick_canned_line` falls
+    through to `_GENERIC_DRIFT_POOL`, so eligibility no longer gates on
+    having a hand-authored pool."""
     if _is_occupancy_suppression_enabled():
         occupied = _occupied_room_ids()
     else:
         occupied = set()
-    out = []
-    for n in npcs:
-        buckets = _DRIFT_POOLS.get(n["id"])
-        if not buckets:
-            continue
-        if not any(lines for lines in buckets.values()):
-            continue
-        if n["current_room_id"] in occupied:
-            continue
-        out.append(n)
-    return out
+    return [n for n in npcs if n["current_room_id"] not in occupied]
 
 
 def _pick_npc(
@@ -351,11 +407,13 @@ def _maybe_transition_mood(
 ) -> str | None:
     """Probabilistic mood transition. With probability
     `DAYDREAM_DRIFT_MOOD_DRIFT_PROB` (default 0.2) and at least one
-    target bucket available (an `_DRIFT_POOLS[npc_id]` key other than
-    `default` and other than the current mood), pick a new mood and
-    persist via `toons.set_mood`. Returns the new mood string on
-    transition, or None when no transition fired (toggle off, roll
-    didn't land, no eligible target bucket, or persist failed).
+    target bucket available (a pool key other than `default` and other
+    than the current mood), pick a new mood and persist via
+    `toons.set_mood`. The pool is the NPC's `_DRIFT_POOLS` entry when one
+    exists, else `_GENERIC_DRIFT_POOL` — so bootstrapped NPCs draw their
+    transition target from the generic bucket set. Returns the new mood
+    string on transition, or None when no transition fired (toggle off,
+    roll didn't land, no eligible target bucket, or persist failed).
 
     Persist failures are caught and logged at warning; the tick has
     already emitted its narrate by the time this runs and the loop
@@ -365,9 +423,7 @@ def _maybe_transition_mood(
     rng = rng if rng is not None else random
     if rng.random() >= _mood_drift_prob():
         return None
-    buckets = _DRIFT_POOLS.get(npc["id"])
-    if not buckets:
-        return None
+    buckets = _DRIFT_POOLS.get(npc["id"]) or _GENERIC_DRIFT_POOL
     current_mood = npc.get("mood")
     targets = [
         m for m in buckets.keys() if m != "default" and m != current_mood
@@ -478,7 +534,7 @@ async def _tick(rng: random.Random | None = None) -> bool:
     if _is_llm_enabled():
         llm_text = await _llm_narrate(chosen)
     text = llm_text if llm_text is not None else _pick_canned_line(
-        chosen["id"], chosen["mood"], rng=rng
+        chosen["id"], chosen["mood"], rng=rng, name=chosen["name"]
     )
     if text is None:
         _TICK_COUNTS["noop"] += 1

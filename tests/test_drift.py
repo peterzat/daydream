@@ -101,10 +101,69 @@ def test_pick_canned_line_falls_back_to_default_for_unknown_mood():
 
 
 @pytest.mark.tier_short
-def test_pick_canned_line_returns_none_for_unknown_npc():
-    """An NPC id with no pool entry returns None (caller treats as no-op)."""
+def test_pick_canned_line_falls_through_to_generic_for_unknown_npc():
+    """An NPC id with no per-NPC pool entry falls through to
+    `_GENERIC_DRIFT_POOL` (was: returned None). With no `name` passed,
+    the `{name}` token is left literal. Replaces the old
+    returns-None-for-unknown-npc test, since the contract is now
+    generic-pool fall-through, not None."""
     line = drift._pick_canned_line("t-nonexistent", "content")
-    assert line is None
+    assert line is not None
+    assert line in drift._GENERIC_DRIFT_POOL["content"], (
+        f"line {line!r} not from generic/content bucket"
+    )
+    assert "{name}" in line, "name=None should leave the {name} token untouched"
+
+
+@pytest.mark.tier_short
+def test_pick_canned_line_substitutes_name_in_generic_pool():
+    """`_pick_canned_line(unknown_id, mood, name=...)` returns a line
+    from the generic pool's matching mood bucket with `{name}`
+    substituted by the toon name via str.replace."""
+    rng = random.Random(0)
+    line = drift._pick_canned_line("t-foo", "curious", rng=rng, name="Foo")
+    assert line is not None
+    expected = {
+        l.replace("{name}", "Foo") for l in drift._GENERIC_DRIFT_POOL["curious"]
+    }
+    assert line in expected, f"line {line!r} not a name-substituted curious line"
+    assert "{name}" not in line, "the {name} token should be fully substituted"
+    assert "Foo" in line
+
+
+@pytest.mark.tier_short
+def test_pick_canned_line_curly_brace_name_does_not_crash():
+    """A generated name containing `{`/`}` (which would crash
+    str.format) substitutes cleanly via str.replace and appears
+    verbatim in the result."""
+    rng = random.Random(0)
+    line = drift._pick_canned_line("t-foo", "content", rng=rng, name="Q{x}Q")
+    assert line is not None
+    assert "Q{x}Q" in line, f"curly-brace name not preserved in {line!r}"
+
+
+@pytest.mark.tier_short
+def test_generic_drift_pool_shape():
+    """`_GENERIC_DRIFT_POOL` ships the SPEC-required buckets
+    (content / thoughtful / curious / default), each with >=3 distinct
+    non-empty lines, >=12 total, and every line carries the literal
+    `{name}` token."""
+    pool = drift._GENERIC_DRIFT_POOL
+    for bucket in ("content", "thoughtful", "curious", "default"):
+        assert bucket in pool, f"generic pool missing `{bucket}` bucket"
+        lines = pool[bucket]
+        assert isinstance(lines, list), f"generic/{bucket}: not a list"
+        assert len(lines) >= 3, f"generic/{bucket}: only {len(lines)} lines"
+        for line in lines:
+            assert isinstance(line, str) and line.strip(), (
+                f"generic/{bucket}: empty/non-string line {line!r}"
+            )
+            assert "{name}" in line, (
+                f"generic/{bucket}: line missing {{name}} token: {line!r}"
+            )
+    all_lines = [l for lines in pool.values() for l in lines]
+    assert len(all_lines) >= 12, f"generic pool has only {len(all_lines)} lines"
+    assert len(set(all_lines)) == len(all_lines), "duplicates in generic pool"
 
 
 # ---- tick: canned path (tier_medium, DB needed) ------------------------
@@ -116,9 +175,13 @@ async def test_tick_emits_one_narrate_in_chosen_npc_room(monkeypatch):
     """One tick with two NPCs (Rook at r-forge, Iris at r-attic)
     produces exactly one new narrate event addressed to the chosen
     NPC's room, with text from one of the NPC's pool buckets. LLM
-    branch is off (conftest default)."""
+    branch is off (conftest default). Drops the seeded slot-1 Wren so
+    only the two hand-authored, `_DRIFT_POOLS`-backed NPCs are eligible
+    (Wren now drifts via the generic pool, which this test's
+    `_DRIFT_POOLS`-only identification step does not cover)."""
     from daydream import config
     db.init_live(migrations_dir=config.MIGRATIONS_DIR)
+    db.get_conn().execute("DELETE FROM toons WHERE id = 't-wren'")
     before_seq = events.max_seq()
 
     rng = random.Random(0)
@@ -168,13 +231,15 @@ async def test_tick_no_op_when_no_npcs():
 async def test_tick_canned_uses_npc_mood_bucket(monkeypatch):
     """With LLM disabled and an NPC mood explicitly set, the canned
     line picked must come from the matching bucket. Sets Rook's mood
-    to `thoughtful` directly via DB then deletes Iris so the choice
-    is deterministic."""
+    to `thoughtful` directly via DB then deletes Iris and Wren so the
+    choice is deterministic on Rook."""
     from daydream import config
     db.init_live(migrations_dir=config.MIGRATIONS_DIR)
     conn = db.get_conn()
     conn.execute("UPDATE toons SET mood = 'thoughtful' WHERE id = 't-rook'")
-    conn.execute("DELETE FROM toons WHERE id = 't-iris'")
+    # Drop Iris and the seeded Wren so the choice is deterministic on Rook
+    # (Wren is drift-eligible now that eligibility no longer needs a pool).
+    conn.execute("DELETE FROM toons WHERE id IN ('t-iris', 't-wren')")
     before_seq = events.max_seq()
 
     emitted = await drift._tick(rng=random.Random(0))
@@ -194,8 +259,8 @@ async def test_tick_llm_happy_path_emits_llm_text(monkeypatch):
     from daydream import config
     db.init_live(migrations_dir=config.MIGRATIONS_DIR)
     monkeypatch.setenv("DAYDREAM_DRIFT_LLM_ENABLED", "1")
-    # Delete Iris so choice is deterministic on Rook.
-    db.get_conn().execute("DELETE FROM toons WHERE id = 't-iris'")
+    # Delete Iris and the now-eligible Wren so choice is deterministic on Rook.
+    db.get_conn().execute("DELETE FROM toons WHERE id IN ('t-iris', 't-wren')")
     llm_text = "Rook tilts the lamp's wick a quarter-turn brighter and watches the shadows soften."
     monkeypatch.setattr(
         "daydream.llm.client.acompletion_json",
@@ -220,7 +285,7 @@ async def test_tick_llm_falls_back_to_canned_on_unavailable(monkeypatch):
     from daydream import config
     db.init_live(migrations_dir=config.MIGRATIONS_DIR)
     monkeypatch.setenv("DAYDREAM_DRIFT_LLM_ENABLED", "1")
-    db.get_conn().execute("DELETE FROM toons WHERE id = 't-iris'")
+    db.get_conn().execute("DELETE FROM toons WHERE id IN ('t-iris', 't-wren')")
     monkeypatch.setattr(
         "daydream.llm.client.acompletion_json",
         AsyncMock(side_effect=llm_client.LLMUnavailable("vllm down")),
@@ -317,7 +382,7 @@ async def test_tick_llm_disabled_never_calls_acompletion(monkeypatch):
     monkeypatch.setenv("DAYDREAM_DRIFT_LLM_ENABLED", "0")
     mock_llm = AsyncMock(side_effect=AssertionError("LLM should not be called"))
     monkeypatch.setattr("daydream.llm.client.acompletion_json", mock_llm)
-    db.get_conn().execute("DELETE FROM toons WHERE id = 't-iris'")
+    db.get_conn().execute("DELETE FROM toons WHERE id IN ('t-iris', 't-wren')")
 
     before_seq = events.max_seq()
     emitted = await drift._tick(rng=random.Random(0))
@@ -339,7 +404,7 @@ async def test_tick_llm_runs_with_empty_memories(monkeypatch):
     from daydream import config
     db.init_live(migrations_dir=config.MIGRATIONS_DIR)
     monkeypatch.setenv("DAYDREAM_DRIFT_LLM_ENABLED", "1")
-    db.get_conn().execute("DELETE FROM toons WHERE id = 't-iris'")
+    db.get_conn().execute("DELETE FROM toons WHERE id IN ('t-iris', 't-wren')")
     captured_user_prompt = {}
 
     async def fake(system: str, user: str, **kwargs):
@@ -357,6 +422,86 @@ async def test_tick_llm_runs_with_empty_memories(monkeypatch):
     )
     e = events.fetch_since(before_seq)[0]
     assert e.payload["text"] == "Rook listens to the wind for a moment."
+
+
+# ---- tick: bootstrapped NPC (no per-NPC pool) (tier_medium, DB) --------
+
+
+def _seed_bootstrapped_npc(
+    npc_id: str = "t-test-abc123",
+    name: str = "Bramble",
+    room_id: str = "r-meadow",
+    mood: str = "curious",
+    slot: int = 100,
+) -> None:
+    """Insert a bootstrapped-style NPC (id shaped `t-<slug>-<uuid>`, no
+    `_DRIFT_POOLS` entry, is_human_controlled=0) into the seeded world.
+    Mirrors the column set of `_seed_human_in_room` but NPC-controlled,
+    so the drift loop treats it like a `bin/game world bootstrap` toon.
+    Caller is expected to have cleared the hand-authored NPCs first so
+    this one is selected deterministically."""
+    db.get_conn().execute(
+        "INSERT INTO toons (id, world_id, slot, name, seed, appearance_seed, "
+        "current_room_id, is_human_controlled, inventory_json, mood) VALUES "
+        "(?, 'w-bunny', ?, ?, ?, '', ?, 0, '[]', ?)",
+        (npc_id, slot, name, "a wandering tinker", room_id, mood),
+    )
+
+
+@pytest.mark.tier_medium
+@pytest.mark.asyncio
+async def test_tick_bootstrapped_npc_emits_generic_canned_when_llm_none(monkeypatch):
+    """A bootstrapped NPC (id t-test-abc123, no per-NPC pool) is now
+    eligible and selected by _tick; when _llm_narrate yields None it
+    emits a generic-pool line with `{name}` replaced by the toon name.
+    Exercises eligibility-opening + generic-fall-through end to end."""
+    from daydream import config
+    db.init_live(migrations_dir=config.MIGRATIONS_DIR)
+    # Drop the hand-authored NPCs so the bootstrapped one is the only
+    # eligible toon and selection is deterministic.
+    db.get_conn().execute("DELETE FROM toons WHERE is_human_controlled = 0")
+    _seed_bootstrapped_npc(name="Bramble", room_id="r-meadow", mood="curious")
+    monkeypatch.setenv("DAYDREAM_DRIFT_LLM_ENABLED", "1")
+    monkeypatch.setattr(drift, "_llm_narrate", AsyncMock(return_value=None))
+    before_seq = events.max_seq()
+
+    emitted = await drift._tick(rng=random.Random(0))
+    assert emitted is True
+    e = events.fetch_since(before_seq)[0]
+    assert e.kind == "narrate"
+    assert e.room_id == "r-meadow"
+    expected = {
+        line.replace("{name}", "Bramble")
+        for line in drift._GENERIC_DRIFT_POOL["curious"]
+    }
+    assert e.payload["text"] in expected, (
+        f"emitted {e.payload['text']!r} not a name-substituted generic curious line"
+    )
+    assert "{name}" not in e.payload["text"]
+    assert drift.tick_counts() == {"llm_emit": 0, "canned_fallback": 1, "noop": 0}
+
+
+@pytest.mark.tier_medium
+@pytest.mark.asyncio
+async def test_tick_bootstrapped_npc_emits_llm_text_when_present(monkeypatch):
+    """The same bootstrapped NPC emits the LLM text verbatim when
+    _llm_narrate returns a string, recording an llm_emit (not a
+    canned_fallback)."""
+    from daydream import config
+    db.init_live(migrations_dir=config.MIGRATIONS_DIR)
+    db.get_conn().execute("DELETE FROM toons WHERE is_human_controlled = 0")
+    _seed_bootstrapped_npc(name="Bramble", room_id="r-meadow", mood="curious")
+    monkeypatch.setenv("DAYDREAM_DRIFT_LLM_ENABLED", "1")
+    llm_text = "Bramble watches the meadow grass lean and settle in the late light."
+    monkeypatch.setattr(drift, "_llm_narrate", AsyncMock(return_value=llm_text))
+    before_seq = events.max_seq()
+
+    emitted = await drift._tick(rng=random.Random(0))
+    assert emitted is True
+    e = events.fetch_since(before_seq)[0]
+    assert e.payload["text"] == llm_text
+    assert e.room_id == "r-meadow"
+    assert drift.tick_counts() == {"llm_emit": 1, "canned_fallback": 0, "noop": 0}
 
 
 # ---- per-NPC drift selection weights (tier_short, pure) ----------------
@@ -448,11 +593,15 @@ def _seed_human_in_room(room_id: str, slot: int = 2) -> None:
 @pytest.mark.tier_medium
 @pytest.mark.asyncio
 async def test_tick_suppresses_drift_in_occupied_room():
-    """Place a human in r-forge (Rook's room). The tick must pick
-    Iris (or no-op); Rook is suppressed."""
+    """Place a human in r-forge (Rook's room) and r-meadow (Wren's
+    room). The tick must pick Iris; Rook and Wren are suppressed. Wren
+    (the seeded slot-1 NPC) is drift-eligible now that eligibility no
+    longer requires a per-NPC pool, so its room must be occupied too to
+    isolate the assertion on Iris."""
     from daydream import config
     db.init_live(migrations_dir=config.MIGRATIONS_DIR)
     _seed_human_in_room("r-forge")
+    _seed_human_in_room("r-meadow", slot=4)
     before_seq = events.max_seq()
 
     # Run several ticks with varied seeds; every emitted narrate must
@@ -473,11 +622,16 @@ async def test_tick_suppresses_drift_in_occupied_room():
 @pytest.mark.tier_medium
 @pytest.mark.asyncio
 async def test_tick_no_op_when_all_rooms_occupied():
-    """Humans in both NPC rooms → tick is a no-op (no narrate)."""
+    """Humans in every NPC room → tick is a no-op (no narrate). Covers
+    Rook (r-forge), Iris (r-attic), and Wren (r-meadow); Wren is
+    drift-eligible now that eligibility no longer requires a per-NPC
+    pool, so its room must be occupied for the world to have zero
+    eligible NPCs."""
     from daydream import config
     db.init_live(migrations_dir=config.MIGRATIONS_DIR)
     _seed_human_in_room("r-forge", slot=2)
     _seed_human_in_room("r-attic", slot=3)
+    _seed_human_in_room("r-meadow", slot=4)
     before_seq = events.max_seq()
 
     emitted = await drift._tick(rng=random.Random(0))
@@ -560,6 +714,26 @@ def test_maybe_transition_mood_only_default_bucket_returns_none(monkeypatch):
     assert drift._maybe_transition_mood(npc, rng=random.Random(0)) is None
 
 
+@pytest.mark.tier_short
+def test_maybe_transition_mood_uses_generic_pool_for_bootstrapped_npc(monkeypatch):
+    """A bootstrapped NPC (no `_DRIFT_POOLS` entry) draws its mood
+    transition target from `_GENERIC_DRIFT_POOL.keys()` minus `default`
+    minus the current mood. Probability forced to 1.0 so the roll
+    always lands; `set_mood` is stubbed so the test stays tier_short
+    (no DB) — the generic-key selection is the behavior under test."""
+    monkeypatch.setenv("DAYDREAM_DRIFT_MOOD_DRIFT_ENABLED", "1")
+    monkeypatch.setenv("DAYDREAM_DRIFT_MOOD_DRIFT_PROB", "1.0")
+    calls: list[tuple[str, str]] = []
+    monkeypatch.setattr(
+        "daydream.toons.set_mood", lambda tid, mood: calls.append((tid, mood))
+    )
+    npc = {"id": "t-test-abc123", "mood": "curious"}
+    expected = set(drift._GENERIC_DRIFT_POOL) - {"default", "curious"}
+    new_mood = drift._maybe_transition_mood(npc, rng=random.Random(0))
+    assert new_mood in expected, f"{new_mood!r} not in generic targets {expected}"
+    assert calls == [("t-test-abc123", new_mood)]
+
+
 @pytest.mark.tier_medium
 @pytest.mark.asyncio
 async def test_maybe_transition_mood_persists_to_db(monkeypatch):
@@ -606,6 +780,9 @@ async def test_tick_composed_iris_only_with_occupancy_and_mood_drift(monkeypatch
     monkeypatch.setenv("DAYDREAM_DRIFT_MOOD_DRIFT_ENABLED", "1")
     monkeypatch.setenv("DAYDREAM_DRIFT_MOOD_DRIFT_PROB", "1.0")
     _seed_human_in_room("r-forge")
+    # Wren (r-meadow) is drift-eligible too now; occupy its room so the
+    # composed assertion stays isolated on Iris.
+    _seed_human_in_room("r-meadow", slot=4)
     monkeypatch.setattr(
         "daydream.llm.client.acompletion_json",
         AsyncMock(return_value={"narrate": "Iris hums quietly to herself in the slanting light."}),
@@ -650,7 +827,7 @@ async def test_tick_counter_canned_fallback_increments_on_canned_path(monkeypatc
     `canned_fallback` increments exactly 1; others stay 0."""
     from daydream import config
     db.init_live(migrations_dir=config.MIGRATIONS_DIR)
-    db.get_conn().execute("DELETE FROM toons WHERE id = 't-iris'")
+    db.get_conn().execute("DELETE FROM toons WHERE id IN ('t-iris', 't-wren')")
 
     emitted = await drift._tick(rng=random.Random(0))
     assert emitted is True
@@ -666,7 +843,7 @@ async def test_tick_counter_llm_emit_increments_on_llm_path(monkeypatch):
     from daydream import config
     db.init_live(migrations_dir=config.MIGRATIONS_DIR)
     monkeypatch.setenv("DAYDREAM_DRIFT_LLM_ENABLED", "1")
-    db.get_conn().execute("DELETE FROM toons WHERE id = 't-iris'")
+    db.get_conn().execute("DELETE FROM toons WHERE id IN ('t-iris', 't-wren')")
     monkeypatch.setattr(
         "daydream.llm.client.acompletion_json",
         AsyncMock(return_value={"narrate": "Rook hums softly to himself."}),
@@ -686,7 +863,7 @@ async def test_tick_counter_canned_fallback_increments_when_llm_fails(monkeypatc
     from daydream import config
     db.init_live(migrations_dir=config.MIGRATIONS_DIR)
     monkeypatch.setenv("DAYDREAM_DRIFT_LLM_ENABLED", "1")
-    db.get_conn().execute("DELETE FROM toons WHERE id = 't-iris'")
+    db.get_conn().execute("DELETE FROM toons WHERE id IN ('t-iris', 't-wren')")
     monkeypatch.setattr(
         "daydream.llm.client.acompletion_json",
         AsyncMock(side_effect=llm_client.LLMUnavailable("vllm down")),
@@ -701,12 +878,15 @@ async def test_tick_counter_canned_fallback_increments_when_llm_fails(monkeypatc
 @pytest.mark.tier_medium
 @pytest.mark.asyncio
 async def test_tick_counter_noop_increments_when_no_eligible_npcs():
-    """No eligible NPCs (all rooms occupied) → counter `noop`
-    increments; others stay 0."""
+    """No eligible NPCs (every NPC room occupied) → counter `noop`
+    increments; others stay 0. Occupies Wren's r-meadow alongside
+    Rook's r-forge and Iris's r-attic, since Wren is drift-eligible now
+    that eligibility no longer requires a per-NPC pool."""
     from daydream import config
     db.init_live(migrations_dir=config.MIGRATIONS_DIR)
     _seed_human_in_room("r-forge", slot=2)
     _seed_human_in_room("r-attic", slot=3)
+    _seed_human_in_room("r-meadow", slot=4)
 
     emitted = await drift._tick(rng=random.Random(0))
     assert emitted is False
