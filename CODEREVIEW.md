@@ -1,30 +1,25 @@
-## Review — 2026-05-07 (commit: dd983fa)
+## Review — 2026-05-27 (commit: ed51c43)
 
-**Summary:** Refresh review of one unpushed commit since `63e1ed0`. `dd983fa` is a bundled mega-commit covering three logical units: (1) world-bootstrap-opus closes 7/7 — `daydream/llm/bootstrap.py` (new, ~470 LOC) calls Claude Opus 4.7 via `litellm.acompletion`, validates a strict-JSON envelope (5 rooms with bidirectional exits + 4 toons in slot 1-5/100+ partition + items + 2 starter data skills), and INSERTs the bootstrapped content into a fresh `.db` under `world_id='w-bunny'` (canonical id retained so existing hardcoded references continue to work); 10 hermetic tests in `tests/test_bootstrap.py` mock `litellm.acompletion` at the module boundary; `daydream/admin.py` adds `cmd_world_bootstrap` + the `bootstrap` subparser. (2) SPEC.md consume to drift-bootstrapped-npcs (7 unchecked criteria; not in this commit's code surface). (3) BACKLOG sweep deletes the two ACTIVE-tagged shipped entries (`toon-slot-management`, `world-bootstrap-opus`). README rolls forward to 479 medium tests; new "world bootstrap" mention in the world-admin bullet.
+**Summary:** Light review of one unpushed docs-only commit (`ed51c43`) that adds `GOAL.md`, a 170-line human-readable journey log for the first use of Claude Code's `/goal` feature in daydream. The doc records project state (prose + git facts), the exact `/goal` condition to be run (drift-bootstrapped-npcs 0/7 to a committed increment), pre-run predictions, and a fill-in-after review checklist. No code or configuration touched.
 
-**Review scope:** Refresh review. Focus: 5 file(s) changed since prior review (commit `63e1ed0`). 0 already-reviewed file(s). Tier counts at HEAD: 320 short / 479 medium green; no regression vs prior 320 / 469 (+10 from new bootstrap tests).
+**Review scope:** Light review (docs-only). 1 file changed (+170). Per light-tier rules, no test-suite run, no security chain, no external reviewers, and no fix loop. Reduced-scope checks applied: broken links/references, secret leaks in prose, factual accuracy.
 
-**External reviewers:**
-None configured (review-external.sh on PATH but produced no output).
+**External reviewers:** Skipped (light review).
 
 ### Findings
 
-[NOTE] daydream/llm/bootstrap.py:366-474 — `_write_db` is not transactional. `db.open_db` opens the connection in autocommit (`isolation_level=None`), so each DELETE/INSERT is its own implicit transaction. If any INSERT fails mid-pipeline (FK / CHECK violations from a future bug; the realistic skill-name UNIQUE path is now caught at the validator after this turn's WARN fix), the output DB is left half-populated — DELETEs of the seeded `w-bunny` content + some inserts succeeded, others didn't. Operator must manually delete the partial file. Same root issue as the carry-forward NOTE on `daydream/admin.py:410-420 cmd_delete`.
-  Evidence: Lines 381-472 issue ~30 cur.execute() calls in autocommit mode with no BEGIN/COMMIT bracketing; the `try/finally` only ensures `conn.close()`, not rollback.
-  Suggested fix: Bracket the DELETE+INSERT block with `cur.execute("BEGIN")` and `cur.execute("COMMIT")` (rollback in an except). The bootstrap path always runs against a fresh file (force=True unlinks first), so all-or-nothing semantics are clean. Low priority; the realistic failure mode goes away once the WARN above is addressed.
-
-[NOTE] daydream/llm/bootstrap.py:340-343 — Skill `context_predicate.room_slug` is not cross-checked against the rooms list. Validator only confirms `context_predicate` is a dict; it does not require that `context_predicate.get("room_slug")`, when present, references a slug in `rooms[]`. A typo'd predicate yields a skill that never matches and is effectively dead, but inserts cleanly. Soft failure; operator notices when the skill never appears as a UI affordance.
-  Evidence: Lines 340-343 only assert `isinstance(s.get("context_predicate"), dict)`. Compare to lines 300-303 which assert toons' `current_room_slug` is in `by_slug` and lines 324-327 which do the same for items.
-  Suggested fix: After the dict check, if `"room_slug" in s["context_predicate"]`, verify `s["context_predicate"]["room_slug"] in by_slug` and raise BootstrapValidationError otherwise. Optional; the data-skills pipeline tolerates dead predicates today.
+No issues found. Internal references (`daydream/drift.py`, `tests/test_drift.py`, `tests/test_ws.py`, `tests/test_slots.py`, `SPEC.md`, `README.md`, `CODEREVIEW.md`, `SECURITY.md`) resolve to real paths; the six cited commit hashes and the full HEAD sha match `git log`; the remote (`git@github.com:peterzat/daydream.git`) and the docs URL (`code.claude.com/docs/en/goal.md`) are correct; the embedded git snapshot is intentionally pre-run (HEAD shown as `b032517`, the parent of this commit); no secrets in prose (`DAYDREAM_PASSWORD` referenced by name only).
 
 ### Fixes Applied
 
-- [WARN] daydream/llm/bootstrap.py:329-347 — Added `seen_skill_names` dedup pass in `_validate_envelope` mirroring the existing `seen_slugs` (rooms) and `seen_slots` (toons) patterns. Duplicate skill names now raise `BootstrapValidationError` (exit code 3) before reaching the DB layer, instead of bubbling out as `sqlite3.IntegrityError` from the `skills.name UNIQUE` constraint. No new test added for the new validator branch; a `test_bootstrap_rejects_duplicate_skill_name` would be a natural follow-up but was outside codefix's minimal-change scope.
+None.
 
-### Carry-forwards (unchanged vs prior entry)
+### Carry-forwards (unchanged vs prior entry — no code touched this review)
 
-The 16 NOTEs from the prior entry carry forward unchanged. None of their file patterns were aggravated by this turn's focus set (admin.py changes are localized to the new `cmd_world_bootstrap` near the file end; the carry-forward NOTE on `cmd_delete` is at lines 410-420 and untouched):
+The 2 NOTEs and 16 carry-forward NOTEs from the prior (`dd983fa`) entry remain open. This docs-only review changed no code, so none could be resolved or aggravated:
 
+[NOTE] daydream/llm/bootstrap.py:366-474 — `_write_db` is not transactional (autocommit `isolation_level=None`); a mid-pipeline INSERT failure leaves a half-populated output DB. Same root issue as the `cmd_delete` carry-forward.
+[NOTE] daydream/llm/bootstrap.py:340-343 — Skill `context_predicate.room_slug` is not cross-checked against the rooms list; a typo'd predicate yields a skill that never matches but inserts cleanly.
 [NOTE] tests/test_ws_iris.py:169-171 — Stale docstring re. snapshot toons-list contract.
 [NOTE] daydream/llm/safety.py:83 — `_CLOSE_TAG` constant dead after switch to `_CLOSE_TAG_RE`.
 [NOTE] web/assets/style.css:183-184 — `footer a` / `footer a:hover` rules dead after 881a6dc.
@@ -56,11 +51,7 @@ Unchanged vs prior entry:
 - `_ensure_session_id` stamps fresh UUIDs in tailscale mode even without `/api/login` (consistent with "tailnet membership IS the auth").
 - Unbounded request body on `POST /api/slots/{slot}/create`. Accepted under documented friend-scope threat model; v2 may add explicit length caps.
 
-### Note for next turn
-
-The new SPEC.md (drift-bootstrapped-npcs, 0/7) is the next implementation target. The drift-loop's `_eligible_npcs` filters out any NPC missing from `_DRIFT_POOLS`, so bootstrapped NPCs (ids shaped `t-<slug>-<uuid>`) are silent in BOTH LLM-up and LLM-down configurations. Spec opens eligibility and adds a generic mood-bucketed canned pool with `{name}` interpolation. Implementation surface: `daydream/drift.py`, `tests/test_drift.py`, README tier counts.
-
 ---
-*Prior review (2026-05-07, commit 63e1ed0): refresh review of `27534e9` (bin/game up-all bundled boot) and `63e1ed0` (toon-slot-management 8/8: 5-slot picker UI + slot endpoints + WS session-resolved controlled toon). 16 files reviewed. 0 BLOCK / 0 WARN / 1 NOTE (TOCTOU on slot create); 16 NOTEs carried forward.*
+*Prior review (2026-05-07, commit dd983fa): refresh review of the world-bootstrap-opus mega-commit (`bootstrap.py` + `admin.py` + SPEC consume + BACKLOG sweep). 0 BLOCK / 1 WARN (duplicate skill-name dedup, auto-fixed) / 2 NOTE; 16 NOTEs carried forward.*
 
-<!-- REVIEW_META: {"date":"2026-05-07","commit":"dd983fa","reviewed_up_to":"dd983fabf5f7ee8f3855f90e06d90d9b626e5099","base":"origin/main","tier":"refresh","block":0,"warn":0,"note":2} -->
+<!-- REVIEW_META: {"date":"2026-05-27","commit":"ed51c43","reviewed_up_to":"ed51c4382fbf778a9b8c46d99e87f3cf769324e7","base":"origin/main","tier":"light","block":0,"warn":0,"note":0} -->
