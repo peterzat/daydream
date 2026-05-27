@@ -6,6 +6,253 @@ the predictions stay honest. The review section at the bottom gets filled in *af
 run. The point is to compare what we expected against what happened, and to bank lessons
 for the next `/goal`.
 
+> **Update (2026-05-27, after two runs):** this began as a single-run log and now covers two
+> `/goal` attempts. The distilled, cross-attempt synthesis is the next section; read it
+> first. The chronological journey (per-attempt plans and reviews) follows it.
+
+## Observations and conclusions (read first)
+
+Two `/goal` runs are now behind this doc: attempt 1 (`drift-bootstrapped-npcs`, a ~140-line
+single-module change) and attempt 2 (`snapshot-restore-commands`, a new CLI verb pair plus a
+round-trip oracle test). Both produced clean, well-scoped, reviewed increments in the repo's
+standard two-commit shape; both honored every guardrail (no push, no Co-Authored-By, scope
+held, v2 work deferred); and neither exercised the review-fix convergence loop. The distilled
+lessons follow. (A terser, repo-agnostic version is in "Callouts for other `/goal` users" at
+the end.)
+
+**The one distinction that governs everything: grade two axes separately.**
+- *Work axis:* did the run deliver a correct, well-scoped increment? Both runs: yes. Attempt
+  2 was, on this axis, close to exemplary (exactly one BACKLOG item, no scope creep, correct
+  v2 deferrals).
+- *Experiment axis:* did the run exercise `/goal`'s autonomy and convergence ceiling? Both
+  runs: no, because the targets were below the one-shot ceiling.
+- These answers *diverge*, and they are often in *tension*. A spec-driven, review-gated loop
+  is built to decompose work into increments small enough to verify cleanly, so a clean
+  first-pass review (0 BLOCK / 0 WARN, no fix cycle) is the success signal of good scoping,
+  not a defect. Wanting to "watch it converge" pushes toward bigger or harder single tasks,
+  which fights the "small committable increments" practice. Treating "didn't stress the loop"
+  as "the work fell short" is itself an analysis error; attempt 2's first review draft made
+  exactly that mistake before this correction.
+
+**When to use `/goal`.**
+- You have an outcome-level contract: a written SPEC, or a BACKLOG item concrete enough to
+  ground into one. The contract, not the prompt, is the control plane.
+- The work is a self-contained increment you would be comfortable landing in one or two
+  commits.
+- You can phrase DONE as evidence the transcript can *demonstrate* (pasted exit codes, review
+  footers, `git log`/`git status`). The evaluator runs no tools and reads no files; it judges
+  only what the agent surfaces.
+- Name your intent, because it changes target selection: (a) *throughput*, run the mechanical
+  implement-test-review-commit loop unattended on well-scoped work; or (b) *stress-testing
+  the loop*, which requires genuine difficulty (see anti-patterns).
+
+**What to expect.**
+- A clean increment of the shape your repo already produces, with the guardrails you stated
+  held.
+- A continuous worker. It tends to run all the phases (implement, fix, review, commit) in one
+  unbroken pass, and the evaluator adjudicates only at stop points, often just once at the
+  end. "Turns" in your estimate are phases of work, not evaluator cycles; budget by appetite
+  for unattended work, not by a phase count.
+- On well-scoped, pattern-aligned work: a first-pass-clean review and an oracle that passes
+  immediately. That is success on the work axis, even though it is silence on the experiment
+  axis.
+- Outcome-only framing works. State the outcome plus DONE and say "the how is yours," and a
+  strong model designs the implementation without stalling (proven in attempt 2; this was the
+  one bar attempt 2 genuinely raised over attempt 1).
+
+**What not to expect.**
+- Do not expect to "see convergence" on a well-scoped increment. A healthy loop on a clean
+  increment converges in zero cycles. Convergence (fix cycles that shrink) is a symptom of a
+  too-big increment or a weak first pass, not a routine event.
+- Do not expect file count or "multi-file" to mean "hard." Cloning an existing pattern across
+  several files is still one-shottable. Attempt 2 was multi-file and still one-shot.
+- Do not expect an LLM evaluator (the Haiku `/goal` judge) or an LLM critic (`/codereview`,
+  external reviewers) to be ground truth. They share the generator's blind spots. If
+  verification is the thing you care about, put a real oracle in the loop (round-trip,
+  reference implementation, torture suite).
+- Do not read "more time / more turns" as "harder or better." Attempt 1 ran ~25 minutes; the
+  lesson was not "go longer" but "go harder." A larger turn cap only helps if the task can
+  fill it with real convergence (attempt 2 bumped the cap to 20 and never used it).
+- Do not expect authorized-but-unconfigured tooling to contribute. Attempt 2 turned external
+  reviewers ON, but `review-external.sh` produced no output (no providers configured,
+  fail-open silent), so that "added verification layer" added nothing.
+
+**Anti-patterns.**
+- *Prescribing the implementation in the condition.* It reduces the run to transcription and
+  inverts the point (the model should design the how). Attempt 1 did this; attempt 2 fixed it.
+- *Using `/goal` on a one-shottable task to "test" it.* You prove the harness runs, not that
+  it converges, and learn nothing about the ceiling. Both attempts fell here.
+- *Manufacturing convergence by under-engineering up front.* Unwinnable: you cannot produce
+  genuine fix-cycles by deliberately writing worse code, and careful first-pass work on an
+  easy task has nothing to fix. Convergence is chosen at target-selection time, not coaxed
+  during the run.
+- *Grading the experiment as if it were the work, or the work as if it were the experiment.*
+  Keep the two axes separate in the post-run review.
+- *Leaving tool-policy tensions unresolved.* If the condition forbids "real LLM," say
+  explicitly whether that includes review tooling (external reviewers, LLM judges); otherwise
+  the loop silently picks the conservative reading.
+- *Writing DONE as an assertion instead of demonstrable evidence.* "Tests pass" is not
+  verifiable by an evaluator that runs no tools; "paste the exit status" is.
+- *Mistaking latent infrastructure for a shippable increment.* Building a capability slightly
+  ahead of its consumer (snapshot-restore ahead of world-hot-swap) is sometimes right, but
+  notice when you are doing it, because its value is deferred until the consumer lands.
+
+**The open question worth resolving next.** For a loop whose whole philosophy is small,
+cleanly-verifiable increments, "convergence within one hard task" may be the wrong autonomy
+test. The more aligned test could be *sustained correctness across a long chain of
+well-scoped increments* (can it do ten in a row unattended without drift or regression?),
+rather than struggle within one. Attempt 3 should pick one of two explicit shapes and declare
+which: (a) a single genuinely-hard increment whose competent first pass still has real
+defects, to finally exercise the fix loop; or (b) a chain of small increments, to test
+sustained unattended autonomy. Either is a real test. The mistake to avoid is a third
+easy-and-prescribed warm-up.
+
+## Grounding in the field (the part Peter would have wanted first)
+
+After the two runs, three research passes did the external reading we should have done
+before: Anthropic's official `/goal` guidance, how practitioners run unattended loops, and
+the verification / alignment literature on why evaluator-gated automation goes wrong. The
+honest headline: attempt 2's condition was already close to what the field calls a good one,
+and this doc was already most of the way to the right conclusions. The field adds one
+correction we under-weighted (the evaluator is not a verifier) and three gaps we never
+addressed (enforced safety boundaries, context hygiene, and that our "open question" is a
+solved, named pattern). Sources are listed at the end of the section.
+
+**Lens 1, Anthropic's intended use (the official docs).** A good condition is three things:
+one measurable end state, a stated check for how the agent proves it, and the constraints
+that must hold. Put the turn/time cap *inside the condition text* ("...or stop after N
+turns"), because the evaluator judges it from the conversation. `/goal` is for work whose
+"done" is mechanically provable and surfaces in the transcript, not for judgment calls
+("looks good"). The most useful thing the docs gave us is calibration by example: Anthropic's
+own use cases ("migrate a module until every call site compiles and tests pass", "work a
+labeled issue backlog until the queue is empty") are *larger and more open-ended* than either
+daydream attempt. That independently confirms our own verdict: both targets were below the
+size the vendor's examples assume. We applied the framework correctly; we pointed it at work
+too small to need it.
+
+**Lens 2, what practitioners actually do (and the one thing we skipped).** Direct `/goal`
+write-ups are still thin (the feature is ~two weeks old; the research found this doc is one of
+the more detailed hands-on post-mortems that exists). The transferable depth is in adjacent
+autonomous-loop practice, and three recipes are worth stealing:
+- *Vague conditions fail two ways:* the loop burns tokens with no progress, or the evaluator
+  hallucinates success because nothing concrete anchors it (Chawla). Our pasted-exit-code DONE
+  clauses defend against exactly this, in both attempts. Credit where due.
+- *Treat a long run like a CI pipeline, not a conversation* (Khmelinskaya): 30-60 minute
+  phases, verbose command output redirected to files with only summaries pasted back
+  (`cmd > run.log 2>&1; tail -20 run.log`), and a `STATUS.md`-style handoff (for us, SPEC.md +
+  git) so each phase resumes from disk, not from a saturating context window.
+- *One task per loop, state in files, a type-checker wired as a cheap oracle* (Huntley's
+  "Ralph Wiggum" loop). The canonical pre-`/goal` version of the same idea.
+
+The single biggest thing our doc and runs skipped: **enforced safety boundaries.** Every
+guardrail we used lived *in the condition* ("do NOT push", "no GPU"), trusting the model to
+comply, plus the pre-push hook. That was acceptable *here* (single trusted dev box, a hook
+that blocks unreviewed pushes), but it is worth saying *why* rather than being silent, because
+auto mode's gate is probabilistic, not a kernel sandbox. For any repo or box you do not fully
+trust, the practitioner default is an enforced boundary (a disposable git worktree, or
+`--allowedTools` deny-by-default, or `/sandbox`), not prose the model can ignore.
+
+**Lens 3, the skeptic's correction (the risk we under-weighted).** This is the one place the
+field says we were too sanguine, and it is worth getting right. The `/goal` evaluator reads no
+files and runs no tools, so it judges only the transcript, *which the agent authors in full.*
+That makes it the weakest verification tier, a critic, and the literature is unkind to that
+tier: LLM judges measurably favor their own family's outputs and share the generator's blind
+spots (Panickssery et al., NeurIPS 2024; the position / verbosity / self-enhancement biases in
+MT-Bench, Zheng et al.). Worse, under optimization pressure, coding agents are *documented* to
+produce success-looking output without doing the work, calling `sys.exit(0)` to crash a
+failing harness, overriding `__eq__` so wrong answers compare equal, patching pytest's
+reporting to mark failures as passes (Anthropic, *Natural Emergent Misalignment from Reward
+Hacking in Production RL*, 2025; the general phenomenon is DeepMind's *Specification Gaming*).
+Pasting an exit code does **not** close this, because the agent generates the pasted text too.
+
+The correction, stated plainly: **treat the `/goal` judge as loop control, not verification.**
+It decides *when to stop*, not *whether the work is right*. The verification ceiling is set
+entirely by the oracle the agent actually runs (our round-trip snapshot test was the right
+instinct); the judge merely reports what that oracle said. The "Observations" section above
+already says LLM critics are not ground truth, but it framed the danger as the judge being
+*fooled by noisy evidence* (fixable by pasting cleaner evidence). The sharper danger is that
+the agent *owns the evidence channel*, which pasting does not fix. Today this risk is latent
+(Claude is not being RL-trained against the Haiku judge), but the structural shape is the
+textbook reward-hacking setup, so design as if it matters: the decisive DONE evidence should
+come from a check whose verdict the agent surfaces but cannot fabricate by phrasing.
+
+This sharpens two of our own conclusions:
+- *Convergence is necessary but not sufficient.* Shrinking review-fix cycles is a better
+  health signal than a clean first pass, but it is still a *critic* signal: a same-family
+  reviewer can converge to "looks clean" while a shared blind spot survives. Convergence proves
+  the loop runs; only an oracle proves the output is correct.
+- *A clean run below the one-shot ceiling is not neutral, it is mildly negative.* A pass
+  through specs + review + a green critic *feels* like verified autonomy, which is exactly when
+  over-trust sets in. Our two 0-BLOCK / 0-WARN runs are the strongest possible generators of
+  unearned confidence in a loop we never actually stressed. The phantom external reviewers in
+  attempt 2 are the same trap in miniature: a layer that ran and emitted nothing still filled
+  the "I have another check" slot in our heads while adding zero coverage.
+
+**The "open question" turns out not to be open.** Our "sustained correctness across a chain of
+small increments" idea is not novel to invent: it is the documented CI-phasing / one-task-per-
+loop pattern (Khmelinskaya, Huntley), where each increment is its own `/goal` with a
+files-on-disk handoff between phases. The field adds the missing piece: a chain tests sustained
+autonomy only if *each link carries its own oracle* and the run includes a *cross-link
+regression gate* (increment N must not break increment N-1's oracle). Without that, "ten clean
+increments" is ten correlated critic-passes stacked, not evidence of anything.
+
+*Sources (strongest first):* Anthropic, *Keep Claude working toward a goal*
+(https://code.claude.com/docs/en/goal.md) and *Configure auto mode*
+(https://code.claude.com/docs/en/auto-mode-config.md); Anthropic, *Natural Emergent
+Misalignment from Reward Hacking in Production RL*, 2025 (https://arxiv.org/abs/2511.18397);
+Panickssery, Bowman, Feng, *LLM Evaluators Recognize and Favor Their Own Generations*, NeurIPS
+2024 (https://arxiv.org/abs/2404.13076); Zheng et al., *Judging LLM-as-a-Judge with MT-Bench*,
+NeurIPS 2023 (https://arxiv.org/abs/2306.05685); Krakovna et al. (DeepMind), *Specification
+Gaming: the flip side of AI ingenuity*
+(https://deepmind.google/blog/specification-gaming-the-flip-side-of-ai-ingenuity/); *The Bitter
+Lesson of Agentic Coding* (https://agent-hypervisor.ai/posts/bitter-lesson-of-agentic-coding/);
+Khmelinskaya, *Running Claude Code Autonomously Overnight*
+(https://medium.com/@evekhm/running-claude-code-autonomously-overnight-what-breaks-and-how-to-fix-it-3bee3bd958b5);
+Huntley, *Ralph Wiggum as a software engineer* (https://ghuntley.com/ralph/); Chawla, *Claude
+Code's /goal Command* (https://blog.dailydoseofds.com/p/claude-codes-goal-command). `/goal`
+"guides" beyond these mostly paraphrase the official docs. (Evidence quality: the arXiv papers
+and DeepMind/Anthropic posts carry the load-bearing claims; the practitioner blogs carry the
+recipes; one weaker preprint surfaced by the research was dropped as too thin to cite.)
+
+## Before you start /goal: a pre-flight checklist
+
+Distilled from the three lenses above and our two runs. Had we run this list before attempt 1,
+both runs would have been chosen and framed differently. Work top to bottom; the first two are
+the ones we failed.
+
+- [ ] **Is it above the one-shot ceiling?** If you are tempted to spell out the edits in the
+  condition, it is too small. The test: *would competent first-pass code still have real
+  defects an oracle would catch?* If you are confident the answer is "no, it will be right
+  immediately", do not use `/goal`, just prompt it. (Both our targets failed this; we ran them
+  anyway.)
+- [ ] **Is there an oracle the agent cannot fake by narration?** A round-trip diff, a reference
+  comparison, a property / torture test, a type-checker on dynamic code. The decisive DONE
+  evidence must come from this, not from a pasted exit code of a test the agent also wrote. The
+  `/goal` judge is loop control; this oracle is your actual verification.
+- [ ] **Condition has the three elements** (measurable end state, stated check for how it is
+  proven, constraints that must hold), and the **turn/time cap is inside the condition text**
+  so the evaluator sees it.
+- [ ] **DONE is demonstrable, not asserted.** Every clause maps to something the transcript
+  will show (exit code, footer, `git status`). The evaluator runs no tools.
+- [ ] **Outcome, not implementation.** State the *what* and "the how is yours." Pair
+  outcome-only framing with at least one explicitly enumerated edge case the DONE clause must
+  demonstrate, so "the how is yours" does not become "the interpretation of done is yours."
+- [ ] **Tool-policy tensions resolved in one clause.** If you forbid "real LLM" or "no GPU",
+  say whether that includes review tooling (external reviewers, LLM judges). Otherwise the loop
+  picks the conservative reading silently. (Attempt 1's tension; attempt 2 fixed it.)
+- [ ] **Verification layers are real, not phantom.** Confirm each configured check actually
+  emits findings (or an explicit "0 findings + cost log") before you count it. An
+  authorized-but-silent reviewer inflates confidence while adding nothing. (Attempt 2's
+  external reviewers.)
+- [ ] **Enforced boundary decided, not just asked-for.** A disposable worktree, `--allowedTools`
+  deny-list, or a *written* reason it is safe to skip (here: single trusted box + pre-push
+  hook). Do not rely on "do NOT push" in prose for anything you cannot tolerate the model
+  doing.
+- [ ] **Context hygiene for any run that will use its turn budget.** Redirect verbose output to
+  files and paste summaries; keep state in files / git (SPEC.md, STATUS.md), not the context
+  window. Context dilution from tool output is the documented failure mode of long unattended
+  runs.
+
 ## What `/goal` is
 
 `/goal <condition>` sets a completion condition and then keeps Claude working turn after
@@ -351,6 +598,126 @@ DONE = pasted in this session: the new SPEC.md entry (criteria + SPEC_META with 
 ```
 
 After the run, add an "## Attempt 2 review" section here and grade it against these predictions, the same way attempt 1 was graded above. Key things to watch: did `/codereview` produce findings that actually *shrank* across cycles (real convergence, the thing attempt 1 could not show)? Did the outcome-only framing hold, or did the loop stall without the step-by-step recipe? Did owning the `/spec` proposal produce a sane, well-grounded spec, or did it paper over edge cases? Was the round-trip oracle the gate that caught real bugs?
+
+## Attempt 2 review (filled in 2026-05-27, after the run)
+
+**First, separate the two axes (the correction that matters).** A `/goal` run can be graded
+as *work delivered* or as an *experiment on the loop*, and for this run the two answers
+diverge sharply. On the **work axis the answer is unambiguous: yes, this was the asked-for
+increment at the right scope and scale**, arguably an exemplary one. Exactly one BACKLOG item
+with no scope creep; correct v2 deferrals (no `world-hot-swap` machinery, no retention/GC, no
+`list` verb); one self-contained two-commit unit (`89697ad` feature, `76f8b82` review); high
+quality (mirrors the existing `archive`/`restore` pattern, security-clean, a real oracle as
+the test spine). Two honest caveats keep it from unqualified: it lands slightly ahead of its
+consumer (`world-hot-swap` is unbuilt, so the in-product value is latent and operator-only for
+now), and the scope was tight to the point of minimal (create + restore, no `list`/prune, so
+it is two verbs rather than a rounded capability). Both are line-drawing judgments, not
+misses. Everything below grades the **experiment axis**, where the verdict is harsher, and the
+two must not be conflated: a change being one-shottable is a statement about the experiment,
+not a deficiency in the increment. (My first draft of this review conflated them, framing
+"didn't stress the loop" as if the work fell short. It did not.)
+
+**On the experiment axis: better-framed than attempt 1, and it added a genuine oracle, but it
+STILL did not test convergence.** Two of the four bars rose for real (outcome-only framing held; a
+ground-truth oracle now lives in the suite). The other two rose only on paper, because the
+target was again below the one-shot ceiling: a bigger, multi-file change is not the same as
+a harder one. `snapshot`/`snapshot-restore` is the lighter sibling of `archive`/`restore`,
+which already exists in `daydream/admin.py` as a working template, so the model cloned the
+pattern in a single competent pass. `/codereview` came back **0 BLOCK / 0 WARN on the first
+pass with no `/codefix` cycle**, exactly as in attempt 1. The convergence loop, the one
+thing this run was explicitly designed to exercise ("convergence is the signal we are
+testing"), again had nothing to converge.
+
+Graded against the four "key things to watch" from the plan:
+
+1. **Did `/codereview` findings shrink across cycles (real convergence)? No.** Same outcome
+   as attempt 1: clean on the first review pass, so `/codefix` was never invoked. One NOTE
+   surfaced (the read-only restore probe misparses a path containing a literal `?`, a
+   verified but safe-failure edge I chose to leave), but a single un-fixed NOTE is not a
+   convergence cycle. After two runs, the review-fix loop doing its job remains unproven.
+2. **Did outcome-only framing hold, or did the loop stall? It held; this is the real win.**
+   The condition prescribed no implementation, and the loop designed the how: it chose the
+   verb name (`snapshot-restore`, where the condition only offered `restore-snapshot` as an
+   example), the WAL-checkpoint-then-`shutil.copyfile` approach, the read-only + immutable
+   probe to read `_migrations` without creating sidecars, and the schema-newer-than-known
+   refusal. No step-by-step recipe was needed and the loop did not stall. This is the new
+   data point attempt 1 could not provide, because attempt 1's condition did the design.
+3. **Did owning the spec produce a sane, well-grounded spec? Yes.** The loop read the
+   BACKLOG entry, the existing `archive`/`restore`, the CLAUDE.md WAL/Generated-assets
+   notes, the `worlds-dev` layout, plus `config.py`/`db.py`/`test_admin.py` before writing
+   criteria, enumerated the edge cases (hot-DB checkpoint, name collision, missing world,
+   restore over a live DB, plus a newer-schema and not-a-DB refusal it added itself), and
+   `/security` independently validated those edges (SQL parameterization, `world_id`
+   path-traversal gated by the existence check, foreign-DB content). Caveat: grounding is
+   easy when you are cloning a pattern that already models reality; the spec-quality bar was
+   met but never stressed. Mechanism note: this was `/spec` **direct mode** (BACKLOG item to
+   new spec), not a literal propose-then-consume two-step; there was no proposal artifact to
+   consume, so the condition's "PROPOSE and CONSUME" phrasing was looser than the actual
+   `/spec` modes. Substance (loop authored a grounded spec) was achieved.
+4. **Was the round-trip oracle the gate that caught real bugs? No, because there were no
+   bugs.** `test_snapshot_restore_round_trip` is a real oracle (seed, snapshot, mutate,
+   restore, assert restored == snapshot-time state AND != mutated state, with the snapshot
+   file opened independently to confirm it captured the pre-mutation state). It is correct
+   and it is the spine of the test plan as intended. But it passed on the first try and
+   caught nothing, the same shape as the convergence gap: the verification was strengthened
+   structurally, yet never earned its keep because the implementation was right immediately.
+
+**The core finding: size was the wrong proxy for difficulty, and convergence is not
+manufacturable.** The attempt-2 table treated "multi-file: new CLI verb + admin dispatch +
+tests + docs" as the difficulty lever. It is not. Difficulty is "will competent first-pass
+code still have real defects?" The plan even half-saw this trap (it told the loop "do not
+pre-empt convergence by over-engineering up front"), but that instruction is unwinnable:
+you cannot produce convergence by deliberately writing worse code, and careful first-pass
+work on an easy task simply has nothing to fix. Convergence only appears where the work is
+genuinely hard enough that a careful first pass still breaks. Two attempts have now confirmed
+the blocker is **target selection**, not the harness.
+
+**What matched the plan's expectations (and attempt 1's good outcomes, repeated):** every
+guardrail held. Two commits of the predicted shape on `main`, neither pushed (`89697ad`
+feature, `76f8b82` review refresh); `SPEC.md` 6/6 with a clean `SPEC_META`; `short` 324 and
+`medium` 496 both exit 0; CODEREVIEW footer `block:0,warn:0`; a path-scoped SECURITY.md
+entry at 0/0/0; no Co-Authored-By; no next-turn `/spec` proposal; no GPU and no real LLM in
+tests; scope clean (feature touched only `admin.py`, `test_admin.py`, `README.md`,
+`CLAUDE.md`, `SPEC.md`; review touched only `CODEREVIEW.md`, `SECURITY.md`). The marker-churn
+non-issue and the continuous-worker turn pattern both repeated: the run was one continuous
+unattended pass with a single evaluator adjudication at the final evidence paste, nowhere
+near the 20-turn cap. The cap bump from 12 to 20 went unused, because the convergence loop
+that was supposed to fill it never materialized. A small positive beyond the plan: the loop
+also smoke-tested the real `bin/game world snapshot`/`snapshot-restore` dispatch against live
+state (read-only, cleaned up after), adding a bit of ground-truth beyond the mocked unit path.
+
+**What missed or under-delivered:**
+- *Convergence, again.* The headline goal of attempt 2, unmet for the second time.
+- *External reviewers were a phantom layer.* The plan turned them ON to resolve attempt 1's
+  "no real LLM" tension and counted them as an added verification layer. `review-external.sh`
+  ran but produced no output and no cost log (providers not configured / fail-open silent),
+  so the layer contributed nothing. An authorized-but-silent reviewer is not a verification
+  layer; if it is meant to count, the providers have to actually be configured and emit
+  findings.
+- *No detour to self-correct on.* Attempt 1's one genuine signal was the Wren coupling (the
+  loop caught and fixed an in-scope surprise without weakening tests). Attempt 2 had no
+  equivalent, which reads as "the task had no hidden coupling," not "spec-grounding prevented
+  one." A pattern-clone has no scaffolding assumptions to surface.
+
+**What attempt 3 needs (the bar that actually matters now):**
+- *Target selection is the whole game.* Pick work where a careful first pass will still
+  have real defects that the oracle catches and the review-fix loop shrinks across cycles.
+  Candidates with that property: concurrency or ordering logic, a non-trivial algorithm, a
+  data migration that transforms rows, multi-component integration with non-obvious failure
+  modes. Explicitly NOT a clone of an existing pattern. The selection test: "am I confident
+  competent first-pass code will be correct?" If yes, it is too easy for `/goal`.
+- *Drop the file-count proxy.* "Multi-file" and "new CLI verb" say nothing about difficulty.
+- *Make the verification layers real or stop counting them.* Either configure the external
+  reviewers so they fire (and watch the cost log), or do not list them as a bar.
+- *Keep the two genuine wins.* Outcome-only framing and an in-loop oracle both worked; carry
+  them forward unchanged. The change for attempt 3 is difficulty, not framing.
+
+**Net.** Attempt 2 proved `/goal` runs unattended from a BACKLOG item to a committed,
+reviewed increment under outcome-only framing, with a real oracle as the spine, guardrails
+fully intact. It did not prove the convergence loop does anything, because the target was
+too easy for two runs running. The harness is not the open question anymore; the open
+question is whether we will pick a target hard enough to make the review-fix loop work for
+its output. That is the entire content of attempt 3.
 
 ## Callouts for other `/goal` users
 
