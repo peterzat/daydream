@@ -110,6 +110,29 @@ bin/game test human     # aesthetic rubric via qpeek — async human review
 
 One entry point; four tiers; durations scale with what the tier verifies. Bare `.venv/bin/pytest` still runs every test (backward compat). The drift probes under `tests/drift/` exercise the real LLM + image-gen paths and compare to git-committed baselines under `tests/baselines/*.golden.json` — a divergence fails the test with a diff and the operator ratifies a new baseline with `mv .latest .golden` + commit. The tic-detection probe at `tests/test_voice_baseline.py` parses captured voice-bench markdown and asserts pairwise-distinct body-language openers across the 5 corpus prompts; a parametrized regression-detection demo proves the probe catches the 04-24 prompt-template tic that motivated it. The durable philosophy and extension guide live in [`TESTING.md`](TESTING.md); read it before adding a test or bumping a model / LoRA / workflow.
 
+## How this is built (zat.env + `/goal`)
+
+daydream is built one reviewed increment at a time on the zat.env turn loop: a `SPEC.md`
+acceptance contract is consumed, implemented with paired tests, run through adversarial
+`/codereview` + `/security`, and committed, with a pre-push marker gating unreviewed code.
+Recent turns drive a whole increment unattended with Claude Code's `/goal`, which keeps the
+agent working until a stated completion condition holds. The first such run took the
+`drift-bootstrapped-npcs` spec from 0/7 to a committed, reviewed increment:
+
+```
+/goal Take the drift-bootstrapped-npcs SPEC (SPEC.md, currently 0/7) to a committed
+increment on the current branch WITHOUT pushing. [...condition prescribed the five
+daydream/drift.py changes, the new tier_short tests, and the README roll-forward...]
+DONE = pasted in this session: `bin/game test short` and `bin/game test medium` both
+exiting 0; the latest CODEREVIEW.md footer showing "block":0,"warn":0; a SECURITY.md
+entry; and `git log --oneline -3` plus `git status` showing the increment committed,
+working tree clean, nothing pushed.
+```
+
+The full verbatim condition, a candid retrospective (what we predicted, where the run fell
+short of really testing `/goal`, and why), and the outcome-framed condition queued for the
+next run all live in [`GOAL.md`](GOAL.md).
+
 ## Release notes
 
 ### v0 — *the smallest dream* (10/10)
