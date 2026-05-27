@@ -1,31 +1,28 @@
-## Review — 2026-05-27 (commit: 89697ad)
+## Review — 2026-05-27 (commit: 46321a9)
 
-**Summary:** Refresh review of the `snapshot-restore-commands` feature (commit `89697ad`): two new operator CLI verbs in `daydream/admin.py` — `cmd_snapshot` (WAL-checkpoint the live DB, copy just the `.db` to `snapshots/{world}-{ts}.db`) and `cmd_snapshot_restore` (install a snapshot as the live DB, refusing to overwrite an existing live DB, a missing/non-DB file, or a newer-schema snapshot) — plus 11 `tier_medium` tests in `tests/test_admin.py` and README/CLAUDE.md roll-forward. Implements SPEC.md 6/6 for the turn.
+**Summary:** Light review of the docs-only `GOAL.md` update (`46321a9`) that fills in the attempt-2 `/goal` retrospective and adds two "read-first" sections: "Observations and conclusions" (when to use `/goal`, what to expect / not, anti-patterns) and a field-grounded section + "Before you start" pre-flight checklist synthesized from three research passes (Anthropic's official `/goal` docs, practitioner autonomous-loop write-ups, and the verification / alignment literature). No code or configuration touched.
 
-**Review scope:** Refresh review. Focus set since prior review (`89c14ad`, block:0, base origin/main): `daydream/admin.py`, `tests/test_admin.py`, `README.md`, `CLAUDE.md`. The change is purely additive to `admin.py` (existing `archive`/`restore`/`verify`/`delete`/`list` functions untouched; two new functions, two new argparse subparsers, two new dispatch branches) and `tests/test_admin.py` (new `# ---- snapshot` section + `sqlite3` import), so the already-reviewed code carries forward with no interaction risk. Test baseline: short 324 / medium 496, green before and after (no fixes applied).
+**Review scope:** Light review (docs-only). Focus set since the prior review (`89697ad`): `GOAL.md` only. Per light-tier rules: no test-suite run, no security chain, no external reviewers, no fix loop. Reduced-scope checks applied: broken links/references, secret leaks in prose, factual accuracy.
 
-**External reviewers:** Ran `review-external.sh` on `89c14ad..HEAD`; no output (providers not configured / fail-open). No external findings.
-
-**Security:** `/security daydream/admin.py tests/test_admin.py` → 0 BLOCK / 0 WARN / 0 NOTE (SECURITY.md updated, commit `89697ad`). Traced SQL injection (all parameterized), path-traversal via `world_id` (gated by `SELECT id FROM worlds WHERE id = ?` before any filesystem sink), foreign-DB content in `snapshot-restore` (read-only + immutable probe, schema-gated, refuse-to-overwrite, `--yes`), and tar extraction (unchanged) — all clean. Operator-only CLI, no network/auth surface.
+**External reviewers:** Skipped (light review).
 
 ### Findings
 
-0 BLOCK / 0 WARN / 1 NOTE (new). The feature is clean: the WAL checkpoint before copy matches `cmd_archive`'s proven pattern; the round-trip oracle test uses the post-snapshot mutation as a control (asserts restored == snapshot-time state AND != mutated state), not a tautology; every create- and restore-side refusal is tested; `snapshot-restore` validates the candidate before any write to the live path.
-
-[NOTE] daydream/admin.py:421 — `cmd_snapshot_restore`'s read-only probe builds the URI by raw f-string interpolation (`f"file:{snapshot_path}?mode=ro&immutable=1"`). Verified empirically: a snapshot path containing a space works fine and creates no `-wal`/`-shm` sidecars (immutable mode), but a path containing a literal `?` is misparsed (SQLite treats it as the URI query delimiter and opens a different/empty file). The failure mode is SAFE — it surfaces as `sqlite3.DatabaseError` → "not a readable daydream DB" → exit 2 with no copy — and snapshot filenames produced by `cmd_snapshot` (`{world_id}-{ts}.db`, world_id validated to exist) never contain `?`. Only an operator hand-naming a restore-source path with a `?` would hit it. Cosmetic/robustness only; left as-is.
+No issues found. Verified: the three commit hashes the doc cites (`89697ad`, `76f8b82`, `46321a9`) all resolve and match their descriptions; no broken local markdown links; the cited test counts (short 324, medium 496) and the "0 BLOCK / 0 WARN" claims for both `/goal` runs match this branch's history; no secrets in the prose (env vars referenced by name only; the lone secret-scan hit was a false positive, `sk-` matching "ta**sk-**per"). The external citations (arXiv IDs for the reward-hacking / LLM-judge papers, the DeepMind and Anthropic posts, the practitioner blogs) are attributed to the sources surfaced by the three research agents; URLs are well-formed but were not each independently re-fetched in this light pass.
 
 ### Fixes Applied
 
-None. No BLOCK/WARN findings; the change converged at 0 BLOCK / 0 WARN on the first pass with no `/codefix` cycle.
+None.
 
 ### Carry-forwards (open NOTEs in untouched code, unchanged this review)
 
-This turn touched only `daydream/admin.py` (additively) and `tests/test_admin.py`; none of the code referenced below changed, so the prior entry's open NOTEs remain open and carry forward:
+This docs-only review changed no code, so none of the prior entry's findings could be resolved or aggravated. The open NOTEs from `89697ad` remain open:
 
-[NOTE] daydream/admin.py:410-420 — `cmd_delete` cascade is not transactional (DB in autocommit mode). (Pre-existing; not in this turn's diff.)
-[NOTE] daydream/drift.py:119 — `_GENERIC_DRIFT_POOL` comment says "Same dict-of-dicts shape ... as `_DRIFT_POOLS`", but the generic pool is one level shallower; comment phrasing only, code correct.
+[NOTE] daydream/admin.py:421 — `cmd_snapshot_restore`'s read-only probe builds the URI by raw f-string interpolation; a snapshot path containing a literal `?` is misparsed (safe failure: refuses, no copy; default snapshot paths never contain `?`).
+[NOTE] daydream/admin.py:410-420 — `cmd_delete` cascade is not transactional (DB in autocommit mode).
+[NOTE] daydream/drift.py:119 — `_GENERIC_DRIFT_POOL` comment says "Same dict-of-dicts shape ... as `_DRIFT_POOLS`", but the generic pool is one level shallower; comment phrasing only.
 [NOTE] daydream/llm/bootstrap.py:366-474 — `_write_db` is not transactional; a mid-pipeline INSERT failure leaves a half-populated output DB.
-[NOTE] daydream/llm/bootstrap.py:340-343 — Skill `context_predicate.room_slug` not cross-checked against the rooms list; a typo'd predicate inserts cleanly but never matches.
+[NOTE] daydream/llm/bootstrap.py:340-343 — Skill `context_predicate.room_slug` not cross-checked against the rooms list.
 [NOTE] tests/test_ws_iris.py:169-171 — Stale docstring re. snapshot toons-list contract.
 [NOTE] daydream/llm/safety.py:83 — `_CLOSE_TAG` constant dead after switch to `_CLOSE_TAG_RE`.
 [NOTE] web/assets/style.css:183-184 — `footer a` / `footer a:hover` rules dead after 881a6dc.
@@ -35,7 +32,7 @@ This turn touched only `daydream/admin.py` (additively) and `tests/test_admin.py
 [NOTE] tests/drift/conftest.py:148 — `assert_within` docstring claims compare-keys semantics the implementation does not provide.
 [NOTE] tests/drift/conftest.py:59 — `img.getdata()` triggers Pillow DeprecationWarning.
 [NOTE] README.md:82 and CLAUDE.md — Docs reference `~/data/daydream/images/test/` for image-test output but the code writes to `~/data/daydream/images/ephemeral/`.
-[NOTE] daydream/images/client.py:152, 161 — `is_persistent_cached()` and `target_dedup_key()` use override-unaware `load_workflow()`, while `_generate_persistent` uses the override-applied `base_workflow`.
+[NOTE] daydream/images/client.py:152, 161 — `is_persistent_cached()` and `target_dedup_key()` use override-unaware `load_workflow()`.
 [NOTE] daydream/events.py:117-122, daydream/api/ws.py, bin/game (`cmd_logs`) — Unbounded subscriber queues; `asyncio.wait` done-set tasks not `.exception()`-ed; `cmd_logs` accepts an unvalidated path component.
 [NOTE] daydream/skills/data.py:366 — Cosmetic "Rook said: Rook lifts..." stutter in capture format string.
 [NOTE] tests/conftest.py:21 — `test-session-secret-not-for-production` placeholder is an accepted-risk test fixture, not a real secret.
@@ -50,12 +47,12 @@ Unchanged vs prior entry:
 - LLM-controllable `toon_id` in `set_mood` effects (effects.py:128-151). v2's per-effect jsonschema + target authorization lands under BACKLOG `skills-authoring-and-security`.
 - `bin/vllm-bootstrap` and `bin/memory-bootstrap` interpolate `$MODEL` into an unquoted heredoc. Operator-trust class.
 - Stored prompt-injection via captured memory text (defense-in-depth gap surfaced earlier).
-- `/status/drift` endpoint is unauthenticated by design (`AccessMiddleware` is the gate). Same trust class as `/login` and `/cache/...`.
+- `/status/drift` endpoint is unauthenticated by design (`AccessMiddleware` is the gate).
 - v1 friend-scope on slot endpoints — any auth'd session can claim/kick any slot; per-session ownership lands with v2 multi-user-shared-world.
-- `_ensure_session_id` stamps fresh UUIDs in tailscale mode even without `/api/login` (consistent with "tailnet membership IS the auth").
-- Unbounded request body on `POST /api/slots/{slot}/create`. Accepted under documented friend-scope threat model; v2 may add explicit length caps.
+- `_ensure_session_id` stamps fresh UUIDs in tailscale mode even without `/api/login`.
+- Unbounded request body on `POST /api/slots/{slot}/create`. Accepted under documented friend-scope threat model.
 
 ---
-*Prior review (2026-05-27, commit 89c14ad): light review of the docs-only `/goal` documentation (`GOAL.md` attempt-1 retrospective + attempt-2 plan, `README.md` "How this is built" section). 0 BLOCK / 0 WARN / 0 new NOTE; every internal reference and test-count claim verified.*
+*Prior review (2026-05-27, commit 89697ad): refresh review of the snapshot-restore-commands feature (`daydream/admin.py` `cmd_snapshot` / `cmd_snapshot_restore` + 11 tier_medium tests + README/CLAUDE.md). 0 BLOCK / 0 WARN / 1 NOTE (the `?`-in-path URI probe edge, carried forward above); `/security` 0/0/0; short 324 / medium 496 green.*
 
-<!-- REVIEW_META: {"date":"2026-05-27","commit":"89697ad","reviewed_up_to":"89697adf8b03d1d68c156d47d9746c04c56ad694","base":"origin/main","tier":"refresh","block":0,"warn":0,"note":1} -->
+<!-- REVIEW_META: {"date":"2026-05-27","commit":"46321a9","reviewed_up_to":"46321a94c68f3b039b064488ad7250a40a79ad33","base":"origin/main","tier":"light","block":0,"warn":0,"note":0} -->
