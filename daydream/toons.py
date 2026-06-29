@@ -298,3 +298,14 @@ def kick_slot(slot: int) -> Toon | None:
         (t.id,),
     )
     return get_toon(t.id)
+
+
+def release_session_toon(session_id: str) -> Toon | None:
+    """Rest (kick) the toon currently controlled by `session_id`, if any.
+    'Leave the dream' calls this so the session releases its toon back to a
+    claimable resting state. Returns the released toon, or None when the
+    session controlled none."""
+    t = get_toon_by_session(session_id)
+    if t is None:
+        return None
+    return kick_slot(t.slot)

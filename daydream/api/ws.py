@@ -336,6 +336,16 @@ async def ws_endpoint(ws: WebSocket):
     # create / claim endpoints set controller_session = <session id>;
     # an unclaimed session falls through to LEGACY_TOON_ID.
     session_id = session.get("id") if isinstance(session, dict) else None
+    # A session that left the dream (and hasn't re-picked a toon) routes to the
+    # character picker rather than silently dropping into the legacy fallback.
+    if (
+        isinstance(session, dict)
+        and session.get("left")
+        and (session_id is None or toons.get_toon_by_session(session_id) is None)
+    ):
+        await ws.accept()
+        await ws.send_json({"kind": "needs_toon"})
+        return
     toon_id = _resolve_controlled_toon_id(session_id)
     await ws.accept()
     # Subscribe before snapshot so any events that land while we yield to send

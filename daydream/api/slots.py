@@ -91,6 +91,7 @@ async def create_slot(slot: int, request: Request) -> dict:
     new_toon = toons.create_toon_in_slot(slot, name.strip(), appearance.strip(), sid)
     if new_toon is None:
         raise HTTPException(status_code=409, detail="slot already populated")
+    request.session.pop("left", None)  # picking a toon re-enters the dream
     return _toon_to_dict(new_toon, sid)
 
 
@@ -111,6 +112,7 @@ async def claim_slot(slot: int, request: Request) -> dict:
             status_code=409, detail="slot is currently controlled; kick first"
         )
     assert toon is not None
+    request.session.pop("left", None)  # picking a toon re-enters the dream
     return _toon_to_dict(toon, sid)
 
 
@@ -127,6 +129,19 @@ async def kick_slot(slot: int, request: Request) -> dict:
     if toon is None:
         raise HTTPException(status_code=404, detail="slot is empty")
     return _toon_to_dict(toon, sid)
+
+
+@router.post("/api/session/leave")
+async def leave_session(request: Request) -> dict:
+    """Leave the dream: rest this session's controlled toon (if any) and mark
+    the session 'left' so the next WS connect routes to the character picker
+    instead of silently auto-controlling a toon. Idempotent (a session with no
+    toon just gets marked)."""
+    _require_authed(request)
+    sid = _session_id(request)
+    released = toons.release_session_toon(sid)
+    request.session["left"] = True
+    return {"ok": True, "released": released.id if released else None}
 
 
 def _toon_to_dict(t: "toons.Toon", session_id: str) -> dict:

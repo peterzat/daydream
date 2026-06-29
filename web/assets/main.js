@@ -6,6 +6,7 @@ const PLACEHOLDER_BG = "/assets/placeholder-meadow.png";
 let ws = null;
 let lastSeq = 0;
 let actorNames = {};
+let awaitingPick = false; // showing the picker after leaving; suppresses auto-reconnect
 
 function connect(isReconnect) {
   // A fresh page load omits `since` and starts with an empty log; a reconnect
@@ -14,6 +15,7 @@ function connect(isReconnect) {
   ws = new WebSocket(url);
   ws.onopen = () => systemLine("(connected)");
   ws.onclose = () => {
+    if (awaitingPick) return; // left the dream: wait for a toon pick
     systemLine("(disconnected; reconnecting in a moment)");
     setTimeout(() => connect(true), 1500);
   };
@@ -22,6 +24,7 @@ function connect(isReconnect) {
     const data = JSON.parse(msg.data);
     if (data.kind === "state_snapshot") renderSnapshot(data);
     else if (data.kind === "event") renderEvent(data.event);
+    else if (data.kind === "needs_toon") enterPicker();
   };
 }
 
@@ -264,12 +267,18 @@ async function kickSlot(slot) {
 }
 
 function reconnectAfterSlotChange() {
+  document.getElementById("slots-panel").classList.add("hidden");
+  if (awaitingPick) {
+    // Re-entering after leaving the dream: the socket is closed; connect fresh.
+    awaitingPick = false;
+    connect(false);
+    return;
+  }
   if (ws) {
     try { ws.close(); } catch (_) {}
   }
   // The onclose handler reconnects after a short delay; that path also
   // refreshes the slots list once the new state_snapshot lands.
-  document.getElementById("slots-panel").classList.add("hidden");
 }
 
 document.getElementById("slots-toggle").addEventListener("click", async () => {
@@ -281,6 +290,24 @@ document.getElementById("slots-toggle").addEventListener("click", async () => {
 
 document.getElementById("slots-close").addEventListener("click", () => {
   document.getElementById("slots-panel").classList.add("hidden");
+});
+
+// "Leave the dream": a brief wake beat, release this session's toon, and
+// return to the character picker (rather than the old no-op logout POST).
+function enterPicker() {
+  awaitingPick = true;
+  document.getElementById("slots-panel").classList.remove("hidden");
+  renderSlots();
+}
+
+document.getElementById("leave-dream").addEventListener("click", async () => {
+  awaitingPick = true;
+  systemLine("you wake...");
+  try {
+    await fetch("/api/session/leave", { method: "POST", credentials: "same-origin" });
+  } catch (_) {}
+  if (ws) { try { ws.close(); } catch (_) {} }
+  enterPicker();
 });
 
 connect(false);

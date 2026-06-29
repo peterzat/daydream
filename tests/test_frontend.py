@@ -135,16 +135,18 @@ def test_style_css_has_slot_panel():
     assert ".slot-row" in r.text
 
 
-def test_logout_link_posts_not_gets():
-    """Regression: the logout control must POST (endpoint is POST-only).
-    A plain <a href="/api/logout"> GET would produce 405 when clicked,
-    so the control has to be a form with method='post'."""
+def test_leave_the_dream_control_is_not_a_get_link():
+    """Regression: the 'leave the dream' control must not be a GET link (a
+    plain <a href> would navigate / 405). It is a JS button that POSTs to
+    /api/session/leave and returns to the character picker (web/assets/main.js)."""
     with TestClient(app) as client:
         _login(client)
         r = client.get("/")
-    assert 'action="/api/logout"' in r.text
-    assert 'method="post"' in r.text
+    assert 'id="leave-dream"' in r.text
     assert ">leave the dream<" in r.text
+    # Not a GET-navigation anchor to a leave/logout endpoint.
+    assert '<a href="/api/logout"' not in r.text
+    assert '<a href="/api/session/leave"' not in r.text
 
 
 # ---- no-cache on /assets/ ----------------------------------------------
