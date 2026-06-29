@@ -255,8 +255,8 @@ def test_ws_snapshot_includes_prior_events_after_say():
             ws.receive_json()
             ws.send_json({"kind": "input", "text": "say hello"})
             ws.receive_json()  # the say event
-        # New websocket connection on the same DB:
-        with client.websocket_connect("/ws") as ws2:
+        # Reconnect on the same DB resumes via ?since (a fresh load = empty log).
+        with client.websocket_connect("/ws?since=0") as ws2:
             snapshot = ws2.receive_json()
     say_events = [
         e for e in snapshot["events"]

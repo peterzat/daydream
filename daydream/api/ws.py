@@ -55,6 +55,11 @@ _EFFECT_MUTATION_KINDS = frozenset({"item_added", "mood_set"})
 DEFAULT_ROOM_ID = "r-meadow"
 SNAPSHOT_HISTORY_DEPTH = 50
 
+# Sentinel for _state_snapshot's resume_since: replay the room's recent history
+# (the default, used by move/effect re-snapshots). None = a fresh session
+# (empty log); an int = resume from that seq (a reconnect).
+_REPLAY_RECENT = object()
+
 
 def _resolve_controlled_toon_id(session_id: str | None) -> str:
     """Return the toon id this session controls. Looks up the toons
@@ -121,7 +126,9 @@ def _room_description(room: "rooms.Room", view: dict | None) -> str:
     return full if view["first_visit"] else f"You return to {room.title}."
 
 
-def _state_snapshot(last_seq: int, toon_id: str, view: dict | None = None) -> dict:
+def _state_snapshot(
+    last_seq: int, toon_id: str, view: dict | None = None, resume_since=_REPLAY_RECENT
+) -> dict:
     """Build a snapshot pinned to the given last_seq. Caller subscribes first
     (so concurrent appends fan out to this connection's queue), then captures
     last_seq, then calls this; any queued events with seq <= last_seq are
@@ -134,9 +141,15 @@ def _state_snapshot(last_seq: int, toon_id: str, view: dict | None = None) -> di
     room = rooms.get_room(room_id)
     items_in = items.get_items_in_room(room_id)
     toons_in = toons.get_toons_in_room(room_id)
-    recent = events.fetch_since(
-        max(0, last_seq - SNAPSHOT_HISTORY_DEPTH), room_id=room_id
-    )
+    if resume_since is _REPLAY_RECENT:
+        # Move / effect re-snapshots: the room's recent history.
+        recent = events.fetch_since(
+            max(0, last_seq - SNAPSHOT_HISTORY_DEPTH), room_id=room_id
+        )
+    elif resume_since is None:
+        recent = []  # fresh session: empty log, only new events stream in
+    else:
+        recent = events.fetch_since(resume_since, room_id=room_id)  # reconnect resume
     available = registry.list_available_for_room(room_id)
 
     image_url: str | None = None
@@ -333,9 +346,18 @@ async def ws_endpoint(ws: WebSocket):
     # (drives full-vs-abbreviated room descriptions) plus the current room and
     # its first-visit verdict (sticky so mid-visit re-snapshots don't shrink).
     view = {"visited": set(), "room_id": None, "first_visit": True}
+    # A fresh page load omits `since` and starts with an empty event log; a
+    # reconnect sends its last-rendered seq and resumes from there.
+    since_raw = ws.query_params.get("since")
+    resume_since: int | None = None
+    if since_raw is not None:
+        try:
+            resume_since = int(since_raw)
+        except ValueError:
+            resume_since = None
     try:
         last_seq = events.max_seq()
-        await ws.send_json(_state_snapshot(last_seq, toon_id, view))
+        await ws.send_json(_state_snapshot(last_seq, toon_id, view, resume_since))
         # Kick off image gen for the current room if the cache is cold.
         # Fire-and-forget; the resulting room_image_ready event reaches the
         # client through the broadcast loop below.

@@ -11,7 +11,7 @@
 
 *Session & presence*
 
-- [ ] **A new session starts with an empty event log; a reconnect still resumes.** A brand-new session's first `state_snapshot` replays no prior room history (its `events` list is empty; only events from then on stream in), while a reconnect re-hydrates as today. The server distinguishes the two. Verifiable via TestClient: a fresh connection's first snapshot has an empty `events` array even when the room has prior events; a reconnect that signals a prior seq still receives catch-up.
+- [x] **A new session starts with an empty event log; a reconnect still resumes.** A brand-new session's first `state_snapshot` replays no prior room history (its `events` list is empty; only events from then on stream in), while a reconnect re-hydrates as today. The server distinguishes the two. Verifiable via TestClient: a fresh connection's first snapshot has an empty `events` array even when the room has prior events; a reconnect that signals a prior seq still receives catch-up.
 - [ ] **"Leave the dream" wakes you to the character picker.** The leave control plays a brief "you wake…" beat and returns to the slot/character picker, releasing the session's active toon so you are not silently dropped back into the same toon (you choose again on re-entry) — replacing the tailnet no-op `/api/logout` (`is_authed` ignores logout). The visual transition is browser-manual; the server-side release (the next resolution does not auto-control the prior toon, and does not silently fall back to the seeded `t-wren`) is TestClient-verifiable.
 - [ ] **Toons can be permanently deleted, freeing the slot.** Alongside the recoverable kick/rest, a new path deletes a human toon outright so its slot reads empty afterward (`GET /api/slots`), reachable from the slot-picker UI and via `admin.main`/an endpoint, refusing cleanly on an empty or out-of-range slot, and handling the toon's dependent rows (events/memories) without leaving the DB inconsistent. Verifiable via TestClient/`admin.main`: create a toon → delete → slot empty and the toon row gone (distinct from kick, which leaves a `kicked_at` row in place).
 
@@ -47,4 +47,4 @@
 ---
 *Prior spec (2026-06-29): world-hot-swap closed 6/6 — live in-process world swap (`POST /api/world/swap` + `bin/game world swap`) replacing the running server's live DB without a restart, with connected clients re-snapshotting; failure-safe, with a round-trip + reconnect oracle.*
 
-<!-- SPEC_META: {"date":"2026-06-29","title":"session & presence: room descriptions on entry, fresh sessions, toon delete, keyless authoring","criteria_total":8,"criteria_met":2} -->
+<!-- SPEC_META: {"date":"2026-06-29","title":"session & presence: room descriptions on entry, fresh sessions, toon delete, keyless authoring","criteria_total":8,"criteria_met":3} -->

@@ -7,12 +7,15 @@ let ws = null;
 let lastSeq = 0;
 let actorNames = {};
 
-function connect() {
-  ws = new WebSocket(wsUrl);
+function connect(isReconnect) {
+  // A fresh page load omits `since` and starts with an empty log; a reconnect
+  // resumes from the last event the client rendered.
+  const url = isReconnect ? wsUrl + "?since=" + lastSeq : wsUrl;
+  ws = new WebSocket(url);
   ws.onopen = () => systemLine("(connected)");
   ws.onclose = () => {
     systemLine("(disconnected; reconnecting in a moment)");
-    setTimeout(connect, 1500);
+    setTimeout(() => connect(true), 1500);
   };
   ws.onerror = () => systemLine("(connection error)");
   ws.onmessage = (msg) => {
@@ -280,4 +283,4 @@ document.getElementById("slots-close").addEventListener("click", () => {
   document.getElementById("slots-panel").classList.add("hidden");
 });
 
-connect();
+connect(false);
