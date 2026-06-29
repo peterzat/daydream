@@ -158,19 +158,19 @@ Captured from the test-architecture landing (2026-04-23); scaffolding for these 
 
 ## Session & presence (captured 2026-06-29 playtest)
 
-### room-description-on-entry
+### room-description-on-entry (ACTIVE in spec 2026-06-29)
 - **One-line description:** Entering a room shows a description automatically — full on first visit this session, a short/elided line on re-entry. The room description already rides in every snapshot but `web/assets/main.js` `renderSnapshot` only renders the title and drops it, and nothing auto-"looks" on entry; the abbreviation needs per-session visited-room memory (client- or server-side). Pre-bake fit (CLAUDE.md "Generation policy"): Opus authors rich first-look descriptions at seed time; runtime just displays them, local Qwen handles the short re-entry variant.
 - **Why deferred:** Surfaced in the 2026-06-29 playtest; the full-vs-abbreviated behavior and render location are a small design choice best made with the session/presence spin — though the bare "render the description that's already in the snapshot" half is autonomous-ready.
 - **Revisit criteria:** The next session/presence design spin; OR landed early as a pre-spin autonomous improvement (rendering the already-present description is the lowest-hanging piece).
 - **Origin:** design discussion / playtest 2026-06-29.
 
-### session-presence-polish
+### session-presence-polish (ACTIVE in spec 2026-06-29)
 - **One-line description:** Make entering/leaving a session feel intentional. Locked expectations (2026-06-29): (a) "leave the dream" plays a brief "you wake…" beat then returns to the character picker, releasing the controlled toon — on the tailnet there is no real logout (`auth.is_authed` is always true, so today's `/api/logout` is a no-op); (b) a new session starts with an EMPTY text log (only new events stream forward), with the server distinguishing a fresh session from a reconnect (today both replay ~`SNAPSHOT_HISTORY_DEPTH`≈50 room events in `daydream/api/ws.py`); (c) toons get a true permanent delete that frees the slot, alongside the existing recoverable kick/rest (`daydream/api/slots.py` + a `web/` control).
 - **Why deferred:** Captured to feed the next session/presence design spin; spans `ws.py`, `slots.py`, `auth.py`, and `web/assets/main.js` with a few interacting sub-choices.
 - **Revisit criteria:** The next design spin on player session/presence.
 - **Origin:** design discussion / playtest 2026-06-29.
 
-### world-authoring-in-session
+### world-authoring-in-session (ACTIVE in spec 2026-06-29)
 - **One-line description:** Reconcile world creation with the local-only runtime policy (CLAUDE.md "Generation policy"). Today `bin/game world bootstrap` (`daydream/admin.py` `cmd_world_bootstrap`) calls Claude Opus via litellm over the Anthropic API and needs `ANTHROPIC_API_KEY`; the intended model is Opus authoring the world IN a Claude Code session and writing it to a DB/seed (no production key). Decide: deprecate the API path, replace it with an in-session authoring workflow (Opus generates content → a loader writes the world DB), or keep the API path as an explicitly off-by-default design-time convenience.
 - **Why deferred:** The generation-policy decision (2026-06-29) postdates the bootstrap feature; reconciling is a design choice for the next world-authoring need, not an emergency (no production path uses the key today).
 - **Revisit criteria:** Next time we want to author/seed a new world; OR the next large design spin.
