@@ -10,6 +10,13 @@ for the next `/goal`.
 > `/goal` attempts. The distilled, cross-attempt synthesis is the next section; read it
 > first. The chronological journey (per-attempt plans and reviews) follows it.
 
+> **Update (2026-06-29):** `/goal` is not in active use, and is not expected to be for the
+> foreseeable future. This document is retained purely as a historical reference. The
+> two-attempt retrospective and the field-grounded guidance below stand on their own and are
+> worth keeping; they are not describing a live workflow. If `/goal` use ever resumes, restart
+> from the "Before you start" pre-flight checklist above, especially the target-selection bar
+> (the lesson both attempts paid for).
+
 ## Observations and conclusions (read first)
 
 Two `/goal` runs are now behind this doc: attempt 1 (`drift-bootstrapped-npcs`, a ~140-line
