@@ -309,3 +309,21 @@ def release_session_toon(session_id: str) -> Toon | None:
     if t is None:
         return None
     return kick_slot(t.slot)
+
+
+def delete_slot(slot: int) -> Toon | None:
+    """Permanently delete the human toon in `slot`, freeing it. Returns the
+    deleted toon, or None if the slot is empty. Unlike kick (which rests the
+    toon, keeping its row), this removes the row and its dependent rows so the
+    slot reads empty afterward: items it carries (items.toon_id FKs toons(id),
+    so they would otherwise block the delete) and its per-NPC memories. The
+    toon's events stay as append-only history (events.actor_id is an un-FK'd
+    tag that must outlive the row)."""
+    t = _slot_occupied(slot)
+    if t is None:
+        return None
+    conn = db.get_conn()
+    conn.execute("DELETE FROM items WHERE toon_id = ?", (t.id,))
+    conn.execute("DELETE FROM memories WHERE npc_id = ?", (t.id,))
+    conn.execute("DELETE FROM toons WHERE id = ?", (t.id,))
+    return t

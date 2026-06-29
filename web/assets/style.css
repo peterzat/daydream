@@ -222,6 +222,8 @@ footer .slots-toggle:hover { text-decoration: underline; }
   font: inherit; cursor: pointer;
 }
 .slots-panel button:hover { background: var(--sage); color: var(--paper); }
+.slots-panel .slot-delete { margin-left: 0.4em; border-color: var(--warm); color: var(--warm); }
+.slots-panel .slot-delete:hover { background: var(--warm); color: var(--paper); }
 
 /* Room description, rendered from the snapshot: full on first entry to a room
  * this session, a short "you return to ..." line on re-entry. */

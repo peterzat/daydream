@@ -144,6 +144,19 @@ async def leave_session(request: Request) -> dict:
     return {"ok": True, "released": released.id if released else None}
 
 
+@router.post("/api/slots/{slot}/delete")
+async def delete_toon(slot: int, request: Request) -> dict:
+    """Permanently delete the toon in `slot`, freeing it — distinct from kick,
+    which rests a recoverable toon. Errors: 404 slot empty or out of range.
+    Friend-scope: any authed session may delete any slot (v2 tightens)."""
+    _require_authed(request)
+    _validate_slot(slot)
+    deleted = toons.delete_slot(slot)
+    if deleted is None:
+        raise HTTPException(status_code=404, detail="slot is empty")
+    return {"ok": True, "deleted": deleted.id}
+
+
 def _toon_to_dict(t: "toons.Toon", session_id: str) -> dict:
     """Serialize a Toon for the JSON response. Mirrors the shape used by
     `get_human_slots` so a client can stitch list+create responses

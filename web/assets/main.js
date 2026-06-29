@@ -232,6 +232,15 @@ async function renderSlots() {
     } else {
       li.innerHTML = `<span class="slot-num">slot ${entry.slot}</span> ${escape(t.name)} <em>(taken)</em>`;
     }
+    if (t) {
+      // A permanent delete sits alongside the slot's primary action.
+      const del = document.createElement("button");
+      del.type = "button";
+      del.textContent = "delete";
+      del.className = "slot-delete";
+      del.onclick = () => deleteSlot(entry.slot);
+      li.appendChild(del);
+    }
     list.appendChild(li);
   }
 }
@@ -264,6 +273,12 @@ async function kickSlot(slot) {
     // routes to the legacy fallback (or whatever new claim follows).
     reconnectAfterSlotChange();
   }
+}
+
+async function deleteSlot(slot) {
+  if (!window.confirm("permanently delete this toon? this cannot be undone.")) return;
+  const result = await postSlotAction(slot, "delete", null);
+  if (result) await renderSlots();
 }
 
 function reconnectAfterSlotChange() {
