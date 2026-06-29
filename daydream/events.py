@@ -54,6 +54,24 @@ class Event:
 _subscribers: list[asyncio.Queue] = []
 
 
+class _ControlSignal:
+    """A non-Event sentinel pushed onto subscriber queues to drive a control
+    action in the WS broadcast loop, out of band from the event stream. The
+    loop dispatches on `is` identity, so these are module-level singletons,
+    never per-instance. Today the only signal is WORLD_CHANGED (in-process
+    world hot-swap): the loop re-snapshots the connection against the now-live
+    world when it sees it."""
+
+    __slots__ = ("kind",)
+
+    def __init__(self, kind: str) -> None:
+        self.kind = kind
+
+
+# Singleton control signal, compared by identity in the WS broadcast loop.
+WORLD_CHANGED = _ControlSignal("world_changed")
+
+
 def append(
     actor_type: str,
     actor_id: str | None,
@@ -119,6 +137,15 @@ def _broadcast(event: Event) -> None:
     once we have real CCU to worry about."""
     for q in list(_subscribers):
         q.put_nowait(event)
+
+
+def broadcast_world_changed() -> None:
+    """Push the WORLD_CHANGED control signal to every live subscriber so each
+    WS connection re-snapshots against the now-live world. Called by the
+    in-process world hot-swap AFTER the live DB has been swapped and reopened.
+    Sync (put_nowait never blocks); a no-op when there are no subscribers."""
+    for q in list(_subscribers):
+        q.put_nowait(WORLD_CHANGED)
 
 
 def reset_subscribers() -> None:

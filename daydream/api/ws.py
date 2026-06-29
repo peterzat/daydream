@@ -349,6 +349,15 @@ async def _broadcast_loop(
     try:
         while True:
             event = await queue.get()
+            # Out-of-band control signal: an in-process world hot-swap
+            # replaced the live DB. Re-snapshot this connection against the
+            # now-live world and tell the client. Identity check runs before
+            # any `.seq` access (the sentinel is not an Event).
+            if event is events.WORLD_CHANGED:
+                snapshot_seq = events.max_seq()
+                await ws.send_json({"kind": "world_changed"})
+                await ws.send_json(_state_snapshot(snapshot_seq, toon_id))
+                continue
             # Drop events already covered by the snapshot to avoid duplicates
             # from the subscribe-before-snapshot ordering.
             if event.seq <= snapshot_seq:

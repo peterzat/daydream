@@ -6,15 +6,9 @@ context for every entry below lives in `~/.claude/plans/let-s-design-a-fairly-gi
 
 ## v1: cozy single-player loop
 
-### snapshot-restore-commands
-- **One-line description:** Add `bin/game world snapshot NAME` (cp live db to `~/data/daydream/snapshots/{world}-{ts}.db`) — fast DB-only point-in-time snapshots for hot-swap, distinct from the existing `bin/game world archive/restore` which bundles DB + per-world cache dir into a full tarball. The snapshot flow is what `world-hot-swap` (below) needs: atomic rename of live → snapshot, reopen pool, broadcast `world_changed`. Archive/restore is for shelving a world off the box entirely.
-- **Why deferred:** v0 has no irreplaceable state; first interesting bootstrap is the moment a snapshot becomes worth taking. `archive/restore` is already sufficient for the "ship a world to a friend" use case.
-- **Revisit criteria:** First Opus-bootstrapped world worth preserving via fast hot-swap (as opposed to a full archive).
-- **Origin:** plan let-s-design-a-fairly-giggly-narwhal
-
 ## v2: shared world + skill authoring
 
-### world-hot-swap
+### world-hot-swap (ACTIVE in spec 2026-06-29)
 - **One-line description:** `bin/game world swap NAME` performs the SHELVE broadcast → drain (~200 ms) → `PRAGMA wal_checkpoint(TRUNCATE)` → close pool → atomic `rename` of `~/data/daydream/worlds-{env}/live` symlink → reopen pool → broadcast `world_changed`. Clients show "the dream shifts..." and reconnect within ~1 s.
 - **Why deferred:** v0 has no symlink and only one db. Hot-swap is meaningful once snapshot-restore-commands and world-bootstrap-opus produce multiple shelved worlds.
 - **Revisit criteria:** Two or more bootstrapped worlds exist and admin wants to switch live without restart.

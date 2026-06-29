@@ -573,24 +573,40 @@ async def _drift_loop() -> None:
             logger.warning("drift tick failed: %s", e, exc_info=True)
 
 
+# Module-level handle to the running drift task. Tracked here (not only in
+# the FastAPI lifespan local) so the in-process world hot-swap can stop and
+# restart drift around a DB swap without the lifespan's handle in scope.
+_handle: asyncio.Task | None = None
+
+
 def start_drift_loop() -> asyncio.Task | None:
     """Spawn the drift task if enabled. Returns the task handle (for
-    `stop_drift_loop`) or None if disabled. Safe to call once per
-    FastAPI lifespan startup."""
+    `stop_drift_loop`) or None if disabled. Records the handle module-side
+    so `stop_drift_loop()` can be called with no argument (the hot-swap
+    path). Safe to call once per FastAPI lifespan startup, and again after a
+    `stop_drift_loop()` during a world swap."""
+    global _handle
     if not _is_enabled():
         return None
-    return asyncio.create_task(_drift_loop(), name="daydream-drift")
+    _handle = asyncio.create_task(_drift_loop(), name="daydream-drift")
+    return _handle
 
 
-async def stop_drift_loop(handle: asyncio.Task | None) -> None:
-    """Cancel the drift task and await its cleanup. No-op if `handle`
-    is None (drift was disabled at startup). Safe to call from the
-    FastAPI lifespan shutdown branch even if the task has already
-    completed for another reason."""
-    if handle is None or handle.done():
+async def stop_drift_loop(handle: asyncio.Task | None = None) -> None:
+    """Cancel the drift task and await its cleanup. With no argument, stops
+    the module-tracked task (the world-hot-swap path); an explicit handle is
+    honored for the lifespan's existing call. No-op when there is no live
+    task. Safe even if the task already completed for another reason."""
+    global _handle
+    target = handle if handle is not None else _handle
+    if target is None or target.done():
+        if target is _handle:
+            _handle = None
         return
-    handle.cancel()
+    target.cancel()
     try:
-        await handle
+        await target
     except asyncio.CancelledError:
         pass
+    if target is _handle:
+        _handle = None

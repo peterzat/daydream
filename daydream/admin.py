@@ -455,6 +455,87 @@ def cmd_snapshot_restore(snapshot_path: Path, yes: bool) -> int:
     return 0
 
 
+# ---- swap (live, talks to the running server) ---------------------------
+
+
+def cmd_swap(target: Path) -> int:
+    """Hot-swap the RUNNING server's live world to `target` (a snapshot or a
+    bootstrapped world DB) without a restart. Unlike snapshot-restore (offline,
+    refuses to overwrite a live DB), swap talks to the live server over HTTP:
+    the live DB connection and the drift task live in the server process, so
+    only the server can perform a live swap. The server validates the target
+    (readable daydream DB, schema not newer, under the data dir), atomically
+    swaps it in, and tells connected clients to re-snapshot. Returns 0 on
+    success, 2 on any refusal or if the server is unreachable."""
+    import urllib.error
+    import urllib.parse
+    import urllib.request
+    from http.cookiejar import CookieJar
+
+    target = Path(target).resolve()
+    base = f"http://127.0.0.1:{config.port()}"
+    unreachable = (
+        f"error: could not reach the daydream server at {base}\n"
+        "hot-swap runs against the RUNNING server; start it with 'bin/game up' first."
+    )
+    opener = urllib.request.build_opener(
+        urllib.request.HTTPCookieProcessor(CookieJar())
+    )
+
+    # Public access mode gates the endpoint on a session cookie, so log in
+    # with the shared password first. Tailscale mode treats loopback as authed
+    # (the login would only redirect), so it is skipped.
+    if config.access_mode() != "tailscale":
+        try:
+            opener.open(
+                urllib.request.Request(
+                    f"{base}/api/login",
+                    data=urllib.parse.urlencode(
+                        {"password": config.password()}
+                    ).encode(),
+                    method="POST",
+                )
+            )
+        except urllib.error.HTTPError as e:
+            print(
+                f"error: login failed ({e.code}); is DAYDREAM_PASSWORD set for "
+                "public access mode?",
+                file=sys.stderr,
+            )
+            return 2
+        except urllib.error.URLError:
+            print(unreachable, file=sys.stderr)
+            return 2
+
+    try:
+        resp = opener.open(
+            urllib.request.Request(
+                f"{base}/api/world/swap",
+                data=json.dumps({"target": str(target)}).encode(),
+                headers={"Content-Type": "application/json"},
+                method="POST",
+            )
+        )
+        body = json.loads(resp.read().decode())
+    except urllib.error.HTTPError as e:
+        try:
+            detail = json.loads(e.read().decode()).get("error", "")
+        except Exception:
+            detail = ""
+        print(f"error: swap refused ({e.code}): {detail}", file=sys.stderr)
+        return 2
+    except urllib.error.URLError:
+        print(unreachable, file=sys.stderr)
+        return 2
+
+    print(
+        f"swapped live world -> {target.name} "
+        f"(world_id={body.get('world_id')}, "
+        f"{body.get('subscribers_notified', 0)} client(s) notified)"
+    )
+    return 0
+
+
 # ---- verify -------------------------------------------------------------
 
 
@@ -745,6 +826,14 @@ def main(argv: list[str] | None = None) -> int:
     p_snaprest.add_argument("snapshot_path", type=Path)
     p_snaprest.add_argument("--yes", action="store_true", help="confirm restore")
 
+    p_swap = sub.add_parser(
+        "swap",
+        help="live hot-swap the RUNNING server's world to a target DB (no restart)",
+    )
+    p_swap.add_argument(
+        "target", type=Path, help="path to a world DB under the data dir (snapshot or bootstrap output)"
+    )
+
     p_ver = sub.add_parser(
         "verify", help="report orphan rows and orphan files (diagnostic)"
     )
@@ -795,6 +884,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_snapshot(args.world_id)
     if args.cmd == "snapshot-restore":
         return cmd_snapshot_restore(args.snapshot_path, args.yes)
+    if args.cmd == "swap":
+        return cmd_swap(args.target)
     if args.cmd == "verify":
         return cmd_verify(args.world_id)
     if args.cmd == "delete":

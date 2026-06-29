@@ -8,7 +8,7 @@ The image above is the image-gen pipeline's first real output: prompt seeded fro
 
 ## Status
 
-Latest stable cut: **v0.2.0**. Runs on a single Linux dev box (RTX 4000 SFF Ada, 20 GB VRAM); designed to port to Cloudflare and containers later. Test gates: 324 fast tests (`bin/game test short`, ~3 s) and 496 integration tests (`bin/game test medium`, ~5 s); both 100% green. Real-GPU drift probes run on-demand under `bin/game test long`.
+Latest stable cut: **v0.2.0**. Runs on a single Linux dev box (RTX 4000 SFF Ada, 20 GB VRAM); designed to port to Cloudflare and containers later. Test gates: 324 fast tests (`bin/game test short`, ~3 s) and 507 integration tests (`bin/game test medium`, ~5 s); both 100% green. Real-GPU drift probes run on-demand under `bin/game test long`.
 
 What works today:
 
@@ -17,7 +17,7 @@ What works today:
 - NPC dialogue memory: each Rook / Iris exchange is captured to a per-world `memories` table with a 384-dim CPU embedding (BGE-small via `sentence-transformers`), and the next turn pulls top-K by `cosine_similarity * exp(-age/24h)` and weaves them into the prompt as context. Fail-closed (capture/retrieve return `None` / `[]` if the embedder isn't installed) so the dialogue path stays warm even before `bin/memory-bootstrap` runs. CPU-only by construction; no GPU arbiter contention.
 - Watercolor SDXL backgrounds for any room, generated locally via ComfyUI behind the GPU arbiter. vLLM (Qwen 2.5 7B Instruct AWQ) serves narration. Both engines optional; the game runs at all engine combinations.
 - Voice-bench audit-trail harness (`bin/game voice-samples`) captures dated narrate samples for any model swap; four baselines in tree under `docs/pretty/voice-samples/` (pre-fix and post-fix AWQ plus two Mistral-Nemo Q4 failure modes — see Release notes).
-- World admin: `bin/game world list / archive / restore / snapshot / snapshot-restore / verify / delete` covers per-world archival, full-bundle ship-to-friend, fast DB-only point-in-time snapshots (and restore-refusing-overwrite), integrity checks, cascade delete. `bin/game world bootstrap NAME --aesthetic "..."` calls Claude Opus 4.7 via litellm to author a fresh `.db` (5 rooms + 4 toons + items + 2 starter data skills); set `ANTHROPIC_API_KEY` first.
+- World admin: `bin/game world list / archive / restore / snapshot / snapshot-restore / swap / verify / delete` covers per-world archival, full-bundle ship-to-friend, fast DB-only point-in-time snapshots (and restore-refusing-overwrite), live in-process hot-swap of the running server's world (`swap`, no restart; connected clients re-snapshot), integrity checks, cascade delete. `bin/game world bootstrap NAME --aesthetic "..."` calls Claude Opus 4.7 via litellm to author a fresh `.db` (5 rooms + 4 toons + items + 2 starter data skills); set `ANTHROPIC_API_KEY` first.
 - Friend-scope auth (shared password, single port). `DAYDREAM_ACCESS=tailscale` (default) or `public`.
 
 Pointers: full release narrative in [`## Release notes`](#release-notes) below; the GPU/model decision narrative (VRAM math, picks, what we tried and rejected) lives in [`docs/gpu-and-models.md`](docs/gpu-and-models.md); deferred items in [`BACKLOG.md`](BACKLOG.md); the active spec (if any) in [`SPEC.md`](SPEC.md).
@@ -103,7 +103,7 @@ The script installs `sentence-transformers` against the PyTorch CPU wheel index 
 
 ```sh
 bin/game test short     # unit / fast (~3s)      — pre-commit gate (324 tests)
-bin/game test medium    # integration (~5s)      — pre-push gate (496 tests)
+bin/game test medium    # integration (~5s)      — pre-push gate (507 tests)
 bin/game test long      # real-GPU drift (~15min) — on-demand / pre-release
 bin/game test human     # aesthetic rubric via qpeek — async human review
 ```
@@ -190,7 +190,7 @@ v0.1.0 takes the v1 image-gen pipeline as a substrate and builds a multi-room wo
 | Layer | Choice |
 |---|---|
 | Backend | Python 3.10 + FastAPI + websockets, single process tree |
-| Persistence | SQLite per world (WAL), append-only event log as the spine; world archive/restore via tarball bundling DB + per-world cache + manifest (`bin/game world archive/restore`), plus fast DB-only point-in-time snapshots (`bin/game world snapshot/snapshot-restore`) |
+| Persistence | SQLite per world (WAL), append-only event log as the spine; world archive/restore via tarball bundling DB + per-world cache + manifest (`bin/game world archive/restore`), plus fast DB-only point-in-time snapshots (`bin/game world snapshot/snapshot-restore`) and a live in-process hot-swap of the running world (`bin/game world swap`) |
 | LLM (optional) | vLLM 0.19.1 serving Qwen 2.5 7B Instruct AWQ, called via `litellm` so the same code path works against vLLM today and Cloudflare / OpenAI / Anthropic later. GGUF support in vLLM is patched-in via `bin/vllm-bootstrap`'s post-install workaround for the upstream gguf packaging-metadata bug — see Release notes above |
 | Image gen (optional) | SDXL base + `ostris/watercolor_style_lora_sdxl` via ComfyUI, GPU arbiter shared with vLLM |
 | GPU arbiter | `daydream/gpu/arbiter.py` (`asyncio.Lock`); serializes LLM and image-gen on the 20 GB card |

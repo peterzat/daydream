@@ -4,6 +4,8 @@ v0 uses a single process-wide connection (single-writer pattern). The full
 async write-queue lands in v2; for now sqlite3's own thread-safety with
 check_same_thread=False is sufficient at single-user scale."""
 
+import os
+import shutil
 import sqlite3
 from pathlib import Path
 
@@ -71,3 +73,104 @@ def close_db() -> None:
     if _conn is not None:
         _conn.close()
         _conn = None
+
+
+def max_known_migration() -> int:
+    """Highest numeric migration prefix this code ships in `migrations/`. A
+    swap/restore refuses any DB whose applied-migration max exceeds this (it
+    would expect columns this code does not know about)."""
+    nums = []
+    for f in config.MIGRATIONS_DIR.glob("[0-9][0-9][0-9]_*.sql"):
+        try:
+            nums.append(int(f.name[:3]))
+        except ValueError:
+            continue
+    return max(nums) if nums else 0
+
+
+def applied_migration_max(conn: sqlite3.Connection) -> int:
+    """Highest migration number actually applied to `conn`'s DB, read from
+    its own `_migrations` table. Pair with `max_known_migration()` to reject
+    a newer-schema candidate before swapping it in."""
+    nums = []
+    for r in conn.execute("SELECT filename FROM _migrations").fetchall():
+        try:
+            nums.append(int(r["filename"][:3]))
+        except (ValueError, KeyError, TypeError):
+            continue
+    return max(nums) if nums else 0
+
+
+def _unlink_wal_sidecars(db_path: Path) -> None:
+    """Remove `-wal` / `-shm` sidecars next to `db_path` if present. Used by
+    the swap path so an orphaned WAL from a prior live DB never bleeds into
+    the file opened next."""
+    for sfx in ("-wal", "-shm"):
+        p = db_path.parent / (db_path.name + sfx)
+        if p.exists():
+            p.unlink()
+
+
+def swap_live_db(target_path: Path) -> None:
+    """Replace the live DB file with `target_path`'s content in-process and
+    reopen the connection onto it.
+
+    SYNCHRONOUS by contract: it performs no `await`, so under asyncio's
+    single-threaded cooperative model the close -> install -> reopen sequence
+    is atomic with respect to every other coroutine. No WS or drift task can
+    observe a half-open `_conn` (the `_conn is None` window exists only inside
+    this function, where no other coroutine runs).
+
+    Failure-safe: the current live DB is moved aside before the install and
+    restored if the copy or reopen fails, so a failed swap leaves the server
+    serving the ORIGINAL world over a healthy connection.
+
+    WAL handling: the current connection is `wal_checkpoint(TRUNCATE)`'d
+    before close so the outgoing `live.db` is self-contained, and stale
+    `-wal`/`-shm` sidecars are cleared before the reopen so no orphaned WAL
+    bleeds into the new DB.
+
+    Callers MUST have already validated `target_path` (a readable daydream DB
+    whose schema is not newer than this code) and stopped the drift loop.
+    """
+    global _conn
+    target_path = Path(target_path)
+    live = config.live_db_path()
+    live.parent.mkdir(parents=True, exist_ok=True)
+
+    if _conn is not None:
+        try:
+            _conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+        except sqlite3.Error:
+            pass
+        _conn.close()
+        _conn = None
+
+    backup = live.parent / (live.name + ".swapbak")
+    if backup.exists():
+        backup.unlink()
+    had_live = live.exists()
+    if had_live:
+        os.replace(live, backup)
+    _unlink_wal_sidecars(live)
+
+    try:
+        shutil.copyfile(target_path, live)
+        _unlink_wal_sidecars(live)
+        init_live()
+    except Exception:
+        # Roll back to the original world: drop the partial install, restore
+        # the backup, reopen. The server is never left without a live DB.
+        if _conn is not None:
+            _conn.close()
+            _conn = None
+        _unlink_wal_sidecars(live)
+        if live.exists():
+            live.unlink()
+        if had_live:
+            os.replace(backup, live)
+            init_live()
+        raise
+    finally:
+        if backup.exists():
+            backup.unlink()
