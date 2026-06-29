@@ -102,7 +102,26 @@ def _room_target(world_id: str, room_id: str, room_seed: str) -> "image_client.P
     )
 
 
-def _state_snapshot(last_seq: int, toon_id: str) -> dict:
+def _room_description(room: "rooms.Room", view: dict | None) -> str:
+    """Description text for a snapshot's room view. With no per-connection
+    `view` (e.g. a direct call) it is the full stored description, as before.
+    With a view it is the FULL stored description the first time the session
+    enters the room, and a short "you return to ..." line on re-entry —
+    decided at entry and sticky for the duration of the visit so effect
+    re-snapshots don't shrink it. The first-look text is pre-baked stored
+    content (`rooms.description_cached`), never a live LLM call (per the
+    generation policy)."""
+    full = room.description_cached or f"You are in {room.title}."
+    if view is None:
+        return full
+    if view.get("room_id") != room.id:
+        view["room_id"] = room.id
+        view["first_visit"] = room.id not in view["visited"]
+        view["visited"].add(room.id)
+    return full if view["first_visit"] else f"You return to {room.title}."
+
+
+def _state_snapshot(last_seq: int, toon_id: str, view: dict | None = None) -> dict:
     """Build a snapshot pinned to the given last_seq. Caller subscribes first
     (so concurrent appends fan out to this connection's queue), then captures
     last_seq, then calls this; any queued events with seq <= last_seq are
@@ -136,7 +155,7 @@ def _state_snapshot(last_seq: int, toon_id: str) -> dict:
                 "id": room.id,
                 "slug": room.slug,
                 "title": room.title,
-                "description": room.description_cached,
+                "description": _room_description(room, view),
                 # exits is the SPA's source of truth for nav buttons;
                 # room.exits is the parsed dict shape of exits_json
                 # (migration 004 populates it bidirectionally).
@@ -310,9 +329,13 @@ async def ws_endpoint(ws: WebSocket):
     # the snapshot are captured in the queue; pin last_seq here, then drop any
     # queued events with seq <= last_seq before the broadcast loop starts.
     queue = events.subscribe()
+    # Per-connection room-view memory: which rooms this session has entered
+    # (drives full-vs-abbreviated room descriptions) plus the current room and
+    # its first-visit verdict (sticky so mid-visit re-snapshots don't shrink).
+    view = {"visited": set(), "room_id": None, "first_visit": True}
     try:
         last_seq = events.max_seq()
-        await ws.send_json(_state_snapshot(last_seq, toon_id))
+        await ws.send_json(_state_snapshot(last_seq, toon_id, view))
         # Kick off image gen for the current room if the cache is cold.
         # Fire-and-forget; the resulting room_image_ready event reaches the
         # client through the broadcast loop below.
@@ -321,7 +344,7 @@ async def ws_endpoint(ws: WebSocket):
             _maybe_enqueue_image_gen(room.world_id, room.id, room.seed)
         receive_task = asyncio.create_task(_receive_loop(ws, toon_id))
         broadcast_task = asyncio.create_task(
-            _broadcast_loop(ws, queue, last_seq, toon_id)
+            _broadcast_loop(ws, queue, last_seq, toon_id, view)
         )
         done, pending = await asyncio.wait(
             [receive_task, broadcast_task],
@@ -344,7 +367,7 @@ async def _receive_loop(ws: WebSocket, toon_id: str) -> None:
 
 
 async def _broadcast_loop(
-    ws: WebSocket, queue: asyncio.Queue, snapshot_seq: int, toon_id: str
+    ws: WebSocket, queue: asyncio.Queue, snapshot_seq: int, toon_id: str, view: dict
 ) -> None:
     try:
         while True:
@@ -356,7 +379,7 @@ async def _broadcast_loop(
             if event is events.WORLD_CHANGED:
                 snapshot_seq = events.max_seq()
                 await ws.send_json({"kind": "world_changed"})
-                await ws.send_json(_state_snapshot(snapshot_seq, toon_id))
+                await ws.send_json(_state_snapshot(snapshot_seq, toon_id, view))
                 continue
             # Drop events already covered by the snapshot to avoid duplicates
             # from the subscribe-before-snapshot ordering.
@@ -385,7 +408,7 @@ async def _broadcast_loop(
             is_effect_mutation = event.kind in _EFFECT_MUTATION_KINDS
             if is_controlled_move or is_effect_mutation:
                 snapshot_seq = events.max_seq()
-                await ws.send_json(_state_snapshot(snapshot_seq, toon_id))
+                await ws.send_json(_state_snapshot(snapshot_seq, toon_id, view))
                 if is_controlled_move:
                     # Kick image gen for the new room if the cache is cold;
                     # the room_image_ready event flows back through this

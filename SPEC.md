@@ -6,8 +6,8 @@
 
 *Room description on entry*
 
-- [ ] **The room description renders in the SPA.** Each `state_snapshot` already carries `room.description` (`daydream/api/ws.py` `_state_snapshot`); `web/assets/main.js` now displays it in the room view (today it renders only the title). Verifiable by a DOM-level/browser check that a snapshot with a non-empty `room.description` shows that text; existing WS snapshot tests stay green.
-- [ ] **First arrival into a room this session auto-describes it; re-entry is abbreviated.** Entering a room not yet seen this session surfaces its full description (the stored `description_cached`, the same text the `look` core skill emits — `daydream/skills/core.py`); a later arrival into that same room in the same session surfaces a short/elided line instead. Driven by per-session visited-room memory. No live LLM call (the first-look text is pre-baked stored text, per the generation policy). Verifiable via TestClient: connect → move into room A (full description present) → leave → re-enter A (abbreviated).
+- [x] **The room description renders in the SPA.** Each `state_snapshot` already carries `room.description` (`daydream/api/ws.py` `_state_snapshot`); `web/assets/main.js` now displays it in the room view (today it renders only the title). Verifiable by a DOM-level/browser check that a snapshot with a non-empty `room.description` shows that text; existing WS snapshot tests stay green.
+- [x] **First arrival into a room this session auto-describes it; re-entry is abbreviated.** Entering a room not yet seen this session surfaces its full description (the stored `description_cached`, the same text the `look` core skill emits — `daydream/skills/core.py`); a later arrival into that same room in the same session surfaces a short/elided line instead. Driven by per-session visited-room memory. No live LLM call (the first-look text is pre-baked stored text, per the generation policy). Verifiable via TestClient: connect → move into room A (full description present) → leave → re-enter A (abbreviated).
 
 *Session & presence*
 
@@ -47,4 +47,4 @@
 ---
 *Prior spec (2026-06-29): world-hot-swap closed 6/6 — live in-process world swap (`POST /api/world/swap` + `bin/game world swap`) replacing the running server's live DB without a restart, with connected clients re-snapshotting; failure-safe, with a round-trip + reconnect oracle.*
 
-<!-- SPEC_META: {"date":"2026-06-29","title":"session & presence: room descriptions on entry, fresh sessions, toon delete, keyless authoring","criteria_total":8,"criteria_met":0} -->
+<!-- SPEC_META: {"date":"2026-06-29","title":"session & presence: room descriptions on entry, fresh sessions, toon delete, keyless authoring","criteria_total":8,"criteria_met":2} -->

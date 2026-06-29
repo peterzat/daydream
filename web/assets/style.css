@@ -222,3 +222,13 @@ footer .slots-toggle:hover { text-decoration: underline; }
   font: inherit; cursor: pointer;
 }
 .slots-panel button:hover { background: var(--sage); color: var(--paper); }
+
+/* Room description, rendered from the snapshot: full on first entry to a room
+ * this session, a short "you return to ..." line on re-entry. */
+.room-desc {
+  margin: 0 0 0.8em;
+  color: var(--ink);
+  font-style: italic;
+  opacity: 0.92;
+}
+.room-desc:empty { display: none; }

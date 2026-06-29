@@ -25,6 +25,8 @@ function connect() {
 function renderSnapshot(snap) {
   document.getElementById("room-title").textContent =
     snap.room ? snap.room.title : "drifting...";
+  document.getElementById("room-desc").textContent =
+    snap.room && snap.room.description ? snap.room.description : "";
   setRoomBackground(snap.room);
   // Map actor IDs to display names so 'say' events can name the speaker.
   actorNames = {};
