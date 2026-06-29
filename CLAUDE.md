@@ -2,6 +2,17 @@
 
 A small atmospheric multiplayer web game running on a single dev box. Players enter a procedurally generated world that all players share and persistently mutate. See `SPEC.md` for the current acceptance contract, `BACKLOG.md` for the deferred-ideas register, `README.md` for orientation, and [`docs/gpu-and-models.md`](docs/gpu-and-models.md) for the full GPU/ML decision narrative (model picks, what we tried and rejected, what to try later).
 
+## Generation policy: local at runtime, Opus at design time
+
+Foundational and load-bearing; it informs every design and build decision in this project. Daydream has two LLM tiers and they never blur. (The narrative version is README "Two dreamers".)
+
+- **Runtime (the live game) uses ONLY local models on the RTX 4000.** Every generation the running game performs — room art (ComfyUI/SDXL), narration + NPC dialogue + drift (vLLM/Qwen), any future in-game text or gameplay generation — runs locally behind the GPU arbiter. The runtime makes NO calls to any cloud LLM. There is NO production `ANTHROPIC_API_KEY` / `OPENAI_API_KEY`, and we do not add one. A runtime feature that seems to need a cloud model is a signal to pre-bake or rethink, not to add a key.
+- **Design-time heavy generation is done by Opus inside a Claude Code session** — the agent reading this file authors content and writes it into the DB / a seed, rather than the game shelling out to an API. World authoring, initial seeding, and the infrequent admin capability the local model can't do well are "cheats" we make happily *at design time, with a human in the loop*, because they run in Claude Code and never in the product.
+- **Pre-bake, don't phone home.** The quality ceiling of the running game is (Opus-authored groundwork, baked in at design time) + (local-model polish at runtime). To get Opus-grade quality in-game, bake it into the world's seed/cache ahead of time and let the local models animate it live.
+- **Flag local limits at design time (process rule).** When a target experience likely won't be compelling under the local-model budget, say so explicitly during design/dev — here, in the session — and reason through the fix together (pre-bake with Opus / cache harder / simplify / accept the edge) before building. Never quietly ship a flat experience because the small model couldn't reach.
+
+**Implication for `world bootstrap`.** Today's `bin/game world bootstrap` calls Claude Opus via litellm over the Anthropic API (needs a key); that path predates this policy and is superseded by Claude-Code-authored seeding (Opus, in session, writes the world). Reconcile at the next design spin; until then, treat in-session authoring as the intended way to make a world, not the API path.
+
 ## Conventions
 
 - Python venv at `.venv/`. Never `pip install` outside the venv (`PIP_REQUIRE_VIRTUALENV=true` is set globally).
