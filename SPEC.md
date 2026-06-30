@@ -31,6 +31,10 @@
 - [ ] **NPC dialogue reads in-character and terse.** The per-NPC `talk` dialogue prompts (Rook laconic; Iris bookish/soft; Bram gentle) are tightened toward terse, sensory, in-voice output that holds on the local Qwen 2.5 7B; the authored prompts encode the per-NPC voice constraints (testable presence), and a one-time browser/qpeek eyeball confirms the voices read distinct and not florid. If a target voice will not hold on the 7B, that is flagged in-session and pre-baked / simplified per the generation policy rather than shipped flat.
 - [ ] **The forge looks like a forge.** The `r-forge` seed / image prompt renders a working forge (anvil, bellows, tools), not a domestic hearth, in the watercolor WHIMSY tone; verified by a one-time browser/qpeek eyeball (flagged manual).
 
+*World feel*
+
+- [ ] **Ambient NPC drift is witnessed, not hidden.** Drift is no longer suppressed in a room a human occupies; a co-located NPC's ambient body-language drift (e.g. "Rook brushes soot from the anvil and lets it settle") is shown to the present player as a quiet "the world is alive around you" beat. The cadence is retuned for this: with a player present, ambient NPC action is witnessed periodically — a minutes-scale interval, not the prior 30-minute busy cadence (which existed precisely to keep drift away from connected players), and never every tick — so it reads as alive, not spammy or intrusive. Verifiable: a drift tick with a present human + a co-located NPC emits that NPC's narrate to the room (inverting today's `test_tick_suppresses_drift_in_occupied_room` behavior); the present-player cadence constant is retuned to a minutes-scale value; a one-time eyeball confirms the feel. The mood-nudge-per-tick behavior is unchanged. README + CLAUDE.md drift sections updated to describe witnessed drift rather than occupancy suppression.
+
 *Cross-cutting*
 
 - [ ] **Tiers green; a gameplay-scenario test; docs + backlog rolled forward.** `bin/game test short` and `bin/game test medium` exit 0 with paired GPU/LLM-free tests (mocked LLM) for every non-qualitative criterion above; a new scripted multi-step gameplay-scenario test exercises the playable flow end to end (connect → picker → claim → look → take → go-to-place → talk → spawn → examine → inventory). README + CLAUDE.md updated for the picker-first entry, the inventory affordance, verb-applicability, and the connection-states overlay (resolving CLAUDE.md's "the dream shifts" swap-transition follow-up); `BACKLOG.md` swept (the four 2026-06-29/30 DONE entries removed; `gameplay-scenario-tests` closed; new deferred items recorded — toon-delete should DROP carried items to the room rather than destroy them, and dialogue-latency / parser-throughput tuning).
@@ -56,4 +60,4 @@
 ---
 *Prior spec (2026-06-30): objects + local LLMs — a MOO-style object/verb core with NL input; closed 19/19, live world reset onto the new schema.*
 
-<!-- SPEC_META: {"date":"2026-06-30","title":"playtest polish: playable first-entry, clear scene + inventory, NL/voice/forge fixes","criteria_total":13,"criteria_met":0} -->
+<!-- SPEC_META: {"date":"2026-06-30","title":"playtest polish: playable first-entry, clear scene + inventory, NL/voice/forge fixes","criteria_total":14,"criteria_met":0} -->
