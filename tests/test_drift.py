@@ -24,6 +24,7 @@ from daydream.llm import client as llm_client
 def fresh_state(tmp_path: Path, monkeypatch):
     db.close_db()
     events.reset_subscribers()
+    drift.reset_tick_counts()  # also clears the per-room de-dup memory
     monkeypatch.setenv("DAYDREAM_DATA_DIR", str(tmp_path))
     yield
     db.close_db()
@@ -277,6 +278,45 @@ async def test_tick_llm_happy_path_emits_llm_text(monkeypatch):
     from daydream import toons
     rook = toons.get_toon("t-rook")
     assert e.room_id == rook.current_room_id
+
+
+@pytest.mark.tier_short
+def test_is_near_duplicate_detects_exact_and_shared_opening():
+    f = drift._is_near_duplicate
+    assert f("Rook hums.", None) is False  # nothing prior to compare
+    assert f("Rook hums low.", "Rook hums low.") is True  # exact
+    assert f("rook  hums   low.", "Rook hums low.") is True  # case/whitespace norm
+    # Same opening beat (first six words), florid tails differ -> near-dup.
+    a = "Rook hums softly to himself as he tends the bellows."
+    b = "Rook hums softly to himself as he sketches a small repair."
+    assert f(a, b) is True
+    # Genuinely different openings -> distinct, not suppressed.
+    assert f("Rook brushes soot from the anvil.", "Iris folds an old letter slowly.") is False
+
+
+@pytest.mark.tier_medium
+@pytest.mark.asyncio
+async def test_tick_suppresses_consecutive_near_duplicate(monkeypatch):
+    """A second tick that would emit the same line in the same room is
+    suppressed (counted a no-op) instead of stacking a repeated beat."""
+    from daydream import config
+    db.init_live(migrations_dir=config.MIGRATIONS_DIR)
+    monkeypatch.setenv("DAYDREAM_DRIFT_LLM_ENABLED", "1")
+    db.get_conn().execute(
+        "DELETE FROM objects WHERE kind = 'toon' AND id IN ('t-iris', 't-wren')"
+    )
+    dup = "Rook hums softly to himself and the coals breathe."
+    monkeypatch.setattr(
+        "daydream.llm.client.acompletion_json",
+        AsyncMock(return_value={"narrate": dup}),
+    )
+    before_seq = events.max_seq()
+    assert await drift._tick(rng=random.Random(0)) is True   # first emits
+    assert await drift._tick(rng=random.Random(0)) is False  # duplicate suppressed
+    new_events = events.fetch_since(before_seq)
+    assert len(new_events) == 1
+    assert new_events[0].payload["text"] == dup
+    assert drift.tick_counts()["noop"] >= 1
 
 
 @pytest.mark.tier_medium
@@ -746,9 +786,18 @@ async def test_tick_composed_iris_only_with_mood_drift(monkeypatch):
     db.get_conn().execute(
         "DELETE FROM objects WHERE kind = 'toon' AND id IN ('t-rook', 't-wren')"
     )
+    # Distinct lines per tick (real LLM output varies); the de-dup suppressor
+    # only collapses consecutive near-identical beats, so these all emit.
+    iris_lines = [
+        {"narrate": "Iris hums quietly in the slanting light."},
+        {"narrate": "Iris straightens a small stack of old letters."},
+        {"narrate": "Iris traces a fingertip along a faded postmark."},
+        {"narrate": "Iris tucks a pressed flower back between the pages."},
+        {"narrate": "Iris lets the dust settle in a bar of sun."},
+    ]
     monkeypatch.setattr(
         "daydream.llm.client.acompletion_json",
-        AsyncMock(return_value={"narrate": "Iris hums quietly to herself in the slanting light."}),
+        AsyncMock(side_effect=iris_lines),
     )
     before_seq = events.max_seq()
 

@@ -198,6 +198,12 @@ _TICK_COUNTS: dict[str, int] = {
     "noop": 0,
 }
 
+# Per-room memory of the last drift line emitted, so a tick can suppress a
+# consecutive near-duplicate (the LLM occasionally restates one beat with minor
+# variation) rather than stacking repeated lines in a scene. Process-local;
+# cleared by reset_tick_counts (tests) and naturally on `bin/game up`.
+_last_emitted: dict[str, str] = {}
+
 
 def tick_counts() -> dict[str, int]:
     """Return a copy of the drift outcome counters. Public accessor for
@@ -206,9 +212,11 @@ def tick_counts() -> dict[str, int]:
 
 
 def reset_tick_counts() -> None:
-    """Test helper: zero all drift outcome counters."""
+    """Test helper: zero all drift outcome counters and clear the per-room
+    de-dup memory (both are process-local drift-tick state)."""
     for k in _TICK_COUNTS:
         _TICK_COUNTS[k] = 0
+    _last_emitted.clear()
 
 
 # Module-level Jinja sandbox for the drift LLM user prompt. SandboxedEnvironment
@@ -222,11 +230,14 @@ _jinja = SandboxedEnvironment(autoescape=False)
 _DRIFT_SYSTEM_PROMPT = (
     "You compose a single ambient drift narrate for a cozy watercolor "
     "text-adventure NPC. Return strict JSON: "
-    '{"narrate": "<single sentence in third-person prose>"}. '
-    "NO quoted dialogue. NO direct speech. NO urgency, no modern tech, "
-    "no harsh edges. The narrate is a body-language beat — what the NPC "
-    "is doing or noticing right now while alone — soft, painterly, "
-    "Spiritfarer / A Short Hike-adjacent. One sentence only."
+    '{"narrate": "<one short sentence, third-person>"}. '
+    "Keep it SHORT and laconic: one plain clause, roughly 8 to 16 words, a "
+    "single concrete beat. Do NOT stack clauses or pile on description (no "
+    "comma-spliced run-ons, no 'as he ... while ...' chains). NO quoted "
+    "dialogue, NO direct speech, no urgency, no modern tech, no harsh edges. "
+    "The narrate is one small body-language beat: what the NPC is doing or "
+    "noticing right now while alone, soft and painterly, Spiritfarer / "
+    "A Short Hike-adjacent. One sentence only."
 )
 
 
@@ -465,6 +476,23 @@ async def _llm_narrate(npc: dict[str, Any]) -> str | None:
     return text.strip()
 
 
+def _is_near_duplicate(text: str, prev: str | None) -> bool:
+    """True if `text` is a consecutive near-duplicate of `prev` (the last drift
+    line emitted in the same room): identical after whitespace/case
+    normalization, or sharing the same opening beat (first six words). A cheap,
+    deliberately conservative heuristic to stop the LLM stacking minor
+    variations of one sentence in a scene; genuinely distinct beats still pass."""
+    if not prev:
+        return False
+    a = " ".join(text.lower().split())
+    b = " ".join(prev.lower().split())
+    if a == b:
+        return True
+    aw, bw = a.split(), b.split()
+    n = 6
+    return len(aw) >= n and len(bw) >= n and aw[:n] == bw[:n]
+
+
 async def _tick(rng: random.Random | None = None) -> bool:
     """One drift step. Returns True if a narrate was emitted, False
     if the tick was a no-op (no NPCs, all pools empty, all rooms
@@ -501,13 +529,21 @@ async def _tick(rng: random.Random | None = None) -> bool:
     if text is None:
         _TICK_COUNTS["noop"] += 1
         return False
+    room_id = chosen["current_room_id"]
+    if _is_near_duplicate(text, _last_emitted.get(room_id)):
+        # Don't stack a repeated beat in the same room; let this cycle pass
+        # quietly (the next tick, minutes later, rolls fresh). Counted a no-op
+        # since nothing was emitted.
+        _TICK_COUNTS["noop"] += 1
+        return False
     events.append(
         actor_type="system",
         actor_id=None,
         kind="narrate",
         payload={"text": text},
-        room_id=chosen["current_room_id"],
+        room_id=room_id,
     )
+    _last_emitted[room_id] = text
     if llm_text is not None:
         _TICK_COUNTS["llm_emit"] += 1
     else:
