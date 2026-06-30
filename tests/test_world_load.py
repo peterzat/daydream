@@ -3,15 +3,19 @@
 A world is built from an Opus-authored JSON envelope with NO LLM call and NO
 ANTHROPIC_API_KEY — the canonical keyless path under the generation policy."""
 
+import asyncio
 import json
 import sqlite3
 from pathlib import Path
+from unittest.mock import AsyncMock
 
 import pytest
 
-from daydream import admin
+from daydream import admin, config, db, events, objects, verbs
 
 pytestmark = pytest.mark.tier_medium
+
+REPO = Path(__file__).resolve().parent.parent
 
 
 def _envelope() -> dict:
@@ -93,6 +97,105 @@ def test_world_load_writes_db_keyless(tmp_path: Path, monkeypatch):
         ).fetchone()["starting_room_id"] == "r-a"
     finally:
         conn.close()
+
+
+def test_world_load_object_schema_with_aliases_and_dialogue(tmp_path: Path, monkeypatch):
+    """Keyless object-schema authoring: an envelope carrying toon aliases, a
+    per-NPC `talk` dialogue binding, and a readable thing with aliases loads
+    onto the objects schema with NO LLM call / NO key (SPEC 2026-06-30)."""
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    env = _envelope()
+    # Give Mara (an NPC) aliases + a bound dialogue, and a readable thing.
+    mara = next(t for t in env["toons"] if t["name"] == "Mara")
+    mara["aliases"] = ["keeper", "the keeper"]
+    mara["dialogue"] = {
+        "ui_hint": "Talk", "description": "Talk to Mara.",
+        "prompt_template": "{{ player_input }}",
+        "effects_schema": {"allowed_kinds": ["narrate", "spawn_object"]},
+    }
+    env["items"].append(
+        {"room_slug": "b", "name": "a sheaf of papers", "seed": "loose pages",
+         "aliases": ["papers", "sheaf"], "readable": True}
+    )
+    env_path = tmp_path / "world.json"
+    env_path.write_text(json.dumps(env))
+    out = tmp_path / "out.db"
+    assert admin.main(["load", str(env_path), "--output", str(out)]) == 0
+
+    conn = sqlite3.connect(f"file:{out}?mode=ro", uri=True)
+    conn.row_factory = sqlite3.Row
+    try:
+        # Prototypes seeded.
+        assert {r["name"] for r in conn.execute(
+            "SELECT name FROM objects WHERE kind = 'prototype'"
+        )} == {"room", "npc", "thing", "readable"}
+        # Mara carries aliases + a dialogue binding referencing a data skill.
+        mara_row = conn.execute(
+            "SELECT aliases_json, json_extract(properties_json, '$.dialogue') AS dialogue "
+            "FROM objects WHERE kind = 'toon' AND name = 'Mara'"
+        ).fetchone()
+        assert json.loads(mara_row["aliases_json"]) == ["keeper", "the keeper"]
+        assert mara_row["dialogue"] == "dlg-mara"
+        # The bound dialogue skill is installed (hidden from room affordances).
+        skill = conn.execute(
+            "SELECT context_predicate_json FROM skills WHERE name = 'dlg-mara'"
+        ).fetchone()
+        assert skill is not None
+        assert "__npc_dialogue__" in skill["context_predicate_json"]
+        # The readable thing carries aliases + the readable prototype.
+        papers = conn.execute(
+            "SELECT aliases_json, prototype_id FROM objects "
+            "WHERE kind = 'thing' AND name = 'a sheaf of papers'"
+        ).fetchone()
+        assert json.loads(papers["aliases_json"]) == ["papers", "sheaf"]
+        assert papers["prototype_id"] == "proto-readable"
+    finally:
+        conn.close()
+
+
+def test_authored_bunny_world_loads_and_rook_spawns_papers(tmp_path: Path, monkeypatch):
+    """Integration for the committed reset world (worlds/bunny.json): it loads
+    keyless onto the object schema, and talking to its Rook (via the per-NPC
+    dialogue binding) spawns the canonical 'sheaf of papers'. The server boot +
+    browser check remain the flagged one-time manual steps (SPEC 2026-06-30)."""
+    out = tmp_path / "live.db"
+    assert admin.main(["load", str(REPO / "worlds" / "bunny.json"), "--output", str(out)]) == 0
+    db.close_db()
+    events.reset_subscribers()
+    db.init_live(path=out, migrations_dir=config.MIGRATIONS_DIR)
+    try:
+        conn = db.get_conn()
+        rook_id = conn.execute(
+            "SELECT id FROM objects WHERE kind = 'toon' AND name = 'Rook'"
+        ).fetchone()["id"]
+        human_id = conn.execute(
+            "SELECT id FROM objects WHERE kind = 'toon' AND is_human_controlled = 1"
+        ).fetchone()["id"]
+        rook = objects.get(rook_id)
+        objects.move(human_id, rook.location_id)  # co-locate to bring Rook in scope
+        # The dialogue binding resolves to the loaded dlg-rook skill; mock its
+        # LLM output to emit the papers (as the authored prompt instructs).
+        monkeypatch.setattr(
+            "daydream.llm.client.acompletion_json",
+            AsyncMock(return_value={"effects": [
+                {"kind": "narrate", "text": "Rook spreads a sheaf of papers across the bench."},
+                {"kind": "spawn_object", "name": "a sheaf of papers",
+                 "seed": "loose pages, soft at the edges", "readable": True,
+                 "aliases": ["papers", "sheaf"], "generated_by": "talk:rook"},
+            ]}),
+        )
+        asyncio.run(
+            verbs.execute_command(human_id, "talk", dobj_id=rook_id, args="show me your papers")
+        )
+        papers = [
+            o for o in objects.contents(rook.location_id, "thing")
+            if o.name == "a sheaf of papers"
+        ]
+        assert len(papers) == 1
+        assert objects.verbs_for(papers[0]) == ["examine", "take", "drop"]
+    finally:
+        db.close_db()
+        events.reset_subscribers()
 
 
 def test_world_load_refuses_invalid_envelope(tmp_path: Path):

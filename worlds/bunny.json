@@ -1,0 +1,90 @@
+{
+  "_comment": "Opus-authored, keyless world envelope for the object/verb schema (SPEC 2026-06-30). Load with `bin/game world load worlds/bunny.json`. No LLM call, no API key. Toons carry per-NPC `talk` dialogue bindings; items are `things` (some readable, with aliases). Rook's dialogue explicitly spawns the canonical 'sheaf of papers' on request.",
+  "world": {
+    "name": "bunny world",
+    "aesthetic_seed": "cozy soft painterly Spiritfarer-warm twilight, watercolor edges, a small dream that remembers being visited"
+  },
+  "rooms": [
+    {"slug": "meadow", "title": "A Quiet Meadow",
+     "seed": "a small grassy meadow at dusk, fireflies just beginning to drift between tall grasses, the air cool and smelling of earth, soft watercolor edges",
+     "exits": {"north": "forge", "east": "bridge"}},
+    {"slug": "forge", "title": "The Quiet Forge",
+     "seed": "a snug forge with banked embers drifting like sleepy fireflies, tools in neat warm rows, a kettle at the back of the hearth, painterly and soft",
+     "exits": {"south": "meadow", "up": "attic"}},
+    {"slug": "bridge", "title": "A Wooden Bridge",
+     "seed": "a wooden bridge arching over a slow stream, dragonflies in warm afternoon light, boards that creak in a friendly way, painterly",
+     "exits": {"west": "meadow", "east": "hollow"}},
+    {"slug": "attic", "title": "A Dusty Attic",
+     "seed": "an attic of old paper and cedar, a round window throwing a warm spotlight across stacks of forgotten trunks, dust turning slow in slanting light",
+     "exits": {"down": "forge"}},
+    {"slug": "hollow", "title": "The Birch Hollow",
+     "seed": "a small clearing among birches, moss softening every stone, a hush at the edge of dusk, a breeze moving through without disturbing it",
+     "exits": {"west": "bridge"}}
+  ],
+  "toons": [
+    {"slot": 1, "name": "Wren", "seed": "a quiet wandering toon who hums when alone",
+     "appearance_seed": "a soft watercolor toon in a dusty cloak, freckles, kind eyes",
+     "current_room_slug": "meadow", "is_human_controlled": 1, "mood": "curious",
+     "presence_text": null},
+    {"slot": 100, "name": "Rook",
+     "seed": "the forge-keeper; slow-moving and quiet; hums old songs at the bellows, sleeves always a little sooty; keeps careful sketches of every small repair",
+     "appearance_seed": "a stocky person in a soot-smudged apron, kind eyes behind round spectacles, sleeves rolled past the elbows, hair wound in a wool kerchief",
+     "current_room_slug": "forge", "is_human_controlled": 0, "mood": "content",
+     "presence_text": "Rook is at the bellows, sleeves a little sooty, humming something slow under their breath.",
+     "aliases": ["the forge-keeper", "keeper"],
+     "dialogue": {
+       "ui_hint": "Talk",
+       "description": "Talk to Rook, the forge-keeper.",
+       "effects_schema": {"allowed_kinds": ["narrate", "spawn_object", "set_mood"]},
+       "prompt_template": "You are Rook, the forge-keeper: slow-moving, quiet, warm; you say a little less than you mean and let the work speak. Recent memories of this visitor: {% for m in memories %}\n- {{ m.text }}{% else %} (none yet){% endfor %}\nThe visitor says: {{ player_input }}\n\nReply in character with ONE soft, painterly `narrate` effect (cozy, Spiritfarer-warm, no urgency, no modern tech). If the visitor asks to see your work, your sketches, or your papers, ALSO emit exactly one `spawn_object` for a readable thing named \"a sheaf of papers\" (seed: \"loose pages, soft at the edges, covered in small careful drawings of every repair\"), with aliases [\"papers\", \"sheaf\"], readable true, generated_by \"talk:rook\", located on you. Never spawn anything else."
+     }},
+    {"slot": 101, "name": "Iris",
+     "seed": "the attic archivist; older, soft-voiced, curious; sorts old letters and small objects with patient attention; sometimes reads a passage aloud to no one in particular",
+     "appearance_seed": "an older person with reading glasses on a beaded cord, ink-stained fingertips, a soft cardigan with patched elbows, hair gone silver at the temples",
+     "current_room_slug": "attic", "is_human_controlled": 0, "mood": "thoughtful",
+     "presence_text": "Iris glances up from a sheaf of old letters, marks her place with a strip of ribbon, and offers a small nod before returning to her sorting.",
+     "aliases": ["the archivist", "archivist"],
+     "dialogue": {
+       "ui_hint": "Talk",
+       "description": "Talk to Iris, the attic archivist.",
+       "effects_schema": {"allowed_kinds": ["narrate", "set_mood"]},
+       "prompt_template": "You are Iris, the attic archivist: older, soft-voiced, curious, unhurried; you find small wonders in old letters and like to read a line aloud. Recent memories of this visitor: {% for m in memories %}\n- {{ m.text }}{% else %} (none yet){% endfor %}\nThe visitor says: {{ player_input }}\n\nReply in character with ONE soft, painterly `narrate` effect (cozy, Spiritfarer-warm, no urgency, no modern tech, no harsh edges)."
+     }},
+    {"slot": 102, "name": "Bram",
+     "seed": "a wandering tender of small green things who drifts between the bridge and the hollow, pockets full of seeds and pressed leaves",
+     "appearance_seed": "a lanky young person in a moss-green coat, dirt under the nails, a sprig tucked behind one ear, an easy unhurried smile",
+     "current_room_slug": "hollow", "is_human_controlled": 0, "mood": "content",
+     "presence_text": "Bram looks up from a patch of moss, brushes soil from their knees, and gives a slow friendly wave.",
+     "aliases": ["the tender"],
+     "dialogue": {
+       "ui_hint": "Talk",
+       "description": "Talk to Bram, the green-tender.",
+       "effects_schema": {"allowed_kinds": ["narrate", "set_mood"]},
+       "prompt_template": "You are Bram, a gentle wandering tender of small green things, easy and unhurried, full of quiet wonder at moss and seeds and pressed leaves. Recent memories of this visitor: {% for m in memories %}\n- {{ m.text }}{% else %} (none yet){% endfor %}\nThe visitor says: {{ player_input }}\n\nReply in character with ONE soft, painterly `narrate` effect (cozy, Spiritfarer-warm, no urgency, no modern tech)."
+     }}
+  ],
+  "items": [
+    {"room_slug": "meadow", "name": "a brass lantern",
+     "seed": "an old brass lantern with a hairline crack and a steady warm flame",
+     "aliases": ["lantern", "lamp"]},
+    {"room_slug": "forge", "name": "a tin kettle",
+     "seed": "a dented tin kettle, warm from the back of the hearth, smelling faintly of chamomile",
+     "aliases": ["kettle"]},
+    {"room_slug": "attic", "name": "a ribboned bundle of letters",
+     "seed": "a soft bundle of old letters tied with a strip of pale ribbon, the ink gone brown at the edges",
+     "aliases": ["letters", "bundle"], "readable": true},
+    {"room_slug": "hollow", "name": "a smooth river stone",
+     "seed": "a palm-sized river stone, cool and grey-green, worn perfectly smooth",
+     "aliases": ["stone", "pebble"]}
+  ],
+  "skills": [
+    {"name": "tend", "ui_hint": "Tend", "description": "Tend the moss and small green things in the hollow.",
+     "context_predicate": {"room_slug": "hollow"},
+     "effects_schema": {"allowed_kinds": ["narrate"]},
+     "prompt_template": "A visitor tends the moss and small green things of the birch hollow. Their gesture: {{ player_input }}\nReply with ONE soft, painterly `narrate` effect (cozy, Spiritfarer-warm, unhurried, no modern tech). Return JSON with an 'effects' list."},
+    {"name": "stoke", "ui_hint": "Stoke", "description": "Stoke the banked embers of the forge.",
+     "context_predicate": {"room_slug": "forge"},
+     "effects_schema": {"allowed_kinds": ["narrate"]},
+     "prompt_template": "A visitor stokes the banked embers of the quiet forge. Their gesture: {{ player_input }}\nReply with ONE soft, painterly `narrate` effect (cozy, Spiritfarer-warm, embers drifting like fireflies, no urgency). Return JSON with an 'effects' list."}
+  ]
+}

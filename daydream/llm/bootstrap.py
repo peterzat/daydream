@@ -237,6 +237,16 @@ class WorldSpec:
     skills: list[dict]
 
 
+def _validate_aliases(aliases: object, where: str) -> None:
+    """Optional `aliases`: when present, a list of non-empty strings."""
+    if aliases is None:
+        return
+    if not isinstance(aliases, list) or not all(
+        isinstance(a, str) and a.strip() for a in aliases
+    ):
+        raise BootstrapValidationError(f"{where} must be a list of non-empty strings")
+
+
 def _validate_envelope(env: dict) -> WorldSpec:
     """Strict validation of the LLM's JSON envelope. Raises
     BootstrapValidationError with a one-line operator-facing message
@@ -330,6 +340,16 @@ def _validate_envelope(env: dict) -> WorldSpec:
             raise BootstrapValidationError(
                 f"toons[{i}].presence_text must be string or null"
             )
+        _validate_aliases(t.get("aliases"), f"toons[{i}].aliases")
+        # Optional per-NPC `talk` dialogue binding: a {prompt_template, ...}
+        # the loader installs as a data skill and references from the object.
+        dlg = t.get("dialogue")
+        if dlg is not None:
+            if not isinstance(dlg, dict) or not isinstance(dlg.get("prompt_template"), str) \
+                    or not dlg["prompt_template"].strip():
+                raise BootstrapValidationError(
+                    f"toons[{i}].dialogue must be an object with a non-empty 'prompt_template'"
+                )
 
     items = env["items"]
     if not isinstance(items, list):
@@ -344,6 +364,7 @@ def _validate_envelope(env: dict) -> WorldSpec:
             raise BootstrapValidationError(
                 f"items[{i}].room_slug {it['room_slug']!r} not in rooms"
             )
+        _validate_aliases(it.get("aliases"), f"items[{i}].aliases")
 
     skills = env["skills"]
     if not isinstance(skills, list) or len(skills) != 2:
@@ -474,6 +495,15 @@ def _write_db(output_path: Path, spec: WorldSpec, world_display_name: str) -> No
                 "presence_text": t.get("presence_text"),
             }
             aliases = t.get("aliases") if isinstance(t.get("aliases"), list) else []
+            # Per-NPC `talk` dialogue binding: install the dialogue as a data
+            # skill (hidden from room-affordance lists via a sentinel predicate
+            # so it is reached ONLY via the talk verb) and reference it from the
+            # object's properties.dialogue, which `verbs._bound_dialogue_skill`
+            # consults first.
+            dlg = t.get("dialogue") if isinstance(t.get("dialogue"), dict) else None
+            if dlg is not None:
+                dlg_skill = f"dlg-{toon_slug}"
+                props["dialogue"] = dlg_skill
             cur.execute(
                 "INSERT INTO objects (id, world_id, kind, name, aliases_json, "
                 "location_id, prototype_id, properties_json, slot, "
@@ -490,6 +520,22 @@ def _write_db(output_path: Path, spec: WorldSpec, world_display_name: str) -> No
                     int(t["is_human_controlled"]),
                 ),
             )
+            if dlg is not None:
+                cur.execute(
+                    "INSERT INTO skills (id, name, kind, context_predicate_json, "
+                    "prompt_template, ui_hint, description, effects_schema_json, "
+                    "author, enabled) "
+                    "VALUES (?, ?, 'data', '{\"room_slug\": \"__npc_dialogue__\"}', "
+                    "?, ?, ?, ?, 'opus-load', 1)",
+                    (
+                        f"skill-{dlg_skill}",
+                        dlg_skill,
+                        dlg["prompt_template"],
+                        dlg.get("ui_hint") or "Talk",
+                        dlg.get("description") or f"Talk to {t['name']}.",
+                        json.dumps(dlg.get("effects_schema") or {}),
+                    ),
+                )
 
         # Designate the starting room (where toons wake after a rest): the
         # first human-controllable toon's room, else the first room.
