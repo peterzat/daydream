@@ -12,7 +12,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from daydream import config, db, events, objects, verbs
+from daydream import config, db, events, objects, rooms, verbs
 
 pytestmark = pytest.mark.tier_short
 
@@ -201,3 +201,37 @@ async def test_go_invalid_direction_refused():
     await verbs.execute_command("t-wren", "go", args="sideways")
     assert objects.get("t-wren").location_id == "r-meadow"
     assert "can't go" in _last_narrate().lower()
+
+
+# ---- navigate by place name (C6, SPEC 2026-06-30) ----------------------
+
+
+@pytest.mark.asyncio
+async def test_go_to_place_name_moves_to_adjacent_room():
+    # "go to bridge": the place resolves to the meadow's east exit (one hop).
+    await verbs.execute_command("t-wren", "go", args="to bridge")
+    assert objects.get("t-wren").location_id == "r-bridge"
+
+
+@pytest.mark.asyncio
+async def test_go_to_nonadjacent_place_is_refused():
+    # The attic is up from the forge -- two hops, not one exit from the meadow.
+    await verbs.execute_command("t-wren", "go", args="to attic")
+    assert objects.get("t-wren").location_id == "r-meadow"  # no move
+    assert "can't go" in _last_narrate().lower()
+
+
+@pytest.mark.asyncio
+async def test_go_to_unknown_place_is_refused():
+    await verbs.execute_command("t-wren", "go", args="to narnia")
+    assert objects.get("t-wren").location_id == "r-meadow"
+    assert "can't go" in _last_narrate().lower()
+
+
+def test_exit_direction_for_place_resolves_adjacent_only():
+    # Deterministic place-name -> exit-direction resolution (no LLM, no move).
+    meadow = rooms.get_room("r-meadow")
+    assert verbs._exit_direction_for_place(meadow, "bridge") == "east"
+    assert verbs._exit_direction_for_place(meadow, "the forge") == "north"
+    assert verbs._exit_direction_for_place(meadow, "attic") is None  # not adjacent
+    assert verbs._exit_direction_for_place(meadow, "narnia") is None  # unknown

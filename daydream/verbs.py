@@ -309,18 +309,64 @@ async def _handle_say(actor, room_id, dobj, iobj, args, spec) -> None:
     )
 
 
+_PLACE_ARTICLES = ("the ", "a ", "an ")
+
+
+def _normalize_place(text: str) -> str:
+    """Lowercase, drop a leading 'to ' ('go to the bridge') and a leading
+    article, so 'to the Bridge' -> 'bridge' for place-name matching."""
+    t = text.strip().lower()
+    if t.startswith("to "):
+        t = t[3:].strip()
+    for art in _PLACE_ARTICLES:
+        if t.startswith(art):
+            return t[len(art):].strip()
+    return t
+
+
+def _exit_direction_for_place(room: "rooms.Room", place: str) -> str | None:
+    """Map a place name / alias / slug to the direction of an ADJACENT exit of
+    `room`, or None. One hop only -- no multi-room pathfinding (SPEC 2026-06-30):
+    only rooms one exit away from `room` are considered."""
+    needle = _normalize_place(place)
+    if not needle:
+        return None
+    for direction, dest_id in room.exits.items():
+        dest = objects.get(dest_id)
+        if dest is None or dest.kind != "room":
+            continue
+        names = {dest.name.lower()}
+        names.update(a.lower() for a in (dest.aliases or []))
+        for key in ("slug", "title"):
+            v = dest.properties.get(key)
+            if isinstance(v, str) and v:
+                names.add(v.lower())
+        if needle in names:
+            return direction
+    return None
+
+
 async def _handle_go(actor, room_id, dobj, iobj, args, spec) -> None:
-    direction = args.strip().lower()
-    if not direction:
+    raw = args.strip()
+    if not raw:
         _narrate(room_id, "Go where?")
         return
     room = rooms.get_room(room_id)
     if room is None:
         _narrate(room_id, "You are nowhere recognizable.")
         return
+    direction = raw.lower()
     target_id = room.exits.get(direction)
     if target_id is None:
-        _narrate(room_id, f"You can't go {direction} from here.")
+        # Not a literal direction: try "go to <place>" / "go <place>" by
+        # resolving the place name/alias/slug to an ADJACENT exit (one hop, no
+        # pathfinding). SPEC 2026-06-30.
+        resolved = _exit_direction_for_place(room, raw)
+        if resolved is not None:
+            direction = resolved
+            target_id = room.exits.get(direction)
+    if target_id is None:
+        _narrate(room_id, f"You can't go {raw} from here.")
         return
     objects.move(actor.id, target_id)
     # The move event's room_id is the DEPARTURE room so the WS broadcast filter

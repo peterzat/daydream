@@ -91,6 +91,26 @@ async def test_verb_plus_name_is_fast_path(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_look_at_name_grounds_to_examine(monkeypatch):
+    # "look at <name>" routes to examine the named in-scope object (a bare
+    # `look` describes the room). Deterministic fast-path, zero LLM calls.
+    spy = _mock_llm(monkeypatch, {"verb": "none"})
+    objects.move("t-wren", "r-meadow")  # the lantern is here
+    p = await parser.parse("t-wren", "look at the lantern")
+    assert p.verb == "examine" and p.dobj_id == "i-lantern"
+    spy.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_look_at_npc_grounds_to_examine(monkeypatch):
+    # The fixture co-locates Wren with Rook in r-forge.
+    spy = _mock_llm(monkeypatch, {"verb": "none"})
+    p = await parser.parse("t-wren", "look at rook")
+    assert p.verb == "examine" and p.dobj_id == "t-rook"
+    spy.assert_not_called()
+
+
+@pytest.mark.asyncio
 async def test_legacy_skill_name_is_fast_path(monkeypatch):
     # Install a room-affordance skill and confirm "<name> ..." fast-paths.
     db.get_conn().execute(

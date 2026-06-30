@@ -132,6 +132,16 @@ def _fast_path(actor_id: str, text: str, room: rooms.Room | None) -> Parse | Non
     head = parts[0].lower()
     rest = parts[1].strip() if len(parts) > 1 else ""
 
+    # "look at <name>" -> examine the named in-scope object. A bare `look`
+    # describes the room and ignores any target, so the targeted form is routed
+    # explicitly to examine rather than a room look (SPEC 2026-06-30).
+    if head == "look" and rest.lower().startswith("at "):
+        target = _strip_article(rest[3:].strip())
+        obj = objects.find_in_scope_by_name(actor_id, target) if target else None
+        if obj is not None and "examine" in objects.verbs_for(obj):
+            return Parse("examine", dobj_id=obj.id)
+        return None  # "look at <unresolved>" -> hand to the LLM to ground
+
     # A bare / explicit closed verb.
     spec = verbs.get(head)
     if spec is not None:
