@@ -15,8 +15,11 @@ Protocol:
     runs the data pipeline; `none` / LLM-outage degrade to a gentle narration.
 
 Toon-slot-management resolves the controlled toon per session (see
-`daydream/api/slots.py`); an unclaimed session falls through to the legacy
-default `t-wren` so existing tests + the single-session flow keep working."""
+`daydream/api/slots.py`); a session that controls no toon (fresh connect,
+after "leave the dream", or a kicked/deleted toon) is routed to the character
+picker via a `needs_toon` frame — picker-first entry (SPEC 2026-06-30). There
+is no default-toon fallback: an unresolved session never silently controls an
+arbitrary toon."""
 
 import asyncio
 import logging
@@ -34,11 +37,6 @@ from daydream.skills import registry
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-# Legacy default actor when a session hasn't claimed a slot. Single-user
-# v1 friend-scope: the seeded Wren toon at slot 1 catches every
-# unclaimed session. Removed in v2 multi-user-shared-world (multiple
-# sessions can't share one default toon).
-LEGACY_TOON_ID = "t-wren"
 # Event kinds emitted by `daydream.skills.effects` allowlist handlers
 # that mutate observable room state. When one of these reaches the
 # broadcast loop, the WS layer pushes a fresh state_snapshot so the
@@ -63,20 +61,23 @@ SNAPSHOT_HISTORY_DEPTH = 50
 _REPLAY_RECENT = object()
 
 
-def _resolve_controlled_toon_id(session_id: str | None) -> str:
-    """Return the toon id this session controls. Looks up the toons
-    table for a row with matching `controller_session` (set by the
-    slot picker's create / claim endpoints); falls back to
-    `LEGACY_TOON_ID` when no row matches. The fallback covers
-    sessions that haven't claimed a slot (legacy single-user flow,
-    test fixtures that don't go through the slot picker, the WS
-    connection from a freshly-authed session before its first
-    slot interaction)."""
+def _resolve_controlled_toon_id(session_id: str | None) -> str | None:
+    """Return the toon id this session controls, or None if it controls none.
+
+    A match requires a toons row whose `controller_session` equals
+    `session_id` (set by the slot picker's create / claim endpoints) that is
+    not kicked and is human-controlled (`toons.get_toon_by_session`). A None
+    return routes the connection to the character picker (a `needs_toon`
+    frame) rather than auto-controlling a default toon: picker-first entry
+    (SPEC 2026-06-30) removed the legacy `t-wren` fallback, which silently
+    resolved every unclaimed session to a single seeded toon and, in a
+    `world load`ed world (uuid'd ids, no literal `t-wren`), to a phantom
+    that no-op'd every input."""
     if session_id:
         t = toons.get_toon_by_session(session_id)
         if t is not None:
             return t.id
-    return LEGACY_TOON_ID
+    return None
 
 
 def _current_room_id(toon_id: str) -> str:
@@ -387,20 +388,19 @@ async def ws_endpoint(ws: WebSocket):
         await ws.close(code=status.WS_1008_POLICY_VIOLATION)
         return
     # Resolve the controlled toon for this connection. Slot picker's
-    # create / claim endpoints set controller_session = <session id>;
-    # an unclaimed session falls through to LEGACY_TOON_ID.
+    # create / claim endpoints set controller_session = <session id>.
     session_id = session.get("id") if isinstance(session, dict) else None
-    # A session that left the dream (and hasn't re-picked a toon) routes to the
-    # character picker rather than silently dropping into the legacy fallback.
-    if (
-        isinstance(session, dict)
-        and session.get("left")
-        and (session_id is None or toons.get_toon_by_session(session_id) is None)
-    ):
+    toon_id = _resolve_controlled_toon_id(session_id)
+    if toon_id is None:
+        # No claimed/controllable toon (a fresh connect, a session that left
+        # the dream, or one whose toon was kicked/deleted): route to the
+        # character picker instead of auto-controlling a default toon
+        # (picker-first entry, SPEC 2026-06-30). This subsumes the prior
+        # `left`-flag branch — leaving the dream rests the toon, so it
+        # resolves to None here.
         await ws.accept()
         await ws.send_json({"kind": "needs_toon"})
         return
-    toon_id = _resolve_controlled_toon_id(session_id)
     await ws.accept()
     # Subscribe before snapshot so any events that land while we yield to send
     # the snapshot are captured in the queue; pin last_seq here, then drop any

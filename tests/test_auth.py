@@ -154,14 +154,17 @@ def test_tailscale_login_post_succeeds_regardless_of_password(monkeypatch):
 
 def test_tailscale_ws_accepts_without_prior_login(monkeypatch):
     """WebSocket endpoint uses the same is_authed helper; tailscale mode
-    means no session cookie is required."""
+    means no session cookie is required. The connection is ACCEPTED (not
+    closed 1008); with no claimed toon it routes to the character picker
+    (a `needs_toon` frame) under picker-first entry (SPEC 2026-06-30),
+    rather than auto-controlling a default toon."""
     from starlette.websockets import WebSocketDisconnect
     _make_tailnet(monkeypatch)
     with TestClient(app) as client:
         try:
             with client.websocket_connect("/ws") as ws:
-                snap = ws.receive_json()
-            assert snap["kind"] == "state_snapshot"
+                frame = ws.receive_json()
+            assert frame == {"kind": "needs_toon"}
         except WebSocketDisconnect as e:
             raise AssertionError(
                 f"tailscale WS should accept without login, got disconnect {e}"

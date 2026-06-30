@@ -40,6 +40,16 @@ def _login(client: TestClient) -> None:
     assert r.status_code in (200, 303), f"login failed: {r.status_code} {r.text}"
 
 
+def _claim_wren(client: TestClient) -> None:
+    """Bind the seeded Wren (slot 1) to this session so a WS connect resolves
+    a controlled toon (picker-first entry, SPEC 2026-06-30, removed the
+    default-toon fallback). The id stays `t-wren`; world B is migration-seeded
+    too, so the cached toon id re-resolves there after a swap."""
+    assert client.post("/api/slots/1/kick").status_code == 200
+    rc = client.post("/api/slots/1/claim")
+    assert rc.status_code == 200 and rc.json()["id"] == "t-wren", rc.text
+
+
 def _make_world(path, *, meadow_title=None, extra_migration=None):
     """Build a standalone, fully-seeded world DB at `path`. Optionally rename
     the meadow (a distinguishable marker) or stamp a bogus future migration
@@ -88,6 +98,7 @@ def test_hot_swap_open_socket_converges_on_new_world(tmp_path):
     _make_world(world_b, meadow_title=MARKER_TITLE)
     with TestClient(app) as client:
         _login(client)
+        _claim_wren(client)
         with client.websocket_connect("/ws") as ws:
             snap_a = ws.receive_json()
             assert snap_a["kind"] == "state_snapshot"
@@ -172,6 +183,7 @@ def test_hot_swap_failed_copy_restores_original_world(tmp_path, monkeypatch):
 
     with TestClient(app) as client:
         _login(client)
+        _claim_wren(client)
         original = _meadow_title(config.live_db_path())
         monkeypatch.setattr(db.shutil, "copyfile", boom)
         r = client.post("/api/world/swap", json={"target": str(world_b)})

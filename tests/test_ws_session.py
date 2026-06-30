@@ -29,9 +29,19 @@ def _login(client: TestClient) -> None:
     assert r.status_code in (200, 303), f"login failed: {r.status_code} {r.text}"
 
 
+def _claim_wren(client: TestClient) -> None:
+    """Bind the seeded Wren (slot 1) to this session, keeping the `t-wren` id.
+    Picker-first entry (SPEC 2026-06-30) has no default-toon fallback; the seed
+    marks Wren human-controlled, so adopting it requires a prior kick."""
+    assert client.post("/api/slots/1/kick").status_code == 200
+    rc = client.post("/api/slots/1/claim")
+    assert rc.status_code == 200 and rc.json()["id"] == "t-wren", rc.text
+
+
 def test_fresh_session_empty_log_reconnect_resumes():
     with TestClient(app) as client:
         _login(client)
+        _claim_wren(client)
         # Seed prior room history (meadow is t-wren's starting room).
         events.append(
             "system", None, "narrate", {"text": "an old whisper"}, room_id="r-meadow"

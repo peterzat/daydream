@@ -26,8 +26,16 @@ def fresh_state(tmp_path: Path, monkeypatch):
 
 
 def _login(client: TestClient) -> None:
+    """Log in and claim the seeded Wren (slot 1) as this session's toon.
+    Picker-first entry (SPEC 2026-06-30) dropped the default-toon fallback,
+    so a WS connection resolves a toon only when the session has claimed one.
+    Kick-then-claim because the seed marks Wren human-controlled; the id stays
+    `t-wren` so id-pinned assertions hold."""
     r = client.post("/api/login", data={"password": "test-password"})
     assert r.status_code in (200, 303), f"login failed: {r.status_code} {r.text}"
+    assert client.post("/api/slots/1/kick").status_code == 200
+    rc = client.post("/api/slots/1/claim")
+    assert rc.status_code == 200 and rc.json()["id"] == "t-wren", rc.text
 
 
 def _recv_until_snapshot(ws) -> dict:

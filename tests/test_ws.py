@@ -10,7 +10,7 @@ import pytest
 from fastapi.testclient import TestClient
 from starlette.websockets import WebSocketDisconnect
 
-from daydream import db, events
+from daydream import db, events, toons
 from daydream.server import app
 
 pytestmark = pytest.mark.tier_medium
@@ -26,10 +26,32 @@ def fresh_state(tmp_path: Path, monkeypatch):
     events.reset_subscribers()
 
 
-def _login(client: TestClient) -> None:
+def _login_only(client: TestClient) -> None:
     # TestClient follows the 303 to / by default, so accept either status.
     r = client.post("/api/login", data={"password": "test-password"})
     assert r.status_code in (200, 303), f"login failed: {r.status_code} {r.text}"
+
+
+def _claim_wren(client: TestClient) -> None:
+    """Bind the seeded Wren (slot 1) to the caller's session, keeping its
+    literal `t-wren` id so id-pinned assertions hold. The seed marks Wren
+    human-controlled, so adopting it requires a prior kick (rest)."""
+    assert client.post("/api/slots/1/kick").status_code == 200
+    r = client.post("/api/slots/1/claim")
+    assert r.status_code == 200, r.text
+    assert r.json()["id"] == "t-wren"
+
+
+def _login(client: TestClient) -> None:
+    """Log in AND claim the seeded Wren as this session's controlled toon.
+
+    Picker-first entry (SPEC 2026-06-30) removed the legacy auto-control of a
+    default toon, so a WS connection resolves a toon only when the session has
+    claimed one. Most WS tests act as Wren, so the default login helper claims
+    it (preserving the `t-wren` id). Tests that need an unclaimed session
+    (picker routing) or create their own toon use `_login_only`."""
+    _login_only(client)
+    _claim_wren(client)
 
 
 def test_ws_unauthed_is_rejected():
@@ -165,11 +187,11 @@ def test_ws_canonical_examine_echoes_seed_sentinel():
 
 
 def test_ws_dispatch_uses_claimed_slot_toon_not_legacy_wren():
-    """After claiming a slot, the WS resolves the controlled toon to
-    that slot's toon. Subsequent input events have actor_id matching
-    the claimed toon, not 't-wren' (the legacy fallback)."""
+    """After creating a toon in a slot, the WS resolves the controlled toon
+    to that slot's toon. Subsequent input events have actor_id matching the
+    created toon (not a default toon — picker-first entry has no fallback)."""
     with TestClient(app) as client:
-        _login(client)
+        _login_only(client)
         # Claim slot 2 with a fresh toon.
         r = client.post(
             "/api/slots/2/create",
@@ -186,17 +208,60 @@ def test_ws_dispatch_uses_claimed_slot_toon_not_legacy_wren():
     assert evt["event"]["actor_id"] == claimed_id
 
 
-def test_ws_unclaimed_session_falls_back_to_t_wren():
-    """A session that hasn't claimed a slot dispatches as t-wren
-    (legacy fallback). Verifies the fallback path explicitly."""
+def test_ws_unclaimed_session_routes_to_picker():
+    """Picker-first entry (SPEC 2026-06-30): a session that hasn't claimed a
+    slot receives a `needs_toon` frame instead of auto-controlling a default
+    toon. The legacy `t-wren` fallback is removed, so no input ever silently
+    no-ops for lack of a resolved actor."""
     with TestClient(app) as client:
-        _login(client)
+        _login_only(client)
         # Do NOT claim a slot.
         with client.websocket_connect("/ws") as ws:
-            ws.receive_json()  # snapshot
-            ws.send_json({"kind": "input", "text": "say hello"})
-            evt = ws.receive_json()
-    assert evt["event"]["actor_id"] == "t-wren"
+            assert ws.receive_json() == {"kind": "needs_toon"}
+
+
+def test_picker_first_in_world_loaded_world(tmp_path, monkeypatch):
+    """C1 canonical (SPEC 2026-06-30): against a `world load`ed world (uuid'd
+    toon ids, no literal `t-wren`), an unclaimed session routes to the picker,
+    and a created toon enters the dream and acts ("go north" moves). This is
+    the production world shape where the removed `t-wren` fallback used to
+    resolve a phantom that no-op'd every input."""
+    import json
+
+    from daydream import config
+    from daydream.llm import bootstrap
+
+    monkeypatch.setenv("DAYDREAM_DATA_DIR", str(tmp_path))
+    db.close_db()
+    live = config.live_db_path()
+    live.parent.mkdir(parents=True, exist_ok=True)
+    envelope = json.loads((Path(__file__).resolve().parent.parent / "worlds" / "bunny.json").read_text())
+    bootstrap.load_world("bunny world", envelope, live)
+    db.close_db()
+
+    with TestClient(app) as client:
+        # A loaded world has uuid toon ids; the literal seed id does not exist.
+        assert toons.get_toon("t-wren") is None
+        _login_only(client)
+        # Unclaimed session -> picker, never a phantom toon.
+        with client.websocket_connect("/ws") as ws:
+            assert ws.receive_json() == {"kind": "needs_toon"}
+        # Create a toon (slot 2 is empty in bunny.json) -> a uuid id, not t-wren.
+        r = client.post(
+            "/api/slots/2/create", json={"name": "Fern", "appearance_seed": "a wisp of dusk"}
+        )
+        assert r.status_code == 200, r.text
+        created_id = r.json()["id"]
+        assert created_id and created_id != "t-wren"
+        # Now the session enters the dream and "go north" actually moves.
+        with client.websocket_connect("/ws") as ws:
+            snap = ws.receive_json()
+            assert snap["kind"] == "state_snapshot"
+            assert snap["room"]["slug"] == "meadow"
+            ws.send_json({"kind": "input", "text": "go north"})
+            move = ws.receive_json()
+        assert move["event"]["kind"] == "move"
+        assert move["event"]["actor_id"] == created_id
 
 
 def test_ws_llm_routed_input_dispatches_skill():
