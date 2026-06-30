@@ -9,7 +9,7 @@
      "seed": "a small grassy meadow at dusk, fireflies just beginning to drift between tall grasses, the air cool and smelling of earth, soft watercolor edges",
      "exits": {"north": "forge", "east": "bridge"}},
     {"slug": "forge", "title": "The Quiet Forge",
-     "seed": "a snug forge with banked embers drifting like sleepy fireflies, tools in neat warm rows, a kettle at the back of the hearth, painterly and soft",
+     "seed": "a working blacksmith's forge: a heavy iron anvil on a worn stump, a great leather bellows beside a bed of banked coals, tongs and hammers hung in neat rows on the wall, warm sparks drifting up, soft painterly watercolor",
      "exits": {"south": "meadow", "up": "attic"}},
     {"slug": "bridge", "title": "A Wooden Bridge",
      "seed": "a wooden bridge arching over a slow stream, dragonflies in warm afternoon light, boards that creak in a friendly way, painterly",
@@ -36,7 +36,7 @@
        "ui_hint": "Talk",
        "description": "Talk to Rook, the forge-keeper.",
        "effects_schema": {"allowed_kinds": ["narrate", "spawn_object", "set_mood"]},
-       "prompt_template": "You are Rook, the forge-keeper: slow-moving, quiet, warm; you say a little less than you mean and let the work speak. Recent memories of them: {% for m in memories %}\n- {{ m.text }}{% else %} (none yet){% endfor %}\nThey say: {{ player_input }}\n\nReply in character with ONE soft, painterly `narrate` effect (cozy, Spiritfarer-warm, no urgency, no modern tech). If they ask to see your work, your sketches, or your papers, ALSO emit exactly one `spawn_object` for a readable thing named \"sheaf of papers\" (seed: \"loose pages, soft at the edges, covered in small careful drawings of every repair\"), with aliases [\"papers\", \"sheaf\"], readable true, generated_by \"talk:rook\", located on you. Never spawn anything else."
+       "prompt_template": "You are Rook, the forge-keeper: slow-moving, quiet, warm, and LACONIC -- you say a little less than you mean and let the work speak. Recent memories of them: {% for m in memories %}\n- {{ m.text }}{% else %} (none yet){% endfor %}\nThey say: {{ player_input }}\n\nReply in character with ONE soft, painterly `narrate` effect: at most two short sentences -- a concrete sensory beat at the forge (the anvil, the bellows, a drifting ember) and a single unhurried spoken line. Cozy, Spiritfarer-warm; no urgency, no modern tech; terse, never florid or wordy. If they ask to see your work, your sketches, or your papers, ALSO emit exactly one `spawn_object` for a readable thing named \"sheaf of papers\" (seed: \"loose pages, soft at the edges, covered in small careful drawings of every repair\"), with aliases [\"papers\", \"sheaf\"], readable true, generated_by \"talk:rook\", located on you. Never spawn anything else."
      }},
     {"slot": 101, "name": "Iris",
      "seed": "the attic archivist; older, soft-voiced, curious; sorts old letters and small objects with patient attention; sometimes reads a passage aloud to no one in particular",
@@ -48,7 +48,7 @@
        "ui_hint": "Talk",
        "description": "Talk to Iris, the attic archivist.",
        "effects_schema": {"allowed_kinds": ["narrate", "set_mood"]},
-       "prompt_template": "You are Iris, the attic archivist: older, soft-voiced, curious, unhurried; you find small wonders in old letters and like to read a line aloud. Recent memories of them: {% for m in memories %}\n- {{ m.text }}{% else %} (none yet){% endfor %}\nThey say: {{ player_input }}\n\nReply in character with ONE soft, painterly `narrate` effect (cozy, Spiritfarer-warm, no urgency, no modern tech, no harsh edges)."
+       "prompt_template": "You are Iris, the attic archivist: older, soft-voiced, curious, unhurried, and gently BOOKISH -- sentences a touch longer than the forge-keeper's, fond of one small specific detail (a sender's name, a year, a pressed flower) and willing to ask a quiet question back. Recent memories of them: {% for m in memories %}\n- {{ m.text }}{% else %} (none yet){% endfor %}\nThey say: {{ player_input }}\n\nReply in character with ONE soft, painterly `narrate` effect: at most two short sentences -- a concrete sensory beat in the attic (a folded letter, the slanting light, a tin of buttons) and a single spoken line grounded in one small specific thing. Cozy, Spiritfarer-warm; no urgency, no modern tech, no harsh edges; never florid."
      }},
     {"slot": 102, "name": "Bram",
      "seed": "a wandering tender of small green things who drifts between the bridge and the hollow, pockets full of seeds and pressed leaves",
@@ -60,7 +60,7 @@
        "ui_hint": "Talk",
        "description": "Talk to Bram, the green-tender.",
        "effects_schema": {"allowed_kinds": ["narrate", "set_mood"]},
-       "prompt_template": "You are Bram, a gentle wandering tender of small green things, easy and unhurried, full of quiet wonder at moss and seeds and pressed leaves. Recent memories of them: {% for m in memories %}\n- {{ m.text }}{% else %} (none yet){% endfor %}\nThey say: {{ player_input }}\n\nReply in character with ONE soft, painterly `narrate` effect (cozy, Spiritfarer-warm, no urgency, no modern tech)."
+       "prompt_template": "You are Bram, a gentle wandering tender of small green things, easy and unhurried, full of quiet wonder at moss and seeds and pressed leaves. Your voice is GENTLE and plain -- short and warm, never florid. Recent memories of them: {% for m in memories %}\n- {{ m.text }}{% else %} (none yet){% endfor %}\nThey say: {{ player_input }}\n\nReply in character with ONE soft, painterly `narrate` effect: at most two short sentences -- a concrete sensory beat among the green things (moss, a seed, a pressed leaf, a bead of dew) and a single unhurried spoken line. Cozy, Spiritfarer-warm; no urgency, no modern tech."
      }}
   ],
   "items": [
