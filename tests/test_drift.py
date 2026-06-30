@@ -41,9 +41,10 @@ def test_compute_next_interval_idle_default():
 
 @pytest.mark.tier_short
 def test_compute_next_interval_busy_default():
-    """One or more subscribers => busy default (1800 s)."""
-    assert drift._compute_next_interval(1) == 1800.0
-    assert drift._compute_next_interval(7) == 1800.0
+    """One or more subscribers => the minutes-scale witnessed-drift cadence
+    (240 s), retuned down from the old 30-min busy cadence (SPEC 2026-06-30)."""
+    assert drift._compute_next_interval(1) == 240.0
+    assert drift._compute_next_interval(7) == 240.0
 
 
 @pytest.mark.tier_short
@@ -576,15 +577,14 @@ def test_pick_npc_empty_eligible_returns_none():
     assert drift._pick_npc([], rng=random.Random(0)) is None
 
 
-# ---- room-occupancy suppression (tier_medium, DB needed) ---------------
+# ---- witnessed drift in occupied rooms (tier_medium, DB needed) --------
 
 
 def _seed_human_in_room(room_id: str, slot: int = 2) -> None:
     """Insert a human-controlled toon into the named room, mimicking
     what the WS join path does. Keeps the test self-contained without
     pulling in the full TestClient stack. Slot defaults to 2 because
-    slot 1 is occupied by Wren (the seeded NPC-controlled toon from
-    migration 001)."""
+    slot 1 is occupied by Wren (the seeded slot-1 NPC from migration 001)."""
     db.get_conn().execute(
         "INSERT INTO objects (id, world_id, kind, name, location_id, "
         "prototype_id, properties_json, slot, is_human_controlled) VALUES "
@@ -597,80 +597,37 @@ def _seed_human_in_room(room_id: str, slot: int = 2) -> None:
 
 @pytest.mark.tier_medium
 @pytest.mark.asyncio
-async def test_tick_suppresses_drift_in_occupied_room():
-    """Place a human in r-forge (Rook's room) and r-meadow (Wren's
-    room). The tick must pick Iris; Rook and Wren are suppressed. Wren
-    (the seeded slot-1 NPC) is drift-eligible now that eligibility no
-    longer requires a per-NPC pool, so its room must be occupied too to
-    isolate the assertion on Iris."""
+async def test_tick_witnessed_in_occupied_room():
+    """Witnessed drift (SPEC 2026-06-30): a co-located NPC's beat fires in a
+    room a human occupies -- inverting the old occupancy suppression. With a
+    human in Rook's room, at least one narrate across several ticks lands in
+    r-forge, where the present player would see it."""
     from daydream import config
     db.init_live(migrations_dir=config.MIGRATIONS_DIR)
-    _seed_human_in_room("r-forge")
-    _seed_human_in_room("r-meadow", slot=4)
+    _seed_human_in_room("r-forge")  # a human co-located with Rook
     before_seq = events.max_seq()
-
-    # Run several ticks with varied seeds; every emitted narrate must
-    # be in Iris's room.
-    for seed in range(10):
+    for seed in range(20):
         await drift._tick(rng=random.Random(seed))
-    new_events = events.fetch_since(before_seq)
-    assert len(new_events) > 0, "no narrates emitted across 10 ticks"
-    from daydream import toons as toons_mod
-    iris = toons_mod.get_toon("t-iris")
-    assert iris is not None
-    for e in new_events:
-        assert e.room_id == iris.current_room_id, (
-            f"narrate landed in {e.room_id}, not Iris's room"
-        )
+    rooms_hit = {e.room_id for e in events.fetch_since(before_seq)}
+    assert "r-forge" in rooms_hit, "witnessed drift never fired in the occupied room"
 
 
 @pytest.mark.tier_medium
 @pytest.mark.asyncio
-async def test_tick_no_op_when_all_rooms_occupied():
-    """Humans in every NPC room → tick is a no-op (no narrate). Covers
-    Rook (r-forge), Iris (r-attic), and Wren (r-meadow); Wren is
-    drift-eligible now that eligibility no longer requires a per-NPC
-    pool, so its room must be occupied for the world to have zero
-    eligible NPCs."""
+async def test_tick_emits_even_when_all_rooms_occupied():
+    """Witnessed drift (SPEC 2026-06-30): even with a human in every NPC room,
+    a tick still emits a narrate -- occupancy no longer suppresses (the old
+    'all rooms occupied -> no-op' behavior is inverted)."""
     from daydream import config
     db.init_live(migrations_dir=config.MIGRATIONS_DIR)
     _seed_human_in_room("r-forge", slot=2)
     _seed_human_in_room("r-attic", slot=3)
     _seed_human_in_room("r-meadow", slot=4)
-    before_seq = events.max_seq()
-
-    emitted = await drift._tick(rng=random.Random(0))
-    assert emitted is False
-    assert events.fetch_since(before_seq) == []
-
-
-@pytest.mark.tier_medium
-@pytest.mark.asyncio
-async def test_tick_suppression_disabled_lets_drift_into_occupied_room(monkeypatch):
-    """With `DAYDREAM_DRIFT_SUPPRESS_OCCUPIED=0`, drift narrates fire
-    even when the player is in the NPC's room."""
-    from daydream import config
-    db.init_live(migrations_dir=config.MIGRATIONS_DIR)
-    monkeypatch.setenv("DAYDREAM_DRIFT_SUPPRESS_OCCUPIED", "0")
-    _seed_human_in_room("r-forge", slot=2)
-    _seed_human_in_room("r-attic", slot=3)
     before_seq = events.max_seq()
 
     emitted = await drift._tick(rng=random.Random(0))
     assert emitted is True
     assert len(events.fetch_since(before_seq)) == 1
-
-
-@pytest.mark.tier_medium
-def test_occupied_room_ids_returns_human_rooms_only():
-    """`_occupied_room_ids` returns only rooms with at least one
-    human-controlled, non-kicked toon."""
-    from daydream import config
-    db.init_live(migrations_dir=config.MIGRATIONS_DIR)
-    assert drift._occupied_room_ids() == set()
-
-    _seed_human_in_room("r-forge")
-    assert drift._occupied_room_ids() == {"r-forge"}
 
 
 # ---- mood-affecting drift (tier_short pure + tier_medium DB) -----------
@@ -770,24 +727,25 @@ async def test_maybe_transition_mood_persists_to_db(monkeypatch):
     assert rook.mood == new_mood
 
 
-# ---- composed path: occupancy + weighted + mood-drift + LLM ------------
+# ---- composed path: weighted + mood-drift + LLM ------------------------
 
 
 @pytest.mark.tier_medium
 @pytest.mark.asyncio
-async def test_tick_composed_iris_only_with_occupancy_and_mood_drift(monkeypatch):
-    """Compose: human in r-forge (Rook suppressed) + LLM-driven path
-    + mood-drift on. Multiple ticks: every narrate lands on Iris;
-    Iris's mood eventually transitions away from `thoughtful`."""
+async def test_tick_composed_iris_only_with_mood_drift(monkeypatch):
+    """Compose: the LLM-driven path + mood-drift on, isolated to a single NPC
+    (Iris) by removing the others (occupancy no longer suppresses). Multiple
+    ticks: every narrate lands on Iris; Iris's mood eventually transitions
+    away from `thoughtful`."""
     from daydream import config
     db.init_live(migrations_dir=config.MIGRATIONS_DIR)
     monkeypatch.setenv("DAYDREAM_DRIFT_LLM_ENABLED", "1")
     monkeypatch.setenv("DAYDREAM_DRIFT_MOOD_DRIFT_ENABLED", "1")
     monkeypatch.setenv("DAYDREAM_DRIFT_MOOD_DRIFT_PROB", "1.0")
-    _seed_human_in_room("r-forge")
-    # Wren (r-meadow) is drift-eligible too now; occupy its room so the
-    # composed assertion stays isolated on Iris.
-    _seed_human_in_room("r-meadow", slot=4)
+    # Isolate on Iris: remove the other drift-eligible NPCs.
+    db.get_conn().execute(
+        "DELETE FROM objects WHERE kind = 'toon' AND id IN ('t-rook', 't-wren')"
+    )
     monkeypatch.setattr(
         "daydream.llm.client.acompletion_json",
         AsyncMock(return_value={"narrate": "Iris hums quietly to herself in the slanting light."}),
@@ -882,16 +840,15 @@ async def test_tick_counter_canned_fallback_increments_when_llm_fails(monkeypatc
 
 @pytest.mark.tier_medium
 @pytest.mark.asyncio
-async def test_tick_counter_noop_increments_when_no_eligible_npcs():
-    """No eligible NPCs (every NPC room occupied) → counter `noop`
-    increments; others stay 0. Occupies Wren's r-meadow alongside
-    Rook's r-forge and Iris's r-attic, since Wren is drift-eligible now
-    that eligibility no longer requires a per-NPC pool."""
+async def test_tick_counter_noop_increments_when_no_npcs():
+    """No NPCs at all → counter `noop` increments; others stay 0. Occupancy no
+    longer suppresses (witnessed drift, SPEC 2026-06-30), so an empty NPC
+    roster is how a tick legitimately no-ops."""
     from daydream import config
     db.init_live(migrations_dir=config.MIGRATIONS_DIR)
-    _seed_human_in_room("r-forge", slot=2)
-    _seed_human_in_room("r-attic", slot=3)
-    _seed_human_in_room("r-meadow", slot=4)
+    db.get_conn().execute(
+        "DELETE FROM objects WHERE kind = 'toon' AND is_human_controlled = 0"
+    )
 
     emitted = await drift._tick(rng=random.Random(0))
     assert emitted is False

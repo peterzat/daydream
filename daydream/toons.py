@@ -93,16 +93,6 @@ def get_npcs() -> list[Toon]:
     )
 
 
-def occupied_room_ids() -> set[str]:
-    """Rooms holding at least one human-controlled, non-kicked toon. Drift
-    suppresses narrates in these rooms."""
-    rows = db.get_conn().execute(
-        "SELECT DISTINCT location_id FROM objects WHERE kind = 'toon' "
-        "AND is_human_controlled = 1 AND kicked_at IS NULL AND location_id IS NOT NULL"
-    ).fetchall()
-    return {r["location_id"] for r in rows}
-
-
 def set_current_room(toon_id: str, room_id: str) -> None:
     """Move a toon into `room_id` (updates the object's location_id)."""
     objects.move(toon_id, room_id)

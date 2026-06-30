@@ -28,9 +28,15 @@ The existing WS broadcast machinery routes the narrate to in-room
 subscribers; out-of-room subscribers are filtered.
 
 Cadence: env-overridable. Default 300 s (5 min) when no WS subscribers;
-1800 s (30 min) when >=1 subscriber. Decision is made at each wake-up,
-so a connection that arrives mid-sleep takes effect on the next
-iteration.
+240 s (4 min) when >=1 subscriber, so a present player WITNESSES ambient
+drift periodically (the world is alive in-frame) -- retuned down from the
+old 30-min "busy" cadence, which existed precisely to keep drift away from
+connected players. Decision is made at each wake-up, so a connection that
+arrives mid-sleep takes effect on the next iteration.
+
+Witnessed drift (SPEC 2026-06-30): drift is NOT suppressed in a room a human
+occupies. A co-located NPC's beat reaches the present player through the
+room-filtered WS broadcast; ticks targeting an empty room are simply unseen.
 
 Toggles:
 - `DAYDREAM_DRIFT_ENABLED` (default 1; 0 in tests) — disables the
@@ -156,7 +162,10 @@ _GENERIC_DRIFT_POOL: dict[str, list[str]] = {
 
 
 _DEFAULT_IDLE_SECONDS = 300.0
-_DEFAULT_BUSY_SECONDS = 1800.0
+# Minutes-scale so a present player witnesses ambient drift periodically
+# (witnessed drift, SPEC 2026-06-30) -- retuned down from the old 1800 s
+# (30 min) "busy" cadence that deliberately hid drift from connected players.
+_DEFAULT_BUSY_SECONDS = 240.0
 _DEFAULT_LLM_TOP_K = 3
 _DEFAULT_MOOD_DRIFT_PROB = 0.2
 
@@ -241,13 +250,6 @@ def _is_llm_enabled() -> bool:
     and `DAYDREAM_MEMORY_ENABLED` so each axis is independently
     controllable when debugging."""
     return os.environ.get("DAYDREAM_DRIFT_LLM_ENABLED", "1") != "0"
-
-
-def _is_occupancy_suppression_enabled() -> bool:
-    """Don't drift in a room a player is currently in (would feel
-    intrusive). Default on in production; tests opt out per-test via
-    monkeypatch when they need the legacy "drift anywhere" behavior."""
-    return os.environ.get("DAYDREAM_DRIFT_SUPPRESS_OCCUPIED", "1") != "0"
 
 
 def _is_mood_drift_enabled() -> bool:
@@ -341,34 +343,6 @@ def _pick_canned_line(
     if name is not None:
         line = line.replace("{name}", name)
     return line
-
-
-def _occupied_room_ids() -> set[str]:
-    """Rooms with at least one human-controlled, non-kicked toon
-    present. Drift suppresses narrates in these rooms when occupancy
-    suppression is enabled (default)."""
-    try:
-        return toons.occupied_room_ids()
-    except Exception as e:
-        logger.warning("drift: occupancy query failed: %s", e, exc_info=True)
-        return set()
-
-
-def _eligible_npcs(npcs: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Filter NPC list to those eligible for a drift tick: every NPC
-    (the `_list_npcs` query already restricts to `is_human_controlled=0`
-    AND `kicked_at IS NULL`) whose current room has no human-controlled
-    toon present when occupancy suppression is on.
-
-    No per-NPC pool-membership check: bootstrapped NPCs with no
-    `_DRIFT_POOLS` entry are eligible because `_pick_canned_line` falls
-    through to `_GENERIC_DRIFT_POOL`, so eligibility no longer gates on
-    having a hand-authored pool."""
-    if _is_occupancy_suppression_enabled():
-        occupied = _occupied_room_ids()
-    else:
-        occupied = set()
-    return [n for n in npcs if n["current_room_id"] not in occupied]
 
 
 def _pick_npc(
@@ -501,16 +475,19 @@ async def _tick(rng: random.Random | None = None) -> bool:
     so the loop body's contract stays uniform.
 
     Order of operations:
-    1. List NPCs + filter for non-empty pool + room-occupancy suppression.
-    2. Weighted-random select from eligible.
+    1. List all NPCs (witnessed drift: no room-occupancy filter -- a
+       co-located NPC's beat reaches the present player via the broadcast).
+    2. Weighted-random select from them.
     3. Try LLM-driven narrate; on failure fall back to canned-pool.
     4. Emit narrate event.
     5. Probabilistically transition the chosen NPC's mood.
 
     `rng` injection lets tests seed selection deterministically."""
     rng = rng if rng is not None else random
-    eligible = _eligible_npcs(_list_npcs())
-    chosen = _pick_npc(eligible, rng=rng)
+    # Witnessed drift (SPEC 2026-06-30): every non-kicked NPC is eligible
+    # regardless of room occupancy, so a co-located NPC's ambient beat reaches
+    # the present player through the room-filtered WS broadcast.
+    chosen = _pick_npc(_list_npcs(), rng=rng)
     if chosen is None:
         _TICK_COUNTS["noop"] += 1
         return False
