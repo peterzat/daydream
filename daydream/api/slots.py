@@ -97,19 +97,27 @@ async def create_slot(slot: int, request: Request) -> dict:
 
 @router.post("/api/slots/{slot}/claim")
 async def claim_slot(slot: int, request: Request) -> dict:
-    """Adopt a kicked-NPC toon as the requester's controlled toon.
-    Errors:
+    """Adopt a toon as the requester's controlled toon. A kicked/uncontrolled
+    toon is always claimable; a toon controlled by ANOTHER session is claimable
+    only when that session has no live WS connection (an abandoned claim) -- an
+    active player's toon is protected. Errors:
     - 404 slot empty or not in 1..5.
-    - 409 slot's toon is currently controlled (kick it first)."""
+    - 409 slot's toon is held by an active player (kick it first)."""
     _require_authed(request)
     _validate_slot(slot)
     sid = _session_id(request)
-    toon, reason = toons.claim_slot(slot, sid)
+    # Import lazily to avoid a module-load import cycle; ws imports nothing here.
+    from daydream.api import ws as ws_mod
+
+    toon, reason = toons.claim_slot(
+        slot, sid, can_take_over=lambda cs: not ws_mod.is_session_live(cs)
+    )
     if reason == "empty":
         raise HTTPException(status_code=404, detail="slot is empty")
     if reason == "controlled":
         raise HTTPException(
-            status_code=409, detail="slot is currently controlled; kick first"
+            status_code=409,
+            detail="slot is held by an active player; kick first",
         )
     assert toon is not None
     request.session.pop("left", None)  # picking a toon re-enters the dream

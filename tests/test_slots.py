@@ -173,17 +173,38 @@ def test_claim_on_empty_slot_returns_404():
         assert r.status_code == 404
 
 
-def test_claim_on_currently_controlled_slot_returns_409():
-    """Claim on a still-controlled slot (not kicked) → 409."""
+def test_claim_controlled_by_live_session_returns_409(monkeypatch):
+    """A toon held by a session with a LIVE WS connection is protected: a claim
+    from another session is refused with 409 (kick first)."""
+    from daydream.api import ws as ws_mod
+
     with TestClient(app) as client:
         _login(client)
         client.post(
             "/api/slots/2/create",
             json={"name": "Mira", "appearance_seed": "a small fox"},
         )
-        # Claim while still controlled.
+        monkeypatch.setattr(ws_mod, "is_session_live", lambda sid: True)
         r = client.post("/api/slots/2/claim")
         assert r.status_code == 409
+
+
+def test_claim_takes_over_when_controller_not_live(monkeypatch):
+    """A toon whose controlling session has NO live WS connection (an abandoned
+    claim, e.g. the tab was closed) is reclaimable: the claim succeeds
+    (takeover) rather than 409."""
+    from daydream.api import ws as ws_mod
+
+    with TestClient(app) as client:
+        _login(client)
+        client.post(
+            "/api/slots/2/create",
+            json={"name": "Mira", "appearance_seed": "a small fox"},
+        )
+        monkeypatch.setattr(ws_mod, "is_session_live", lambda sid: False)
+        r = client.post("/api/slots/2/claim")
+        assert r.status_code == 200, r.text
+        assert r.json()["claimed_by_me"] is True
 
 
 def test_kicked_toon_keeps_inventory_and_memories():

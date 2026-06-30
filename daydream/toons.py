@@ -215,15 +215,25 @@ def _toon_properties(*, appearance_seed: str, mood: str = "curious") -> str:
     )
 
 
-def claim_slot(slot: int, session_id: str) -> tuple[Toon | None, str | None]:
+def claim_slot(
+    slot: int, session_id: str, *, can_take_over=None
+) -> tuple[Toon | None, str | None]:
     """Adopt a kicked-NPC toon as the human player. Returns `(toon, None)` on
     success, `(None, reason)` on failure where reason is 'empty' or
-    'controlled'. Wakes the toon in the world's starting room."""
+    'controlled'. Wakes the toon in the world's starting room.
+
+    `can_take_over(controller_session) -> bool` (optional): when the slot is
+    controlled by ANOTHER session, adopt it anyway if this returns True -- used
+    to reclaim a toon whose controlling session has no live WS connection (an
+    abandoned claim). Default refuses any controlled toon."""
     t = _slot_occupied(slot)
     if t is None:
         return (None, "empty")
     if t.is_human_controlled and t.kicked_at is None:
-        return (None, "controlled")
+        controller = t.controller_session
+        takeover = bool(can_take_over and controller and can_take_over(controller))
+        if not takeover:
+            return (None, "controlled")
     from daydream import rooms
 
     spawn = rooms.starting_room_id(t.world_id) or t.current_room_id
