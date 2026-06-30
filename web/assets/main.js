@@ -14,6 +14,7 @@ let pendingEl = null; // transient "thinking..." line during a slow (LLM) action
 let pendingTimer = null; // its safety timeout
 let loadedBuild = null; // server build SHA this page's JS loaded against (redeploy detection)
 let loadedWorldVersion = null;
+let lastCmd = null; // {key, t} -- debounce an accidental double-fire of one command
 
 // Reconnect backoff: a dropped socket retries on a gentle, capped exponential
 // delay behind a single calm "the dream is sleeping" overlay (not a growing
@@ -167,7 +168,7 @@ function renderSnapshot(snap) {
     }
     const div = document.createElement("div");
     div.className = "evt evt-narrate";
-    div.innerHTML = linkifyEntities(text);
+    div.innerHTML = linkifyEntities(text, entities);
     div.querySelectorAll(".entity-link").forEach((span) => {
       span.onclick = () => onObjectClick(span.dataset.objectId);
     });
@@ -310,7 +311,10 @@ function onObjectClick(objectId, objectVerbs) {
   // toon + thing). A staged verb the object doesn't support is a no-op, so we
   // never prompt for talk text on a non-toon.
   const verb = stagedVerb || "examine";
-  if (stagedVerb && !(objectVerbs || []).includes(stagedVerb)) return;
+  // Gate ONLY when we know the object's verbs (scene chips pass them). Entity-
+  // link mentions in narration call this with no verbs list, so don't silently
+  // drop their click -- let the server validate the verb (it always does).
+  if (stagedVerb && objectVerbs && !objectVerbs.includes(stagedVerb)) return;
   if (verb === "talk") {
     const msg = (window.prompt("say what to them?") || "").trim();
     sendCommand("talk", objectId, msg);
@@ -344,7 +348,7 @@ function renderEvent(e) {
       e.payload.text || ""
     )}&rdquo;`;
   } else if (e.kind === "narrate") {
-    div.innerHTML = linkifyEntities(e.payload.text || "");
+    div.innerHTML = linkifyEntities(e.payload.text || "", entities);
     div.querySelectorAll(".entity-link").forEach((span) => {
       span.onclick = () => onObjectClick(span.dataset.objectId);
     });
@@ -396,6 +400,13 @@ function sendCommand(verb, dobjId, args) {
   // The structured command frame: the click path. Bypasses the parser, so a
   // deterministic verb makes no LLM call (the server's verb handler may).
   if (!ws || ws.readyState !== WebSocket.OPEN) return;
+  // Some browsers fire a click handler twice on a single tap, which would echo
+  // the resulting line twice (e.g. a doubled "You examine ..."). Drop an
+  // identical command (verb+dobj+args) repeated within 400ms.
+  const key = verb + "|" + (dobjId || "") + "|" + (args || "");
+  const now = Date.now();
+  if (lastCmd && lastCmd.key === key && now - lastCmd.t < 400) return;
+  lastCmd = { key, t: now };
   ws.send(
     JSON.stringify({
       kind: "command",
@@ -410,22 +421,31 @@ function escapeRegex(s) {
   return String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-function linkifyEntities(text) {
-  // Wrap in-scope object mentions in clickable spans (after escaping, so the
-  // injected markup is the only HTML). Longest aliases first (entities is
-  // pre-sorted) to prefer "sheaf of papers" over a bare "papers".
-  let html = escape(text);
-  for (const ent of entities) {
-    if (!ent.alias) continue;
-    const re = new RegExp("\\b(" + escapeRegex(escape(ent.alias)) + ")\\b", "gi");
-    html = html.replace(
-      re,
-      '<span class="entity-link" data-object-id="' +
-        escape(ent.object_id) +
-        '">$1</span>'
-    );
+function linkifyEntities(text, ents) {
+  // Wrap in-scope object mentions in clickable spans. ONE pass over the escaped
+  // text with a combined, longest-alias-first regex, so a shorter alias
+  // ("keeper") never re-matches INSIDE the span already inserted for a longer,
+  // overlapping one ("the forge-keeper"). The old per-alias iterative replace
+  // nested spans on overlapping aliases, which leaked ids into the rendered
+  // text. `ents` is passed explicitly so this stays pure and testable.
+  const html = escape(text);
+  const valid = (ents || []).filter((e) => e && e.alias);
+  if (!valid.length) return html;
+  // Escaped, lowercased alias -> object id (first wins on duplicate aliases).
+  const byAlias = new Map();
+  for (const e of valid) {
+    const a = escape(e.alias);
+    const k = a.toLowerCase();
+    if (!byAlias.has(k)) byAlias.set(k, { alias: a, id: e.object_id });
   }
-  return html;
+  const aliases = [...byAlias.values()].sort((a, b) => b.alias.length - a.alias.length);
+  const pattern = aliases.map((a) => escapeRegex(a.alias)).join("|");
+  const re = new RegExp("\\b(" + pattern + ")\\b", "gi");
+  return html.replace(re, (m) => {
+    const hit = byAlias.get(m.toLowerCase());
+    const id = hit ? hit.id : "";
+    return '<span class="entity-link" data-object-id="' + escape(id) + '">' + m + "</span>";
+  });
 }
 
 function systemLine(msg) {

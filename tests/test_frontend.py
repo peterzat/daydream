@@ -278,6 +278,39 @@ def test_main_js_links_object_mentions_in_narration():
     assert "entity-link" in r.text
 
 
+def test_main_js_linkify_is_single_pass():
+    """Playtest fix (forge-rook id-leak): linkifyEntities wraps mentions in ONE
+    combined-regex pass, not the per-alias iterative replace that nested spans
+    on overlapping aliases ('the forge-keeper' + 'keeper')."""
+    with TestClient(app) as client:
+        _login(client)
+        r = client.get("/assets/main.js")
+    assert "function linkifyEntities(text, ents)" in r.text
+    assert "byAlias" in r.text
+    assert "for (const ent of entities)" not in r.text  # the old iterative pass is gone
+
+
+def test_main_js_debounces_duplicate_commands():
+    """Playtest fix (double-examine): a browser double-firing a click must not
+    echo the line twice; sendCommand drops an identical command repeated within
+    a short window."""
+    with TestClient(app) as client:
+        _login(client)
+        r = client.get("/assets/main.js")
+    assert "lastCmd" in r.text
+    assert "400" in r.text  # the debounce window (ms)
+
+
+def test_main_js_entity_link_click_not_gated_without_verbs():
+    """Playtest fix (clicking an underlined mention did nothing): the staged-verb
+    gate applies only when the object's verbs are known, so an entity-link click
+    (no verbs list) still acts instead of being silently dropped."""
+    with TestClient(app) as client:
+        _login(client)
+        r = client.get("/assets/main.js")
+    assert "stagedVerb && objectVerbs && !objectVerbs.includes(stagedVerb)" in r.text
+
+
 def test_index_html_has_labelled_scene_regions():
     """C3 (SPEC 2026-06-30): the scene distinctly labels and separates WHO YOU
     ARE / HERE WITH YOU / AROUND YOU / YOU'RE CARRYING. The room-objects region
