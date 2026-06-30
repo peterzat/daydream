@@ -14,12 +14,17 @@
       <h1 id="room-title">drifting...</h1>
     </header>
     <p id="room-desc" class="room-desc"></p>
-    <section id="toons" aria-label="present"></section>
+    <section id="scene" aria-label="here">
+      <section id="toons" aria-label="present"></section>
+      <section id="things" aria-label="things here"></section>
+      <section id="inventory" aria-label="carrying"></section>
+    </section>
     <section id="chat" aria-live="polite"></section>
     <form id="input-form">
       <input id="input-text" type="text" placeholder="speak, friend..." autofocus autocomplete="off" spellcheck="false">
     </form>
-    <nav id="skill-bar" aria-label="skills"></nav>
+    <nav id="verb-bar" aria-label="actions"></nav>
+    <nav id="skill-bar" aria-label="affordances"></nav>
     <nav id="exit-bar" aria-label="exits"></nav>
     <footer>
       <button id="slots-toggle" type="button" class="slots-toggle">switch toon</button>

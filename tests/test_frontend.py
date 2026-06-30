@@ -149,6 +149,75 @@ def test_leave_the_dream_control_is_not_a_get_link():
     assert '<a href="/api/session/leave"' not in r.text
 
 
+# ---- clickable objects + verb bar (objects + local LLMs, 2026-06-30) ----
+
+
+def test_index_html_has_verb_bar_and_scene_elements():
+    """The SPA shell exposes the verb bar and the scene/inventory containers
+    the clickable-object rendering targets."""
+    with TestClient(app) as client:
+        _login(client)
+        r = client.get("/")
+    assert 'id="verb-bar"' in r.text
+    assert 'id="things"' in r.text
+    assert 'id="inventory"' in r.text
+
+
+def test_main_js_renders_clickable_objects_with_data_attributes():
+    """Scene objects render as clickable chips carrying object id + kind."""
+    with TestClient(app) as client:
+        _login(client)
+        r = client.get("/assets/main.js")
+    assert "objectChip" in r.text
+    assert "dataset.objectId" in r.text
+    assert "dataset.kind" in r.text
+    assert "onObjectClick" in r.text
+
+
+def test_main_js_verb_bar_targeting_and_default_examine():
+    """Verb-then-object targeting with object-click-defaults-to-Examine, sent
+    as a structured command frame (the click path, no parser)."""
+    with TestClient(app) as client:
+        _login(client)
+        r = client.get("/assets/main.js")
+    assert "stagedVerb" in r.text
+    assert "sendCommand" in r.text
+    assert '"command"' in r.text or "kind: \"command\"" in r.text
+    # A bare object click defaults to Examine.
+    assert 'stagedVerb || "examine"' in r.text
+
+
+def test_main_js_no_generic_go_control_only_data_affordances():
+    """No generic "go" button: the per-direction exit buttons are the only nav
+    affordance, and the affordance bar renders DATA skills only (so core verbs,
+    including go, are never buttons)."""
+    with TestClient(app) as client:
+        _login(client)
+        r = client.get("/assets/main.js")
+    # The affordance bar filters to data skills, excluding the core `go` skill.
+    assert 's.kind !== "data"' in r.text
+    # Navigation is still per-direction exits (go <direction>), not a generic go.
+    assert '"go " + dir' in r.text
+
+
+def test_main_js_links_object_mentions_in_narration():
+    """In-scope object names in narration become clickable spans."""
+    with TestClient(app) as client:
+        _login(client)
+        r = client.get("/assets/main.js")
+    assert "linkifyEntities" in r.text
+    assert "entity-link" in r.text
+
+
+def test_style_css_has_object_and_verb_styles():
+    with TestClient(app) as client:
+        _login(client)
+        r = client.get("/assets/style.css")
+    assert ".obj" in r.text
+    assert "#verb-bar" in r.text
+    assert ".entity-link" in r.text
+
+
 # ---- no-cache on /assets/ ----------------------------------------------
 
 

@@ -7,6 +7,8 @@ let ws = null;
 let lastSeq = 0;
 let actorNames = {};
 let awaitingPick = false; // showing the picker after leaving; suppresses auto-reconnect
+let entities = []; // in-scope {alias, object_id, kind} for narration linking
+let stagedVerb = null; // the verb-bar verb awaiting an object click
 
 function connect(isReconnect) {
   // A fresh page load omits `since` and starts with an empty log; a reconnect
@@ -34,28 +36,51 @@ function renderSnapshot(snap) {
   document.getElementById("room-desc").textContent =
     snap.room && snap.room.description ? snap.room.description : "";
   setRoomBackground(snap.room);
+  // In-scope object mentions become clickable in narration.
+  entities = (snap.entities || []).slice().sort(
+    (a, b) => (b.alias || "").length - (a.alias || "").length
+  );
+  clearStagedVerb();
   // Map actor IDs to display names so 'say' events can name the speaker.
   actorNames = {};
+  // Toons present: clickable, carrying object id + kind + mood.
   const toons = document.getElementById("toons");
   toons.innerHTML = "";
   for (const t of snap.toons) {
     actorNames[t.id] = t.name;
-    const span = document.createElement("span");
-    span.className = "toon";
-    span.textContent = `${t.name} (${t.mood})`;
-    toons.appendChild(span);
+    toons.appendChild(objectChip(t, `${t.name} (${t.mood})`));
   }
+  // Things on the ground here (previously sent but never rendered).
+  renderObjects("things", snap.items || []);
+  // The player's carried inventory.
+  renderObjects("inventory", snap.inventory || []);
   // Re-hydrate the chat from the snapshot's recent events.
   const chat = document.getElementById("chat");
   chat.innerHTML = "";
   lastSeq = 0; // allow snapshot replays to render
   for (const e of snap.events) renderEvent(e);
   lastSeq = snap.last_seq;
-  // Skill buttons (canonical-form bypass: button click sends the skill name
-  // as input so the server skips the LLM round-trip).
+  // Verb bar: Examine / Take / Drop / Talk. Click a verb to stage it, then
+  // click an object; clicking an object with no staged verb defaults to
+  // Examine. There is deliberately no generic "go" control here — the
+  // per-direction exit buttons are the only nav affordance.
+  const verbBar = document.getElementById("verb-bar");
+  verbBar.innerHTML = "";
+  for (const v of snap.verb_bar || []) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.textContent = v.ui_hint;
+    btn.dataset.verb = v.name;
+    btn.onclick = () => toggleStagedVerb(v.name, btn);
+    verbBar.appendChild(btn);
+  }
+  // Affordance buttons: room-anchored DATA skills only (e.g. forge). Core
+  // verbs (look/say/examine/take/drop/talk/go) are NOT rendered as buttons —
+  // the verb bar, clickable objects, text input, and exits cover them.
   const bar = document.getElementById("skill-bar");
   bar.innerHTML = "";
   for (const s of snap.skills) {
+    if (s.kind !== "data") continue;
     const btn = document.createElement("button");
     btn.type = "button";
     btn.textContent = s.ui_hint;
@@ -63,9 +88,8 @@ function renderSnapshot(snap) {
     btn.onclick = () => sendInput(s.name);
     bar.appendChild(btn);
   }
-  // Exit buttons: one per direction in the current room's exits_json.
-  // Clicks send `go <direction>` which hits the canonical bypass too —
-  // no LLM on navigation.
+  // Exit buttons: one per direction. Clicks send `go <direction>` (the
+  // parser fast-path resolves it with no LLM call).
   const exitBar = document.getElementById("exit-bar");
   exitBar.innerHTML = "";
   const exits = (snap.room && snap.room.exits) || {};
@@ -77,6 +101,53 @@ function renderSnapshot(snap) {
     btn.onclick = () => sendInput("go " + dir);
     exitBar.appendChild(btn);
   }
+}
+
+function renderObjects(containerId, objs) {
+  const el = document.getElementById(containerId);
+  el.innerHTML = "";
+  for (const o of objs) el.appendChild(objectChip(o, o.name));
+}
+
+function objectChip(o, label) {
+  // A distinct, clickable scene element carrying its object id + kind, so
+  // the verb bar / default-Examine can target it.
+  const span = document.createElement("span");
+  span.className = "obj obj-" + o.kind;
+  span.dataset.objectId = o.id;
+  span.dataset.kind = o.kind;
+  span.textContent = label;
+  span.onclick = () => onObjectClick(o.id);
+  return span;
+}
+
+function toggleStagedVerb(verb, btn) {
+  if (stagedVerb === verb) {
+    clearStagedVerb();
+    return;
+  }
+  clearStagedVerb();
+  stagedVerb = verb;
+  btn.classList.add("verb-staged");
+}
+
+function clearStagedVerb() {
+  stagedVerb = null;
+  document
+    .querySelectorAll("#verb-bar button.verb-staged")
+    .forEach((b) => b.classList.remove("verb-staged"));
+}
+
+function onObjectClick(objectId) {
+  // Staged verb wins; a bare object click defaults to Examine.
+  const verb = stagedVerb || "examine";
+  if (verb === "talk") {
+    const msg = (window.prompt("say what to them?") || "").trim();
+    sendCommand("talk", objectId, msg);
+  } else {
+    sendCommand(verb, objectId);
+  }
+  clearStagedVerb();
 }
 
 function renderEvent(e) {
@@ -98,7 +169,10 @@ function renderEvent(e) {
       e.payload.text || ""
     )}&rdquo;`;
   } else if (e.kind === "narrate") {
-    div.textContent = e.payload.text || "";
+    div.innerHTML = linkifyEntities(e.payload.text || "");
+    div.querySelectorAll(".entity-link").forEach((span) => {
+      span.onclick = () => onObjectClick(span.dataset.objectId);
+    });
   } else if (e.kind === "move") {
     const dir = e.payload.direction || "somewhere";
     div.textContent = "you go " + dir + ".";
@@ -135,6 +209,42 @@ function handleRoomImageReady(event) {
 function sendInput(text) {
   if (!ws || ws.readyState !== WebSocket.OPEN) return;
   ws.send(JSON.stringify({ kind: "input", text: text }));
+}
+
+function sendCommand(verb, dobjId, args) {
+  // The structured command frame: the click path. Bypasses the parser, so a
+  // deterministic verb makes no LLM call (the server's verb handler may).
+  if (!ws || ws.readyState !== WebSocket.OPEN) return;
+  ws.send(
+    JSON.stringify({
+      kind: "command",
+      verb: verb,
+      dobj_id: dobjId || null,
+      args: args || "",
+    })
+  );
+}
+
+function escapeRegex(s) {
+  return String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function linkifyEntities(text) {
+  // Wrap in-scope object mentions in clickable spans (after escaping, so the
+  // injected markup is the only HTML). Longest aliases first (entities is
+  // pre-sorted) to prefer "sheaf of papers" over a bare "papers".
+  let html = escape(text);
+  for (const ent of entities) {
+    if (!ent.alias) continue;
+    const re = new RegExp("\\b(" + escapeRegex(escape(ent.alias)) + ")\\b", "gi");
+    html = html.replace(
+      re,
+      '<span class="entity-link" data-object-id="' +
+        escape(ent.object_id) +
+        '">$1</span>'
+    );
+  }
+  return html;
 }
 
 function systemLine(msg) {

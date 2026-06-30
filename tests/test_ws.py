@@ -341,6 +341,31 @@ def test_ws_navigation_persists_across_reconnect():
     assert snap["room"]["exits"] == {"south": "r-meadow", "up": "r-attic"}
 
 
+# ---- scene objects + verb bar in the snapshot --------------------------
+
+
+def test_ws_snapshot_carries_scene_objects_verb_bar_and_entities():
+    """The snapshot sends clickable scene objects (things with verbs), the
+    verb bar (Examine/Take/Drop/Talk), the inventory list, and an entity
+    sidecar mapping in-scope names to ids for narration linking."""
+    with TestClient(app) as client:
+        _login(client)
+        with client.websocket_connect("/ws") as ws:
+            snap = ws.receive_json()
+    # The lantern (previously sent but unrendered) carries its verbs + kind.
+    lantern = next(i for i in snap["items"] if i["name"] == "lantern")
+    assert lantern["kind"] == "thing"
+    assert lantern["verbs"] == ["examine", "take", "drop"]
+    # The verb bar is exactly Examine / Take / Drop / Talk.
+    assert [v["name"] for v in snap["verb_bar"]] == ["examine", "take", "drop", "talk"]
+    # Inventory starts empty; the entity sidecar maps the lantern's name -> id.
+    assert snap["inventory"] == []
+    assert any(
+        e["alias"].lower() == "lantern" and e["object_id"] == "i-lantern"
+        for e in snap["entities"]
+    )
+
+
 # ---- structured command frame (the click path) -------------------------
 
 

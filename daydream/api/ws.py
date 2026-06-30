@@ -24,7 +24,7 @@ import logging
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, status
 
-from daydream import events, items, parser, rooms, toons, verbs
+from daydream import events, objects, parser, rooms, toons, verbs
 from daydream.api import auth
 from daydream.gpu import arbiter
 from daydream.images import cache as image_cache
@@ -142,7 +142,8 @@ def _state_snapshot(
     without the caller having to pass the id in."""
     room_id = _current_room_id(toon_id)
     room = rooms.get_room(room_id)
-    items_in = items.get_items_in_room(room_id)
+    things_in = objects.contents(room_id, kind="thing")
+    inventory_in = objects.contents(toon_id, kind="thing")
     toons_in = toons.get_toons_in_room(room_id)
     if resume_since is _REPLAY_RECENT:
         # Move / effect re-snapshots: the room's recent history.
@@ -181,12 +182,65 @@ def _state_snapshot(
             if room
             else None
         ),
-        "items": [{"id": i.id, "name": i.name} for i in items_in],
-        "toons": [{"id": t.id, "name": t.name, "mood": t.mood} for t in toons_in],
-        "skills": [{"name": s.name, "ui_hint": s.ui_hint} for s in available],
+        # Scene objects carry their verb affordances so the SPA can render
+        # them as distinct, clickable elements (id + kind + verbs). `items`
+        # (room things) were previously sent but never rendered; `inventory`
+        # is the actor's carried things.
+        "items": [_object_card(o) for o in things_in],
+        "toons": [_toon_card(t) for t in toons_in],
+        "inventory": [_object_card(o) for o in inventory_in],
+        "skills": [{"name": s.name, "ui_hint": s.ui_hint, "kind": s.kind} for s in available],
+        # The verb bar (Examine / Take / Drop / Talk) — verb-then-object.
+        "verb_bar": [{"name": v.name, "ui_hint": v.ui_hint} for v in verbs.bar_verbs()],
+        # Entity sidecar: in-scope names/aliases -> object ids, so the client
+        # can wrap object mentions in narration as clickable spans.
+        "entities": _entity_sidecar(toon_id),
         "events": [e.to_dict() for e in recent],
         "last_seq": last_seq,
     }
+
+
+def _object_card(o: "objects.Object") -> dict:
+    """A scene object as the SPA needs it: id + kind + name + verb affordances
+    (and aliases, for client-side narration linking)."""
+    return {
+        "id": o.id,
+        "name": o.name,
+        "kind": o.kind,
+        "aliases": o.aliases,
+        "verbs": objects.verbs_for(o),
+    }
+
+
+def _toon_card(t: "toons.Toon") -> dict:
+    obj = objects.get(t.id)
+    return {
+        "id": t.id,
+        "name": t.name,
+        "mood": t.mood,
+        "kind": "toon",
+        "verbs": objects.verbs_for(obj) if obj is not None else [],
+    }
+
+
+def _entity_sidecar(actor_id: str) -> list[dict]:
+    """In-scope objects' names + aliases mapped to their ids, for wrapping
+    object mentions in narration as clickable spans. The actor, rooms, and
+    prototypes are excluded (you don't click-to-act on yourself or the room)."""
+    out: list[dict] = []
+    seen: set[tuple[str, str]] = set()
+    for o in objects.in_scope(actor_id):
+        if o.id == actor_id or o.kind in ("prototype", "room"):
+            continue
+        for alias in [o.name, *o.aliases]:
+            if not isinstance(alias, str) or not alias.strip():
+                continue
+            key = (alias.lower(), o.id)
+            if key in seen:
+                continue
+            seen.add(key)
+            out.append({"alias": alias, "object_id": o.id, "kind": o.kind})
+    return out
 
 
 def _maybe_enqueue_image_gen(world_id: str, room_id: str, room_seed: str) -> None:
