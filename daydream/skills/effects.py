@@ -208,10 +208,18 @@ def _apply_spawn_object(
     location_id = eff.get("location_id", room_id)
     if not isinstance(location_id, str) or objects.get(location_id) is None:
         return None
+    gen_by = eff.get("generated_by")
+    # Idempotency: a generative spawn (one carrying provenance) does not
+    # duplicate — re-running the verb that emits it finds the existing object
+    # in the same location by name and skips. Narration is never auto-scanned;
+    # an object becomes real only on an explicit spawn_object, exactly once.
+    if isinstance(gen_by, str) and gen_by.strip():
+        for existing in objects.contents(location_id):
+            if existing.name == name.strip() and existing.properties.get("generated_by"):
+                return None
     proto = objects.PROTO_READABLE if eff.get("readable") else objects.PROTO_THING
     aliases = eff.get("aliases") if isinstance(eff.get("aliases"), list) else []
     props: dict = {"seed": seed.strip(), "is_unique": 1}
-    gen_by = eff.get("generated_by")
     if isinstance(gen_by, str) and gen_by.strip():
         props["generated_by"] = gen_by.strip()
     thing = objects.spawn(

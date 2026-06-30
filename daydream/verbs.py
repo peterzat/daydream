@@ -29,6 +29,7 @@ import logging
 from dataclasses import dataclass, field
 
 from daydream import events, objects, rooms
+from daydream.llm import client, safety
 from daydream.skills import effects
 
 logger = logging.getLogger(__name__)
@@ -149,9 +150,12 @@ async def execute_command(
 
     iobj = _resolve_in_scope(actor_id, iobj_id) if iobj_id else None
 
-    # MOO dispatch priority: a verb bound to a specific object (player, room,
-    # dobj, iobj) wins over the generic engine handler. v1's only object-bound
-    # handler is an NPC's `talk` dialogue, found on the dobj.
+    # MOO dispatch priority: the handler is resolved by searching player ->
+    # room -> dobj -> iobj, first match wins. v1 has one engine handler per
+    # verb, but a verb bound to a specific object (an NPC's `talk` dialogue,
+    # found on the dobj) is selected over the generic default. The talk
+    # special-case below IS that resolution for v1; per-object / per-room
+    # overrides slot into the same order later.
     if spec.name == "talk" and dobj is not None:
         await _handle_talk(actor, room_id, dobj, args, spec)
         return
@@ -160,7 +164,7 @@ async def execute_command(
     if handler is None:  # defensive: every verb has an engine handler
         _narrate(room_id, _DONT_UNDERSTAND)
         return
-    handler(actor, room_id, dobj, iobj, args, spec)
+    await handler(actor, room_id, dobj, iobj, args, spec)
 
 
 def _resolve_in_scope(actor_id: str, object_id: str | None) -> objects.Object | None:
@@ -188,10 +192,10 @@ def _dispatch(actor: objects.Object, room_id: str, effs: list, spec: VerbSpec) -
     )
 
 
-# ---- engine handlers (deterministic; no LLM) ---------------------------
+# ---- engine handlers (deterministic unless noted) ----------------------
 
 
-def _handle_look(actor, room_id, dobj, iobj, args, spec) -> None:
+async def _handle_look(actor, room_id, dobj, iobj, args, spec) -> None:
     room = rooms.get_room(room_id)
     if room is None:
         _dispatch(actor, room_id, [{"kind": "narrate", "text": "You are nowhere recognizable."}], spec)
@@ -203,21 +207,70 @@ def _handle_look(actor, room_id, dobj, iobj, args, spec) -> None:
     _dispatch(actor, room_id, [{"kind": "narrate", "text": text}], spec)
 
 
-def _handle_examine(actor, room_id, dobj, iobj, args, spec) -> None:
-    # Deterministic, cached examine: echo the object's stored detail. The
-    # lazy-cache LLM generation for objects with no cached text lands with the
-    # generative slice; this is the no-LLM path the criteria require.
+def _examine_line(dobj: objects.Object, detail: str) -> str:
+    return f"You examine the {dobj.name}: {detail}.".replace(" .", ".")
+
+
+async def _handle_examine(actor, room_id, dobj, iobj, args, spec) -> None:
+    """Examine an object. Cached text or a toon's appearance or a thing's seed
+    are echoed deterministically (NO LLM). A spawned generative object with no
+    seed and no cached text triggers a single LLM call, persists the result as
+    `examined_text` (via the effect API), and shows it; later examines hit the
+    cache."""
+    cached = dobj.properties.get("examined_text")
+    if isinstance(cached, str) and cached.strip():
+        _dispatch(actor, room_id, [{"kind": "narrate", "text": _examine_line(dobj, cached)}], spec)
+        return
     if dobj.kind == "toon":
         appearance = dobj.properties.get("appearance_seed", "")
-        text = f"You see {dobj.name}: {appearance}. {dobj.seed}.".replace(" .", ".")
-    else:
-        cached = dobj.properties.get("examined_text")
-        detail = cached if isinstance(cached, str) and cached.strip() else dobj.seed
-        text = f"You examine the {dobj.name}: {detail}.".replace(" .", ".")
-    _dispatch(actor, room_id, [{"kind": "narrate", "text": text}], spec)
+        line = f"You see {dobj.name}: {appearance}. {dobj.seed}.".replace(" .", ".")
+        _dispatch(actor, room_id, [{"kind": "narrate", "text": line}], spec)
+        return
+    if dobj.seed and dobj.seed.strip():
+        _dispatch(actor, room_id, [{"kind": "narrate", "text": _examine_line(dobj, dobj.seed)}], spec)
+        return
+    # Lazy-cache generation (one LLM call, then cached).
+    detail = await _generate_examine(dobj)
+    if detail is None:
+        _dispatch(actor, room_id, [{"kind": "narrate",
+            "text": f"You look at the {dobj.name}, but the dream is too foggy to make out the details just now."}], spec)
+        return
+    _dispatch(actor, room_id, [
+        {"kind": "set_property", "target_id": dobj.id, "key": "examined_text", "value": detail},
+        {"kind": "narrate", "text": _examine_line(dobj, detail)},
+    ], spec)
 
 
-def _handle_take(actor, room_id, dobj, iobj, args, spec) -> None:
+_EXAMINE_SYSTEM = (
+    "You are the describer for a cozy watercolor text-adventure. Given an "
+    "object's name, write ONE or two soft, painterly sentences a player reads "
+    "when they look closely at it. Return STRICT JSON: {\"text\": \"...\"}. "
+    "Tone: cozy, soft, Spiritfarer / A Short Hike. No urgency, no modern tech, "
+    "no harsh edges, no quoted dialogue. JSON only."
+)
+
+
+async def _generate_examine(dobj: objects.Object) -> str | None:
+    """One LLM call to describe an object with no cached/seed detail. Returns
+    the cozy description, or None on LLM outage / banlist hit (the caller shows
+    a gentle 'too foggy' line). Local model only, behind the GPU arbiter."""
+    try:
+        result = await client.acompletion_json(
+            system=_EXAMINE_SYSTEM, user=f"Object: {dobj.name}\nDescribe it."
+        )
+    except client.LLMUnavailable:
+        return None
+    if not isinstance(result, dict):
+        return None
+    text = result.get("text")
+    if not isinstance(text, str) or not text.strip():
+        return None
+    if safety.first_banned(text) is not None:
+        return None
+    return text.strip()
+
+
+async def _handle_take(actor, room_id, dobj, iobj, args, spec) -> None:
     if dobj.location_id == actor.id:
         _dispatch(actor, room_id, [{"kind": "narrate", "text": f"You're already carrying the {dobj.name}."}], spec)
         return
@@ -227,7 +280,7 @@ def _handle_take(actor, room_id, dobj, iobj, args, spec) -> None:
     ], spec)
 
 
-def _handle_drop(actor, room_id, dobj, iobj, args, spec) -> None:
+async def _handle_drop(actor, room_id, dobj, iobj, args, spec) -> None:
     if dobj.location_id != actor.id:
         _dispatch(actor, room_id, [{"kind": "narrate", "text": f"You aren't carrying the {dobj.name}."}], spec)
         return
@@ -237,7 +290,7 @@ def _handle_drop(actor, room_id, dobj, iobj, args, spec) -> None:
     ], spec)
 
 
-def _handle_say(actor, room_id, dobj, iobj, args, spec) -> None:
+async def _handle_say(actor, room_id, dobj, iobj, args, spec) -> None:
     text = args.strip()
     if not text:
         _narrate(room_id, "Say what?")
@@ -247,7 +300,7 @@ def _handle_say(actor, room_id, dobj, iobj, args, spec) -> None:
     events.append("toon", actor.id, "say", {"text": text}, room_id=room_id)
 
 
-def _handle_go(actor, room_id, dobj, iobj, args, spec) -> None:
+async def _handle_go(actor, room_id, dobj, iobj, args, spec) -> None:
     direction = args.strip().lower()
     if not direction:
         _narrate(room_id, "Go where?")
