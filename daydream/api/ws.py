@@ -24,13 +24,13 @@ import logging
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, status
 
-from daydream import events, items, rooms, toons, verbs
+from daydream import events, items, parser, rooms, toons, verbs
 from daydream.api import auth
 from daydream.gpu import arbiter
 from daydream.images import cache as image_cache
 from daydream.images import client as image_client
 from daydream.skills import data as data_skills
-from daydream.skills import interpreter, registry
+from daydream.skills import registry
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -278,55 +278,53 @@ def _emit_npc_presence_narrates(controlled_toon_id: str, room_id: str) -> None:
 
 
 async def _handle_input(text: str, toon_id: str) -> None:
-    """Route player input. Canonical form (skill word + args) bypasses the LLM
-    so button clicks and exact commands don't pay round-trip latency.
+    """Route free-text player input through the grounded command parser.
 
-    Each invocation re-reads the toon's current room so the routing
-    applies to where the player is NOW, not where they were when the
-    connection opened. `toon_id` is resolved once at connect time
-    (`_resolve_controlled_toon_id`) and threaded through here."""
+    The parser's deterministic fast-path (exit directions, bare verbs, "verb
+    <name>", legacy data-skill names) resolves without an LLM call; natural
+    phrasings ("say hi to rook") are grounded by one local-LLM call. A grounded
+    closed verb dispatches through the verb command bus; a room-affordance data
+    skill runs the data pipeline; `none` / LLM-outage degrade gracefully.
+
+    Each invocation re-reads the toon's current room (via the parser/scope) so
+    routing applies to where the player is NOW. `toon_id` is resolved once at
+    connect time and threaded through."""
     text = text.strip()
     if not text:
         return
-    parts = text.split(None, 1)
-    head = parts[0].lower()
     room_id = _current_room_id(toon_id)
-    # Use the room-filtered candidate list for BOTH the canonical bypass
-    # and the interpreter fallback, so a data skill whose context
-    # predicate hides it in the current room does not dispatch when the
-    # player types its name. Core skills always pass the filter (they
-    # have no predicate); this only affects data skills.
-    available = registry.list_available_for_room(room_id)
-    available_by_name = {s.name: s for s in available}
-    spec = available_by_name.get(head)
-    if spec is not None:
-        rest = parts[1] if len(parts) > 1 else ""
-        await _dispatch_spec(spec, toon_id, room_id, rest)
+    p = await parser.parse(toon_id, text)
+    if p.error:
+        # LLM unavailable: natural-language free text can't be parsed. The
+        # deterministic click/exit verbs still work (the command frame + the
+        # parser fast-path), but this open-text input degrades to "foggy".
+        events.append(
+            "system", None, "narrate",
+            {"text": "The dream is foggy right now; that thought slips away."},
+            room_id=room_id,
+        )
         return
-    decision = await interpreter.interpret(text, available)
-    if decision.skill == "none":
-        if decision.error:
-            out = "The dream is foggy right now; that thought slips away."
-        else:
-            out = f"You think to yourself: \"{text}\". The daydream answers softly."
-        events.append("system", None, "narrate", {"text": out}, room_id=room_id)
+    if p.verb == "none":
+        events.append(
+            "system", None, "narrate",
+            {"text": f"You think to yourself: \"{text}\". The daydream answers softly."},
+            room_id=room_id,
+        )
         return
-    spec = available_by_name.get(decision.skill)
-    if spec is None:
-        return  # race: skill was disabled between interpret and dispatch
-    await _dispatch_spec(spec, toon_id, room_id, decision.args)
-
-
-async def _dispatch_spec(
-    spec: "registry.SkillSpec", actor_id: str, room_id: str, args: str
-) -> None:
-    """Dispatch a resolved SkillSpec. Core skills run synchronously
-    through the registry; data skills run through the async
-    safety + LLM + effects pipeline in daydream.skills.data."""
-    if spec.kind == "core":
-        registry.execute(spec.name, actor_id, room_id, args)
+    if p.verb in verbs.VERBS:
+        await verbs.execute_command(toon_id, p.verb, p.dobj_id, p.iobj_id, p.args)
         return
-    await data_skills.execute_by_name(spec.name, actor_id, room_id, args)
+    # A room-affordance data skill (e.g. forge) selected as a verb: run the
+    # existing safety + LLM + effects pipeline.
+    spec = registry.find(p.verb)
+    if spec is not None and spec.kind == "data":
+        await data_skills.execute_by_name(p.verb, toon_id, room_id, p.args)
+        return
+    events.append(
+        "system", None, "narrate",
+        {"text": f"You think to yourself: \"{text}\". The daydream answers softly."},
+        room_id=room_id,
+    )
 
 
 @router.websocket("/ws")

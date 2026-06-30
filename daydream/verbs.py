@@ -50,6 +50,10 @@ class VerbSpec:
     allowed_effects: frozenset[str] = field(default_factory=frozenset)
     # Does this verb appear in the UI verb bar (Examine/Take/Drop/Talk)?
     on_bar: bool = False
+    # Args are free text that may itself name a target (e.g. "say hi to rook"),
+    # so the parser's deterministic fast-path must NOT claim "<verb> <args>" —
+    # it hands such input to the LLM to disambiguate say-vs-talk.
+    free_text: bool = False
 
 
 VERBS: dict[str, VerbSpec] = {
@@ -81,12 +85,12 @@ VERBS: dict[str, VerbSpec] = {
         description="Talk to someone. Target: the toon. Args: what you say.",
         needs_dobj=True, valid_dobj_kinds=frozenset({"toon"}),
         allowed_effects=frozenset({"narrate", "set_property", "set_mood", "spawn_object"}),
-        on_bar=True,
+        on_bar=True, free_text=True,
     ),
     "say": VerbSpec(
         name="say", ui_hint="Say",
         description="Speak something aloud to the room. Args: the text to say.",
-        allowed_effects=frozenset({"narrate"}),
+        allowed_effects=frozenset({"narrate"}), free_text=True,
     ),
     "go": VerbSpec(
         name="go", ui_hint="Go",
