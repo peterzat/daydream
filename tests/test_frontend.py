@@ -52,6 +52,23 @@ def test_root_stamps_asset_urls_with_build_version():
     assert f"/assets/style.css?v={version.build_sha()}" in r.text
 
 
+def test_root_escapes_build_sha_in_asset_url(monkeypatch):
+    """Defensive: the build id is URL-quoted before HTML interpolation, so an
+    exotic DAYDREAM_BUILD_SHA can't inject markup into the served SPA shell."""
+    from daydream import version
+
+    monkeypatch.setenv("DAYDREAM_BUILD_SHA", '"><script>x</script>')
+    version.build_sha.cache_clear()
+    try:
+        with TestClient(app) as client:
+            _login(client)
+            r = client.get("/")
+    finally:
+        version.build_sha.cache_clear()
+    assert "<script>x</script>" not in r.text  # not injected raw
+    assert "/assets/main.js?v=" in r.text       # still stamped (escaped value)
+
+
 def test_placeholder_png_is_committed_and_substantial():
     asset = WEB / "assets" / "placeholder-meadow.png"
     assert asset.exists(), "v0 watercolor placeholder must be committed at web/assets/"

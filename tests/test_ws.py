@@ -88,6 +88,27 @@ def test_ws_snapshot_carries_build_and_world_version():
     assert msg["world_version"] == version.WORLD_VERSION
 
 
+def test_session_liveness_refcounts_multiple_connections():
+    """A session with two live WS connections (two tabs on one toon) stays live
+    until BOTH close -- is_session_live is backed by a Counter, not a set, so one
+    tab closing doesn't free a toon the other tab is still playing."""
+    from daydream.api import ws
+
+    ws._live_session_counts.clear()
+    try:
+        assert ws.is_session_live("s1") is False
+        ws._mark_session_live("s1")
+        ws._mark_session_live("s1")  # second tab, same session
+        assert ws.is_session_live("s1") is True
+        ws._unmark_session_live("s1")  # one tab closes
+        assert ws.is_session_live("s1") is True  # the other tab is still live
+        ws._unmark_session_live("s1")  # second tab closes
+        assert ws.is_session_live("s1") is False
+        assert "s1" not in ws._live_session_counts  # no zero-count leak
+    finally:
+        ws._live_session_counts.clear()
+
+
 def test_ws_snapshot_does_not_include_npc_when_player_is_elsewhere():
     """SPEC 2026-04-23 criterion 2: Rook (migration 006) is at r-forge.
     On initial connect the player starts at r-meadow, so the snapshot's

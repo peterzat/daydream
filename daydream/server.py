@@ -5,6 +5,7 @@ root path serves it; before that, a minimal placeholder HTML lets a browser
 verify the auth flow end to end."""
 
 from contextlib import asynccontextmanager
+from urllib.parse import quote
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
@@ -137,7 +138,10 @@ async def root(request: Request):
         # fresh-URL'd main.js/style.css (belt-and-suspenders with the no-store
         # middleware; the client mismatch-reload is the primary stale-tab fix).
         # StaticFiles ignores the query string, so the files still resolve.
-        sha = version.build_sha()
+        # URL-quote the build id so it is safe in both the query string and the
+        # HTML attribute even if a future change ever sourced it from untrusted
+        # input (today it is only git hex / -dirty / unknown / operator env).
+        sha = quote(version.build_sha(), safe="")
         html = (
             index.read_text()
             .replace("/assets/main.js", f"/assets/main.js?v={sha}")

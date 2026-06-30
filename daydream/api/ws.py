@@ -23,6 +23,7 @@ arbitrary toon."""
 
 import asyncio
 import logging
+from collections import Counter
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, status
 
@@ -396,17 +397,34 @@ async def _handle_input(text: str, toon_id: str) -> None:
     )
 
 
-# Session ids with a live WS connection controlling a toon, maintained by the
-# handler (added on connect, removed on disconnect). The slot-claim path reads
-# this so a player can adopt a toon whose controlling session is gone (an
-# abandoned claim) while a toon an ACTIVE player holds stays protected.
-_live_session_ids: set[str] = set()
+# Per-session COUNT of live WS connections controlling a toon, maintained by the
+# handler (incremented on connect, decremented on disconnect). The slot-claim
+# path reads this so a player can adopt a toon whose controlling session is gone
+# (an abandoned claim) while a toon an ACTIVE player holds stays protected. A
+# count (not a set) so a session with two tabs stays live until BOTH close.
+_live_session_counts: "Counter[str]" = Counter()
+
+
+def _mark_session_live(session_id: str | None) -> None:
+    if session_id:
+        _live_session_counts[session_id] += 1
+
+
+def _unmark_session_live(session_id: str | None) -> None:
+    if not session_id:
+        return
+    remaining = _live_session_counts.get(session_id, 0) - 1
+    if remaining > 0:
+        _live_session_counts[session_id] = remaining
+    else:
+        _live_session_counts.pop(session_id, None)  # drop zero-count keys
 
 
 def is_session_live(session_id: str | None) -> bool:
-    """True if `session_id` currently has a live WS connection controlling a
-    toon. Used by the slot-claim takeover logic (daydream/api/slots.py)."""
-    return bool(session_id) and session_id in _live_session_ids
+    """True if `session_id` currently has at least one live WS connection
+    controlling a toon. Used by the slot-claim takeover logic
+    (daydream/api/slots.py)."""
+    return bool(session_id) and _live_session_counts.get(session_id, 0) > 0
 
 
 @router.websocket("/ws")
@@ -448,8 +466,7 @@ async def ws_endpoint(ws: WebSocket):
         except ValueError:
             resume_since = None
     try:
-        if session_id:
-            _live_session_ids.add(session_id)
+        _mark_session_live(session_id)
         last_seq = events.max_seq()
         await ws.send_json(_state_snapshot(last_seq, toon_id, view, resume_since))
         # Kick off image gen for the current room if the cache is cold.
@@ -469,8 +486,7 @@ async def ws_endpoint(ws: WebSocket):
         for t in pending:
             t.cancel()
     finally:
-        if session_id:
-            _live_session_ids.discard(session_id)
+        _unmark_session_live(session_id)
         events.unsubscribe(queue)
 
 
