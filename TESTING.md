@@ -11,7 +11,7 @@
 - Dispatcher: `daydream.testing.__main__` (`bin/game test <tier>`) with `--target=local|staging|prod_verify`
 - Drift framework: `tests/drift/conftest.py` (dHash, baseline assert helpers, arbiter-held tripwire)
 - Baselines: `tests/baselines/*.golden.json` (in-tree, PR-reviewable) + `*.latest.json` (gitignored)
-- Corpora: 5 LLM prompts (`tests/drift/prompts/`) + 3 image aesthetics (`tests/drift/aesthetics/`)
+- Corpora: 5 LLM prompts (`tests/drift/prompts/`) + 4 image aesthetics (`tests/drift/aesthetics/`; cozy_room / forest_path / meadow_dusk / forge)
 - Fixtures: tmp_path DB isolation, HOME redirected to tmp, autouse arbiter/in-flight resets, TestClient-bypass of AccessMiddleware via `DAYDREAM_ACCESS=public`
 - Human-eval: `daydream.testing.human_eval` → qpeek rubric loop (commit C4)
 - Coverage tools: none configured (deliberate — TESTING.md explicitly rejects coverage-for-coverage)
@@ -107,7 +107,7 @@ When `DAYDREAM_TARGET != local`, `tier_medium` and `tier_long` tests **skip clea
 
 Correctness is binary. Drift is statistical-ish (perceptual hash, JSON schema, latency window, pairwise-distinct openers across a corpus). Human-eval is subjective-but-logged. Each tier may run any combination of the three.
 
-This project tilts deliberately toward **proxy** verification (a measurable number that stands in for the goal) over **critic** verification (another LLM reading the output). Proxies catch what the generator can't see — the voice-bench tic regression, the fp8-KV format-adherence breakage, the aesthetic dHash drift. Human-eval and the deferred Claude-vision gate are critics; they exist as supplements, not substitutes, and are explicitly cost-gated.
+This project tilts deliberately toward **proxy** verification (a measurable number that stands in for the goal) over **critic** verification (another LLM reading the output). Proxies catch what the generator can't see — the voice-bench tic regression, the fp8-KV format-adherence breakage, the aesthetic dHash drift. Human-eval and the (now-shipped, opt-in) Claude-vision gate (`daydream/testing/vision_gate.py`, `tests/drift/test_image_claude_vision.py`) are critics; they exist as supplements, not substitutes, and are explicitly cost-gated (the vision gate skips unless `DAYDREAM_CLAUDE_VISION_GATE`). The batched-review harness `bin/game review` rolls the proxies' renders + the voice samples + the one browser-checklist glance into a single offline `index.html`, so a qualitative review is one glance instead of a live reset per check.
 
 ## Tier contracts in detail
 
@@ -170,10 +170,11 @@ A drift probe runs the real code path, measures something, and compares to a **g
 |------------------------------------------|---------------------------------------------------------------------------|--------------------------------------------|
 | `tests/drift/test_llm_json_adherence.py` | JSON schema keys + latency window per prompt.                             | `tests/drift/prompts/*.json` (5 probes)    |
 | `tests/drift/test_parser_grounding.py`   | Real Qwen grounds free text to the right closed verb + in-scope dobj id.   | 6-case command corpus (in-file)            |
-| `tests/drift/test_image_perceptual.py`   | dHash + resolution + (model, lora, workflow_hash). Hamming tolerance.     | `tests/drift/aesthetics/*.json` (3 probes) |
+| `tests/drift/test_image_perceptual.py`   | dHash + resolution + (model, lora, workflow_hash). Hamming tolerance.     | `tests/drift/aesthetics/*.json` (4 probes; +`forge`) |
+| `tests/drift/test_image_claude_vision.py` (opt-in) | Each anchor scored against the WHIMSY rubric by Opus vision; pass/fail threshold. Skips unless `DAYDREAM_CLAUDE_VISION_GATE`. | `tests/drift/aesthetics/*.json` |
 | `tests/drift/test_arbiter_smoke.py`      | 5 alternating LLM + image calls; per-call + aggregate budgets.            | reuses prompts/                            |
 | `tests/drift/test_drift_constants.py` (`tier_short`) | WHIMSY_PROMPT_SUFFIX vs WHIMSY.md; vllm version; GPU fraction; model id. | CLAUDE.md + bin/ scripts        |
-| `tests/test_voice_baseline.py` (`tier_short`) | Pairwise-distinct openers across 5 voice-corpus prompts; parses committed markdown. | `docs/pretty/voice-samples/*.md` |
+| `tests/test_voice_baseline.py` (`tier_short`) | Pairwise-distinct narrate openers; glob-derived params classified by a `baseline-class` marker (tracked / regression-demo / documented-failure). | `docs/pretty/voice-samples/*.md` |
 | `tests/drift/test_memory_ranking.py` (`tier_short`) | Salience-formula ordering + per-item scores for a fixed (sim, age) corpus; pins `cosine * exp(-age/24h)` math + `DECAY_HOURS` constant. | 5-row in-memory corpus + mocked embeddings |
 
 The dHash is a pure-Pillow difference hash — no numpy or scipy dep. For drift *detection* (not content ID) it is plenty sensitive: a material aesthetic shift moves many bits, not 1-2.

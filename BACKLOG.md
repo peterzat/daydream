@@ -111,11 +111,9 @@ Captured from the comprehensive GPU/ML doc pass; full rationale per item lives i
 
 Captured from the test-architecture landing (2026-04-23); scaffolding for these is in place, the work itself is deferred until the triggering signal arrives. See `TESTING.md` for the full architecture and philosophy.
 
-### claude-vision-quality-gate
-- **One-line description:** Add a `tier_long` probe under `tests/drift/` that submits each rendered anchor image to Claude Opus 4.7 vision with the WHIMSY rubric, asserts a minimum rating. Cost-gated behind an env flag (e.g. `DAYDREAM_CLAUDE_VISION_GATE=1`) so routine runs don't burn tokens.
-- **Why deferred:** Human qpeek review (commit 2026-04-23) is the v0 human-in-the-loop. A Claude-vision gate is complementary but costs API tokens per run; only earns its keep when human bandwidth is the bottleneck (multiple daily workflow tweaks, or a second contributor).
-- **Revisit criteria:** We start doing ≥3 LoRA/workflow/sampler A/Bs per week and qpeek interactive review becomes the rate limit; OR a second contributor needs machine-verifiable aesthetic gating without interactive review.
-- **Origin:** test architecture plan (2026-04-23)
+### claude-vision-quality-gate — done (2026-06-30)
+- **Resolution:** Shipped. `daydream/testing/vision_gate.py` rates a render against the WHIMSY rubric via one Opus vision call (litellm), returning `{score, passed, reason, banned}`; a disqualifying element caps to FAIL. `tests/drift/test_image_claude_vision.py` is the `tier_long` probe (one per anchor) that SKIPS unless `DAYDREAM_CLAUDE_VISION_GATE` is set, so routine runs cost nothing. Design-time/test-time only (never runtime; needs `ANTHROPIC_API_KEY` when enabled), consistent with the local-only generation policy. `tests/test_vision_gate.py` pins the gating/rubric/parse/banned-cap logic with litellm mocked. The `bin/game review` harness annotates each render with the verdict when the gate is on, turning the aesthetic eyeball into a machine pass/fail.
+- **Origin:** test architecture plan (2026-04-23); shipped 2026-06-30 as part of the eyeball-batching turn.
 
 ### archive-restore-roundtrip-test
 - **One-line description:** Add a `tier_long` test that archives a world via `bin/game world archive`, deletes it, restores from the archive, then diffs the restored DB + cache against the pre-archive state. Goes deeper than the current `test_admin.py` unit coverage (belt-and-suspenders on the E2E flow).
@@ -204,19 +202,14 @@ Captured from the test-architecture landing (2026-04-23); scaffolding for these 
 - **Resolution:** Shipped. `toons.delete_slot` now reparents the toon's carried things to its `current_room_id` (drops them on the ground) before deleting the toon, instead of DELETEing them; the FK is still satisfied because no child references the gone row, and a deleted character's belongings persist in the world to be found. Falls back to removing items only if the toon somehow has no room (no orphan top-level rows). Tests: `tests/test_slots_delete.py::test_delete_drops_carried_items_into_room` (drop-to-room contract) + the updated `test_delete_handles_carried_items_without_fk_error` (FK guarantee with reparent). CLAUDE.md "Toon delete" updated.
 - **Origin:** spec 2026-06-30; closed same day.
 
-### forge-render-drift-anchor
-- **One-line description:** Add the authored `r-forge` seed/image-prompt as a 4th anchor under `tests/drift/aesthetics/` (alongside cozy_room / forest_path / meadow_dusk) with a committed perceptual-hash `.golden.json`, so SPEC 2026-06-30 C12 ("the forge looks like a forge") gains a ratify-once-then-mechanical regression proxy via the existing `tests/drift/test_image_perceptual.py` dHash framework instead of staying eyeball-only.
-- **Why deferred:** The forge render was verified by a one-time manual eyeball this turn per SPEC C12 (qualitative, flagged manual); the proxy supplements that eyeball rather than blocking it, and ratifying its first golden depends on the pending live-reset eyeball of the new r-forge seed.
-- **Revisit criteria:** The operator completes the post-live-reset forge eyeball (so a known-good render exists to baseline), OR a forge seed/workflow change regresses the render with no probe to catch it.
-- **Origin:** `tester design 2026-06-30`
-- **Coordinate with:** `claude-vision-quality-gate`
+### forge-render-drift-anchor — done (2026-06-30, golden pending first ratification)
+- **Resolution:** Shipped the anchor. `tests/drift/aesthetics/forge.json` carries the authored `r-forge` seed verbatim (so the proxy tracks the shipped forge render), and the existing `tests/drift/test_image_perceptual.py` framework auto-globs it as a 4th probe. The committed `image_forge.golden.json` is the one remaining operator action: run `bin/game review` (or `bin/game test long -k forge`), glance at the forge render in the contact sheet, then `mv tests/baselines/image_forge.latest.json tests/baselines/image_forge.golden.json`. This is the normal first-run loop every anchor goes through, now driven by the batched review sheet rather than a live reset + browser.
+- **Origin:** `tester design 2026-06-30`; anchor shipped same day. The vision-gate counterpart (`claude-vision-quality-gate`) is also in tree.
 
 ### present-player-drift-cadence-guard — already covered (rejected 2026-06-30)
 - **Resolution:** Redundant; not built. The premise (only a tier_medium behavior test guards the cadence) was wrong: the magnitude is already pinned in tier_short by `tests/test_drift.py::test_compute_next_interval_busy_default` (`_compute_next_interval(1) == 240.0`), which fails on any revert toward the 30-min busy cadence. The only non-redundant variant would relax that exact pin to a semantic `<= 600` SPEC-floor that also resists editing the pin to accommodate a regression; judged not worth a second test. Kept as a record so a future design pass does not re-propose it.
 - **Origin:** `tester design 2026-06-30`; triaged + closed same day (see commit 68dbcbf).
 
-### voice-baseline-add-model-helper
-- **One-line description:** Generalize `tests/test_voice_baseline.py`'s parametrization so adding a new committed voice-bench markdown under `docs/pretty/voice-samples/` extends the tic-regression parametrize set without code edits. Today it parametrizes over a hardcoded pre-fix/post-fix AWQ pair; a manifest or front-matter convention is needed to distinguish "regression-tracked" baselines from the two in-tree Mistral-Nemo "documented failure" captures that must NOT join the set.
-- **Why deferred:** Only the AWQ pre/post pair is the load-bearing regression demo today; the auto-extend logic needs a regression-tracked-vs-failure-mode discriminator, enough complexity to defer until a third regression-tracked baseline is worth adding.
-- **Revisit criteria:** A third regression-tracked voice baseline lands (e.g. a successful Qwen-family AWQ creative-writing finetune), OR the voice-bench corpus grows past 5 prompts and per-prompt assertions need a manifest-driven shape anyway.
-- **Origin:** `tester design 2026-06-30`
+### voice-baseline-add-model-helper — done (2026-06-30)
+- **Resolution:** Shipped. `tests/test_voice_baseline.py` now derives its parametrization from a glob over `docs/pretty/voice-samples/*.md`, classified by an optional `<!-- baseline-class: ... -->` marker: `tracked` (the default for an unmarked file) must show 5/5 distinct openers, `regression-demo` (the frozen pre-fix before-shot) must retain its tic, `documented-failure` (the two Mistral-Nemo captures, now marked) is excluded. A new tracked baseline auto-extends the set with no code edit; a future failure opts out with one marker line. The `2026-06-30` AWQ capture is now covered where the old hardcoded pair missed it. Discriminator + discovery unit tests added.
+- **Origin:** `tester design 2026-06-30`; shipped same day.
