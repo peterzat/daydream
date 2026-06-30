@@ -291,18 +291,18 @@ async function deleteSlot(slot) {
 }
 
 function reconnectAfterSlotChange() {
+  // Any slot change (claim / create / switch / wake) re-enters as the new toon
+  // with a CLEAN log: close the current socket while suppressing its onclose
+  // auto-reconnect, then connect fresh (no ?since, so no replayed history).
+  // (A transient network drop still auto-resumes via onclose -> connect(true).)
   document.getElementById("slots-panel").classList.add("hidden");
-  if (awaitingPick) {
-    // Re-entering after leaving the dream: the socket is closed; connect fresh.
-    awaitingPick = false;
-    connect(false);
-    return;
-  }
+  awaitingPick = false;
   if (ws) {
-    try { ws.close(); } catch (_) {}
+    const old = ws;
+    ws = null;
+    try { old.onclose = null; old.close(); } catch (_) {}
   }
-  // The onclose handler reconnects after a short delay; that path also
-  // refreshes the slots list once the new state_snapshot lands.
+  connect(false);
 }
 
 document.getElementById("slots-toggle").addEventListener("click", async () => {
