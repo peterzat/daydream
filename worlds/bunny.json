@@ -24,7 +24,7 @@
   "toons": [
     {"slot": 1, "name": "Wren", "seed": "a quiet wandering toon who hums when alone",
      "appearance_seed": "a soft watercolor toon in a dusty cloak, freckles, kind eyes",
-     "current_room_slug": "meadow", "is_human_controlled": 1, "mood": "curious",
+     "current_room_slug": "meadow", "is_human_controlled": 0, "mood": "curious",
      "presence_text": null},
     {"slot": 100, "name": "Rook",
      "seed": "the forge-keeper; slow-moving and quiet; hums old songs at the bellows, sleeves always a little sooty; keeps careful sketches of every small repair",
@@ -36,7 +36,7 @@
        "ui_hint": "Talk",
        "description": "Talk to Rook, the forge-keeper.",
        "effects_schema": {"allowed_kinds": ["narrate", "spawn_object", "set_mood"]},
-       "prompt_template": "You are Rook, the forge-keeper: slow-moving, quiet, warm; you say a little less than you mean and let the work speak. Recent memories of this visitor: {% for m in memories %}\n- {{ m.text }}{% else %} (none yet){% endfor %}\nThe visitor says: {{ player_input }}\n\nReply in character with ONE soft, painterly `narrate` effect (cozy, Spiritfarer-warm, no urgency, no modern tech). If the visitor asks to see your work, your sketches, or your papers, ALSO emit exactly one `spawn_object` for a readable thing named \"a sheaf of papers\" (seed: \"loose pages, soft at the edges, covered in small careful drawings of every repair\"), with aliases [\"papers\", \"sheaf\"], readable true, generated_by \"talk:rook\", located on you. Never spawn anything else."
+       "prompt_template": "You are Rook, the forge-keeper: slow-moving, quiet, warm; you say a little less than you mean and let the work speak. Recent memories of this visitor: {% for m in memories %}\n- {{ m.text }}{% else %} (none yet){% endfor %}\nThe visitor says: {{ player_input }}\n\nReply in character with ONE soft, painterly `narrate` effect (cozy, Spiritfarer-warm, no urgency, no modern tech). If the visitor asks to see your work, your sketches, or your papers, ALSO emit exactly one `spawn_object` for a readable thing named \"sheaf of papers\" (seed: \"loose pages, soft at the edges, covered in small careful drawings of every repair\"), with aliases [\"papers\", \"sheaf\"], readable true, generated_by \"talk:rook\", located on you. Never spawn anything else."
      }},
     {"slot": 101, "name": "Iris",
      "seed": "the attic archivist; older, soft-voiced, curious; sorts old letters and small objects with patient attention; sometimes reads a passage aloud to no one in particular",
@@ -64,16 +64,16 @@
      }}
   ],
   "items": [
-    {"room_slug": "meadow", "name": "a brass lantern",
+    {"room_slug": "meadow", "name": "brass lantern",
      "seed": "an old brass lantern with a hairline crack and a steady warm flame",
      "aliases": ["lantern", "lamp"]},
-    {"room_slug": "forge", "name": "a tin kettle",
+    {"room_slug": "forge", "name": "tin kettle",
      "seed": "a dented tin kettle, warm from the back of the hearth, smelling faintly of chamomile",
      "aliases": ["kettle"]},
-    {"room_slug": "attic", "name": "a ribboned bundle of letters",
+    {"room_slug": "attic", "name": "bundle of letters",
      "seed": "a soft bundle of old letters tied with a strip of pale ribbon, the ink gone brown at the edges",
      "aliases": ["letters", "bundle"], "readable": true},
-    {"room_slug": "hollow", "name": "a smooth river stone",
+    {"room_slug": "hollow", "name": "river stone",
      "seed": "a palm-sized river stone, cool and grey-green, worn perfectly smooth",
      "aliases": ["stone", "pebble"]}
   ],

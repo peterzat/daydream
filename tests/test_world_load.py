@@ -168,8 +168,10 @@ def test_authored_bunny_world_loads_and_rook_spawns_papers(tmp_path: Path, monke
         rook_id = conn.execute(
             "SELECT id FROM objects WHERE kind = 'toon' AND name = 'Rook'"
         ).fetchone()["id"]
+        # Wren (slot 1) is the claimable human toon (is_human_controlled=0 until
+        # claimed, matching the seed convention); use it as the acting player.
         human_id = conn.execute(
-            "SELECT id FROM objects WHERE kind = 'toon' AND is_human_controlled = 1"
+            "SELECT id FROM objects WHERE kind = 'toon' AND slot = 1"
         ).fetchone()["id"]
         rook = objects.get(rook_id)
         objects.move(human_id, rook.location_id)  # co-locate to bring Rook in scope
