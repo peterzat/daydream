@@ -97,6 +97,24 @@ thought" or similar in-fiction language).
 
 ---
 
+## Object descriptions (examine + spawn)
+
+The object/verb core (2026-06-30) added two new runtime generation surfaces;
+both obey this tone bible and the Banned moods above:
+
+- **Lazy-cache examine.** When a player examines a spawned object with no
+  cached detail, one local-LLM call writes ONE or two soft, painterly
+  sentences (`daydream/verbs.py:_EXAMINE_SYSTEM`), persisted as
+  `properties.examined_text` and served from cache after. Tone: a small
+  noticed thing, warmly. No urgency, no modern tech, no quoted dialogue. The
+  banlist (`daydream/llm/safety.py`) drops an off-tone description before it
+  caches.
+- **Generative objects (spawn).** A dialogue's `spawn_object` effect names a
+  real thing (Rook's "a sheaf of papers"). Author such names + their seeds as
+  cozy, specific-sensory nouns ("loose pages, soft at the edges, covered in
+  small careful drawings"), never grand or systemy. The reset world's dialogue
+  prompts (`worlds/bunny.json`) carry this voice; copy their register.
+
 ## Prompt suffix
 
 Append this verbatim to every image-gen and narration prompt that

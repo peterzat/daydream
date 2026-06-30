@@ -97,6 +97,8 @@ The plausible explanation: each decoded token's attention computation accumulate
 
 The smoke harness's strict-JSON probe was specifically chosen because it surfaces this regression on the first run. If you ever bump models, re-run the smoke; if it passes the JSON gate, you can trust the fp8-KV story scales similarly to your new model.
 
+**The grounded command parser (2026-06-30) is now a SECOND strict-JSON consumer on the hot path.** Every natural-language input is one JSON-constrained Qwen call that must return `{verb, dobj_id, iobj_id, args}` and ground the object to an enumerated in-scope id (`daydream/parser.py`). That makes JSON-format adherence even more load-bearing than when only the data-skill dialogue depended on it, and it reinforces the JSON-fluent-base preference recorded in the backlog (`creative-finetune-json-fluent-base`, `free-form-prose-pipeline`): a model that drifts out of JSON mode now breaks *parsing*, not just dialogue. The `tier_long` parser-grounding probe (`tests/drift/test_parser_grounding.py`) is the runtime gate for this — it grounds real Qwen across a command corpus, so it catches a verb/dobj grounding regression the same way the smoke catches the fp8-KV derail. Re-run it alongside the smoke after any model/flag change.
+
 ## Image gen stack
 
 ### What we picked: SDXL base 1.0 + `ostris/watercolor_style_lora_sdxl`, served by ComfyUI

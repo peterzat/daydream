@@ -114,25 +114,25 @@ This project tilts deliberately toward **proxy** verification (a measurable numb
 ### `short` — the pre-commit gate
 
 - Marker expression: `tier_short`
-- Test count at v0.2.0: ~320. Wall-clock: ~2.7 s.
-- What's in it: every test that doesn't boot `daydream.server.app`, spawn a subprocess, or do heavy filesystem I/O. Also the constants-drift probes under `tests/drift/test_drift_constants.py` (cheap; they just read files), the WHIMSY suffix probe, the voice-baseline tic-regression probe (`tests/test_voice_baseline.py`; parses captured markdown, asserts pairwise-distinct openers), and the memory-ranking drift probe (`tests/drift/test_memory_ranking.py`; tmp_path SQLite + mocked embeddings, fingerprints the salience formula's ordering and per-item scores).
-- What it catches: broken imports, wrong migration, skill-interpreter regression, cache-key math bug, WHIMSY.md drift, vllm-version doc drift, prompt-template tic regressions on the captured voice corpus, salience-formula drift in NPC memory.
+- Test count at v0.3.0: ~377. Wall-clock: ~3 s.
+- What's in it: every test that doesn't boot `daydream.server.app`, spawn a subprocess, or do heavy filesystem I/O. Includes the object/verb/parser/generative core (`tests/test_objects.py`, `test_verbs.py`, `test_parser.py`, `test_generative.py`, `test_effects.py` — all DB-on-tmp + mocked-LLM), plus the constants-drift probes under `tests/drift/test_drift_constants.py` (cheap; they just read files), the WHIMSY suffix probe, the voice-baseline tic-regression probe (`tests/test_voice_baseline.py`; parses captured markdown, asserts pairwise-distinct openers), and the memory-ranking drift probe (`tests/drift/test_memory_ranking.py`; tmp_path SQLite + mocked embeddings, fingerprints the salience formula's ordering and per-item scores).
+- What it catches: broken imports, wrong migration, object-access / verb-dispatch / parser-grounding regressions, effect-allowlist gaps, cache-key math bug, WHIMSY.md drift, vllm-version doc drift, prompt-template tic regressions on the captured voice corpus, salience-formula drift in NPC memory.
 - When to run: every commit, every save if you've got a file-watcher. `bin/install-hooks` wires this to `.git/hooks/pre-commit` so it fires automatically.
 
 ### `medium` — the pre-push gate
 
 - Marker expression: `tier_short or tier_medium`
-- Test count at v0.2.0: ~451. Wall-clock: ~4.2 s.
-- What's in it: everything from `short` plus tests that boot `TestClient` (auth, frontend, ws, ws_images, ws_rook, ws_iris), spawn `bin/game` as a subprocess, round-trip archives, or exercise the per-world DB schema (memories included). GPU calls are still mocked; the BGE-small embedder is mocked at `daydream.memories._embed`.
-- What it catches: WebSocket protocol regressions, auth flow breaks, admin CLI breaks, bash dispatcher breaks, NPC dialogue path regressions, memory capture/retrieve/scoping breaks.
+- Test count at v0.3.0: ~591. Wall-clock: ~9 s.
+- What's in it: everything from `short` plus tests that boot `TestClient` (auth, frontend, ws + the command-frame / scene-object snapshot tests, ws_images, ws_rook, ws_iris, ws_swap), spawn `bin/game` as a subprocess, round-trip archives, or exercise the per-world DB schema (memories included) and the keyless object-schema world authoring (`test_world_load.py`, including the committed `worlds/bunny.json` reset world end to end). GPU calls are still mocked; the BGE-small embedder is mocked at `daydream.memories._embed`.
+- What it catches: WebSocket protocol regressions (input + command frames), auth flow breaks, admin CLI breaks, bash dispatcher breaks, NPC dialogue path regressions, world-load / authoring regressions, memory capture/retrieve/scoping breaks.
 - When to run: before every push, after finishing a feature. `bin/install-hooks` wires this to `.git/hooks/pre-push` so it fires automatically.
 
 ### `long` — the drift + end-to-end gate
 
 - Marker expression: `tier_short or tier_medium or tier_long`
-- Test count at v0.2.0: ~460 (~451 + 9 real-engine drift probes). Wall-clock: ~30 s with vLLM + ComfyUI up.
-- What's in it: everything from `medium` plus the `tests/drift/` probes. Real LLM calls through vLLM. Real image renders through ComfyUI. The arbiter smoke alternates the two under a 90-second budget.
-- What it catches: fp8-KV-style format-adherence regressions, LoRA-swap aesthetic drift, image-gen latency regressions, arbiter serialization bugs.
+- Test count at v0.3.0: ~606 (~591 + the real-engine drift probes, now including the 6-case parser-grounding probe). Wall-clock: ~30 s with vLLM + ComfyUI up.
+- What's in it: everything from `medium` plus the `tests/drift/` probes. Real LLM calls through vLLM. Real image renders through ComfyUI. The arbiter smoke alternates the two under a 90-second budget. The parser-grounding probe (`tests/drift/test_parser_grounding.py`) grounds real Qwen output to in-scope ids across a command corpus.
+- What it catches: fp8-KV-style format-adherence regressions, parser verb/dobj grounding drift, LoRA-swap aesthetic drift, image-gen latency regressions, arbiter serialization bugs.
 - When to run: before a release, after swapping a model / LoRA / workflow, after any arbiter change.
 - Requires: `bin/game vllm-up && bin/game comfyui-up`. Engine-gated tests (`requires_vllm`, `requires_comfyui` markers) skip cleanly if engines are down — the rest of the tier still runs.
 
@@ -169,6 +169,7 @@ A drift probe runs the real code path, measures something, and compares to a **g
 | Probe file                               | What it fingerprints                                                      | Corpus                                     |
 |------------------------------------------|---------------------------------------------------------------------------|--------------------------------------------|
 | `tests/drift/test_llm_json_adherence.py` | JSON schema keys + latency window per prompt.                             | `tests/drift/prompts/*.json` (5 probes)    |
+| `tests/drift/test_parser_grounding.py`   | Real Qwen grounds free text to the right closed verb + in-scope dobj id.   | 6-case command corpus (in-file)            |
 | `tests/drift/test_image_perceptual.py`   | dHash + resolution + (model, lora, workflow_hash). Hamming tolerance.     | `tests/drift/aesthetics/*.json` (3 probes) |
 | `tests/drift/test_arbiter_smoke.py`      | 5 alternating LLM + image calls; per-call + aggregate budgets.            | reuses prompts/                            |
 | `tests/drift/test_drift_constants.py` (`tier_short`) | WHIMSY_PROMPT_SUFFIX vs WHIMSY.md; vllm version; GPU fraction; model id. | CLAUDE.md + bin/ scripts        |
