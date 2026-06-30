@@ -145,6 +145,10 @@ def _state_snapshot(
     things_in = objects.contents(room_id, kind="thing")
     inventory_in = objects.contents(toon_id, kind="thing")
     toons_in = toons.get_toons_in_room(room_id)
+    # The controlled toon's own identity, so the SPA can render WHO YOU ARE
+    # distinctly and separate it from WHO ELSE IS HERE. It is also in `toons`
+    # (all co-located toons) for back-compat; the client filters it out there.
+    self_toon = next((t for t in toons_in if t.id == toon_id), None) or toons.get_toon(toon_id)
     if resume_since is _REPLAY_RECENT:
         # Move / effect re-snapshots: the room's recent history.
         recent = events.fetch_since(
@@ -188,6 +192,9 @@ def _state_snapshot(
         # is the actor's carried things.
         "items": [_object_card(o) for o in things_in],
         "toons": [_toon_card(t) for t in toons_in],
+        # WHO YOU ARE: the controlled toon, named explicitly so the SPA never
+        # has to guess which co-located toon is the player.
+        "self": _toon_card(self_toon) if self_toon is not None else None,
         "inventory": [_object_card(o) for o in inventory_in],
         "skills": [{"name": s.name, "ui_hint": s.ui_hint, "kind": s.kind} for s in available],
         # The verb bar (Examine / Take / Drop / Talk) — verb-then-object.

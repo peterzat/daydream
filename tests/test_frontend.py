@@ -222,6 +222,61 @@ def test_main_js_links_object_mentions_in_narration():
     assert "entity-link" in r.text
 
 
+def test_index_html_has_labelled_scene_regions():
+    """C3 (SPEC 2026-06-30): the scene distinctly labels and separates WHO YOU
+    ARE / HERE WITH YOU / ON THE GROUND / YOU'RE CARRYING."""
+    with TestClient(app) as client:
+        _login(client)
+        r = client.get("/")
+    for rid in ("self", "toons", "things", "inventory"):
+        assert f'id="{rid}"' in r.text
+    assert "scene-region" in r.text
+    for label in ("you are", "here with you", "on the ground", "you're carrying"):
+        assert label in r.text
+
+
+def test_index_html_has_backpack_control():
+    """C4 (SPEC 2026-06-30): a backpack-style control surfaces the inventory."""
+    with TestClient(app) as client:
+        _login(client)
+        r = client.get("/")
+    assert 'id="backpack-toggle"' in r.text
+
+
+def test_main_js_renders_self_and_filters_others_with_empty_states():
+    """C3: the SPA renders WHO YOU ARE from snap.self, filters it out of the
+    co-located toons, and shows per-region empty-state lines."""
+    with TestClient(app) as client:
+        _login(client)
+        r = client.get("/assets/main.js")
+    assert "snap.self" in r.text
+    assert "t.id !== selfId" in r.text  # co-located toons exclude self
+    assert "your hands are empty" in r.text  # carrying empty state
+    assert "emptyLine" in r.text
+
+
+def test_main_js_inventory_backpack_and_verb_gating():
+    """C4 + C5: the backpack control sends the inventory command, and staging a
+    verb gates scene objects to those the verb applies to (so Talk never
+    prompts on a non-toon)."""
+    with TestClient(app) as client:
+        _login(client)
+        r = client.get("/assets/main.js")
+    assert 'sendCommand("inventory")' in r.text
+    assert "applyVerbGating" in r.text
+    assert "obj-ungated" in r.text
+    assert "objectVerbs" in r.text  # click-path applicability guard
+
+
+def test_style_css_has_scene_region_and_gating_styles():
+    with TestClient(app) as client:
+        _login(client)
+        r = client.get("/assets/style.css")
+    assert ".scene-region" in r.text
+    assert ".region-label" in r.text
+    assert ".obj-ungated" in r.text
+
+
 def test_style_css_has_object_and_verb_styles():
     with TestClient(app) as client:
         _login(client)

@@ -463,6 +463,40 @@ def test_ws_snapshot_carries_scene_objects_verb_bar_and_entities():
     )
 
 
+def test_ws_snapshot_carries_self_identity():
+    """C3 (SPEC 2026-06-30): the snapshot names the controlled toon (WHO YOU
+    ARE) so the SPA renders it distinctly and separates it from co-located
+    toons. Self is also present in the inclusive `toons` list (client filters)."""
+    with TestClient(app) as client:
+        _login(client)  # claims Wren
+        with client.websocket_connect("/ws") as ws:
+            snap = ws.receive_json()
+    assert snap["self"] is not None
+    assert snap["self"]["id"] == "t-wren"
+    assert snap["self"]["name"] == "Wren"
+    assert any(t["id"] == "t-wren" for t in snap["toons"])
+
+
+def test_ws_inventory_command_reports_carried_and_empty():
+    """C4 (SPEC 2026-06-30): the `inventory` command lists carried things and
+    says so when empty, end to end over the WS (deterministic fast-path, no
+    LLM)."""
+    with TestClient(app) as client:
+        _login(client)  # claims Wren at the meadow, empty-handed
+        with client.websocket_connect("/ws") as ws:
+            ws.receive_json()  # snapshot
+            ws.send_json({"kind": "input", "text": "inventory"})
+            empty = ws.receive_json()
+            ws.send_json({"kind": "command", "verb": "take", "dobj_id": "i-lantern"})
+            ws.receive_json()  # object_moved
+            ws.receive_json()  # snapshot refresh
+            ws.send_json({"kind": "input", "text": "inventory"})
+            full = ws.receive_json()
+    assert empty["event"]["kind"] == "narrate"
+    assert "carrying nothing" in empty["event"]["payload"]["text"].lower()
+    assert "lantern" in full["event"]["payload"]["text"].lower()
+
+
 # ---- structured command frame (the click path) -------------------------
 
 

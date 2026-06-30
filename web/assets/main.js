@@ -41,19 +41,30 @@ function renderSnapshot(snap) {
     (a, b) => (b.alias || "").length - (a.alias || "").length
   );
   clearStagedVerb();
-  // Map actor IDs to display names so 'say' events can name the speaker.
+  // Map actor IDs to display names so 'say' events can name the speaker
+  // (built from ALL co-located toons, including yourself).
   actorNames = {};
-  // Toons present: clickable, carrying object id + kind + mood.
-  const toons = document.getElementById("toons");
-  toons.innerHTML = "";
-  for (const t of snap.toons) {
-    actorNames[t.id] = t.name;
-    toons.appendChild(objectChip(t, `${t.name} (${t.mood})`));
+  for (const t of snap.toons || []) actorNames[t.id] = t.name;
+  const selfId = snap.self ? snap.self.id : null;
+  // WHO YOU ARE: the controlled toon, shown distinctly (not clickable —
+  // it is identity, not a target).
+  const selfEl = document.getElementById("self");
+  selfEl.innerHTML = "";
+  if (snap.self) {
+    const span = document.createElement("span");
+    span.className = "self-chip";
+    span.textContent = `${snap.self.name} (${snap.self.mood})`;
+    selfEl.appendChild(span);
+  } else {
+    selfEl.appendChild(emptyLine("drifting..."));
   }
-  // Things on the ground here (previously sent but never rendered).
-  renderObjects("things", snap.items || []);
-  // The player's carried inventory.
-  renderObjects("inventory", snap.inventory || []);
+  // WHO ELSE IS HERE: co-located toons, excluding yourself.
+  const others = (snap.toons || []).filter((t) => t.id !== selfId);
+  renderObjects("toons", others, "no one else is here", (t) => `${t.name} (${t.mood})`);
+  // WHAT'S ON THE GROUND: room things (previously sent but never rendered).
+  renderObjects("things", snap.items || [], "nothing on the ground");
+  // WHAT YOU'RE CARRYING: inventory (things located on you).
+  renderObjects("inventory", snap.inventory || [], "your hands are empty");
   // Re-hydrate the chat from the snapshot's recent events.
   const chat = document.getElementById("chat");
   chat.innerHTML = "";
@@ -103,21 +114,34 @@ function renderSnapshot(snap) {
   }
 }
 
-function renderObjects(containerId, objs) {
+function renderObjects(containerId, objs, emptyText, labelFn) {
   const el = document.getElementById(containerId);
   el.innerHTML = "";
-  for (const o of objs) el.appendChild(objectChip(o, o.name));
+  if (!objs || !objs.length) {
+    if (emptyText) el.appendChild(emptyLine(emptyText));
+    return;
+  }
+  for (const o of objs) el.appendChild(objectChip(o, labelFn ? labelFn(o) : o.name));
+}
+
+function emptyLine(text) {
+  const span = document.createElement("span");
+  span.className = "region-empty";
+  span.textContent = text;
+  return span;
 }
 
 function objectChip(o, label) {
-  // A distinct, clickable scene element carrying its object id + kind, so
-  // the verb bar / default-Examine can target it.
+  // A distinct, clickable scene element carrying its object id + kind + the
+  // verbs that apply to it, so the verb bar / default-Examine can target it
+  // and client-side gating can dim verbs that don't apply.
   const span = document.createElement("span");
   span.className = "obj obj-" + o.kind;
   span.dataset.objectId = o.id;
   span.dataset.kind = o.kind;
+  span.dataset.verbs = (o.verbs || []).join(",");
   span.textContent = label;
-  span.onclick = () => onObjectClick(o.id);
+  span.onclick = () => onObjectClick(o.id, o.verbs || []);
   return span;
 }
 
@@ -129,6 +153,7 @@ function toggleStagedVerb(verb, btn) {
   clearStagedVerb();
   stagedVerb = verb;
   btn.classList.add("verb-staged");
+  applyVerbGating();
 }
 
 function clearStagedVerb() {
@@ -136,11 +161,29 @@ function clearStagedVerb() {
   document
     .querySelectorAll("#verb-bar button.verb-staged")
     .forEach((b) => b.classList.remove("verb-staged"));
+  document
+    .querySelectorAll("#scene .obj.obj-ungated")
+    .forEach((o) => o.classList.remove("obj-ungated"));
 }
 
-function onObjectClick(objectId) {
-  // Staged verb wins; a bare object click defaults to Examine.
+function applyVerbGating() {
+  // With a verb staged, dim + disable scene objects the verb can't apply to
+  // (Talk -> toons; Take/Drop -> things; Examine -> toons + things). Object
+  // chips carry their own verb list, so the verb bar offers a verb only where
+  // it applies (SPEC 2026-06-30).
+  document.querySelectorAll("#scene .obj").forEach((el) => {
+    const verbs = (el.dataset.verbs || "").split(",").filter(Boolean);
+    if (stagedVerb && !verbs.includes(stagedVerb)) el.classList.add("obj-ungated");
+    else el.classList.remove("obj-ungated");
+  });
+}
+
+function onObjectClick(objectId, objectVerbs) {
+  // Staged verb wins; a bare object click defaults to Examine (valid for every
+  // toon + thing). A staged verb the object doesn't support is a no-op, so we
+  // never prompt for talk text on a non-toon.
   const verb = stagedVerb || "examine";
+  if (stagedVerb && !(objectVerbs || []).includes(stagedVerb)) return;
   if (verb === "talk") {
     const msg = (window.prompt("say what to them?") || "").trim();
     sendCommand("talk", objectId, msg);
@@ -280,6 +323,13 @@ document.getElementById("input-form").addEventListener("submit", (ev) => {
   if (!text) return;
   sendInput(text);
   inp.value = "";
+});
+
+// Backpack control: surface what you're carrying in the chat. Sends the same
+// `inventory` command the text input does (the carrying region also lists it
+// live in the scene). The click path makes no LLM call.
+document.getElementById("backpack-toggle").addEventListener("click", () => {
+  sendCommand("inventory");
 });
 
 // ---- slot picker (toon-slot-management spec, 2026-05-07) -------------

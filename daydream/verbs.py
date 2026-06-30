@@ -98,6 +98,11 @@ VERBS: dict[str, VerbSpec] = {
         description="Move through an exit. Args: a direction (e.g. 'north').",
         allowed_effects=frozenset(),
     ),
+    "inventory": VerbSpec(
+        name="inventory", ui_hint="Inventory",
+        description="List what you're carrying. No target.",
+        allowed_effects=frozenset({"narrate"}),
+    ),
 }
 
 
@@ -327,6 +332,18 @@ async def _handle_go(actor, room_id, dobj, iobj, args, spec) -> None:
     )
 
 
+async def _handle_inventory(actor, room_id, dobj, iobj, args, spec) -> None:
+    """List the things the actor is carrying (things located on the toon). Built
+    on the existing containment model; deterministic, no LLM. A clear line when
+    empty so the player always gets an answer."""
+    carried = objects.contents(actor.id, kind="thing")
+    if not carried:
+        _dispatch(actor, room_id, [{"kind": "narrate", "text": "You're carrying nothing."}], spec)
+        return
+    names = ", ".join(o.name for o in carried)
+    _dispatch(actor, room_id, [{"kind": "narrate", "text": f"You're carrying: {names}."}], spec)
+
+
 _ENGINE_HANDLERS = {
     "look": _handle_look,
     "examine": _handle_examine,
@@ -334,6 +351,7 @@ _ENGINE_HANDLERS = {
     "drop": _handle_drop,
     "say": _handle_say,
     "go": _handle_go,
+    "inventory": _handle_inventory,
 }
 
 

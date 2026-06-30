@@ -49,7 +49,9 @@ def _install_dialogue(name: str) -> None:
 
 
 def test_closed_verb_registry_with_arg_specs():
-    assert set(verbs.VERBS) == {"look", "examine", "take", "drop", "talk", "say", "go"}
+    assert set(verbs.VERBS) == {
+        "look", "examine", "take", "drop", "talk", "say", "go", "inventory"
+    }
     # Arg-specs: object-targeted verbs declare a dobj + valid kinds.
     assert verbs.VERBS["take"].needs_dobj
     assert verbs.VERBS["take"].valid_dobj_kinds == frozenset({"thing"})
@@ -166,6 +168,23 @@ async def test_deterministic_command_path_makes_no_llm_call(monkeypatch):
 async def test_examine_thing_echoes_cached_detail():
     await verbs.execute_command("t-wren", "examine", dobj_id="i-lantern")
     assert "hairline crack" in _last_narrate()  # the seed sentinel, no LLM
+
+
+# ---- inventory (lists carried things; not in the bar) ------------------
+
+
+@pytest.mark.asyncio
+async def test_inventory_empty_says_so():
+    await verbs.execute_command("t-wren", "inventory")
+    assert "carrying nothing" in _last_narrate().lower()
+
+
+@pytest.mark.asyncio
+async def test_inventory_lists_carried_things():
+    await verbs.execute_command("t-wren", "take", dobj_id="i-lantern")
+    await verbs.execute_command("t-wren", "inventory")
+    line = _last_narrate().lower()
+    assert "carrying" in line and "lantern" in line
 
 
 # ---- go (movement stays a verb; not in the bar) ------------------------

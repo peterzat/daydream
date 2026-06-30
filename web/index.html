@@ -15,9 +15,22 @@
     </header>
     <p id="room-desc" class="room-desc"></p>
     <section id="scene" aria-label="here">
-      <section id="toons" aria-label="present"></section>
-      <section id="things" aria-label="things here"></section>
-      <section id="inventory" aria-label="carrying"></section>
+      <section id="self-region" class="scene-region" aria-label="you are">
+        <h2 class="region-label">you are</h2>
+        <div id="self" class="region-body"></div>
+      </section>
+      <section id="here-region" class="scene-region" aria-label="here with you">
+        <h2 class="region-label">here with you</h2>
+        <div id="toons" class="region-body"></div>
+      </section>
+      <section id="ground-region" class="scene-region" aria-label="on the ground">
+        <h2 class="region-label">on the ground</h2>
+        <div id="things" class="region-body"></div>
+      </section>
+      <section id="carrying-region" class="scene-region" aria-label="you're carrying">
+        <h2 class="region-label">you're carrying <button id="backpack-toggle" type="button" class="backpack-toggle" title="list what you're carrying">backpack</button></h2>
+        <div id="inventory" class="region-body"></div>
+      </section>
     </section>
     <section id="chat" aria-live="polite"></section>
     <form id="input-form">

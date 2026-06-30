@@ -79,19 +79,43 @@ html, body {
   50%      { opacity: 1.0; }
 }
 
-#toons {
-  margin-bottom: 0.7em;
+/* Scene regions: WHO YOU ARE / HERE WITH YOU / ON THE GROUND / YOU'RE
+ * CARRYING each get a small label and a paper-box body, so the scene reads
+ * unambiguously (SPEC 2026-06-30). */
+.scene-region { margin-bottom: 0.55em; }
+.region-label {
+  margin: 0 0 0.2em;
+  font-size: 0.72em;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--sage-deep);
+  font-weight: normal;
+  opacity: 0.85;
+}
+.region-body {
   padding: 0.4em 0.8em;
   background: var(--paper);
   border: 1px solid var(--line);
   border-radius: 4px;
   font-size: 0.92em;
-  color: var(--sage-deep);
-  font-style: italic;
-  min-height: 1.4em;
+  min-height: 1.2em;
 }
-
-.toon { margin-right: 1em; }
+#carrying-region .region-body { border-style: dashed; }
+.region-empty { color: var(--sage-deep); font-style: italic; opacity: 0.65; }
+.self-chip { color: var(--sage-deep); font-weight: bold; }
+.backpack-toggle {
+  margin-left: 0.5em;
+  font-size: 0.9em;
+  background: var(--paper);
+  border: 1px solid var(--sage);
+  color: var(--sage-deep);
+  border-radius: 4px;
+  cursor: pointer;
+  padding: 0 0.45em;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.backpack-toggle:hover { background: var(--sage); color: var(--paper); }
 
 #chat {
   background: var(--paper);
@@ -238,27 +262,18 @@ footer .slots-toggle:hover { text-decoration: underline; }
 /* Scene objects: distinct, clickable chips for toons + things + inventory
  * (objects + local LLMs, 2026-06-30). Toons keep the existing italic-sage
  * distinctness; things get a complementary warm tint. */
-#things, #inventory {
-  margin-bottom: 0.7em;
-  padding: 0.4em 0.8em;
-  background: var(--paper);
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  font-size: 0.92em;
-  min-height: 1.2em;
-}
-#things:empty, #inventory:empty { display: none; }
-#inventory { border-style: dashed; }
-
 .obj {
   margin-right: 0.9em;
   cursor: pointer;
   border-bottom: 1px dotted transparent;
-  transition: color 0.15s, border-color 0.15s;
+  transition: color 0.15s, border-color 0.15s, opacity 0.15s;
 }
 .obj:hover { border-bottom-color: currentColor; }
 .obj-toon { color: var(--sage-deep); font-style: italic; }
 .obj-thing { color: var(--warm); }
+/* A scene object the staged verb can't apply to: dimmed + non-interactive,
+ * so e.g. staging Talk leaves only toons clickable (SPEC 2026-06-30). */
+.obj-ungated { opacity: 0.3; cursor: default; pointer-events: none; }
 
 /* In-scope object mentions inside narration, made clickable. */
 .entity-link {
