@@ -1,0 +1,7 @@
+{
+  "_doc": "Anchor prompt #4: the authored r-forge room seed (verbatim from worlds/bunny.json). This makes SPEC C12 ('the forge looks like a forge') a ratify-once-then-mechanical regression proxy instead of an eyeball-only check: a seed/LoRA/checkpoint/workflow change that shifts the forge render past tolerance fails tier_long. The render is a faithful proxy of the in-game r-forge background (same seed + WHIMSY suffix + workflow).",
+  "name": "forge",
+  "prompt": "a working blacksmith's forge: a heavy iron anvil on a worn stump, a great leather bellows beside a bed of banked coals, tongs and hammers hung in neat rows on the wall, warm sparks drifting up, soft painterly watercolor",
+  "expected_resolution": [1024, 1024],
+  "phash_tolerance": 12
+}
