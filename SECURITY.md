@@ -1,30 +1,125 @@
 ## Security Review — 2026-06-30 (scope: paths)
 
-**Summary:** Path-scoped review of the objects+verbs+local-LLM-parser turn (HEAD `777a289`, SPEC 2026-06-30): the MOO-style unified `objects` store and access layer (`daydream/objects.py`, migration `011_objects.sql`), the closed verb registry + structured command bus (`daydream/verbs.py`), the grounded natural-language parser (`daydream/parser.py`), the allowlisted world-mutation effect API (`daydream/skills/effects.py`), the data-skill pipeline + per-NPC `talk` dialogue (`daydream/skills/data.py`), the WS protocol's two producers / scene+entity snapshot (`daydream/api/ws.py`), the keyless object-schema envelope writer (`daydream/llm/bootstrap.py`), the admin cascade refit (`daydream/admin.py`), the typed views (`daydream/rooms.py`, `daydream/toons.py`, `daydream/items.py`), the Opus-authored world envelope (`worlds/bunny.json`), and the SPA's clickable-objects + verb-bar + narration-linkify rendering (`web/assets/main.js`). Trust model is unchanged friend-scope: `AccessMiddleware` (tailnet/loopback) + `CsrfOriginMiddleware` are the outer gates, and in default `tailscale` mode `is_authed()` is True unconditionally so tailnet membership is the authorization.
+**Summary:** Path-scoped review of the playtest-polish turn (HEAD `f3da4f5`, the
+10-commit run `ebc43bd`..`f3da4f5`, SPEC 2026-06-30 14/14), all of which lands
+after the prior security pass at `777a289`. Scope: the picker-first WS entry +
+two-producer command bus (`daydream/api/ws.py`), the witnessed-drift loop
+(`daydream/drift.py`, new to security scope), the grounded parser's new
+"look at"/"go to place" fast-paths (`daydream/parser.py`), the closed verb
+registry + inventory verb + examine/say handlers (`daydream/verbs.py`), the
+data-skill pipeline's second-person dispatcher (`daydream/skills/data.py`), the
+typed toon view (`daydream/toons.py`), the SPA's scene/inventory/overlay/slot
+rendering (`web/assets/main.js`) and its static structure (`web/index.html`, new
+to scope), and the Opus-authored world envelope (`worlds/bunny.json`). Trust
+model is unchanged friend-scope: `AccessMiddleware` (tailnet CGNAT `100.64.0.0/10`
++ loopback) and `CsrfOriginMiddleware` are the outer gates; in default
+`tailscale` mode `auth.is_authed()` is True unconditionally, so tailnet
+membership is the authorization. The WS endpoint still gates on `is_authed`
+(`ws.py:396`) and closes 1008 otherwise.
 
-The new design's security spine held up under tracing. **The LLM never mutates state directly:** the parser only selects a verb from the closed registry and grounds dobj/iobj to ids it must find in the actor's enumerated scope, and both the parser (`parser.py:104-118`) and the executor (`verbs.py:143-149`, `_resolve_in_scope`) independently re-validate that the verb is known, the target is in scope, and `verb in objects.verbs_for(dobj)` — so a hallucinated or client-supplied out-of-scope id cannot act at a distance. **All mutation flows through the effect allowlist** (`effects.dispatch_effects`): a kind outside `ALLOWED_KINDS`, or outside a verb's per-verb `allowed` subset, is dropped with a narrate fallback and mutates nothing; the `talk` verb's allowlist deliberately omits `move_object`. **No SQL injection:** every statement across `objects.py` / `toons.py` / `rooms.py` / `items.py` / `admin.py` / `bootstrap._write_db` is parameterized; the single templated WHERE (`toons._query`) receives only hardcoded literal clauses from internal callers, never user input. **No XSS:** every content-bearing `innerHTML` in `main.js` routes server strings through `escape()` (or `linkifyEntities`, which escapes first and only injects spans whose attribute values are themselves escaped); object names, aliases, toon names, and narration are all escaped, and clickable-object ids are server-generated `[a-z0-9-]` identifiers placed via `dataset`/double-quoted attributes. **set_property cannot escalate control:** it read-modify-writes `properties_json` only, so the promoted auth columns (`controller_session`, `is_human_controlled`, `kicked_at`, `slot`) are unreachable by any LLM-emitted effect. **No secrets / no PII:** scan over all scoped files returned only env-var *names* in comments (`ANTHROPIC_API_KEY` in the deprecated bootstrap docstring; `config.password()` POSTs the configured shared password to loopback `/api/login` in the swap CLI, not a hardcoded value); git history of `bootstrap.py` shows no hardcoded key ever; `worlds/bunny.json` is fictional content (Wren, Rook, Iris, Bram). Net: 0 BLOCK / 0 WARN. One NOTE (below) records this turn's widening of an already-accepted v1 risk.
+The security spine held under tracing across every changed file. **The LLM never
+mutates state directly:** the parser only selects a verb from the closed registry
+and grounds dobj/iobj to ids it must find in the actor's enumerated scope
+(`parser.py:107-122`), and the executor independently re-validates the verb is
+known, the target resolves via `_resolve_in_scope`, and `verb in
+objects.verbs_for(dobj)` (`verbs.py:144-163`), so a hallucinated or
+client-supplied out-of-scope id cannot act at a distance. **The click/command
+path is strictly narrower than free text:** `_handle_command` routes only through
+`execute_command`, whose `get(verb)` knows only the closed `VERBS` dict, so a
+command frame cannot invoke a data skill, and a stale/forged `dobj_id` is rejected
+by `_resolve_in_scope`. **Per-verb effect allowlists are enforced:** each verb's
+effects pass through `dispatch_effects(allowed=spec.allowed_effects)`; `talk`
+deliberately omits `move_object` (`verbs.py:88`), and examine's `set_property` is
+engine-constructed against the in-scope examined object with a hardcoded
+`examined_text` key (`verbs.py:266-269`). **No new injection:** the new
+`dobj_name` path ("take the moon" then "You don't see the moon here") and the
+"You can't go X from here" line echo player free text into a narrate, but all
+narrate/say text is escaped on the client before insertion. **No XSS:** every
+`innerHTML` in `main.js` is a clear (`""`), an `escape()`-wrapped server string,
+or `linkifyEntities` (which escapes the full text first, then injects only spans
+whose attribute values are themselves `escape()`d); the new dream-overlay uses
+`textContent` with static strings; the new scene chips set ids/kinds/verbs via
+`dataset` and labels via `textContent`; slot rows escape `t.name` and interpolate
+only an integer slot number; `img.src` takes server-built cache URLs and is not a
+script sink. **No SQL injection:** every statement in `toons.py` is parameterized;
+`_query`'s templated WHERE receives only hardcoded literal clauses from internal
+callers, never user input. **No secrets / no PII:** the secret-pattern scan over
+all nine scoped files returned only `{name}`-token references in `drift.py`
+comments; `worlds/bunny.json` is fictional content (Wren, Rook, Iris, Bram) with
+no real names, keys, or tokens. **The picker-first change is a net security
+improvement:** it removed the legacy `t-wren` shared-toon fallback (a prior
+accepted risk), so an unresolved session now controls no toon and is routed to
+the picker via `needs_toon` instead of silently sharing one seeded toon. Net:
+0 BLOCK / 0 WARN / 0 new NOTE.
+
+Two changes lightly touch existing accepted risks without raising their severity.
+(1) Witnessed drift (`drift.py`, `toons.py` dropped the now-dead
+`occupied_room_ids`) makes a co-located NPC's ambient beat visible to a present
+player. That beat can be tone-influenced by captured-memory prompt injection (the
+accepted memory risk), but the drift LLM path is banlist-checked
+(`drift.py:460`), escaped on render, room-scoped, and emits only a narrate plus a
+fixed-bucket mood nudge (no `set_property`/`move`/`spawn`), so it cannot be turned
+into a mutation vector. (2) The standalone room-affordance data-skill path
+(`stoke`/`tend`) still dispatches with `allowed=None`, i.e. the full
+`ALLOWED_KINDS` (`ws.py:384` to `data.py:394`), the documented v1 posture carried
+below.
 
 ### Findings
 
-[NOTE] daydream/skills/effects.py:150-192 + daydream/skills/data.py:374-386 — LLM-emitted `set_property` / `move_object` / `spawn_object` effects take an LLM-chosen target id with no scope/ownership check, and a room-affordance data skill runs with the FULL effect vocabulary regardless of its declared `effects_schema.allowed_kinds`. This is the documented v1 posture (the effect KIND allowlist is the enforced boundary; target-authorization + per-effect jsonschema are v2), and it extends the previously-accepted `set_mood`-unscoped-toon_id risk rather than introducing a new class.
-  Attack vector: a player at the forge/hollow uses a room-affordance data skill (`stoke`/`tend`) — dispatched via `ws._handle_input` → `data_skills.execute_by_name(...)` with `allowed=None`, i.e. the full `ALLOWED_KINDS` — and prompt-injects the local Qwen into emitting e.g. `{"kind":"move_object","object_id":"<guessed-id>","dest_id":"<guessed-id>"}` or `{"kind":"set_property","target_id":"<id>","key":"verbs","value":["take"]}`. The output banlist scans only `text`/`seed`/`name`/`mood` fields (`data.py:_narrative_text`), so a move/set_property payload's ids/values are not tone-filtered. The skill author's declared `allowed_kinds` (e.g. bunny.json's `["narrate"]` on `stoke`/`tend`) is advisory only and does not constrain dispatch.
-  Why this is NOTE, not WARN: (1) it is the explicitly documented v1 design — `data.py`'s module docstring states `effects_schema` is "documentation / provenance only; enforcement is by the effect allowlist," and `safety.py` + SPEC 2026-06-30 scope per-effect jsonschema + target-authorization to v2 BACKLOG `skills-authoring-and-security`; (2) `set_property` writes `properties_json` only and cannot reach the auth columns, so there is no privilege escalation — the blast radius is friend-scope game-state manipulation (move objects, grant a closed-set verb like take/drop to an unexpected kind, poison a cached `examined_text`); (3) all such content renders escaped in the SPA, so no XSS; (4) reliability is low — the local 7B must break character AND emit a precisely-targeted effect with a valid id the prompt does not expose (random `o-`/`t-` ids are unguessable; only stable ids like `r-meadow`/`t-rook`/`t-wren` are knowable from the repo); (5) the `talk` verb path DOES enforce its per-verb allowlist (`verbs.py:88`, no `move_object`), so only the standalone room-affordance data-skill path is unconstrained.
-  Evidence: `daydream/skills/data.py:383-385` (`execute_by_name` calls `execute(...)` with no `allowed=`, so `dispatch_effects(allowed=None)` permits all `ALLOWED_KINDS`); `daydream/skills/effects.py:155,180` (`toon_id`/`target_id` default to `actor_id` but accept any existing id, unscoped); `daydream/skills/effects.py:241-247` (`move_object` validates only that both ends exist, not scope); `daydream/objects.py:231-244` (`set_property` mutates `properties_json` only — auth columns untouched); `daydream/skills/data.py:244` (`_narrative_text` scans `text`/`seed`/`name`/`mood`, not `value`/`dest_id`/`object_id`).
-  Remediation (v2, already tracked): the BACKLOG `skills-authoring-and-security` pipeline — per-effect jsonschema, enforce each data skill's declared `effects_schema.allowed_kinds` at dispatch (thread it through `execute`/`execute_by_name` as the `allowed` set the same way the `talk` verb does), and a target-authorization check that an effect's `target_id`/`object_id`/`dest_id` is in the actor's current scope. No action required this turn under the friend-scope v0 posture.
+No security issues identified in the reviewed scope.
 
 ### Accepted Risks
 
-Carried forward from prior reviews; none re-flagged as findings. This turn's relevant extension is folded into the first item.
+Carried forward from prior reviews; none re-flagged as findings. Items verified
+against in-scope code this run are marked; the rest live in modules outside this
+path-scoped scan and are carried unexamined.
 
-- **LLM-chosen effect targets are unscoped, and per-skill `effects_schema.allowed_kinds` is advisory (EXTENDED this turn).** Previously recorded for `set_mood`'s `toon_id`; this turn generalizes the world-mutation vocabulary (`set_property`, `move_object`, `spawn_object` are now first-class) and the standalone room-affordance data-skill path dispatches with the full `ALLOWED_KINDS`. Bounded to friend-scope game-state (auth columns are unreachable via `set_property`; the `talk` verb still enforces its narrower per-verb allowlist). Deeper fix is v2 BACKLOG `skills-authoring-and-security`. See the NOTE above.
-- Stored prompt-injection via captured memory text bypasses `wrap_player_input` containment (`daydream/memories.py`, NPC `talk` dialogue templates in `worlds/bunny.json`). Capture-time banlist + `<player_input>` wrapping (case/space-tolerant) in place; v0 impact bounded to mild voice/tone deviation. Deeper fix is v2. (The parser injects raw player `text` into its prompt unwrapped — `parser.py:221` — but its output is constrained to a closed verb + in-scope id, both re-validated by the executor, so an injected parse can at most reproduce an action the player could already issue.)
-- v1 friend-scope on the slot/session endpoints: any authed session may create / claim / kick / leave / delete any slot; `delete` permanently destroys the toon's carried things + memories (`daydream/toons.py:delete_slot`). Per-session ownership is v2 `multi-user-shared-world`.
-- Tailscale-mode auth: `is_authed()` returns True unconditionally and `POST /api/login` short-circuits to authed; `AccessMiddleware` (CGNAT `100.64.0.0/10` + loopback) is the real gate. `CsrfOriginMiddleware` (added the prior turn) closes the confused-deputy CSRF on bodyless POSTs. Cookie `https_only=False` (LAN/Tailscale only).
-- The `LEGACY_TOON_ID = "t-wren"` fallback (`daydream/api/ws.py:41`): every unclaimed session controls the same seeded slot-1 toon; multiple unclaimed sessions share it. Documented; removed in v2 multi-user-shared-world.
-- Object lifecycle / clutter-GC is deferred (SPEC 2026-06-30 BACKLOG): a player who prompt-injects an NPC into many `spawn_object` effects can litter a room (bounded by the LLM's `max_tokens` and the arbiter's single-stream serialization; the `generated_by` idempotency guard prevents the canonical papers from duplicating).
-- `AccessMiddleware` reads `scope["client"][0]` directly (no forwarded-for trust); the `100.64.0.0/10` CGNAT hardcoding; admin `restore` tar extraction guarded against CVE-2007-4559 with explicit `..`/absolute rejection + `filter="data"`; `bin/game world swap` connects to loopback only; `bin/game` env-file sourcing equals operator code execution; `bin/{vllm,memory}-bootstrap` `$MODEL` heredoc; engine bootstrap clones from `github.com/peterzat/*` — all operator-trust / documented.
+- **LLM-chosen effect targets are unscoped, and per-skill
+  `effects_schema.allowed_kinds` is advisory (verified in scope).** The
+  standalone room-affordance data-skill path dispatches with the full
+  `ALLOWED_KINDS` (`data.py:383-395` `execute_by_name` calls `execute` with no
+  `allowed=`; `ws.py:384`), and an effect's `target_id`/`object_id`/`dest_id` is
+  trusted without a scope/ownership check. Bounded to friend-scope game-state:
+  `set_property` writes `properties_json` only and cannot reach the auth columns
+  (`slot`, `controller_session`, `is_human_controlled`, `kicked_at`), so no
+  privilege escalation; the `talk` verb still enforces its narrower per-verb
+  allowlist (`verbs.py:88`, no `move_object`); all such content renders escaped.
+  Reliability is low (the local 7B must break character and emit a precisely
+  targeted effect with a valid unguessable id). Deeper fix is v2 BACKLOG
+  `skills-authoring-and-security` (per-effect jsonschema, enforce each skill's
+  declared `allowed_kinds`, target-authorization).
+- **Stored prompt-injection via captured memory bypasses `wrap_player_input`
+  containment (verified in scope).** NPC dialogue templates in `worlds/bunny.json`
+  render `{{ m.text }}` (captured player text, `data.py:374-375`) without the
+  `<player_input>` wrapper; `drift.py` wraps memory in `<memory>` tags but the
+  same captured text feeds both. Output is banlist-checked and escaped; v0 impact
+  bounded to mild voice/tone deviation. Witnessed drift makes such a deviation
+  slightly more likely to be seen, with no new mutation capability (see summary).
+  Deeper fix is v2.
+- **v1 friend-scope on slot/session endpoints (verified in scope).** Any authed
+  session may create / claim / kick / leave / delete any slot; `delete`
+  permanently destroys the toon's carried things + memories
+  (`toons.py:262-277`). CSRF on bodyless POSTs is closed by
+  `CsrfOriginMiddleware`. Per-session ownership is v2 `multi-user-shared-world`.
+- **Tailscale-mode auth (carried).** `auth.is_authed()` returns True
+  unconditionally and `POST /api/login` short-circuits to authed; `AccessMiddleware`
+  (CGNAT `100.64.0.0/10` + loopback) is the real gate; cookie `https_only=False`
+  (LAN/Tailscale only). `AccessMiddleware`/`access.py` not in this scan's scope.
+- **Object lifecycle / clutter-GC deferred (carried).** A player who
+  prompt-injects an NPC's `talk` into repeated `spawn_object` effects can litter a
+  room (bounded by `max_tokens`, the arbiter's single-stream serialization, and
+  the `generated_by` dedup guard). v2 BACKLOG `object-lifecycle-clutter-gc`.
+- **Operator-trust / out-of-scope-this-run (carried).** `AccessMiddleware`
+  source-IP handling + CGNAT hardcoding; admin restore tar extraction
+  (CVE-2007-4559 guarded); `bin/game world swap` loopback; `bin/game` env-file
+  sourcing; engine bootstrap clones; unbounded slot-create body + event-subscriber
+  queues. Live in modules outside this path scope; unchanged this turn.
+
+**Resolved this turn:** the prior `LEGACY_TOON_ID = "t-wren"` shared-toon fallback
+(every unclaimed session controlling one seeded slot-1 toon) is removed by
+picker-first entry (`ws.py:402-412`); an unresolved session now controls no toon.
 
 ---
-*Prior review (2026-06-30, paths, commit `00889a8`): the session-and-presence + world-hot-swap landing (leave-the-dream, permanent toon delete, per-connection room descriptions, keyless `load_world`, per-world starting room, the SPA). Found one WARN — bodyless state-changing POSTs (`/api/slots/{slot}/delete|kick`, `/api/session/leave`) were CSRF-able in the default tailscale mode where the SameSite=Lax rationale does not hold — and fixed it in the same push via `CsrfOriginMiddleware`. 0 BLOCK / 0 WARN outstanding.*
+*Prior review (2026-06-30, paths, commit `777a289`): the objects+verbs+local-LLM-parser turn (unified `objects` store, closed verb registry + command bus, grounded parser, allowlisted effect API, per-NPC `talk` dialogue, keyless world load, the SPA's clickable-objects rendering). Found 0 BLOCK / 0 WARN / 1 NOTE (LLM-emitted effects take an unscoped, LLM-chosen target id; standalone data-skill path dispatches with the full effect vocabulary; bounded to friend-scope game-state, accepted). That NOTE carries forward here as the first accepted risk, verified unchanged.*
 
-<!-- SECURITY_META: {"date":"2026-06-30","commit":"777a289e6616abb9142ad08f075f6fe522e7468e","scope":"paths","block":0,"warn":0,"note":1,"scanned_files":["daydream/admin.py","daydream/api/ws.py","daydream/items.py","daydream/llm/bootstrap.py","daydream/objects.py","daydream/parser.py","daydream/rooms.py","daydream/skills/data.py","daydream/skills/effects.py","daydream/toons.py","daydream/verbs.py","migrations/011_objects.sql","web/assets/main.js","worlds/bunny.json"]} -->
+<!-- SECURITY_META: {"date":"2026-06-30","commit":"f3da4f54dcd8999cdb2bf658de4314bf682e1e86","scope":"paths","block":0,"warn":0,"note":0,"scanned_files":["daydream/api/ws.py","daydream/drift.py","daydream/parser.py","daydream/skills/data.py","daydream/toons.py","daydream/verbs.py","web/assets/main.js","web/index.html","worlds/bunny.json"]} -->
