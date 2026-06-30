@@ -773,6 +773,13 @@ def cmd_world_bootstrap(
       duplicate slugs, broken exits, etc.).
     - 4 if the output path exists and --force was not given.
     """
+    print(
+        "note: 'world bootstrap' calls the Anthropic API (needs ANTHROPIC_API_KEY) and is "
+        "DEPRECATED under daydream's local-only generation policy (see CLAUDE.md "
+        "'Generation policy'). Prefer authoring the world in a Claude Code session + "
+        "'bin/game world load <envelope.json>' (keyless).",
+        file=sys.stderr,
+    )
     from daydream.llm import bootstrap as boot_mod
 
     if output is None:
@@ -796,6 +803,46 @@ def cmd_world_bootstrap(
         print(f"error: bootstrap LLM call failed: {e}", file=sys.stderr)
         return 2
     print(f"bootstrapped world {name!r} -> {result}")
+    return 0
+
+
+def cmd_world_load(
+    envelope_path: Path, name: str | None, output: Path | None, force: bool
+) -> int:
+    """Build a world DB from an Opus-authored JSON envelope (KEYLESS: no LLM,
+    no ANTHROPIC_API_KEY, no network). The envelope is the same schema
+    `world bootstrap` produces; author it in a Claude Code session, then load
+    it here. This is the canonical world-authoring path under the generation
+    policy. Exit codes: 2 (envelope missing), 3 (unreadable / invalid
+    envelope), 4 (output exists without --force)."""
+    import re as _re
+
+    from daydream.llm import bootstrap as boot_mod
+
+    if not envelope_path.exists():
+        print(f"error: envelope not found at {envelope_path}", file=sys.stderr)
+        return 2
+    try:
+        envelope = json.loads(envelope_path.read_text())
+    except (OSError, ValueError) as e:
+        print(f"error: could not read JSON envelope: {e}", file=sys.stderr)
+        return 3
+    if name is None:
+        world = envelope.get("world") if isinstance(envelope, dict) else None
+        name = (world.get("name") if isinstance(world, dict) else None) or "bootstrapped"
+    if output is None:
+        slug = _re.sub(r"[^a-z0-9-]+", "-", str(name).lower()).strip("-") or "world"
+        output = config.data_dir() / f"worlds-{config.env()}" / f"{slug}.db"
+    output = Path(output).expanduser()
+    try:
+        result = boot_mod.load_world(str(name), envelope, output, force=force)
+    except boot_mod.BootstrapOutputExistsError as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 4
+    except boot_mod.BootstrapValidationError as e:
+        print(f"error: envelope validation failed: {e}", file=sys.stderr)
+        return 3
+    print(f"loaded world {name!r} from {envelope_path.name} -> {result} (keyless, no LLM)")
     return 0
 
 
@@ -853,7 +900,7 @@ def main(argv: list[str] | None = None) -> int:
 
     p_boot = sub.add_parser(
         "bootstrap",
-        help="author a fresh world via Claude Opus 4.7 (writes a new .db)",
+        help="(DEPRECATED; needs API key) author a world via the Opus API; prefer 'load'",
     )
     p_boot.add_argument("name", help="kebab-case world identifier")
     p_boot.add_argument(
@@ -869,6 +916,26 @@ def main(argv: list[str] | None = None) -> int:
         help="LiteLLM model identifier (default: anthropic/claude-opus-4-7)",
     )
     p_boot.add_argument(
+        "--force", action="store_true",
+        help="overwrite the output path if it already exists",
+    )
+
+    p_load = sub.add_parser(
+        "load",
+        help="build a world DB from an Opus-authored JSON envelope (keyless; no API key)",
+    )
+    p_load.add_argument(
+        "envelope_path", type=Path, help="path to the authored world JSON envelope"
+    )
+    p_load.add_argument(
+        "--name", default=None,
+        help="world name / slug source (default: the envelope's world.name)",
+    )
+    p_load.add_argument(
+        "--output", type=Path, default=None,
+        help="output .db path (default: worlds-<env>/<slug>.db)",
+    )
+    p_load.add_argument(
         "--force", action="store_true",
         help="overwrite the output path if it already exists",
     )
@@ -897,6 +964,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_world_bootstrap(
             args.name, args.aesthetic, args.output, args.model, args.force,
         )
+    if args.cmd == "load":
+        return cmd_world_load(args.envelope_path, args.name, args.output, args.force)
     p.print_help()
     return 2
 

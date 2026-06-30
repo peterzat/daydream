@@ -133,10 +133,29 @@ def bootstrap_world(
         raise BootstrapOutputExistsError(
             f"output path exists: {output_path} (pass --force to overwrite)"
         )
-
     envelope = _call_llm(name, aesthetic, model)
-    spec = _validate_envelope(envelope)
+    # Reuse the keyless validate + write path. The exists-check already ran
+    # above (before spending the LLM call), so force here.
+    return load_world(name, envelope, output_path, force=True)
 
+
+def load_world(
+    name: str, envelope: dict, output_path: Path, *, force: bool = False
+) -> Path:
+    """Build a fresh daydream world DB from an already-authored JSON envelope
+    (the same schema bootstrap_world's LLM produces). NO LLM call, NO API key,
+    NO network: this is the keyless authoring path — Opus authors the envelope
+    inside a Claude Code session, this writes it to a SQLite file. Returns the
+    output path.
+
+    Raises BootstrapOutputExistsError (output exists and not force) and
+    BootstrapValidationError (envelope fails the schema)."""
+    output_path = Path(output_path).expanduser().resolve()
+    if output_path.exists() and not force:
+        raise BootstrapOutputExistsError(
+            f"output path exists: {output_path} (pass --force to overwrite)"
+        )
+    spec = _validate_envelope(envelope)
     if output_path.exists():
         output_path.unlink()
     _write_db(output_path, spec, name)
