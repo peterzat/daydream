@@ -270,18 +270,23 @@ def release_session_toon(session_id: str) -> Toon | None:
 
 
 def delete_slot(slot: int) -> Toon | None:
-    """Permanently delete the human toon in `slot`, freeing it. Removes the
-    toon object plus its dependent rows (things it carries, its memories);
-    its events stay as append-only history. Returns the deleted toon, or None
-    if the slot is empty."""
+    """Permanently delete the human toon in `slot`, freeing it. The toon's
+    carried things are DROPPED into its current room so a deleted character's
+    belongings persist in the world to be found, rather than vanishing with the
+    toon; its memories are removed and its events stay as append-only history.
+    Returns the deleted toon, or None if the slot is empty."""
     t = _slot_occupied(slot)
     if t is None:
         return None
-    conn = db.get_conn()
-    # Carried things FK the toon via location_id; remove them first.
-    conn.execute(
-        "DELETE FROM objects WHERE location_id = ? AND kind = 'thing'", (t.id,)
-    )
-    conn.execute("DELETE FROM memories WHERE npc_id = ?", (t.id,))
+    # Carried things FK the toon via location_id. Reparent them to the toon's
+    # room (drop on the ground) before deleting the toon, so no child references
+    # the gone row. If the toon somehow has no room, remove them rather than
+    # leave unreachable top-level rows.
+    for thing_id in objects.content_ids(t.id, "thing"):
+        if t.current_room_id is None:
+            objects.delete(thing_id)
+        else:
+            objects.move(thing_id, t.current_room_id)
+    db.get_conn().execute("DELETE FROM memories WHERE npc_id = ?", (t.id,))
     objects.delete(t.id)
     return t

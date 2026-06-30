@@ -200,11 +200,9 @@ Captured from the test-architecture landing (2026-04-23); scaffolding for these 
 ## Session & presence (captured 2026-06-29 playtest)
 
 
-### toon-delete-drops-items
-- **One-line description:** `toons.delete_slot` (`POST /api/slots/{slot}/delete`) currently DELETEs the toon's carried things (FK cleanup); instead it should MOVE them to the toon's current room so a deleted character's items remain in the world to be found.
-- **Why deferred:** Out of scope for the 2026-06-30 playtest-polish turn (entry/UI/NL focus); a small, self-contained change to `daydream/toons.py:delete_slot` plus a test.
-- **Revisit criteria:** A played world accumulates toons worth deleting whose carried items should persist, OR the first time a delete silently destroys an item a player cared about.
-- **Origin:** spec 2026-06-30
+### toon-delete-drops-items — done (2026-06-30)
+- **Resolution:** Shipped. `toons.delete_slot` now reparents the toon's carried things to its `current_room_id` (drops them on the ground) before deleting the toon, instead of DELETEing them; the FK is still satisfied because no child references the gone row, and a deleted character's belongings persist in the world to be found. Falls back to removing items only if the toon somehow has no room (no orphan top-level rows). Tests: `tests/test_slots_delete.py::test_delete_drops_carried_items_into_room` (drop-to-room contract) + the updated `test_delete_handles_carried_items_without_fk_error` (FK guarantee with reparent). CLAUDE.md "Toon delete" updated.
+- **Origin:** spec 2026-06-30; closed same day.
 
 ### forge-render-drift-anchor
 - **One-line description:** Add the authored `r-forge` seed/image-prompt as a 4th anchor under `tests/drift/aesthetics/` (alongside cozy_room / forest_path / meadow_dusk) with a committed perceptual-hash `.golden.json`, so SPEC 2026-06-30 C12 ("the forge looks like a forge") gains a ratify-once-then-mechanical regression proxy via the existing `tests/drift/test_image_perceptual.py` dHash framework instead of staying eyeball-only.
