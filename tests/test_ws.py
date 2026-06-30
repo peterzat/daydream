@@ -61,6 +61,20 @@ def test_ws_unauthed_is_rejected():
                 ws.receive_json()
 
 
+def test_ws_rejects_cross_origin_handshake():
+    """The /ws handshake is rejected when a browser sends a cross-origin Origin
+    (defense in depth for the state-changing WS channel, since the HTTP-only CSRF
+    middleware doesn't gate the GET upgrade). Non-browser clients with no Origin
+    still connect -- covered by the other ws tests."""
+    with TestClient(app) as client:
+        _login(client)
+        with pytest.raises(WebSocketDisconnect):
+            with client.websocket_connect(
+                "/ws", headers={"origin": "http://evil.example"}
+            ) as ws:
+                ws.receive_json()
+
+
 def test_ws_sends_state_snapshot_on_connect():
     with TestClient(app) as client:
         _login(client)

@@ -28,7 +28,7 @@ from collections import Counter
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, status
 
 from daydream import events, objects, parser, rooms, toons, verbs, version
-from daydream.api import auth
+from daydream.api import auth, csrf
 from daydream.gpu import arbiter
 from daydream.images import cache as image_cache
 from daydream.images import client as image_client
@@ -431,6 +431,14 @@ def is_session_live(session_id: str | None) -> bool:
 async def ws_endpoint(ws: WebSocket):
     session = ws.scope.get("session", {})
     if not auth.is_authed(session):
+        await ws.close(code=status.WS_1008_POLICY_VIOLATION)
+        return
+    # The /ws handshake is a GET, so the HTTP-only CsrfOriginMiddleware does not
+    # gate it, yet the socket carries state-changing frames (take/drop/go/talk/
+    # free-text). Reject a cross-origin handshake here too -- defense in depth
+    # beyond the SameSite=Lax cookie default. A non-browser client (no Origin /
+    # Referer) still passes, exactly like the CSRF middleware.
+    if not csrf.origin_allows(ws.scope.get("headers") or []):
         await ws.close(code=status.WS_1008_POLICY_VIOLATION)
         return
     # Resolve the controlled toon for this connection. Slot picker's
