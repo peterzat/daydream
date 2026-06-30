@@ -8,13 +8,6 @@ context for every entry below lives in `~/.claude/plans/let-s-design-a-fairly-gi
 
 ## v2: shared world + skill authoring
 
-### world-hot-swap (DONE; shipped in spec 2026-06-29/30)
-- **Shipped:** `bin/game world swap <target.db>` → `POST /api/world/swap` does an in-process, synchronous-and-atomic close+install+reopen of the live connection (`daydream/db.swap_live_db`, failure-safe), restarts drift, and broadcasts `WORLD_CHANGED` so connected clients re-snapshot. No restart. The named SPA "the dream shifts" overlay is the remaining polish.
-- **One-line description:** `bin/game world swap NAME` performs the SHELVE broadcast → drain (~200 ms) → `PRAGMA wal_checkpoint(TRUNCATE)` → close pool → atomic `rename` of `~/data/daydream/worlds-{env}/live` symlink → reopen pool → broadcast `world_changed`. Clients show "the dream shifts..." and reconnect within ~1 s.
-- **Why deferred:** v0 has no symlink and only one db. Hot-swap is meaningful once snapshot-restore-commands and world-bootstrap-opus produce multiple shelved worlds.
-- **Revisit criteria:** Two or more bootstrapped worlds exist and admin wants to switch live without restart.
-- **Origin:** plan let-s-design-a-fairly-giggly-narwhal
-
 ### multi-env-layout
 - **One-line description:** Add `--env dev|preview|prod` flag in `bin/game` that pins separate ports (8080/8081/8082) and separate `~/data/daydream/worlds-{env}/` dirs; vLLM and ComfyUI shared across envs (one warm process serves all three FastAPI processes).
 - **Why deferred:** v0 only has dev. Multi-env needs world-hot-swap + snapshot to be useful (otherwise three identical envs is just three ports).
@@ -160,12 +153,6 @@ Captured from the test-architecture landing (2026-04-23); scaffolding for these 
 - **Revisit criteria:** Second contributor joins AND starts ratifying baselines independently.
 - **Origin:** test architecture plan (2026-04-23)
 
-### gameplay-scenario-tests
-- **One-line description:** Upgrade `test_ws.py` with scripted multi-step scenarios: a toon enters meadow → goes north → narrates the new room → leaves an item → reconnects, snapshot reflects the state. Tests the narration + cache + persistence spine as one story rather than three unit assertions.
-- **Why deferred:** `multi-room-navigation` just landed; scenarios want to stabilize before being canonicalized as tests. And individual correctness is already covered by the existing WS tests.
-- **Revisit criteria:** `multi-room-navigation` feels stable for a few turns; first regression in the flow that single-step tests didn't catch.
-- **Origin:** test architecture plan (2026-04-23)
-
 ### latency-regression-corpus
 - **One-line description:** Tighten the per-call latency windows in `tests/drift/*.py` as multi-run trend data accumulates. Today wall-clock fields are recorded to `.latest.json` but not gated (too noisy on a single sample). Once we have ~10 same-config runs, derive p50 + p95 from the trend and set windows at (p50 / 2, p95 * 2).
 - **Why deferred:** Need samples. Until then, recorded values are the substrate, not the contract.
@@ -206,23 +193,9 @@ Captured from the test-architecture landing (2026-04-23); scaffolding for these 
 
 ## Session & presence (captured 2026-06-29 playtest)
 
-### room-description-on-entry (DONE; shipped in spec 2026-06-29/30)
-- **Shipped:** `state_snapshot.room.description` renders in the SPA; per-connection visit memory makes it full on first entry, a short "you return to ..." line on re-entry. Pre-baked stored text, no live LLM call.
-- **One-line description:** Entering a room shows a description automatically — full on first visit this session, a short/elided line on re-entry. The room description already rides in every snapshot but `web/assets/main.js` `renderSnapshot` only renders the title and drops it, and nothing auto-"looks" on entry; the abbreviation needs per-session visited-room memory (client- or server-side). Pre-bake fit (CLAUDE.md "Generation policy"): Opus authors rich first-look descriptions at seed time; runtime just displays them, local Qwen handles the short re-entry variant.
-- **Why deferred:** Surfaced in the 2026-06-29 playtest; the full-vs-abbreviated behavior and render location are a small design choice best made with the session/presence spin — though the bare "render the description that's already in the snapshot" half is autonomous-ready.
-- **Revisit criteria:** The next session/presence design spin; OR landed early as a pre-spin autonomous improvement (rendering the already-present description is the lowest-hanging piece).
-- **Origin:** design discussion / playtest 2026-06-29.
 
-### session-presence-polish (DONE; shipped in spec 2026-06-29/30)
-- **Shipped:** "leave the dream" (`POST /api/session/leave`) rests the toon + routes to the picker; a fresh session starts with an empty log (a reconnect resumes via `?since`); permanent toon delete (`POST /api/slots/{slot}/delete`) frees the slot.
-- **One-line description:** Make entering/leaving a session feel intentional. Locked expectations (2026-06-29): (a) "leave the dream" plays a brief "you wake…" beat then returns to the character picker, releasing the controlled toon — on the tailnet there is no real logout (`auth.is_authed` is always true, so today's `/api/logout` is a no-op); (b) a new session starts with an EMPTY text log (only new events stream forward), with the server distinguishing a fresh session from a reconnect (today both replay ~`SNAPSHOT_HISTORY_DEPTH`≈50 room events in `daydream/api/ws.py`); (c) toons get a true permanent delete that frees the slot, alongside the existing recoverable kick/rest (`daydream/api/slots.py` + a `web/` control).
-- **Why deferred:** Captured to feed the next session/presence design spin; spans `ws.py`, `slots.py`, `auth.py`, and `web/assets/main.js` with a few interacting sub-choices.
-- **Revisit criteria:** The next design spin on player session/presence.
-- **Origin:** design discussion / playtest 2026-06-29.
-
-### world-authoring-in-session (DONE; shipped in spec 2026-06-29/30)
-- **Shipped:** keyless `bin/game world load <envelope.json>` (`daydream/llm/bootstrap.load_world`) builds a world DB from an Opus-authored JSON envelope with no LLM call and no API key; the litellm→Anthropic `world bootstrap` path is deprecated. The 2026-06-30 spec extends the envelope to the object schema (things/prototypes/aliases/per-NPC dialogue).
-- **One-line description:** Reconcile world creation with the local-only runtime policy (CLAUDE.md "Generation policy"). Today `bin/game world bootstrap` (`daydream/admin.py` `cmd_world_bootstrap`) calls Claude Opus via litellm over the Anthropic API and needs `ANTHROPIC_API_KEY`; the intended model is Opus authoring the world IN a Claude Code session and writing it to a DB/seed (no production key). Decide: deprecate the API path, replace it with an in-session authoring workflow (Opus generates content → a loader writes the world DB), or keep the API path as an explicitly off-by-default design-time convenience.
-- **Why deferred:** The generation-policy decision (2026-06-29) postdates the bootstrap feature; reconciling is a design choice for the next world-authoring need, not an emergency (no production path uses the key today).
-- **Revisit criteria:** Next time we want to author/seed a new world; OR the next large design spin.
-- **Origin:** generation-policy decision 2026-06-29.
+### toon-delete-drops-items
+- **One-line description:** `toons.delete_slot` (`POST /api/slots/{slot}/delete`) currently DELETEs the toon's carried things (FK cleanup); instead it should MOVE them to the toon's current room so a deleted character's items remain in the world to be found.
+- **Why deferred:** Out of scope for the 2026-06-30 playtest-polish turn (entry/UI/NL focus); a small, self-contained change to `daydream/toons.py:delete_slot` plus a test.
+- **Revisit criteria:** A played world accumulates toons worth deleting whose carried items should persist, OR the first time a delete silently destroys an item a player cared about.
+- **Origin:** spec 2026-06-30

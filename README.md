@@ -8,7 +8,7 @@ The image above is the image-gen pipeline's first real output: prompt seeded fro
 
 ## Status
 
-Latest stable cut: **v0.3.0** (objects + verbs; the live world reset onto the new schema is the one pending operator step). Runs on a single Linux dev box (RTX 4000 SFF Ada, 20 GB VRAM); designed to port to Cloudflare and containers later. Test gates: 377 fast tests (`bin/game test short`, ~3 s) and 591 integration tests (`bin/game test medium`, ~9 s); both 100% green. Real-GPU drift + parser-grounding probes run on-demand under `bin/game test long`.
+Latest stable cut: **v0.3.0** (objects + verbs; the live world reset onto the new schema is the one pending operator step). Runs on a single Linux dev box (RTX 4000 SFF Ada, 20 GB VRAM); designed to port to Cloudflare and containers later. Test gates: 396 fast tests (`bin/game test short`, ~3 s) and 622 integration tests (`bin/game test medium`, ~9 s); both 100% green. Real-GPU drift + parser-grounding probes run on-demand under `bin/game test long`.
 
 What works today:
 
@@ -21,6 +21,7 @@ What works today:
 - World admin: `bin/game world list / archive / restore / snapshot / snapshot-restore / swap / load / verify / delete` covers per-world archival, full-bundle ship-to-friend, fast DB-only point-in-time snapshots (and restore-refusing-overwrite), live in-process hot-swap of the running server's world (`swap`, no restart; connected clients re-snapshot), keyless world authoring (`load`), integrity checks, cascade delete. World authoring is keyless per the generation policy: author the world in a Claude Code session, then `bin/game world load <envelope.json>` (no API key). (`bin/game world bootstrap`, which called the Anthropic API, is deprecated.)
 - Friend-scope auth (shared password, single port). `DAYDREAM_ACCESS=tailscale` (default) or `public`.
 - Session & presence: rooms describe themselves on entry (full on the first visit this session, a short line on re-entry); a fresh page load starts with an empty log (a reconnect resumes via `?since`); "leave the dream" wakes you to the character picker, releasing your toon; the 5-slot toon picker does create / claim / kick (rest) / delete.
+- Playable, legible first entry: any session with no claimed toon lands on the character picker (never a phantom toon, so input never silently no-ops); the scene labels WHO YOU ARE / HERE WITH YOU / ON THE GROUND / YOU'RE CARRYING; the verb bar offers a verb only where it applies (Talk → toons, Take/Drop → things); an `inventory` command and a backpack control surface what you carry; "go to \<place>" and "look at \<thing>" resolve naturally; player ids never leak into chat; and a dropped connection shows one calm "the dream is sleeping…" overlay that recovers on its own (the same overlay is the "the dream shifts…" beat on a live world swap).
 
 Pointers: full release narrative in [`## Release notes`](#release-notes) below; the GPU/model decision narrative (VRAM math, picks, what we tried and rejected) lives in [`docs/gpu-and-models.md`](docs/gpu-and-models.md); deferred items in [`BACKLOG.md`](BACKLOG.md); the active spec (if any) in [`SPEC.md`](SPEC.md).
 
@@ -117,8 +118,8 @@ The script installs `sentence-transformers` against the PyTorch CPU wheel index 
 ## Tests
 
 ```sh
-bin/game test short     # unit / fast (~3s)      — pre-commit gate (324 tests)
-bin/game test medium    # integration (~5s)      — pre-push gate (507 tests)
+bin/game test short     # unit / fast (~3s)      — pre-commit gate (396 tests)
+bin/game test medium    # integration (~9s)      — pre-push gate (622 tests)
 bin/game test long      # real-GPU drift (~15min) — on-demand / pre-release
 bin/game test human     # aesthetic rubric via qpeek — async human review
 ```
