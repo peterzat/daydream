@@ -56,6 +56,24 @@ def test_init_schema_creates_all_tables(temp_db_path: Path):
         conn.close()
 
 
+def test_migration_012_adds_and_backfills_world_version(temp_db_path: Path):
+    """012 adds worlds.world_version (a MAJOR.MINOR string) and back-fills the
+    seeded world to '1.0' so an existing live world boots without a version
+    block. Distinct from the unused integer schema_version (001)."""
+    conn = db.open_db(temp_db_path)
+    try:
+        db.init_schema(conn, config.MIGRATIONS_DIR)
+        cols = {r[1] for r in conn.execute("PRAGMA table_info(worlds)")}
+        assert "world_version" in cols
+        assert "schema_version" in cols  # the pre-existing integer column is untouched
+        wv = conn.execute(
+            "SELECT world_version FROM worlds WHERE id = 'w-bunny'"
+        ).fetchone()["world_version"]
+        assert wv == "1.0"
+    finally:
+        conn.close()
+
+
 def test_init_schema_seeds_starter_world(temp_db_path: Path):
     conn = db.open_db(temp_db_path)
     try:

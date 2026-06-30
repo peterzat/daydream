@@ -11,7 +11,7 @@ from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
-from daydream import config, db, drift
+from daydream import config, db, drift, version
 from daydream.api import auth, slots, world, ws
 from daydream.api.access import AccessMiddleware
 from daydream.api.csrf import CsrfOriginMiddleware
@@ -27,6 +27,12 @@ image_cache.ensure_cache_root()
 async def lifespan(app: FastAPI):
     config.ensure_dirs()
     db.init_live()
+    # Refuse to boot on an incompatible live world (a MAJOR world_version gap);
+    # warn on a minor/legacy gap. This is the server-only boot path: the gate
+    # lives here, NOT in db.init_live, which admin tools (incl. `world reset`)
+    # and the test suite also call. Freeze the build id for /status/build.
+    version.check_world_compat(db.get_conn())
+    version.build_sha()
     drift.start_drift_loop()
     try:
         yield
@@ -89,6 +95,24 @@ async def status_drift():
         f"drift: {counts['llm_emit']} emits"
         f" / {counts['canned_fallback']} fallback"
         f" / {counts['noop']} noop (since boot)\n"
+    )
+
+
+@app.get("/status/build")
+async def status_build():
+    """Build + version observability for `bin/game status`. Plain-text, one
+    key:value per line (no JSON dependency in bin/game), loopback/tailnet-only
+    via AccessMiddleware. `build` is the commit the running process started
+    from; `world_version` + `migration` are this code's expectations, so
+    `bin/game status` can compare the live server against HEAD."""
+    from fastapi.responses import PlainTextResponse
+
+    from daydream import db, version
+
+    return PlainTextResponse(
+        f"build: {version.build_sha()}\n"
+        f"world_version: {version.WORLD_VERSION}\n"
+        f"migration: {db.max_known_migration()}\n"
     )
 
 

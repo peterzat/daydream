@@ -11,7 +11,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from daydream import admin, config, db, events, objects, verbs
+from daydream import admin, config, db, events, objects, verbs, version
 
 pytestmark = pytest.mark.tier_medium
 
@@ -95,6 +95,11 @@ def test_world_load_writes_db_keyless(tmp_path: Path, monkeypatch):
         assert conn.execute(
             "SELECT starting_room_id FROM worlds"
         ).fetchone()["starting_room_id"] == "r-a"
+        # Stamped with the code's WORLD_VERSION so the loaded world matches the
+        # running server and boots without a version block (migration 012).
+        assert conn.execute(
+            "SELECT world_version FROM worlds"
+        ).fetchone()["world_version"] == version.WORLD_VERSION
     finally:
         conn.close()
 

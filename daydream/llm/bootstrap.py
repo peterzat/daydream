@@ -31,7 +31,7 @@ import uuid
 from dataclasses import dataclass
 from pathlib import Path
 
-from daydream import config, db
+from daydream import config, db, version
 
 logger = logging.getLogger(__name__)
 
@@ -445,9 +445,17 @@ def _write_db(output_path: Path, spec: WorldSpec, world_display_name: str) -> No
         # Insert the new world record. Slug derived from the operator's
         # NAME (which is already kebab-case via the CLI contract).
         slug = re.sub(r"[^a-z0-9-]+", "-", world_display_name.lower()).strip("-")
+        # Stamp the world with THIS code's WORLD_VERSION at load time, so the
+        # freshly loaded world matches the running code and the boot gate
+        # (version.check_world_compat) only fires once the code's version later
+        # moves ahead of it.
         cur.execute(
-            "INSERT INTO worlds (id, name, slug, aesthetic_seed) VALUES (?, ?, ?, ?)",
-            ("w-bunny", spec.world_name, slug or "bootstrapped", spec.aesthetic_seed),
+            "INSERT INTO worlds (id, name, slug, aesthetic_seed, world_version) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (
+                "w-bunny", spec.world_name, slug or "bootstrapped",
+                spec.aesthetic_seed, version.WORLD_VERSION,
+            ),
         )
 
         # Prototypes first (FK targets for prototype_id on every concrete
