@@ -156,7 +156,57 @@ _stop_one() {
     echo "$name: stopped"
 }
 
+_gpu_preflight() {
+    # The default `bin/game up` assumes the local GPU (vLLM + ComfyUI). Fail
+    # fast with an actionable message when the GPU won't be available, rather
+    # than letting the engines OOM or fail obscurely later. Override the
+    # free-VRAM floor with DAYDREAM_GPU_MIN_FREE_MIB; skip the GPU entirely
+    # with `bin/game up --no-gpu`.
+    if ! command -v nvidia-smi >/dev/null 2>&1; then
+        echo "error: GPU expected but 'nvidia-smi' was not found." >&2
+        echo "  daydream's engines (vLLM + ComfyUI) run on the local GPU. Install the" >&2
+        echo "  NVIDIA driver, or bring up CPU-only with 'bin/game up --no-gpu'." >&2
+        return 1
+    fi
+    local free
+    free="$(nvidia-smi --query-gpu=memory.free --format=csv,noheader,nounits 2>/dev/null | head -1 | tr -d '[:space:]')"
+    if ! [[ "$free" =~ ^[0-9]+$ ]]; then
+        echo "error: GPU expected but 'nvidia-smi' reported no usable GPU." >&2
+        echo "  run 'nvidia-smi' to diagnose, or 'bin/game up --no-gpu' for CPU-only." >&2
+        return 1
+    fi
+    local need="${DAYDREAM_GPU_MIN_FREE_MIB:-9500}"
+    if (( free < need )); then
+        echo "error: GPU has only ${free} MiB free; the engines need ~${need} MiB." >&2
+        echo "  another process is likely holding VRAM -- check 'nvidia-smi'. Free it," >&2
+        echo "  lower DAYDREAM_GPU_MIN_FREE_MIB, or 'bin/game up --no-gpu' for CPU-only." >&2
+        return 1
+    fi
+    echo "gpu: ${free} MiB free (need >= ${need} MiB) -- ok"
+    return 0
+}
+
+_start_engines() {
+    echo
+    echo "==> Starting GPU engines in the background"
+    cmd_vllm_up || echo "  vllm: skipped (see diagnostic above)" >&2
+    cmd_comfyui_up || echo "  comfyui: skipped (see diagnostic above)" >&2
+    echo
+    echo "Engines load over ~30-60 s. Run 'bin/game status' to track readiness."
+}
+
 cmd_up() {
+    # Default assumes the GPU (vLLM + ComfyUI). `--no-gpu` brings up FastAPI
+    # only (CPU-only / docs / tests). The GPU path preflights so an
+    # unavailable GPU fails fast with a clear message instead of obscure
+    # engine errors later.
+    local use_gpu=1
+    if [[ "${1:-}" == "--no-gpu" ]]; then
+        use_gpu=0
+    fi
+    if (( use_gpu )); then
+        _gpu_preflight || exit 1
+    fi
     _start_fastapi
     # Poll for readiness rather than fixed-sleep + a noisy curl probe in
     # cmd_status that fires before uvicorn binds. uvicorn typically binds
@@ -192,28 +242,17 @@ cmd_up() {
         local host; host="$(hostname -f 2>/dev/null || hostname 2>/dev/null || echo '<this-host>')"
         echo "  http://${host}:${PORT}"
     fi
+    if (( use_gpu )); then
+        _start_engines
+    fi
 }
 
 cmd_up_all() {
-    # Bring up FastAPI synchronously, then kick off vLLM and ComfyUI in
-    # the background. The game is reachable as soon as cmd_up's readiness
-    # poll returns (~3 s); engines load over the next ~30-60 s. Watch
-    # progress via `bin/game status`.
-    #
-    # Engine startup failures (not bootstrapped, port in use, model file
-    # missing) print their diagnostic and are skipped — daydream's
-    # graceful-failure paths ("the dream is foggy" for LLM down,
-    # "painting..." overlay for image-gen down) mean the game still runs
-    # at every engine combination. There is no `down-all` counterpart yet;
-    # `bin/game down` stops only FastAPI, so engines started by `up-all`
-    # need explicit `vllm-down` / `comfyui-down`.
-    cmd_up
-    echo
-    echo "==> Starting GPU engines in the background"
-    cmd_vllm_up || echo "  vllm: skipped (see diagnostic above)" >&2
-    cmd_comfyui_up || echo "  comfyui: skipped (see diagnostic above)" >&2
-    echo
-    echo "Engines load over ~30-60 s. Run 'bin/game status' to track readiness."
+    # Back-compat alias: `bin/game up` is now the GPU-assuming default
+    # (preflight + FastAPI + engines). `bin/game up --no-gpu` is FastAPI only.
+    # There is still no `down-all`; `bin/game down` stops only FastAPI, so the
+    # engines need explicit `vllm-down` / `comfyui-down`.
+    cmd_up "$@"
 }
 
 cmd_down() {

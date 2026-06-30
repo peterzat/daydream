@@ -54,7 +54,8 @@ $EDITOR .env   # set DAYDREAM_PASSWORD; review DAYDREAM_ACCESS
 Daily:
 
 ```sh
-bin/game up        # start the FastAPI server on 0.0.0.0:54321 (override with DAYDREAM_PORT)
+bin/game up        # GPU-assuming default: preflight GPU, then FastAPI (0.0.0.0:54321) + vLLM + ComfyUI
+bin/game up --no-gpu  # FastAPI only (CPU-only / no engines, no GPU preflight)
 bin/game status    # process state, port reachability, access mode, where state lives
 bin/game logs      # tail recent FastAPI output
 bin/game down      # stop
