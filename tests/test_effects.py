@@ -36,6 +36,11 @@ def test_allowlist_contains_minimum_kinds():
     assert "set_mood" in effects.ALLOWED_KINDS
 
 
+def test_allowlist_contains_world_mutation_kinds():
+    # SPEC 2026-06-30: the world-mutation vocabulary.
+    assert {"narrate", "set_property", "spawn_object", "move_object"} <= effects.ALLOWED_KINDS
+
+
 # ---- narrate --------------------------------------------------------------
 
 
@@ -171,6 +176,92 @@ def test_dispatch_preserves_input_order():
         actor_id="t-wren", room_id="r-meadow", world_id="w-bunny",
     )
     assert [a.event.payload["text"] for a in applied] == ["first", "second", "third"]
+
+
+# ---- world-mutation kinds: set_property / spawn_object / move_object -------
+
+
+def test_set_property_updates_object():
+    from daydream import objects
+    applied = effects.dispatch_effects(
+        [{"kind": "set_property", "target_id": "i-lantern", "key": "lit", "value": False}],
+        actor_id="t-wren", room_id="r-meadow", world_id="w-bunny",
+    )
+    assert applied[0].event is not None
+    assert applied[0].event.kind == "property_set"
+    assert objects.get_property("i-lantern", "lit") is False
+
+
+def test_set_property_without_value_is_dropped():
+    applied = effects.dispatch_effects(
+        [{"kind": "set_property", "target_id": "i-lantern", "key": "lit"}],
+        actor_id="t-wren", room_id="r-meadow", world_id="w-bunny",
+    )
+    assert applied[0].event is None
+
+
+def test_spawn_object_creates_clickable_thing():
+    from daydream import items
+    before = {i.name for i in items.get_items_in_room("r-meadow")}
+    applied = effects.dispatch_effects(
+        [{"kind": "spawn_object", "name": "a sheaf of papers",
+          "seed": "loose pages in a careful hand", "readable": True,
+          "aliases": ["papers"], "generated_by": "talk:rook"}],
+        actor_id="t-wren", room_id="r-meadow", world_id="w-bunny",
+    )
+    assert applied[0].event is not None
+    assert applied[0].event.kind == "object_spawned"
+    after = {i.name for i in items.get_items_in_room("r-meadow")}
+    assert after - before == {"a sheaf of papers"}
+
+
+def test_move_object_reparents_into_inventory():
+    from daydream import objects
+    applied = effects.dispatch_effects(
+        [{"kind": "move_object", "object_id": "i-lantern", "dest_id": "t-wren"}],
+        actor_id="t-wren", room_id="r-meadow", world_id="w-bunny",
+    )
+    assert applied[0].event is not None
+    assert applied[0].event.kind == "object_moved"
+    assert objects.get("i-lantern").location_id == "t-wren"
+
+
+def test_move_object_unknown_target_drops():
+    applied = effects.dispatch_effects(
+        [{"kind": "move_object", "object_id": "i-nope", "dest_id": "t-wren"}],
+        actor_id="t-wren", room_id="r-meadow", world_id="w-bunny",
+    )
+    assert applied[0].event is None
+
+
+# ---- per-verb allowlist gate ----------------------------------------------
+
+
+def test_per_verb_allowlist_rejects_disallowed_kind():
+    """A verb declaring only {narrate} cannot emit move_object: the effect is
+    rejected (fallback narrate) and NO state is mutated."""
+    from daydream import objects
+    before = objects.get("i-lantern").location_id
+    applied = effects.dispatch_effects(
+        [{"kind": "move_object", "object_id": "i-lantern", "dest_id": "t-wren"}],
+        actor_id="t-wren", room_id="r-meadow", world_id="w-bunny",
+        allowed=frozenset({"narrate"}),
+    )
+    # Rejected like an unknown kind: fallback narrate, no mutation.
+    assert applied[0].kind == "move_object"
+    assert applied[0].event is not None and applied[0].event.kind == "narrate"
+    assert objects.get("i-lantern").location_id == before
+
+
+def test_per_verb_allowlist_permits_declared_kind():
+    from daydream import objects
+    applied = effects.dispatch_effects(
+        [{"kind": "move_object", "object_id": "i-lantern", "dest_id": "t-wren"}],
+        actor_id="t-wren", room_id="r-meadow", world_id="w-bunny",
+        allowed=frozenset({"move_object", "narrate"}),
+    )
+    assert applied[0].event is not None and applied[0].event.kind == "object_moved"
+    assert objects.get("i-lantern").location_id == "t-wren"
 
 
 def test_one_bad_effect_does_not_poison_others():
