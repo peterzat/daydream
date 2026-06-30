@@ -9,6 +9,9 @@ let actorNames = {};
 let awaitingPick = false; // showing the picker after leaving; suppresses auto-reconnect
 let entities = []; // in-scope {alias, object_id, kind} for narration linking
 let stagedVerb = null; // the verb-bar verb awaiting an object click
+let lastArrivalRoomId = null; // room of the last arrival line shown (suppresses re-show on same-room re-snapshots)
+let pendingEl = null; // transient "thinking..." line during a slow (LLM) action
+let pendingTimer = null; // its safety timeout
 
 // Reconnect backoff: a dropped socket retries on a gentle, capped exponential
 // delay behind a single calm "the dream is sleeping" overlay (not a growing
@@ -99,15 +102,38 @@ function renderSnapshot(snap) {
   const others = (snap.toons || []).filter((t) => t.id !== selfId);
   renderObjects("toons", others, "no one else is here", (t) => `${t.name} (${t.mood})`);
   // WHAT'S ON THE GROUND: room things (previously sent but never rendered).
-  renderObjects("things", snap.items || [], "nothing on the ground");
+  renderObjects("things", snap.items || [], "nothing around you");
   // WHAT YOU'RE CARRYING: inventory (things located on you).
   renderObjects("inventory", snap.inventory || [], "your hands are empty");
   // Re-hydrate the chat from the snapshot's recent events.
   const chat = document.getElementById("chat");
+  clearPending();
   chat.innerHTML = "";
   lastSeq = 0; // allow snapshot replays to render
   for (const e of snap.events) renderEvent(e);
   lastSeq = snap.last_seq;
+  // First arrival into a room (fresh connect / claim / a room with no replayed
+  // history): the event log would otherwise be empty, so synthesize a look-style
+  // arrival line from the snapshot, mirroring the server `look` ("You are in X.
+  // You see: ..."). No round-trip and no stored event (look is per-viewer).
+  // lastArrivalRoomId guards against re-showing it on same-room re-snapshots.
+  const arrivalRoomId = snap.room ? snap.room.id : null;
+  if (snap.room && arrivalRoomId !== lastArrivalRoomId && !chat.children.length) {
+    let text = "You are in " + snap.room.title + ".";
+    const groundItems = snap.items || [];
+    if (groundItems.length) {
+      text += " You see: " + groundItems.map((o) => o.name).join(", ") + ".";
+    }
+    const div = document.createElement("div");
+    div.className = "evt evt-narrate";
+    div.innerHTML = linkifyEntities(text);
+    div.querySelectorAll(".entity-link").forEach((span) => {
+      span.onclick = () => onObjectClick(span.dataset.objectId);
+    });
+    chat.appendChild(div);
+    chat.scrollTop = chat.scrollHeight;
+  }
+  lastArrivalRoomId = arrivalRoomId;
   // Verb bar: Examine / Take / Drop / Talk. Click a verb to stage it, then
   // click an object; clicking an object with no staged verb defaults to
   // Examine. There is deliberately no generic "go" control here — the
@@ -203,6 +229,29 @@ function clearStagedVerb() {
     .forEach((o) => o.classList.remove("obj-ungated"));
 }
 
+function clearSceneAndLog() {
+  // Entering the picker (no controllable toon): wipe the previous session's
+  // scene + log so stale text doesn't sit visible under the picker (before, it
+  // only cleared once a toon was claimed). Mirrors renderSnapshot's empty states.
+  clearPending();
+  document.getElementById("chat").innerHTML = "";
+  document.getElementById("room-title").textContent = "drifting...";
+  document.getElementById("room-desc").textContent = "";
+  const selfEl = document.getElementById("self");
+  selfEl.innerHTML = "";
+  selfEl.appendChild(emptyLine("drifting..."));
+  renderObjects("toons", [], "no one else is here");
+  renderObjects("things", [], "nothing around you");
+  renderObjects("inventory", [], "your hands are empty");
+  document.getElementById("verb-bar").innerHTML = "";
+  document.getElementById("skill-bar").innerHTML = "";
+  document.getElementById("exit-bar").innerHTML = "";
+  document.getElementById("room-bg").src = PLACEHOLDER_BG;
+  document.getElementById("painting-overlay").classList.add("hidden");
+  clearStagedVerb();
+  lastArrivalRoomId = null;
+}
+
 function applyVerbGating() {
   // With a verb staged, dim + disable scene objects the verb can't apply to
   // (Talk -> toons; Take/Drop -> things; Examine -> toons + things). Object
@@ -224,6 +273,7 @@ function onObjectClick(objectId, objectVerbs) {
   if (verb === "talk") {
     const msg = (window.prompt("say what to them?") || "").trim();
     sendCommand("talk", objectId, msg);
+    showPending();
   } else {
     sendCommand(verb, objectId);
   }
@@ -268,6 +318,7 @@ function renderEvent(e) {
     // to the chat (no raw ids in player-visible text — SPEC 2026-06-30).
     return;
   }
+  clearPending(); // a slow action just produced its line; drop the "thinking" beat
   chat.appendChild(div);
   chat.scrollTop = chat.scrollHeight;
 }
@@ -345,6 +396,34 @@ function systemLine(msg) {
   chat.scrollTop = chat.scrollHeight;
 }
 
+function clearPending() {
+  // Remove the transient "thinking..." line (and its safety timer). Safe to
+  // call when none is showing.
+  if (pendingTimer) {
+    clearTimeout(pendingTimer);
+    pendingTimer = null;
+  }
+  if (pendingEl) {
+    if (pendingEl.parentNode) pendingEl.parentNode.removeChild(pendingEl);
+    pendingEl = null;
+  }
+}
+
+function showPending() {
+  // A calm "something is happening" beat for slow (LLM-backed) actions (talk and
+  // free text), cleared when the next event renders. ~30s safety timeout in case
+  // no event arrives (e.g. the LLM is foggy).
+  clearPending();
+  const chat = document.getElementById("chat");
+  const div = document.createElement("div");
+  div.className = "evt evt-pending";
+  div.textContent = "the dream stirs...";
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+  pendingEl = div;
+  pendingTimer = setTimeout(clearPending, 30000);
+}
+
 function escape(s) {
   return String(s)
     .replace(/&/g, "&amp;")
@@ -359,6 +438,7 @@ document.getElementById("input-form").addEventListener("submit", (ev) => {
   const text = inp.value.trim();
   if (!text) return;
   sendInput(text);
+  showPending();
   inp.value = "";
 });
 
@@ -526,6 +606,7 @@ document.getElementById("slots-close").addEventListener("click", () => {
 // return to the character picker (rather than the old no-op logout POST).
 function enterPicker() {
   awaitingPick = true;
+  clearSceneAndLog();
   document.getElementById("slots-panel").classList.remove("hidden");
   renderSlots();
 }

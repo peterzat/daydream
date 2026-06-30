@@ -255,15 +255,50 @@ def test_main_js_links_object_mentions_in_narration():
 
 def test_index_html_has_labelled_scene_regions():
     """C3 (SPEC 2026-06-30): the scene distinctly labels and separates WHO YOU
-    ARE / HERE WITH YOU / ON THE GROUND / YOU'RE CARRYING."""
+    ARE / HERE WITH YOU / AROUND YOU / YOU'RE CARRYING. The room-objects region
+    is labelled "around you" (not "on the ground": an object could be on a table)."""
     with TestClient(app) as client:
         _login(client)
         r = client.get("/")
     for rid in ("self", "toons", "things", "inventory"):
         assert f'id="{rid}"' in r.text
     assert "scene-region" in r.text
-    for label in ("you are", "here with you", "on the ground", "you're carrying"):
+    for label in ("you are", "here with you", "around you", "you're carrying"):
         assert label in r.text
+    assert "on the ground" not in r.text  # relabelled
+
+
+def test_main_js_clears_scene_and_log_on_picker_entry():
+    """Playtest fix: entering the character picker clears the prior session's
+    scene + chat (stale text used to sit visible under the picker until claim)."""
+    with TestClient(app) as client:
+        _login(client)
+        r = client.get("/assets/main.js")
+    assert "clearSceneAndLog" in r.text
+    assert "clearSceneAndLog()" in r.text  # enterPicker calls it before showing
+
+
+def test_main_js_synthesizes_first_entry_arrival_line():
+    """Playtest fix: on first entry (empty event log) the SPA writes a look-style
+    arrival line into the chat so the log isn't blank until you type 'look'."""
+    with TestClient(app) as client:
+        _login(client)
+        r = client.get("/assets/main.js")
+    assert "You are in " in r.text
+    assert "You see: " in r.text
+    assert "lastArrivalRoomId" in r.text  # guards same-room re-snapshots
+    assert "!chat.children.length" in r.text  # only when the log would be empty
+
+
+def test_main_js_shows_thinking_indicator_for_slow_actions():
+    """Playtest fix: talk + free-text show a transient 'thinking' line cleared
+    when the response event arrives (no protocol change)."""
+    with TestClient(app) as client:
+        _login(client)
+        r = client.get("/assets/main.js")
+    assert "showPending" in r.text
+    assert "clearPending" in r.text
+    assert "the dream stirs" in r.text
 
 
 def test_index_html_has_backpack_control():
