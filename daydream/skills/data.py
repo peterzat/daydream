@@ -182,6 +182,22 @@ _BANNED_FALLBACK_TEXT = "The dream won't hold that thought."
 _FOGGY_FALLBACK_TEXT = "The dream is foggy right now; that thought slips away."
 _RENDER_FAILURE_TEXT = "The dream loses the thread of that skill."
 
+# System message for the data-skill dispatcher LLM call. Instructs SECOND
+# PERSON for player-action narration so the player is always addressed as
+# "you", never "the visitor" / third person (SPEC 2026-06-30). Built once at
+# import; ALLOWED_KINDS is stable.
+_DISPATCHER_SYSTEM = (
+    "You are a skill dispatcher for a cozy watercolor text-adventure. "
+    "Narrate the player's own actions in the SECOND PERSON: address the player "
+    "as 'you', never as 'the visitor' or any third-person label. "
+    "Return strict JSON with an 'effects' list; each effect has a 'kind' plus "
+    "the fields that kind requires. Allowed kinds: "
+    + ", ".join(sorted(effects.ALLOWED_KINDS))
+    + '. If the request is off-tone or outside this skill, return '
+    '{"refused": true, "reason": "<in-fiction gentle refusal>"}. '
+    "Keep all narrative text tone-matched: cozy, soft, painterly."
+)
+
 
 def _resolve_npc_and_world(spec: SkillSpec, room_id: str) -> tuple[str | None, str | None]:
     """Bind a data skill to its backing NPC for memory scoping.
@@ -304,17 +320,10 @@ async def execute(
         return
 
     # (3) LLM call. Arbiter + error handling is inside acompletion_json.
-    system_msg = (
-        "You are a skill dispatcher for a cozy watercolor text-adventure. "
-        "Return strict JSON with an 'effects' list; each effect has a "
-        "'kind' plus the fields that kind requires. Allowed kinds: "
-        + ", ".join(sorted(effects.ALLOWED_KINDS))
-        + '. If the request is off-tone or outside this skill, return '
-        '{"refused": true, "reason": "<in-fiction gentle refusal>"}. '
-        "Keep all narrative text tone-matched: cozy, soft, painterly."
-    )
     try:
-        response = await llm_client.acompletion_json(system=system_msg, user=prompt)
+        response = await llm_client.acompletion_json(
+            system=_DISPATCHER_SYSTEM, user=prompt
+        )
     except llm_client.LLMUnavailable as e:
         logger.warning("skill %r LLM unavailable: %s", spec.name, e)
         _emit_narrate(_FOGGY_FALLBACK_TEXT, room_id)

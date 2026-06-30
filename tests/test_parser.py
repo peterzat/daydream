@@ -111,6 +111,18 @@ async def test_look_at_npc_grounds_to_examine(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_verb_plus_absent_name_passes_name_through(monkeypatch):
+    # "take the moon": a known verb + a name not in scope. The fast-path passes
+    # the (article-stripped) name through as dobj_name so the executor can say
+    # "you don't see the moon here" -- no LLM call, no grounded id.
+    spy = _mock_llm(monkeypatch, {"verb": "none"})
+    objects.move("t-wren", "r-meadow")
+    p = await parser.parse("t-wren", "take the moon")
+    assert p.verb == "take" and p.dobj_id is None and p.dobj_name == "moon"
+    spy.assert_not_called()
+
+
+@pytest.mark.asyncio
 async def test_legacy_skill_name_is_fast_path(monkeypatch):
     # Install a room-affordance skill and confirm "<name> ..." fast-paths.
     db.get_conn().execute(

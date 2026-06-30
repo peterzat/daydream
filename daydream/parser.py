@@ -55,6 +55,10 @@ class Parse:
     iobj_id: str | None = None
     args: str = ""
     error: str | None = None
+    # The name the player typed for a target that could not be grounded to an
+    # in-scope id ("take the moon"). Carried so the executor can say "you don't
+    # see the <name> here", distinct from the no-target "Take what?".
+    dobj_name: str | None = None
 
 
 NONE = Parse("none")
@@ -155,11 +159,15 @@ def _fast_path(actor_id: str, text: str, room: rooms.Room | None) -> Parse | Non
             # "examine" alone -> let execute_command narrate "Examine what?".
             return Parse(head, args="")
         # "verb <name>": resolve the name deterministically against scope.
-        obj = objects.find_in_scope_by_name(actor_id, _strip_article(rest))
+        name = _strip_article(rest)
+        obj = objects.find_in_scope_by_name(actor_id, name)
         if obj is not None and head in objects.verbs_for(obj):
             return Parse(head, dobj_id=obj.id)
-        # Unresolved by name (e.g. "take the glowing thing") -> let the LLM try.
-        return None
+        # Named but not in scope ("take the moon"): pass the name through so the
+        # executor reads "you don't see the <name> here", distinct from the
+        # no-target "Take what?" (SPEC 2026-06-30). Nothing in scope to ground
+        # to, so this is not handed to the LLM.
+        return Parse(head, dobj_name=name)
 
     # Legacy first-word data-skill name (`rook hi`, `forge a ring`), gated on
     # the skill being available in the current room. Preserves the exact-name

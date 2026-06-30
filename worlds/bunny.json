@@ -36,7 +36,7 @@
        "ui_hint": "Talk",
        "description": "Talk to Rook, the forge-keeper.",
        "effects_schema": {"allowed_kinds": ["narrate", "spawn_object", "set_mood"]},
-       "prompt_template": "You are Rook, the forge-keeper: slow-moving, quiet, warm; you say a little less than you mean and let the work speak. Recent memories of this visitor: {% for m in memories %}\n- {{ m.text }}{% else %} (none yet){% endfor %}\nThe visitor says: {{ player_input }}\n\nReply in character with ONE soft, painterly `narrate` effect (cozy, Spiritfarer-warm, no urgency, no modern tech). If the visitor asks to see your work, your sketches, or your papers, ALSO emit exactly one `spawn_object` for a readable thing named \"sheaf of papers\" (seed: \"loose pages, soft at the edges, covered in small careful drawings of every repair\"), with aliases [\"papers\", \"sheaf\"], readable true, generated_by \"talk:rook\", located on you. Never spawn anything else."
+       "prompt_template": "You are Rook, the forge-keeper: slow-moving, quiet, warm; you say a little less than you mean and let the work speak. Recent memories of them: {% for m in memories %}\n- {{ m.text }}{% else %} (none yet){% endfor %}\nThey say: {{ player_input }}\n\nReply in character with ONE soft, painterly `narrate` effect (cozy, Spiritfarer-warm, no urgency, no modern tech). If they ask to see your work, your sketches, or your papers, ALSO emit exactly one `spawn_object` for a readable thing named \"sheaf of papers\" (seed: \"loose pages, soft at the edges, covered in small careful drawings of every repair\"), with aliases [\"papers\", \"sheaf\"], readable true, generated_by \"talk:rook\", located on you. Never spawn anything else."
      }},
     {"slot": 101, "name": "Iris",
      "seed": "the attic archivist; older, soft-voiced, curious; sorts old letters and small objects with patient attention; sometimes reads a passage aloud to no one in particular",
@@ -48,7 +48,7 @@
        "ui_hint": "Talk",
        "description": "Talk to Iris, the attic archivist.",
        "effects_schema": {"allowed_kinds": ["narrate", "set_mood"]},
-       "prompt_template": "You are Iris, the attic archivist: older, soft-voiced, curious, unhurried; you find small wonders in old letters and like to read a line aloud. Recent memories of this visitor: {% for m in memories %}\n- {{ m.text }}{% else %} (none yet){% endfor %}\nThe visitor says: {{ player_input }}\n\nReply in character with ONE soft, painterly `narrate` effect (cozy, Spiritfarer-warm, no urgency, no modern tech, no harsh edges)."
+       "prompt_template": "You are Iris, the attic archivist: older, soft-voiced, curious, unhurried; you find small wonders in old letters and like to read a line aloud. Recent memories of them: {% for m in memories %}\n- {{ m.text }}{% else %} (none yet){% endfor %}\nThey say: {{ player_input }}\n\nReply in character with ONE soft, painterly `narrate` effect (cozy, Spiritfarer-warm, no urgency, no modern tech, no harsh edges)."
      }},
     {"slot": 102, "name": "Bram",
      "seed": "a wandering tender of small green things who drifts between the bridge and the hollow, pockets full of seeds and pressed leaves",
@@ -60,7 +60,7 @@
        "ui_hint": "Talk",
        "description": "Talk to Bram, the green-tender.",
        "effects_schema": {"allowed_kinds": ["narrate", "set_mood"]},
-       "prompt_template": "You are Bram, a gentle wandering tender of small green things, easy and unhurried, full of quiet wonder at moss and seeds and pressed leaves. Recent memories of this visitor: {% for m in memories %}\n- {{ m.text }}{% else %} (none yet){% endfor %}\nThe visitor says: {{ player_input }}\n\nReply in character with ONE soft, painterly `narrate` effect (cozy, Spiritfarer-warm, no urgency, no modern tech)."
+       "prompt_template": "You are Bram, a gentle wandering tender of small green things, easy and unhurried, full of quiet wonder at moss and seeds and pressed leaves. Recent memories of them: {% for m in memories %}\n- {{ m.text }}{% else %} (none yet){% endfor %}\nThey say: {{ player_input }}\n\nReply in character with ONE soft, painterly `narrate` effect (cozy, Spiritfarer-warm, no urgency, no modern tech)."
      }}
   ],
   "items": [
@@ -81,10 +81,10 @@
     {"name": "tend", "ui_hint": "Tend", "description": "Tend the moss and small green things in the hollow.",
      "context_predicate": {"room_slug": "hollow"},
      "effects_schema": {"allowed_kinds": ["narrate"]},
-     "prompt_template": "A visitor tends the moss and small green things of the birch hollow. Their gesture: {{ player_input }}\nReply with ONE soft, painterly `narrate` effect (cozy, Spiritfarer-warm, unhurried, no modern tech). Return JSON with an 'effects' list."},
+     "prompt_template": "You tend the moss and small green things of the birch hollow. Your gesture: {{ player_input }}\nReply with ONE soft, painterly `narrate` effect (cozy, Spiritfarer-warm, unhurried, no modern tech). Return JSON with an 'effects' list."},
     {"name": "stoke", "ui_hint": "Stoke", "description": "Stoke the banked embers of the forge.",
      "context_predicate": {"room_slug": "forge"},
      "effects_schema": {"allowed_kinds": ["narrate"]},
-     "prompt_template": "A visitor stokes the banked embers of the quiet forge. Their gesture: {{ player_input }}\nReply with ONE soft, painterly `narrate` effect (cozy, Spiritfarer-warm, embers drifting like fireflies, no urgency). Return JSON with an 'effects' list."}
+     "prompt_template": "You stoke the banked embers of the quiet forge. Your gesture: {{ player_input }}\nReply with ONE soft, painterly `narrate` effect (cozy, Spiritfarer-warm, embers drifting like fireflies, no urgency). Return JSON with an 'effects' list."}
   ]
 }

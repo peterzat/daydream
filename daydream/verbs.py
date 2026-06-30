@@ -124,13 +124,19 @@ async def execute_command(
     dobj_id: str | None = None,
     iobj_id: str | None = None,
     args: str = "",
+    dobj_name: str | None = None,
 ) -> None:
     """Validate scope + verb applicability, then dispatch (MOO priority).
 
     The single execution path for both UI commands and parsed free text. Emits
     events (narration / effects) as side effects; mutates only through the
     world-mutation effect API. A validation failure emits a graceful narration
-    and mutates nothing."""
+    and mutates nothing.
+
+    `dobj_name` is the name the player typed for a target the parser could NOT
+    ground to an in-scope id ("take the moon"); it lets a missing-but-named
+    target read "you don't see the moon here", distinct from the no-target
+    "Take what?". The click path never sets it (clicks always carry an id)."""
     actor = objects.get(actor_id)
     if actor is None:
         return
@@ -143,7 +149,10 @@ async def execute_command(
     dobj = None
     if spec.needs_dobj:
         if not dobj_id:
-            _narrate(room_id, f"{spec.ui_hint} what?")
+            if dobj_name:
+                _narrate(room_id, f"You don't see the {dobj_name} here.")
+            else:
+                _narrate(room_id, f"{spec.ui_hint} what?")
             return
         dobj = _resolve_in_scope(actor_id, dobj_id)
         if dobj is None:
@@ -212,8 +221,20 @@ async def _handle_look(actor, room_id, dobj, iobj, args, spec) -> None:
     _dispatch(actor, room_id, [{"kind": "narrate", "text": text}], spec)
 
 
+def _terminate(text: str) -> str:
+    """Trim and ensure exactly one terminal stop, so a detail that already ends
+    in . ! ? (or an ellipsis) doesn't yield a doubled '..' (SPEC 2026-06-30)."""
+    text = (text or "").strip()
+    if not text:
+        return text
+    return text if text[-1] in ".!?…" else text + "."
+
+
 def _examine_line(dobj: objects.Object, detail: str) -> str:
-    return f"You examine the {dobj.name}: {detail}.".replace(" .", ".")
+    detail = (detail or "").strip()
+    if not detail:
+        return f"You examine the {dobj.name}."
+    return f"You examine the {dobj.name}: {_terminate(detail)}"
 
 
 async def _handle_examine(actor, room_id, dobj, iobj, args, spec) -> None:
@@ -228,7 +249,9 @@ async def _handle_examine(actor, room_id, dobj, iobj, args, spec) -> None:
         return
     if dobj.kind == "toon":
         appearance = dobj.properties.get("appearance_seed", "")
-        line = f"You see {dobj.name}: {appearance}. {dobj.seed}.".replace(" .", ".")
+        parts = [p for p in (appearance, dobj.seed) if p and p.strip()]
+        body = " ".join(_terminate(p) for p in parts)
+        line = f"You see {dobj.name}: {body}" if body else f"You see {dobj.name}."
         _dispatch(actor, room_id, [{"kind": "narrate", "text": line}], spec)
         return
     if dobj.seed and dobj.seed.strip():

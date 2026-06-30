@@ -373,7 +373,9 @@ async def _handle_input(text: str, toon_id: str) -> None:
         )
         return
     if p.verb in verbs.VERBS:
-        await verbs.execute_command(toon_id, p.verb, p.dobj_id, p.iobj_id, p.args)
+        await verbs.execute_command(
+            toon_id, p.verb, p.dobj_id, p.iobj_id, p.args, dobj_name=p.dobj_name
+        )
         return
     # A room-affordance data skill (e.g. forge) selected as a verb: run the
     # existing safety + LLM + effects pipeline.

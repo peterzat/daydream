@@ -170,6 +170,42 @@ async def test_examine_thing_echoes_cached_detail():
     assert "hairline crack" in _last_narrate()  # the seed sentinel, no LLM
 
 
+# ---- clean verb narration (C9, SPEC 2026-06-30) ------------------------
+
+
+@pytest.mark.asyncio
+async def test_examine_detail_is_not_double_punctuated():
+    # The lantern seed ends in terminal punctuation; the examine line must not
+    # yield "..".
+    await verbs.execute_command("t-wren", "examine", dobj_id="i-lantern")
+    assert ".." not in _last_narrate()
+
+
+def test_examine_line_single_terminal_stop():
+    lantern = objects.get("i-lantern")
+    assert verbs._examine_line(lantern, "a small thing.").endswith("thing.")
+    assert ".." not in verbs._examine_line(lantern, "a small thing.")
+    assert verbs._examine_line(lantern, "a small thing").endswith("thing.")
+    # Empty detail degrades to a clean line, no stray colon.
+    assert verbs._examine_line(lantern, "") == "You examine the lantern."
+
+
+@pytest.mark.asyncio
+async def test_named_but_absent_target_says_dont_see():
+    # "take the moon": a named target not in scope -> "you don't see ...",
+    # distinct from the no-target "Take what?".
+    await verbs.execute_command("t-wren", "take", dobj_name="moon")
+    line = _last_narrate().lower()
+    assert "don't see" in line and "moon" in line
+
+
+@pytest.mark.asyncio
+async def test_no_target_named_says_verb_what():
+    # No dobj at all -> the bare "Take what?" prompt.
+    await verbs.execute_command("t-wren", "take")
+    assert "take what" in _last_narrate().lower()
+
+
 # ---- inventory (lists carried things; not in the bar) ------------------
 
 
