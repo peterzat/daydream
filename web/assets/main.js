@@ -164,7 +164,11 @@ function renderEvent(e) {
   const div = document.createElement("div");
   div.className = "evt evt-" + e.kind;
   if (e.kind === "say") {
-    const who = actorNames[e.actor_id] || e.actor_id || "someone";
+    // Attribute by the server-provided display name, falling back to the
+    // current room's actor map; NEVER the raw actor id (no object/toon ids in
+    // player-visible text — SPEC 2026-06-30).
+    const who =
+      (e.payload && e.payload.name) || actorNames[e.actor_id] || "someone";
     div.innerHTML = `<span class="speaker">${escape(who)}:</span> &ldquo;${escape(
       e.payload.text || ""
     )}&rdquo;`;
@@ -177,7 +181,12 @@ function renderEvent(e) {
     const dir = e.payload.direction || "somewhere";
     div.textContent = "you go " + dir + ".";
   } else {
-    div.textContent = `[${e.kind}] ${JSON.stringify(e.payload)}`;
+    // Other event kinds (object_moved / object_spawned / item_added /
+    // mood_set / ...) are state-sync signals: the accompanying snapshot
+    // refresh updates the scene panels and any human-readable line arrives
+    // as a narrate. Their payloads carry object ids, so they are NOT dumped
+    // to the chat (no raw ids in player-visible text — SPEC 2026-06-30).
+    return;
   }
   chat.appendChild(div);
   chat.scrollTop = chat.scrollHeight;

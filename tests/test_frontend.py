@@ -200,6 +200,19 @@ def test_main_js_no_generic_go_control_only_data_affordances():
     assert '"go " + dir' in r.text
 
 
+def test_main_js_attributes_say_by_name_never_raw_id():
+    """C2 (SPEC 2026-06-30): the say renderer attributes by the server-provided
+    display name (then the room actor map, then 'someone'), and never renders
+    the raw actor id; state-sync events are not dumped as JSON (which would
+    leak object ids) into the chat."""
+    with TestClient(app) as client:
+        _login(client)
+        r = client.get("/assets/main.js")
+    assert "e.payload.name" in r.text  # name-first attribution
+    assert "e.actor_id || " not in r.text  # the bare raw-id fallback is gone
+    assert "JSON.stringify(e.payload)" not in r.text  # no raw payload dump
+
+
 def test_main_js_links_object_mentions_in_narration():
     """In-scope object names in narration become clickable spans."""
     with TestClient(app) as client:

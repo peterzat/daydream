@@ -296,8 +296,12 @@ async def _handle_say(actor, room_id, dobj, iobj, args, spec) -> None:
         _narrate(room_id, "Say what?")
         return
     # `say` is the actor speaking, not system narration: emit a `say` event
-    # keyed to the actor (matches the prior core-skill contract).
-    events.append("toon", actor.id, "say", {"text": text}, room_id=room_id)
+    # keyed to the actor. Carry the speaker's display NAME in the payload so the
+    # client attributes by name and never falls back to a raw id (SPEC
+    # 2026-06-30: no object/toon ids in player-visible text).
+    events.append(
+        "toon", actor.id, "say", {"text": text, "name": actor.name}, room_id=room_id
+    )
 
 
 async def _handle_go(actor, room_id, dobj, iobj, args, spec) -> None:

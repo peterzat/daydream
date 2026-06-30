@@ -220,12 +220,10 @@ def test_ws_unclaimed_session_routes_to_picker():
             assert ws.receive_json() == {"kind": "needs_toon"}
 
 
-def test_picker_first_in_world_loaded_world(tmp_path, monkeypatch):
-    """C1 canonical (SPEC 2026-06-30): against a `world load`ed world (uuid'd
-    toon ids, no literal `t-wren`), an unclaimed session routes to the picker,
-    and a created toon enters the dream and acts ("go north" moves). This is
-    the production world shape where the removed `t-wren` fallback used to
-    resolve a phantom that no-op'd every input."""
+def _load_bunny_world(tmp_path, monkeypatch) -> None:
+    """Build the canonical reset world (worlds/bunny.json: uuid'd toon ids, no
+    literal `t-wren`) as the live DB under a fresh tmp data dir. The next
+    TestClient lifespan opens it (migrations already applied -> no reseed)."""
     import json
 
     from daydream import config
@@ -235,10 +233,20 @@ def test_picker_first_in_world_loaded_world(tmp_path, monkeypatch):
     db.close_db()
     live = config.live_db_path()
     live.parent.mkdir(parents=True, exist_ok=True)
-    envelope = json.loads((Path(__file__).resolve().parent.parent / "worlds" / "bunny.json").read_text())
+    envelope = json.loads(
+        (Path(__file__).resolve().parent.parent / "worlds" / "bunny.json").read_text()
+    )
     bootstrap.load_world("bunny world", envelope, live)
     db.close_db()
 
+
+def test_picker_first_in_world_loaded_world(tmp_path, monkeypatch):
+    """C1 canonical (SPEC 2026-06-30): against a `world load`ed world (uuid'd
+    toon ids, no literal `t-wren`), an unclaimed session routes to the picker,
+    and a created toon enters the dream and acts ("go north" moves). This is
+    the production world shape where the removed `t-wren` fallback used to
+    resolve a phantom that no-op'd every input."""
+    _load_bunny_world(tmp_path, monkeypatch)
     with TestClient(app) as client:
         # A loaded world has uuid toon ids; the literal seed id does not exist.
         assert toons.get_toon("t-wren") is None
@@ -262,6 +270,30 @@ def test_picker_first_in_world_loaded_world(tmp_path, monkeypatch):
             move = ws.receive_json()
         assert move["event"]["kind"] == "move"
         assert move["event"]["actor_id"] == created_id
+
+
+def test_ws_say_attributes_by_name_not_id(tmp_path, monkeypatch):
+    """C2 (SPEC 2026-06-30): in a `world load`ed world (uuid'd toon ids), a
+    `say` carries the speaker's display NAME in its payload and the speaker's
+    raw id appears nowhere in the event — so the client attributes by name,
+    never by a leaked id (the playtest's `iris-ed7…` regression class)."""
+    _load_bunny_world(tmp_path, monkeypatch)
+    with TestClient(app) as client:
+        _login_only(client)
+        r = client.post(
+            "/api/slots/2/create", json={"name": "Fern", "appearance_seed": "a wisp"}
+        )
+        assert r.status_code == 200, r.text
+        created_id = r.json()["id"]
+        with client.websocket_connect("/ws") as ws:
+            ws.receive_json()  # snapshot
+            ws.send_json({"kind": "input", "text": "say hello there"})
+            evt = ws.receive_json()
+    assert evt["event"]["kind"] == "say"
+    assert evt["event"]["payload"]["name"] == "Fern"
+    assert evt["event"]["payload"]["text"] == "hello there"
+    # The raw toon id leaks nowhere in the say payload (name or text).
+    assert created_id not in str(evt["event"]["payload"])
 
 
 def test_ws_llm_routed_input_dispatches_skill():
