@@ -55,7 +55,7 @@ Right now, before reading further, run:
 bin/game test short
 ```
 
-Expected: under 10 seconds, exits 0, ~320 tests pass (~2.7 s wall-clock at v0.2.0). If not, the venv is broken or the repo is in a weird state — fix that first. The rest of this document assumes you have a green `short` tier as a starting point.
+Expected: under 10 seconds, exits 0, ~407 tests pass (~3 s wall-clock at HEAD bfb202c). The marker expression, not the exact count, is the contract — the count grows with features. If not, the venv is broken or the repo is in a weird state — fix that first. The rest of this document assumes you have a green `short` tier as a starting point.
 
 ## The single entry point
 
@@ -114,23 +114,23 @@ This project tilts deliberately toward **proxy** verification (a measurable numb
 ### `short` — the pre-commit gate
 
 - Marker expression: `tier_short`
-- Test count at v0.3.0: ~377. Wall-clock: ~3 s.
-- What's in it: every test that doesn't boot `daydream.server.app`, spawn a subprocess, or do heavy filesystem I/O. Includes the object/verb/parser/generative core (`tests/test_objects.py`, `test_verbs.py`, `test_parser.py`, `test_generative.py`, `test_effects.py` — all DB-on-tmp + mocked-LLM), plus the constants-drift probes under `tests/drift/test_drift_constants.py` (cheap; they just read files), the WHIMSY suffix probe, the voice-baseline tic-regression probe (`tests/test_voice_baseline.py`; parses captured markdown, asserts pairwise-distinct openers), and the memory-ranking drift probe (`tests/drift/test_memory_ranking.py`; tmp_path SQLite + mocked embeddings, fingerprints the salience formula's ordering and per-item scores).
-- What it catches: broken imports, wrong migration, object-access / verb-dispatch / parser-grounding regressions, effect-allowlist gaps, cache-key math bug, WHIMSY.md drift, vllm-version doc drift, prompt-template tic regressions on the captured voice corpus, salience-formula drift in NPC memory.
+- Test count: ~407 (grows with features; the marker expression, not the count, is the contract). Wall-clock: ~3 s.
+- What's in it: every test that doesn't boot `daydream.server.app`, spawn a subprocess, or do heavy filesystem I/O. Includes the object/verb/parser/generative core (`tests/test_objects.py`, `test_verbs.py`, `test_parser.py`, `test_generative.py`, `test_effects.py` — all DB-on-tmp + mocked-LLM), plus the constants-drift probes under `tests/drift/test_drift_constants.py` (cheap; they just read files), the WHIMSY suffix probe, the voice-baseline tic-regression probe (`tests/test_voice_baseline.py`; parses captured markdown, asserts pairwise-distinct openers), and the memory-ranking drift probe (`tests/drift/test_memory_ranking.py`; tmp_path SQLite + mocked embeddings, fingerprints the salience formula's ordering and per-item scores). The 2026-06-30 playtest turn added two authored-prompt static scans here: the second-person player-narration scan (`tests/test_second_person.py`, SPEC C9 — asserts no third-person "the visitor" framing in the affordance prompts) and the per-NPC voice-constraint presence scan (`tests/test_npc_voice.py`, SPEC C11).
+- What it catches: broken imports, wrong migration, object-access / verb-dispatch / parser-grounding regressions, effect-allowlist gaps, cache-key math bug, WHIMSY.md drift, vllm-version doc drift, prompt-template tic regressions on the captured voice corpus, salience-formula drift in NPC memory, third-person leakage into player-action prompts, missing per-NPC voice constraints.
 - When to run: every commit, every save if you've got a file-watcher. `bin/install-hooks` wires this to `.git/hooks/pre-commit` so it fires automatically.
 
 ### `medium` — the pre-push gate
 
 - Marker expression: `tier_short or tier_medium`
-- Test count at v0.3.0: ~591. Wall-clock: ~9 s.
-- What's in it: everything from `short` plus tests that boot `TestClient` (auth, frontend, ws + the command-frame / scene-object snapshot tests, ws_images, ws_rook, ws_iris, ws_swap), spawn `bin/game` as a subprocess, round-trip archives, or exercise the per-world DB schema (memories included) and the keyless object-schema world authoring (`test_world_load.py`, including the committed `worlds/bunny.json` reset world end to end). GPU calls are still mocked; the BGE-small embedder is mocked at `daydream.memories._embed`.
-- What it catches: WebSocket protocol regressions (input + command frames), auth flow breaks, admin CLI breaks, bash dispatcher breaks, NPC dialogue path regressions, world-load / authoring regressions, memory capture/retrieve/scoping breaks.
+- Test count: ~648. Wall-clock: ~9 s.
+- What's in it: everything from `short` plus tests that boot `TestClient` (auth, frontend, ws + the command-frame / scene-object snapshot tests, ws_images, ws_rook, ws_iris, ws_swap, the WS cross-origin CSRF guard `test_csrf_middleware.py`), spawn `bin/game` as a subprocess, round-trip archives, or exercise the per-world DB schema (memories included) and the keyless object-schema world authoring (`test_world_load.py`, including the committed `worlds/bunny.json` reset world end to end). The scripted end-to-end gameplay-scenario test (`tests/test_scenario.py`, SPEC 2026-06-30 C14) lives here: one story through connect → picker → claim → look → take → go-to-place → talk → spawn → examine → inventory, mocked-LLM. GPU calls are still mocked; the BGE-small embedder is mocked at `daydream.memories._embed`.
+- What it catches: WebSocket protocol regressions (input + command frames), auth flow breaks, admin CLI breaks, bash dispatcher breaks, NPC dialogue path regressions, world-load / authoring regressions, memory capture/retrieve/scoping breaks, end-to-end playable-flow regressions (the picker-first entry + scene + inventory path the scenario test walks).
 - When to run: before every push, after finishing a feature. `bin/install-hooks` wires this to `.git/hooks/pre-push` so it fires automatically.
 
 ### `long` — the drift + end-to-end gate
 
 - Marker expression: `tier_short or tier_medium or tier_long`
-- Test count at v0.3.0: ~606 (~591 + the real-engine drift probes, now including the 6-case parser-grounding probe). Wall-clock: ~30 s with vLLM + ComfyUI up.
+- Test count: ~663 (~648 + the real-engine drift probes, including the 6-case parser-grounding probe). Wall-clock: ~30 s with vLLM + ComfyUI up.
 - What's in it: everything from `medium` plus the `tests/drift/` probes. Real LLM calls through vLLM. Real image renders through ComfyUI. The arbiter smoke alternates the two under a 90-second budget. The parser-grounding probe (`tests/drift/test_parser_grounding.py`) grounds real Qwen output to in-scope ids across a command corpus.
 - What it catches: fp8-KV-style format-adherence regressions, parser verb/dobj grounding drift, LoRA-swap aesthetic drift, image-gen latency regressions, arbiter serialization bugs.
 - When to run: before a release, after swapping a model / LoRA / workflow, after any arbiter change.
@@ -265,7 +265,7 @@ Liveness gates are orthogonal:
 - `requires_vllm` marker: test skips if `{DAYDREAM_LLM_BASE_URL}/models` is unreachable (2 s timeout, one probe per session).
 - `requires_comfyui` marker: test skips if `{DAYDREAM_COMFYUI_BASE_URL}/system_stats` is unreachable.
 
-So `bin/game test long` with both engines down still runs ~451 tests (short + medium) and skips the 9 drift probes with a clear "engine unreachable" reason.
+So `bin/game test long` with both engines down still runs ~648 tests (short + medium) and skips the ~15 engine-gated probes with a clear "engine unreachable" reason.
 
 ## Glossary
 
@@ -291,3 +291,5 @@ Tracked in `BACKLOG.md`. Worth naming the shape:
 - mypy gate once the typing effort is worth it (`mypy-gate`).
 - Drift alarms that auto-open a Claude Code session when a baseline diff lands on main (`drift-alarms`).
 - Voice-baseline harness generalization so a new model adds to the regression-detection parametrization without code changes (`voice-baseline-add-model-helper`).
+- A perceptual-hash drift anchor for the authored `r-forge` render so "the forge looks like a forge" (SPEC 2026-06-30 C12) becomes a ratify-once-then-mechanical proxy rather than an eyeball-only check (`forge-render-drift-anchor`).
+- A tier_short guard pinning the present-player drift cadence to a minutes-scale value so it can't silently revert to the 30-min occupancy-hiding cadence the witnessed-drift criterion fixed (`present-player-drift-cadence-guard`).

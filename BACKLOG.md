@@ -197,12 +197,6 @@ Captured from the test-architecture landing (2026-04-23); scaffolding for these 
 - **Revisit criteria:** Operator wants definitive closure on Mistral arch suitability before authoring a different LLM-pipeline change; OR a Mistral 7B creative-writing finetune publishes on HF (which would make the Mistral-vs-Qwen axis question load-bearing).
 - **Origin:** spec 2026-05-07
 
-### voice-baseline-add-model-helper
-- **One-line description:** Generalize `tests/test_voice_baseline.py`'s parametrization so adding a new committed voice-bench markdown under `docs/pretty/voice-samples/` automatically extends the regression-detection parametrize set without code changes. Today the test parametrizes over a hardcoded list of two AWQ baselines (pre-fix and post-fix); a third model swap requires editing the test fixture.
-- **Why deferred:** Today only the AWQ pre/post pair is the load-bearing regression demo. The two Mistral-Nemo Q4 captures already in tree (`2026-05-06-mn-12b-rp-ink-q4_k_m.md`, `2026-05-07-mistral-nemo-instruct-2407.md`) are documented failure modes that should NOT join the parametrization. The auto-extend logic needs a manifest or front-matter convention to distinguish "regression-tracked" baselines from "documented failure" baselines, which is enough complexity to defer until a third regression-tracked baseline is worth adding.
-- **Revisit criteria:** A third model lands as a regression-tracked baseline (e.g., a successful Qwen 2.5 7B/14B AWQ creative-writing finetune from the `creative-finetune-json-fluent-base` BACKLOG entry); OR the voice-bench corpus expands beyond 5 prompts and per-prompt assertions need a manifest-driven shape anyway.
-- **Origin:** `tester design 2026-05-07`
-
 ## Session & presence (captured 2026-06-29 playtest)
 
 
@@ -211,3 +205,22 @@ Captured from the test-architecture landing (2026-04-23); scaffolding for these 
 - **Why deferred:** Out of scope for the 2026-06-30 playtest-polish turn (entry/UI/NL focus); a small, self-contained change to `daydream/toons.py:delete_slot` plus a test.
 - **Revisit criteria:** A played world accumulates toons worth deleting whose carried items should persist, OR the first time a delete silently destroys an item a player cared about.
 - **Origin:** spec 2026-06-30
+
+### forge-render-drift-anchor
+- **One-line description:** Add the authored `r-forge` seed/image-prompt as a 4th anchor under `tests/drift/aesthetics/` (alongside cozy_room / forest_path / meadow_dusk) with a committed perceptual-hash `.golden.json`, so SPEC 2026-06-30 C12 ("the forge looks like a forge") gains a ratify-once-then-mechanical regression proxy via the existing `tests/drift/test_image_perceptual.py` dHash framework instead of staying eyeball-only.
+- **Why deferred:** The forge render was verified by a one-time manual eyeball this turn per SPEC C12 (qualitative, flagged manual); the proxy supplements that eyeball rather than blocking it, and ratifying its first golden depends on the pending live-reset eyeball of the new r-forge seed.
+- **Revisit criteria:** The operator completes the post-live-reset forge eyeball (so a known-good render exists to baseline), OR a forge seed/workflow change regresses the render with no probe to catch it.
+- **Origin:** `tester design 2026-06-30`
+- **Coordinate with:** `claude-vision-quality-gate`
+
+### present-player-drift-cadence-guard
+- **One-line description:** Add a tier_short assertion (in `tests/drift/test_drift_constants.py` or a sibling) that the present-player drift cadence (`daydream/drift.py:_DEFAULT_BUSY_SECONDS`, retuned 1800->240 this turn) stays minutes-scale (e.g. <= 600 s), guarding SPEC 2026-06-30 C13's "witnessed drift" against a silent revert to the 30-min occupancy-hiding cadence that the behavior-level emit test would not detect.
+- **Why deferred:** C13's behavior (drift emits into an occupied room) is already tested; only the cadence magnitude is unguarded, so this is regression-hardening polish, not a coverage gap.
+- **Revisit criteria:** A drift-cadence regression ships unnoticed in play, OR the present-player cadence is deliberately re-tuned and the new bound is worth pinning.
+- **Origin:** `tester design 2026-06-30`
+
+### voice-baseline-add-model-helper
+- **One-line description:** Generalize `tests/test_voice_baseline.py`'s parametrization so adding a new committed voice-bench markdown under `docs/pretty/voice-samples/` extends the tic-regression parametrize set without code edits. Today it parametrizes over a hardcoded pre-fix/post-fix AWQ pair; a manifest or front-matter convention is needed to distinguish "regression-tracked" baselines from the two in-tree Mistral-Nemo "documented failure" captures that must NOT join the set.
+- **Why deferred:** Only the AWQ pre/post pair is the load-bearing regression demo today; the auto-extend logic needs a regression-tracked-vs-failure-mode discriminator, enough complexity to defer until a third regression-tracked baseline is worth adding.
+- **Revisit criteria:** A third regression-tracked voice baseline lands (e.g. a successful Qwen-family AWQ creative-writing finetune), OR the voice-bench corpus grows past 5 prompts and per-prompt assertions need a manifest-driven shape anyway.
+- **Origin:** `tester design 2026-06-30`
