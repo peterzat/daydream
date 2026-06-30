@@ -1,5 +1,7 @@
 # Voice samples — 2026-05-07 — `hosted_vllm/mistralai/Mistral-Nemo-Instruct-2407`
 
+<!-- baseline-class: documented-failure. Mistral-Nemo Instruct rejected for the data-skill pipeline (see BACKLOG creative-finetune-json-fluent-base + docs/gpu-and-models.md). Kept as evidence, NOT regression-tracked; excluded from the opener-distinctness set. -->
+
 Rendered via `bin/game voice-samples`. Corpus: `tests/drift/voice/*.json`. Pipeline: `daydream.skills.data.execute_by_name` against `skills/rook.json` in a tmp DB (hermetic).
 
 ## Verdict

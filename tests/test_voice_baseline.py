@@ -4,11 +4,15 @@ baseline. Parses the markdown the harness writes (no GPU), extracts
 the body-language opener of each of the 5 narrate sections, and
 asserts pairwise-distinct openers as the durable post-fix property.
 
-The probe is regression-demonstrated: it passes against the 05-06
-baseline (the post-fix substrate; 5/5 distinct) and FAILS against the
-04-24 baseline (the pre-fix substrate; 4/5 share an opener). Both
-behaviors are verified via a parametrized test so a future PR that
-introduces a new template tic surfaces here as a tier_short failure.
+The parametrization is GLOB-DERIVED, not a hand-edited list: every
+`docs/pretty/voice-samples/*.md` is classified by an optional
+`<!-- baseline-class: ... -->` marker (`_discover_baselines`). A tracked
+baseline (the default for an unmarked file) must show 5/5 distinct openers;
+the frozen pre-fix `regression-demo` must retain its tic; the two rejected
+Mistral-Nemo `documented-failure` captures are excluded. So dropping a new
+committed voice-bench markdown extends the regression set with no code edit
+(BACKLOG voice-baseline-add-model-helper), and a future PR that introduces a
+new template tic surfaces here as a tier_short failure.
 
 Heuristic for the body-language opener: substring of the narrate text
 from its start through the dialog-opening single-quote that precedes
@@ -54,21 +58,37 @@ def _opener_of(narrate: str) -> str:
     return narrate[: m.start()] if m else narrate
 
 
-@pytest.mark.parametrize(
-    "baseline_name,expect_distinct",
-    [
-        # Post-fix substrate (this turn's prompt-template variety pass).
-        # Strict criterion 2 of the 2026-05-06 prior spec: 5/5 distinct.
-        ("2026-05-06-qwen2.5-7b-instruct-awq.md", True),
-        # Pre-fix substrate (frozen in tree as durable before-shot).
-        # 4/5 share the "Rook pauses the steady rhythm of the bellows,
-        # wiping hands on the apron, and says," tic. Asserting that
-        # duplicates exist here is what proves the probe catches the
-        # regression class — if someone re-introduces the tic in a
-        # future template change, the post-fix baseline check fails.
-        ("2026-04-24-qwen2.5-7b-instruct-awq.md", False),
-    ],
-)
+# An optional `<!-- baseline-class: ... -->` marker classifies each committed
+# baseline so the parametrization is glob-derived, not a hand-edited list:
+#   tracked            -> openers must be 5/5 distinct (a known-good capture).
+#   regression-demo    -> openers must NOT be distinct (a frozen pre-fix
+#                         before-shot that proves the probe catches the tic).
+#   documented-failure -> excluded entirely (a frozen rejected-model capture).
+# UNMARKED defaults to 'tracked', so a fresh capture of the production model
+# (or a future successful A/B) auto-extends the regression set with no code
+# edit; a future failure is opted out with one marker line.
+_CLASS_RE = re.compile(r"<!--\s*baseline-class:\s*([a-z-]+)")
+
+
+def _baseline_class(md: str) -> str:
+    m = _CLASS_RE.search(md)
+    return m.group(1) if m else "tracked"
+
+
+def _discover_baselines() -> list:
+    """Glob the committed voice-sample markdown and turn each non-excluded
+    file into a parametrize case (filename, expect_distinct)."""
+    params = []
+    for p in sorted(VOICE_SAMPLES_DIR.glob("*.md")):
+        cls = _baseline_class(p.read_text())
+        if cls == "documented-failure":
+            continue
+        # tracked (and any unrecognized class) -> distinct; demo -> not distinct.
+        params.append(pytest.param(p.name, cls != "regression-demo", id=p.stem))
+    return params
+
+
+@pytest.mark.parametrize("baseline_name,expect_distinct", _discover_baselines())
 def test_voice_baseline_opener_distinctness(baseline_name: str, expect_distinct: bool) -> None:
     path = VOICE_SAMPLES_DIR / baseline_name
     assert path.exists(), f"baseline file missing: {path}"
@@ -107,3 +127,26 @@ def test_dialog_quote_handles_no_quote() -> None:
     truncated model response), the heuristic returns the full text rather
     than crashing."""
     assert _opener_of("Rook nods and goes back to work") == "Rook nods and goes back to work"
+
+
+def test_baseline_class_discriminator() -> None:
+    """Unmarked defaults to tracked; the two non-default markers are read."""
+    assert _baseline_class("# Voice samples\n\nno marker here") == "tracked"
+    assert _baseline_class("x <!-- baseline-class: documented-failure --> y") == "documented-failure"
+    assert _baseline_class("<!--baseline-class:  regression-demo  -->") == "regression-demo"
+
+
+def test_discovery_excludes_failures_and_auto_covers_tracked() -> None:
+    """The glob-derived param set excludes the Mistral-Nemo documented-failures
+    and auto-covers every tracked AWQ baseline (including ones added after this
+    test was written), plus the regression-demo before-shot. This is the
+    'add a baseline with no code edit' contract."""
+    ids = {p.id for p in _discover_baselines()}
+    # Both rejected-model captures are opted out.
+    assert "2026-05-06-mn-12b-rp-ink-q4_k_m" not in ids
+    assert "2026-05-07-mistral-nemo-instruct-2407" not in ids
+    # The pre-fix before-shot stays (as a regression-demo) and the post-fix +
+    # latest AWQ captures are both covered without being named in any list.
+    assert "2026-04-24-qwen2.5-7b-instruct-awq" in ids
+    assert "2026-05-06-qwen2.5-7b-instruct-awq" in ids
+    assert "2026-06-30-qwen2.5-7b-instruct-awq" in ids
