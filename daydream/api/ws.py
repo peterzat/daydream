@@ -1,23 +1,22 @@
 """Websocket endpoint and protocol.
 
 Protocol:
-- Server -> client on connect:  {kind: "state_snapshot", room, items, toons, skills, events, last_seq}
+- Server -> client on connect:  {kind: "state_snapshot", room, items, toons,
+  inventory, skills, verb_bar, entities, events, last_seq}
 - Server -> client per change:  {kind: "event", event: {...}}
-- Client -> server free-form:   {kind: "input", text: "..."}
+- Client -> server, two producers (objects + verbs, 2026-06-30):
+  - {kind: "command", verb, dobj_id?, iobj_id?, args?} — the CLICK path; goes
+    straight to `verbs.execute_command` with NO parser/LLM call.
+  - {kind: "input", text} — free text, routed through the grounded command
+    parser (`daydream.parser`): a deterministic fast-path (exit directions,
+    bare verbs, "verb <name>", legacy data-skill names) makes no LLM call;
+    otherwise one local-LLM call grounds the text to a closed verb + in-scope
+    object id, then `execute_command` runs it. A room-affordance data skill
+    runs the data pipeline; `none` / LLM-outage degrade to a gentle narration.
 
-Free-form input is routed by:
-  1. Canonical bypass: if the first word is a known skill name (e.g., 'look'),
-     dispatch directly. No LLM call. This is what the SPA's skill buttons send.
-  2. Otherwise: pass through the LLM interpreter to pick a skill or 'none'.
-     'none' produces a graceful narration fallback (SPEC criteria 6 and 7).
-
-v1's toon-slot-management replaced the v0 hardcoded Wren-as-player
-assumption with a session-resolved controlled toon (see
-`daydream/api/slots.py`). When a session has claimed a slot, that
-toon is the actor for input dispatch and the room-filter anchor for
-the broadcast loop. Sessions that haven't claimed a slot fall through
-to the legacy default `t-wren` so existing tests + the single-session
-flow keep working."""
+Toon-slot-management resolves the controlled toon per session (see
+`daydream/api/slots.py`); an unclaimed session falls through to the legacy
+default `t-wren` so existing tests + the single-session flow keep working."""
 
 import asyncio
 import logging

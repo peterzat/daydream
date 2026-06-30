@@ -8,7 +8,8 @@ context for every entry below lives in `~/.claude/plans/let-s-design-a-fairly-gi
 
 ## v2: shared world + skill authoring
 
-### world-hot-swap (ACTIVE in spec 2026-06-29)
+### world-hot-swap (DONE; shipped in spec 2026-06-29/30)
+- **Shipped:** `bin/game world swap <target.db>` → `POST /api/world/swap` does an in-process, synchronous-and-atomic close+install+reopen of the live connection (`daydream/db.swap_live_db`, failure-safe), restarts drift, and broadcasts `WORLD_CHANGED` so connected clients re-snapshot. No restart. The named SPA "the dream shifts" overlay is the remaining polish.
 - **One-line description:** `bin/game world swap NAME` performs the SHELVE broadcast → drain (~200 ms) → `PRAGMA wal_checkpoint(TRUNCATE)` → close pool → atomic `rename` of `~/data/daydream/worlds-{env}/live` symlink → reopen pool → broadcast `world_changed`. Clients show "the dream shifts..." and reconnect within ~1 s.
 - **Why deferred:** v0 has no symlink and only one db. Hot-swap is meaningful once snapshot-restore-commands and world-bootstrap-opus produce multiple shelved worlds.
 - **Revisit criteria:** Two or more bootstrapped worlds exist and admin wants to switch live without restart.
@@ -27,6 +28,7 @@ context for every entry below lives in `~/.claude/plans/let-s-design-a-fairly-gi
 - **Origin:** plan let-s-design-a-fairly-giggly-narwhal
 
 ### skills-authoring-and-security
+- **2026-06-30 reframe (objects + verbs spec):** verbs now largely replace skills as the interaction surface, and the same allowlist + role-separation + refusal/banlist pipeline now guards LLM-driven **world-mutation** effects (`narrate`/`set_property`/`spawn_object`/`move_object`), not just dialogue. This entry narrows to the web authoring UI + the deeper pipeline (jsonschema, content-safety classifier, audit/undo); the effect-allowlist substrate it depended on is in tree and generalized.
 - **One-line description:** Web UI at `daydream/api/` for admin to edit `prompt_template`, dry-run against a sandbox, and publish; full six-layer security pipeline (Jinja2 SandboxedEnvironment, role separation with `<player_input>` tags, jsonschema validation, effect allowlist enforced in `daydream/skills/effects.py`, content-safety classifier in `daydream/llm/safety.py`, `audit` table + `bin/game world undo --invocation N`).
 - **Why deferred:** v1 ships data-skills-cli (admin authors via JSON files); the web UI + full security pipeline land in v2 once a real authoring rhythm exists and the threat model is exercised.
 - **Revisit criteria:** Admin uses JSON-CLI authoring frequently enough that a UI pays off; or first time a data skill produces an unwanted effect that needs to be rolled back.
@@ -37,6 +39,52 @@ context for every entry below lives in `~/.claude/plans/let-s-design-a-fairly-gi
 - **Why deferred:** v0/v1 use `litellm` as a Python library only — no extra process, no extra port. The proxy adds operational overhead that pays for itself only once a third backend or an automatic-fallback need exists.
 - **Revisit criteria:** Want to add Cloudflare Workers AI as a third backend, OR want automatic fallback when local vLLM is unreachable, OR multiple environments need shared rate-limiting.
 - **Origin:** plan let-s-design-a-fairly-giggly-narwhal
+
+## v2: objects + verbs (deferred depth, captured 2026-06-30)
+
+Deferred depth from the objects + local-LLMs spec (plan `the-output-of-this-greedy-hedgehog`). The object/property/verb core, command bus, grounded parser, clickable UI, and the explicit-spawn + lazy-cache generative slice shipped; these are the prepared-for next increments.
+
+### player-touch-object-promotion
+- **One-line description:** The "later" half of generative objects: a noun mentioned in narration but never `spawn_object`'d gets promoted to a real object when a player tries to interact with it (e.g. examines/takes a thing the narration named). Today promotion is explicit-only (a verb's LLM output must emit `spawn_object`); narration is deliberately never auto-scanned.
+- **Why deferred:** Fully spec'd as the documented next increment in the 2026-06-30 plan; the explicit-spawn path landed first as the irreducible, safe foundation. Player-touch promotion needs a resolution story for "which mentioned noun did they mean" that the grounded parser's in-scope-id model does not yet cover (the noun isn't an object yet, so it has no id).
+- **Revisit criteria:** The explicit-spawn slice feels good in play AND players visibly reach for nouns the dialogue named but didn't spawn.
+- **Origin:** plan the-output-of-this-greedy-hedgehog (§6, the hybrid's later half).
+
+### object-lifecycle-clutter-gc
+- **One-line description:** Salience / TTL / `last_accessed_at` pruning of generated objects so a long-played world doesn't accumulate clutter. The flags are already in place (`properties.generated_by`, an `ephemeral` flag, `last_accessed_at`) so the first GC pass needs no migration (mirrors `generated_assets.pinned`).
+- **Why deferred:** No clutter exists yet; the generative slice just landed. GC is premature until a world accrues enough spawned objects to feel noisy.
+- **Revisit criteria:** A played world accumulates enough ephemeral spawned things that rooms feel cluttered, OR a spawned-object count crosses a threshold worth measuring.
+- **Origin:** plan the-output-of-this-greedy-hedgehog (§6, provenance + minimal lifecycle).
+
+### deep-prototype-inheritance-and-per-object-verbs
+- **One-line description:** Multi-level prototype chains (today inheritance is one level, shallow) + a path for per-object authored verbs beyond the `properties.verbs` union. The MOO "generic object" pattern taken further.
+- **Why deferred:** v1 has one handler per verb and one prototype level; the resolution ORDER (player→room→dobj→iobj) is already implemented so overrides slot in without re-architecting. Depth is only worth it once authored content wants it.
+- **Revisit criteria:** Authored content needs an object that overrides a verb's default behavior, or a prototype that extends another prototype.
+- **Origin:** plan the-output-of-this-greedy-hedgehog (§2).
+
+### two-object-verbs
+- **One-line description:** `give X to Y`, `use X on Y`, and a richer verb set (open/close, put-in, read-vs-examine). The command/parser/effect plumbing already carries an `iobj_id` and an indirect-object arg-spec slot; the handlers and parser grounding for two-object commands are the work.
+- **Why deferred:** This turn locked single-object verbs (Examine/Take/Drop/Talk) to keep the core tractable. Two-object verbs multiply the grounding + validation surface.
+- **Revisit criteria:** A gameplay need for combining/transferring objects (a puzzle, a gift, a tool used on a thing).
+- **Origin:** plan the-output-of-this-greedy-hedgehog (decisions locked; give/use → backlog).
+
+### user-authored-llm-driven-world-building-verbs
+- **One-line description:** The headline future direction: a player/admin authors a verb whose LLM output BUILDS new rooms and objects (MOO-style). The world-mutation effect API is deliberately shaped for this — `spawn_room`, `link_exit`, `destroy_object` are documented (not built) as the vocabulary such a verb would emit, alongside the existing `spawn_object`/`move_object`/`set_property`.
+- **Why deferred:** Architecture + docs are prepared (the allowlisted effect API + role-separation + refusal/banlist safety generalize to it); the authoring surface + the new effect handlers + the safety story for player-authored world-mutation are the work. Couples to `skills-authoring-and-security` and `player-authored-skills`.
+- **Revisit criteria:** The single-player object/verb loop feels good AND there's appetite to let players shape the world; the effect-allowlist safety model has been exercised on dialogue-driven spawns first.
+- **Origin:** plan the-output-of-this-greedy-hedgehog (the explicit future direction; §5 future-prepared vocabulary).
+
+### per-npc-event-log-visibility-filtering
+- **One-line description:** Filter which events an NPC "sees" so dialogue stays consistent (an NPC shouldn't reference an event that happened in another room or that it couldn't have witnessed). A research-suggested consistency guard for the LLM dialogue path.
+- **Why deferred:** Single-player, two-NPC scale; the room-filtered broadcast already keeps cross-room events off a player's stream. NPC-side visibility matters once dialogue starts citing world events.
+- **Revisit criteria:** Dialogue or memory starts surfacing events the NPC couldn't plausibly know about.
+- **Origin:** plan the-output-of-this-greedy-hedgehog (out-of-scope list).
+
+### parser-latency-and-throughput-tuning
+- **One-line description:** Every free-text input is now one ~256-token parse call serialized behind the GPU arbiter with image-gen. Tune throughput (batching, a smaller/faster parse model, or speculative fast-paths) if it gates UX. The click-bypass + deterministic fast-path keep this off the hot path today.
+- **Why deferred:** Single-stream decode is sub-second warm; clicks and exact words make no LLM call. No user-visible pressure yet. Ties to `calibrated-fp8-kv-scales` (a 7B fp8-KV recovery would help here too).
+- **Revisit criteria:** Natural-language input feels laggy in play (e.g. multiple humans, or NPC dialogue chains), OR `calibrated-fp8-kv-scales` lands and frees decode headroom.
+- **Origin:** plan the-output-of-this-greedy-hedgehog (parser latency/arbiter contention note).
 
 ## Quality and tooling (GPU/ML follow-ups)
 
@@ -158,19 +206,22 @@ Captured from the test-architecture landing (2026-04-23); scaffolding for these 
 
 ## Session & presence (captured 2026-06-29 playtest)
 
-### room-description-on-entry (ACTIVE in spec 2026-06-29)
+### room-description-on-entry (DONE; shipped in spec 2026-06-29/30)
+- **Shipped:** `state_snapshot.room.description` renders in the SPA; per-connection visit memory makes it full on first entry, a short "you return to ..." line on re-entry. Pre-baked stored text, no live LLM call.
 - **One-line description:** Entering a room shows a description automatically — full on first visit this session, a short/elided line on re-entry. The room description already rides in every snapshot but `web/assets/main.js` `renderSnapshot` only renders the title and drops it, and nothing auto-"looks" on entry; the abbreviation needs per-session visited-room memory (client- or server-side). Pre-bake fit (CLAUDE.md "Generation policy"): Opus authors rich first-look descriptions at seed time; runtime just displays them, local Qwen handles the short re-entry variant.
 - **Why deferred:** Surfaced in the 2026-06-29 playtest; the full-vs-abbreviated behavior and render location are a small design choice best made with the session/presence spin — though the bare "render the description that's already in the snapshot" half is autonomous-ready.
 - **Revisit criteria:** The next session/presence design spin; OR landed early as a pre-spin autonomous improvement (rendering the already-present description is the lowest-hanging piece).
 - **Origin:** design discussion / playtest 2026-06-29.
 
-### session-presence-polish (ACTIVE in spec 2026-06-29)
+### session-presence-polish (DONE; shipped in spec 2026-06-29/30)
+- **Shipped:** "leave the dream" (`POST /api/session/leave`) rests the toon + routes to the picker; a fresh session starts with an empty log (a reconnect resumes via `?since`); permanent toon delete (`POST /api/slots/{slot}/delete`) frees the slot.
 - **One-line description:** Make entering/leaving a session feel intentional. Locked expectations (2026-06-29): (a) "leave the dream" plays a brief "you wake…" beat then returns to the character picker, releasing the controlled toon — on the tailnet there is no real logout (`auth.is_authed` is always true, so today's `/api/logout` is a no-op); (b) a new session starts with an EMPTY text log (only new events stream forward), with the server distinguishing a fresh session from a reconnect (today both replay ~`SNAPSHOT_HISTORY_DEPTH`≈50 room events in `daydream/api/ws.py`); (c) toons get a true permanent delete that frees the slot, alongside the existing recoverable kick/rest (`daydream/api/slots.py` + a `web/` control).
 - **Why deferred:** Captured to feed the next session/presence design spin; spans `ws.py`, `slots.py`, `auth.py`, and `web/assets/main.js` with a few interacting sub-choices.
 - **Revisit criteria:** The next design spin on player session/presence.
 - **Origin:** design discussion / playtest 2026-06-29.
 
-### world-authoring-in-session (ACTIVE in spec 2026-06-29)
+### world-authoring-in-session (DONE; shipped in spec 2026-06-29/30)
+- **Shipped:** keyless `bin/game world load <envelope.json>` (`daydream/llm/bootstrap.load_world`) builds a world DB from an Opus-authored JSON envelope with no LLM call and no API key; the litellm→Anthropic `world bootstrap` path is deprecated. The 2026-06-30 spec extends the envelope to the object schema (things/prototypes/aliases/per-NPC dialogue).
 - **One-line description:** Reconcile world creation with the local-only runtime policy (CLAUDE.md "Generation policy"). Today `bin/game world bootstrap` (`daydream/admin.py` `cmd_world_bootstrap`) calls Claude Opus via litellm over the Anthropic API and needs `ANTHROPIC_API_KEY`; the intended model is Opus authoring the world IN a Claude Code session and writing it to a DB/seed (no production key). Decide: deprecate the API path, replace it with an in-session authoring workflow (Opus generates content → a loader writes the world DB), or keep the API path as an explicitly off-by-default design-time convenience.
 - **Why deferred:** The generation-policy decision (2026-06-29) postdates the bootstrap feature; reconciling is a design choice for the next world-authoring need, not an emergency (no production path uses the key today).
 - **Revisit criteria:** Next time we want to author/seed a new world; OR the next large design spin.
