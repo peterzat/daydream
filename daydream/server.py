@@ -14,6 +14,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from daydream import config, db, drift
 from daydream.api import auth, slots, world, ws
 from daydream.api.access import AccessMiddleware
+from daydream.api.csrf import CsrfOriginMiddleware
 from daydream.api.nocache import NoCacheAssetsMiddleware
 from daydream.images import cache as image_cache
 
@@ -26,11 +27,14 @@ image_cache.ensure_cache_root()
 async def lifespan(app: FastAPI):
     config.ensure_dirs()
     db.init_live()
-    drift_handle = drift.start_drift_loop()
+    drift.start_drift_loop()
     try:
         yield
     finally:
-        await drift.stop_drift_loop(drift_handle)
+        # No-argument stop targets the module-tracked live task. A world
+        # hot-swap replaces that task mid-run, so stopping via a startup-time
+        # handle would miss the post-swap task and leak it to loop teardown.
+        await drift.stop_drift_loop()
         db.close_db()
 
 
@@ -48,6 +52,12 @@ app.add_middleware(
 # placing it before AccessMiddleware keeps the Access rejection path
 # clean of unnecessary header rewrites on 403s.
 app.add_middleware(NoCacheAssetsMiddleware)
+# CsrfOriginMiddleware rejects cross-origin state-changing POSTs (the
+# confused-deputy vector against the friend-scope slot/session endpoints,
+# which in tailscale mode have no cookie check). Added before AccessMiddleware
+# so the IP gate stays outermost; this layer only acts on unsafe methods whose
+# Origin/Referer mismatches Host (non-browser clients with no Origin pass).
+app.add_middleware(CsrfOriginMiddleware)
 # AccessMiddleware added LAST so it sits at the outer edge of the stack
 # (middleware added later runs earlier per request). When DAYDREAM_ACCESS
 # is 'tailscale' (default), non-tailnet clients see 403 / WS close 1008

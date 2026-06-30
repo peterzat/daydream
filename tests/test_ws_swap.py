@@ -205,6 +205,28 @@ async def test_drift_loop_survives_swap(tmp_path, monkeypatch):
         db.close_db()
 
 
+def test_lifespan_shutdown_after_swap_stops_live_drift(tmp_path, monkeypatch):
+    """Regression: the lifespan must stop the CURRENT drift task on shutdown,
+    not its stale startup handle. A swap replaces the task mid-run; before the
+    fix, shutdown stopped the pre-swap handle and leaked the live post-swap
+    task. Exercises the real lifespan via the TestClient context manager."""
+    monkeypatch.setenv("DAYDREAM_DRIFT_ENABLED", "1")
+    world_b = tmp_path / "snapshots" / "world-b.db"
+    _make_world(world_b, meadow_title=MARKER_TITLE)
+    with TestClient(app) as client:
+        _login(client)
+        assert client.post(
+            "/api/world/swap", json={"target": str(world_b)}
+        ).status_code == 200
+        live = drift._handle  # the fresh task started after the swap
+        assert live is not None and not live.done()
+    # The TestClient context exit ran the lifespan shutdown. The live task is
+    # stopped and the module handle cleared (with the bug, _handle would still
+    # point at an un-cancelled post-swap task).
+    assert drift._handle is None
+    assert live.done()
+
+
 # ---- CLI thin client (bin/game world swap -> admin.cmd_swap) -------------
 #
 # cmd_swap talks to the RUNNING server over a real socket (not the ASGI app),
