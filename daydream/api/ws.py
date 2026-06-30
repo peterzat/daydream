@@ -24,7 +24,7 @@ import logging
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, status
 
-from daydream import events, items, rooms, toons
+from daydream import events, items, rooms, toons, verbs
 from daydream.api import auth
 from daydream.gpu import arbiter
 from daydream.images import cache as image_cache
@@ -43,11 +43,14 @@ LEGACY_TOON_ID = "t-wren"
 # Event kinds emitted by `daydream.skills.effects` allowlist handlers
 # that mutate observable room state. When one of these reaches the
 # broadcast loop, the WS layer pushes a fresh state_snapshot so the
-# SPA's items/toons panels reflect the change without the player
-# having to navigate away and back. Keep in sync with effects.ALLOWED_KINDS
-# minus the pure-narrative kinds (narrate changes no observable
-# panel state beyond the event log itself).
-_EFFECT_MUTATION_KINDS = frozenset({"item_added", "mood_set"})
+# SPA's scene/inventory panels reflect the change without the player
+# having to navigate away and back. `object_moved` covers take/drop,
+# `object_spawned` covers generative spawns; `item_added`/`mood_set`
+# are the legacy add_item/set_mood aliases. `property_set` is omitted:
+# its dominant use (lazy-cache examine text) changes no visible panel.
+_EFFECT_MUTATION_KINDS = frozenset(
+    {"item_added", "mood_set", "object_moved", "object_spawned"}
+)
 # Starting room for the seeded toon; also the fallback used if the toon
 # somehow has a NULL current_room_id. After multi-room-navigation lands
 # the session's room is read dynamically via _current_room_id() per input
@@ -388,12 +391,34 @@ async def ws_endpoint(ws: WebSocket):
         events.unsubscribe(queue)
 
 
+async def _handle_command(msg: dict, toon_id: str) -> None:
+    """Execute a structured UI command frame `{kind:"command", verb, dobj_id?,
+    iobj_id?, args?}`. This is the click path: it bypasses the parser entirely,
+    so it makes NO LLM call (the verb's own handler may, e.g. `talk`). The same
+    `execute_command` serves the parsed-free-text path."""
+    verb = str(msg.get("verb", "")).strip()
+    if not verb:
+        return
+    dobj_id = msg.get("dobj_id")
+    iobj_id = msg.get("iobj_id")
+    await verbs.execute_command(
+        toon_id,
+        verb,
+        dobj_id=dobj_id if isinstance(dobj_id, str) else None,
+        iobj_id=iobj_id if isinstance(iobj_id, str) else None,
+        args=str(msg.get("args", "")),
+    )
+
+
 async def _receive_loop(ws: WebSocket, toon_id: str) -> None:
     try:
         while True:
             msg = await ws.receive_json()
-            if msg.get("kind") == "input":
+            kind = msg.get("kind")
+            if kind == "input":
                 await _handle_input(str(msg.get("text", "")), toon_id)
+            elif kind == "command":
+                await _handle_command(msg, toon_id)
     except WebSocketDisconnect:
         pass
 

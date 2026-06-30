@@ -341,6 +341,47 @@ def test_ws_navigation_persists_across_reconnect():
     assert snap["room"]["exits"] == {"south": "r-meadow", "up": "r-attic"}
 
 
+# ---- structured command frame (the click path) -------------------------
+
+
+def test_ws_command_take_moves_item_and_refreshes_snapshot():
+    """A `{kind:"command", verb:"take", dobj_id}` frame executes the take verb:
+    the thing moves into the actor's inventory and the server pushes a fresh
+    snapshot where it no longer sits on the meadow floor."""
+    from daydream import objects
+
+    with TestClient(app) as client:
+        _login(client)
+        with client.websocket_connect("/ws") as ws:
+            ws.receive_json()  # initial snapshot
+            ws.send_json({"kind": "command", "verb": "take", "dobj_id": "i-lantern"})
+            moved = ws.receive_json()  # object_moved event
+            snap = ws.receive_json()  # refreshed snapshot
+        # Still inside the TestClient lifespan -> the live DB is open.
+        assert objects.get("i-lantern").location_id == "t-wren"
+    assert moved["event"]["kind"] == "object_moved"
+    assert snap["kind"] == "state_snapshot"
+    assert not any(it["name"] == "lantern" for it in snap["items"])
+
+
+def test_ws_command_examine_makes_no_llm_call():
+    """SPEC: the UI command path bypasses the parser, so a deterministic verb
+    issues ZERO LLM calls. examine echoes the cached seed sentinel directly."""
+    spy = AsyncMock(return_value={})
+    with patch("daydream.llm.client.acompletion_json", new=spy):
+        with TestClient(app) as client:
+            _login(client)
+            with client.websocket_connect("/ws") as ws:
+                ws.receive_json()  # snapshot
+                ws.send_json(
+                    {"kind": "command", "verb": "examine", "dobj_id": "i-lantern"}
+                )
+                evt = ws.receive_json()
+    assert evt["event"]["kind"] == "narrate"
+    assert "hairline crack" in evt["event"]["payload"]["text"]
+    spy.assert_not_called()
+
+
 def test_ws_skills_include_go_navigation():
     """Criterion 2 corollary: the `go` skill is in the registry and
     therefore appears in the snapshot's skills list so the UI can
