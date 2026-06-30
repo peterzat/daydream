@@ -84,6 +84,15 @@ _is_running() {
     [[ -f "$pidf" ]] && kill -0 "$(cat "$pidf" 2>/dev/null)" 2>/dev/null
 }
 
+_reachable() {
+    # True if curl gets ANY HTTP response from $1 within 1s -- the same probe
+    # cmd_status uses. Detects an already-serving process (FastAPI or an
+    # engine) regardless of which tool started it, so reachability (not just a
+    # live PID) is the signal: it also catches a wedged-but-alive process.
+    command -v curl >/dev/null 2>&1 \
+        && curl -s -o /dev/null --max-time 1 "$1"
+}
+
 # URLs must be clickable from a remote browser (typically a Mac running
 # Safari on the tailnet). Short hostnames like "dev" trigger Safari's
 # https auto-upgrade, which fails against an HTTP-only server. "localhost"
@@ -106,6 +115,26 @@ _tailnet_fqdn() {
 _tailnet_ip() {
     if command -v tailscale >/dev/null 2>&1; then
         tailscale ip -4 2>/dev/null | head -1 || true
+    fi
+}
+
+_print_listening() {
+    # Reachable URLs in clickable-from-Safari form: tailnet FQDN + tailnet
+    # IPv4. Short hostnames trigger Safari's https auto-upgrade and localhost
+    # is useless on a headless box, so skip loopback; if you're on the box you
+    # can type it yourself. Falls back to hostname -f when tailscale is down.
+    echo "listening:"
+    local fqdn; fqdn="$(_tailnet_fqdn)"
+    local ip; ip="$(_tailnet_ip)"
+    if [[ -n "$fqdn" ]]; then
+        echo "  http://${fqdn}:${PORT}"
+    fi
+    if [[ -n "$ip" ]]; then
+        echo "  http://${ip}:${PORT}"
+    fi
+    if [[ -z "$fqdn" && -z "$ip" ]]; then
+        local host; host="$(hostname -f 2>/dev/null || hostname 2>/dev/null || echo '<this-host>')"
+        echo "  http://${host}:${PORT}"
     fi
 }
 
@@ -204,7 +233,41 @@ cmd_up() {
     if [[ "${1:-}" == "--no-gpu" ]]; then
         use_gpu=0
     fi
+
+    # Probe what is already serving. In GPU mode the engines count toward
+    # "is the game already up"; with --no-gpu only FastAPI does.
+    local fastapi_up=0 vllm_up=0 comfy_up=0
+    if _reachable "http://127.0.0.1:${PORT}/login"; then fastapi_up=1; fi
     if (( use_gpu )); then
+        if _reachable "${VLLM_URL}/models";        then vllm_up=1;  fi
+        if _reachable "${COMFY_URL}/system_stats"; then comfy_up=1; fi
+    fi
+
+    # Already-up fast path: everything this command would start is already
+    # serving. Short-circuit with a friendly message BEFORE the GPU preflight,
+    # because the preflight checks for FREE VRAM to *start* the engines and so
+    # trips precisely when the running engines are holding that VRAM (an
+    # already-up box would otherwise fail `up` with a scary out-of-VRAM error).
+    local stack_up=0
+    if (( fastapi_up )); then
+        if (( use_gpu )); then
+            if (( vllm_up && comfy_up )); then stack_up=1; fi
+        else
+            stack_up=1
+        fi
+    fi
+    if (( stack_up )); then
+        echo "game is already up."
+        _print_listening
+        return 0
+    fi
+
+    # Something needs starting. Preflight only when an engine actually has to
+    # launch: a resident engine already proves the GPU works and is holding
+    # the VRAM a cold-start floor asks to be free, so counting it would
+    # self-trip the same way (this also fixes `down` then `up`, where the
+    # engines stay resident while only FastAPI restarts).
+    if (( use_gpu )) && (( ! vllm_up || ! comfy_up )); then
         _gpu_preflight || exit 1
     fi
     _start_fastapi
@@ -221,27 +284,7 @@ cmd_up() {
     done
     cmd_status
     echo
-    echo "listening:"
-    # Emit in clickable-from-Safari form: tailnet FQDN + tailnet IP.
-    # Short hostnames trigger Safari's https auto-upgrade; localhost is
-    # useless on a headless box. Skip loopback entirely — if you're on
-    # the box you can type it yourself.
-    local fqdn; fqdn="$(_tailnet_fqdn)"
-    local ip; ip="$(_tailnet_ip)"
-    if [[ -n "$fqdn" ]]; then
-        echo "  http://${fqdn}:${PORT}"
-    fi
-    if [[ -n "$ip" ]]; then
-        echo "  http://${ip}:${PORT}"
-    fi
-    if [[ -z "$fqdn" && -z "$ip" ]]; then
-        # Tailscale not installed / not up. Fall back to hostname -f
-        # which on a properly-configured box gives an FQDN; if that
-        # also fails, short name is the last resort (may still be
-        # Safari-unfriendly).
-        local host; host="$(hostname -f 2>/dev/null || hostname 2>/dev/null || echo '<this-host>')"
-        echo "  http://${host}:${PORT}"
-    fi
+    _print_listening
     if (( use_gpu )); then
         _start_engines
     fi
