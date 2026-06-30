@@ -213,11 +213,9 @@ Captured from the test-architecture landing (2026-04-23); scaffolding for these 
 - **Origin:** `tester design 2026-06-30`
 - **Coordinate with:** `claude-vision-quality-gate`
 
-### present-player-drift-cadence-guard
-- **One-line description:** Add a tier_short assertion (in `tests/drift/test_drift_constants.py` or a sibling) that the present-player drift cadence (`daydream/drift.py:_DEFAULT_BUSY_SECONDS`, retuned 1800->240 this turn) stays minutes-scale (e.g. <= 600 s), guarding SPEC 2026-06-30 C13's "witnessed drift" against a silent revert to the 30-min occupancy-hiding cadence that the behavior-level emit test would not detect.
-- **Why deferred:** C13's behavior (drift emits into an occupied room) is already tested; only the cadence magnitude is unguarded, so this is regression-hardening polish, not a coverage gap.
-- **Revisit criteria:** A drift-cadence regression ships unnoticed in play, OR the present-player cadence is deliberately re-tuned and the new bound is worth pinning.
-- **Origin:** `tester design 2026-06-30`
+### present-player-drift-cadence-guard — already covered (rejected 2026-06-30)
+- **Resolution:** Redundant; not built. The premise (only a tier_medium behavior test guards the cadence) was wrong: the magnitude is already pinned in tier_short by `tests/test_drift.py::test_compute_next_interval_busy_default` (`_compute_next_interval(1) == 240.0`), which fails on any revert toward the 30-min busy cadence. The only non-redundant variant would relax that exact pin to a semantic `<= 600` SPEC-floor that also resists editing the pin to accommodate a regression; judged not worth a second test. Kept as a record so a future design pass does not re-propose it.
+- **Origin:** `tester design 2026-06-30`; triaged + closed same day (see commit 68dbcbf).
 
 ### voice-baseline-add-model-helper
 - **One-line description:** Generalize `tests/test_voice_baseline.py`'s parametrization so adding a new committed voice-bench markdown under `docs/pretty/voice-samples/` extends the tic-regression parametrize set without code edits. Today it parametrizes over a hardcoded pre-fix/post-fix AWQ pair; a manifest or front-matter convention is needed to distinguish "regression-tracked" baselines from the two in-tree Mistral-Nemo "documented failure" captures that must NOT join the set.
