@@ -586,7 +586,15 @@ async function renderSlots() {
       btn.onclick = () => claimSlot(entry.slot);
       li.appendChild(btn);
     } else {
+      // Controlled by another session. Offer claim anyway: the server takes it
+      // over when that session has no live WS connection (an abandoned claim),
+      // or refuses with 409 when an active player holds it.
       li.innerHTML = `<span class="slot-num">slot ${entry.slot}</span> ${escape(t.name)} <em>(taken)</em>`;
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.textContent = "claim";
+      btn.onclick = () => claimSlot(entry.slot);
+      li.appendChild(btn);
     }
     if (t) {
       // A permanent delete sits alongside the slot's primary action.

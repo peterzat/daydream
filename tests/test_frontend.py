@@ -171,6 +171,17 @@ def test_index_html_has_slot_picker_elements():
     assert 'id="slots-close"' in r.text
 
 
+def test_main_js_picker_offers_claim_on_taken_slot():
+    """Liveness claim (UI half): the picker offers a claim button even for a
+    '(taken)' toon, so an abandoned claim (the controller's session is gone) is
+    reclaimable -- the server takes over a dead session or refuses with 409."""
+    with TestClient(app) as client:
+        _login(client)
+        r = client.get("/assets/main.js")
+    assert "(taken)" in r.text
+    assert "Offer claim anyway" in r.text  # the taken-branch claim affordance
+
+
 def test_main_js_wires_slot_picker_endpoints():
     """SPA's slot picker JS calls the four endpoints
     (/api/slots, create, claim, kick)."""
