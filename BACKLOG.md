@@ -6,6 +6,18 @@ context for every entry below lives in `~/.claude/plans/let-s-design-a-fairly-gi
 
 ## v1: cozy single-player loop
 
+### drift-variety-richer-beats
+- **One-line description:** Reduce NPC drift repetition beyond the v0 mitigation (laconic prompt + a "vary the beat" nudge in `_DRIFT_SYSTEM_PROMPT` + a consecutive-near-duplicate suppressor in `daydream/drift.py:_tick`). Options: per-NPC canned-pool rotation tracking recently-used beats, a "recently noticed" exclusion passed into the drift prompt, or richer hand-authored pools so Qwen 7B isn't leaned on for variety. The 7B reliably fixates on a seed's most salient image (Rook -> "hums softly, moving the bellows") regardless of mood/memory.
+- **Why deferred:** v0's de-dup suppresses the *visible* consecutive repeats (the player won't see them stacked), so this is variety polish, not a correctness fix. Wants the drift-samples golden + a "distinctness over N ticks" metric before tuning.
+- **Revisit criteria:** Playtesters report a room's NPC feeling samey across a session even with de-dup, or when adding NPCs whose seeds are similarly single-image.
+- **Origin:** playtest follow-up (plan note-that-when-the-snuggly-music), drift-voice-samples 2026-06-30
+
+### dialogue-refusal-fallback-on-benign-input
+- **One-line description:** Occasionally an in-character dialogue turn degrades to the "the dream won't hold that thought" fallback on a benign input (observed once on "hello" in `voice-samples`): the model's spoken line trips the output banlist / refusal path (`daydream/llm/safety.py`, `daydream/skills/data.py` `_BANNED_FALLBACK_TEXT`) or the narrate truncates. Investigate whether it's flaky (sampling) or systematic (a banlist false-positive / max-tokens), then tighten the trigger or raise the cap.
+- **Why deferred:** Intermittent (1 of 5 samples) and the fallback is graceful, not a crash. Needs a repeatability pass (re-run `voice-samples` N times, log which layer fired) before touching the safety pipeline.
+- **Revisit criteria:** Players hit the fallback on ordinary inputs often enough to feel broken, or a repeatability run shows a systematic banlist false-positive.
+- **Origin:** playtest follow-up (plan note-that-when-the-snuggly-music), voice-samples 2026-06-30
+
 ## v2: shared world + skill authoring
 
 ### multi-env-layout
