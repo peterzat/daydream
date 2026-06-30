@@ -229,6 +229,15 @@ async function renderSlots() {
       btn.textContent = "claim";
       btn.onclick = () => claimSlot(entry.slot);
       li.appendChild(btn);
+    } else if (!t.is_human_controlled) {
+      // An uncontrolled toon (e.g. a seed character no one is playing): the
+      // server allows claiming it, so offer claim here too (not just delete).
+      li.innerHTML = `<span class="slot-num">slot ${entry.slot}</span> ${escape(t.name)} <em>(available)</em>`;
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.textContent = "claim";
+      btn.onclick = () => claimSlot(entry.slot);
+      li.appendChild(btn);
     } else {
       li.innerHTML = `<span class="slot-num">slot ${entry.slot}</span> ${escape(t.name)} <em>(taken)</em>`;
     }
