@@ -10,23 +10,60 @@ let awaitingPick = false; // showing the picker after leaving; suppresses auto-r
 let entities = []; // in-scope {alias, object_id, kind} for narration linking
 let stagedVerb = null; // the verb-bar verb awaiting an object click
 
+// Reconnect backoff: a dropped socket retries on a gentle, capped exponential
+// delay behind a single calm "the dream is sleeping" overlay (not a growing
+// pile of error lines), and recovers on its own when the server returns
+// (SPEC 2026-06-30).
+let reconnectDelay = 0;
+const RECONNECT_MIN = 1000;
+const RECONNECT_MAX = 20000;
+
+function showDreamOverlay(text) {
+  const o = document.getElementById("dream-overlay");
+  o.textContent = text;
+  o.classList.remove("hidden");
+}
+
+function hideDreamOverlay() {
+  document.getElementById("dream-overlay").classList.add("hidden");
+}
+
 function connect(isReconnect) {
   // A fresh page load omits `since` and starts with an empty log; a reconnect
   // resumes from the last event the client rendered.
   const url = isReconnect ? wsUrl + "?since=" + lastSeq : wsUrl;
   ws = new WebSocket(url);
-  ws.onopen = () => systemLine("(connected)");
+  ws.onopen = () => {
+    reconnectDelay = 0; // the dream wakes: reset the backoff
+    hideDreamOverlay();
+  };
   ws.onclose = () => {
     if (awaitingPick) return; // left the dream: wait for a toon pick
-    systemLine("(disconnected; reconnecting in a moment)");
-    setTimeout(() => connect(true), 1500);
+    // One calm state, not a growing pile of disconnect lines. Keep retrying on
+    // a gentle, capped backoff; onopen hides the overlay when the server is
+    // back, so a tab left open across a restart recovers with no manual reload.
+    showDreamOverlay("the dream is sleeping...");
+    reconnectDelay = Math.min(
+      reconnectDelay ? reconnectDelay * 2 : RECONNECT_MIN,
+      RECONNECT_MAX
+    );
+    setTimeout(() => connect(true), reconnectDelay);
   };
-  ws.onerror = () => systemLine("(connection error)");
+  ws.onerror = () => {}; // onclose drives the retry; no separate error line
   ws.onmessage = (msg) => {
     const data = JSON.parse(msg.data);
-    if (data.kind === "state_snapshot") renderSnapshot(data);
-    else if (data.kind === "event") renderEvent(data.event);
-    else if (data.kind === "needs_toon") enterPicker();
+    if (data.kind === "state_snapshot") {
+      hideDreamOverlay();
+      renderSnapshot(data);
+    } else if (data.kind === "event") {
+      renderEvent(data.event);
+    } else if (data.kind === "needs_toon") {
+      enterPicker();
+    } else if (data.kind === "world_changed") {
+      // Live world hot-swap: a brief "the dream shifts" beat, cleared by the
+      // fresh state_snapshot that follows.
+      showDreamOverlay("the dream shifts...");
+    }
   };
 }
 

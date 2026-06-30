@@ -74,6 +74,29 @@ html, body {
   display: none;
 }
 
+/* Calm connection-state overlay: a single soft wash with "the dream is
+ * sleeping..." while a dropped socket retries (capped backoff), and a brief
+ * "the dream shifts..." beat on a live world hot-swap. Replaces the old pile
+ * of disconnect/error chat lines (SPEC 2026-06-30). */
+.dream-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  background: rgba(251, 249, 243, 0.9);
+  color: var(--sage-deep);
+  font-style: italic;
+  font-size: 1.2em;
+  letter-spacing: 0.04em;
+  z-index: 50;
+}
+
+.dream-overlay.hidden {
+  display: none;
+}
+
 @keyframes painting-pulse {
   0%, 100% { opacity: 0.75; }
   50%      { opacity: 1.0; }

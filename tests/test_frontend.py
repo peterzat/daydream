@@ -102,6 +102,37 @@ def test_index_html_has_painting_overlay_element():
     assert 'id="painting-overlay"' in r.text
 
 
+def test_index_html_has_dream_overlay_element():
+    """C10 (SPEC 2026-06-30): the calm connection-state overlay element."""
+    with TestClient(app) as client:
+        _login(client)
+        r = client.get("/")
+    assert 'id="dream-overlay"' in r.text
+
+
+def test_main_js_calm_reconnect_backoff_and_world_changed():
+    """C10: a single 'sleeping' overlay + capped-backoff reconnect + the
+    world_changed 'dream shifts' beat, with no growing pile of disconnect
+    chat lines."""
+    with TestClient(app) as client:
+        _login(client)
+        r = client.get("/assets/main.js")
+    assert "the dream is sleeping" in r.text
+    assert "the dream shifts" in r.text
+    assert "world_changed" in r.text
+    assert "RECONNECT_MAX" in r.text  # capped backoff
+    assert "showDreamOverlay" in r.text and "hideDreamOverlay" in r.text
+    # The old per-retry disconnect chat line is gone (calm single state).
+    assert "disconnected; reconnecting" not in r.text
+
+
+def test_style_css_has_dream_overlay():
+    with TestClient(app) as client:
+        _login(client)
+        r = client.get("/assets/style.css")
+    assert ".dream-overlay" in r.text
+
+
 def test_index_html_has_slot_picker_elements():
     """SPA exposes the slot-picker affordance per toon-slot-management
     spec: a 'switch toon' toggle in the footer, a slots panel with the
