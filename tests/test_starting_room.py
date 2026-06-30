@@ -63,6 +63,7 @@ def test_starting_room_falls_back_to_first_room_when_unset():
             "UPDATE worlds SET starting_room_id = NULL WHERE id = 'w-bunny'"
         )
         first = db.get_conn().execute(
-            "SELECT id FROM rooms WHERE world_id = 'w-bunny' ORDER BY id LIMIT 1"
+            "SELECT id FROM objects WHERE kind = 'room' AND world_id = 'w-bunny' "
+            "ORDER BY id LIMIT 1"
         ).fetchone()[0]
         assert rooms.starting_room_id("w-bunny") == first

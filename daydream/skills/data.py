@@ -36,7 +36,7 @@ from dataclasses import dataclass
 
 from jinja2.sandbox import SandboxedEnvironment
 
-from daydream import db, events, memories, rooms
+from daydream import db, events, memories, objects, rooms
 from daydream.llm import client as llm_client
 from daydream.llm import safety
 from daydream.skills import effects
@@ -199,20 +199,17 @@ def _resolve_npc_and_world(spec: SkillSpec, room_id: str) -> tuple[str | None, s
     contract."""
     candidate_id = f"t-{spec.name.lower()}"
     try:
-        conn = db.get_conn()
+        db.get_conn()
     except RuntimeError:
         return (None, None)
-    row = conn.execute(
-        "SELECT id, world_id FROM toons WHERE id = ?",
-        (candidate_id,),
-    ).fetchone()
-    if row is None:
+    npc = objects.get(candidate_id)
+    if npc is None or npc.kind != "toon":
         return (None, None)
     room = rooms.get_room(room_id)
     room_world_id = room.world_id if room else None
-    if room_world_id and row["world_id"] != room_world_id:
+    if room_world_id and npc.world_id != room_world_id:
         return (None, None)
-    return (row["id"], row["world_id"])
+    return (npc.id, npc.world_id)
 
 
 def _extract_narration(effects_list: list) -> str:

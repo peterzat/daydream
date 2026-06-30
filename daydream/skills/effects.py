@@ -19,11 +19,10 @@ an `audit` table, and `bin/game world undo`. v1 trusts the allowlist +
 the safety filter to keep things bounded."""
 
 import logging
-import uuid
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Callable
 
-from daydream import db, events
+from daydream import events, objects
 
 logger = logging.getLogger(__name__)
 
@@ -110,17 +109,19 @@ def _apply_add_item(
         return None
     if not isinstance(seed, str):
         return None
-    item_id = f"i-{uuid.uuid4().hex[:8]}"
-    db.get_conn().execute(
-        "INSERT INTO items (id, world_id, name, seed, room_id, properties_json, is_unique) "
-        "VALUES (?, ?, ?, ?, ?, '{}', 0)",
-        (item_id, world_id, name.strip(), seed.strip(), room_id),
+    thing = objects.spawn(
+        world_id,
+        "thing",
+        name.strip(),
+        location_id=room_id,
+        prototype_id=objects.PROTO_THING,
+        properties={"seed": seed.strip(), "is_unique": 0},
     )
     return events.append(
         "system",
         None,
         "item_added",
-        {"item_id": item_id, "name": name.strip(), "room_id": room_id},
+        {"item_id": thing.id, "name": thing.name, "room_id": room_id},
         room_id=room_id,
     )
 
@@ -136,12 +137,10 @@ def _apply_set_mood(
         return None
     if not mood.strip():
         return None
-    cur = db.get_conn().execute(
-        "UPDATE toons SET mood = ? WHERE id = ?",
-        (mood.strip(), toon_id),
-    )
-    if cur.rowcount == 0:
+    target = objects.get(toon_id)
+    if target is None or target.kind != "toon":
         return None
+    objects.set_property(toon_id, "mood", mood.strip())
     return events.append(
         "system",
         None,

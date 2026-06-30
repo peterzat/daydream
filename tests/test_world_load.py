@@ -68,13 +68,25 @@ def test_world_load_writes_db_keyless(tmp_path: Path, monkeypatch):
     conn = sqlite3.connect(f"file:{out}?mode=ro", uri=True)
     conn.row_factory = sqlite3.Row
     try:
-        assert [r["slug"] for r in conn.execute("SELECT slug FROM rooms ORDER BY slug")] == [
-            "a", "b", "c", "d", "e"
-        ]
+        # The world is written onto the unified `objects` schema: rooms /
+        # toons are rows discriminated by `kind`, room slug in properties.
+        assert [
+            r["slug"] for r in conn.execute(
+                "SELECT json_extract(properties_json, '$.slug') AS slug "
+                "FROM objects WHERE kind = 'room' "
+                "ORDER BY json_extract(properties_json, '$.slug')"
+            )
+        ] == ["a", "b", "c", "d", "e"]
         assert [r["name"] for r in conn.execute("SELECT name FROM worlds")] == ["A Test World"]
-        assert {r["name"] for r in conn.execute("SELECT name FROM toons")} == {
-            "Wren", "Mara", "Pell", "Sorrel"
-        }
+        assert {
+            r["name"] for r in conn.execute("SELECT name FROM objects WHERE kind = 'toon'")
+        } == {"Wren", "Mara", "Pell", "Sorrel"}
+        # Prototypes are seeded so concrete objects can inherit verbs.
+        assert {
+            r["name"] for r in conn.execute(
+                "SELECT name FROM objects WHERE kind = 'prototype'"
+            )
+        } == {"room", "npc", "thing", "readable"}
         # Starting room designated from the human toon (Wren, slot 1, room 'a').
         assert conn.execute(
             "SELECT starting_room_id FROM worlds"

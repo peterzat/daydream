@@ -51,7 +51,10 @@ def _make_world(path, *, meadow_title=None, extra_migration=None):
         db.init_schema(conn, config.MIGRATIONS_DIR)
         if meadow_title is not None:
             conn.execute(
-                "UPDATE rooms SET title = ? WHERE slug = 'meadow'", (meadow_title,)
+                "UPDATE objects SET name = ?, "
+                "properties_json = json_set(properties_json, '$.title', ?) "
+                "WHERE kind = 'room' AND json_extract(properties_json, '$.slug') = 'meadow'",
+                (meadow_title, meadow_title),
             )
         if extra_migration is not None:
             conn.execute(
@@ -69,7 +72,9 @@ def _meadow_title(path):
     conn.row_factory = sqlite3.Row
     try:
         row = conn.execute(
-            "SELECT title FROM rooms WHERE slug = 'meadow'"
+            "SELECT json_extract(properties_json, '$.title') AS title "
+            "FROM objects WHERE kind = 'room' "
+            "AND json_extract(properties_json, '$.slug') = 'meadow'"
         ).fetchone()
         return row["title"] if row else None
     finally:

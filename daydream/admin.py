@@ -53,7 +53,7 @@ import tempfile
 from datetime import datetime
 from pathlib import Path
 
-from daydream import assets, config, db
+from daydream import assets, config, db, objects
 from daydream.images import cache as image_cache
 
 # Bump when the manifest format changes incompatibly. Restore validates
@@ -634,16 +634,16 @@ def cmd_delete(world_id: str, yes: bool) -> int:
         return 2
     # Cascade by hand. Order: child rows first.
     conn.execute(
-        "DELETE FROM events WHERE room_id IN (SELECT id FROM rooms WHERE world_id = ?)",
+        "DELETE FROM events WHERE room_id IN "
+        "(SELECT id FROM objects WHERE kind = 'room' AND world_id = ?)",
         (world_id,),
     )
     # Now that generated_assets has world_id (migration 003), filter cleanly
     # rather than blanket-deleting. Multi-world DBs no longer get clobbered.
     conn.execute("DELETE FROM generated_assets WHERE world_id = ?", (world_id,))
     conn.execute("DELETE FROM memories WHERE world_id = ?", (world_id,))
-    conn.execute("DELETE FROM items WHERE world_id = ?", (world_id,))
-    conn.execute("DELETE FROM toons WHERE world_id = ?", (world_id,))
-    conn.execute("DELETE FROM rooms WHERE world_id = ?", (world_id,))
+    # One table now holds rooms / toons / things / prototypes (migration 011).
+    objects.delete_world_objects(world_id)
     conn.execute("DELETE FROM worlds WHERE id = ?", (world_id,))
     cache_dir = _world_cache_dir(world_id)
     if cache_dir.exists():

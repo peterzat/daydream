@@ -168,14 +168,17 @@ def test_bootstrap_writes_db_with_expected_content(tmp_path: Path):
         assert rows[0]["id"] == "w-bunny"
         assert rows[0]["name"] == "Foggy Forest"
 
-        # Five rooms in w-bunny.
+        # Five rooms in w-bunny (objects schema: kind='room', slug + exits
+        # in properties_json).
         rooms = conn.execute(
-            "SELECT slug, exits_json FROM rooms WHERE world_id = 'w-bunny'"
+            "SELECT json_extract(properties_json, '$.slug') AS slug, "
+            "json_extract(properties_json, '$.exits') AS exits_json "
+            "FROM objects WHERE kind = 'room' AND world_id = 'w-bunny'"
         ).fetchall()
         assert len(rooms) == 5
         slugs = {r["slug"] for r in rooms}
         assert slugs == {"lantern", "alder", "river", "loft", "shed"}
-        # exits_json keys reference room IDs (r-<slug>), not slugs.
+        # exits keys reference room IDs (r-<slug>), not slugs.
         lantern = next(r for r in rooms if r["slug"] == "lantern")
         exits = json.loads(lantern["exits_json"])
         assert exits == {"north": "r-alder", "east": "r-river"}
@@ -183,7 +186,8 @@ def test_bootstrap_writes_db_with_expected_content(tmp_path: Path):
         # Four toons; seeded Wren / Rook / Iris are gone (they were
         # deleted before bootstrap inserted its own).
         toons = conn.execute(
-            "SELECT slot, name FROM toons WHERE world_id = 'w-bunny' ORDER BY slot"
+            "SELECT slot, name FROM objects WHERE kind = 'toon' "
+            "AND world_id = 'w-bunny' ORDER BY slot"
         ).fetchall()
         assert [(t["slot"], t["name"]) for t in toons] == [
             (1, "Wren"), (100, "Linden"), (101, "Marsh"), (102, "Tinker"),
@@ -192,13 +196,13 @@ def test_bootstrap_writes_db_with_expected_content(tmp_path: Path):
         # the bootstrapped DB — the wipe deleted them and the new
         # toons took those slots.
         rook_iris = conn.execute(
-            "SELECT name FROM toons WHERE name IN ('Rook', 'Iris')"
+            "SELECT name FROM objects WHERE kind = 'toon' AND name IN ('Rook', 'Iris')"
         ).fetchall()
         assert rook_iris == []
 
-        # Three items.
+        # Three things.
         items = conn.execute(
-            "SELECT name FROM items WHERE world_id = 'w-bunny'"
+            "SELECT name FROM objects WHERE kind = 'thing' AND world_id = 'w-bunny'"
         ).fetchall()
         assert {it["name"] for it in items} == {
             "a paper lantern", "a folded sail", "a brass dial",

@@ -69,7 +69,7 @@ def test_list_prints_message_when_no_worlds(tmp_path, monkeypatch, capsys):
         migrations_dir=config.MIGRATIONS_DIR,
     )
     conn = db.get_conn()
-    for tbl in ("items", "toons", "rooms", "worlds"):
+    for tbl in ("objects", "worlds"):
         conn.execute(f"DELETE FROM {tbl}")
     try:
         rc = admin.main(["list"])
@@ -517,9 +517,11 @@ def test_delete_with_yes_clears_db_and_cache(live_world):
     assert rc == 0
     conn = db.get_conn()
     assert conn.execute("SELECT COUNT(*) FROM worlds WHERE id = 'w-bunny'").fetchone()[0] == 0
-    assert conn.execute("SELECT COUNT(*) FROM rooms WHERE world_id = 'w-bunny'").fetchone()[0] == 0
-    assert conn.execute("SELECT COUNT(*) FROM toons WHERE world_id = 'w-bunny'").fetchone()[0] == 0
-    assert conn.execute("SELECT COUNT(*) FROM items WHERE world_id = 'w-bunny'").fetchone()[0] == 0
+    # rooms / toons / things / prototypes all live in `objects` now; the
+    # cascade clears the whole world.
+    assert conn.execute(
+        "SELECT COUNT(*) FROM objects WHERE world_id = 'w-bunny'"
+    ).fetchone()[0] == 0
     assert conn.execute(
         "SELECT COUNT(*) FROM generated_assets WHERE world_id = 'w-bunny'"
     ).fetchone()[0] == 0

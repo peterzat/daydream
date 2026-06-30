@@ -150,12 +150,13 @@ def test_examine_name_collision_toon_wins():
     an item with matching names, the toon takes priority. Insert a
     decoy item named 'Rook' at r-forge and verify the narration still
     surfaces the NPC's appearance/seed, not the item's seed."""
-    from daydream import db
-    db.get_conn().execute(
-        "INSERT INTO items (id, world_id, name, seed, room_id) "
-        "VALUES (?, ?, ?, ?, ?)",
-        ("i-rook-decoy", "w-bunny", "Rook",
-         "a bird-carved wooden decoy with glass bead eyes", "r-forge"),
+    from daydream import objects
+    objects.spawn(
+        "w-bunny", "thing", "Rook", "r-forge",
+        prototype_id=objects.PROTO_THING,
+        properties={"seed": "a bird-carved wooden decoy with glass bead eyes",
+                    "is_unique": 1},
+        object_id="o-rook-decoy",
     )
     out = core.examine("t-wren", "r-forge", "rook")
     text = out[0].payload["text"]

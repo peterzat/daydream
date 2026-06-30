@@ -9,6 +9,7 @@ that need the seed migration chain run as `tier_medium`.
 from __future__ import annotations
 
 import asyncio
+import json
 import random
 from pathlib import Path
 from unittest.mock import AsyncMock
@@ -181,7 +182,7 @@ async def test_tick_emits_one_narrate_in_chosen_npc_room(monkeypatch):
     `_DRIFT_POOLS`-only identification step does not cover)."""
     from daydream import config
     db.init_live(migrations_dir=config.MIGRATIONS_DIR)
-    db.get_conn().execute("DELETE FROM toons WHERE id = 't-wren'")
+    db.get_conn().execute("DELETE FROM objects WHERE kind = 'toon' AND id = 't-wren'")
     before_seq = events.max_seq()
 
     rng = random.Random(0)
@@ -219,7 +220,7 @@ async def test_tick_no_op_when_no_npcs():
     and emits no events."""
     from daydream import config
     db.init_live(migrations_dir=config.MIGRATIONS_DIR)
-    db.get_conn().execute("DELETE FROM toons WHERE is_human_controlled = 0")
+    db.get_conn().execute("DELETE FROM objects WHERE kind = 'toon' AND is_human_controlled = 0")
     before_seq = events.max_seq()
     emitted = await drift._tick(rng=random.Random(0))
     assert emitted is False
@@ -236,10 +237,10 @@ async def test_tick_canned_uses_npc_mood_bucket(monkeypatch):
     from daydream import config
     db.init_live(migrations_dir=config.MIGRATIONS_DIR)
     conn = db.get_conn()
-    conn.execute("UPDATE toons SET mood = 'thoughtful' WHERE id = 't-rook'")
+    conn.execute("UPDATE objects SET properties_json = json_set(properties_json, '$.mood', 'thoughtful') WHERE id = 't-rook'")
     # Drop Iris and the seeded Wren so the choice is deterministic on Rook
     # (Wren is drift-eligible now that eligibility no longer needs a pool).
-    conn.execute("DELETE FROM toons WHERE id IN ('t-iris', 't-wren')")
+    conn.execute("DELETE FROM objects WHERE kind = 'toon' AND id IN ('t-iris', 't-wren')")
     before_seq = events.max_seq()
 
     emitted = await drift._tick(rng=random.Random(0))
@@ -260,7 +261,7 @@ async def test_tick_llm_happy_path_emits_llm_text(monkeypatch):
     db.init_live(migrations_dir=config.MIGRATIONS_DIR)
     monkeypatch.setenv("DAYDREAM_DRIFT_LLM_ENABLED", "1")
     # Delete Iris and the now-eligible Wren so choice is deterministic on Rook.
-    db.get_conn().execute("DELETE FROM toons WHERE id IN ('t-iris', 't-wren')")
+    db.get_conn().execute("DELETE FROM objects WHERE kind = 'toon' AND id IN ('t-iris', 't-wren')")
     llm_text = "Rook tilts the lamp's wick a quarter-turn brighter and watches the shadows soften."
     monkeypatch.setattr(
         "daydream.llm.client.acompletion_json",
@@ -285,7 +286,7 @@ async def test_tick_llm_falls_back_to_canned_on_unavailable(monkeypatch):
     from daydream import config
     db.init_live(migrations_dir=config.MIGRATIONS_DIR)
     monkeypatch.setenv("DAYDREAM_DRIFT_LLM_ENABLED", "1")
-    db.get_conn().execute("DELETE FROM toons WHERE id IN ('t-iris', 't-wren')")
+    db.get_conn().execute("DELETE FROM objects WHERE kind = 'toon' AND id IN ('t-iris', 't-wren')")
     monkeypatch.setattr(
         "daydream.llm.client.acompletion_json",
         AsyncMock(side_effect=llm_client.LLMUnavailable("vllm down")),
@@ -382,7 +383,7 @@ async def test_tick_llm_disabled_never_calls_acompletion(monkeypatch):
     monkeypatch.setenv("DAYDREAM_DRIFT_LLM_ENABLED", "0")
     mock_llm = AsyncMock(side_effect=AssertionError("LLM should not be called"))
     monkeypatch.setattr("daydream.llm.client.acompletion_json", mock_llm)
-    db.get_conn().execute("DELETE FROM toons WHERE id IN ('t-iris', 't-wren')")
+    db.get_conn().execute("DELETE FROM objects WHERE kind = 'toon' AND id IN ('t-iris', 't-wren')")
 
     before_seq = events.max_seq()
     emitted = await drift._tick(rng=random.Random(0))
@@ -404,7 +405,7 @@ async def test_tick_llm_runs_with_empty_memories(monkeypatch):
     from daydream import config
     db.init_live(migrations_dir=config.MIGRATIONS_DIR)
     monkeypatch.setenv("DAYDREAM_DRIFT_LLM_ENABLED", "1")
-    db.get_conn().execute("DELETE FROM toons WHERE id IN ('t-iris', 't-wren')")
+    db.get_conn().execute("DELETE FROM objects WHERE kind = 'toon' AND id IN ('t-iris', 't-wren')")
     captured_user_prompt = {}
 
     async def fake(system: str, user: str, **kwargs):
@@ -441,10 +442,12 @@ def _seed_bootstrapped_npc(
     Caller is expected to have cleared the hand-authored NPCs first so
     this one is selected deterministically."""
     db.get_conn().execute(
-        "INSERT INTO toons (id, world_id, slot, name, seed, appearance_seed, "
-        "current_room_id, is_human_controlled, inventory_json, mood) VALUES "
-        "(?, 'w-bunny', ?, ?, ?, '', ?, 0, '[]', ?)",
-        (npc_id, slot, name, "a wandering tinker", room_id, mood),
+        "INSERT INTO objects (id, world_id, kind, name, location_id, "
+        "prototype_id, properties_json, slot, is_human_controlled) VALUES "
+        "(?, 'w-bunny', 'toon', ?, ?, 'proto-npc', ?, ?, 0)",
+        (npc_id, name, room_id,
+         json.dumps({"seed": "a wandering tinker", "appearance_seed": "",
+                     "mood": mood, "presence_text": None}), slot),
     )
 
 
@@ -459,7 +462,7 @@ async def test_tick_bootstrapped_npc_emits_generic_canned_when_llm_none(monkeypa
     db.init_live(migrations_dir=config.MIGRATIONS_DIR)
     # Drop the hand-authored NPCs so the bootstrapped one is the only
     # eligible toon and selection is deterministic.
-    db.get_conn().execute("DELETE FROM toons WHERE is_human_controlled = 0")
+    db.get_conn().execute("DELETE FROM objects WHERE kind = 'toon' AND is_human_controlled = 0")
     _seed_bootstrapped_npc(name="Bramble", room_id="r-meadow", mood="curious")
     monkeypatch.setenv("DAYDREAM_DRIFT_LLM_ENABLED", "1")
     monkeypatch.setattr(drift, "_llm_narrate", AsyncMock(return_value=None))
@@ -489,7 +492,7 @@ async def test_tick_bootstrapped_npc_emits_llm_text_when_present(monkeypatch):
     canned_fallback)."""
     from daydream import config
     db.init_live(migrations_dir=config.MIGRATIONS_DIR)
-    db.get_conn().execute("DELETE FROM toons WHERE is_human_controlled = 0")
+    db.get_conn().execute("DELETE FROM objects WHERE kind = 'toon' AND is_human_controlled = 0")
     _seed_bootstrapped_npc(name="Bramble", room_id="r-meadow", mood="curious")
     monkeypatch.setenv("DAYDREAM_DRIFT_LLM_ENABLED", "1")
     llm_text = "Bramble watches the meadow grass lean and settle in the late light."
@@ -583,10 +586,12 @@ def _seed_human_in_room(room_id: str, slot: int = 2) -> None:
     slot 1 is occupied by Wren (the seeded NPC-controlled toon from
     migration 001)."""
     db.get_conn().execute(
-        "INSERT INTO toons (id, world_id, slot, name, seed, appearance_seed, "
-        "current_room_id, is_human_controlled, inventory_json, mood) VALUES "
-        "(?, 'w-bunny', ?, ?, '', '', ?, 1, '[]', 'curious')",
-        (f"t-h{slot}", slot, f"Human{slot}", room_id),
+        "INSERT INTO objects (id, world_id, kind, name, location_id, "
+        "prototype_id, properties_json, slot, is_human_controlled) VALUES "
+        "(?, 'w-bunny', 'toon', ?, ?, 'proto-npc', ?, ?, 1)",
+        (f"t-h{slot}", f"Human{slot}", room_id,
+         json.dumps({"seed": "", "appearance_seed": "", "mood": "curious",
+                     "presence_text": None}), slot),
     )
 
 
@@ -827,7 +832,7 @@ async def test_tick_counter_canned_fallback_increments_on_canned_path(monkeypatc
     `canned_fallback` increments exactly 1; others stay 0."""
     from daydream import config
     db.init_live(migrations_dir=config.MIGRATIONS_DIR)
-    db.get_conn().execute("DELETE FROM toons WHERE id IN ('t-iris', 't-wren')")
+    db.get_conn().execute("DELETE FROM objects WHERE kind = 'toon' AND id IN ('t-iris', 't-wren')")
 
     emitted = await drift._tick(rng=random.Random(0))
     assert emitted is True
@@ -843,7 +848,7 @@ async def test_tick_counter_llm_emit_increments_on_llm_path(monkeypatch):
     from daydream import config
     db.init_live(migrations_dir=config.MIGRATIONS_DIR)
     monkeypatch.setenv("DAYDREAM_DRIFT_LLM_ENABLED", "1")
-    db.get_conn().execute("DELETE FROM toons WHERE id IN ('t-iris', 't-wren')")
+    db.get_conn().execute("DELETE FROM objects WHERE kind = 'toon' AND id IN ('t-iris', 't-wren')")
     monkeypatch.setattr(
         "daydream.llm.client.acompletion_json",
         AsyncMock(return_value={"narrate": "Rook hums softly to himself."}),
@@ -863,7 +868,7 @@ async def test_tick_counter_canned_fallback_increments_when_llm_fails(monkeypatc
     from daydream import config
     db.init_live(migrations_dir=config.MIGRATIONS_DIR)
     monkeypatch.setenv("DAYDREAM_DRIFT_LLM_ENABLED", "1")
-    db.get_conn().execute("DELETE FROM toons WHERE id IN ('t-iris', 't-wren')")
+    db.get_conn().execute("DELETE FROM objects WHERE kind = 'toon' AND id IN ('t-iris', 't-wren')")
     monkeypatch.setattr(
         "daydream.llm.client.acompletion_json",
         AsyncMock(side_effect=llm_client.LLMUnavailable("vllm down")),

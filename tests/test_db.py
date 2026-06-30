@@ -42,12 +42,16 @@ def test_init_schema_creates_all_tables(temp_db_path: Path):
         tables = {
             row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")
         }
+        # Migration 011 unified rooms / toons / items into one `objects`
+        # table; the three separate tables no longer exist after the chain.
         expected = {
-            "worlds", "rooms", "toons", "items", "skills", "seeds", "events",
+            "worlds", "objects", "skills", "seeds", "events",
             "generated_assets",
             "_migrations",
         }
         assert expected.issubset(tables), f"missing tables: {expected - tables}"
+        gone = {"rooms", "toons", "items"}
+        assert not (gone & tables), f"old tables still present: {gone & tables}"
     finally:
         conn.close()
 
@@ -60,55 +64,63 @@ def test_init_schema_seeds_starter_world(temp_db_path: Path):
         assert world["slug"] == "bunny-world"
         assert "painterly" in world["aesthetic_seed"]
 
+        # Post-011 the seed lives in `objects`: rooms / toons / things are
+        # rows discriminated by `kind`; their kind-specific fields (slug,
+        # title, seed, exits, presence_text, ...) live in properties_json,
+        # read here via json_extract so this stays a pure migration test.
         # Meadow is the player's starting room; other rooms land via 004.
         meadow = conn.execute(
-            "SELECT slug, title FROM rooms WHERE id = 'r-meadow'"
+            "SELECT name, json_extract(properties_json, '$.slug') AS slug "
+            "FROM objects WHERE id = 'r-meadow'"
         ).fetchone()
         assert meadow["slug"] == "meadow"
         # 004_multi_room extends the world to 5 connected rooms with
         # bidirectional exits. Keep this count in sync with the migration.
-        room_count = conn.execute("SELECT COUNT(*) FROM rooms").fetchone()[0]
+        room_count = conn.execute(
+            "SELECT COUNT(*) FROM objects WHERE kind = 'room'"
+        ).fetchone()[0]
         assert room_count == 5
-        # Every room has a non-empty exits_json (at minimum the reverse
-        # of whatever points to it), so navigation can't dead-end on
-        # load. '{}' is the DEFAULT from the schema; any row still at
-        # '{}' means 004 missed it.
+        # Every room has non-empty exits (at minimum the reverse of whatever
+        # points to it), so navigation can't dead-end on load. An empty exits
+        # object serializes to '{}'; any room still at '{}' means 004 missed it.
         orphans = conn.execute(
-            "SELECT id FROM rooms WHERE exits_json = '{}'"
+            "SELECT id FROM objects WHERE kind = 'room' "
+            "AND json_extract(properties_json, '$.exits') = '{}'"
         ).fetchall()
         assert not orphans, f"rooms with no exits: {[r['id'] for r in orphans]}"
 
         # Wren is the player's toon (slot 1). Select by id so the test
         # isn't sensitive to insertion order once NPCs land.
         wren = conn.execute(
-            "SELECT name, slot, is_human_controlled FROM toons WHERE id = 't-wren'"
+            "SELECT name, slot, is_human_controlled FROM objects WHERE id = 't-wren'"
         ).fetchone()
         assert wren["name"] == "Wren"
         assert wren["slot"] == 1
         # 006_first_npc adds Rook, the forge-keeper (slot 100, NPC
-        # convention). Both presence and flag checked here so the
-        # migration's intent is pinned.
-        # 007_npc_presence adds the `presence_text` column and Rook's
-        # greeting; assert the column exists AND Rook's value is set.
+        # convention). location_id is the unified containment column
+        # (was current_room_id); presence_text now lives in properties.
         rook = conn.execute(
-            "SELECT name, slot, current_room_id, is_human_controlled, "
-            "       presence_text "
-            "FROM toons WHERE id = 't-rook'"
+            "SELECT name, slot, location_id, is_human_controlled, "
+            "       json_extract(properties_json, '$.presence_text') AS presence_text "
+            "FROM objects WHERE id = 't-rook'"
         ).fetchone()
         assert rook["name"] == "Rook"
         assert rook["slot"] == 100
-        assert rook["current_room_id"] == "r-forge"
+        assert rook["location_id"] == "r-forge"
         assert rook["is_human_controlled"] == 0
         assert isinstance(rook["presence_text"], str) and rook["presence_text"].strip()
-        # Wren's presence_text stays NULL (controlled toon is filtered
-        # out of the greeting iteration anyway; authoring a greeting
-        # here would be dead data).
+        # Wren's presence_text stays null (controlled toon is filtered out of
+        # the greeting iteration anyway; a greeting here would be dead data).
         wren_presence = conn.execute(
-            "SELECT presence_text FROM toons WHERE id = 't-wren'"
-        ).fetchone()["presence_text"]
+            "SELECT json_extract(properties_json, '$.presence_text') AS p "
+            "FROM objects WHERE id = 't-wren'"
+        ).fetchone()["p"]
         assert wren_presence is None
 
-        item = conn.execute("SELECT name, seed FROM items").fetchone()
+        item = conn.execute(
+            "SELECT name, json_extract(properties_json, '$.seed') AS seed "
+            "FROM objects WHERE kind = 'thing'"
+        ).fetchone()
         assert item["name"] == "lantern"
         # SPEC criterion 5 sentinel: examine output must include this string.
         assert "hairline crack" in item["seed"]
@@ -125,11 +137,17 @@ def test_init_schema_is_idempotent(temp_db_path: Path):
         assert second == []
         # And re-running did not duplicate seed rows.
         assert conn.execute("SELECT COUNT(*) FROM worlds").fetchone()[0] == 1
-        assert conn.execute("SELECT COUNT(*) FROM rooms").fetchone()[0] == 5
+        assert conn.execute(
+            "SELECT COUNT(*) FROM objects WHERE kind = 'room'"
+        ).fetchone()[0] == 5
         # Wren (slot 1, human) + Rook (slot 100, NPC from 006_first_npc)
         # + Iris (slot 101, NPC from 008_second_npc).
-        assert conn.execute("SELECT COUNT(*) FROM toons").fetchone()[0] == 3
-        assert conn.execute("SELECT COUNT(*) FROM items").fetchone()[0] == 1
+        assert conn.execute(
+            "SELECT COUNT(*) FROM objects WHERE kind = 'toon'"
+        ).fetchone()[0] == 3
+        assert conn.execute(
+            "SELECT COUNT(*) FROM objects WHERE kind = 'thing'"
+        ).fetchone()[0] == 1
     finally:
         conn.close()
 

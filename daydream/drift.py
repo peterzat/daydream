@@ -54,7 +54,7 @@ from typing import Any
 
 from jinja2.sandbox import SandboxedEnvironment
 
-from daydream import db, events, memories, toons
+from daydream import events, memories, toons
 from daydream.llm import client as llm_client
 from daydream.llm import safety
 
@@ -284,25 +284,16 @@ def _list_npcs() -> list[dict[str, Any]]:
     with the fields the drift loop needs (id, current_room_id, world_id,
     mood, name, seed). Ordered by slot for deterministic iteration in
     tests; random selection happens in `_tick` after this returns."""
-    rows = (
-        db.get_conn()
-        .execute(
-            "SELECT id, current_room_id, world_id, mood, name, seed FROM toons "
-            "WHERE is_human_controlled = 0 AND kicked_at IS NULL "
-            "ORDER BY slot"
-        )
-        .fetchall()
-    )
     return [
         {
-            "id": r["id"],
-            "current_room_id": r["current_room_id"],
-            "world_id": r["world_id"],
-            "mood": r["mood"],
-            "name": r["name"],
-            "seed": r["seed"],
+            "id": t.id,
+            "current_room_id": t.current_room_id,
+            "world_id": t.world_id,
+            "mood": t.mood,
+            "name": t.name,
+            "seed": t.seed,
         }
-        for r in rows
+        for t in toons.get_npcs()
     ]
 
 
@@ -357,16 +348,10 @@ def _occupied_room_ids() -> set[str]:
     present. Drift suppresses narrates in these rooms when occupancy
     suppression is enabled (default)."""
     try:
-        rows = db.get_conn().execute(
-            "SELECT DISTINCT current_room_id FROM toons "
-            "WHERE is_human_controlled = 1 "
-            "AND kicked_at IS NULL "
-            "AND current_room_id IS NOT NULL"
-        ).fetchall()
+        return toons.occupied_room_ids()
     except Exception as e:
         logger.warning("drift: occupancy query failed: %s", e, exc_info=True)
         return set()
-    return {r["current_room_id"] for r in rows}
 
 
 def _eligible_npcs(npcs: list[dict[str, Any]]) -> list[dict[str, Any]]:

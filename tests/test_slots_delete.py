@@ -62,15 +62,15 @@ def test_delete_handles_carried_items_without_fk_error():
             "/api/slots/5/create", json={"name": "Mossy", "appearance_seed": "a fern"}
         )
         toon_id = r.json()["id"]
-        # Give the toon a carried item (items.toon_id FKs toons(id)).
-        db.get_conn().execute(
-            "INSERT INTO items (id, world_id, name, seed, room_id, toon_id) "
-            "VALUES ('it-test', 'w-bunny', 'a pebble', 'smooth', NULL, ?)",
-            (toon_id,),
+        # Give the toon a carried thing (located on the toon via location_id,
+        # the self-referential FK that delete must clear first).
+        from daydream import objects
+        objects.spawn(
+            "w-bunny", "thing", "a pebble", toon_id,
+            prototype_id=objects.PROTO_THING,
+            properties={"seed": "smooth"}, object_id="o-test",
         )
-        # Delete must not FK-fail; the carried item goes with the toon.
+        # Delete must not FK-fail; the carried thing goes with the toon.
         assert client.post("/api/slots/5/delete").status_code == 200
-        assert db.get_conn().execute(
-            "SELECT 1 FROM items WHERE id = 'it-test'"
-        ).fetchone() is None
+        assert objects.get("o-test") is None
         assert toons.get_toon(toon_id) is None

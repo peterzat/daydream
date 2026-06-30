@@ -386,27 +386,38 @@ def _short_uuid() -> str:
     return uuid.uuid4().hex[:8]
 
 
+def _proto_id(kind: str) -> str:
+    """Prototype id for an archetype name. Single-world-per-DB at v0, so the
+    bare ids do not collide (mirrors migration 011)."""
+    return f"proto-{kind}"
+
+
+_PROTOTYPES: tuple[tuple[str, list[str]], ...] = (
+    ("room", ["look"]),
+    ("npc", ["examine", "talk"]),
+    ("thing", ["examine", "take", "drop"]),
+    ("readable", ["examine", "take", "drop"]),
+)
+
+
 def _write_db(output_path: Path, spec: WorldSpec, world_display_name: str) -> None:
-    """Apply migrations to a fresh DB at ``output_path``, delete the
-    seeded w-bunny content, and INSERT the bootstrapped spec under
-    world_id='w-bunny'. Closes the connection before returning."""
+    """Apply migrations to a fresh DB at ``output_path``, delete the seeded
+    w-bunny content, and INSERT the bootstrapped spec onto the unified
+    ``objects`` schema (migration 011) under world_id='w-bunny'. Closes the
+    connection before returning."""
     conn = db.open_db(output_path)
     try:
         db.init_schema(conn, config.MIGRATIONS_DIR)
 
-        # Wipe the seeded w-bunny content. Order matters for FK
-        # integrity (children before parents). The toons table FK
-        # references rooms; items reference rooms (and optionally
-        # toons via inventory_json — but that's JSON, not FK); skills
-        # are not FK-bound to world but are filtered by world via
-        # context_predicate's room_slug, so deletion is wholesale.
-        # generated_assets and memories cascade via world_id.
+        # Wipe the seeded w-bunny content. `objects` holds rooms / toons /
+        # things / prototypes; deleting the whole world clears them in one
+        # statement (the self-referential FKs are satisfied because the
+        # entire world goes at once). generated_assets + memories cascade via
+        # world_id; skills are global, cleared wholesale.
         cur = conn.cursor()
         cur.execute("DELETE FROM memories WHERE world_id = 'w-bunny'")
         cur.execute("DELETE FROM generated_assets WHERE world_id = 'w-bunny'")
-        cur.execute("DELETE FROM items WHERE world_id = 'w-bunny'")
-        cur.execute("DELETE FROM toons WHERE world_id = 'w-bunny'")
-        cur.execute("DELETE FROM rooms WHERE world_id = 'w-bunny'")
+        cur.execute("DELETE FROM objects WHERE world_id = 'w-bunny'")
         cur.execute("DELETE FROM skills")  # data skills are global; clear any pre-installed
         cur.execute("DELETE FROM worlds WHERE id = 'w-bunny'")
 
@@ -418,49 +429,65 @@ def _write_db(output_path: Path, spec: WorldSpec, world_display_name: str) -> No
             ("w-bunny", spec.world_name, slug or "bootstrapped", spec.aesthetic_seed),
         )
 
-        # Build slug→id map first so exits_json can reference room ids.
+        # Prototypes first (FK targets for prototype_id on every concrete
+        # object below).
+        for kind, verbs in _PROTOTYPES:
+            cur.execute(
+                "INSERT INTO objects (id, world_id, kind, name, properties_json) "
+                "VALUES (?, 'w-bunny', 'prototype', ?, ?)",
+                (_proto_id(kind), kind, json.dumps({"verbs": verbs})),
+            )
+
+        # Rooms -> objects. Build slug→id map first so exits can reference ids.
         slug_to_room_id: dict[str, str] = {
             r["slug"]: f"r-{r['slug']}" for r in spec.rooms
         }
         for r in spec.rooms:
-            # Translate exits {direction: slug} → {direction: room_id}
-            # to match the existing schema convention (migration 004
-            # stores exits_json keyed by room id, e.g. 'r-forge').
             exits_with_ids = {
                 d: slug_to_room_id[target] for d, target in r["exits"].items()
             }
+            props = {
+                "slug": r["slug"],
+                "title": r["title"],
+                "seed": r["seed"],
+                "description_cached": None,
+                "exits": exits_with_ids,
+                "parent_id": None,
+            }
             cur.execute(
-                "INSERT INTO rooms (id, world_id, slug, title, seed, description_cached, exits_json) "
-                "VALUES (?, 'w-bunny', ?, ?, ?, NULL, ?)",
-                (
-                    slug_to_room_id[r["slug"]],
-                    r["slug"],
-                    r["title"],
-                    r["seed"],
-                    json.dumps(exits_with_ids),
-                ),
+                "INSERT INTO objects (id, world_id, kind, name, location_id, "
+                "prototype_id, properties_json) "
+                "VALUES (?, 'w-bunny', 'room', ?, NULL, ?, ?)",
+                (slug_to_room_id[r["slug"]], r["title"], _proto_id("room"),
+                 json.dumps(props)),
             )
 
-        # Toons. Convert exits_json sluggraph to room_id graph in
-        # update steps below.
+        # Toons -> objects (kind='toon'; location = current room; promoted
+        # slot/controller/human columns; persona fields into properties).
         for t in spec.toons:
             toon_slug = re.sub(r"[^a-z0-9-]+", "-", t["name"].lower()).strip("-") or "toon"
             toon_id = f"t-{toon_slug}-{_short_uuid()}"
+            props = {
+                "seed": t["seed"],
+                "appearance_seed": t["appearance_seed"],
+                "mood": t["mood"],
+                "presence_text": t.get("presence_text"),
+            }
+            aliases = t.get("aliases") if isinstance(t.get("aliases"), list) else []
             cur.execute(
-                "INSERT INTO toons (id, world_id, slot, name, seed, appearance_seed, "
-                "current_room_id, is_human_controlled, controller_session, "
-                "inventory_json, mood, kicked_at, presence_text) "
-                "VALUES (?, 'w-bunny', ?, ?, ?, ?, ?, ?, NULL, '[]', ?, NULL, ?)",
+                "INSERT INTO objects (id, world_id, kind, name, aliases_json, "
+                "location_id, prototype_id, properties_json, slot, "
+                "controller_session, is_human_controlled, kicked_at) "
+                "VALUES (?, 'w-bunny', 'toon', ?, ?, ?, ?, ?, ?, NULL, ?, NULL)",
                 (
                     toon_id,
-                    t["slot"],
                     t["name"],
-                    t["seed"],
-                    t["appearance_seed"],
+                    json.dumps(aliases),
                     slug_to_room_id[t["current_room_slug"]],
+                    _proto_id("npc"),
+                    json.dumps(props),
+                    t["slot"],
                     int(t["is_human_controlled"]),
-                    t["mood"],
-                    t.get("presence_text"),
                 ),
             )
 
@@ -475,12 +502,24 @@ def _write_db(output_path: Path, spec: WorldSpec, world_display_name: str) -> No
             (slug_to_room_id[_start_slug],),
         )
 
-        # Items.
+        # Items -> thing objects (located in their room; readable prototype
+        # when flagged so spawned papers-style readables inherit examine/take).
         for it in spec.items:
+            proto = "readable" if it.get("readable") else "thing"
+            aliases = it.get("aliases") if isinstance(it.get("aliases"), list) else []
+            props = {"seed": it["seed"], "is_unique": int(bool(it.get("is_unique", 0)))}
             cur.execute(
-                "INSERT INTO items (id, world_id, name, seed, room_id, properties_json, is_unique) "
-                "VALUES (?, 'w-bunny', ?, ?, ?, '{}', 0)",
-                (f"i-{_short_uuid()}", it["name"], it["seed"], slug_to_room_id[it["room_slug"]]),
+                "INSERT INTO objects (id, world_id, kind, name, aliases_json, "
+                "location_id, prototype_id, properties_json) "
+                "VALUES (?, 'w-bunny', 'thing', ?, ?, ?, ?, ?)",
+                (
+                    f"o-{_short_uuid()}",
+                    it["name"],
+                    json.dumps(aliases),
+                    slug_to_room_id[it["room_slug"]],
+                    _proto_id(proto),
+                    json.dumps(props),
+                ),
             )
 
         # Data skills. id convention mirrors admin.cmd_skill_add
