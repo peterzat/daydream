@@ -68,4 +68,41 @@ if echo "$out" | grep -q "Starting GPU engines"; then fail "up (already-up): eng
 out="$(PATH="$STUB:$PATH" "$GAME" up --no-gpu 2>&1)" || fail "up --no-gpu (already-up) should exit 0; got: $out"
 echo "$out" | grep -q "game is already up" || fail "up --no-gpu (already-up): expected friendly message; got: $out"
 
+# Build-staleness line: an already-up `up` reports the running server's build vs
+# HEAD. Stub /status/build to return a body and git to report a different HEAD
+# so the verdict says "behind" (the "I thought we'd redeployed" guardrail).
+STUBB="$TMP/stubb"
+mkdir -p "$STUBB"
+cat > "$STUBB/curl" <<'CURL'
+#!/usr/bin/env bash
+for a in "$@"; do case "$a" in
+  *status/build*) printf 'build: abc123def456\nworld_version: 1.0\nmigration: 12\n'; exit 0 ;;
+esac; done
+exit 0
+CURL
+cat > "$STUBB/git" <<'GIT'
+#!/usr/bin/env bash
+case "$*" in
+  *"rev-parse --short=12 HEAD"*) echo "ffff00001111"; exit 0 ;;
+  *"rev-list --count"*) echo "3"; exit 0 ;;
+  *) exit 0 ;;
+esac
+GIT
+printf '#!/usr/bin/env bash\nexit 1\n' > "$STUBB/tailscale"
+chmod +x "$STUBB/curl" "$STUBB/git" "$STUBB/tailscale"
+out="$(PATH="$STUBB:$PATH" "$GAME" up 2>&1)" || fail "up (build-staleness) should exit 0; got: $out"
+echo "$out" | grep -q "game is already up" || fail "build-staleness: expected already-up; got: $out"
+echo "$out" | grep -q "build: abc123def456" || fail "build-staleness: expected build line; got: $out"
+echo "$out" | grep -q "commits behind" || fail "build-staleness: expected behind-HEAD note; got: $out"
+
+# `world reset` is destructive: without --yes it must refuse (non-zero exit) and
+# run NO destructive step (it checks --yes before touching anything).
+set +e
+out="$(PATH="$STUB:$PATH" "$GAME" world reset 2>&1)"
+rc=$?
+set -e
+[[ "$rc" -ne 0 ]] || fail "world reset without --yes should exit non-zero; got: $out"
+echo "$out" | grep -qi "destructive" || fail "world reset should warn it is destructive; got: $out"
+echo "$out" | grep -q -- "--yes" || fail "world reset should point at --yes; got: $out"
+
 echo "PASS bin/game smoke checks"

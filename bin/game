@@ -138,6 +138,39 @@ _print_listening() {
     fi
 }
 
+_print_build_staleness() {
+    # Compare the RUNNING server's build (GET /status/build) against the working
+    # tree's HEAD so `status` / `up` flag a server behind the code on disk (the
+    # "I thought we'd already redeployed" trap). Best-effort: every curl / git is
+    # guarded so `set -euo pipefail` never aborts off-git or when unreachable.
+    command -v curl >/dev/null 2>&1 || return 0
+    local body server_sha server_rev head_sha behind
+    body="$(curl -s --max-time 1 "http://0.0.0.0:${PORT}/status/build" 2>/dev/null)" || return 0
+    [[ -n "$body" ]] || return 0
+    server_sha="$(printf '%s\n' "$body" | awk -F': ' '/^build:/{print $2; exit}')"
+    [[ -n "$server_sha" ]] || return 0
+    server_rev="${server_sha%-dirty}"
+    if [[ "$server_rev" == "unknown" ]] || ! command -v git >/dev/null 2>&1; then
+        echo "build: $server_sha"
+        return 0
+    fi
+    head_sha="$(git -C "$PROJECT_ROOT" rev-parse --short=12 HEAD 2>/dev/null)" || head_sha=""
+    if [[ -z "$head_sha" ]]; then
+        echo "build: $server_sha"
+        return 0
+    fi
+    if [[ "$server_rev" == "$head_sha" ]]; then
+        echo "build: $server_sha (up to date with HEAD)"
+        return 0
+    fi
+    behind="$(git -C "$PROJECT_ROOT" rev-list --count "${server_rev}..HEAD" 2>/dev/null)" || behind=""
+    if [[ -n "$behind" && "$behind" != "0" ]]; then
+        echo "build: $server_sha -> HEAD $head_sha ($behind commits behind; restart to deploy: bin/game down && bin/game up)"
+    else
+        echo "build: $server_sha (differs from HEAD $head_sha; restart to deploy: bin/game down && bin/game up)"
+    fi
+}
+
 _require_venv() {
     [[ -x "$VENV_PY" ]] || {
         echo "venv missing at $VENV_PY"
@@ -258,6 +291,7 @@ cmd_up() {
     fi
     if (( stack_up )); then
         echo "game is already up."
+        _print_build_staleness
         _print_listening
         return 0
     fi
@@ -320,6 +354,7 @@ cmd_status() {
             if [[ -n "$drift_line" ]]; then
                 printf "%s" "$drift_line"
             fi
+            _print_build_staleness
         fi
     else
         echo "fastapi: stopped"
@@ -453,9 +488,42 @@ cmd_vllm_down() {
 cmd_world() {
     # Thin shell over python -m daydream.admin so the heavy lifting (sqlite
     # cascade, archive bundling) lives in tested Python rather than here.
-    # See daydream/admin.py for the contract; --help is forwarded.
+    # See daydream/admin.py for the contract; --help is forwarded. `reset` is
+    # intercepted here (it cycles the server + removes files, so it lives in
+    # bash); every other subcommand forwards to the tested admin CLI.
+    if [[ "${1:-}" == "reset" ]]; then
+        shift
+        cmd_world_reset "$@"
+        return
+    fi
     _require_venv
     "$VENV_PY" -m daydream.admin "$@"
+}
+
+cmd_world_reset() {
+    # Destructive re-seed of the live world from worlds/bunny.json: stop the
+    # server, wipe the live DB + its image cache, rebuild keyless from the
+    # authored envelope, and start back up on current code. The one-command
+    # runbook the version-gate's "run 'bin/game world reset'" message points
+    # at. Gated behind --yes.
+    if [[ "${1:-}" != "--yes" ]]; then
+        echo "world reset is DESTRUCTIVE: it wipes the live world" >&2
+        echo "  (worlds-${ENV_NAME}/live.db) and its image cache, then re-seeds" >&2
+        echo "  from worlds/bunny.json. Re-run to confirm:" >&2
+        echo "    bin/game world reset --yes" >&2
+        return 2
+    fi
+    _require_venv
+    local data_dir="${DAYDREAM_DATA_DIR:-$HOME/data/daydream}"
+    echo "==> world reset: stopping server"
+    cmd_down
+    echo "==> world reset: wiping live DB + image cache"
+    rm -f "$LIVE_DB" "${LIVE_DB}-wal" "${LIVE_DB}-shm"
+    rm -rf "${data_dir}/images/cache/w-bunny"
+    echo "==> world reset: loading worlds/bunny.json (keyless)"
+    "$VENV_PY" -m daydream.admin load "$PROJECT_ROOT/worlds/bunny.json" --force --output "$LIVE_DB"
+    echo "==> world reset: starting server on current code"
+    cmd_up
 }
 
 cmd_test() {
