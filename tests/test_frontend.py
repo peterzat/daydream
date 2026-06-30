@@ -40,6 +40,18 @@ def test_authed_root_serves_spa_shell():
     assert "/assets/placeholder-meadow.png" in r.text
 
 
+def test_root_stamps_asset_urls_with_build_version():
+    """The SPA shell stamps main.js/style.css with ?v=<build> so a redeployed
+    server serves fresh-URL'd assets (belt-and-suspenders with no-store)."""
+    from daydream import version
+
+    with TestClient(app) as client:
+        _login(client)
+        r = client.get("/")
+    assert f"/assets/main.js?v={version.build_sha()}" in r.text
+    assert f"/assets/style.css?v={version.build_sha()}" in r.text
+
+
 def test_placeholder_png_is_committed_and_substantial():
     asset = WEB / "assets" / "placeholder-meadow.png"
     assert asset.exists(), "v0 watercolor placeholder must be committed at web/assets/"

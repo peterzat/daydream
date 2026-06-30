@@ -133,7 +133,17 @@ async def root(request: Request):
         return RedirectResponse(url="/login", status_code=302)
     index = config.WEB_DIR / "index.html"
     if index.exists():
-        return HTMLResponse(index.read_text())
+        # Stamp the asset refs with the build SHA so a redeployed server serves
+        # fresh-URL'd main.js/style.css (belt-and-suspenders with the no-store
+        # middleware; the client mismatch-reload is the primary stale-tab fix).
+        # StaticFiles ignores the query string, so the files still resolve.
+        sha = version.build_sha()
+        html = (
+            index.read_text()
+            .replace("/assets/main.js", f"/assets/main.js?v={sha}")
+            .replace("/assets/style.css", f"/assets/style.css?v={sha}")
+        )
+        return HTMLResponse(html)
     return HTMLResponse(_PRE_FRONTEND_HTML)
 
 
