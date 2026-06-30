@@ -258,10 +258,16 @@ async def execute(
     actor_id: str,
     room_id: str,
     args: str,
+    allowed: "frozenset[str] | None" = None,
 ) -> None:
     """Run the full data-skill pipeline and emit events. No return
     value — the side effect is events in the log, matching the core
-    skill convention."""
+    skill convention.
+
+    `allowed`, when given, is the per-verb effect allowlist forwarded to the
+    effect dispatcher (e.g. the `talk` verb constrains an NPC's dialogue to
+    narrate/set_property/set_mood/spawn_object). None = the full ALLOWED_KINDS,
+    the standalone data-skill default."""
     # (0) Bind the skill to its backing NPC (if any) and pull recent
     # memories. Both retrieval and capture are no-ops for skills that
     # don't have a matching NPC row (e.g., room-anchored skills like
@@ -339,6 +345,7 @@ async def execute(
         actor_id=actor_id,
         room_id=room_id,
         world_id=world_id,
+        allowed=allowed,
     )
     # UX safety: if the LLM returned an empty / shape-less effects
     # list, the player would otherwise see nothing happen. Emit a soft
