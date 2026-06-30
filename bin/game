@@ -6,6 +6,7 @@
 #   up-all   start FastAPI + kick off vLLM and ComfyUI in the background
 #            (engines load over ~30-60 s; game is reachable immediately)
 #   down     stop running processes
+#   deploy   restart FastAPI on current code (world preserved); the "refresh" verb
 #   status   report what is running, on which port, and where state lives
 #   logs     tail recent process logs (default: fastapi)
 #
@@ -336,6 +337,27 @@ cmd_down() {
     _stop_one fastapi
 }
 
+cmd_deploy() {
+    # Deploy the CURRENT on-disk code: restart FastAPI (down -> up), preserving
+    # the live world (unlike `world reset`, which wipes + re-seeds it). The one
+    # verb for "make the running server match what I just committed/edited"; the
+    # build-staleness line in `status` / `up` is what flags a deploy is due.
+    # Clients on the redeploy-aware JS auto-reload when the new build's snapshot
+    # arrives (see web/assets/main.js). Engines are left running.
+    local before=""
+    if _is_running "fastapi" && command -v curl >/dev/null 2>&1; then
+        before="$(curl -s --max-time 1 "http://0.0.0.0:${PORT}/status/build" 2>/dev/null \
+            | awk -F': ' '/^build:/{print $2; exit}')" || true
+    fi
+    local head=""
+    head="$(git -C "$PROJECT_ROOT" rev-parse --short=12 HEAD 2>/dev/null)" || head=""
+    echo "==> deploy: restarting FastAPI on current code (live world preserved)"
+    [[ -n "$before" ]] && echo "    was running: $before"
+    [[ -n "$head" ]] && echo "    deploying:   $head"
+    cmd_down
+    cmd_up "$@"
+}
+
 cmd_status() {
     if _is_running "fastapi"; then
         local pid; pid="$(cat "$(_pid_file fastapi)")"
@@ -559,6 +581,7 @@ case "${1:-}" in
     up)            shift; cmd_up "$@" ;;
     up-all)        shift; cmd_up_all "$@" ;;
     down)          shift; cmd_down "$@" ;;
+    deploy)        shift; cmd_deploy "$@" ;;
     status)        shift; cmd_status "$@" ;;
     logs)          shift; cmd_logs "$@" ;;
     image-test)    shift; cmd_image_test "$@" ;;
@@ -570,6 +593,6 @@ case "${1:-}" in
     test)          shift; cmd_test "$@" ;;
     voice-samples) shift; cmd_voice_samples "$@" ;;
     drift-samples) shift; cmd_drift_samples "$@" ;;
-    "")            echo "usage: bin/game {up|up-all|down|status|logs|image-test|comfyui-up|comfyui-down|vllm-up|vllm-down|world|test|voice-samples|drift-samples}" >&2; exit 2 ;;
-    *)             echo "usage: bin/game {up|up-all|down|status|logs|image-test|comfyui-up|comfyui-down|vllm-up|vllm-down|world|test|voice-samples|drift-samples} (got: $1)" >&2; exit 2 ;;
+    "")            echo "usage: bin/game {up|up-all|deploy|down|status|logs|image-test|comfyui-up|comfyui-down|vllm-up|vllm-down|world|test|voice-samples|drift-samples}" >&2; exit 2 ;;
+    *)             echo "usage: bin/game {up|up-all|deploy|down|status|logs|image-test|comfyui-up|comfyui-down|vllm-up|vllm-down|world|test|voice-samples|drift-samples} (got: $1)" >&2; exit 2 ;;
 esac
