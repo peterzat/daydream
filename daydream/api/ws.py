@@ -26,7 +26,7 @@ import logging
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, status
 
-from daydream import events, objects, parser, rooms, toons, verbs
+from daydream import events, objects, parser, rooms, toons, verbs, version
 from daydream.api import auth
 from daydream.gpu import arbiter
 from daydream.images import cache as image_cache
@@ -204,6 +204,12 @@ def _state_snapshot(
         "entities": _entity_sidecar(toon_id),
         "events": [e.to_dict() for e in recent],
         "last_seq": last_seq,
+        # Build + world version so the client can detect a redeploy (a stale
+        # open tab still running the OLD main.js — a WS reconnect never reloads
+        # page JS) and reload itself. The snapshot already re-flows on every
+        # move / effect / swap, so this rides it; no separate control frame.
+        "build": version.build_sha(),
+        "world_version": version.WORLD_VERSION,
     }
 
 

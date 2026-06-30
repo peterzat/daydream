@@ -12,6 +12,8 @@ let stagedVerb = null; // the verb-bar verb awaiting an object click
 let lastArrivalRoomId = null; // room of the last arrival line shown (suppresses re-show on same-room re-snapshots)
 let pendingEl = null; // transient "thinking..." line during a slow (LLM) action
 let pendingTimer = null; // its safety timeout
+let loadedBuild = null; // server build SHA this page's JS loaded against (redeploy detection)
+let loadedWorldVersion = null;
 
 // Reconnect backoff: a dropped socket retries on a gentle, capped exponential
 // delay behind a single calm "the dream is sleeping" overlay (not a growing
@@ -29,6 +31,28 @@ function showDreamOverlay(text) {
 
 function hideDreamOverlay() {
   document.getElementById("dream-overlay").classList.add("hidden");
+}
+
+function majorOf(v) {
+  // MAJOR int of a "MAJOR.MINOR" world_version string (0 when absent/garbled).
+  return v ? parseInt(String(v).split(".")[0], 10) || 0 : 0;
+}
+
+function triggerUpdateReload() {
+  // The server was redeployed under this open tab (it is still running the
+  // main.js it loaded earlier — a WS reconnect never refreshes page JS), so the
+  // rendering can be stale (this is what caused the forge id-garbage). Reload
+  // ONCE into fresh assets. A sessionStorage guard prevents a reload loop if the
+  // mismatch somehow persists; show a brief calm beat so the jump is explained.
+  // Returns true when it is reloading, false when guarded.
+  const KEY = "dd-reloaded-at";
+  const now = Date.now();
+  const last = parseInt(sessionStorage.getItem(KEY) || "0", 10);
+  if (now - last < 15000) return false; // just reloaded — don't thrash
+  sessionStorage.setItem(KEY, String(now));
+  showDreamOverlay("the dream updated, stepping back in...");
+  setTimeout(() => location.reload(), 900);
+  return true;
 }
 
 function connect(isReconnect) {
@@ -71,6 +95,23 @@ function connect(isReconnect) {
 }
 
 function renderSnapshot(snap) {
+  // Redeploy detection: record the server's build + world version on the first
+  // snapshot (when this JS and the server matched); if a later snapshot's build
+  // differs (or the world's MAJOR changed), this tab is running stale JS against
+  // a redeployed server — reload once into fresh assets.
+  if (loadedBuild === null) {
+    loadedBuild = snap.build || null;
+    loadedWorldVersion = snap.world_version || null;
+  } else if (
+    (snap.build && snap.build !== loadedBuild) ||
+    majorOf(snap.world_version) !== majorOf(loadedWorldVersion)
+  ) {
+    if (triggerUpdateReload()) return; // reloading into fresh assets; stop here
+    // Guarded against a reload loop: adopt the new baseline and render
+    // best-effort so the tab isn't frozen on the stale build.
+    loadedBuild = snap.build || loadedBuild;
+    loadedWorldVersion = snap.world_version || loadedWorldVersion;
+  }
   document.getElementById("room-title").textContent =
     snap.room ? snap.room.title : "drifting...";
   document.getElementById("room-desc").textContent =

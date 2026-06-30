@@ -126,6 +126,19 @@ def test_main_js_calm_reconnect_backoff_and_world_changed():
     assert "disconnected; reconnecting" not in r.text
 
 
+def test_main_js_reloads_once_on_build_mismatch():
+    """The id-garbage root cause: an open tab kept running stale main.js after a
+    redeploy. The SPA records the server build on the first snapshot and reloads
+    once when a later snapshot's build (or world MAJOR) changes."""
+    with TestClient(app) as client:
+        _login(client)
+        r = client.get("/assets/main.js")
+    assert "loadedBuild" in r.text
+    assert "triggerUpdateReload" in r.text
+    assert "the dream updated" in r.text
+    assert "location.reload" in r.text
+
+
 def test_style_css_has_dream_overlay():
     with TestClient(app) as client:
         _login(client)

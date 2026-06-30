@@ -74,6 +74,20 @@ def test_ws_sends_state_snapshot_on_connect():
     assert {"look", "say", "examine"}.issubset(skill_names)
 
 
+def test_ws_snapshot_carries_build_and_world_version():
+    """The snapshot carries the server build SHA + WORLD_VERSION so the SPA can
+    detect a redeploy under an open tab (stale JS) and reload (web/assets/main.js)."""
+    from daydream import version
+
+    with TestClient(app) as client:
+        _login(client)
+        with client.websocket_connect("/ws") as ws:
+            msg = ws.receive_json()
+    assert msg["kind"] == "state_snapshot"
+    assert msg["build"] == version.build_sha()
+    assert msg["world_version"] == version.WORLD_VERSION
+
+
 def test_ws_snapshot_does_not_include_npc_when_player_is_elsewhere():
     """SPEC 2026-04-23 criterion 2: Rook (migration 006) is at r-forge.
     On initial connect the player starts at r-meadow, so the snapshot's
