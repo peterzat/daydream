@@ -149,7 +149,12 @@ def test_main_js_calm_reconnect_backoff_and_world_changed():
     assert "the dream is sleeping" in r.text
     assert "the dream shifts" in r.text
     assert "world_changed" in r.text
-    assert "RECONNECT_MAX" in r.text  # capped backoff
+    # Backoff is bounded on BOTH sides: a gentle floor and a capped ceiling.
+    assert "RECONNECT_MAX" in r.text
+    assert "RECONNECT_MIN" in r.text
+    # The backoff resets when the socket reopens, so recovery is seamless
+    # rather than staying slow after a flap (the "recovers on its own" half).
+    assert "reconnectDelay = 0" in r.text
     assert "showDreamOverlay" in r.text and "hideDreamOverlay" in r.text
     # The old per-retry disconnect chat line is gone (calm single state).
     assert "disconnected; reconnecting" not in r.text
