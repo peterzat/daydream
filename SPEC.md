@@ -18,11 +18,11 @@
 *World authoring (keyless, per the generation policy)*
 
 - [x] **A keyless, in-session world-authoring path exists.** A world can be built from an Opus-authored world spec (the bootstrap JSON envelope) with NO cloud LLM call and NO `ANTHROPIC_API_KEY` — a loader validates the envelope with the same validator `bootstrap_world` uses and writes a valid world DB, refusing a malformed envelope and an existing output path. Verifiable in `tier_medium`: `admin.main([...])` turns a committed JSON fixture into a world DB that opens with its rooms/toons, no network, no key.
-- [ ] **The API-key bootstrap path is reconciled with the policy.** The litellm→Anthropic `world bootstrap` path is removed OR explicitly deprecated/off so the documented default way to make a world is the keyless in-session loader. README + CLAUDE.md present keyless authoring as canonical.
+- [x] **The API-key bootstrap path is reconciled with the policy.** The litellm→Anthropic `world bootstrap` path is removed OR explicitly deprecated/off so the documented default way to make a world is the keyless in-session loader. README + CLAUDE.md present keyless authoring as canonical.
 
 *Cross-cutting*
 
-- [ ] **Tiers green; docs rolled forward.** `bin/game test short` and `bin/game test medium` exit 0 with paired tests for each item above (WS via TestClient; slot-delete + world-load via `admin.main`; all GPU/LLM-free). README + CLAUDE.md updated for the new arrival/leave/delete behaviors and the keyless authoring path. Browser-manual criteria (the "you wake…" transition; the rendered-description styling) are flagged as such and eyeballed once.
+- [x] **Tiers green; docs rolled forward.** `bin/game test short` and `bin/game test medium` exit 0 with paired tests for each item above (WS via TestClient; slot-delete + world-load via `admin.main`; all GPU/LLM-free). README + CLAUDE.md updated for the new arrival/leave/delete behaviors and the keyless authoring path. Browser-manual criteria (the "you wake…" transition; the rendered-description styling) are flagged as such and eyeballed once.
 
 ### Context
 
@@ -47,4 +47,4 @@
 ---
 *Prior spec (2026-06-29): world-hot-swap closed 6/6 — live in-process world swap (`POST /api/world/swap` + `bin/game world swap`) replacing the running server's live DB without a restart, with connected clients re-snapshotting; failure-safe, with a round-trip + reconnect oracle.*
 
-<!-- SPEC_META: {"date":"2026-06-29","title":"session & presence: room descriptions on entry, fresh sessions, toon delete, keyless authoring","criteria_total":8,"criteria_met":6} -->
+<!-- SPEC_META: {"date":"2026-06-29","title":"session & presence: room descriptions on entry, fresh sessions, toon delete, keyless authoring","criteria_total":8,"criteria_met":8} -->

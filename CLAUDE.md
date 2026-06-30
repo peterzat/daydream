@@ -11,7 +11,7 @@ Foundational and load-bearing; it informs every design and build decision in thi
 - **Pre-bake, don't phone home.** The quality ceiling of the running game is (Opus-authored groundwork, baked in at design time) + (local-model polish at runtime). To get Opus-grade quality in-game, bake it into the world's seed/cache ahead of time and let the local models animate it live.
 - **Flag local limits at design time (process rule).** When a target experience likely won't be compelling under the local-model budget, say so explicitly during design/dev — here, in the session — and reason through the fix together (pre-bake with Opus / cache harder / simplify / accept the edge) before building. Never quietly ship a flat experience because the small model couldn't reach.
 
-**Implication for `world bootstrap`.** Today's `bin/game world bootstrap` calls Claude Opus via litellm over the Anthropic API (needs a key); that path predates this policy and is superseded by Claude-Code-authored seeding (Opus, in session, writes the world). Reconcile at the next design spin; until then, treat in-session authoring as the intended way to make a world, not the API path.
+**World authoring is keyless (`world load`).** `bin/game world load <envelope.json>` (`daydream/llm/bootstrap.py:load_world`) builds a world DB from an Opus-authored JSON envelope with no LLM call and no API key: author the world in a Claude Code session, write the envelope (the schema lives in `bootstrap.py`'s system prompt), then load it. This is the canonical path. The older `bin/game world bootstrap`, which called the Anthropic API via litellm (needs `ANTHROPIC_API_KEY`), is DEPRECATED under this policy: it still works but prints a deprecation notice, and shares the same validator + DB writer (`bootstrap_world` now calls `load_world` after its LLM call).
 
 ## Conventions
 
@@ -49,6 +49,15 @@ Three reasons to bring it down first:
 ## Auth
 
 Single shared password sourced from the `DAYDREAM_PASSWORD` env var. `bin/game` loads `.env` at the project root (gitignored; see `.env.example`) and then `~/.config/daydream/secrets.env` (per-host overrides win). If neither sets `DAYDREAM_PASSWORD`, the auth endpoint refuses every login with a 503 — empty default never grants access. No per-user identity. Cookie-based session, no expiry in v0. The session-cookie signing secret comes from `DAYDREAM_SESSION_SECRET`; if unset, a per-install random secret is generated on first boot and persisted at `~/.config/daydream/session_secret` (mode 0600, gitignored).
+
+## Session & presence
+
+A few WS / slot-picker behaviors (`daydream/api/ws.py`, `daydream/api/slots.py`, `web/assets/main.js`) worth knowing before touching them:
+
+- **Room descriptions on entry.** Every `state_snapshot` carries `room.description`; the SPA renders it. Per-connection visit memory makes it the FULL stored `rooms.description_cached` on the first entry to a room this session and a short "you return to ..." line on re-entry (sticky for the visit so effect re-snapshots don't shrink it). Pre-baked stored text, never a live LLM call.
+- **Fresh sessions.** A fresh page load opens `/ws` (no query) and gets an empty event log; a reconnect opens `/ws?since=<lastSeq>` and the server replays the room's missed events. Move/effect re-snapshots still carry the recent slice.
+- **Leave the dream.** `POST /api/session/leave` rests this session's toon (`toons.release_session_toon`) and marks the session `left`; a `left` session with no claimed toon gets a `{kind: "needs_toon"}` frame on WS connect (instead of the legacy `t-wren` fallback) and the SPA shows the picker. Create / claim clear `left`.
+- **Toon delete.** `POST /api/slots/{slot}/delete` (`toons.delete_slot`) removes a toon and frees the slot — distinct from kick (rest). It clears the toon's carried items (FK) + memories; its events stay as append-only history.
 
 ## Network access
 
@@ -210,6 +219,7 @@ bin/game world snapshot-restore <snap.db> --yes  # install a snapshot as the liv
 bin/game world swap <target.db>                  # LIVE hot-swap the running server's world to target.db (no restart; clients re-snapshot)
 bin/game world verify [world_id]                 # report orphan rows (file missing) + orphan files (no row)
 bin/game world delete <world_id> --yes           # cascade DELETE rows (filtered by world_id) + rm -rf cache dir
+bin/game world load <envelope.json>              # KEYLESS: build a world DB from an Opus-authored JSON envelope (no API key)
 ```
 
 `archive` runs `PRAGMA wal_checkpoint(TRUNCATE)` before the tar so a hot DB's most recent transactions are captured (without this, anything in `live.db-wal` would be missed). It writes a `MANIFEST.json` to the archive root recording `archive_format_version`, `schema_version`, `world_id`, `asset_count`, `asset_bytes`, `created_at`. `restore` validates the manifest before extracting; refuses archives produced by a newer schema than this code knows about, and refuses to overwrite an existing live DB.
