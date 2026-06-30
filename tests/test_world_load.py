@@ -75,6 +75,10 @@ def test_world_load_writes_db_keyless(tmp_path: Path, monkeypatch):
         assert {r["name"] for r in conn.execute("SELECT name FROM toons")} == {
             "Wren", "Mara", "Pell", "Sorrel"
         }
+        # Starting room designated from the human toon (Wren, slot 1, room 'a').
+        assert conn.execute(
+            "SELECT starting_room_id FROM worlds"
+        ).fetchone()["starting_room_id"] == "r-a"
     finally:
         conn.close()
 

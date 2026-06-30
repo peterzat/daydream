@@ -234,6 +234,11 @@ def create_toon_in_slot(
 
     if _slot_occupied(slot) is not None:
         return None
+    from daydream import rooms
+
+    # Spawn in the world's starting room (resolves to a room that actually
+    # exists -- important for `world load`ed worlds, which have no r-meadow).
+    spawn = rooms.starting_room_id(DEFAULT_HUMAN_WORLD_ID) or DEFAULT_HUMAN_ROOM_ID
     toon_id = f"t-slot{slot}-{_uuid.uuid4().hex[:8]}"
     db.get_conn().execute(
         "INSERT INTO toons "
@@ -246,7 +251,7 @@ def create_toon_in_slot(
             slot,
             name,
             appearance_seed,
-            DEFAULT_HUMAN_ROOM_ID,
+            spawn,
             session_id,
         ),
     )
@@ -268,11 +273,16 @@ def claim_slot(slot: int, session_id: str) -> tuple[Toon | None, str | None]:
         return (None, "empty")
     if t.is_human_controlled and t.kicked_at is None:
         return (None, "controlled")
+    from daydream import rooms
+
+    # Wake in the world's starting room (you "wake up" there after any rest),
+    # not wherever the toon happened to rest.
+    spawn = rooms.starting_room_id(t.world_id) or t.current_room_id
     db.get_conn().execute(
         "UPDATE toons SET controller_session = ?, "
-        "is_human_controlled = 1, kicked_at = NULL "
+        "is_human_controlled = 1, kicked_at = NULL, current_room_id = ? "
         "WHERE id = ?",
-        (session_id, t.id),
+        (session_id, spawn, t.id),
     )
     return (get_toon(t.id), None)
 

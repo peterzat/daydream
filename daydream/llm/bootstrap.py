@@ -464,6 +464,17 @@ def _write_db(output_path: Path, spec: WorldSpec, world_display_name: str) -> No
                 ),
             )
 
+        # Designate the starting room (where toons wake after a rest): the
+        # first human-controllable toon's room, else the first room.
+        _human = next(
+            (t for t in spec.toons if int(t.get("is_human_controlled", 0)) == 1), None
+        )
+        _start_slug = _human["current_room_slug"] if _human else spec.rooms[0]["slug"]
+        cur.execute(
+            "UPDATE worlds SET starting_room_id = ? WHERE id = 'w-bunny'",
+            (slug_to_room_id[_start_slug],),
+        )
+
         # Items.
         for it in spec.items:
             cur.execute(
