@@ -11,14 +11,17 @@ Engines: ComfyUI (images) + vLLM (voices) — the same local engines the game
 uses. Either being down degrades that section to a short note rather than
 aborting the whole sheet (the project's graceful-failure ethos).
 
-Optional automation: when DAYDREAM_CLAUDE_VISION_GATE is set, each render is
-annotated with the WHIMSY vision-rubric verdict (daydream/testing/vision_gate),
-so the aesthetic check is machine-graded rather than eyeballed.
+The aesthetic check is done by Claude Code (the agent running this in the TUI),
+NOT by any cloud API: after this writes the sheet, the agent Reads each rendered
+PNG under the output dir and grades it against `WHIMSY.md`, recording the
+verdict. This is the sanctioned design-time use of Opus-in-the-TUI (CLAUDE.md
+generation policy) — there is no API key and no `litellm` vision call anywhere
+in the runtime or the tooling.
 
 Invoked via `bin/game review` (thin shell wrapper shelling to
-`python -m daydream.review`). The image/voice renders need the GPU; per the
-CLAUDE.md automation policy, run it with the live server down to avoid GPU
-contention.
+`python -m daydream.review`). The image/voice renders need the GPU; in dev the
+agent may take the GPU freely (stop the server if needed) per the CLAUDE.md
+dev-mode lifecycle policy.
 """
 
 from __future__ import annotations
@@ -73,10 +76,10 @@ def _vllm_reachable() -> bool:
 
 async def _render_anchors(out_dir: Path) -> list[dict]:
     """Render every aesthetic anchor into out_dir as <name>.png (so the sheet
-    is self-contained), optionally annotating each with the vision verdict."""
+    is self-contained). The agent grades each PNG against WHIMSY.md afterward
+    by Reading it in the TUI; there is no in-process aesthetic scorer."""
     from daydream.gpu import arbiter
     from daydream.images import client as image_client
-    from daydream.testing import vision_gate
 
     results: list[dict] = []
     for f in sorted(AESTHETICS_DIR.glob("*.json")):
@@ -90,19 +93,11 @@ async def _render_anchors(out_dir: Path) -> list[dict]:
         )
         async with arbiter.acquire():
             path = await image_client.generate_image(target)
-        verdict = None
-        if vision_gate.enabled():
-            try:
-                v = await vision_gate.rate_image(path, subject=name)
-                verdict = {"label": v.label, "reason": v.reason, "passed": v.passed}
-            except Exception as e:  # a broken gate must not kill the sheet
-                verdict = {"label": "vision error", "reason": str(e), "passed": None}
         results.append({
             "name": name,
             "prompt": spec["prompt"],
             "file": Path(path).name,
             "tracked": (BASELINES_DIR / f"image_{name}.golden.json").exists(),
-            "verdict": verdict,
         })
     return results
 
@@ -171,8 +166,6 @@ _CSS = """
   .seed { font-size:.85rem; color:#7a857d; margin:.4rem 0; }
   .tag { display:inline-block; font-size:.75rem; padding:.1rem .5rem;
     border-radius:999px; background:#e8efe9; color:#5a7a6a; }
-  .verdict.pass { background:#e2efe0; color:#3a6a44; }
-  .verdict.fail { background:#f3e2e2; color:#8a4a4a; }
   .npc { background:#fbf9f3; border:1px solid #d8d2c2; border-radius:10px;
     padding:1rem 1.2rem; margin-bottom:1.2rem; }
   .npc .name { color:#5a7a6a; font-weight:600; font-size:1.1rem; }
@@ -186,16 +179,6 @@ _CSS = """
 
 def _e(text: str) -> str:
     return html.escape(str(text))
-
-
-def _verdict_html(v: dict | None) -> str:
-    if v is None:
-        return ""
-    cls = "pass" if v.get("passed") else ("fail" if v.get("passed") is False else "")
-    return (
-        f'<div class="seed"><span class="tag verdict {cls}">{_e(v["label"])}</span> '
-        f'{_e(v.get("reason", ""))}</div>'
-    )
 
 
 def _compose_html(
@@ -258,7 +241,6 @@ def _compose_html(
             p.append(f'<div class=name>{_e(im["name"])}</div>')
             p.append(f"<div class=seed>{_e(im['prompt'])}</div>")
             p.append(f"<div>{tracked}</div>")
-            p.append(_verdict_html(im["verdict"]))
             p.append("</div></div>")
         p.append("</div>")
 
@@ -281,14 +263,16 @@ def _compose_html(
                     p.append(f"<blockquote>{_e(line)}</blockquote>")
             p.append("</div>")
 
-    p.append("<h2>After the glance</h2>")
+    p.append("<h2>The aesthetic review (agent, in the TUI)</h2>")
     p.append(
-        "<p class=meta>Ratify the forge perceptual golden once the render reads "
-        "right: <code>mv tests/baselines/image_forge.latest.json "
-        "tests/baselines/image_forge.golden.json</code> (run "
-        "<code>bin/game test long -k forge</code> first to write the latest). "
-        "Keep a sheet worth keeping by copying it under "
-        "<code>docs/pretty/</code>.</p>"
+        "<p class=meta>No cloud API grades these. The Claude Code agent Reads each "
+        "PNG in this directory and grades it against <code>WHIMSY.md</code> "
+        "(cozy soft watercolor; anvil/bellows actually legible for the forge; no "
+        "banned moods), recording the verdict. Ratify a perceptual golden only "
+        "once its render reads right: <code>bin/game test long -k &lt;name&gt;</code> "
+        "writes the latest, then <code>mv tests/baselines/image_&lt;name&gt;.latest.json "
+        "tests/baselines/image_&lt;name&gt;.golden.json</code>. Keep a sheet worth "
+        "keeping by copying it under <code>docs/pretty/</code>.</p>"
     )
     p.append("</body></html>")
     return "\n".join(p)
