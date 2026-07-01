@@ -137,6 +137,56 @@ async def test_legacy_skill_name_is_fast_path(monkeypatch):
     spy.assert_not_called()
 
 
+# ---- two-object verbs: deterministic two-target fast-path --------------
+
+
+@pytest.mark.asyncio
+async def test_give_x_to_y_is_fast_path(monkeypatch):
+    # The fixture co-locates Wren + Rook in the forge. Make the lantern
+    # giveable and carried, then "give lantern to rook" grounds both ids.
+    spy = _mock_llm(monkeypatch, {"verb": "none"})
+    objects.set_property("i-lantern", "verbs", ["give"])
+    objects.move("i-lantern", "t-wren")
+    p = await parser.parse("t-wren", "give lantern to rook")
+    assert p.verb == "give" and p.dobj_id == "i-lantern" and p.iobj_id == "t-rook"
+    spy.assert_not_called()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("prep", ["on", "with"])
+async def test_use_x_on_or_with_y_is_fast_path(monkeypatch, prep):
+    spy = _mock_llm(monkeypatch, {"verb": "none"})
+    objects.set_property("i-lantern", "verbs", ["use"])
+    objects.move("i-lantern", "t-wren")
+    box = objects.spawn("w-bunny", "thing", "clock case", "r-forge",
+                        prototype_id=objects.PROTO_THING, aliases=["case"])
+    p = await parser.parse("t-wren", f"use the lantern {prep} the case")
+    assert p.verb == "use" and p.dobj_id == "i-lantern" and p.iobj_id == box.id
+    spy.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_bare_give_prompts_deterministically(monkeypatch):
+    # "give" alone -> a bare Parse so execute_command narrates "Give what?"; no LLM.
+    spy = _mock_llm(monkeypatch, {"verb": "none"})
+    p = await parser.parse("t-wren", "give")
+    assert p.verb == "give" and p.dobj_id is None and p.iobj_id is None
+    spy.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_two_target_miss_defers_to_llm(monkeypatch):
+    # "give lantern to somebody": no in-scope 'somebody' -> the fast-path misses
+    # and the LLM grounds it (a fuzzier match the fast-path won't attempt).
+    spy = _mock_llm(monkeypatch, {"verb": "give", "dobj_id": "i-lantern",
+                                  "iobj_id": "t-rook", "args": ""})
+    objects.set_property("i-lantern", "verbs", ["give"])
+    objects.move("i-lantern", "t-wren")
+    p = await parser.parse("t-wren", "give lantern to somebody")
+    spy.assert_called_once()
+    assert p.verb == "give" and p.dobj_id == "i-lantern" and p.iobj_id == "t-rook"
+
+
 # ---- fail safe: malformed / unresolvable -------------------------------
 
 

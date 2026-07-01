@@ -153,11 +153,13 @@ def _fast_path(actor_id: str, text: str, room: rooms.Room | None) -> Parse | Non
         # rook" -> talk); hand those to the LLM rather than claim them here.
         if rest and spec.free_text:
             return None
-        # Two-object verbs (give/use) need a dobj AND an iobj; the single-object
-        # resolution below can't express that. Defer to the LLM, which grounds
-        # both ids (a deterministic two-target fast-path lands in a later step).
+        # Two-object verbs (give/use): a bare verb prompts deterministically
+        # ("Give what?"); "give X to Y" / "use X on|with Y" grounds both ids on
+        # the fast-path; anything fuzzier defers to the LLM (grounds both ids).
         if spec.needs_iobj:
-            return None
+            if not rest:
+                return Parse(head)
+            return _two_target_fast_path(actor_id, head, rest)
         if not spec.needs_dobj:
             return Parse(head, args=rest)
         if not rest:
@@ -180,6 +182,39 @@ def _fast_path(actor_id: str, text: str, room: rooms.Room | None) -> Parse | Non
     room_id = room.id if room is not None else ""
     if head in _room_data_skill_names(room_id):
         return Parse(head, args=rest)
+    return None
+
+
+# Prepositions that split a two-object verb's phrase into (dobj, iobj).
+# give reads "give X to Y"; use reads "use X on Y" / "use X with Y".
+_TWO_TARGET_PREPS: dict[str, tuple[str, ...]] = {
+    "give": (" to ",),
+    "use": (" on ", " with "),
+}
+
+
+def _two_target_fast_path(actor_id: str, verb: str, rest: str) -> Parse | None:
+    """Deterministically ground 'give X to Y' / 'use X on|with Y': split `rest`
+    on the verb's preposition, resolve both halves against in-scope names, and
+    check the verb applies to the direct object. Returns a fully grounded Parse,
+    or None to defer to the LLM (a preposition/name miss the LLM can ground more
+    fuzzily). The iobj KIND is validated later by execute_command's iobj gate,
+    so a wrong-kind target still grounds here and is refused gracefully."""
+    for prep in _TWO_TARGET_PREPS.get(verb, ()):
+        idx = rest.lower().find(prep)
+        if idx < 0:
+            continue
+        dobj_name = _strip_article(rest[:idx].strip())
+        iobj_name = _strip_article(rest[idx + len(prep):].strip())
+        if not dobj_name or not iobj_name:
+            return None
+        dobj = objects.find_in_scope_by_name(actor_id, dobj_name)
+        iobj = objects.find_in_scope_by_name(actor_id, iobj_name)
+        if dobj is None or iobj is None:
+            return None
+        if verb not in objects.verbs_for(dobj):
+            return None
+        return Parse(verb, dobj_id=dobj.id, iobj_id=iobj.id)
     return None
 
 
