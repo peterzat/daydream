@@ -62,16 +62,16 @@ Deferred depth from the objects + local-LLMs spec (plan `the-output-of-this-gree
 - **Origin:** plan the-output-of-this-greedy-hedgehog (§6, provenance + minimal lifecycle).
 
 ### deep-prototype-inheritance-and-per-object-verbs
-- **One-line description:** Multi-level prototype chains (today inheritance is one level, shallow) + a path for per-object authored verbs beyond the `properties.verbs` union. The MOO "generic object" pattern taken further.
-- **Why deferred:** v1 has one handler per verb and one prototype level; the resolution ORDER (player→room→dobj→iobj) is already implemented so overrides slot in without re-architecting. Depth is only worth it once authored content wants it.
-- **Revisit criteria:** Authored content needs an object that overrides a verb's default behavior, or a prototype that extends another prototype.
-- **Origin:** plan the-output-of-this-greedy-hedgehog (§2).
+- **Per-object-verbs slice: SHIPPED (2026-07-01).** The playable-quest-loop turn added a `fixture` prototype (immovable: examine only) and lets authored objects declare per-object `verbs` in the world envelope (a case is `open`-able, a given key is `use`-able) and a spawn declare its own verbs (`spawn_object` verbs passthrough → the given case-key becomes use-able). The `properties.verbs` union with prototype defaults (`objects.verbs_for`) is now load-bearing, exercised by the Clockmaker's Loft quest. What REMAINS deferred is the multi-level part below.
+- **One-line description (remaining):** Multi-level prototype chains (today inheritance is one level, shallow) + per-object *behavior overrides* beyond adding verbs (an object that overrides a verb's default HANDLER, not just its verb list). The MOO "generic object" pattern taken further.
+- **Why deferred:** v1 has one handler per verb and one prototype level; the resolution ORDER (player→room→dobj→iobj) is already implemented so overrides slot in without re-architecting. Depth is only worth it once authored content wants a prototype that extends another prototype or an object that replaces a verb's behavior.
+- **Revisit criteria:** Authored content needs an object that OVERRIDES a verb's default behavior (not just adds a verb), or a prototype that extends another prototype.
+- **Origin:** plan the-output-of-this-greedy-hedgehog (§2); per-object-verbs slice shipped by plan this-plan-will-be-peppy-kay.
 
-### two-object-verbs
-- **One-line description:** `give X to Y`, `use X on Y`, and a richer verb set (open/close, put-in, read-vs-examine). The command/parser/effect plumbing already carries an `iobj_id` and an indirect-object arg-spec slot; the handlers and parser grounding for two-object commands are the work.
-- **Why deferred:** This turn locked single-object verbs (Examine/Take/Drop/Talk) to keep the core tractable. Two-object verbs multiply the grounding + validation surface.
-- **Revisit criteria:** A gameplay need for combining/transferring objects (a puzzle, a gift, a tool used on a thing).
-- **Origin:** plan the-output-of-this-greedy-hedgehog (decisions locked; give/use → backlog).
+### two-object-verbs — done (2026-07-01)
+- **Resolution:** Shipped as the playable-quest-loop turn (SPEC 2026-07-01). `give X to Y` (thing → toon) and `use X on Y` (thing → thing) joined the closed verb set with `needs_iobj` + a new `VerbSpec.valid_iobj_kinds`; `execute_command` gained an iobj gate symmetric to the dobj gate. Plus `open` (state-gated) and `read` (authored text, distinct from examine). Both producers drive them: the parser grounds "give X to Y"/"use X on|with Y" deterministically (`daydream/parser.py:_two_target_fast_path`) and the UI does two-step click staging (`web/assets/main.js`). The Clockmaker's Loft world (`worlds/clockmakers-loft.json`) exercises the full loop, guarded by the deterministic golden playthrough (`tests/test_quest_playthrough.py`). The revisit criterion (a gameplay need for combining/transferring objects) was met by that quest.
+- **Original description (for history):** `give X to Y`, `use X on Y`, and a richer verb set (open/close, put-in, read-vs-examine). The command/parser/effect plumbing already carried an `iobj_id` and an indirect-object arg-spec slot; the handlers and parser grounding were the work.
+- **Origin:** plan the-output-of-this-greedy-hedgehog (decisions locked; give/use → backlog); shipped by plan this-plan-will-be-peppy-kay.
 
 ### user-authored-llm-driven-world-building-verbs
 - **One-line description:** The headline future direction: a player/admin authors a verb whose LLM output BUILDS new rooms and objects (MOO-style). The world-mutation effect API is deliberately shaped for this — `spawn_room`, `link_exit`, `destroy_object` are documented (not built) as the vocabulary such a verb would emit, alongside the existing `spawn_object`/`move_object`/`set_property`.

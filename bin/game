@@ -523,15 +523,15 @@ cmd_world() {
 }
 
 cmd_world_reset() {
-    # Destructive re-seed of the live world from worlds/bunny.json: stop the
-    # server, wipe the live DB + its image cache, rebuild keyless from the
-    # authored envelope, and start back up on current code. The one-command
+    # Destructive re-seed of the live world from worlds/clockmakers-loft.json:
+    # stop the server, wipe the live DB + its image cache, rebuild keyless from
+    # the authored envelope, and start back up on current code. The one-command
     # runbook the version-gate's "run 'bin/game world reset'" message points
     # at. Gated behind --yes.
     if [[ "${1:-}" != "--yes" ]]; then
         echo "world reset is DESTRUCTIVE: it wipes the live world" >&2
         echo "  (worlds-${ENV_NAME}/live.db) and its image cache, then re-seeds" >&2
-        echo "  from worlds/bunny.json. Re-run to confirm:" >&2
+        echo "  from worlds/clockmakers-loft.json. Re-run to confirm:" >&2
         echo "    bin/game world reset --yes" >&2
         return 2
     fi
@@ -542,8 +542,8 @@ cmd_world_reset() {
     echo "==> world reset: wiping live DB + image cache"
     rm -f "$LIVE_DB" "${LIVE_DB}-wal" "${LIVE_DB}-shm"
     rm -rf "${data_dir}/images/cache/w-bunny"
-    echo "==> world reset: loading worlds/bunny.json (keyless)"
-    "$VENV_PY" -m daydream.admin load "$PROJECT_ROOT/worlds/bunny.json" --force --output "$LIVE_DB"
+    echo "==> world reset: loading worlds/clockmakers-loft.json (keyless)"
+    "$VENV_PY" -m daydream.admin load "$PROJECT_ROOT/worlds/clockmakers-loft.json" --force --output "$LIVE_DB"
     echo "==> world reset: starting server on current code"
     cmd_up
 }

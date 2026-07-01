@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 # Bump MAJOR when an existing world DB can no longer be loaded by this code;
 # bump MINOR for authored content/behaviour changes an old world won't reflect.
 # See the module docstring for the boot-gate semantics.
-WORLD_VERSION = "1.0"
+WORLD_VERSION = "1.1"
 
 
 @lru_cache(maxsize=1)
