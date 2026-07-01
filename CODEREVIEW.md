@@ -1,57 +1,58 @@
-## Review — 2026-06-30 (commit: c6f7d70)
+## Review — 2026-07-01 (commit: 5b181d1)
 
-**Summary:** Full review of the two-NOTE follow-up (`origin/playtest-fixes-and-
-versioning`..`c6f7d70`, 4 files +71/-13): `daydream/api/ws.py` and
-`daydream/server.py` plus their tests. Both prior NOTEs are remediated here —
-session liveness moved from a plain `set` to a refcounting `Counter` (a two-tab
-session stays live until both close), and the build-SHA HTML sink is now
-`quote(version.build_sha(), safe="")`-escaped. Baseline stable: 407 short / 82
-targeted (ws + frontend + slots), green. Security re-scan of the two changed
-source files: 0 BLOCK / 0 WARN / 1 NOTE (a pre-existing latent item below).
-0 BLOCK / 0 WARN.
+**Summary:** Refresh review of the verification-infrastructure turn
+(`origin/playtest-fixes-and-versioning`..`5b181d1`; 11 code files + docs). Scope:
+the batched-eyeball test architecture — `daydream/review.py` (new offline
+contact-sheet harness), `daydream/toons.py` (`delete_slot` now drops carried
+items into the room instead of destroying them), `bin/game` (`review`
+subcommand), the forge perceptual anchor + golden, the glob-derived
+voice-baseline manifest, the overlay reconnect-contract test hardening, and the
+`daydream/api/ws.py` cross-origin `/ws` handshake fix (`07395bd`, which
+remediates the prior review's one open NOTE). Also reviewed: the mid-turn
+removal of an API-key litellm "vision gate" (added then deleted within the
+unpushed range, so it nets to nothing in the shipped diff) and the reframe of
+the aesthetic critic to the in-TUI agent (no cloud key). Baseline: 411 short /
+654 medium, green. Security re-scan of the four changed source files: 0 BLOCK /
+0 WARN / 0 NOTE (prior WS NOTE confirmed fixed).
 
 **External reviewers:** None configured.
 
 ### Findings
 
-- [NOTE] daydream/api/ws.py:430-449 (pre-existing; surfaced because the file was
-  touched, NOT introduced this turn) — the `/ws` handshake is a GET, so
-  `CsrfOriginMiddleware` (HTTP-only) doesn't gate it and `ws_endpoint` never
-  inspects `Origin`/`Referer`, yet the socket carries state-changing frames
-  (take/drop/go/talk/free-text). Not exploitable today: the toon is resolved from
-  the `daydream_session` cookie, which is SameSite=Lax (Starlette default, not
-  overridden), so a script-initiated cross-site `new WebSocket()` carries no
-  cookie and resolves no toon (`needs_toon`). Latent: loosening the cookie to
-  SameSite=None without a parallel WS check would open cross-site WebSocket
-  hijacking (bounded to friend-scope game state, no privilege escalation).
-  Fix-if-needed: validate the handshake `Origin` against `Host` in `ws_endpoint`
-  (reuse `csrf.origin_allows`), or document the SameSite dependency at the cookie
-  config. (SECURITY.md NOTE.)
+No issues found. The WS Origin check correctly reuses the tested
+`csrf.origin_allows` (fails open only for non-browser clients, which carry no
+session cookie); `review.py` HTML-escapes every dynamic value including
+LLM-generated narrate, isolates per-NPC dispatch errors, saves/restores
+`DAYDREAM_DATA_DIR`, and never touches `live.db`; `toons.delete_slot` reparents
+carried things before deleting the toon (FK satisfied) with a no-room fallback;
+`bin/game review` is a quoted `python -m` wrapper with no injection sink.
+
+Known content deferral (not a code finding): the forge perceptual golden is
+baselined on a render that does NOT read as a blacksmith's forge — the
+watercolor LoRA can't render a legible anvil/bellows. Tracked as
+`forge-render-legibility` in BACKLOG.md; the golden re-ratifies after any seed/
+LoRA rework. This is a content limit, honestly recorded in SPEC.md and BACKLOG.md.
 
 ### Fixes Applied
 
-None in this review run (no `/codefix`). The two changes under review are
-themselves the fixes for the prior review's two NOTEs (liveness refcount,
-build-SHA escaping), made before the review and verified by new tests.
+None (no BLOCK/WARN findings).
 
 ### Accepted Risks
 
-Carried forward from the prior entry:
+Carried forward from the prior entry (unchanged and unaggravated this turn):
 
 - **LLM-emitted effects take an unscoped, LLM-chosen target id.** `set_property`
-  / `move_object` / `spawn_object` trust the effect's target id; a room-affordance
-  data skill dispatches with the FULL effect vocabulary, while `talk` enforces its
+  / `move_object` / `spawn_object` trust the effect's target id; room-affordance
+  data skills dispatch with the full effect vocabulary, while `talk` enforces its
   narrower per-verb `allowed` subset. No privilege escalation. v2
   `skills-authoring-and-security`. (SECURITY.md NOTE.)
-- Friend-scope on slot/session endpoints (CSRF gated by `CsrfOriginMiddleware`);
-  liveness-gated claim takeover (no new capability vs kick-then-claim).
-  `/status/build` + `/status/drift` session-unauthenticated but AccessMiddleware-
-  gated observability. The `/ws` channel relies on the SameSite=Lax cookie default
-  for cross-site protection (the NOTE above). Cookie `https_only=False`;
-  `100.64.0.0/10` CGNAT hardcoding; tailscale `is_authed` bypass; `/cache/...`
-  unauthenticated. Stored prompt-injection via captured memory; bootstrap `$MODEL`
-  heredoc; `cmd_logs` path component; qpeek clone. Unbounded slot-create body +
-  event queues.
+- Friend-scope on slot/session endpoints (CSRF-gated by `CsrfOriginMiddleware`;
+  `/ws` now Origin-checked too); liveness-gated claim takeover; `/status/build`
+  + `/status/drift` + `/cache/...` session-unauthenticated but AccessMiddleware-
+  gated. Cookie `https_only=False`; `100.64.0.0/10` CGNAT hardcoding; tailscale
+  `is_authed` bypass. Stored prompt-injection via captured memory; bootstrap
+  `$MODEL` heredoc; `cmd_logs` path component; qpeek clone; `world reset` `rm -rf`
+  operator-trust. Unbounded slot-create body + event queues.
 
 ### Carried-forward open NOTEs (pre-existing)
 
@@ -60,6 +61,6 @@ inventory query; dead `interpreter.py`; admin.py + bootstrap.py `_write_db`
 non-transactional. None aggravated this turn.
 
 ---
-*Prior review (2026-06-30, commit 9a5ad44): full review of the versioning/deploy/playtest-fixes turn; 0 BLOCK / 0 WARN / 2 NOTE (both resolved here).*
+*Prior review (2026-06-30, commit c6f7d70): full review of the two-NOTE follow-up (liveness refcount, build-SHA escaping); 0 BLOCK / 0 WARN / 1 NOTE (the WS-CSRF NOTE, now fixed in 07395bd).*
 
-<!-- REVIEW_META: {"date":"2026-06-30","commit":"c6f7d70","reviewed_up_to":"c6f7d704ebbf0fbd59da45b00a72d5a291bd7864","base":"origin/playtest-fixes-and-versioning","tier":"full","block":0,"warn":0,"note":1} -->
+<!-- REVIEW_META: {"date":"2026-07-01","commit":"5b181d1","reviewed_up_to":"5b181d15071667a63f03b98c3ea7d6f36e581ad8","base":"origin/playtest-fixes-and-versioning","tier":"refresh","block":0,"warn":0,"note":0} -->
