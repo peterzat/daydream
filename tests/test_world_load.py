@@ -90,7 +90,7 @@ def test_world_load_writes_db_keyless(tmp_path: Path, monkeypatch):
             r["name"] for r in conn.execute(
                 "SELECT name FROM objects WHERE kind = 'prototype'"
             )
-        } == {"room", "npc", "thing", "readable"}
+        } == {"room", "npc", "thing", "readable", "fixture"}
         # Starting room designated from the human toon (Wren, slot 1, room 'a').
         assert conn.execute(
             "SELECT starting_room_id FROM worlds"
@@ -133,7 +133,7 @@ def test_world_load_object_schema_with_aliases_and_dialogue(tmp_path: Path, monk
         # Prototypes seeded.
         assert {r["name"] for r in conn.execute(
             "SELECT name FROM objects WHERE kind = 'prototype'"
-        )} == {"room", "npc", "thing", "readable"}
+        )} == {"room", "npc", "thing", "readable", "fixture"}
         # Mara carries aliases + a dialogue binding referencing a data skill.
         mara_row = conn.execute(
             "SELECT aliases_json, json_extract(properties_json, '$.dialogue') AS dialogue "
@@ -199,7 +199,8 @@ def test_authored_bunny_world_loads_and_rook_spawns_papers(tmp_path: Path, monke
             if o.name == "a sheaf of papers"
         ]
         assert len(papers) == 1
-        assert objects.verbs_for(papers[0]) == ["examine", "take", "drop"]
+        # Readable prototype now grants give + read alongside examine/take/drop.
+        assert objects.verbs_for(papers[0]) == ["examine", "take", "drop", "give", "read"]
     finally:
         db.close_db()
         events.reset_subscribers()

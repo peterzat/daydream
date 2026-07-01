@@ -502,8 +502,10 @@ def test_ws_snapshot_carries_scene_objects_verb_bar_and_entities():
     lantern = next(i for i in snap["items"] if i["name"] == "lantern")
     assert lantern["kind"] == "thing"
     assert lantern["verbs"] == ["examine", "take", "drop"]
-    # The verb bar is exactly Examine / Take / Drop / Talk.
-    assert [v["name"] for v in snap["verb_bar"]] == ["examine", "take", "drop", "talk"]
+    # The verb bar offers the interaction verbs (verb-then-object).
+    assert [v["name"] for v in snap["verb_bar"]] == [
+        "examine", "take", "drop", "talk", "give", "use", "open", "read",
+    ]
     # Inventory starts empty; the entity sidecar maps the lantern's name -> id.
     assert snap["inventory"] == []
     assert any(

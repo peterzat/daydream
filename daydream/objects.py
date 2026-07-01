@@ -31,6 +31,9 @@ PROTO_ROOM = "proto-room"
 PROTO_NPC = "proto-npc"
 PROTO_THING = "proto-thing"
 PROTO_READABLE = "proto-readable"
+# Immovable furniture (a town clock, a fixed case): examine only, no take/drop.
+# Per-object `open`/`use` verbs are layered on by the author.
+PROTO_FIXTURE = "proto-fixture"
 
 
 @dataclass(frozen=True)

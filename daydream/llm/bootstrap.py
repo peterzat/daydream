@@ -73,12 +73,12 @@ Return STRICT JSON matching this schema (no prose, no markdown, no commentary �
     /* exactly 5 rooms; bidirectional exits — every exit must have a return path from the destination room back to the source */
   ],
   "toons": [
-    {"slot": <int>, "name": <single word>, "seed": <one-sentence persona>, "appearance_seed": <one-sentence appearance>, "current_room_slug": <slug from rooms[]>, "is_human_controlled": 0 | 1, "mood": <one word like 'curious'/'content'/'thoughtful'>, "presence_text": <one-sentence greeting that fires when the player enters the room, OR null>}
+    {"slot": <int>, "name": <single word>, "seed": <one-sentence persona>, "appearance_seed": <one-sentence appearance>, "current_room_slug": <slug from rooms[]>, "is_human_controlled": 0 | 1, "mood": <one word like 'curious'/'content'/'thoughtful'>, "presence_text": <one-sentence greeting that fires when the player enters the room, OR null>, "properties": <OPTIONAL quest state, e.g. {"wants": <item name>, "gives": {"name": <reward>, "seed": <desc>, "aliases": [<...>], "verbs": ["use"]}, "gives_text": <line when the gift is accepted>, "gives_mood": <the NPC's new one-word mood>}>}
     /* exactly 4 toons. Slots 1-5 for human-controllable toons; slots 100+ for NPCs. Typically 1 human-claimable in slot 1 + 3 NPCs in slots 100, 101, 102. */
   ],
   "items": [
-    {"room_slug": <slug from rooms[]>, "name": <noun phrase>, "seed": <one-sentence description, painterly>}
-    /* zero or more, distributed across rooms */
+    {"room_slug": <slug from rooms[]>, "name": <noun phrase>, "seed": <one-sentence description, painterly>, "aliases": <OPTIONAL [other names]>, "readable": <OPTIONAL true if it has words>, "text": <OPTIONAL the words to read>, "fixture": <OPTIONAL true if immovable furniture — examine only, no take>, "verbs": <OPTIONAL per-object affordances like ["open"] or ["use"]>, "properties": <OPTIONAL stateful-object block, e.g. {"state": "locked", "state_text": {"locked": <look>, "unlocked": <look>, "open": <look>}, "locked_text": <refusal>, "open_text": <payoff>, "use": {"with": <item name>, "from_state": "locked", "to_state": "unlocked", "text": <transition line>}, "contains": {"name": <reward>, "seed": <desc>}}>}
+    /* zero or more, distributed across rooms. The optional blocks author stateful interactive objects (a lockable case, a readable ledger). Cross-references (use.with, a toon's wants) are BY NAME. */
   ],
   "skills": [
     {"name": <kebab-case>, "ui_hint": <Title Case verb>, "description": <one-sentence affordance>, "context_predicate": {"room_slug": <slug>}, "prompt_template": <Jinja template with {{ player_input }} role-separator and ambient grounding>, "effects_schema": {"allowed_kinds": ["narrate"], "note": <optional>}}
@@ -247,6 +247,17 @@ def _validate_aliases(aliases: object, where: str) -> None:
         raise BootstrapValidationError(f"{where} must be a list of non-empty strings")
 
 
+def _validate_optional_verbs(verbs: object, where: str) -> None:
+    """Optional per-object `verbs`: when present, a list of non-empty strings
+    (per-object affordance additions like `open` / `use` / `read`)."""
+    if verbs is None:
+        return
+    if not isinstance(verbs, list) or not all(
+        isinstance(v, str) and v.strip() for v in verbs
+    ):
+        raise BootstrapValidationError(f"{where} must be a list of non-empty strings")
+
+
 def _validate_envelope(env: dict) -> WorldSpec:
     """Strict validation of the LLM's JSON envelope. Raises
     BootstrapValidationError with a one-line operator-facing message
@@ -341,6 +352,9 @@ def _validate_envelope(env: dict) -> WorldSpec:
                 f"toons[{i}].presence_text must be string or null"
             )
         _validate_aliases(t.get("aliases"), f"toons[{i}].aliases")
+        # Optional NPC quest-state passthrough (wants / gives / gives_text / ...).
+        if "properties" in t and not isinstance(t["properties"], dict):
+            raise BootstrapValidationError(f"toons[{i}].properties must be an object")
         # Optional per-NPC `talk` dialogue binding: a {prompt_template, ...}
         # the loader installs as a data skill and references from the object.
         dlg = t.get("dialogue")
@@ -365,6 +379,17 @@ def _validate_envelope(env: dict) -> WorldSpec:
                 f"items[{i}].room_slug {it['room_slug']!r} not in rooms"
             )
         _validate_aliases(it.get("aliases"), f"items[{i}].aliases")
+        # Optional stateful-interactive-object fields (SPEC 2026-07-01): a
+        # `properties` passthrough, per-object `verbs`, readable `text`, and the
+        # `fixture` / `readable` prototype flags. A malformed field fails loudly.
+        if "properties" in it and not isinstance(it["properties"], dict):
+            raise BootstrapValidationError(f"items[{i}].properties must be an object")
+        _validate_optional_verbs(it.get("verbs"), f"items[{i}].verbs")
+        if "text" in it and not isinstance(it["text"], str):
+            raise BootstrapValidationError(f"items[{i}].text must be a string")
+        for flag in ("fixture", "readable"):
+            if flag in it and not isinstance(it[flag], bool):
+                raise BootstrapValidationError(f"items[{i}].{flag} must be a boolean")
 
     skills = env["skills"]
     if not isinstance(skills, list) or len(skills) != 2:
@@ -413,11 +438,17 @@ def _proto_id(kind: str) -> str:
     return f"proto-{kind}"
 
 
+# Default verb sets per archetype. `give` rides on every takeable thing (you can
+# hand anything you carry to someone); `read` on readables (words on a page); a
+# `fixture` is immovable (examine only) — you can't pocket a town clock. Stateful
+# affordances (`open`, `use`) stay per-object so an object's offered verbs remain
+# a meaningful hint, not noise on every thing.
 _PROTOTYPES: tuple[tuple[str, list[str]], ...] = (
     ("room", ["look"]),
     ("npc", ["examine", "talk"]),
-    ("thing", ["examine", "take", "drop"]),
-    ("readable", ["examine", "take", "drop"]),
+    ("thing", ["examine", "take", "drop", "give"]),
+    ("readable", ["examine", "take", "drop", "give", "read"]),
+    ("fixture", ["examine"]),
 )
 
 
@@ -502,6 +533,13 @@ def _write_db(output_path: Path, spec: WorldSpec, world_display_name: str) -> No
                 "mood": t["mood"],
                 "presence_text": t.get("presence_text"),
             }
+            # Merge an authored `properties` dict so an NPC can carry quest state
+            # (`wants` / `gives` / `gives_text` / `gives_mood` / `declines_text`).
+            # The four core persona fields above win over any collision.
+            extra = t.get("properties")
+            if isinstance(extra, dict):
+                for k, v in extra.items():
+                    props.setdefault(k, v)
             aliases = t.get("aliases") if isinstance(t.get("aliases"), list) else []
             # Per-NPC `talk` dialogue binding: install the dialogue as a data
             # skill (hidden from room-affordance lists via a sentinel predicate
@@ -556,12 +594,31 @@ def _write_db(output_path: Path, spec: WorldSpec, world_display_name: str) -> No
             (slug_to_room_id[_start_slug],),
         )
 
-        # Items -> thing objects (located in their room; readable prototype
-        # when flagged so spawned papers-style readables inherit examine/take).
+        # Items -> thing objects (located in their room). Prototype selection:
+        # `fixture` (immovable) beats `readable` beats plain `thing`. An authored
+        # `properties` dict (state, state_text, use rule, contains, locked_text /
+        # open_text, ...) is merged in so the world can express stateful
+        # interactive objects; top-level seed / text / verbs override it.
         for it in spec.items:
-            proto = "readable" if it.get("readable") else "thing"
+            if it.get("fixture"):
+                proto = "fixture"
+            elif it.get("readable"):
+                proto = "readable"
+            else:
+                proto = "thing"
             aliases = it.get("aliases") if isinstance(it.get("aliases"), list) else []
-            props = {"seed": it["seed"], "is_unique": int(bool(it.get("is_unique", 0)))}
+            props: dict = {}
+            extra = it.get("properties")
+            if isinstance(extra, dict):
+                props.update(extra)
+            props["seed"] = it["seed"]
+            props["is_unique"] = int(bool(it.get("is_unique", 0)))
+            if isinstance(it.get("text"), str) and it["text"].strip():
+                props["text"] = it["text"].strip()
+            if isinstance(it.get("verbs"), list):
+                cleaned = [v for v in it["verbs"] if isinstance(v, str) and v.strip()]
+                if cleaned:
+                    props["verbs"] = cleaned
             cur.execute(
                 "INSERT INTO objects (id, world_id, kind, name, aliases_json, "
                 "location_id, prototype_id, properties_json) "
