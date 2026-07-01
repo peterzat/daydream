@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>daydream — The Companion Desk</title>
+
+<!-- One optional hand-lettered accent; the comp reads fine if it fails to load. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600;700&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --bg:#f6f3ec;        /* paper background      */
+    --paper:#fbf9f3;     /* surface / cards       */
+    --paper-2:#f2eee2;   /* recessed paper        */
+    --ink:#3a4a44;       /* body text             */
+    --ink-soft:#6a746c;  /* muted body            */
+    --sage:#5a7a6a;      /* accent / borders      */
+    --sage-deep:#4a6a5a; /* labels                */
+    --amber:#c8a06e;     /* warm highlight        */
+    --amber-deep:#a87d4c;
+    --line:#d8d2c2;      /* dividers              */
+    --speaker:#6a8a7a;   /* dialogue names        */
+    --lav:#7a7a94;       /* soft lavender-grey    */
+
+    --serif: Georgia, "Iowan Old Style", Palatino, serif;
+    --sans: system-ui, "Segoe UI", sans-serif;
+    --hand: "Caveat", "Segoe Print", var(--serif);
+
+    /* gentle sage / lavender-grey shadows, low opacity + large blur */
+    --sh-lift: 0 26px 46px -22px rgba(74,96,90,.42), 0 6px 14px -8px rgba(74,96,90,.22);
+    --sh-card: 0 16px 30px -22px rgba(74,96,90,.40), 0 2px 5px -3px rgba(74,96,90,.16);
+    --sh-soft: 0 10px 26px -18px rgba(90,100,120,.34);
+  }
+
+  *{ box-sizing:border-box; }
+
+  html,body{ margin:0; height:100%; }
+  body{
+    font-family:var(--serif);
+    color:var(--ink);
+    background:#e9e3d5;                    /* presentation mat behind the artboard */
+    background-image:
+      radial-gradient(1200px 700px at 50% -10%, rgba(255,250,240,.5), transparent 60%);
+    display:grid;
+    place-items:center;
+    min-height:100vh;
+    padding:0;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  /* ---------- the fixed artboard / desk surface ---------- */
+  .desk{
+    position:relative;
+    width:1280px;
+    height:800px;
+    padding:24px;
+    border-radius:22px;
+    overflow:hidden;
+    background-color:var(--bg);
+    background-image:
+      radial-gradient(1100px 640px at 88% -10%, rgba(200,160,110,.22), transparent 62%),
+      radial-gradient(920px 720px at -8% 112%, rgba(90,122,106,.15), transparent 58%),
+      radial-gradient(700px 500px at 50% 60%, rgba(255,251,244,.35), transparent 70%),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.4'/%3E%3C/svg%3E");
+    background-size:auto,auto,auto,140px 140px;
+    box-shadow:
+      0 40px 90px -40px rgba(60,74,68,.55),
+      0 2px 0 rgba(255,255,255,.5) inset,
+      0 0 0 1px rgba(120,120,100,.10);
+  }
+
+  /* ================= TOP BAR ================= */
+  .topbar{
+    height:48px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:0 6px 0 4px;
+    margin-bottom:16px;
+  }
+  .brand{ display:flex; align-items:center; gap:9px; }
+  .brand .leaf{ width:26px; height:26px; color:var(--sage); opacity:.9; }
+  .brand-name{
+    font-family:var(--hand);
+    font-size:30px;
+    line-height:1;
+    color:var(--sage-deep);
+    letter-spacing:.5px;
+  }
+  .brand-tag{
+    font-family:var(--serif);
+    font-style:italic;
+    font-size:12.5px;
+    color:var(--ink-soft);
+    margin-left:8px;
+    opacity:.8;
+  }
+
+  .whoami{ display:flex; align-items:center; gap:12px; }
+  .whoami-txt{ text-align:right; line-height:1.15; }
+  .whoami-label{
+    display:block;
+    font-family:var(--sans);
+    font-size:9.5px;
+    letter-spacing:.22em;
+    text-transform:uppercase;
+    color:var(--sage-deep);
+    opacity:.8;
+  }
+  .whoami-name{ font-family:var(--serif); font-size:16px; color:var(--ink); }
+  .whoami-role{ font-family:var(--serif); font-style:italic; font-size:13px; color:var(--ink-soft); }
+  .avatar{
+    width:40px; height:40px; border-radius:50%;
+    display:grid; place-items:center;
+    color:#e7ecf0;
+    background:
+      radial-gradient(120% 120% at 32% 26%, #6d7f92, transparent 60%),
+      radial-gradient(120% 120% at 74% 82%, #405266, transparent 62%),
+      linear-gradient(#586b7e,#3c4c5e);
+    box-shadow: var(--sh-card), inset 0 0 0 2px rgba(255,255,255,.35);
+  }
+  .avatar svg{ width:24px; height:24px; opacity:.92; }
+
+  /* chips reused across the comp */
+  .mood{
+    font-family:var(--sans); font-weight:600; font-size:11px;
+    padding:4px 10px; border-radius:999px; white-space:nowrap;
+    text-transform:lowercase;
+  }
+  .mood-curious{ color:var(--sage-deep); background:rgba(90,122,106,.13); border:1px solid rgba(90,122,106,.30); }
+  .mood-wistful{ color:#63637f; background:rgba(120,120,150,.13); border:1px solid rgba(120,120,150,.32); }
+
+  /* ================= STAGE (two panes) ================= */
+  .stage{
+    height:688px;
+    display:grid;
+    grid-template-columns:704px 24px 504px;   /* 58% / gap / 42% */
+    align-items:stretch;
+  }
+  .pane-left{ grid-column:1; display:flex; flex-direction:column; gap:16px; min-height:0; }
+  .pane-right{ grid-column:3; min-height:0; }
+
+  /* ---------- room head ---------- */
+  .eyebrow{
+    font-family:var(--sans); font-size:10px; letter-spacing:.24em;
+    text-transform:uppercase; color:var(--sage-deep); opacity:.85; margin-bottom:5px;
+  }
+  .room-title{
+    font-family:var(--serif); font-weight:600;
+    font-size:31px; line-height:1.02; margin:0 0 7px; color:var(--ink);
+    letter-spacing:.2px;
+  }
+  .room-desc{
+    font-family:var(--serif); font-style:italic;
+    font-size:14px; line-height:1.5; margin:0; color:var(--ink-soft);
+    max-width:660px;
+  }
+  .room-desc::first-letter{ color:var(--sage); font-size:1.05em; }
+
+  /* ---------- scene panel ---------- */
+  .scene-frame{
+    padding:7px; background:var(--paper);
+    border:1px solid var(--line); border-radius:18px;
+    box-shadow:var(--sh-card); flex:none;
+  }
+  .room-head{ flex:none; }
+  .scene{ position:relative; border-radius:12px; overflow:hidden; height:124px; }
+  .scene img{ width:100%; height:100%; object-fit:cover; object-position:center 40%; display:block; }
+  .scene::after{                       /* soft painterly vignette */
+    content:""; position:absolute; inset:0; border-radius:12px; pointer-events:none;
+    box-shadow: inset 0 0 46px rgba(58,74,68,.30), inset 0 -30px 40px -20px rgba(58,74,68,.28);
+  }
+  .scene-tag{
+    position:absolute; left:12px; bottom:10px;
+    font-family:var(--hand); font-size:18px; line-height:1; color:#f4efe4;
+    padding:3px 12px 5px; border-radius:999px;
+    background:rgba(58,74,68,.42); backdrop-filter:blur(1px);
+    text-shadow:0 1px 3px rgba(0,0,0,.35);
+  }
+
+  /* ---------- section labels ---------- */
+  .label{
+    font-family:var(--sans); font-weight:700; font-size:10.5px;
+    letter-spacing:.17em; text-transform:uppercase; color:var(--sage-deep); opacity:.9;
+  }
+  .label-row{ display:flex; align-items:center; justify-content:space-between; margin-bottom:9px; }
+  .hint{
+    display:inline-flex; align-items:center; gap:5px;
+    font-family:var(--serif); font-style:italic; font-size:11.5px; color:var(--ink-soft); opacity:.85;
+  }
+  .hint svg{ width:14px; height:14px; color:var(--sage); }
+
+  /* ---------- object cards (what's here) ---------- */
+  .band{ display:grid; grid-template-columns:1fr 1fr; gap:16px; height:166px; flex:none; }
+  .obj-card{
+    position:relative;
+    background:var(--paper);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:13px 14px;
+    box-shadow:var(--sh-card);
+    display:grid;
+    grid-template-columns:auto 1fr;
+    gap:12px;
+    align-items:start;
+  }
+  .obj-card:nth-child(2){ transform:rotate(.5deg); }   /* painted-paper, not app tile */
+  .obj-name{
+    font-family:var(--serif); font-size:15px; color:var(--ink); line-height:1.2;
+    display:flex; align-items:center; gap:6px; margin-bottom:3px;
+  }
+  .obj-desc{ font-family:var(--serif); font-style:italic; font-size:12.5px; color:var(--ink-soft); line-height:1.4; }
+  .obj-locktext{
+    font-family:var(--serif); font-style:italic; font-size:11.5px; color:var(--amber-deep);
+    margin-top:5px; opacity:.95;
+  }
+  .lockglyph{ width:13px; height:13px; color:var(--amber-deep); }
+
+  .emblem{
+    width:52px; height:52px; border-radius:14px; flex:none;
+    display:grid; place-items:center; color:var(--sage-deep);
+    background:
+      radial-gradient(120% 120% at 30% 24%, rgba(200,160,110,.30), transparent 58%),
+      radial-gradient(120% 120% at 74% 82%, rgba(90,122,106,.24), transparent 60%),
+      var(--paper);
+    border:1px solid var(--line);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.7);
+  }
+  .emblem svg{ width:29px; height:29px; }
+  .emblem.amber{
+    color:var(--amber-deep);
+    background:
+      radial-gradient(120% 120% at 30% 24%, rgba(200,160,110,.42), transparent 60%),
+      radial-gradient(120% 120% at 78% 84%, rgba(168,125,76,.22), transparent 62%),
+      var(--paper);
+  }
+
+  .chips{ display:flex; flex-wrap:wrap; gap:6px; margin-top:9px; }
+  .chip{
+    font-family:var(--sans); font-weight:600; font-size:10.5px; letter-spacing:.03em;
+    color:var(--sage-deep); background:rgba(90,122,106,.10);
+    border:1px solid rgba(90,122,106,.24); border-radius:999px;
+    padding:4px 9px; display:inline-flex; align-items:center; gap:4px; white-space:nowrap;
+  }
+  .chip svg{ width:11px; height:11px; }
+  .chip-locked{ color:var(--amber-deep); background:rgba(200,160,110,.14); border-color:rgba(200,160,110,.42); }
+  .chip-ghost{ color:var(--ink-soft); background:transparent; border-style:dashed; border-color:var(--line); }
+
+  /* dog-ear flip affordance */
+  .dogear{
+    position:absolute; top:0; right:0; width:24px; height:24px;
+    color:var(--sage); opacity:.5;
+    border-top-right-radius:14px;
+  }
+  .dogear svg{ width:15px; height:15px; position:absolute; top:5px; right:5px; }
+
+  /* ---------- bottom row: mini-map + hand ---------- */
+  .bottom-row{ display:grid; grid-template-columns:288px 1fr; grid-template-rows:1fr; gap:16px; flex:1; min-height:0; overflow:hidden; }
+
+  .card-panel{
+    background:var(--paper); border:1px solid var(--line); border-radius:16px;
+    padding:13px 14px; box-shadow:var(--sh-card); position:relative; min-height:0;
+    display:flex; flex-direction:column; overflow:hidden;
+  }
+
+  /* mini-map */
+  .map-expand{ width:16px; height:16px; color:var(--sage); opacity:.75; cursor:default; }
+  .map{ position:relative; flex:1; margin-top:2px; }
+  .map-lines{ position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
+  .node{ position:absolute; text-align:center; width:76px; }
+  .node .thumb{
+    border-radius:10px; overflow:hidden; border:2px solid var(--paper);
+    box-shadow:0 0 0 1px var(--line), var(--sh-soft); margin:0 auto;
+  }
+  .node .thumb img{ display:block; width:100%; height:100%; object-fit:cover; }
+  .node-name{ font-family:var(--serif); font-size:10.5px; color:var(--ink); margin-top:4px; line-height:1.1; }
+  .node .dir{
+    font-family:var(--hand); font-size:16px; line-height:1; color:var(--sage);
+    position:absolute;
+  }
+  .node .marker{
+    display:inline-flex; align-items:center; gap:3px;
+    font-family:var(--sans); font-size:9px; font-weight:600; color:var(--ink-soft);
+    margin-top:2px;
+  }
+  .marker .dot{ width:7px; height:7px; border-radius:50%; box-shadow:0 0 0 2px rgba(255,255,255,.7); }
+  .dot-tace{ background:var(--sage); }
+  .dot-bell{ background:var(--amber); }
+
+  .node-up{ left:96px; top:0; }
+  .node-up .thumb{ width:60px; height:38px; }
+  .node-up .dir{ left:-14px; top:12px; }
+
+  .node-here{ left:88px; top:62px; }
+  .node-here .thumb{ width:82px; height:52px; border-color:var(--amber); box-shadow:0 0 0 2px rgba(200,160,110,.55), var(--sh-soft); }
+  .youtag{
+    display:inline-block; margin-top:3px;
+    font-family:var(--hand); font-size:15px; line-height:1; color:var(--amber-deep);
+  }
+
+  .node-east{ left:196px; top:58px; }
+  .node-east .thumb{ width:60px; height:38px; }
+  .node-east .dir{ right:-20px; top:12px; }
+
+  /* hand (satchel strip) */
+  .satchel-open{
+    display:inline-flex; align-items:center; gap:6px;
+    font-family:var(--sans); font-weight:600; font-size:11px; color:var(--sage-deep);
+    text-decoration:none;
+    background:rgba(90,122,106,.10); border:1px solid rgba(90,122,106,.26);
+    padding:5px 11px; border-radius:999px;
+  }
+  .satchel-open svg{ width:15px; height:15px; }
+  .hand-row{ display:flex; gap:10px; align-items:stretch; flex:1; margin-top:4px; }
+
+  .item-card{
+    position:relative; width:107px; flex:none;
+    background:var(--paper); border:1px solid var(--line); border-radius:13px;
+    padding:11px 10px 12px; box-shadow:var(--sh-card);
+    display:flex; flex-direction:column; align-items:center; text-align:center;
+  }
+  .item-card .emblem{ width:46px; height:46px; }
+  .item-card .emblem svg{ width:26px; height:26px; }
+  .item-name{ font-family:var(--serif); font-size:12.5px; color:var(--ink); line-height:1.18; margin-top:8px; }
+  .item-sub{ font-family:var(--serif); font-style:italic; font-size:10.5px; color:var(--ink-soft); line-height:1.3; margin-top:3px; }
+
+  .item-slot{
+    position:relative; width:107px; flex:none;
+    border:1.5px dashed var(--line); border-radius:13px;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;
+    color:var(--ink-soft); background:rgba(242,238,226,.5);
+  }
+  .slot-cat{ font-family:var(--sans); font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--sage-deep); opacity:.7; }
+  .slot-plus{ font-family:var(--serif); font-size:22px; color:var(--line); line-height:1; margin-bottom:4px; }
+
+  /* the ghost slot the lifted gear came from */
+  .item-slot.ghost{
+    border-color:rgba(200,160,110,.6); background:rgba(200,160,110,.06);
+    color:var(--amber-deep);
+  }
+  .ghost-ic{ width:30px; height:30px; color:var(--amber); opacity:.5; margin-bottom:6px; }
+  .ghost-note{ font-family:var(--sans); font-weight:600; font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--amber-deep); opacity:.9; }
+
+  /* ================= JOURNAL (right pane) ================= */
+  .journal{
+    height:100%;
+    background:
+      linear-gradient(90deg, rgba(90,122,106,.07), rgba(90,122,106,0) 7%),
+      var(--paper);
+    border:1px solid var(--line); border-radius:18px;
+    box-shadow: var(--sh-card);
+    padding:20px 22px 20px 34px;
+    position:relative; overflow:hidden;
+    display:flex; flex-direction:column;
+  }
+  .journal::before{                     /* stitched binding */
+    content:""; position:absolute; left:17px; top:18px; bottom:18px;
+    border-left:2px dashed rgba(90,122,106,.28);
+  }
+  .ribbon{
+    position:absolute; top:-1px; right:40px; width:22px; height:70px;
+    background:linear-gradient(var(--sage), var(--sage-deep));
+    border-radius:0 0 3px 3px;
+    box-shadow:var(--sh-soft);
+  }
+  .ribbon::after{
+    content:""; position:absolute; left:0; bottom:-9px;
+    border-left:11px solid transparent; border-right:11px solid transparent;
+    border-top:10px solid var(--sage-deep);
+  }
+
+  .journal-head{ display:flex; align-items:baseline; gap:10px; margin-bottom:14px; }
+  .journal-title{ font-family:var(--hand); font-size:30px; line-height:.9; color:var(--sage-deep); }
+  .journal-sub{ font-family:var(--serif); font-style:italic; font-size:12.5px; color:var(--ink-soft); }
+
+  /* objective whisper */
+  .objective{
+    display:flex; gap:11px; align-items:flex-start;
+    background:rgba(200,160,110,.09);
+    border:1px solid rgba(200,160,110,.30);
+    border-radius:13px; padding:12px 14px; margin-bottom:14px;
+  }
+  .obj-emblem{ width:30px; height:30px; color:var(--amber-deep); flex:none; margin-top:2px; }
+  .obj-label{
+    font-family:var(--sans); font-size:9.5px; letter-spacing:.2em; text-transform:uppercase;
+    color:var(--amber-deep); opacity:.9; margin-bottom:3px;
+  }
+  .whisper{ font-family:var(--hand); font-size:21px; line-height:1.22; color:var(--sage-deep); margin:0; }
+
+  /* narration log */
+  .log{ flex:1; min-height:0; overflow:hidden; display:flex; flex-direction:column; gap:11px; padding-right:2px; }
+  .entry p{ margin:0; font-family:var(--serif); font-size:13.5px; line-height:1.56; color:var(--ink); }
+  .entry .tag-read{
+    font-family:var(--sans); font-size:9.5px; letter-spacing:.16em; text-transform:uppercase;
+    color:var(--sage-deep); opacity:.75; margin-bottom:3px;
+  }
+  .entry .muted{ color:var(--ink-soft); font-style:italic; margin-top:5px; font-size:13px; }
+  .speaker{ color:var(--speaker); font-variant:small-caps; letter-spacing:.03em; font-weight:600; }
+  .divider{ display:flex; align-items:center; justify-content:center; }
+  .divider span{ width:5px; height:5px; border-radius:50%; background:var(--line);
+    box-shadow: -14px 0 0 -1.5px var(--line), 14px 0 0 -1.5px var(--line); }
+
+  /* Tace NPC note card — pinned to journal bottom */
+  .npc{
+    margin-top:auto;
+    display:grid; grid-template-columns:auto 1fr; gap:13px;
+    background:var(--paper); border:1px solid var(--line); border-radius:14px;
+    padding:13px; box-shadow:var(--sh-card); position:relative;
+  }
+  .npc::before{                          /* faint 'relationship' corner flourish */
+    content:"a friend to be"; position:absolute; top:-9px; left:14px;
+    font-family:var(--hand); font-size:15px; color:var(--sage);
+    background:var(--paper); padding:0 7px; opacity:.85;
+  }
+  .portrait{
+    width:60px; height:60px; border-radius:50%; overflow:hidden; flex:none;
+    border:2px solid var(--paper);
+    box-shadow:0 0 0 1px var(--line), var(--sh-soft);
+  }
+  .portrait img{ width:100%; height:100%; object-fit:cover; object-position:18% 44%; }
+  .npc-top{ display:flex; align-items:center; gap:9px; }
+  .npc-name{ font-family:var(--serif); font-size:18px; color:var(--ink); }
+  .npc-role{ font-family:var(--serif); font-style:italic; font-size:12px; color:var(--ink-soft); margin-top:2px; }
+  .npc-wants{
+    display:inline-flex; align-items:center; gap:6px; margin-top:7px;
+    font-family:var(--serif); font-size:12.5px; color:var(--ink);
+  }
+  .npc-wants b{ color:var(--amber-deep); font-weight:600; }
+  .npc-wants .w-ic{ width:15px; height:15px; color:var(--amber-deep); }
+  .npc-rel{ display:flex; align-items:center; gap:8px; margin-top:8px; }
+  .rel-dots{ display:inline-flex; gap:3px; }
+  .rel-dots i{ width:8px; height:8px; border-radius:50%; border:1px solid var(--sage); display:inline-block; }
+  .rel-dots i.on{ background:var(--sage); }
+  .rel-label{ font-family:var(--sans); font-size:10px; letter-spacing:.05em; color:var(--ink-soft); }
+
+  /* ================= FROZEN INTERACTIVE MOMENT ================= */
+  /* dotted "give" arc drawn in desk-space (0..1280 / 0..800) */
+  .arc{ position:absolute; inset:0; width:1280px; height:800px; pointer-events:none; z-index:40; }
+
+  .lift-shadow{
+    position:absolute; z-index:41; left:440px; top:726px;
+    width:150px; height:24px; border-radius:50%;
+    background:radial-gradient(closest-side, rgba(74,96,90,.32), transparent 78%);
+    filter:blur(1px);
+  }
+
+  /* the lifted / hovering gear card */
+  .float-gear{
+    position:absolute; z-index:42; left:438px; top:558px;
+    width:150px;
+    transform:rotate(-6deg);
+    box-shadow: var(--sh-lift);
+    border-color:rgba(200,160,110,.55);
+  }
+  .float-gear .emblem{ width:50px; height:50px; }
+  .float-gear .item-name{ font-size:13px; }
+  .float-gear .chips{ margin-top:9px; justify-content:center; }
+  .quest-ribbon{
+    position:absolute; top:8px; right:8px;
+    font-family:var(--sans); font-weight:700; font-size:8.5px; letter-spacing:.11em; text-transform:uppercase;
+    color:#fff; background:linear-gradient(var(--amber),var(--amber-deep));
+    padding:3px 7px; border-radius:999px; box-shadow:var(--sh-soft);
+  }
+  /* floating confirm chip near Tace */
+  .confirm{
+    position:absolute; z-index:44; left:806px; top:580px;
+    display:inline-flex; align-items:center; gap:9px;
+    background:var(--paper);
+    border:1.5px solid var(--sage);
+    border-radius:999px; padding:9px 15px;
+    box-shadow: var(--sh-lift);
+    font-family:var(--serif); font-size:13px; color:var(--ink);
+  }
+  .confirm b{ color:var(--sage-deep); font-weight:600; }
+  .confirm .c-ic{ width:17px; height:17px; color:var(--amber-deep); flex:none; }
+  .confirm .c-yes{
+    width:24px; height:24px; border-radius:50%; display:grid; place-items:center; flex:none;
+    color:#fff; background:linear-gradient(var(--sage),var(--sage-deep));
+    box-shadow:0 3px 7px -3px rgba(74,96,90,.6);
+  }
+  .confirm .c-yes svg{ width:14px; height:14px; }
+  .confirm::after{                        /* little pointer toward Tace, below */
+    content:""; position:absolute; left:44px; bottom:-9px;
+    border-left:9px solid transparent; border-right:9px solid transparent;
+    border-top:10px solid var(--paper);
+    filter:drop-shadow(0 2px 1px rgba(90,122,106,.35));
+  }
+</style>
+</head>
+
+<body>
+<div class="desk">
+
+  <!-- ============ TOP BAR ============ -->
+  <header class="topbar">
+    <div class="brand">
+      <svg class="leaf" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M5 19c0-7.5 5.5-13.5 14.5-14.5C19.5 13 14.5 19 5 19z"/>
+        <path d="M8.5 15.5C11 12.5 13.5 10 17 8"/>
+      </svg>
+      <span class="brand-name">daydream</span>
+      <span class="brand-tag">the dream continues</span>
+    </div>
+
+    <div class="whoami">
+      <div class="whoami-txt">
+        <span class="whoami-label">you are</span>
+        <span class="whoami-name">Wick</span>
+        <span class="whoami-role"> · a traveler in a dusk-colored coat</span>
+      </div>
+      <span class="mood mood-curious">curious</span>
+      <span class="avatar" title="Wick">
+        <svg viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 4c-2.3 0-4 1.9-4 4.2 0 1.2.5 2.3 1.3 3C7.2 12.1 5.6 14 5.6 16.6V19h12.8v-2.4c0-2.6-1.6-4.5-3.7-5.4.8-.7 1.3-1.8 1.3-3C16 5.9 14.3 4 12 4z"/>
+        </svg>
+      </span>
+    </div>
+  </header>
+
+  <!-- ============ STAGE ============ -->
+  <main class="stage">
+
+    <!-- ---------- LEFT: scene + tactile cards ---------- -->
+    <section class="pane-left">
+
+      <div class="room-head">
+        <div class="eyebrow">where you stand</div>
+        <h1 class="room-title">The Stopped Clock</h1>
+        <p class="room-desc">the base of a great stopped clock, its brass face gone still and patient, dust turning slow in a shaft of late gold; a tall glass-fronted case stands against one wall, and a worn ledger waits open on a lectern</p>
+      </div>
+
+      <div class="scene-frame">
+        <div class="scene">
+          <img src="../assets/scenes/clock.png" alt="A watercolor of a stopped brass clock resting on a dark-wood lectern, in soft sage and cream light.">
+          <span class="scene-tag">the stilled hour</span>
+        </div>
+      </div>
+
+      <!-- what's here -->
+      <div>
+        <div class="label-row">
+          <span class="label">what's here</span>
+          <span class="hint">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.3-5.6"/><path d="M20 4v3.6h-3.6"/></svg>
+            turn a card over to examine
+          </span>
+        </div>
+
+        <div class="band">
+          <!-- ledger -->
+          <div class="obj-card">
+            <span class="emblem">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 6.2C10.3 5.1 8.2 4.6 6.2 4.9c-.6.1-1 .6-1 1.2v9.2c0 .7.6 1.2 1.3 1.1 1.9-.2 3.9.3 5.5 1.4"/>
+                <path d="M12 6.2c1.7-1.1 3.8-1.6 5.8-1.3.6.1 1 .6 1 1.2v9.2c0 .7-.6 1.2-1.3 1.1-1.9-.2-3.9.3-5.5 1.4z"/>
+                <path d="M12 6.2v11.9"/>
+                <path d="M8 9.4c.9-.2 1.8-.2 2.6 0M8 11.9c.9-.2 1.8-.2 2.6 0"/>
+              </svg>
+            </span>
+            <div>
+              <div class="obj-name">the worn repair ledger</div>
+              <div class="obj-desc">close-written in a fading, careful hand</div>
+              <div class="chips">
+                <span class="chip">read</span>
+                <span class="chip">examine</span>
+              </div>
+            </div>
+            <span class="dogear"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.3-5.6"/><path d="M20 4v3.6h-3.6"/></svg></span>
+          </div>
+
+          <!-- clock case (locked) -->
+          <div class="obj-card">
+            <span class="emblem amber">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="6" y="3.4" width="12" height="17.2" rx="1.8"/>
+                <path d="M6 7.3h12"/>
+                <circle cx="14.4" cy="12.4" r="1"/>
+                <path d="M14.4 13.2v1.7"/>
+              </svg>
+            </span>
+            <div>
+              <div class="obj-name">the tall glass-fronted clock case
+                <svg class="lockglyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="5.5" y="10.5" width="13" height="9" rx="2"/><path d="M8.4 10.5V8a3.6 3.6 0 0 1 7.2 0v2.5"/></svg>
+              </div>
+              <div class="obj-desc">dark oak, its little brass door held by a delicate lock</div>
+              <div class="obj-locktext">&ldquo;A small brass lock holds the little door fast.&rdquo;</div>
+              <div class="chips">
+                <span class="chip">examine</span>
+                <span class="chip chip-locked">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5.5" y="10.5" width="13" height="9" rx="2"/><path d="M8.4 10.5V8a3.6 3.6 0 0 1 7.2 0v2.5"/></svg>
+                  open · locked
+                </span>
+                <span class="chip">use</span>
+              </div>
+            </div>
+            <span class="dogear"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.3-5.6"/><path d="M20 4v3.6h-3.6"/></svg></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- bottom row: mini-map + hand -->
+      <div class="bottom-row">
+
+        <!-- mini-map card -->
+        <div class="card-panel">
+          <div class="label-row">
+            <span class="label">the near country</span>
+            <svg class="map-expand" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4H5a1 1 0 0 0-1 1v4M15 4h4a1 1 0 0 1 1 1v4M20 15v4a1 1 0 0 1-1 1h-4M4 15v4a1 1 0 0 0 1 1h4"/></svg>
+          </div>
+          <div class="map">
+            <svg class="map-lines" viewBox="0 0 260 150" preserveAspectRatio="none">
+              <path d="M128 70 L130 44" fill="none" stroke="#c7bfa9" stroke-width="2" stroke-linecap="round" stroke-dasharray="1 7"/>
+              <path d="M172 92 L196 88" fill="none" stroke="#c7bfa9" stroke-width="2" stroke-linecap="round" stroke-dasharray="1 7"/>
+            </svg>
+
+            <div class="node node-up">
+              <span class="dir">up</span>
+              <div class="thumb"><img src="../assets/scenes/loft.png" alt=""></div>
+              <div class="node-name">Clockmaker's Loft</div>
+              <span class="marker"><span class="dot dot-tace"></span>Tace</span>
+            </div>
+
+            <div class="node node-here">
+              <div class="thumb"><img src="../assets/scenes/clock.png" alt=""></div>
+              <div class="node-name">The Stopped Clock</div>
+              <span class="youtag">you are here</span>
+            </div>
+
+            <div class="node node-east">
+              <span class="dir">east</span>
+              <div class="thumb"><img src="../assets/scenes/square.png" alt=""></div>
+              <div class="node-name">Lantern Square</div>
+              <span class="marker"><span class="dot dot-bell"></span>Bell</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- hand of inventory cards -->
+        <div class="card-panel">
+          <div class="label-row">
+            <span class="label">in your satchel</span>
+            <a class="satchel-open" href="backpack.html">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9h14l-1 9.4a1.6 1.6 0 0 1-1.6 1.4H7.6A1.6 1.6 0 0 1 6 18.4z"/><path d="M8 9V7a4 4 0 0 1 8 0v2"/><path d="M4.2 9 5.6 6.7A2 2 0 0 1 7.3 5.7h9.4a2 2 0 0 1 1.7 1L19.8 9"/></svg>
+              open satchel
+            </a>
+          </div>
+          <div class="hand-row">
+
+            <!-- ghost slot the lifted gear came from -->
+            <div class="item-slot ghost">
+              <svg class="ghost-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.3"/><path d="M12 3.4v2.3M12 18.3v2.3M20.6 12h-2.3M5.7 12H3.4M18.1 5.9l-1.6 1.6M7.5 16.5l-1.6 1.6M18.1 18.1l-1.6-1.6M7.5 7.5 5.9 5.9"/></svg>
+              <div class="ghost-note">lifted</div>
+            </div>
+
+            <!-- growing-collection slot (sits beneath the lifted card) -->
+            <div class="item-slot">
+              <span class="slot-plus">+</span>
+              <span class="slot-cat">to find</span>
+            </div>
+
+            <!-- keepsake -->
+            <div class="item-card">
+              <span class="emblem">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M6.2 14.4c-1-3 1.4-6.6 5-7.1 3.1-.4 6.6 1.1 7.1 4.2.4 2.7-1.7 5.3-5.1 5.8-3.5.5-6-.3-7-2.9z"/>
+                  <path d="M9 12.2c1.3-1.3 3.5-1.7 5.2-.9"/>
+                </svg>
+              </span>
+              <div class="item-name">a river pebble</div>
+              <div class="item-sub">warm from your pocket</div>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ---------- RIGHT: the journal ---------- -->
+    <section class="pane-right">
+      <div class="journal">
+        <span class="ribbon"></span>
+
+        <div class="journal-head">
+          <span class="journal-title">Journal</span>
+          <span class="journal-sub">Wick's account of the day</span>
+        </div>
+
+        <!-- persistent objective whisper -->
+        <div class="objective">
+          <svg class="obj-emblem" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="8.5"/>
+            <path d="M15.2 8.8 12.9 13.5 8.8 15.2 11.1 10.5z"/>
+          </svg>
+          <div>
+            <div class="obj-label">still to do</div>
+            <p class="whisper">The clock has stood still since the first frost. Carry the escapement gear home to Tace.</p>
+          </div>
+        </div>
+
+        <!-- flowing narration log -->
+        <div class="log">
+          <div class="entry">
+            <p>You come to rest at the foot of the great clock. The light is the color of steeped tea, and all the dust hangs still within it.</p>
+          </div>
+          <div class="divider"><span></span></div>
+          <div class="entry">
+            <p>A glass-fronted case waits against the wall; the worn ledger lies open on its lectern, pages breathing faintly in the draft.</p>
+          </div>
+          <div class="divider"><span></span></div>
+          <div class="entry">
+            <p class="tag-read">you read the ledger</p>
+            <p>The careful, fading hand tells it plainly: the clock has stood still since the first hard frost. The fault is the escapement gear &mdash; it slipped its pin and rolled away down the lane, south, toward the old well.</p>
+          </div>
+          <div class="divider"><span></span></div>
+          <div class="entry">
+            <p><span class="speaker">Tace</span>, remembered: &ldquo;Bring me its little green heart and I&rsquo;ll wake the old clock again.&rdquo;</p>
+            <p class="muted">The gear rides in your satchel now &mdash; cool and small, its teeth flecked with green.</p>
+          </div>
+        </div>
+
+        <!-- Tace NPC note card (quest / relationship hook, arc target) -->
+        <div class="npc">
+          <div class="portrait"><img src="../assets/scenes/loft.png" alt="Tace, in the amber light of her loft"></div>
+          <div>
+            <div class="npc-top">
+              <span class="npc-name">Tace</span>
+              <span class="mood mood-wistful">wistful</span>
+            </div>
+            <div class="npc-role">the village clockmaker &middot; in the loft above</div>
+            <div class="npc-wants">
+              <svg class="w-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.3"/><path d="M12 3.4v2.3M12 18.3v2.3M20.6 12h-2.3M5.7 12H3.4M18.1 5.9l-1.6 1.6M7.5 16.5l-1.6 1.6M18.1 18.1l-1.6-1.6M7.5 7.5 5.9 5.9"/></svg>
+              wants: <b>the escapement gear</b>
+            </div>
+            <div class="npc-rel">
+              <span class="rel-dots"><i class="on"></i><i class="on"></i><i></i><i></i><i></i></span>
+              <span class="rel-label">an acquaintance</span>
+              <span class="chip chip-ghost">talk</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+  </main>
+
+  <!-- ================= FROZEN MOMENT: drag-a-card-to-give ================= -->
+
+  <!-- dotted arc reaching from the lifted gear across to Tace's card -->
+  <svg class="arc" viewBox="0 0 1280 800" fill="none">
+    <path d="M580 568 C 648 484 768 504 812 626"
+          stroke="#5a7a6a" stroke-width="3" stroke-linecap="round"
+          stroke-dasharray="0.5 11" opacity="0.72"/>
+    <circle cx="580" cy="568" r="5" fill="#5a7a6a" opacity="0.85"/>
+    <circle cx="812" cy="626" r="10" fill="none" stroke="#5a7a6a" stroke-width="2.5" opacity="0.75"/>
+    <circle cx="812" cy="626" r="3.5" fill="#5a7a6a" opacity="0.8"/>
+  </svg>
+
+  <!-- soft shadow the lifted card casts on the desk -->
+  <div class="lift-shadow"></div>
+
+  <!-- the lifted / hovering gear card -->
+  <div class="float-gear item-card">
+    <span class="quest-ribbon">quest</span>
+    <span class="emblem amber">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.3"/><path d="M12 3.4v2.3M12 18.3v2.3M20.6 12h-2.3M5.7 12H3.4M18.1 5.9l-1.6 1.6M7.5 16.5l-1.6 1.6M18.1 18.1l-1.6-1.6M7.5 7.5 5.9 5.9"/></svg>
+    </span>
+    <div class="item-name">the escapement gear</div>
+    <div class="item-sub">a small brass gear, its fine teeth flecked with green</div>
+    <div class="chips">
+      <span class="chip">examine</span>
+      <span class="chip">give</span>
+      <span class="chip">use</span>
+    </div>
+  </div>
+
+  <!-- floating confirm chip near Tace -->
+  <div class="confirm">
+    <svg class="c-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.3"/><path d="M12 3.4v2.3M12 18.3v2.3M20.6 12h-2.3M5.7 12H3.4M18.1 5.9l-1.6 1.6M7.5 16.5l-1.6 1.6M18.1 18.1l-1.6-1.6M7.5 7.5 5.9 5.9"/></svg>
+    <span>give <b>the escapement gear</b> to <b>Tace</b>?</span>
+    <span class="c-yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.2 4.2L19 7"/></svg></span>
+  </div>
+
+</div>
+</body>
+</html>

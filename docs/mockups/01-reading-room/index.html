@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>daydream — The Reading Room</title>
+
+<!-- One optional hand-lettered display face. Design degrades to serif if it fails. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --bg:#f6f3ec;          /* paper background            */
+    --paper:#fbf9f3;       /* surface / cards             */
+    --ink:#3a4a44;         /* body text                   */
+    --sage:#5a7a6a;        /* accent / borders            */
+    --sage-deep:#4a6a5a;   /* labels                      */
+    --amber:#c8a06e;       /* warm highlight / objects    */
+    --line:#d8d2c2;        /* dividers                    */
+    --speaker:#6a8a7a;     /* dialogue names              */
+
+    --table:#e6ddc8;       /* the darker cream tabletop   */
+    --parch:#f4ecd7;       /* warm parchment inset        */
+
+    --serif: Georgia, "Iowan Old Style", Palatino, "Book Antiqua", serif;
+    --sans: system-ui, "Segoe UI", "Helvetica Neue", sans-serif;
+    --hand: "Caveat", "Segoe Print", "Bradley Hand", "Comic Sans MS", cursive;
+
+    /* soft sage / lavender-grey page shadow */
+    --page-shadow: 0 34px 64px -26px rgba(74,106,90,.42),
+                   0 12px 30px -14px rgba(78,84,120,.20);
+  }
+
+  *{ box-sizing:border-box; }
+
+  html,body{ height:100%; margin:0; }
+
+  body{
+    font-family:var(--serif);
+    color:var(--ink);
+    background:
+      radial-gradient(1200px 700px at 50% -8%, #efe8d6 0%, transparent 60%),
+      radial-gradient(900px 900px at 108% 112%, #e2d8c0 0%, transparent 55%),
+      var(--table);
+    -webkit-font-smoothing:antialiased;
+    min-height:100vh;
+    display:flex;
+    align-items:flex-start;
+    justify-content:center;
+    padding:26px 20px 40px;
+    position:relative;
+  }
+  /* faint paper grain over the tabletop */
+  body::before{
+    content:"";
+    position:fixed; inset:0; pointer-events:none; z-index:0;
+    opacity:.5;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.16'/%3E%3C/svg%3E");
+    mix-blend-mode:multiply;
+  }
+
+  /* quiet comp identifiers, floating on the tabletop */
+  .wordmark, .comptag{
+    position:fixed; top:16px; z-index:5;
+    color:var(--sage-deep); opacity:.72;
+  }
+  .wordmark{ left:26px; font-family:var(--hand); font-size:1.5rem; font-weight:600; letter-spacing:.5px; }
+  .comptag{ right:26px; font-family:var(--sans); font-size:.62rem; letter-spacing:.32em; text-transform:uppercase; opacity:.55; }
+
+  /* ---------- the page (an open leaf on the table) ---------- */
+  .page{
+    position:relative; z-index:1;
+    width:min(844px, 100%);
+    background:
+      linear-gradient(180deg, #fdfbf5 0%, var(--paper) 40%, #f8f4ea 100%);
+    border-radius:14px;
+    box-shadow:var(--page-shadow);
+    padding:30px 46px 26px;
+  }
+  /* faint deckled paper grain on the leaf itself */
+  .page::after{
+    content:""; position:absolute; inset:0; border-radius:14px; pointer-events:none;
+    box-shadow: inset 0 0 0 1px rgba(216,210,194,.7),
+                inset 0 2px 30px rgba(255,255,255,.6),
+                inset 0 -30px 60px -30px rgba(200,160,110,.10);
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.1' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E");
+  }
+  /* the sheaf: two more leaves peeking beneath */
+  .page > .leaf{ content:""; position:absolute; z-index:-1; border-radius:14px;
+    background:#f4efe3; box-shadow:0 18px 34px -22px rgba(74,106,90,.4);
+    border:1px solid rgba(216,210,194,.8); }
+  .page > .leaf.l1{ inset:6px -7px -8px 5px; transform:rotate(.5deg); }
+  .page > .leaf.l2{ inset:11px 6px -14px -8px; transform:rotate(-.7deg); background:#f1ebdd; }
+
+  /* ---------- chapter plate (the vignette) ---------- */
+  .plate{
+    position:relative;
+    padding:11px; border-radius:12px;
+    background:linear-gradient(180deg,#fcf9f1,#f5efe1);
+    box-shadow: inset 0 0 0 1px var(--line),
+                0 10px 26px -18px rgba(74,106,90,.5);
+  }
+  .plate figure{ margin:0; border-radius:8px; overflow:hidden; }
+  .plate img{
+    display:block; width:100%; height:178px; object-fit:cover; object-position:center 44%;
+    /* melt the watercolour edges softly into the mat */
+    -webkit-mask-image:radial-gradient(128% 132% at 50% 46%, #000 74%, transparent 100%);
+            mask-image:radial-gradient(128% 132% at 50% 46%, #000 74%, transparent 100%);
+  }
+  .plate .glow{ position:absolute; inset:11px; border-radius:8px; pointer-events:none;
+    box-shadow: inset 0 0 46px -8px rgba(200,160,110,.28),
+                inset 0 0 0 1px rgba(90,122,106,.14); }
+
+  /* ---------- title block ---------- */
+  .titleblock{ text-align:center; margin:13px 0 2px; }
+  .chapter-title{
+    font-family:var(--hand);
+    font-size:3.3rem; line-height:.95; font-weight:700;
+    color:var(--sage-deep); margin:0;
+    text-shadow:0 1px 0 rgba(255,255,255,.6);
+  }
+  .folio{
+    font-family:var(--sans); font-size:.62rem; letter-spacing:.34em; text-transform:uppercase;
+    color:var(--sage); opacity:.72; margin-top:8px;
+    display:flex; align-items:center; justify-content:center; gap:12px;
+  }
+  .folio::before, .folio::after{ content:""; height:1px; width:44px; background:var(--line); }
+  .plate-caption{
+    text-align:center; font-style:italic; color:var(--sage); opacity:.8;
+    font-size:.86rem; margin:7px 0 0;
+  }
+
+  /* ---------- body: prose + marginalia ---------- */
+  .body{
+    display:grid;
+    grid-template-columns:minmax(0,1.82fr) 1fr;
+    gap:0 34px;
+    margin-top:16px;
+  }
+
+  .prose{ position:relative; font-size:1.04rem; line-height:1.66; }
+  .prose p{ margin:0; }
+  .prose .dropcap::first-letter{
+    float:left; font-family:var(--serif); font-weight:700;
+    font-size:4.4rem; line-height:.72; padding:6px 12px 0 0;
+    color:var(--amber);
+    text-shadow:0 2px 1px rgba(200,160,110,.25);
+  }
+
+  /* affordance words — soft click targets in the prose */
+  .aff{
+    color:var(--sage-deep);
+    border-bottom:1.6px dotted var(--sage);
+    padding-bottom:1px; cursor:pointer;
+    transition:background .2s ease;
+  }
+  .aff:hover{ background:rgba(90,122,106,.10); }
+  /* the STAGED / active target (frozen moment) */
+  .aff.active{
+    font-weight:700; color:#3f5c4e;
+    background:rgba(200,160,110,.22);
+    border-bottom:2.2px solid var(--amber);
+    border-radius:4px; padding:1px 4px;
+    box-shadow:0 1px 0 rgba(200,160,110,.35);
+  }
+  .fn-ref{ font-size:.7em; color:var(--sage); vertical-align:super; padding-left:1px; }
+
+  .footnote{
+    margin-top:16px; padding-top:9px; border-top:1px solid var(--line);
+    font-size:.82rem; font-style:italic; color:var(--sage); line-height:1.5;
+  }
+  .footnote .dag{ color:var(--amber); font-style:normal; padding-right:4px; }
+
+  /* ---------- the parchment inset (Read → ledger, revealed) ---------- */
+  .ledger-inset{
+    position:relative;
+    margin:16px 6px 4px 26px;
+    padding:16px 20px 18px;
+    background:
+      linear-gradient(180deg,#f7efda,#efe4c9);
+    border-radius:9px;
+    border:1px solid #e3d6b4;
+    box-shadow:0 16px 30px -18px rgba(120,96,52,.55),
+               inset 0 1px 0 rgba(255,255,255,.5);
+    transform:rotate(-.5deg);
+    font-family:var(--serif);
+  }
+  /* faint ruled lines, like a repair ledger */
+  .ledger-inset::before{
+    content:""; position:absolute; inset:12px 16px; border-radius:6px; pointer-events:none;
+    background:repeating-linear-gradient(180deg, transparent 0 26px, rgba(150,120,70,.14) 26px 27px);
+    opacity:.6;
+  }
+  .ledger-inset .tab{
+    position:absolute; top:-12px; left:16px;
+    font-family:var(--sans); font-size:.6rem; letter-spacing:.24em; text-transform:uppercase;
+    color:#f4ecd7; background:var(--sage-deep);
+    padding:4px 11px; border-radius:20px;
+    box-shadow:0 4px 10px -4px rgba(74,106,90,.6);
+  }
+  .ledger-inset p{
+    position:relative; margin:6px 0 0; font-style:italic; color:#5c4d31;
+    font-size:.98rem; line-height:1.68;
+  }
+  .ledger-inset .dogear{
+    position:absolute; right:0; bottom:0; width:26px; height:26px;
+    background:linear-gradient(135deg, transparent 50%, #e4d4ad 50%, #d8c79a 100%);
+    border-bottom-right-radius:9px;
+    box-shadow:-2px -2px 4px -2px rgba(120,96,52,.4) inset;
+  }
+  /* dotted connector — the staged verb reaching its target above */
+  .ledger-inset .thread{
+    position:absolute; top:-40px; left:60px; width:70px; height:44px; pointer-events:none;
+    overflow:visible;
+  }
+
+  /* ---------- marginalia column ---------- */
+  .margin{
+    border-left:1px solid var(--line);
+    padding-left:26px;
+    display:flex; flex-direction:column; gap:12px;
+    font-family:var(--sans);
+  }
+  .mlabel{
+    font-size:.6rem; letter-spacing:.26em; text-transform:uppercase;
+    color:var(--sage-deep); opacity:.85; margin-bottom:5px;
+  }
+  .mgroup + .mgroup{ padding-top:12px; border-top:1px dashed var(--line); }
+
+  .you-name{ font-family:var(--hand); font-size:1.7rem; font-weight:600; color:var(--sage-deep); line-height:1; }
+  .you-desc{ font-family:var(--serif); font-style:italic; font-size:.84rem; color:var(--ink); opacity:.85; line-height:1.44; margin-top:4px; }
+  .mood{
+    display:inline-block; margin-top:8px;
+    font-size:.62rem; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--sage-deep); background:rgba(90,122,106,.12);
+    border:1px solid rgba(90,122,106,.28);
+    border-radius:20px; padding:3px 10px;
+  }
+
+  .empty-note{ font-family:var(--serif); font-style:italic; color:var(--sage); opacity:.9; font-size:.9rem; line-height:1.5; }
+
+  .keepsake{ display:flex; gap:9px; align-items:flex-start; margin-bottom:9px; }
+  .keepsake .mark{ color:var(--amber); font-size:1rem; line-height:1.3; flex:none; }
+  .keepsake .k-name{ font-family:var(--hand); font-size:1.24rem; color:var(--sage-deep); font-weight:600; line-height:1.1; }
+  .keepsake .k-name.quest{ color:#a97b3e; }
+  .keepsake .k-desc{ font-family:var(--serif); font-style:italic; font-size:.8rem; color:var(--ink); opacity:.78; line-height:1.4; }
+  .satchel-link{
+    display:inline-block; margin-top:2px;
+    font-family:var(--hand); font-size:1.15rem; color:var(--sage);
+    text-decoration:none; border-bottom:1px dotted var(--sage);
+  }
+  .satchel-link:hover{ color:var(--sage-deep); }
+
+  .errand{
+    font-family:var(--hand); font-size:1.28rem; line-height:1.35;
+    color:var(--sage); opacity:.92;
+  }
+  .errand .whisper-mark{ color:var(--amber); }
+
+  /* ---------- action ribbon ---------- */
+  .ribbon-wrap{ margin-top:16px; }
+  .ribbon-label{
+    font-family:var(--sans); font-size:.6rem; letter-spacing:.28em; text-transform:uppercase;
+    color:var(--sage-deep); opacity:.75; text-align:center; margin-bottom:10px;
+  }
+  .ribbon{
+    display:flex; flex-wrap:wrap; gap:9px; align-items:center; justify-content:center;
+  }
+  .chip{
+    font-family:var(--sans); font-size:.82rem; letter-spacing:.04em;
+    color:var(--sage-deep);
+    background:linear-gradient(180deg,#fbf7ec,#f2ecdd);
+    border:1px solid var(--line);
+    border-radius:9px; padding:8px 16px;
+    box-shadow:0 2px 5px -3px rgba(74,106,90,.4), inset 0 1px 0 rgba(255,255,255,.7);
+    cursor:pointer; transition:transform .15s ease, box-shadow .15s ease;
+  }
+  .chip:hover{ transform:translateY(-1px); }
+  /* the STAGED verb (frozen moment) */
+  .chip.staged{
+    color:#f6f2e6; font-weight:600;
+    background:linear-gradient(180deg,#587a68,#42624f);
+    border-color:#3c5747;
+    box-shadow:0 8px 16px -8px rgba(66,98,79,.75), inset 0 1px 0 rgba(255,255,255,.16);
+    transform:translateY(-1px);
+  }
+  .chip.staged .pip{
+    display:inline-block; width:6px; height:6px; border-radius:50%;
+    background:var(--amber); margin-right:7px; vertical-align:middle;
+    box-shadow:0 0 0 3px rgba(200,160,110,.28);
+  }
+  .ribbon-hint{
+    text-align:center; margin-top:11px;
+    font-family:var(--serif); font-style:italic; font-size:.9rem; color:var(--sage);
+  }
+  .ribbon-hint b{ color:var(--sage-deep); font-weight:600; font-style:normal; }
+
+  /* ---------- footer: ways from here ---------- */
+  .ways{
+    margin-top:16px; padding-top:12px; border-top:1px solid var(--line);
+    display:flex; align-items:center; justify-content:center; gap:16px;
+    flex-wrap:wrap;
+  }
+  .compass{ flex:none; color:var(--sage); opacity:.85; }
+  .ways .wlabel{
+    font-family:var(--sans); font-size:.6rem; letter-spacing:.28em; text-transform:uppercase;
+    color:var(--sage-deep); opacity:.7;
+  }
+  .ways .routes{ font-family:var(--serif); font-size:.95rem; color:var(--ink); }
+  .ways .dir{ color:var(--sage-deep); font-style:italic; font-weight:600; }
+  .ways .sep{ color:var(--line); padding:0 10px; }
+  .ways a{ color:inherit; text-decoration:none; border-bottom:1.4px dotted var(--sage); }
+  .ways a:hover{ color:var(--sage-deep); }
+
+  .corner{
+    position:absolute; bottom:14px; font-family:var(--hand); color:var(--sage); opacity:.6; font-size:1.05rem;
+  }
+  .corner.l{ left:24px; }
+  .corner.r{ right:26px; }
+</style>
+</head>
+<body>
+  <div class="wordmark">daydream</div>
+  <div class="comptag">The Reading Room · i of iv</div>
+
+  <main class="page">
+    <span class="leaf l1"></span>
+    <span class="leaf l2"></span>
+
+    <!-- chapter plate -->
+    <div class="plate">
+      <figure><img src="../assets/scenes/clock.png" alt="A watercolour of a stopped brass clock upon a dark-wood lectern, against soft sage and cream washes."></figure>
+      <span class="glow"></span>
+    </div>
+
+    <div class="titleblock">
+      <h1 class="chapter-title">The Stopped Clock</h1>
+      <div class="folio">the dream · chapter one</div>
+      <p class="plate-caption">a watercolour of the hour that stopped</p>
+    </div>
+
+    <div class="body">
+      <!-- narration prose -->
+      <div class="prose">
+        <p class="dropcap">You come to rest at the base of a great stopped clock, its brass face
+        gone still and patient, as if it had decided the hour could keep a while. Dust turns slow
+        in a shaft of late gold. A tall <span class="aff">glass-fronted case</span><span class="fn-ref">&dagger;</span>
+        stands against one wall, its little door minding its own quiet secrets; and on a lectern a
+        <span class="aff active">worn ledger</span> waits open — as though expecting someone, you
+        perhaps, to come and turn a page.</p>
+
+        <!-- FROZEN MOMENT: Read staged → the ledger opened -->
+        <aside class="ledger-inset">
+          <svg class="thread" viewBox="0 0 70 44" aria-hidden="true">
+            <path d="M8 42 C 20 24, 30 14, 52 6" fill="none" stroke="#8a6f3e" stroke-width="1.4"
+                  stroke-dasharray="2 4" stroke-linecap="round" opacity="0.7"/>
+            <circle cx="52" cy="6" r="3.2" fill="none" stroke="#c8a06e" stroke-width="1.6"/>
+          </svg>
+          <span class="tab">the ledger, opened</span>
+          <p>&ldquo;The great clock has stood still since the first hard frost. The fault is the
+          escapement gear — the small brass heart of the whole mechanism — which slipped its pin
+          one cold night and rolled away down the lane, south, toward the old well.&rdquo;</p>
+          <span class="dogear"></span>
+        </aside>
+
+        <p class="footnote"><span class="dag">&dagger;</span>A small brass lock holds the little door fast.</p>
+      </div>
+
+      <!-- marginalia -->
+      <aside class="margin">
+        <div class="mgroup">
+          <div class="mlabel">you</div>
+          <div class="you-name">Wick</div>
+          <div class="you-desc">a traveller in a dusk-coloured coat, a satchel worn crosswise, an open unhurried face.</div>
+          <span class="mood">curious</span>
+        </div>
+
+        <div class="mgroup">
+          <div class="mlabel">here with you</div>
+          <p class="empty-note">no one just now — you have the clock all to yourself.</p>
+        </div>
+
+        <div class="mgroup">
+          <div class="mlabel">you carry</div>
+          <div class="keepsake">
+            <span class="mark">&#10022;</span>
+            <div>
+              <div class="k-name quest">the escapement gear</div>
+              <div class="k-desc">cool from the shadow, but sound and whole.</div>
+            </div>
+          </div>
+          <div class="keepsake">
+            <span class="mark">&#10022;</span>
+            <div>
+              <div class="k-name">a pressed firefly-lantern</div>
+              <div class="k-desc">its glass long cold, its small light remembered.</div>
+            </div>
+          </div>
+          <a class="satchel-link" href="backpack.html">open the satchel &rarr;</a>
+        </div>
+
+        <div class="mgroup">
+          <div class="mlabel">a small errand</div>
+          <p class="errand"><span class="whisper-mark">&sim; </span>the clock has stood still since the
+          first frost. carry the escapement gear home to Tace.</p>
+        </div>
+      </aside>
+    </div>
+
+    <!-- action ribbon -->
+    <div class="ribbon-wrap">
+      <div class="ribbon-label">what you might do</div>
+      <div class="ribbon">
+        <span class="chip">Examine</span>
+        <span class="chip">Take</span>
+        <span class="chip staged"><span class="pip"></span>Read</span>
+        <span class="chip">Open</span>
+        <span class="chip">Give</span>
+        <span class="chip">Use</span>
+      </div>
+      <div class="ribbon-hint"><b>Read</b> is in your hand — the <b>worn ledger</b> opens to you above.</div>
+    </div>
+
+    <!-- ways from here -->
+    <div class="ways">
+      <svg class="compass" width="30" height="30" viewBox="0 0 30 30" aria-hidden="true">
+        <circle cx="15" cy="15" r="12.5" fill="none" stroke="currentColor" stroke-width="1.1" opacity=".6"/>
+        <path d="M15 3 L18 15 L15 27 L12 15 Z" fill="currentColor" opacity=".55"/>
+        <path d="M3 15 L15 12 L27 15 L15 18 Z" fill="currentColor" opacity=".3"/>
+        <circle cx="15" cy="15" r="1.6" fill="currentColor"/>
+      </svg>
+      <span class="wlabel">ways from here</span>
+      <span class="routes">
+        <a href="#"><span class="dir">up</span> — the Clockmaker&rsquo;s Loft</a>
+        <span class="sep">&bull;</span>
+        <a href="#"><span class="dir">east</span> — the Lantern Square</a>
+      </span>
+    </div>
+
+    <span class="corner l">daydream</span>
+    <span class="corner r">&mdash; 1 &mdash;</span>
+  </main>
+</body>
+</html>

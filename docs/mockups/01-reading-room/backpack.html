@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>daydream — Keepsakes</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --bg:#f6f3ec; --paper:#fbf9f3; --ink:#3a4a44;
+    --sage:#5a7a6a; --sage-deep:#4a6a5a; --amber:#c8a06e;
+    --line:#d8d2c2; --speaker:#6a8a7a;
+    --table:#e6ddc8; --parch:#f4ecd7;
+
+    --serif: Georgia, "Iowan Old Style", Palatino, "Book Antiqua", serif;
+    --sans: system-ui, "Segoe UI", "Helvetica Neue", sans-serif;
+    --hand: "Caveat", "Segoe Print", "Bradley Hand", "Comic Sans MS", cursive;
+
+    --page-shadow: 0 34px 64px -26px rgba(74,106,90,.42),
+                   0 12px 30px -14px rgba(78,84,120,.20);
+  }
+  *{ box-sizing:border-box; }
+  html,body{ height:100%; margin:0; }
+  body{
+    font-family:var(--serif); color:var(--ink);
+    background:
+      radial-gradient(1200px 700px at 50% -8%, #efe8d6 0%, transparent 60%),
+      radial-gradient(900px 900px at 108% 112%, #e2d8c0 0%, transparent 55%),
+      var(--table);
+    -webkit-font-smoothing:antialiased;
+    min-height:100vh; display:flex; align-items:flex-start; justify-content:center;
+    padding:26px 20px 40px; position:relative;
+  }
+  body::before{
+    content:""; position:fixed; inset:0; pointer-events:none; z-index:0; opacity:.5;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.16'/%3E%3C/svg%3E");
+    mix-blend-mode:multiply;
+  }
+  .wordmark, .comptag{ position:fixed; top:16px; z-index:5; color:var(--sage-deep); opacity:.72; }
+  .wordmark{ left:26px; font-family:var(--hand); font-size:1.5rem; font-weight:600; letter-spacing:.5px; }
+  .comptag{ right:26px; font-family:var(--sans); font-size:.62rem; letter-spacing:.32em; text-transform:uppercase; opacity:.55; }
+
+  /* ---------- the open book ---------- */
+  .book{
+    position:relative; z-index:1;
+    width:min(1080px, 100%);
+    display:grid; grid-template-columns:1fr 1fr;
+    background:linear-gradient(180deg,#fdfbf5,#f7f2e8);
+    border-radius:16px;
+    box-shadow:var(--page-shadow);
+    overflow:hidden;
+  }
+  .book::after{ /* leaf grain + inner frame */
+    content:""; position:absolute; inset:0; border-radius:16px; pointer-events:none;
+    box-shadow: inset 0 0 0 1px rgba(216,210,194,.7), inset 0 2px 30px rgba(255,255,255,.55);
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.1' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E");
+  }
+  /* the spine */
+  .book::before{
+    content:""; position:absolute; top:0; bottom:0; left:50%; width:46px; transform:translateX(-50%);
+    z-index:2; pointer-events:none;
+    background:linear-gradient(90deg,
+      rgba(120,110,84,0) 0%, rgba(120,110,84,.12) 42%, rgba(120,110,84,.20) 50%,
+      rgba(120,110,84,.12) 58%, rgba(120,110,84,0) 100%);
+  }
+
+  .pg{ position:relative; padding:40px 46px 54px; }
+  .pg.left{ padding-right:40px; }
+  .pg.right{ padding-left:40px; }
+
+  .spread-title{
+    font-family:var(--hand); font-size:3.2rem; font-weight:700; line-height:.95;
+    color:var(--sage-deep); margin:0; text-shadow:0 1px 0 rgba(255,255,255,.6);
+  }
+  .spread-sub{
+    font-style:italic; color:var(--sage); font-size:.95rem; margin:6px 0 0;
+  }
+  .page-eyebrow{
+    font-family:var(--sans); font-size:.6rem; letter-spacing:.28em; text-transform:uppercase;
+    color:var(--sage-deep); opacity:.8;
+    display:flex; align-items:center; gap:12px; margin:22px 0 18px;
+  }
+  .page-eyebrow::after{ content:""; flex:1; height:1px; background:var(--line); }
+  .right .page-eyebrow{ margin-top:calc(3.2rem + 6px + .95rem + 22px); } /* align with left specimens */
+
+  /* ---------- specimen cards ---------- */
+  .specimens{ display:flex; flex-direction:column; gap:20px; }
+  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+
+  .specimen{
+    position:relative;
+    background:linear-gradient(180deg,#fbf6ea,#f3ecda);
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:20px 20px 18px;
+    display:flex; gap:18px; align-items:center;
+    box-shadow:0 10px 24px -18px rgba(74,106,90,.55), inset 0 1px 0 rgba(255,255,255,.6);
+  }
+  /* pressed-specimen pin */
+  .specimen::before{
+    content:""; position:absolute; top:10px; left:50%; transform:translateX(-50%);
+    width:8px; height:8px; border-radius:50%;
+    background:radial-gradient(circle at 35% 30%, #d9b884, #a97b3e);
+    box-shadow:0 2px 4px -1px rgba(120,96,52,.6);
+  }
+  .mount{
+    position:relative; flex:none;
+    width:132px; height:132px; border-radius:10px;
+    background:radial-gradient(120% 120% at 50% 35%, #fffdf6, #efe6d1);
+    box-shadow:inset 0 0 0 1px rgba(216,210,194,.9), inset 0 0 26px -8px rgba(200,160,110,.25);
+    display:flex; align-items:center; justify-content:center;
+  }
+  /* photo-corner mounts */
+  .mount .corner{ position:absolute; width:16px; height:16px; }
+  .mount .corner::before{ content:""; position:absolute; inset:0;
+    background:linear-gradient(135deg, rgba(200,160,110,.55) 46%, transparent 47%); }
+  .mount .c-tl{ top:5px; left:5px; }
+  .mount .c-tr{ top:5px; right:5px; transform:rotate(90deg); }
+  .mount .c-bl{ bottom:5px; left:5px; transform:rotate(-90deg); }
+  .mount .c-br{ bottom:5px; right:5px; transform:rotate(180deg); }
+
+  .s-body{ min-width:0; }
+  .s-name{ font-family:var(--hand); font-size:1.9rem; line-height:1; font-weight:600; color:var(--sage-deep); }
+  .s-name.quest{ color:#a97b3e; }
+  .s-desc{ font-style:italic; font-size:.92rem; color:var(--ink); opacity:.82; line-height:1.5; margin-top:6px; }
+  .s-found{
+    margin-top:11px; font-family:var(--sans); font-size:.58rem; letter-spacing:.2em; text-transform:uppercase;
+    color:var(--sage); opacity:.85;
+  }
+  .s-found b{ color:var(--sage-deep); font-weight:600; }
+  .s-tag{
+    display:inline-block; margin-top:9px;
+    font-family:var(--sans); font-size:.58rem; letter-spacing:.14em; text-transform:uppercase;
+    color:#a97b3e; background:rgba(200,160,110,.16); border:1px solid rgba(200,160,110,.4);
+    border-radius:20px; padding:3px 10px;
+  }
+
+  /* ---------- empty collection slots ---------- */
+  .slot{
+    position:relative; min-height:150px;
+    border:1.6px dashed var(--line); border-radius:12px;
+    background:linear-gradient(180deg, rgba(251,246,234,.5), rgba(243,236,218,.4));
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px;
+    text-align:center; padding:16px; color:#bcb39a;
+  }
+  .slot .leaf{ opacity:.55; }
+  .slot .slot-label{
+    font-family:var(--sans); font-size:.58rem; letter-spacing:.24em; text-transform:uppercase; color:var(--sage); opacity:.7;
+  }
+  .slot .slot-note{ font-family:var(--hand); font-size:1.15rem; color:var(--sage); opacity:.75; line-height:1.1; }
+
+  .collection-note{
+    margin-top:22px; font-family:var(--hand); font-size:1.35rem; line-height:1.35;
+    color:var(--sage); opacity:.9; text-align:center;
+  }
+
+  /* ---------- corners / nav ---------- */
+  .corner-note{ position:absolute; bottom:18px; font-family:var(--hand); color:var(--sage); opacity:.62; font-size:1.15rem; }
+  .corner-note.l{ left:46px; }
+  .back-link{
+    position:absolute; bottom:16px; right:46px;
+    font-family:var(--hand); font-size:1.35rem; color:var(--sage);
+    text-decoration:none; border-bottom:1px dotted var(--sage);
+  }
+  .back-link:hover{ color:var(--sage-deep); }
+</style>
+</head>
+<body>
+  <div class="wordmark">daydream</div>
+  <div class="comptag">The Reading Room · keepsakes</div>
+
+  <div class="book">
+    <!-- LEFT PAGE: what you carry -->
+    <section class="pg left">
+      <h1 class="spread-title">Keepsakes</h1>
+      <p class="spread-sub">things carried, things found &mdash; a traveller&rsquo;s pressed collection</p>
+
+      <div class="page-eyebrow">in your satchel</div>
+
+      <div class="specimens">
+        <!-- the escapement gear -->
+        <div class="specimen">
+          <div class="mount">
+            <span class="corner c-tl"></span><span class="corner c-tr"></span>
+            <span class="corner c-bl"></span><span class="corner c-br"></span>
+            <svg width="120" height="120" viewBox="0 0 120 120" aria-hidden="true">
+              <defs>
+                <radialGradient id="gg" cx="42%" cy="34%" r="70%">
+                  <stop offset="0%" stop-color="#f0d29c"/>
+                  <stop offset="70%" stop-color="#e2b878"/>
+                  <stop offset="100%" stop-color="#cf9f5c"/>
+                </radialGradient>
+              </defs>
+              <circle cx="60" cy="60" r="40" fill="none" stroke="#c8a06e" stroke-width="15" stroke-dasharray="11 9"/>
+              <circle cx="60" cy="60" r="33" fill="url(#gg)" stroke="#a97b3e" stroke-width="2.5"/>
+              <circle cx="60" cy="60" r="10" fill="#efe8d6" stroke="#a97b3e" stroke-width="2.5"/>
+              <circle cx="45" cy="44" r="2.6" fill="#6f9a7f" opacity=".8"/>
+              <circle cx="77" cy="50" r="2" fill="#6f9a7f" opacity=".7"/>
+              <circle cx="70" cy="79" r="2.4" fill="#6f9a7f" opacity=".75"/>
+              <circle cx="47" cy="74" r="1.8" fill="#6f9a7f" opacity=".65"/>
+            </svg>
+          </div>
+          <div class="s-body">
+            <div class="s-name quest">the escapement gear</div>
+            <div class="s-desc">a small brass gear, its fine teeth flecked with green, cool from the shadow but sound and whole.</div>
+            <span class="s-tag">an errand</span>
+            <div class="s-found">found &mdash; <b>down the lane, toward the old well</b></div>
+          </div>
+        </div>
+
+        <!-- the pressed firefly-lantern -->
+        <div class="specimen">
+          <div class="mount">
+            <span class="corner c-tl"></span><span class="corner c-tr"></span>
+            <span class="corner c-bl"></span><span class="corner c-br"></span>
+            <svg width="118" height="118" viewBox="0 0 120 120" aria-hidden="true">
+              <defs>
+                <radialGradient id="lg" cx="50%" cy="42%" r="58%">
+                  <stop offset="0%" stop-color="#fbe6b6"/>
+                  <stop offset="70%" stop-color="#e7c07f"/>
+                  <stop offset="100%" stop-color="#d8ad63"/>
+                </radialGradient>
+              </defs>
+              <path d="M42 34 C 42 17, 78 17, 78 34" fill="none" stroke="#8a7a5a" stroke-width="3" stroke-linecap="round"/>
+              <rect x="48" y="29" width="24" height="10" rx="3" fill="#b79a63" stroke="#8a7a5a" stroke-width="1.5"/>
+              <rect x="40" y="39" width="40" height="55" rx="13" fill="url(#lg)" stroke="#a98a52" stroke-width="2"/>
+              <circle cx="60" cy="66" r="15" fill="#fff4d8" opacity=".7"/>
+              <circle cx="60" cy="66" r="6" fill="none" stroke="#fff3d6" stroke-width="1.4" opacity=".7"/>
+              <circle cx="60" cy="66" r="3.2" fill="#fff8e6"/>
+              <rect x="46" y="92" width="28" height="8" rx="3" fill="#b79a63" stroke="#8a7a5a" stroke-width="1.2"/>
+            </svg>
+          </div>
+          <div class="s-body">
+            <div class="s-name">a pressed firefly-lantern</div>
+            <div class="s-desc">its glass long cold and its small light remembered &mdash; kept for the comfort of it.</div>
+            <span class="s-tag">a keepsake</span>
+            <div class="s-found">found &mdash; <b>a summer you almost recall</b></div>
+          </div>
+        </div>
+      </div>
+
+      <span class="corner-note l">your satchel, worn crosswise</span>
+    </section>
+
+    <!-- RIGHT PAGE: the collection to come -->
+    <section class="pg right">
+      <div class="page-eyebrow">the collection</div>
+
+      <div class="grid2">
+        <div class="slot">
+          <svg class="leaf" width="80" height="80" viewBox="0 0 120 120" aria-hidden="true">
+            <path d="M60 22 C 32 42, 32 80, 60 100 C 88 80, 88 42, 60 22 Z" fill="none" stroke="#cfc7b2" stroke-width="2" stroke-dasharray="3 6"/>
+            <path d="M60 30 L60 94" stroke="#cfc7b2" stroke-width="1.5"/>
+          </svg>
+          <div class="slot-label">empty</div>
+          <div class="slot-note">room for what you&rsquo;ll find</div>
+        </div>
+        <div class="slot">
+          <svg class="leaf" width="80" height="80" viewBox="0 0 120 120" aria-hidden="true">
+            <circle cx="60" cy="60" r="34" fill="none" stroke="#cfc7b2" stroke-width="2" stroke-dasharray="3 6"/>
+            <circle cx="60" cy="60" r="8" fill="none" stroke="#cfc7b2" stroke-width="1.5"/>
+          </svg>
+          <div class="slot-label">empty</div>
+          <div class="slot-note">a place for a small thing</div>
+        </div>
+        <div class="slot">
+          <svg class="leaf" width="80" height="80" viewBox="0 0 120 120" aria-hidden="true">
+            <path d="M40 80 L60 34 L80 80 Z" fill="none" stroke="#cfc7b2" stroke-width="2" stroke-dasharray="3 6"/>
+          </svg>
+          <div class="slot-label">empty</div>
+          <div class="slot-note">not yet gathered</div>
+        </div>
+        <div class="slot">
+          <svg class="leaf" width="80" height="80" viewBox="0 0 120 120" aria-hidden="true">
+            <path d="M38 62 C 38 40, 82 40, 82 62 C 82 84, 38 84, 38 62 Z" fill="none" stroke="#cfc7b2" stroke-width="2" stroke-dasharray="3 6"/>
+          </svg>
+          <div class="slot-label">empty</div>
+          <div class="slot-note">for a curio, perhaps</div>
+        </div>
+      </div>
+
+      <p class="collection-note">keepsakes gather quietly as you wander &mdash;<br>every dream leaves you carrying a little more.</p>
+
+      <a class="back-link" href="index.html">&larr; close the satchel</a>
+    </section>
+  </div>
+</body>
+</html>

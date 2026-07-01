@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>daydream — Wick's satchel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f6f3ec; --paper:#fbf9f3; --ink:#3a4a44; --sage:#5a7a6a;
+    --sage-deep:#4a6a5a; --amber:#c8a06e; --line:#d8d2c2; --speaker:#6a8a7a;
+    --amber-soft:#e0bd8a; --amber-deep:#b07d45; --amber-ink:#9a6a37;
+    --serif:Georgia,"Iowan Old Style",Palatino,serif;
+    --hand:"Caveat","Segoe Print","Bradley Hand",cursive;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    font-family:var(--serif);color:var(--ink);overflow:hidden;
+    background:linear-gradient(180deg,#e9ede2 0%, #f2efe6 24%, var(--bg) 56%, #efe9dc 100%);
+    -webkit-font-smoothing:antialiased;
+  }
+  .grain,.vignette{position:fixed;inset:0;pointer-events:none;z-index:60}
+  .grain{opacity:.05;mix-blend-mode:multiply;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='150'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+  .vignette{z-index:2;background:radial-gradient(115% 105% at 50% 42%, rgba(90,122,106,0) 58%, rgba(74,106,90,.16) 100%)}
+
+  .stage{position:relative;width:100vw;height:100vh;overflow:hidden;display:flex;align-items:center;justify-content:center}
+
+  /* ---- the diorama, faint behind the open satchel ---- */
+  .bg-scene{position:absolute;inset:0;z-index:0;overflow:hidden}
+  .bg-scene img{position:absolute;left:50%;top:46%;transform:translate(-50%,-50%);
+    width:min(96vw,1260px);aspect-ratio:1024/384;object-fit:cover;
+    filter:blur(7px) saturate(1.02) brightness(1.04);opacity:.55;
+    -webkit-mask:radial-gradient(120% 130% at 50% 42%, #000 40%, transparent 88%);
+    mask:radial-gradient(120% 130% at 50% 42%, #000 40%, transparent 88%)}
+  .bg-veil{position:absolute;inset:0;z-index:1;
+    background:radial-gradient(120% 92% at 50% 42%, rgba(246,243,236,.52), rgba(244,240,231,.86))}
+
+  .corner{position:absolute;left:34px;top:26px;z-index:3;
+    font-family:var(--hand);font-size:26px;color:var(--sage-deep);opacity:.5}
+  .corner small{display:block;font-family:var(--serif);font-style:italic;font-size:12px;opacity:.8}
+
+  /* ---- the open satchel ---- */
+  .satchel-open{position:relative;z-index:3;width:min(82vw,780px);
+    background:radial-gradient(150% 130% at 28% 6%, #efe3c9, #e6d8b7 52%, #dbcaa4);
+    border-radius:28px;border:2px dashed rgba(150,120,80,.42);
+    box-shadow:0 46px 100px -44px rgba(74,106,90,.62), inset 0 3px 12px rgba(255,250,238,.55), inset 0 -6px 16px rgba(120,95,55,.14);
+    padding:26px 34px 34px}
+  /* the satchel flap, suggested */
+  .satchel-open::before{content:"";position:absolute;top:-1px;left:8%;right:8%;height:26px;
+    border-radius:0 0 40px 40px;background:linear-gradient(180deg,rgba(176,150,110,.22),transparent);
+    box-shadow:inset 0 3px 6px rgba(120,95,55,.2)}
+
+  .head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;
+    border-bottom:1.5px dashed rgba(150,120,80,.35);padding-bottom:14px}
+  .head h1{font-family:var(--hand);font-weight:700;font-size:40px;line-height:.9;
+    color:var(--sage-deep)}
+  .head h1 small{display:block;font-family:var(--serif);font-style:italic;font-weight:400;
+    font-size:14px;color:var(--sage);opacity:.85;margin-top:3px}
+  .tuck{display:flex;align-items:center;gap:9px;cursor:default;user-select:none}
+  .tuck .tl{font-family:var(--hand);font-size:19px;color:var(--sage);opacity:.75}
+  .tuck .x{width:34px;height:34px;border-radius:50%;background:rgba(251,249,243,.85);
+    box-shadow:0 8px 20px -12px rgba(74,106,90,.7);position:relative}
+  .tuck .x::before,.tuck .x::after{content:"";position:absolute;left:50%;top:50%;width:15px;height:2px;
+    background:var(--sage-deep);border-radius:2px}
+  .tuck .x::before{transform:translate(-50%,-50%) rotate(45deg)}
+  .tuck .x::after{transform:translate(-50%,-50%) rotate(-45deg)}
+
+  .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:22px}
+  .pk{position:relative;border-radius:16px;min-height:158px;padding:15px 11px 13px;
+    display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;
+    background:linear-gradient(180deg,rgba(184,158,112,.32),rgba(184,158,112,.12));
+    box-shadow:inset 0 4px 11px rgba(120,95,55,.26), inset 0 -2px 4px rgba(255,250,238,.55)}
+  .pk .art{height:54px;display:flex;align-items:center;justify-content:center}
+  .pk .nm{font-family:var(--serif);font-size:14px;font-weight:600;color:var(--ink);line-height:1.15}
+  .pk .fl{font-family:var(--serif);font-style:italic;font-size:11.5px;color:var(--sage-deep);opacity:.9;line-height:1.32}
+  .pk .vb{font-family:var(--serif);font-size:9px;letter-spacing:.13em;text-transform:uppercase;
+    color:var(--amber-deep);opacity:.82;margin-top:auto;padding-top:4px}
+  .pk .qtag{position:absolute;top:8px;right:8px;font-family:var(--serif);font-size:8px;
+    letter-spacing:.13em;text-transform:uppercase;color:var(--amber-ink);
+    background:rgba(255,242,216,.85);padding:2px 6px;border-radius:7px;
+    box-shadow:0 4px 10px -6px rgba(176,125,69,.6)}
+  .pk.empty{align-items:center;justify-content:center;
+    background:linear-gradient(180deg,rgba(184,158,112,.15),rgba(184,158,112,.05))}
+  .pk.empty .socket{width:48px;height:48px;border-radius:50%;border:1.5px dashed rgba(150,120,80,.42)}
+  .pk.empty .eh{font-family:var(--hand);font-size:16px;color:var(--sage);opacity:.55;margin-top:9px}
+
+  .foot{margin-top:20px;text-align:center;font-family:var(--hand);font-size:19px;
+    color:var(--sage);opacity:.72}
+  .foot .leaf{display:inline-block;width:9px;height:9px;margin:0 9px 2px;border-radius:0 60% 0 60%;
+    background:var(--amber);opacity:.75;transform:rotate(45deg);vertical-align:middle}
+
+  /* ---------- token illustrations (soft CSS watercolor) ---------- */
+  .gearbox{width:52px;height:52px;position:relative}
+  .i-gear{width:100%;height:100%;border-radius:50%;position:relative;
+    background:
+      radial-gradient(circle at 62% 64%, rgba(90,122,106,.55) 0 2.4px, transparent 3.2px),
+      radial-gradient(circle at 38% 55%, rgba(90,122,106,.42) 0 1.8px, transparent 2.6px),
+      radial-gradient(circle at 40% 35%, #f2d6a1, #d8ab6d 58%, #b98a4e);
+    box-shadow:inset 0 -4px 8px rgba(120,80,40,.3), inset 0 2px 6px rgba(255,246,222,.68)}
+  .i-gear::before{content:"";position:absolute;inset:-13%;border-radius:50%;
+    background:repeating-conic-gradient(#c8995c 0 11deg, transparent 11deg 30deg);
+    -webkit-mask:radial-gradient(circle, transparent 54%, #000 55%, #000 72%, transparent 73%);
+    mask:radial-gradient(circle, transparent 54%, #000 55%, #000 72%, transparent 73%)}
+  .i-gear::after{content:"";position:absolute;inset:34%;border-radius:50%;
+    background:radial-gradient(circle at 40% 35%,#fbf1da,#e7d3ac);
+    box-shadow:inset 0 0 0 2px rgba(120,80,40,.3)}
+
+  .i-candle{width:30px;height:46px;position:relative}
+  .i-candle .wax{position:absolute;bottom:0;left:3px;right:3px;height:32px;border-radius:8px 8px 6px 6px;
+    background:linear-gradient(180deg,#fdf6e6 0%,#f3e6c8 70%,#e8d6ad);
+    box-shadow:inset -4px 0 6px rgba(150,120,70,.28), inset 3px 0 5px rgba(255,252,244,.6)}
+  .i-candle .wick{position:absolute;top:11px;left:50%;transform:translateX(-50%);
+    width:2px;height:6px;background:#5a4a38;border-radius:1px}
+  .i-candle .flame{position:absolute;top:-4px;left:50%;transform:translateX(-50%);
+    width:13px;height:20px;border-radius:50% 50% 50% 50%/62% 62% 40% 40%;
+    background:radial-gradient(circle at 50% 72%,#fff0bf,#ecab52 66%,rgba(236,171,82,0));
+    box-shadow:0 0 14px 4px rgba(224,189,138,.6);animation:flick 3.2s ease-in-out infinite}
+  @keyframes flick{0%,100%{transform:translateX(-50%) scaleY(1);opacity:.95}
+    50%{transform:translateX(-51%) scaleY(1.08);opacity:1}}
+
+  .i-clover{width:40px;height:46px;position:relative}
+  .i-clover .lf{position:absolute;width:19px;height:19px;border-radius:50% 50% 50% 0;
+    background:radial-gradient(circle at 38% 34%,#9cb896,#5a7a6a 68%,#496a59);
+    box-shadow:inset 0 0 4px rgba(40,64,52,.3)}
+  .i-clover .lf.a{top:0;left:11px;transform:rotate(-45deg)}
+  .i-clover .lf.b{top:8px;left:1px;transform:rotate(-135deg)}
+  .i-clover .lf.c{top:8px;left:20px;transform:rotate(45deg)}
+  .i-clover .lf.d{top:16px;left:11px;transform:rotate(135deg)}
+  .i-clover .stem{position:absolute;bottom:0;left:50%;width:2px;height:12px;
+    background:#5a7a6a;transform:translateX(-50%);border-radius:1px}
+
+  .i-pebble{width:48px;height:34px;position:relative;
+    border-radius:50% 50% 48% 52%/60% 62% 42% 42%;
+    background:radial-gradient(circle at 36% 30%,#ccd2cb,#9aa7a3 60%,#75837d);
+    box-shadow:inset 0 -5px 8px rgba(58,74,68,.4), inset 0 4px 6px rgba(255,255,255,.55)}
+  .i-pebble::after{content:"";position:absolute;top:22%;left:26%;width:34%;height:22%;
+    border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.7),transparent 70%)}
+
+  @media (max-width:1120px){ .grid{grid-template-columns:repeat(3,1fr)} }
+</style>
+</head>
+<body>
+
+  <div class="stage">
+
+    <!-- faint diorama behind -->
+    <div class="bg-scene"><img src="../assets/scenes/clock.png" alt=""></div>
+    <div class="bg-veil"></div>
+
+    <div class="corner">The Stopped Clock<small>you set your satchel down and look inside</small></div>
+
+    <!-- ============ open satchel ============ -->
+    <div class="satchel-open">
+      <div class="head">
+        <h1>Wick&rsquo;s satchel<small>everything you carry — lift a thing to give it, or use it on the world</small></h1>
+        <div class="tuck"><span class="tl">tuck it away</span><span class="x"></span></div>
+      </div>
+
+      <div class="grid">
+
+        <!-- the escapement gear (quest) -->
+        <div class="pk">
+          <span class="qtag">quest</span>
+          <div class="art"><div class="gearbox"><div class="i-gear"></div></div></div>
+          <div class="nm">the escapement gear</div>
+          <div class="fl">a small brass gear, its fine teeth flecked with green</div>
+          <div class="vb">examine · drop · give · use</div>
+        </div>
+
+        <!-- a stub of beeswax candle -->
+        <div class="pk">
+          <div class="art"><div class="i-candle"><div class="flame"></div><div class="wick"></div><div class="wax"></div></div></div>
+          <div class="nm">a stub of beeswax candle</div>
+          <div class="fl">kept for the small warm light of it</div>
+          <div class="vb">examine · drop · give</div>
+        </div>
+
+        <!-- a pressed clover -->
+        <div class="pk">
+          <div class="art"><div class="i-clover"><div class="lf a"></div><div class="lf b"></div><div class="lf c"></div><div class="lf d"></div><div class="stem"></div></div></div>
+          <div class="nm">a pressed clover</div>
+          <div class="fl">flattened in a book once, and forgotten happily</div>
+          <div class="vb">examine · drop · give</div>
+        </div>
+
+        <!-- a river pebble -->
+        <div class="pk">
+          <div class="art"><div class="i-pebble"></div></div>
+          <div class="nm">a smooth river pebble</div>
+          <div class="fl">river-worn, the soft grey of a dove</div>
+          <div class="vb">examine · drop · give</div>
+        </div>
+
+        <!-- room to gather more -->
+        <div class="pk empty"><div class="socket"></div><div class="eh">room to gather more</div></div>
+        <div class="pk empty"><div class="socket"></div></div>
+        <div class="pk empty"><div class="socket"></div></div>
+        <div class="pk empty"><div class="socket"></div></div>
+
+      </div>
+
+      <div class="foot">a satchel worn crosswise, and just enough room<span class="leaf"></span>for the things a dusk brings you</div>
+    </div>
+
+  </div><!-- /stage -->
+
+  <div class="vignette"></div>
+  <div class="grain"></div>
+
+</body>
+</html>

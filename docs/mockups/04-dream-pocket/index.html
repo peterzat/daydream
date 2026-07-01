@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>daydream — The Dream Pocket (Scene)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f6f3ec; --paper:#fbf9f3; --ink:#3a4a44; --sage:#5a7a6a; --sage-deep:#4a6a5a;
+  --amber:#c8a06e; --line:#d8d2c2; --speaker:#6a8a7a;
+  --paper-2:#f3eee2; --amber-soft:#eadcc3; --amber-tint:#f4ead9; --sage-tint:#e7ede7;
+  --serif:Georgia,"Iowan Old Style",Palatino,serif;
+  --sans:system-ui,"Segoe UI",Roboto,sans-serif;
+  --hand:"Caveat","Segoe Print",cursive;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;height:100%;}
+body{
+  min-height:100vh; display:grid; place-items:center;
+  background:#e6dfce; font-family:var(--serif); color:var(--ink);
+  -webkit-font-smoothing:antialiased;
+}
+
+/* ---------- stage: the 760x1000 comp surface ---------- */
+.stage{
+  position:relative; width:760px; height:1000px; overflow:hidden;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px;
+  background:
+    radial-gradient(90% 55% at 50% 6%, rgba(200,160,110,.16), rgba(200,160,110,0) 60%),
+    radial-gradient(120% 90% at 50% 120%, rgba(74,106,90,.10), rgba(74,106,90,0) 55%),
+    linear-gradient(160deg,#f4eee0 0%, #efe8d8 45%, #e8e0cf 100%);
+}
+.stage::before{ /* paper grain */
+  content:""; position:absolute; inset:0; pointer-events:none; opacity:.05; mix-blend-mode:multiply;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ---------- phone frame ---------- */
+.phone{
+  position:relative; width:410px; height:880px; border-radius:46px; padding:12px;
+  background:linear-gradient(155deg,#f0eadc 0%, #e7dfce 55%, #ded4c0 100%);
+  box-shadow:
+    0 34px 74px -26px rgba(74,106,90,.48),
+    0 12px 30px -14px rgba(90,78,58,.30),
+    inset 0 1px 0 rgba(255,255,255,.6),
+    inset 0 0 0 1px rgba(150,140,118,.35);
+}
+.phone::after{ /* soft speaker notch */
+  content:""; position:absolute; top:20px; left:50%; transform:translateX(-50%);
+  width:74px; height:6px; border-radius:6px; background:rgba(120,110,90,.22);
+}
+.screen{
+  position:relative; width:100%; height:100%; border-radius:35px; overflow:hidden; background:var(--paper);
+  box-shadow:inset 0 0 0 1px rgba(150,140,118,.28), inset 0 2px 8px rgba(120,110,90,.10);
+}
+.scroll{ position:absolute; inset:0; overflow-y:auto; overflow-x:hidden; padding-bottom:300px; }
+.scroll::-webkit-scrollbar{width:0;}
+
+/* ---------- scene banner ---------- */
+.banner{ position:relative; height:152px; overflow:hidden; }
+.banner img{ width:100%; height:100%; object-fit:cover; object-position:center 40%; display:block; }
+.banner::after{ /* top scrim for status + gentle base blend into paper */
+  content:""; position:absolute; inset:0; pointer-events:none;
+  background:
+    linear-gradient(180deg, rgba(58,74,68,.44) 0%, rgba(58,74,68,0) 26%),
+    linear-gradient(0deg, rgba(251,249,243,.9) 0%, rgba(251,249,243,0) 30%);
+}
+
+/* faux status bar, overlaid on the scene */
+.status{
+  position:absolute; top:0; left:0; right:0; height:30px; z-index:3;
+  display:flex; align-items:center; justify-content:space-between;
+  padding:9px 20px 0; color:#f7f3ea;
+  font-family:var(--sans); font-size:12.5px; letter-spacing:.2px;
+  text-shadow:0 1px 2px rgba(40,52,46,.4);
+}
+.status .glyphs{display:flex; align-items:center; gap:7px; opacity:.92;}
+.status svg{display:block;}
+
+/* small painted inline icons (match the tab-bar style; no emoji => no tofu) */
+.ico{ width:15px; height:15px; display:block; flex:none; }
+
+/* navigation: the ways out */
+.ways{ position:absolute; top:38px; right:13px; z-index:3; display:flex; gap:7px; }
+.way{
+  display:inline-flex; align-items:center; gap:4px;
+  background:rgba(251,249,243,.86); color:var(--sage-deep);
+  border:1px solid rgba(90,122,106,.32); border-radius:999px;
+  padding:5px 11px 5px 9px; font-family:var(--sans); font-size:12px; font-weight:600;
+  box-shadow:0 4px 12px -6px rgba(74,106,90,.5);
+}
+.way .ar{ color:var(--amber); font-size:13px; line-height:1; }
+
+/* navigation: tap the scene */
+.look-hint{
+  position:absolute; bottom:12px; right:13px; z-index:3;
+  display:inline-flex; align-items:center; gap:5px;
+  background:rgba(58,74,68,.32); color:#f6f2e9; border-radius:999px;
+  padding:4px 10px 4px 8px; font-family:var(--sans); font-size:10.5px; letter-spacing:.2px;
+}
+.look-hint .ico{ width:12px; height:12px; }
+
+/* room title tag (rests in the lower-left of the scene) */
+.room-tag{
+  position:absolute; left:13px; bottom:11px; z-index:4;
+  background:var(--paper); border:1px solid var(--line); border-radius:11px;
+  padding:6px 13px 7px; transform:rotate(-1.4deg);
+  box-shadow:0 10px 20px -12px rgba(90,80,60,.55), inset 0 1px 0 rgba(255,255,255,.7);
+}
+.room-tag .eyebrow{ font-family:var(--hand); font-size:13px; color:var(--sage); line-height:1; margin-bottom:1px; }
+.room-tag h1{ margin:0; font-family:var(--serif); font-size:18px; font-weight:600; color:var(--ink); letter-spacing:.1px; }
+.room-tag::before{
+  content:""; position:absolute; top:9px; right:-5px; width:8px; height:8px; border-radius:50%;
+  background:var(--amber-soft); box-shadow:inset 0 0 0 1.5px rgba(150,120,80,.4);
+}
+
+/* ---------- body ---------- */
+.body{ padding:11px 15px 0; }
+
+/* section label + inline mechanism hint */
+.sec{ display:flex; align-items:baseline; justify-content:space-between; margin:2px 3px 9px; }
+.sec .label{ font-family:var(--hand); font-size:19px; color:var(--sage-deep); line-height:1; }
+.sec .mech{ font-family:var(--sans); font-size:10.5px; color:var(--sage); letter-spacing:.2px; opacity:.9; }
+
+/* object tiles */
+.tile{
+  display:flex; align-items:center; gap:12px;
+  background:var(--paper); border:1px solid var(--line); border-radius:15px;
+  padding:11px 12px; margin-bottom:9px;
+  box-shadow:0 9px 20px -15px rgba(90,122,106,.4);
+}
+.tile .thumb{
+  width:42px; height:42px; flex:none; border-radius:12px; display:grid; place-items:center; color:var(--sage-deep);
+  background:linear-gradient(160deg,var(--sage-tint),#eef1ea); box-shadow:inset 0 0 0 1px rgba(90,122,106,.16);
+}
+.tile.obj .thumb{ background:linear-gradient(160deg,var(--amber-tint),#f6efe1); color:#a9824f; box-shadow:inset 0 0 0 1px rgba(200,160,110,.22); }
+.tile .thumb svg{ width:25px; height:25px; }
+.tile .meta{ flex:1; min-width:0; }
+.tile .name{ font-size:14.5px; color:var(--ink); font-weight:600; }
+.tile .sub{ font-family:var(--sans); font-size:11px; color:var(--sage); margin-top:2px; }
+.tile .chev{ color:var(--line); font-size:20px; padding-right:2px; }
+
+/* ACTIVE (tapped) tile — the glass case, expanded (the frozen moment) */
+.tile.active{
+  display:block; padding:0; border-color:rgba(200,160,110,.55);
+  background:linear-gradient(180deg,#fdf7ec, var(--paper));
+  box-shadow:0 16px 30px -16px rgba(200,160,110,.55), 0 0 0 3px rgba(200,160,110,.16);
+}
+.tile.active .head{ display:flex; align-items:center; gap:12px; padding:11px 12px 9px; }
+.tile.active .name{ display:flex; align-items:center; gap:7px; }
+.lock{ display:inline-flex; align-items:center; }
+.lock .ico{ width:13px; height:13px; color:#a9824f; }
+.chips{ display:flex; gap:8px; padding:0 12px 12px 66px; flex-wrap:wrap; }
+.chip{
+  display:inline-flex; align-items:center; gap:6px;
+  font-family:var(--sans); font-size:12.5px; font-weight:600; color:var(--sage-deep);
+  background:var(--paper); border:1px solid rgba(90,122,106,.4); border-radius:999px;
+  padding:7px 13px 7px 11px; box-shadow:0 4px 10px -7px rgba(74,106,90,.6);
+}
+.chip .ico{ width:14px; height:14px; }
+.chip.warm{ color:#9a7238; border-color:rgba(200,160,110,.6); background:linear-gradient(180deg,#fbf1e0,#f7ecd9); }
+.locked-whisper{
+  margin:-2px 12px 12px 66px; padding:8px 11px;
+  background:rgba(90,122,106,.06); border-left:2px solid var(--amber-soft); border-radius:0 9px 9px 0;
+  font-style:italic; font-size:12.5px; color:var(--sage-deep); line-height:1.45;
+}
+.locked-whisper .lk{ display:inline-flex; vertical-align:-2px; margin-right:5px; }
+.locked-whisper .lk .ico{ width:13px; height:13px; }
+
+/* story card — the narration beat (swipeable) */
+.story{
+  position:relative; background:var(--paper); border:1px solid var(--line); border-radius:16px;
+  padding:12px 15px 14px; margin-top:14px; box-shadow:0 12px 26px -16px rgba(90,122,106,.4);
+}
+.story::before{
+  content:""; position:absolute; left:0; top:13px; bottom:13px; width:3px; border-radius:3px;
+  background:linear-gradient(var(--amber-soft),var(--sage-tint));
+}
+.story .eyebrow{ font-family:var(--hand); font-size:16px; color:var(--sage); line-height:1; margin:0 0 5px 8px; }
+.story .beat{ font-size:13.5px; line-height:1.5; color:var(--ink); margin:0; padding-left:8px; padding-right:14px; }
+.story .beat .lede{ font-variant:small-caps; letter-spacing:.4px; color:var(--sage-deep); }
+.story .who{
+  display:flex; align-items:center; gap:8px; margin-top:10px; padding-left:8px;
+  font-family:var(--sans); font-size:11.5px; color:var(--sage-deep);
+}
+.story .who .dot{
+  width:15px; height:15px; border-radius:50%; flex:none;
+  background:radial-gradient(circle at 35% 30%, #dcb98a, var(--amber)); box-shadow:0 0 0 2px rgba(200,160,110,.22);
+}
+.story .who b{ color:var(--ink); font-weight:700; }
+.story .who .mood{ color:var(--sage); }
+.dots{ position:absolute; right:14px; bottom:12px; display:flex; gap:5px; }
+.dots i{ width:6px; height:6px; border-radius:50%; background:var(--line); }
+.dots i.on{ background:var(--amber); box-shadow:0 0 0 2px rgba(200,160,110,.2); }
+
+/* ---------- People presence sheet (peeking above the tab bar) ---------- */
+.sheet{
+  position:absolute; left:0; right:0; bottom:72px; height:228px; z-index:6;
+  background:linear-gradient(180deg,#fdfbf5 0%, var(--paper) 100%);
+  border-top:1px solid var(--line); border-radius:26px 26px 0 0;
+  box-shadow:0 -18px 40px -20px rgba(74,106,90,.5), 0 -2px 0 rgba(255,255,255,.7) inset;
+  padding:8px 16px 10px;
+}
+.handle{ width:42px; height:5px; border-radius:5px; background:var(--line); margin:0 auto 7px; }
+.sheet-head{ display:flex; align-items:baseline; justify-content:space-between; margin:0 2px 5px; }
+.sheet-head .t{ font-family:var(--hand); font-size:21px; color:var(--sage-deep); line-height:1; }
+.sheet-head .n{ font-family:var(--sans); font-size:10.5px; font-weight:600; color:var(--sage); background:var(--sage-tint); border-radius:999px; padding:3px 9px; }
+.person{ display:flex; align-items:center; gap:11px; padding:5px 2px; }
+.person + .person{ border-top:1px solid rgba(216,210,194,.6); }
+.av{ width:32px; height:32px; flex:none; border-radius:50%; display:grid; place-items:center; font-family:var(--serif); font-size:15px; color:#fbf9f3; position:relative; }
+.av.you{ background:radial-gradient(circle at 34% 30%, #dab88a, var(--amber)); box-shadow:0 0 0 2px rgba(200,160,110,.25); }
+.av.her{ background:radial-gradient(circle at 34% 30%, #7fa08f, var(--sage)); box-shadow:0 0 0 2px rgba(90,122,106,.22); }
+.av.ghost{ background:transparent; border:1.5px dashed rgba(90,122,106,.5); color:var(--sage); font-size:14px; }
+.av .here{ position:absolute; right:-1px; bottom:-1px; width:10px; height:10px; border-radius:50%; background:#8fb59a; box-shadow:0 0 0 2.5px var(--paper); }
+.person .pmeta{ flex:1; min-width:0; }
+.person .pname{ font-size:14px; color:var(--ink); }
+.person .pname b{ font-weight:700; }
+.person .pname .yc{ font-family:var(--sans); font-size:10px; color:var(--amber); font-weight:700; margin-left:5px; letter-spacing:.5px; }
+.person .pdesc{ font-family:var(--sans); font-size:11px; color:var(--sage); margin-top:1px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.person.faint .pname, .person.faint .pdesc{ font-style:italic; color:var(--sage); opacity:.82; }
+.pwhere{
+  display:inline-flex; align-items:center; gap:4px; flex:none;
+  font-family:var(--sans); font-size:10.5px; font-weight:600; color:var(--sage-deep);
+  background:var(--paper); border:1px solid var(--line); border-radius:999px; padding:4px 9px;
+}
+.pwhere.up{ color:#9a7238; border-color:rgba(200,160,110,.5); background:var(--amber-tint); }
+.pwhere .ar{ color:var(--amber); }
+
+/* quest whisper (the pull onward) */
+.qwhisper{ margin-top:8px; padding-top:9px; border-top:1px solid var(--line); display:flex; gap:8px; align-items:flex-start; }
+.qwhisper .star{ color:var(--amber); flex:none; display:flex; margin-top:1px; }
+.qwhisper .star .ico{ width:15px; height:15px; }
+.qwhisper p{ margin:0; font-style:italic; font-size:12.5px; line-height:1.45; color:var(--sage-deep); }
+
+/* ---------- bottom tab bar ---------- */
+.tabs{
+  position:absolute; left:0; right:0; bottom:0; height:72px; z-index:7; display:flex; align-items:stretch;
+  background:linear-gradient(180deg,#fdfbf6,#f6f1e6); border-top:1px solid var(--line);
+  box-shadow:0 -6px 18px -14px rgba(74,106,90,.4); padding:8px 12px;
+}
+.tab{ flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; color:var(--sage); border-radius:16px; position:relative; }
+.tab svg{ width:25px; height:25px; }
+.tab span{ font-family:var(--sans); font-size:11px; font-weight:600; letter-spacing:.2px; }
+.tab.active{ color:var(--sage-deep); }
+.tab.active .pill{
+  position:absolute; inset:2px 6px; border-radius:15px; z-index:-1;
+  background:linear-gradient(180deg,#f3e8d5,#efe1cc);
+  box-shadow:inset 0 0 0 1px rgba(200,160,110,.4), 0 6px 14px -9px rgba(200,160,110,.7);
+}
+.tab.active svg{ color:#a9824f; }
+.tab.active span{ color:#8a6a3c; }
+
+/* ---------- comp caption ---------- */
+.caption{ text-align:center; color:var(--sage-deep); }
+.caption .wm{ font-family:var(--hand); font-size:27px; line-height:1; color:var(--sage-deep); }
+.caption .tg{ font-family:var(--serif); font-style:italic; font-size:13px; color:var(--sage); margin-top:3px; }
+.caption .tg b{ font-style:normal; font-weight:600; color:var(--sage-deep); letter-spacing:.3px; }
+</style>
+</head>
+<body>
+<div class="stage">
+
+  <div class="phone">
+    <div class="screen">
+      <div class="scroll">
+
+        <!-- ===== scene banner ===== -->
+        <div class="banner">
+          <img src="../assets/scenes/clock.png" alt="a stilled brass clock on a dark-wood lectern, sage and cream washes behind">
+
+          <!-- faux status bar (all painted SVG glyphs, no emoji) -->
+          <div class="status">
+            <span>8:47</span>
+            <span class="glyphs">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="#f7f3ea"><path d="M15 3a9 9 0 1 0 6 15A7 7 0 0 1 15 3z"/></svg>
+              <svg width="15" height="13" viewBox="0 0 24 24" fill="none" stroke="#f7f3ea" stroke-width="2" stroke-linecap="round"><path d="M4 15a11 11 0 0 1 16 0M7.5 18a6.5 6.5 0 0 1 9 0"/><circle cx="12" cy="20.5" r="1" fill="#f7f3ea" stroke="none"/></svg>
+              <svg width="20" height="13" viewBox="0 0 30 16" fill="none" stroke="#f7f3ea" stroke-width="1.6"><rect x="1" y="3" width="24" height="10" rx="3"/><rect x="3" y="5" width="16" height="6" rx="1.6" fill="#f7f3ea" stroke="none"/><path d="M27 6v4" stroke-linecap="round"/></svg>
+            </span>
+          </div>
+
+          <!-- navigation: the ways out -->
+          <div class="ways">
+            <span class="way"><span class="ar">&uarr;</span> up</span>
+            <span class="way"><span class="ar">&rarr;</span> east</span>
+          </div>
+
+          <!-- navigation: tap the scene -->
+          <span class="look-hint">
+            <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M2.8 12S6.5 6.5 12 6.5 21.2 12 21.2 12 17.5 17.5 12 17.5 2.8 12 2.8 12z"/><circle cx="12" cy="12" r="2.2"/></svg>
+            tap to look
+          </span>
+
+          <!-- room title -->
+          <div class="room-tag">
+            <div class="eyebrow">you drift into</div>
+            <h1>The Stopped Clock</h1>
+          </div>
+        </div>
+
+        <!-- ===== body ===== -->
+        <div class="body">
+
+          <!-- things in the room -->
+          <div class="sec">
+            <span class="label">around you</span>
+            <span class="mech">tap to act &middot; hold to carry</span>
+          </div>
+
+          <!-- ledger tile (resting) -->
+          <div class="tile obj">
+            <div class="thumb">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7c-2-1.4-4.6-1.6-7.2-1v11.4c2.6-.6 5.2-.4 7.2 1 2-1.4 4.6-1.6 7.2-1V6c-2.6-.6-5.2-.4-7.2 1z"/><path d="M12 7v11.4"/><path d="M7 9.5h2.4M7 12h2.4"/></svg>
+            </div>
+            <div class="meta">
+              <div class="name">the worn repair ledger</div>
+              <div class="sub">read &middot; examine</div>
+            </div>
+            <span class="chev">&rsaquo;</span>
+          </div>
+
+          <!-- glass case tile — ACTIVE / TAPPED (the frozen moment) -->
+          <div class="tile obj active">
+            <div class="head">
+              <div class="thumb">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="5.5" y="3.5" width="13" height="17" rx="2"/><path d="M12 3.5v17"/><path d="M8.4 8.5l1.6 3.2" opacity=".7"/><circle cx="10.4" cy="12.4" r=".7" fill="currentColor" stroke="none"/><circle cx="13.6" cy="12.4" r=".7" fill="currentColor" stroke="none"/></svg>
+              </div>
+              <div class="meta">
+                <div class="name">the tall glass-fronted clock case
+                  <span class="lock" title="locked"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="10.5" width="14" height="9.5" rx="2.4"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5"/><path d="M12 14v2.4"/></svg></span>
+                </div>
+                <div class="sub">tapped &middot; choose what to do</div>
+              </div>
+            </div>
+            <div class="chips">
+              <span class="chip">
+                <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M2.8 12S6.5 6.5 12 6.5 21.2 12 21.2 12 17.5 17.5 12 17.5 2.8 12 2.8 12z"/><circle cx="12" cy="12" r="2.3"/></svg>
+                Look
+              </span>
+              <span class="chip">
+                <svg class="ico" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3C12.7 9 15 11.3 21 12 15 12.7 12.7 15 12 21 11.3 15 9 12.7 3 12 9 11.3 11.3 9 12 3Z"/></svg>
+                Examine
+              </span>
+              <span class="chip warm">
+                <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="10.5" width="14" height="9.5" rx="2.4"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5"/><path d="M12 14v2.4"/></svg>
+                Open
+              </span>
+            </div>
+            <div class="locked-whisper">
+              <span class="lk"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="10.5" width="14" height="9.5" rx="2.4"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5"/><path d="M12 14v2.4"/></svg></span>A small brass lock holds the little door fast.
+            </div>
+          </div>
+
+          <!-- story card: the narration beat (swipeable) -->
+          <div class="story">
+            <div class="eyebrow">the dream murmurs&#8230;</div>
+            <p class="beat"><span class="lede">The base</span> of a great stopped clock, its brass face gone still and patient, dust turning slow in a shaft of late gold; a tall glass-fronted case stands against one wall, and a worn ledger waits open on a lectern.</p>
+            <div class="who"><span class="dot"></span>you are <b>Wick</b> &middot; <span class="mood">curious</span></div>
+            <div class="dots"><i class="on"></i><i></i></div>
+          </div>
+
+        </div>
+      </div><!-- /scroll -->
+
+      <!-- ===== People presence sheet (peeking) ===== -->
+      <div class="sheet">
+        <div class="handle"></div>
+        <div class="sheet-head">
+          <span class="t">who&#8217;s dreaming here</span>
+          <span class="n">3 NEAR</span>
+        </div>
+
+        <div class="person">
+          <div class="av you">W<span class="here"></span></div>
+          <div class="pmeta">
+            <div class="pname"><b>Wick</b><span class="yc">YOU</span></div>
+            <div class="pdesc">a traveler in a dusk-colored coat &middot; curious</div>
+          </div>
+          <span class="pwhere">here</span>
+        </div>
+
+        <div class="person">
+          <div class="av her">T</div>
+          <div class="pmeta">
+            <div class="pname"><b>Tace</b></div>
+            <div class="pdesc">the wistful clockmaker &middot; waits for the gear</div>
+          </div>
+          <span class="pwhere up"><span class="ar">&uarr;</span> up the stairs</span>
+        </div>
+
+        <div class="person faint">
+          <div class="av ghost">&middot;</div>
+          <div class="pmeta">
+            <div class="pname">a stranger</div>
+            <div class="pdesc">drifts somewhere in the square</div>
+          </div>
+          <span class="pwhere"><span class="ar">&rarr;</span> east</span>
+        </div>
+
+        <div class="qwhisper">
+          <span class="star"><svg class="ico" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3C12.7 9 15 11.3 21 12 15 12.7 12.7 15 12 21 11.3 15 9 12.7 3 12 9 11.3 11.3 9 12 3Z"/></svg></span>
+          <p>The clock has stood still since the first frost. Carry the escapement gear home to Tace.</p>
+        </div>
+      </div>
+
+      <!-- ===== bottom tab bar (People active) ===== -->
+      <nav class="tabs">
+        <div class="tab">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="14" rx="3.5"/><circle cx="9" cy="10.5" r="1.9"/><path d="M4.5 17c2.2-3.2 4.3-3.2 6.2 0 1.6-2.4 3.2-2.4 4.8-.4"/></svg>
+          <span>Scene</span>
+        </div>
+        <div class="tab">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 8.5C8 5.8 9.8 4.5 12 4.5s4 1.3 4 4"/><rect x="4.7" y="8.5" width="14.6" height="11" rx="3.4"/><path d="M4.7 13h14.6"/><path d="M10.4 8.5v-1.3M13.6 8.5v-1.3"/></svg>
+          <span>Pack</span>
+        </div>
+        <div class="tab active">
+          <span class="pill"></span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="9" r="2.5"/><circle cx="15.6" cy="9.6" r="2.1"/><path d="M4.5 19c0-3 2-5 4.5-5s4.5 2 4.5 5"/><path d="M13.6 19c.2-2.7 1.9-4.4 3.7-4.4 1.7 0 3.2 1.5 3.4 3.7"/></svg>
+          <span>People</span>
+        </div>
+        <div class="tab">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6.6 9.2 5l5.6 2 5.2-1.6v11.9L14.8 19l-5.6-2L4 18.5z"/><path d="M9.2 5v12M14.8 7v12" opacity=".8"/></svg>
+          <span>Map</span>
+        </div>
+      </nav>
+
+    </div><!-- /screen -->
+  </div><!-- /phone -->
+
+  <div class="caption">
+    <div class="wm">the dream pocket</div>
+    <div class="tg"><b>direction 04</b> &middot; a cozy world you slip into your pocket</div>
+  </div>
+
+</div><!-- /stage -->
+</body>
+</html>
