@@ -107,7 +107,7 @@ When `DAYDREAM_TARGET != local`, `tier_medium` and `tier_long` tests **skip clea
 
 Correctness is binary. Drift is statistical-ish (perceptual hash, JSON schema, latency window, pairwise-distinct openers across a corpus). Human-eval is subjective-but-logged. Each tier may run any combination of the three.
 
-This project tilts deliberately toward **proxy** verification (a measurable number that stands in for the goal) over **critic** verification (another LLM reading the output). Proxies catch what the generator can't see — the voice-bench tic regression, the fp8-KV format-adherence breakage, the aesthetic dHash drift. Human-eval and the (now-shipped, opt-in) Claude-vision gate (`daydream/testing/vision_gate.py`, `tests/drift/test_image_claude_vision.py`) are critics; they exist as supplements, not substitutes, and are explicitly cost-gated (the vision gate skips unless `DAYDREAM_CLAUDE_VISION_GATE`). The batched-review harness `bin/game review` rolls the proxies' renders + the voice samples + the one browser-checklist glance into a single offline `index.html`, so a qualitative review is one glance instead of a live reset per check.
+This project tilts deliberately toward **proxy** verification (a measurable number that stands in for the goal) over **critic** verification (a model reading the output). Proxies catch what the generator can't see — the voice-bench tic regression, the fp8-KV format-adherence breakage, the aesthetic dHash drift. The critics are supplements, not substitutes, and NONE of them use a cloud API: the design-time aesthetic critic is the Claude Code agent itself (after `bin/game review` renders the anchors, the agent Reads each PNG and grades it against `WHIMSY.md`, no key), and the human critic is `qpeek` (`bin/game test human`) or an in-game look. The batched-review harness `bin/game review` rolls the proxies' renders + the voice samples + the one browser-checklist glance into a single offline `index.html`, so a qualitative review is one glance instead of a live reset per check.
 
 ## Tier contracts in detail
 
@@ -171,7 +171,6 @@ A drift probe runs the real code path, measures something, and compares to a **g
 | `tests/drift/test_llm_json_adherence.py` | JSON schema keys + latency window per prompt.                             | `tests/drift/prompts/*.json` (5 probes)    |
 | `tests/drift/test_parser_grounding.py`   | Real Qwen grounds free text to the right closed verb + in-scope dobj id.   | 6-case command corpus (in-file)            |
 | `tests/drift/test_image_perceptual.py`   | dHash + resolution + (model, lora, workflow_hash). Hamming tolerance.     | `tests/drift/aesthetics/*.json` (4 probes; +`forge`) |
-| `tests/drift/test_image_claude_vision.py` (opt-in) | Each anchor scored against the WHIMSY rubric by Opus vision; pass/fail threshold. Skips unless `DAYDREAM_CLAUDE_VISION_GATE`. | `tests/drift/aesthetics/*.json` |
 | `tests/drift/test_arbiter_smoke.py`      | 5 alternating LLM + image calls; per-call + aggregate budgets.            | reuses prompts/                            |
 | `tests/drift/test_drift_constants.py` (`tier_short`) | WHIMSY_PROMPT_SUFFIX vs WHIMSY.md; vllm version; GPU fraction; model id. | CLAUDE.md + bin/ scripts        |
 | `tests/test_voice_baseline.py` (`tier_short`) | Pairwise-distinct narrate openers; glob-derived params classified by a `baseline-class` marker (tracked / regression-demo / documented-failure). | `docs/pretty/voice-samples/*.md` |
@@ -286,7 +285,7 @@ So `bin/game test long` with both engines down still runs ~648 tests (short + me
 Tracked in `BACKLOG.md`. Worth naming the shape:
 
 - Per-call LLM latency windows tighten as we collect multi-run trends (`latency-regression-corpus`).
-- Claude-vision aesthetic gate (Opus 4.7 vision rates each rendered image; asserts score ≥ threshold; cost-gated) (`claude-vision-quality-gate`).
+- Aesthetic critic: DONE, and agent-driven — the Claude Code agent Reads each render and grades it against `WHIMSY.md`, no API key. An earlier cost-gated litellm version was removed 2026-07-01 (`claude-vision-quality-gate`).
 - Staging / prod_verify probes when those environments exist (`staging-probes`, `prod-verify-probes`).
 - CI pipeline when a second contributor lands (`ci-pipeline`).
 - mypy gate once the typing effort is worth it (`mypy-gate`).
