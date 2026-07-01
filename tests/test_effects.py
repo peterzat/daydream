@@ -215,6 +215,35 @@ def test_spawn_object_creates_clickable_thing():
     assert after - before == {"a sheaf of papers"}
 
 
+def test_spawn_object_verbs_passthrough_grants_per_object_verbs():
+    """An optional `verbs` list on spawn_object lands in properties.verbs, so a
+    spawned object gains affordances beyond its prototype (a given key becomes
+    use-able)."""
+    from daydream import objects
+    applied = effects.dispatch_effects(
+        [{"kind": "spawn_object", "name": "case key", "seed": "a small warm key",
+          "aliases": ["key"], "verbs": ["use"], "generated_by": "give:t-rook"}],
+        actor_id="t-wren", room_id="r-meadow", world_id="w-bunny",
+    )
+    assert applied[0].event is not None and applied[0].event.kind == "object_spawned"
+    key = next(o for o in objects.contents("r-meadow", "thing") if o.name == "case key")
+    # Prototype defaults (examine/take/drop) unioned with the per-object `use`.
+    assert "use" in objects.verbs_for(key)
+
+
+def test_spawn_object_ignores_malformed_verbs():
+    """A non-list / all-empty `verbs` is ignored (no properties.verbs written),
+    so a malformed effect never corrupts the spawned object."""
+    from daydream import objects
+    effects.dispatch_effects(
+        [{"kind": "spawn_object", "name": "plain stone", "seed": "a stone",
+          "verbs": "notalist"}],
+        actor_id="t-wren", room_id="r-meadow", world_id="w-bunny",
+    )
+    stone = next(o for o in objects.contents("r-meadow", "thing") if o.name == "plain stone")
+    assert "verbs" not in stone.properties
+
+
 def test_move_object_reparents_into_inventory():
     from daydream import objects
     applied = effects.dispatch_effects(

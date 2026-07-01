@@ -153,6 +153,11 @@ def _fast_path(actor_id: str, text: str, room: rooms.Room | None) -> Parse | Non
         # rook" -> talk); hand those to the LLM rather than claim them here.
         if rest and spec.free_text:
             return None
+        # Two-object verbs (give/use) need a dobj AND an iobj; the single-object
+        # resolution below can't express that. Defer to the LLM, which grounds
+        # both ids (a deterministic two-target fast-path lands in a later step).
+        if spec.needs_iobj:
+            return None
         if not spec.needs_dobj:
             return Parse(head, args=rest)
         if not rest:

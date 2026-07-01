@@ -50,15 +50,24 @@ def _install_dialogue(name: str) -> None:
 
 def test_closed_verb_registry_with_arg_specs():
     assert set(verbs.VERBS) == {
-        "look", "examine", "take", "drop", "talk", "say", "go", "inventory"
+        "look", "examine", "take", "drop", "talk", "give", "use",
+        "say", "go", "inventory",
     }
     # Arg-specs: object-targeted verbs declare a dobj + valid kinds.
     assert verbs.VERBS["take"].needs_dobj
     assert verbs.VERBS["take"].valid_dobj_kinds == frozenset({"thing"})
     assert verbs.VERBS["talk"].valid_dobj_kinds == frozenset({"toon"})
     assert not verbs.VERBS["look"].needs_dobj
-    # The verb bar offers exactly Examine / Take / Drop / Talk.
-    assert [v.name for v in verbs.bar_verbs()] == ["examine", "take", "drop", "talk"]
+    # Two-object verbs declare a dobj AND an iobj with valid kinds for each.
+    assert verbs.VERBS["give"].needs_dobj and verbs.VERBS["give"].needs_iobj
+    assert verbs.VERBS["give"].valid_dobj_kinds == frozenset({"thing"})
+    assert verbs.VERBS["give"].valid_iobj_kinds == frozenset({"toon"})
+    assert verbs.VERBS["use"].valid_dobj_kinds == frozenset({"thing"})
+    assert verbs.VERBS["use"].valid_iobj_kinds == frozenset({"thing"})
+    # The verb bar offers the interaction verbs, verb-then-object.
+    assert [v.name for v in verbs.bar_verbs()] == [
+        "examine", "take", "drop", "talk", "give", "use",
+    ]
 
 
 def test_available_verbs_derive_from_kind_prototype():
@@ -125,6 +134,174 @@ async def test_out_of_scope_target_is_refused():
 async def test_unknown_verb_is_graceful():
     await verbs.execute_command("t-wren", "obliterate", dobj_id="i-lantern")
     assert _last_narrate() is not None  # a gentle "don't understand", no crash
+
+
+# ---- two-object verbs: give (dobj thing -> iobj toon) -------------------
+
+
+def _make_giveable_lantern_carried() -> str:
+    """Give the seeded lantern the `give` verb and put it in Wren's hands.
+    Returns the lantern's display name for `wants` matching."""
+    objects.set_property("i-lantern", "verbs", ["give"])
+    objects.move("i-lantern", "t-wren")
+    return objects.get("i-lantern").name
+
+
+@pytest.mark.asyncio
+async def test_give_wanted_item_moves_shifts_mood_and_rewards():
+    name = _make_giveable_lantern_carried()
+    objects.move("t-wren", "r-forge")  # co-locate with Rook
+    objects.set_property("t-rook", "wants", name)
+    objects.set_property("t-rook", "gives_mood", "delighted")
+    objects.set_property("t-rook", "gives", {
+        "name": "brass key", "seed": "a small warm key",
+        "aliases": ["key"], "verbs": ["use"]})
+    objects.set_property("t-rook", "gives_text", "Rook presses a brass key into your palm.")
+    await verbs.execute_command("t-wren", "give", dobj_id="i-lantern", iobj_id="t-rook")
+    # The gift reparents onto Rook (present in exactly one container).
+    assert objects.get("i-lantern").location_id == "t-rook"
+    # Rook's mood shifts (a visible, deterministic change).
+    assert objects.get("t-rook").properties.get("mood") == "delighted"
+    # The reward spawns into Wren's inventory, use-able, exactly once.
+    keys = [o for o in objects.contents("t-wren", "thing") if o.name == "brass key"]
+    assert len(keys) == 1 and "use" in objects.verbs_for(keys[0])
+    assert "brass key" in _last_narrate().lower()
+
+
+@pytest.mark.asyncio
+async def test_give_reward_does_not_double_on_replay():
+    # The reward carries provenance; a second give (were the gear back) never
+    # spawns a second key. Here we call the reward-spawn path twice by re-giving
+    # a still-wanted item to confirm the dedup.
+    name = _make_giveable_lantern_carried()
+    objects.move("t-wren", "r-forge")
+    objects.set_property("t-rook", "wants", name)
+    objects.set_property("t-rook", "gives", {"name": "brass key", "seed": "a key"})
+    await verbs.execute_command("t-wren", "give", dobj_id="i-lantern", iobj_id="t-rook")
+    # Put the gift back in hand and give again (simulates a re-run of the beat).
+    objects.move("i-lantern", "t-wren")
+    await verbs.execute_command("t-wren", "give", dobj_id="i-lantern", iobj_id="t-rook")
+    keys = [o for o in objects.contents("t-wren", "thing") if o.name == "brass key"]
+    assert len(keys) == 1  # deduped by provenance
+
+
+@pytest.mark.asyncio
+async def test_give_unwanted_item_declined_no_move():
+    _make_giveable_lantern_carried()
+    objects.move("t-wren", "r-forge")
+    objects.set_property("t-rook", "wants", "silver thimble")  # not the lantern
+    await verbs.execute_command("t-wren", "give", dobj_id="i-lantern", iobj_id="t-rook")
+    assert objects.get("i-lantern").location_id == "t-wren"  # stays carried
+    assert _last_narrate() is not None  # a soft decline
+
+
+@pytest.mark.asyncio
+async def test_give_thing_not_carried_is_refused():
+    objects.set_property("i-lantern", "verbs", ["give"])
+    objects.move("t-wren", "r-forge")
+    objects.move("i-lantern", "r-forge")  # on the ground, in scope, not carried
+    objects.set_property("t-rook", "wants", objects.get("i-lantern").name)
+    await verbs.execute_command("t-wren", "give", dobj_id="i-lantern", iobj_id="t-rook")
+    assert "aren't carrying" in _last_narrate().lower()
+    assert objects.get("i-lantern").location_id == "r-forge"  # unmoved
+
+
+@pytest.mark.asyncio
+async def test_give_to_self_is_refused():
+    _make_giveable_lantern_carried()
+    await verbs.execute_command("t-wren", "give", dobj_id="i-lantern", iobj_id="t-wren")
+    assert "yourself" in _last_narrate().lower()
+    assert objects.get("i-lantern").location_id == "t-wren"  # unmoved
+
+
+@pytest.mark.asyncio
+async def test_give_without_iobj_asks_to_whom():
+    _make_giveable_lantern_carried()
+    await verbs.execute_command("t-wren", "give", dobj_id="i-lantern")
+    assert "whom" in _last_narrate().lower()
+
+
+@pytest.mark.asyncio
+async def test_give_to_a_thing_is_refused_by_kind_gate():
+    _make_giveable_lantern_carried()
+    cup = objects.spawn("w-bunny", "thing", "clay cup", "r-meadow",
+                        prototype_id=objects.PROTO_THING)
+    await verbs.execute_command("t-wren", "give", dobj_id="i-lantern", iobj_id=cup.id)
+    assert "can't give" in _last_narrate().lower()
+    assert objects.get("i-lantern").location_id == "t-wren"  # unmoved
+
+
+# ---- two-object verbs: use (dobj thing -> iobj thing) -------------------
+
+
+def _spawn_lockbox(state: str = "locked") -> str:
+    """A stateful thing in the meadow whose `use` rule accepts the 'case key'."""
+    box = objects.spawn("w-bunny", "thing", "clock case", "r-meadow",
+        prototype_id=objects.PROTO_THING, properties={"state": state, "use": {
+            "with": "case key", "from_state": "locked", "to_state": "unlocked",
+            "text": "The lock gives with a soft click."}})
+    return box.id
+
+
+def _spawn_carried_key() -> str:
+    key = objects.spawn("w-bunny", "thing", "case key", "t-wren",
+        prototype_id=objects.PROTO_THING, properties={"verbs": ["use"]})
+    return key.id
+
+
+@pytest.mark.asyncio
+async def test_use_correct_item_in_right_state_transitions():
+    box = _spawn_lockbox("locked")
+    key = _spawn_carried_key()
+    await verbs.execute_command("t-wren", "use", dobj_id=key, iobj_id=box)
+    assert objects.get(box).properties.get("state") == "unlocked"
+    assert "click" in _last_narrate().lower()
+
+
+@pytest.mark.asyncio
+async def test_use_wrong_item_changes_nothing():
+    box = _spawn_lockbox("locked")
+    objects.set_property("i-lantern", "verbs", ["use"])  # a use-able but wrong item
+    await verbs.execute_command("t-wren", "use", dobj_id="i-lantern", iobj_id=box)
+    assert objects.get(box).properties.get("state") == "locked"  # unchanged
+    assert "nothing happens" in _last_narrate().lower()
+
+
+@pytest.mark.asyncio
+async def test_use_right_item_wrong_state_changes_nothing():
+    box = _spawn_lockbox("unlocked")  # already past from_state
+    key = _spawn_carried_key()
+    await verbs.execute_command("t-wren", "use", dobj_id=key, iobj_id=box)
+    assert objects.get(box).properties.get("state") == "unlocked"  # unchanged
+    assert "nothing happens" in _last_narrate().lower()
+
+
+@pytest.mark.asyncio
+async def test_use_on_a_toon_is_refused_by_kind_gate():
+    key = _spawn_carried_key()
+    objects.move("t-wren", "r-forge")  # co-locate with Rook
+    await verbs.execute_command("t-wren", "use", dobj_id=key, iobj_id="t-rook")
+    assert "can't use" in _last_narrate().lower()
+
+
+@pytest.mark.asyncio
+async def test_give_and_use_make_no_llm_call(monkeypatch):
+    spy = AsyncMock(return_value={})
+    monkeypatch.setattr("daydream.llm.client.acompletion_json", spy)
+    name = _make_giveable_lantern_carried()
+    objects.move("t-wren", "r-forge")
+    objects.set_property("t-rook", "wants", name)
+    objects.set_property("t-rook", "gives", {"name": "brass key", "seed": "a key"})
+    await verbs.execute_command("t-wren", "give", dobj_id="i-lantern", iobj_id="t-rook")
+    # A lockbox co-located with Wren (in the forge) so `use` actually runs.
+    box = objects.spawn("w-bunny", "thing", "clock case", "r-forge",
+        prototype_id=objects.PROTO_THING, properties={"state": "locked", "use": {
+            "with": "case key", "from_state": "locked", "to_state": "unlocked",
+            "text": "The lock gives with a soft click."}})
+    key = _spawn_carried_key()
+    await verbs.execute_command("t-wren", "use", dobj_id=key, iobj_id=box.id)
+    assert objects.get(box.id).properties.get("state") == "unlocked"
+    spy.assert_not_called()
 
 
 # ---- MOO dispatch priority: bound dialogue wins over the stub ----------

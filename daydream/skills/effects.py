@@ -197,8 +197,11 @@ def _apply_spawn_object(
 ) -> events.Event | None:
     """Create one persistent clickable thing. Defaults its location to the
     current room; pass `location_id` to drop it on an NPC instead. `readable`
-    selects the readable prototype (examine/take/drop). Provenance fields
-    (`generated_by`) ride along in properties for the future clutter-GC pass."""
+    selects the readable prototype (examine/take/drop). An optional `verbs` list
+    is written to the spawned object's `properties.verbs`, so a spawn can grant
+    per-object affordances beyond its prototype (a given case-key becomes
+    `use`-able). Provenance fields (`generated_by`) ride along in properties for
+    the future clutter-GC pass."""
     name = eff.get("name")
     seed = eff.get("seed", "")
     if not isinstance(name, str) or not name.strip():
@@ -222,6 +225,13 @@ def _apply_spawn_object(
     props: dict = {"seed": seed.strip(), "is_unique": 1}
     if isinstance(gen_by, str) and gen_by.strip():
         props["generated_by"] = gen_by.strip()
+    # Per-object verb additions (e.g. a given key becomes use-able). Only
+    # non-empty strings are kept; an absent / malformed list is simply ignored.
+    verbs = eff.get("verbs")
+    if isinstance(verbs, list):
+        cleaned = [v for v in verbs if isinstance(v, str) and v.strip()]
+        if cleaned:
+            props["verbs"] = cleaned
     thing = objects.spawn(
         world_id, "thing", name.strip(), location_id,
         prototype_id=proto, properties=props, aliases=aliases,

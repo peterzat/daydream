@@ -47,6 +47,10 @@ class VerbSpec:
     # Target kinds the parser/UI should offer; the execution gate is
     # `verb in objects.verbs_for(dobj)`, which this mirrors.
     valid_dobj_kinds: frozenset[str] = field(default_factory=frozenset)
+    # Indirect-object target kinds for a two-object verb (give X to a toon, use
+    # X on a thing). Mirrors valid_dobj_kinds; the iobj gate in execute_command
+    # enforces it. Empty for single-object verbs.
+    valid_iobj_kinds: frozenset[str] = field(default_factory=frozenset)
     # Per-verb effect allowlist (passed to dispatch_effects).
     allowed_effects: frozenset[str] = field(default_factory=frozenset)
     # Does this verb appear in the UI verb bar (Examine/Take/Drop/Talk)?
@@ -87,6 +91,22 @@ VERBS: dict[str, VerbSpec] = {
         needs_dobj=True, valid_dobj_kinds=frozenset({"toon"}),
         allowed_effects=frozenset({"narrate", "set_property", "set_mood", "spawn_object"}),
         on_bar=True, free_text=True,
+    ),
+    "give": VerbSpec(
+        name="give", ui_hint="Give",
+        description="Give a thing you're carrying to someone. Target: the thing, then the toon.",
+        needs_dobj=True, needs_iobj=True,
+        valid_dobj_kinds=frozenset({"thing"}), valid_iobj_kinds=frozenset({"toon"}),
+        allowed_effects=frozenset({"move_object", "set_mood", "spawn_object", "narrate"}),
+        on_bar=True,
+    ),
+    "use": VerbSpec(
+        name="use", ui_hint="Use",
+        description="Use a thing on another thing. Target: the thing, then what to use it on.",
+        needs_dobj=True, needs_iobj=True,
+        valid_dobj_kinds=frozenset({"thing"}), valid_iobj_kinds=frozenset({"thing"}),
+        allowed_effects=frozenset({"set_property", "spawn_object", "move_object", "narrate"}),
+        on_bar=True,
     ),
     "say": VerbSpec(
         name="say", ui_hint="Say",
@@ -163,6 +183,19 @@ async def execute_command(
             return
 
     iobj = _resolve_in_scope(actor_id, iobj_id) if iobj_id else None
+    if spec.needs_iobj:
+        # Indirect-object gate, symmetric to the dobj gate above. A missing or
+        # out-of-scope iobj asks "…to whom?/on what?"; a wrong-kind iobj (give
+        # to a thing, use on a toon) is refused by name. Either way: no mutation.
+        prep = _iobj_prep(spec)
+        if iobj is None:
+            whom = "whom" if prep == "to" else "what"
+            _narrate(room_id, f"{spec.ui_hint} it {prep} {whom}?")
+            return
+        dn = dobj.name if dobj is not None else "that"
+        if spec.valid_iobj_kinds and iobj.kind not in spec.valid_iobj_kinds:
+            _narrate(room_id, f"You can't {spec.name} the {dn} {prep} the {iobj.name}.")
+            return
 
     # MOO dispatch priority: the handler is resolved by searching player ->
     # room -> dobj -> iobj, first match wins. v1 has one engine handler per
@@ -204,6 +237,25 @@ def _dispatch(actor: objects.Object, room_id: str, effs: list, spec: VerbSpec) -
         effs, actor_id=actor.id, room_id=room_id, world_id=actor.world_id,
         allowed=spec.allowed_effects,
     )
+
+
+def _matches_name(obj: objects.Object, needle: str | None) -> bool:
+    """True if `needle` case-insensitively equals the object's name or any of
+    its aliases. Authored cross-references (`wants`, a `use` rule's `with`) name
+    the target by string, matching the engine's name-resolution grain rather
+    than juggling ids."""
+    n = (needle or "").strip().lower()
+    if not n:
+        return False
+    names = [obj.name.lower()] + [str(a).lower() for a in obj.aliases]
+    return n in names
+
+
+def _iobj_prep(spec: VerbSpec) -> str:
+    """The natural preposition for a two-object verb's indirect object, from its
+    valid iobj kinds: a toon target reads 'give X to Y'; a thing target reads
+    'use X on Y'. Drives the missing/wrong-kind narration."""
+    return "to" if spec.valid_iobj_kinds == frozenset({"toon"}) else "on"
 
 
 # ---- engine handlers (deterministic unless noted) ----------------------
@@ -318,6 +370,95 @@ async def _handle_drop(actor, room_id, dobj, iobj, args, spec) -> None:
     ], spec)
 
 
+async def _handle_give(actor, room_id, dobj, iobj, args, spec) -> None:
+    """Give a carried thing (dobj) to an NPC (iobj). If the NPC `wants` it
+    (name/alias match), the thing reparents onto them, their mood shifts to the
+    authored `gives_mood`, their authored `gives` reward spawns into the actor's
+    inventory (deduped by provenance so a re-give never doubles it), and the
+    authored `gives_text` narrates. Otherwise the item stays carried and the NPC
+    gently declines. Deterministic; every string is pre-baked (no LLM)."""
+    if dobj.location_id != actor.id:
+        _dispatch(actor, room_id, [{"kind": "narrate",
+            "text": f"You aren't carrying the {dobj.name}."}], spec)
+        return
+    if iobj.id == actor.id:
+        _dispatch(actor, room_id, [{"kind": "narrate",
+            "text": "You can't give something to yourself."}], spec)
+        return
+    if not _matches_name(dobj, iobj.properties.get("wants")):
+        decline = iobj.properties.get("declines_text")
+        if not (isinstance(decline, str) and decline.strip()):
+            decline = f"{iobj.name} smiles and gently sets the {dobj.name} back in your hands."
+        _dispatch(actor, room_id, [{"kind": "narrate", "text": decline}], spec)
+        return
+
+    effs: list = [{"kind": "move_object", "object_id": dobj.id, "dest_id": iobj.id}]
+    mood = iobj.properties.get("gives_mood")
+    if isinstance(mood, str) and mood.strip():
+        effs.append({"kind": "set_mood", "toon_id": iobj.id, "mood": mood.strip()})
+    reward = iobj.properties.get("gives")
+    if isinstance(reward, dict) and isinstance(reward.get("name"), str) and reward["name"].strip():
+        spawn: dict = {
+            "kind": "spawn_object", "name": reward["name"],
+            "seed": reward["seed"] if isinstance(reward.get("seed"), str) else "",
+            "location_id": actor.id, "generated_by": f"give:{iobj.id}",
+        }
+        if isinstance(reward.get("aliases"), list):
+            spawn["aliases"] = reward["aliases"]
+        if isinstance(reward.get("verbs"), list):
+            spawn["verbs"] = reward["verbs"]
+        if reward.get("readable"):
+            spawn["readable"] = True
+        effs.append(spawn)
+    gives_text = iobj.properties.get("gives_text")
+    if isinstance(gives_text, str) and gives_text.strip():
+        effs.append({"kind": "narrate", "text": gives_text.strip()})
+    else:
+        effs.append({"kind": "narrate",
+            "text": f"{iobj.name} takes the {dobj.name} with quiet thanks."})
+    _dispatch(actor, room_id, effs, spec)
+    _remember_give(actor, iobj, dobj)
+
+
+def _remember_give(actor: objects.Object, iobj: objects.Object, dobj: objects.Object) -> None:
+    """Best-effort NPC memory of a gift so a later `talk` can reflect it. CPU-only
+    and fail-closed by contract (and disabled in tests), wrapped defensively so a
+    memory hiccup never perturbs the deterministic give path."""
+    try:
+        from daydream import memories
+        memories.capture(iobj.id, iobj.world_id, f"{actor.name} gave me the {dobj.name}.")
+    except Exception:
+        logger.debug("give-memory capture skipped", exc_info=True)
+
+
+async def _handle_use(actor, room_id, dobj, iobj, args, spec) -> None:
+    """Use one thing (dobj) on another (iobj). The TARGET (iobj) carries the
+    authored `use` rule {with, from_state, to_state, text}: when the applied
+    thing matches `with` and the target is in `from_state`, the target's `state`
+    property transitions to `to_state` with the authored text. Any mismatch
+    (wrong item, wrong state, or no rule) is a soft 'nothing happens' with no
+    mutation. Deterministic (no LLM)."""
+    rule = iobj.properties.get("use")
+    if (
+        isinstance(rule, dict)
+        and _matches_name(dobj, rule.get("with"))
+        and iobj.properties.get("state") == rule.get("from_state")
+    ):
+        text = rule.get("text")
+        if not (isinstance(text, str) and text.strip()):
+            text = f"You use the {dobj.name} on the {iobj.name}."
+        _dispatch(actor, room_id, [
+            {"kind": "set_property", "target_id": iobj.id, "key": "state",
+             "value": rule.get("to_state")},
+            {"kind": "narrate", "text": text},
+        ], spec)
+        return
+    wrong = rule.get("wrong_text") if isinstance(rule, dict) else None
+    if not (isinstance(wrong, str) and wrong.strip()):
+        wrong = f"You try the {dobj.name} on the {iobj.name}, but nothing happens."
+    _dispatch(actor, room_id, [{"kind": "narrate", "text": wrong}], spec)
+
+
 async def _handle_say(actor, room_id, dobj, iobj, args, spec) -> None:
     text = args.strip()
     if not text:
@@ -418,6 +559,8 @@ _ENGINE_HANDLERS = {
     "examine": _handle_examine,
     "take": _handle_take,
     "drop": _handle_drop,
+    "give": _handle_give,
+    "use": _handle_use,
     "say": _handle_say,
     "go": _handle_go,
     "inventory": _handle_inventory,
