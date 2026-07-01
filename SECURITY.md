@@ -1,81 +1,89 @@
 ## Security Review — 2026-07-01 (scope: paths)
 
-**Summary:** Path-scoped review of `bin/game`, `daydream/api/ws.py`,
-`daydream/review.py`, and `daydream/toons.py` at HEAD `5b181d1`. The prior pass's
-one open NOTE (the `/ws` handshake was not Origin-checked, relying only on the
-SameSite=Lax cookie for cross-site protection) is now REMEDIATED on this branch:
-`ws_endpoint` calls `csrf.origin_allows(...)` before `ws.accept()` (`ws.py:441-443`),
-closing the WS confused-deputy vector at the app layer. Traced every dimension
-across the four files. **No secrets** (current or historical): the scan surfaced
-only `bin/game`'s reference to the gitignored `~/.config/daydream/secrets.env`
-path and the `DAYDREAM_PASSWORD` env-var name, never a hardcoded value; three
-commits of `bin/game` history are clean. **No injection.** `toons.py` routes all
-six `_query` call sites through literal `WHERE` strings with `?`-bound params, and
-every INSERT/UPDATE/DELETE (`create_toon_in_slot`, `claim_slot`, `kick_slot`,
-`delete_slot`) is fully parameterized; request-derived values (`name`,
-`appearance_seed`, `session_id`) are always bindings, never interpolated.
-`review.py` composes its `index.html` with `html.escape` on every dynamic value,
-including the LLM-generated NPC narrate lines and image prompts, and has no
-`shell=True`/`os.system`/`eval`/`exec` (its only external call is the in-process
-`admin.main([...])`). `bin/game` takes no network input; its destructive paths
-(`world reset` `rm -rf`, `.env`/secrets sourcing, `cmd_logs` path component) are
-operator-trust and carried. **No auth regression.** `ws_endpoint` gates on
-`is_authed` → `origin_allows` → a `controller_session`-only toon resolution (no
-default fallback), all before `accept()`. Net: **0 BLOCK / 0 WARN / 0 NOTE.**
+**Summary:** Path-scoped review of the playable-quest-loop turn at HEAD `e769ad6`:
+the two-object verbs (`give`/`use`), object state, the `spawn_object` verbs
+passthrough, the world-authoring loader, versioning, the frontend two-step
+staging, and the new canonical world `worlds/clockmakers-loft.json`. Traced every
+dimension across all 11 files. **No secrets** (current or historical): the scan
+is clean and `bin/game`/`bootstrap.py` git history over the quest-loop commits
+surfaces no hardcoded value — the only `ANTHROPIC_API_KEY` reference is a
+docstring naming the env var for the DEPRECATED design-time LLM path, and
+`version.py` reads the operator-set `DAYDREAM_BUILD_SHA` override. **No
+injection.** `objects.py` and `bootstrap._write_db` are fully parameterized
+(the derived slug and every authored field are `?`-bound; `by_slug` uses
+`json_extract` with a bound param); `main.js` routes every dynamic value through
+`escape()` or `textContent`, and `linkifyEntities` escapes before wrapping alias
+matches, so even LLM-generated narration cannot inject markup. **No new
+privilege path.** The new deterministic verbs scope-validate both dobj and iobj
+through `_resolve_in_scope`, `_handle_use` hardcodes `key="state"`/authored
+`value` (no client-chosen property write), and `_apply_spawn_object` limits a
+spawn's properties to `{seed,is_unique,generated_by?,verbs?}` — so a granted
+`verbs` list is inert (no authored rule to trigger) and does not widen the
+pre-existing LLM-chosen-effect-target accepted risk. The `/ws` handshake gate
+(`is_authed` → `origin_allows` → `controller_session`-only toon resolution) is
+intact and client `command` frames reach only `execute_command`, never the raw
+effect API. Net: **0 BLOCK / 0 WARN / 1 NOTE.**
 
 ### Findings
 
-No security issues identified in the reviewed scope.
-
-The prior review's only open item is now closed:
-
-- **[REMEDIATED] daydream/api/ws.py:441-443 — WS handshake now Origin-checked.**
-  The prior NOTE (the `/ws` GET bypassed the HTTP-only `CsrfOriginMiddleware`, so
-  cross-origin driving was blocked only by the SameSite=Lax cookie default) is
-  fixed: `ws_endpoint` rejects a cross-origin handshake via `csrf.origin_allows`
-  before `ws.accept()`. Verified sound: the check runs pre-accept; the no-Origin
-  allow path is safe because a browser always sends `Origin` on a WS opening
-  handshake (a cross-site attacker cannot omit it), and a non-browser client that
-  omits it never carries the victim's SameSite=Lax session cookie, so it resolves
-  no toon. Defense in depth now sits at the app layer, no longer implicit in the
-  cookie default.
+- **[NOTE] web/index.html:1-8 — no Content-Security-Policy (defense in depth).**
+  The app shell ships no CSP (meta tag or header) and no `X-Content-Type-Options`.
+  Attack vector: none reachable today — the concrete XSS surface (LLM-generated
+  narration and player-supplied toon names rendered via `innerHTML`) is already
+  fully mitigated by `escape()` / `textContent` / the escape-then-wrap
+  `linkifyEntities`, which this review re-verified. A CSP (`default-src 'self'`)
+  would be a second, orthogonal layer that blunts any future escaping regression
+  and forbids inline/remote script. Informational only; raised now because this
+  is the first review with `web/index.html` in scope. Remediation: add a
+  `default-src 'self'` CSP (all assets are same-origin) plus
+  `X-Content-Type-Options: nosniff`, ideally as response headers in the FastAPI
+  layer so it also covers `/assets/*`.
 
 ### Accepted Risks
 
-Carried forward from prior reviews; not re-flagged as findings. Items verified
+Carried forward from prior reviews; not re-flagged as findings. Items re-verified
 against in-scope code this run are marked.
 
-- **Tailscale-mode auth + friend-scope (verified in scope).** `auth.is_authed()`
-  returns True unconditionally in `tailscale` mode; `AccessMiddleware`
-  (CGNAT `100.64.0.0/10` + loopback) is the real gate. Any authed tailnet session
-  may create / claim / kick / leave / delete any slot (`toons.py` is the data
-  layer; authz lives at the slot/session endpoints). State-changing POSTs are
-  CSRF-gated by `CsrfOriginMiddleware`; the WS channel is now Origin-gated too.
-  Per-session ownership is v2 `multi-user-shared-world`.
-- **Liveness-aware claim takeover (verified in scope, `toons.py:218-245`).** The
-  `can_take_over` callback lets a session adopt a toon whose controlling session
-  has no live WS connection; grants nothing beyond the existing kick-then-claim.
-- **Operator-trust, not request-controlled (verified in scope, `bin/game`).**
-  `world reset` `rm -rf` of `live.db*` + the world image cache; `.env` +
-  `~/.config/daydream/secrets.env` sourcing; the `cmd_logs` first-arg path
-  component; FastAPI binding `0.0.0.0` (AccessMiddleware is the boundary). None
-  take network input.
-- **`bin/game review` is a design-time local tool (verified in scope).** Runs on
-  trusted checked-in inputs (`worlds/bunny.json`, `tests/drift/aesthetics/*.json`),
-  writes an escaped HTML sheet the operator opens; consistent with the keyless
-  generation policy (no cloud key, no `litellm` vision call).
-- **Session cookie `https_only=False`; `/status/*` + `/cache/...` session-
-  unauthenticated (AccessMiddleware-gated); LLM-chosen effect targets unscoped
-  (`set_property` writes `properties_json` only, no auth-column reach); stored
-  prompt-injection via captured memory (escaped, banlist-checked, no mutation).**
-  All carried from prior full/path reviews; none aggravated by the in-scope files.
+- **LLM-emitted effects take an unscoped, LLM-chosen target id (re-verified in
+  scope).** `set_property` / `move_object` / `spawn_object` trust the effect's
+  target id; the `talk` dialogue path (a data skill) is the one LLM producer and
+  is bound to its per-verb `allowed` subset. The new `give`/`use`/`open`/`read`
+  verbs are DETERMINISTIC and build their effects from scope-validated objects +
+  authored strings, so they do not widen this gap. `_apply_spawn_object` cannot
+  set arbitrary properties (only seed/verbs/aliases/provenance), so an
+  LLM-spawned object carries no `use`/`gives`/`state` rule and its granted verbs
+  are inert. v2 `skills-authoring-and-security`.
+- **Shared-world mutation: any authed tailnet session may drive verbs on any
+  in-scope shared object (re-verified in scope).** `use`/`give`/`open` on a
+  room fixture/NPC mutate the one shared world for everyone in that room. This is
+  the intended single-shared-world design; per-session ownership is v2
+  `multi-user-shared-world`. State-changing POSTs are CSRF-gated by
+  `CsrfOriginMiddleware` and the `/ws` handshake is Origin-gated
+  (`csrf.origin_allows`, `ws.py:451`).
+- **Tailscale-mode auth is tailnet membership.** `auth.is_authed()` returns True
+  in `tailscale` mode; `AccessMiddleware` (CGNAT `100.64.0.0/10` + loopback) is
+  the real gate. Verified the `/ws` path still gates `is_authed` → `origin_allows`
+  → `controller_session`-only toon resolution before `accept()`.
+- **NPC dialogue prompt-injection via player input / captured memory.** Templates
+  in `clockmakers-loft.json` render `player_input` as a `SandboxedEnvironment`
+  context variable (no SSTI — user text is a render var, never compiled as
+  template source), role-separator wrapped, input+output banlist checked; output
+  is structured effects, not trusted text. Carried, unchanged.
+- **Operator-trust, not request-controlled (`bin/game`).** `world reset`'s
+  `rm -rf` of `live.db*` + `images/cache/w-bunny` (now re-seeding
+  `worlds/clockmakers-loft.json`); `.env` + `~/.config/daydream/secrets.env`
+  sourcing; `cmd_logs` path component; FastAPI binding `0.0.0.0`. None take
+  network input.
+- Cookie `https_only=False`; `/status/*` + `/cache/...` session-unauthenticated
+  (AccessMiddleware-gated); liveness-gated claim takeover; the deprecated
+  `bootstrap_world` LLM path reading `ANTHROPIC_API_KEY` from env (design-time
+  admin tool, never runtime). All carried; none aggravated by the in-scope files.
 
 ---
-*Prior review (2026-06-30, paths, commit `c6f7d70`): reviewed `daydream/api/ws.py`
-and `daydream/server.py`. Found 0 BLOCK / 0 WARN / 1 NOTE — the WS-handshake
-Origin gap (blocked then only by SameSite=Lax). Confirmed no secrets across 36
-commits, the `serve_cached_image` route defeats path traversal, WS command frames
-are type-checked, and the build-SHA HTML sink is `quote()`-escaped. That single
-NOTE is remediated at this run's HEAD (commit `07395bd`).*
+*Prior review (2026-07-01, paths, commit `5b181d1`): reviewed `bin/game`,
+`daydream/api/ws.py`, `daydream/review.py`, `daydream/toons.py` (verification-infra
+turn). Found 0 BLOCK / 0 WARN / 0 NOTE; confirmed the `/ws` Origin check closed the
+prior CSRF-on-handshake NOTE, no secrets across the history, `toons.py` fully
+parameterized, and `review.py` HTML-escapes every dynamic value.*
 
-<!-- SECURITY_META: {"date":"2026-07-01","commit":"5b181d15071667a63f03b98c3ea7d6f36e581ad8","scope":"paths","block":0,"warn":0,"note":0,"scanned_files":["bin/game","daydream/api/ws.py","daydream/review.py","daydream/toons.py"]} -->
+<!-- SECURITY_META: {"date":"2026-07-01","commit":"e769ad61b73b5f4d0a66898f4618b13b38856a74","scope":"paths","block":0,"warn":0,"note":1,"scanned_files":["bin/game","daydream/api/ws.py","daydream/llm/bootstrap.py","daydream/objects.py","daydream/parser.py","daydream/skills/effects.py","daydream/verbs.py","daydream/version.py","web/assets/main.js","web/index.html","worlds/clockmakers-loft.json"]} -->
