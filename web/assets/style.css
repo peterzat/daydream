@@ -38,335 +38,326 @@
   src: url("/assets/fonts/caveat-latin-var.woff2") format("woff2");
 }
 
+* { box-sizing: border-box; }
+
 html, body {
   margin: 0;
   padding: 0;
-  background: var(--bg);
+  min-height: 100%;
   color: var(--ink);
-  font-family: Georgia, "Times New Roman", serif;
+  font-family: var(--serif);
   font-size: 17px;
   line-height: 1.55;
+  /* the reading table: warm cream with two soft washes of light */
+  background:
+    radial-gradient(1200px 700px at 50% -8%, #efe8d6 0%, transparent 60%),
+    radial-gradient(900px 900px at 108% 112%, #e2d8c0 0%, transparent 55%),
+    var(--table);
+  -webkit-font-smoothing: antialiased;
 }
 
-#app {
-  max-width: 720px;
-  margin: 1.5em auto 3em;
-  padding: 0 1em;
+/* faint paper grain drifting over the tabletop */
+body::before {
+  content: "";
+  position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  opacity: .5; mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.16'/%3E%3C/svg%3E");
 }
 
-#room-header {
+/* quiet comp identifiers floating on the table */
+.wordmark, .comptag { position: fixed; top: 16px; z-index: 5; color: var(--sage-deep); opacity: .72; }
+.wordmark { left: 26px; font-family: var(--hand); font-size: 1.5rem; font-weight: 600; letter-spacing: .5px; }
+.comptag { right: 26px; font-family: var(--sans); font-size: .62rem; letter-spacing: .32em; text-transform: uppercase; opacity: .5; }
+
+/* ---------- the page (an open leaf on the table) ---------- */
+#app.page {
+  position: relative; z-index: 1;
+  width: min(844px, 100%);
+  margin: 26px auto 40px;
+  padding: 30px 46px 26px;
+  background: linear-gradient(180deg, #fdfbf5 0%, var(--paper) 40%, #f8f4ea 100%);
+  border-radius: 14px;
+  box-shadow: var(--page-shadow);
+}
+/* faint deckled grain + inner frame on the leaf itself */
+#app.page::after {
+  content: ""; position: absolute; inset: 0; border-radius: 14px; pointer-events: none;
+  box-shadow: inset 0 0 0 1px rgba(216,210,194,.7),
+              inset 0 2px 30px rgba(255,255,255,.6),
+              inset 0 -30px 60px -30px rgba(200,160,110,.10);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.1' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E");
+}
+/* the sheaf: two more leaves peeking beneath */
+.leaf { position: absolute; z-index: -1; border-radius: 14px;
+  background: #f4efe3; box-shadow: 0 18px 34px -22px rgba(74,106,90,.4);
+  border: 1px solid rgba(216,210,194,.8); }
+.leaf.l1 { inset: 6px -7px -8px 5px; transform: rotate(.5deg); }
+.leaf.l2 { inset: 11px 6px -14px -8px; transform: rotate(-.7deg); background: #f1ebdd; }
+
+/* ---------- chapter plate (the room vignette) ---------- */
+#room-header.plate {
   position: relative;
-  margin-bottom: 0.8em;
+  padding: 11px; border-radius: 12px; margin: 0 0 2px;
+  background: linear-gradient(180deg,#fcf9f1,#f5efe1);
+  box-shadow: inset 0 0 0 1px var(--line), 0 10px 26px -18px rgba(74,106,90,.5);
 }
-
+.plate-figure { margin: 0; border-radius: 8px; overflow: hidden; }
 #room-bg {
-  width: 100%;
-  height: 240px;
-  object-fit: cover;
-  border-radius: 8px;
-  display: block;
-  box-shadow: 0 1px 6px rgba(58, 74, 68, 0.15);
+  display: block; width: 100%; height: 220px; object-fit: cover; object-position: center 44%;
+  /* melt the watercolor edges softly into the mat */
+  -webkit-mask-image: radial-gradient(128% 132% at 50% 46%, #000 74%, transparent 100%);
+          mask-image: radial-gradient(128% 132% at 50% 46%, #000 74%, transparent 100%);
 }
-
-#room-title {
-  position: absolute;
-  bottom: 0.4em;
-  left: 0.7em;
-  margin: 0;
-  font-weight: normal;
-  color: var(--paper);
-  font-size: 1.7em;
-  letter-spacing: 0.04em;
-  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.45);
-}
+.glow { position: absolute; inset: 11px; border-radius: 8px; pointer-events: none;
+  box-shadow: inset 0 0 46px -8px rgba(200,160,110,.28), inset 0 0 0 1px rgba(90,122,106,.14); }
 
 #painting-overlay {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  color: var(--paper);
-  font-style: italic;
-  font-size: 1.05em;
-  letter-spacing: 0.05em;
-  background: rgba(58, 74, 68, 0.55);
-  padding: 0.4em 1.1em;
-  border-radius: 4px;
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  color: var(--paper); font-style: italic; font-size: 1.05em; letter-spacing: .05em;
+  background: rgba(58, 74, 68, 0.55); padding: 0.4em 1.1em; border-radius: 4px;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
   animation: painting-pulse 2.4s ease-in-out infinite;
 }
-
-#painting-overlay.hidden {
-  display: none;
-}
-
-/* Calm connection-state overlay: a single soft wash with "the dream is
- * sleeping..." while a dropped socket retries (capped backoff), and a brief
- * "the dream shifts..." beat on a live world hot-swap. Replaces the old pile
- * of disconnect/error chat lines (SPEC 2026-06-30). */
-.dream-overlay {
-  position: fixed;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  background: rgba(251, 249, 243, 0.9);
-  color: var(--sage-deep);
-  font-style: italic;
-  font-size: 1.2em;
-  letter-spacing: 0.04em;
-  z-index: 50;
-}
-
-.dream-overlay.hidden {
-  display: none;
-}
+#painting-overlay.hidden { display: none; }
 
 @keyframes painting-pulse {
   0%, 100% { opacity: 0.75; }
   50%      { opacity: 1.0; }
 }
 
-/* Scene regions: WHO YOU ARE / HERE WITH YOU / ON THE GROUND / YOU'RE
- * CARRYING each get a small label and a paper-box body, so the scene reads
- * unambiguously (SPEC 2026-06-30). */
-.scene-region { margin-bottom: 0.55em; }
-.region-label {
-  margin: 0 0 0.2em;
-  font-size: 0.72em;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--sage-deep);
-  font-weight: normal;
-  opacity: 0.85;
+/* Calm connection-state overlay: a single soft wash with "the dream is
+ * sleeping..." while a dropped socket retries (capped backoff), and a brief
+ * "the dream shifts..." beat on a live world hot-swap (SPEC 2026-06-30). */
+.dream-overlay {
+  position: fixed; inset: 0; z-index: 50;
+  display: flex; align-items: center; justify-content: center; text-align: center;
+  background: rgba(251, 249, 243, 0.9);
+  color: var(--sage-deep); font-family: var(--hand); font-size: 1.7em; letter-spacing: .02em;
 }
-.region-body {
-  padding: 0.4em 0.8em;
-  background: var(--paper);
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  font-size: 0.92em;
-  min-height: 1.2em;
-}
-#carrying-region .region-body { border-style: dashed; }
-.region-empty { color: var(--sage-deep); font-style: italic; opacity: 0.65; }
-.self-chip { color: var(--sage-deep); font-weight: bold; }
-.backpack-toggle {
-  margin-left: 0.5em;
-  font-size: 0.9em;
-  background: var(--paper);
-  border: 1px solid var(--sage);
-  color: var(--sage-deep);
-  border-radius: 4px;
-  cursor: pointer;
-  padding: 0 0.45em;
-  letter-spacing: 0;
-  text-transform: none;
-}
-.backpack-toggle:hover { background: var(--sage); color: var(--paper); }
+.dream-overlay.hidden { display: none; }
 
-#chat {
-  background: var(--paper);
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  padding: 0.8em 1em;
-  height: 320px;
-  overflow-y: auto;
-  margin-bottom: 0.6em;
+/* ---------- title block ---------- */
+.titleblock { text-align: center; margin: 13px 0 2px; }
+.chapter-title {
+  font-family: var(--hand); font-size: 3.3rem; line-height: .95; font-weight: 700;
+  color: var(--sage-deep); margin: 0; text-shadow: 0 1px 0 rgba(255,255,255,.6);
+}
+.folio {
+  font-family: var(--sans); font-size: .62rem; letter-spacing: .34em; text-transform: uppercase;
+  color: var(--sage); opacity: .72; margin-top: 8px;
+  display: flex; align-items: center; justify-content: center; gap: 12px;
+}
+.folio::before, .folio::after { content: ""; height: 1px; width: 44px; background: var(--line); }
+
+/* ---------- body: prose + marginalia ---------- */
+.body { display: grid; grid-template-columns: minmax(0,1.82fr) 1fr; gap: 0 34px; margin-top: 16px; }
+
+.prose { position: relative; font-size: 1.04rem; line-height: 1.66; min-width: 0; }
+
+/* Room description, rendered from the snapshot: full on first entry, a short
+ * "you return to ..." line on re-entry. It is the drop-capped lead paragraph. */
+.room-desc { margin: 0 0 .7em; color: var(--ink); }
+.room-desc:empty { display: none; }
+.dropcap::first-letter {
+  float: left; font-family: var(--serif); font-weight: 700;
+  font-size: 4.4rem; line-height: .72; padding: 6px 12px 0 0;
+  color: var(--amber); text-shadow: 0 2px 1px rgba(200,160,110,.25);
 }
 
-.evt { margin-bottom: 0.55em; }
+/* The running event log, styled as continuing prose (newest last) rather than
+ * a terminal. A gentle max-height keeps a long session from blowing out the
+ * page; it scrolls softly and auto-pins to the bottom (main.js). */
+#chat { max-height: 42vh; overflow-y: auto; }
+.evt { margin: 0 0 .55em; }
 .evt-narrate { color: var(--ink); }
 .evt-say .speaker { color: var(--speaker); font-weight: bold; }
 .evt-system { color: var(--amber); font-style: italic; font-size: 0.88em; }
+.evt-pending { color: var(--sage); font-style: italic; opacity: .85; }
+.evt-move { color: var(--sage-deep); font-style: italic; }
 
-#input-form { margin-bottom: 0.6em; }
+/* In-scope object mentions inside narration: soft dotted click targets
+ * ("affordance words"). The class is .entity-link (emitted by main.js). */
+.entity-link {
+  color: var(--sage-deep); border-bottom: 1.6px dotted var(--sage);
+  padding-bottom: 1px; cursor: pointer; transition: background .2s ease;
+}
+.entity-link:hover { background: rgba(90,122,106,.10); }
 
+/* ---------- the detail / ledger inset (examine / read, revealed) ---------- */
+.detail-inset {
+  position: relative; margin: 14px 6px 12px 20px; padding: 15px 20px 17px;
+  background: linear-gradient(180deg,#f7efda,#efe4c9);
+  border-radius: 9px; border: 1px solid #e3d6b4;
+  box-shadow: 0 16px 30px -18px rgba(120,96,52,.55), inset 0 1px 0 rgba(255,255,255,.5);
+  transform: rotate(-.5deg); font-family: var(--serif);
+}
+.detail-inset::before {
+  content: ""; position: absolute; inset: 12px 16px; border-radius: 6px; pointer-events: none;
+  background: repeating-linear-gradient(180deg, transparent 0 26px, rgba(150,120,70,.14) 26px 27px);
+  opacity: .55;
+}
+.detail-inset .tab {
+  position: absolute; top: -11px; left: 16px;
+  font-family: var(--sans); font-size: .58rem; letter-spacing: .22em; text-transform: uppercase;
+  color: var(--parch); background: var(--sage-deep);
+  padding: 4px 11px; border-radius: 20px; box-shadow: 0 4px 10px -4px rgba(74,106,90,.6);
+}
+.detail-inset p { position: relative; margin: 6px 0 0; font-style: italic; color: #5c4d31; font-size: .98rem; line-height: 1.68; }
+.detail-inset .entity-link { color: #6a5326; border-bottom-color: #b79a63; }
+.detail-inset .dogear {
+  position: absolute; right: 0; bottom: 0; width: 24px; height: 24px;
+  background: linear-gradient(135deg, transparent 50%, #e4d4ad 50%, #d8c79a 100%);
+  border-bottom-right-radius: 9px; box-shadow: -2px -2px 4px -2px rgba(120,96,52,.4) inset;
+}
+
+/* ---------- marginalia column ---------- */
+.margin {
+  border-left: 1px solid var(--line); padding-left: 26px;
+  display: flex; flex-direction: column; gap: 12px; font-family: var(--sans);
+}
+.mgroup + .mgroup { padding-top: 12px; border-top: 1px dashed var(--line); }
+.mlabel {
+  font-size: .6rem; letter-spacing: .26em; text-transform: uppercase;
+  color: var(--sage-deep); opacity: .85; margin-bottom: 6px;
+}
+.region-body { min-height: 1em; }
+.region-empty { font-family: var(--serif); font-style: italic; color: var(--sage); opacity: .82; font-size: .9rem; line-height: 1.5; }
+
+/* the "you" group: hand-lettered name + a mood pill */
+#self .you-name { font-family: var(--hand); font-size: 1.7rem; font-weight: 600; color: var(--sage-deep); line-height: 1; }
+.mood {
+  display: inline-block; margin-top: 8px;
+  font-size: .62rem; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--sage-deep); background: rgba(90,122,106,.12);
+  border: 1px solid rgba(90,122,106,.28); border-radius: 20px; padding: 3px 10px;
+}
+
+/* Scene objects: distinct, clickable elements for toons + things + inventory.
+ * In the marginalia each reads as a small hand-noted entry. */
+.obj {
+  display: block; margin: 0 0 6px; cursor: pointer;
+  border-bottom: 1px dotted transparent;
+  transition: color 0.15s, border-color 0.15s, opacity 0.15s;
+}
+.obj:last-child { margin-bottom: 0; }
+.obj:hover { border-bottom-color: currentColor; }
+.obj-toon { font-family: var(--hand); font-size: 1.24rem; color: var(--sage-deep); font-weight: 600; }
+.obj-thing { font-family: var(--serif); font-style: italic; color: var(--ink); opacity: .9; }
+#inventory .obj-thing { font-family: var(--hand); font-style: normal; font-size: 1.2rem; color: var(--sage-deep); opacity: 1; }
+/* A scene object the staged verb can't apply to: dimmed + inert, so e.g.
+ * staging Talk leaves only toons clickable (SPEC 2026-06-30). */
+.obj-ungated { opacity: 0.28; cursor: default; pointer-events: none; border-bottom-color: transparent; }
+/* The chosen direct object during a two-object verb's second step (give/use):
+ * highlighted so it stays clear what you're handing over (SPEC 2026-07-01). */
+.obj-staged-dobj { border-bottom: 1px solid currentColor; font-weight: bold; }
+
+/* the "open the satchel" control (#backpack-toggle) */
+.satchel-link {
+  display: inline-block; margin-top: 4px; padding: 0;
+  background: none; border: none; cursor: pointer;
+  font-family: var(--hand); font-size: 1.15rem; color: var(--sage);
+  border-bottom: 1px dotted var(--sage);
+}
+.satchel-link:hover { color: var(--sage-deep); }
+
+/* ---------- action ribbon ---------- */
+.ribbon-wrap { margin-top: 18px; }
+.ribbon-label {
+  font-family: var(--sans); font-size: .6rem; letter-spacing: .28em; text-transform: uppercase;
+  color: var(--sage-deep); opacity: .75; text-align: center; margin-bottom: 10px;
+}
+#verb-bar.ribbon, .ribbon { display: flex; flex-wrap: wrap; gap: 9px; align-items: center; justify-content: center; }
+#verb-bar button, .skill-ribbon button {
+  font-family: var(--sans); font-size: .82rem; letter-spacing: .04em; color: var(--sage-deep);
+  background: linear-gradient(180deg,#fbf7ec,#f2ecdd);
+  border: 1px solid var(--line); border-radius: 9px; padding: 8px 16px;
+  box-shadow: 0 2px 5px -3px rgba(74,106,90,.4), inset 0 1px 0 rgba(255,255,255,.7);
+  cursor: pointer; transition: transform .15s ease, box-shadow .15s ease;
+}
+#verb-bar button:hover, .skill-ribbon button:hover { transform: translateY(-1px); }
+/* the STAGED verb (frozen moment): a filled ink tab with an amber pip */
+#verb-bar button.verb-staged {
+  color: #f6f2e6; font-weight: 600;
+  background: linear-gradient(180deg,#587a68,#42624f); border-color: #3c5747;
+  box-shadow: 0 8px 16px -8px rgba(66,98,79,.75), inset 0 1px 0 rgba(255,255,255,.16);
+  transform: translateY(-1px);
+}
+#verb-bar button.verb-staged::before {
+  content: ""; display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+  background: var(--amber); margin-right: 7px; vertical-align: middle;
+  box-shadow: 0 0 0 3px rgba(200,160,110,.28);
+}
+/* secondary row: room-anchored data skills (e.g. forge) */
+.skill-ribbon { margin-top: 9px; }
+.skill-ribbon button { font-style: italic; padding: 6px 13px; font-size: .78rem; }
+
+/* the one-line staged hint under the ribbon ("Read is in your hand — ...") */
+.ribbon-hint {
+  text-align: center; margin-top: 11px;
+  font-family: var(--serif); font-style: italic; font-size: .9rem; color: var(--sage);
+}
+.ribbon-hint.hidden { display: none; }
+.ribbon-hint b { color: var(--sage-deep); font-weight: 600; font-style: normal; }
+
+/* ---------- free-text input ---------- */
+#input-form { margin: 16px 0 0; }
 #input-text {
-  width: 100%;
-  padding: 0.55em 0.75em;
-  font-family: inherit;
-  font-size: 1em;
-  background: var(--paper);
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  color: var(--ink);
-  box-sizing: border-box;
+  width: 100%; padding: 0.6em 0.85em; font-family: var(--serif); font-size: 1em;
+  background: rgba(251,249,243,.7); border: 1px solid var(--line); border-radius: 9px;
+  color: var(--ink); box-sizing: border-box;
 }
+#input-text::placeholder { color: var(--sage); opacity: .7; font-style: italic; }
+#input-text:focus { outline: none; border-color: var(--sage); box-shadow: 0 0 0 2px rgba(90, 122, 106, 0.18); }
 
-#input-text:focus {
-  outline: none;
-  border-color: var(--sage);
-  box-shadow: 0 0 0 2px rgba(90, 122, 106, 0.18);
+/* ---------- footer: ways from here ---------- */
+.ways {
+  margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--line);
+  display: flex; align-items: center; justify-content: center; gap: 14px; flex-wrap: wrap;
 }
-
-#skill-bar {
-  display: flex;
-  gap: 0.4em;
-  flex-wrap: wrap;
-  margin-bottom: 1.4em;
+.compass { flex: none; color: var(--sage); opacity: .85; }
+.wlabel {
+  font-family: var(--sans); font-size: .6rem; letter-spacing: .28em; text-transform: uppercase;
+  color: var(--sage-deep); opacity: .7;
 }
-
-#skill-bar button {
-  padding: 0.4em 0.95em;
-  background: var(--paper);
-  border: 1px solid var(--sage);
-  color: var(--sage-deep);
-  border-radius: 4px;
-  cursor: pointer;
-  font-family: inherit;
-  font-size: 0.95em;
-  transition: background 0.15s, color 0.15s;
-}
-
-#skill-bar button:hover {
-  background: var(--sage);
-  color: var(--paper);
-}
-
-/* Exit bar mirrors the skill bar but tinted differently so the two
- * categories (skills vs navigation) read at a glance. */
-#exit-bar {
-  display: flex;
-  gap: 0.4em;
-  flex-wrap: wrap;
-  margin-bottom: 1.4em;
-}
-
+#exit-bar.routes { display: flex; flex-wrap: wrap; gap: 4px 18px; align-items: center; }
 #exit-bar button {
-  padding: 0.4em 0.95em;
-  background: var(--paper);
-  border: 1px dashed var(--sage);
-  color: var(--sage-deep);
-  border-radius: 4px;
-  cursor: pointer;
-  font-family: inherit;
-  font-size: 0.95em;
-  font-style: italic;
-  transition: background 0.15s, color 0.15s;
+  background: none; border: none; padding: 0; cursor: pointer;
+  font-family: var(--serif); font-size: .98rem; font-style: italic; font-weight: 600;
+  color: var(--sage-deep); border-bottom: 1.4px dotted var(--sage);
 }
+#exit-bar button:hover { color: var(--sage); }
+#exit-bar:empty::after { content: "the ways are quiet just now."; font-family: var(--serif); font-style: italic; color: var(--sage); opacity: .7; font-size: .92rem; border: none; }
 
-#exit-bar button:hover {
-  background: var(--sage);
-  color: var(--paper);
-}
-
-footer { text-align: center; font-size: 0.85em; opacity: 0.7; }
-footer a { color: var(--sage-deep); text-decoration: none; }
-footer a:hover { text-decoration: underline; }
-footer form { margin: 0; display: inline; }
-footer .logout {
+/* ---------- meta footer (switch / leave) ---------- */
+footer { text-align: center; font-size: 0.85em; margin-top: 18px; opacity: 0.75; }
+footer .slots-toggle, footer .logout {
   background: none; border: none; padding: 0; font: inherit; cursor: pointer;
   color: var(--sage-deep); text-decoration: none;
 }
-footer .logout:hover { text-decoration: underline; }
+footer .slots-toggle { margin-right: 1em; }
+footer .slots-toggle:hover, footer .logout:hover { text-decoration: underline; }
 
-/* Slot picker (toon-slot-management spec, 2026-05-07) */
-footer .slots-toggle {
-  background: none; border: none; padding: 0; font: inherit; cursor: pointer;
-  color: var(--sage-deep); text-decoration: none; margin-right: 1em;
-}
-footer .slots-toggle:hover { text-decoration: underline; }
-
+/* ---------- slot picker ---------- */
 .slots-panel {
-  position: fixed; top: 4em; left: 50%; transform: translateX(-50%);
+  position: fixed; top: 4em; left: 50%; transform: translateX(-50%); z-index: 60;
   background: var(--paper); border: 1px solid var(--sage);
-  padding: 1em 1.5em; border-radius: 6px; min-width: 320px;
-  box-shadow: 0 4px 12px rgba(58, 74, 68, 0.12);
+  padding: 1em 1.5em; border-radius: var(--radius); min-width: 320px;
+  box-shadow: var(--page-shadow);
 }
 .slots-panel.hidden { display: none; }
-.slots-panel h2 {
-  margin: 0 0 0.6em 0; font-weight: normal; color: var(--sage-deep);
-  font-size: 1.1em; letter-spacing: 0.02em;
-}
+.slots-panel h2 { margin: 0 0 0.6em 0; font-family: var(--hand); color: var(--sage-deep); font-size: 1.7em; letter-spacing: .01em; }
 .slots-panel ul { list-style: none; padding: 0; margin: 0 0 0.8em 0; }
 .slots-panel .slot-row {
   display: flex; align-items: center; gap: 0.6em;
-  padding: 0.35em 0; border-bottom: 1px dotted var(--sage);
-  font-size: 0.95em;
+  padding: 0.35em 0; border-bottom: 1px dotted var(--sage); font-size: 0.95em;
 }
 .slots-panel .slot-row:last-child { border-bottom: none; }
 .slots-panel .slot-num { opacity: 0.6; font-variant-numeric: tabular-nums; }
 .slots-panel .slot-empty { opacity: 0.5; font-style: italic; }
 .slots-panel button {
   margin-left: auto; background: var(--paper); border: 1px solid var(--sage-deep);
-  color: var(--sage-deep); padding: 0.25em 0.7em; border-radius: 4px;
-  font: inherit; cursor: pointer;
+  color: var(--sage-deep); padding: 0.25em 0.7em; border-radius: 4px; font: inherit; cursor: pointer;
 }
 .slots-panel button:hover { background: var(--sage); color: var(--paper); }
 .slots-panel .slot-delete { margin-left: 0.4em; border-color: var(--amber); color: var(--amber); }
 .slots-panel .slot-delete:hover { background: var(--amber); color: var(--paper); }
-
-/* Room description, rendered from the snapshot: full on first entry to a room
- * this session, a short "you return to ..." line on re-entry. */
-.room-desc {
-  margin: 0 0 0.8em;
-  color: var(--ink);
-  font-style: italic;
-  opacity: 0.92;
-}
-.room-desc:empty { display: none; }
-
-/* Scene objects: distinct, clickable chips for toons + things + inventory
- * (objects + local LLMs, 2026-06-30). Toons keep the existing italic-sage
- * distinctness; things get a complementary warm tint. */
-.obj {
-  margin-right: 0.9em;
-  cursor: pointer;
-  border-bottom: 1px dotted transparent;
-  transition: color 0.15s, border-color 0.15s, opacity 0.15s;
-}
-.obj:hover { border-bottom-color: currentColor; }
-.obj-toon { color: var(--sage-deep); font-style: italic; }
-.obj-thing { color: var(--amber); }
-/* A scene object the staged verb can't apply to: dimmed + non-interactive,
- * so e.g. staging Talk leaves only toons clickable (SPEC 2026-06-30). */
-.obj-ungated { opacity: 0.3; cursor: default; pointer-events: none; }
-/* The chosen direct object during a two-object verb's second step (give/use):
- * highlighted so it stays clear what you're handing over while you pick the
- * target (SPEC 2026-07-01). */
-.obj-staged-dobj { border-bottom: 1px solid currentColor; font-weight: bold; }
-
-/* The two-step verb prompt ("give X to...") under the verb bar. */
-.verb-hint {
-  color: var(--sage-deep);
-  font-style: italic;
-  font-size: 0.9em;
-  margin: 0.2em 0 0.5em;
-}
-.verb-hint.hidden { display: none; }
-
-/* In-scope object mentions inside narration, made clickable. */
-.entity-link {
-  color: var(--sage-deep);
-  border-bottom: 1px dotted var(--sage);
-  cursor: pointer;
-}
-.entity-link:hover { border-bottom-style: solid; }
-
-/* Verb bar: Examine / Take / Drop / Talk. Staged verb is highlighted while
- * it waits for an object click. */
-#verb-bar {
-  display: flex;
-  gap: 0.4em;
-  flex-wrap: wrap;
-  margin-bottom: 0.6em;
-}
-#verb-bar button {
-  padding: 0.4em 0.95em;
-  background: var(--paper);
-  border: 1px solid var(--sage);
-  color: var(--sage-deep);
-  border-radius: 4px;
-  cursor: pointer;
-  font-family: inherit;
-  font-size: 0.95em;
-  transition: background 0.15s, color 0.15s;
-}
-#verb-bar button:hover { background: var(--sage); color: var(--paper); }
-#verb-bar button.verb-staged {
-  background: var(--sage-deep);
-  color: var(--paper);
-  box-shadow: 0 0 0 2px rgba(90, 122, 106, 0.25);
-}

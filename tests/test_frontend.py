@@ -374,16 +374,20 @@ def test_main_js_entity_link_click_not_gated_without_verbs():
 
 
 def test_index_html_has_labelled_scene_regions():
-    """C3 (SPEC 2026-06-30): the scene distinctly labels and separates WHO YOU
-    ARE / HERE WITH YOU / AROUND YOU / YOU'RE CARRYING. The room-objects region
-    is labelled "around you" (not "on the ground": an object could be on a table)."""
+    """C1/C3: the Reading Room marginalia column distinctly labels and separates
+    you / here with you / around you / you carry, each a clickable-object region.
+    The room-objects region is "around you" (an object could be on a table, not
+    "on the ground"). Retheme (SPEC 2026-07-01): the boxed scene-regions became
+    the marginalia mgroups."""
     with TestClient(app) as client:
         _login(client)
         r = client.get("/")
     for rid in ("self", "toons", "things", "inventory"):
         assert f'id="{rid}"' in r.text
-    assert "scene-region" in r.text
-    for label in ("you are", "here with you", "around you", "you're carrying"):
+    # Marginalia groups (the storybook right-margin column).
+    assert "mgroup" in r.text
+    assert "mlabel" in r.text
+    for label in (">you<", ">here with you<", ">around you<", ">you carry<"):
         assert label in r.text
     assert "on the ground" not in r.text  # relabelled
 
@@ -454,12 +458,15 @@ def test_main_js_inventory_backpack_and_verb_gating():
     assert "objectVerbs" in r.text  # click-path applicability guard
 
 
-def test_style_css_has_scene_region_and_gating_styles():
+def test_style_css_has_marginalia_and_gating_styles():
+    """Retheme (SPEC 2026-07-01): the marginalia column styles (.margin/.mgroup/
+    .mlabel) and the staged-verb gating dim (.obj-ungated) are present."""
     with TestClient(app) as client:
         _login(client)
         r = client.get("/assets/style.css")
-    assert ".scene-region" in r.text
-    assert ".region-label" in r.text
+    assert ".margin" in r.text
+    assert ".mgroup" in r.text
+    assert ".mlabel" in r.text
     assert ".obj-ungated" in r.text
 
 

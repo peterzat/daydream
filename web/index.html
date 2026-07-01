@@ -7,50 +7,98 @@
   <link rel="stylesheet" href="/assets/style.css">
 </head>
 <body>
-  <main id="app">
-    <div id="dream-overlay" class="dream-overlay hidden" aria-live="polite"></div>
-    <header id="room-header">
-      <img id="room-bg" src="/assets/placeholder-meadow.png" alt="">
+  <!-- Calm connection / hot-swap wash (fixed; recovers on its own). -->
+  <div id="dream-overlay" class="dream-overlay hidden" aria-live="polite"></div>
+
+  <div class="wordmark" aria-hidden="true">daydream</div>
+  <div class="comptag" aria-hidden="true">The Reading Room</div>
+
+  <!-- The open leaf: the storybook page. -->
+  <main id="app" class="page">
+    <span class="leaf l1" aria-hidden="true"></span>
+    <span class="leaf l2" aria-hidden="true"></span>
+
+    <!-- chapter plate: the room image, matted and edge-feathered -->
+    <header id="room-header" class="plate">
+      <figure class="plate-figure">
+        <img id="room-bg" src="/assets/placeholder-meadow.png" alt="">
+      </figure>
+      <span class="glow" aria-hidden="true"></span>
       <div id="painting-overlay" class="hidden" aria-live="polite">painting...</div>
-      <h1 id="room-title">drifting...</h1>
     </header>
-    <p id="room-desc" class="room-desc"></p>
-    <section id="scene" aria-label="here">
-      <section id="self-region" class="scene-region" aria-label="you are">
-        <h2 class="region-label">you are</h2>
-        <div id="self" class="region-body"></div>
-      </section>
-      <section id="here-region" class="scene-region" aria-label="here with you">
-        <h2 class="region-label">here with you</h2>
-        <div id="toons" class="region-body"></div>
-      </section>
-      <section id="ground-region" class="scene-region" aria-label="around you">
-        <h2 class="region-label">around you</h2>
-        <div id="things" class="region-body"></div>
-      </section>
-      <section id="carrying-region" class="scene-region" aria-label="you're carrying">
-        <h2 class="region-label">you're carrying <button id="backpack-toggle" type="button" class="backpack-toggle" title="list what you're carrying">backpack</button></h2>
-        <div id="inventory" class="region-body"></div>
-      </section>
-    </section>
-    <section id="chat" aria-live="polite"></section>
+
+    <div class="titleblock">
+      <h1 id="room-title" class="chapter-title">drifting...</h1>
+      <div class="folio">the dream</div>
+    </div>
+
+    <!-- body: narration prose (wide) + marginalia (narrow) -->
+    <div class="body">
+      <div class="prose">
+        <p id="room-desc" class="room-desc dropcap"></p>
+        <section id="chat" aria-live="polite"></section>
+      </div>
+
+      <aside class="margin" id="scene" aria-label="here">
+        <div class="mgroup" id="self-region">
+          <div class="mlabel">you</div>
+          <div id="self" class="region-body"></div>
+        </div>
+        <div class="mgroup" id="here-region">
+          <div class="mlabel">here with you</div>
+          <div id="toons" class="region-body"></div>
+        </div>
+        <div class="mgroup" id="ground-region">
+          <div class="mlabel">around you</div>
+          <div id="things" class="region-body"></div>
+        </div>
+        <div class="mgroup" id="carrying-region">
+          <div class="mlabel">you carry</div>
+          <div id="inventory" class="region-body"></div>
+          <button id="backpack-toggle" type="button" class="satchel-link"
+                  title="open your keepsakes">open the satchel &rarr;</button>
+        </div>
+      </aside>
+    </div>
+
+    <!-- action ribbon: what you might do -->
+    <div class="ribbon-wrap">
+      <div class="ribbon-label">what you might do</div>
+      <nav id="verb-bar" class="ribbon" aria-label="actions"></nav>
+      <div id="verb-hint" class="ribbon-hint hidden" aria-live="polite"></div>
+      <nav id="skill-bar" class="ribbon skill-ribbon" aria-label="affordances"></nav>
+    </div>
+
+    <!-- speak, friend: free-text input -->
     <form id="input-form">
       <input id="input-text" type="text" placeholder="speak, friend..." autofocus autocomplete="off" spellcheck="false">
     </form>
-    <nav id="verb-bar" aria-label="actions"></nav>
-    <div id="verb-hint" class="verb-hint hidden" aria-live="polite"></div>
-    <nav id="skill-bar" aria-label="affordances"></nav>
-    <nav id="exit-bar" aria-label="exits"></nav>
+
+    <!-- ways from here: the compass footer -->
+    <div class="ways">
+      <svg class="compass" width="30" height="30" viewBox="0 0 30 30" aria-hidden="true">
+        <circle cx="15" cy="15" r="12.5" fill="none" stroke="currentColor" stroke-width="1.1" opacity=".6"/>
+        <path d="M15 3 L18 15 L15 27 L12 15 Z" fill="currentColor" opacity=".55"/>
+        <path d="M3 15 L15 12 L27 15 L15 18 Z" fill="currentColor" opacity=".3"/>
+        <circle cx="15" cy="15" r="1.6" fill="currentColor"/>
+      </svg>
+      <span class="wlabel">ways from here</span>
+      <nav id="exit-bar" class="routes" aria-label="exits"></nav>
+    </div>
+
     <footer>
       <button id="slots-toggle" type="button" class="slots-toggle">switch toon</button>
       <button id="leave-dream" type="button" class="logout">leave the dream</button>
     </footer>
-    <section id="slots-panel" class="slots-panel hidden" aria-label="toon slots">
-      <h2>toon slots</h2>
-      <ul id="slots-list"></ul>
-      <button id="slots-close" type="button">close</button>
-    </section>
   </main>
+
+  <!-- slot picker (fixed overlay) -->
+  <section id="slots-panel" class="slots-panel hidden" aria-label="toon slots">
+    <h2>toon slots</h2>
+    <ul id="slots-list"></ul>
+    <button id="slots-close" type="button">close</button>
+  </section>
+
   <script src="/assets/main.js"></script>
 </body>
 </html>

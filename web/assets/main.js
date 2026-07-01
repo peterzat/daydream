@@ -17,6 +17,7 @@ let pendingTimer = null; // its safety timeout
 let loadedBuild = null; // server build SHA this page's JS loaded against (redeploy detection)
 let loadedWorldVersion = null;
 let lastCmd = null; // {key, t} -- debounce an accidental double-fire of one command
+let pendingDetail = null; // {verb, name, t} -- a targeted examine/read whose next narrate renders as a detail inset (the ledger reveal)
 
 // Reconnect backoff: a dropped socket retries on a gentle, capped exponential
 // delay behind a single calm "the dream is sleeping" overlay (not a growing
@@ -125,6 +126,7 @@ function renderSnapshot(snap) {
     (a, b) => (b.alias || "").length - (a.alias || "").length
   );
   clearStagedVerb();
+  pendingDetail = null; // a fresh snapshot supersedes any in-flight examine/read
   // Map actor IDs to display names so 'say' events can name the speaker
   // (built from ALL co-located toons, including yourself).
   actorNames = {};
@@ -135,10 +137,16 @@ function renderSnapshot(snap) {
   const selfEl = document.getElementById("self");
   selfEl.innerHTML = "";
   if (snap.self) {
-    const span = document.createElement("span");
-    span.className = "self-chip";
-    span.textContent = `${snap.self.name} (${snap.self.mood})`;
-    selfEl.appendChild(span);
+    const nm = document.createElement("span");
+    nm.className = "you-name";
+    nm.textContent = snap.self.name;
+    selfEl.appendChild(nm);
+    if (snap.self.mood) {
+      const md = document.createElement("span");
+      md.className = "mood";
+      md.textContent = snap.self.mood;
+      selfEl.appendChild(md);
+    }
   } else {
     selfEl.appendChild(emptyLine("drifting..."));
   }
@@ -263,6 +271,19 @@ function toggleStagedVerb(verb, btn) {
   stagedVerb = verb;
   btn.classList.add("verb-staged");
   applyVerbGating();
+  showSimpleHint(verb);
+}
+
+function showSimpleHint(verb) {
+  // The one-line "what's staged" prompt under the ribbon. A two-object verb
+  // (give/use) is refined by showStagedHint once its direct object is chosen.
+  const spec = verbSpecs[verb] || {};
+  const b = `<b>${escape(verb)}</b>`;
+  const hint = document.getElementById("verb-hint");
+  hint.innerHTML = spec.needs_iobj
+    ? `${b} &mdash; choose what to ${escape(verb)}.`
+    : `${b} is in your hand &mdash; choose what to ${escape(verb)}.`;
+  hint.classList.remove("hidden");
 }
 
 function clearStagedVerb() {
@@ -375,9 +396,24 @@ function onObjectClick(objectId, objectVerbs, objectKind) {
     sendCommand("talk", objectId, msg);
     showPending();
   } else {
+    // A targeted examine/read renders its narrate as a storybook detail inset
+    // (the ledger reveal); remember the target so renderEvent can style it.
+    if (verb === "examine" || verb === "read") {
+      pendingDetail = { verb, name: nameForObject(objectId), t: Date.now() };
+    }
     sendCommand(verb, objectId);
   }
   clearStagedVerb();
+}
+
+function nameForObject(objectId) {
+  // Display name for the detail-inset tab: the scene chip's text if present,
+  // else the in-scope entity alias (an in-prose affordance click), else "it".
+  // Never an id (no object ids in player-visible text).
+  const chip = document.querySelector(`#scene .obj[data-object-id="${objectId}"]`);
+  if (chip && chip.textContent) return chip.textContent.trim();
+  const ent = (entities || []).find((e) => e.object_id === objectId);
+  return ent && ent.alias ? ent.alias : "it";
 }
 
 function renderEvent(e) {
@@ -387,6 +423,14 @@ function renderEvent(e) {
   // room_image_ready does not flow into the chat log; it just updates the bg.
   if (e.kind === "room_image_ready") {
     handleRoomImageReady(e);
+    return;
+  }
+
+  // A targeted examine/read just fired: render its narrate as a storybook
+  // detail inset (the ledger reveal) rather than a plain prose line.
+  if (e.kind === "narrate" && pendingDetail && Date.now() - pendingDetail.t < 8000) {
+    renderDetailInset(e, pendingDetail);
+    pendingDetail = null;
     return;
   }
 
@@ -420,6 +464,31 @@ function renderEvent(e) {
   }
   clearPending(); // a slow action just produced its line; drop the "thinking" beat
   chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function renderDetailInset(e, detail) {
+  // The storybook expression of examine/read: a warm parchment card with a tab
+  // label and the described text, revealed inline in the prose (DESIGN.md).
+  const chat = document.getElementById("chat");
+  const aside = document.createElement("aside");
+  aside.className = "evt detail-inset";
+  const tab = document.createElement("span");
+  tab.className = "tab";
+  const nm = detail.name || "it";
+  tab.textContent = detail.verb === "read" ? `${nm}, read` : `you examine ${nm}`;
+  aside.appendChild(tab);
+  const p = document.createElement("p");
+  p.innerHTML = linkifyEntities(e.payload.text || "", entities);
+  p.querySelectorAll(".entity-link").forEach((span) => {
+    span.onclick = () => onObjectClick(span.dataset.objectId);
+  });
+  aside.appendChild(p);
+  const dogear = document.createElement("span");
+  dogear.className = "dogear";
+  aside.appendChild(dogear);
+  clearPending();
+  chat.appendChild(aside);
   chat.scrollTop = chat.scrollHeight;
 }
 
