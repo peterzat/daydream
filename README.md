@@ -6,6 +6,16 @@ A small atmospheric multiplayer web game running on a single dev box. Players en
 
 The image above is the image-gen pipeline's first real output: prompt seeded from the meadow room, SDXL base + a watercolor LoRA via local ComfyUI, gated by the GPU arbiter, ~6 s of render on the dev box's RTX 4000 SFF Ada. It lives at the project root as a historical artifact — the cache layout has since changed (the file is no longer regenerable bit-for-bit by the current code path), but the rendering it captures is the moment v1 first proved itself. The aesthetic anchor is in [`WHIMSY.md`](WHIMSY.md): Spiritfarer / A Short Hike, soft and painterly.
 
+## The Reading Room
+
+Daydream presents as a storybook you act inside. A matted room painting opens each place, the narration is drop-cap prose on a paper page, who and what is with you is noted in the margin, and your moves are quiet ink-tab choices ("what you might do") with a compass of ways out. Object mentions in the prose are clickable, and examining or reading one opens an inline detail inset. The durable UI design language is [`DESIGN.md`](DESIGN.md) (the interface counterpart to `WHIMSY.md`); the visual reference is [`docs/mockups/01-reading-room/`](docs/mockups/01-reading-room/).
+
+![The Reading Room UI: the Stopped Clock room with a matted watercolor plate, a hand-lettered title, drop-cap narration with an opened-ledger detail inset, a right-margin column of who and what is here and what you carry, and an ink-tab action ribbon.](docs/pretty/reading-room-ui.png)
+
+What you carry opens as a keepsakes spread, each thing a pressed specimen with room for what you have yet to find.
+
+![The keepsakes backpack: a two-page Keepsakes spread showing carried items as pressed specimen cards beside empty collection slots.](docs/pretty/reading-room-keepsakes.png)
+
 ## Status
 
 Latest stable cut: **v0.3.0** (objects + verbs; the live world reset onto the new schema is the one pending operator step). Runs on a single Linux dev box (RTX 4000 SFF Ada, 20 GB VRAM); designed to port to Cloudflare and containers later. Test gates: 396 fast tests (`bin/game test short`, ~3 s) and 622 integration tests (`bin/game test medium`, ~9 s); both 100% green. Real-GPU drift + parser-grounding probes run on-demand under `bin/game test long`.
