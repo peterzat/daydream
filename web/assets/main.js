@@ -9,6 +9,8 @@ let actorNames = {};
 let awaitingPick = false; // showing the picker after leaving; suppresses auto-reconnect
 let entities = []; // in-scope {alias, object_id, kind} for narration linking
 let stagedVerb = null; // the verb-bar verb awaiting an object click
+let stagedDobjId = null; // step-1 direct object of a two-object (give/use) verb, awaiting the iobj click
+let verbSpecs = {}; // verb name -> {needs_iobj, valid_iobj_kinds} from the snapshot's verb_bar
 let lastArrivalRoomId = null; // room of the last arrival line shown (suppresses re-show on same-room re-snapshots)
 let pendingEl = null; // transient "thinking..." line during a slow (LLM) action
 let pendingTimer = null; // its safety timeout
@@ -182,7 +184,9 @@ function renderSnapshot(snap) {
   // per-direction exit buttons are the only nav affordance.
   const verbBar = document.getElementById("verb-bar");
   verbBar.innerHTML = "";
+  verbSpecs = {};
   for (const v of snap.verb_bar || []) {
+    verbSpecs[v.name] = v; // {needs_iobj, valid_iobj_kinds} drives two-step staging
     const btn = document.createElement("button");
     btn.type = "button";
     btn.textContent = v.ui_hint;
@@ -246,7 +250,7 @@ function objectChip(o, label) {
   span.dataset.kind = o.kind;
   span.dataset.verbs = (o.verbs || []).join(",");
   span.textContent = label;
-  span.onclick = () => onObjectClick(o.id, o.verbs || []);
+  span.onclick = () => onObjectClick(o.id, o.verbs || [], o.kind);
   return span;
 }
 
@@ -263,12 +267,33 @@ function toggleStagedVerb(verb, btn) {
 
 function clearStagedVerb() {
   stagedVerb = null;
+  stagedDobjId = null;
+  hideStagedHint();
   document
     .querySelectorAll("#verb-bar button.verb-staged")
     .forEach((b) => b.classList.remove("verb-staged"));
   document
     .querySelectorAll("#scene .obj.obj-ungated")
     .forEach((o) => o.classList.remove("obj-ungated"));
+  document
+    .querySelectorAll("#scene .obj.obj-staged-dobj")
+    .forEach((o) => o.classList.remove("obj-staged-dobj"));
+}
+
+function showStagedHint(verb, dobjName) {
+  // The two-step prompt after a needs_iobj dobj is chosen: "give <X> to..." /
+  // "use <X> on...". Names the chosen direct object so the second click reads.
+  const prep = (verbSpecs[verb] || {}).valid_iobj_kinds || [];
+  const word = prep.indexOf("toon") !== -1 ? "to" : "on";
+  const hint = document.getElementById("verb-hint");
+  hint.textContent = `${verb} ${dobjName} ${word}... (click a target, or the verb again to cancel)`;
+  hint.classList.remove("hidden");
+}
+
+function hideStagedHint() {
+  const hint = document.getElementById("verb-hint");
+  hint.textContent = "";
+  hint.classList.add("hidden");
 }
 
 function clearSceneAndLog() {
@@ -295,25 +320,55 @@ function clearSceneAndLog() {
 }
 
 function applyVerbGating() {
-  // With a verb staged, dim + disable scene objects the verb can't apply to
-  // (Talk -> toons; Take/Drop -> things; Examine -> toons + things). Object
-  // chips carry their own verb list, so the verb bar offers a verb only where
-  // it applies (SPEC 2026-06-30).
+  // Dim + disable scene objects the staged verb can't apply to. Single-object
+  // verbs (and step 1 of a two-object verb) gate by the object's own verb list
+  // (Talk -> toons; Take/Drop -> things). Step 2 of a two-object verb (a dobj
+  // already chosen) gates by iobj KIND (give -> a toon; use -> a thing); the
+  // chosen dobj stays lit and highlighted. Object chips carry their verbs +
+  // kind, so a verb is offered only where it applies (SPEC 2026-06-30).
+  const spec = stagedVerb ? verbSpecs[stagedVerb] : null;
+  const step2 = spec && spec.needs_iobj && stagedDobjId;
+  const validIobjKinds = (spec && spec.valid_iobj_kinds) || [];
   document.querySelectorAll("#scene .obj").forEach((el) => {
     const verbs = (el.dataset.verbs || "").split(",").filter(Boolean);
-    if (stagedVerb && !verbs.includes(stagedVerb)) el.classList.add("obj-ungated");
-    else el.classList.remove("obj-ungated");
+    const isStagedDobj = stagedDobjId && el.dataset.objectId === stagedDobjId;
+    let applies;
+    if (!stagedVerb) applies = true;
+    else if (isStagedDobj) applies = true; // the chosen dobj stays selectable/lit
+    else if (step2) applies = validIobjKinds.includes(el.dataset.kind);
+    else applies = verbs.includes(stagedVerb);
+    el.classList.toggle("obj-ungated", !applies);
+    el.classList.toggle("obj-staged-dobj", !!isStagedDobj);
   });
 }
 
-function onObjectClick(objectId, objectVerbs) {
-  // Staged verb wins; a bare object click defaults to Examine (valid for every
-  // toon + thing). A staged verb the object doesn't support is a no-op, so we
-  // never prompt for talk text on a non-toon.
+function onObjectClick(objectId, objectVerbs, objectKind) {
+  const spec = stagedVerb ? verbSpecs[stagedVerb] : null;
+  if (stagedVerb && spec && spec.needs_iobj) {
+    // Two-step (give/use). Step 1: record the direct object; step 2: the click
+    // is the indirect object -> send both ids. Gate ONLY when kind/verbs known
+    // (entity-link clicks pass neither; let the server validate those).
+    if (!stagedDobjId) {
+      if (objectVerbs && !objectVerbs.includes(stagedVerb)) return;
+      stagedDobjId = objectId;
+      const chip = document.querySelector(
+        `#scene .obj[data-object-id="${objectId}"]`
+      );
+      showStagedHint(stagedVerb, chip ? chip.textContent : "it");
+      applyVerbGating();
+      return;
+    }
+    if (objectId === stagedDobjId) return; // can't target the dobj at itself
+    const validKinds = spec.valid_iobj_kinds || [];
+    if (objectKind && validKinds.length && !validKinds.includes(objectKind)) return;
+    sendCommand(stagedVerb, stagedDobjId, "", objectId);
+    clearStagedVerb();
+    return;
+  }
+  // Single-object path: staged verb wins; a bare click defaults to Examine
+  // (valid for every toon + thing). A staged verb the object doesn't support is
+  // a no-op, so we never prompt for talk text on a non-toon.
   const verb = stagedVerb || "examine";
-  // Gate ONLY when we know the object's verbs (scene chips pass them). Entity-
-  // link mentions in narration call this with no verbs list, so don't silently
-  // drop their click -- let the server validate the verb (it always does).
   if (stagedVerb && objectVerbs && !objectVerbs.includes(stagedVerb)) return;
   if (verb === "talk") {
     const msg = (window.prompt("say what to them?") || "").trim();
@@ -396,14 +451,15 @@ function sendInput(text) {
   ws.send(JSON.stringify({ kind: "input", text: text }));
 }
 
-function sendCommand(verb, dobjId, args) {
+function sendCommand(verb, dobjId, args, iobjId) {
   // The structured command frame: the click path. Bypasses the parser, so a
-  // deterministic verb makes no LLM call (the server's verb handler may).
+  // deterministic verb makes no LLM call (the server's verb handler may). A
+  // two-object verb (give/use) carries iobj_id; single-object verbs omit it.
   if (!ws || ws.readyState !== WebSocket.OPEN) return;
   // Some browsers fire a click handler twice on a single tap, which would echo
   // the resulting line twice (e.g. a doubled "You examine ..."). Drop an
-  // identical command (verb+dobj+args) repeated within 400ms.
-  const key = verb + "|" + (dobjId || "") + "|" + (args || "");
+  // identical command (verb+dobj+iobj+args) repeated within 400ms.
+  const key = verb + "|" + (dobjId || "") + "|" + (iobjId || "") + "|" + (args || "");
   const now = Date.now();
   if (lastCmd && lastCmd.key === key && now - lastCmd.t < 400) return;
   lastCmd = { key, t: now };
@@ -412,6 +468,7 @@ function sendCommand(verb, dobjId, args) {
       kind: "command",
       verb: verb,
       dobj_id: dobjId || null,
+      iobj_id: iobjId || null,
       args: args || "",
     })
   );

@@ -198,8 +198,18 @@ def _state_snapshot(
         "self": _toon_card(self_toon) if self_toon is not None else None,
         "inventory": [_object_card(o) for o in inventory_in],
         "skills": [{"name": s.name, "ui_hint": s.ui_hint, "kind": s.kind} for s in available],
-        # The verb bar (Examine / Take / Drop / Talk) — verb-then-object.
-        "verb_bar": [{"name": v.name, "ui_hint": v.ui_hint} for v in verbs.bar_verbs()],
+        # The verb bar — verb-then-object. Two-object verbs (give/use) carry
+        # `needs_iobj` + `valid_iobj_kinds` so the client can drive the second
+        # click and gate step 2 by kind (valid_iobj_kinds sorted for a stable
+        # payload). Single-object verbs report needs_iobj=false, [].
+        "verb_bar": [
+            {
+                "name": v.name, "ui_hint": v.ui_hint,
+                "needs_iobj": v.needs_iobj,
+                "valid_iobj_kinds": sorted(v.valid_iobj_kinds),
+            }
+            for v in verbs.bar_verbs()
+        ],
         # Entity sidecar: in-scope names/aliases -> object ids, so the client
         # can wrap object mentions in narration as clickable spans.
         "entities": _entity_sidecar(toon_id),

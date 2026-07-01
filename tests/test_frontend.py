@@ -276,6 +276,35 @@ def test_main_js_verb_bar_targeting_and_default_examine():
     assert 'stagedVerb || "examine"' in r.text
 
 
+def test_index_html_has_verb_hint_element():
+    """C6 (SPEC 2026-07-01): the shell exposes the two-step staging hint slot."""
+    with TestClient(app) as client:
+        _login(client)
+        r = client.get("/")
+    assert 'id="verb-hint"' in r.text
+
+
+def test_main_js_two_step_staging_for_two_object_verbs():
+    """C6 (SPEC 2026-07-01): two-object verbs (give/use) drive a two-step click:
+    stage the verb, click the direct object, then a kind-valid indirect object
+    sends BOTH ids. Single-object verbs keep the one-click path."""
+    with TestClient(app) as client:
+        _login(client)
+        r = client.get("/assets/main.js")
+    # A second staged slot for the direct object, plus the verb-spec map that
+    # carries needs_iobj / valid_iobj_kinds from the snapshot's verb_bar.
+    assert "stagedDobjId" in r.text
+    assert "verbSpecs" in r.text
+    assert "needs_iobj" in r.text
+    assert "valid_iobj_kinds" in r.text
+    # Step 2 sends both ids through sendCommand (dobj, then iobj).
+    assert "sendCommand(stagedVerb, stagedDobjId" in r.text
+    # The command frame carries iobj_id (the server already accepts it).
+    assert "iobj_id" in r.text
+    # Step 2 gates candidate targets by kind (give -> a toon; use -> a thing).
+    assert "valid_iobj_kinds).includes" in r.text or "validIobjKinds.includes" in r.text
+
+
 def test_main_js_no_generic_go_control_only_data_affordances():
     """No generic "go" button: the per-direction exit buttons are the only nav
     affordance, and the affordance bar renders DATA skills only (so core verbs,

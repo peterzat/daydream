@@ -506,6 +506,12 @@ def test_ws_snapshot_carries_scene_objects_verb_bar_and_entities():
     assert [v["name"] for v in snap["verb_bar"]] == [
         "examine", "take", "drop", "talk", "give", "use", "open", "read",
     ]
+    # Two-object verbs advertise needs_iobj + valid_iobj_kinds so the client can
+    # drive step 2 and gate it by kind; single-object verbs report false / [].
+    bar = {v["name"]: v for v in snap["verb_bar"]}
+    assert bar["give"]["needs_iobj"] and bar["give"]["valid_iobj_kinds"] == ["toon"]
+    assert bar["use"]["needs_iobj"] and bar["use"]["valid_iobj_kinds"] == ["thing"]
+    assert bar["take"]["needs_iobj"] is False and bar["take"]["valid_iobj_kinds"] == []
     # Inventory starts empty; the entity sidecar maps the lantern's name -> id.
     assert snap["inventory"] == []
     assert any(
