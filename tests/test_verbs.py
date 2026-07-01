@@ -51,7 +51,7 @@ def _install_dialogue(name: str) -> None:
 def test_closed_verb_registry_with_arg_specs():
     assert set(verbs.VERBS) == {
         "look", "examine", "take", "drop", "talk", "give", "use",
-        "say", "go", "inventory",
+        "open", "read", "say", "go", "inventory",
     }
     # Arg-specs: object-targeted verbs declare a dobj + valid kinds.
     assert verbs.VERBS["take"].needs_dobj
@@ -66,7 +66,7 @@ def test_closed_verb_registry_with_arg_specs():
     assert verbs.VERBS["use"].valid_iobj_kinds == frozenset({"thing"})
     # The verb bar offers the interaction verbs, verb-then-object.
     assert [v.name for v in verbs.bar_verbs()] == [
-        "examine", "take", "drop", "talk", "give", "use",
+        "examine", "take", "drop", "talk", "give", "use", "open", "read",
     ]
 
 
@@ -302,6 +302,80 @@ async def test_give_and_use_make_no_llm_call(monkeypatch):
     await verbs.execute_command("t-wren", "use", dobj_id=key, iobj_id=box.id)
     assert objects.get(box.id).properties.get("state") == "unlocked"
     spy.assert_not_called()
+
+
+# ---- open (state-gated) + read + state-aware examine -------------------
+
+
+def _spawn_clock_case(state: str = "locked") -> str:
+    """A stateful openable thing in the meadow: a lock, an authored payoff, and
+    a state_text map for examine."""
+    box = objects.spawn("w-bunny", "thing", "clock case", "r-meadow",
+        prototype_id=objects.PROTO_THING, properties={
+            "state": state, "verbs": ["open"],
+            "seed": "a tall glass-fronted clock case",
+            "locked_text": "The clock case is locked tight.",
+            "open_text": "The case swings open and the pendulum catches the light.",
+            "state_text": {
+                "locked": "A small brass lock holds it shut.",
+                "unlocked": "The lock hangs open; the case is still closed.",
+                "open": "The case stands open.",
+            },
+            "contains": {"name": "warm brass cog", "seed": "a small warm cog"},
+        })
+    return box.id
+
+
+@pytest.mark.asyncio
+async def test_open_locked_refuses_with_locked_text_and_no_payoff():
+    box = _spawn_clock_case("locked")
+    await verbs.execute_command("t-wren", "open", dobj_id=box)
+    assert objects.get(box).properties.get("state") == "locked"  # stays shut
+    assert "locked" in _last_narrate().lower()
+    assert not any(o.name == "warm brass cog" for o in objects.contents("r-meadow", "thing"))
+
+
+@pytest.mark.asyncio
+async def test_open_unlocked_transitions_spawns_payoff_once():
+    box = _spawn_clock_case("unlocked")
+    await verbs.execute_command("t-wren", "open", dobj_id=box)
+    assert objects.get(box).properties.get("state") == "open"
+    cogs = [o for o in objects.contents("r-meadow", "thing") if o.name == "warm brass cog"]
+    assert len(cogs) == 1
+    assert "pendulum" in _last_narrate().lower()
+    # Re-open: says already-open and does NOT re-spawn the payoff.
+    await verbs.execute_command("t-wren", "open", dobj_id=box)
+    assert "already open" in _last_narrate().lower()
+    cogs = [o for o in objects.contents("r-meadow", "thing") if o.name == "warm brass cog"]
+    assert len(cogs) == 1
+
+
+@pytest.mark.asyncio
+async def test_read_surfaces_authored_text():
+    ledger = objects.spawn("w-bunny", "thing", "repair ledger", "r-meadow",
+        prototype_id=objects.PROTO_READABLE,
+        properties={"verbs": ["read"], "seed": "a worn leather ledger",
+                    "text": "The escapement gear is lost; return it to Tace."})
+    await verbs.execute_command("t-wren", "read", dobj_id=ledger.id)
+    assert "escapement gear" in _last_narrate().lower()
+
+
+@pytest.mark.asyncio
+async def test_read_without_text_degrades_gently():
+    plain = objects.spawn("w-bunny", "thing", "blank slate", "r-meadow",
+        prototype_id=objects.PROTO_THING,
+        properties={"verbs": ["read"], "seed": "a smooth grey slate"})
+    await verbs.execute_command("t-wren", "read", dobj_id=plain.id)
+    assert "nothing" in _last_narrate().lower()
+
+
+@pytest.mark.asyncio
+async def test_examine_appends_state_without_overwriting_seed():
+    box = _spawn_clock_case("locked")
+    await verbs.execute_command("t-wren", "examine", dobj_id=box)
+    line = _last_narrate().lower()
+    assert "glass-fronted clock case" in line  # the physical seed survives
+    assert "brass lock" in line                # the current-state line appended
 
 
 # ---- MOO dispatch priority: bound dialogue wins over the stub ----------

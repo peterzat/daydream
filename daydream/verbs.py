@@ -108,6 +108,19 @@ VERBS: dict[str, VerbSpec] = {
         allowed_effects=frozenset({"set_property", "spawn_object", "move_object", "narrate"}),
         on_bar=True,
     ),
+    "open": VerbSpec(
+        name="open", ui_hint="Open",
+        description="Open a thing (a case, a box, a door). Target: the thing.",
+        needs_dobj=True, valid_dobj_kinds=frozenset({"thing"}),
+        allowed_effects=frozenset({"set_property", "spawn_object", "narrate"}),
+        on_bar=True,
+    ),
+    "read": VerbSpec(
+        name="read", ui_hint="Read",
+        description="Read a thing's writing (a ledger, a letter). Target: the thing.",
+        needs_dobj=True, valid_dobj_kinds=frozenset({"thing"}),
+        allowed_effects=frozenset({"narrate"}), on_bar=True,
+    ),
     "say": VerbSpec(
         name="say", ui_hint="Say",
         description="Speak something aloud to the room. Args: the text to say.",
@@ -289,6 +302,22 @@ def _examine_line(dobj: objects.Object, detail: str) -> str:
     return f"You examine the {dobj.name}: {_terminate(detail)}"
 
 
+def _detail_with_state(dobj: objects.Object) -> str:
+    """The physical seed, plus the current-state line when the object carries
+    both a `state` and a `state_text` map for it. Appends (never overwrites) the
+    seed, so a stateful object reads e.g. 'a heavy oak case. The lock has given;
+    the case stands open.' Backward-compatible: a stateless thing returns its
+    seed unchanged."""
+    seed = dobj.seed
+    state = dobj.properties.get("state")
+    state_text = dobj.properties.get("state_text")
+    if isinstance(state, str) and isinstance(state_text, dict):
+        extra = state_text.get(state)
+        if isinstance(extra, str) and extra.strip():
+            return f"{_terminate(seed)} {extra.strip()}"
+    return seed
+
+
 async def _handle_examine(actor, room_id, dobj, iobj, args, spec) -> None:
     """Examine an object. Cached text or a toon's appearance or a thing's seed
     are echoed deterministically (NO LLM). A spawned generative object with no
@@ -307,7 +336,7 @@ async def _handle_examine(actor, room_id, dobj, iobj, args, spec) -> None:
         _dispatch(actor, room_id, [{"kind": "narrate", "text": line}], spec)
         return
     if dobj.seed and dobj.seed.strip():
-        _dispatch(actor, room_id, [{"kind": "narrate", "text": _examine_line(dobj, dobj.seed)}], spec)
+        _dispatch(actor, room_id, [{"kind": "narrate", "text": _examine_line(dobj, _detail_with_state(dobj))}], spec)
         return
     # Lazy-cache generation (one LLM call, then cached).
     detail = await _generate_examine(dobj)
@@ -459,6 +488,65 @@ async def _handle_use(actor, room_id, dobj, iobj, args, spec) -> None:
     _dispatch(actor, room_id, [{"kind": "narrate", "text": wrong}], spec)
 
 
+async def _handle_open(actor, room_id, dobj, iobj, args, spec) -> None:
+    """Open a stateful thing, gated on its `properties.state`:
+
+      locked  -> refuse with the authored `locked_text`; stays shut.
+      open    -> "already open"; does NOT re-spawn its payload.
+      else    -> transition state to 'open', narrate `open_text`, and reveal the
+                 authored `contains` payload into the room (deduped by
+                 provenance so a re-open never doubles it).
+
+    Deterministic; all text is pre-baked (no LLM). A plain thing with no state
+    just opens with a generic line."""
+    state = dobj.properties.get("state")
+    if state == "locked":
+        locked = dobj.properties.get("locked_text")
+        if not (isinstance(locked, str) and locked.strip()):
+            locked = f"The {dobj.name} is locked."
+        _dispatch(actor, room_id, [{"kind": "narrate", "text": locked}], spec)
+        return
+    if state == "open":
+        _dispatch(actor, room_id, [{"kind": "narrate",
+            "text": f"The {dobj.name} is already open."}], spec)
+        return
+    effs: list = [
+        {"kind": "set_property", "target_id": dobj.id, "key": "state", "value": "open"},
+    ]
+    open_text = dobj.properties.get("open_text")
+    if isinstance(open_text, str) and open_text.strip():
+        effs.append({"kind": "narrate", "text": open_text.strip()})
+    else:
+        effs.append({"kind": "narrate", "text": f"You open the {dobj.name}."})
+    contains = dobj.properties.get("contains")
+    if isinstance(contains, dict) and isinstance(contains.get("name"), str) and contains["name"].strip():
+        spawn: dict = {
+            "kind": "spawn_object", "name": contains["name"],
+            "seed": contains["seed"] if isinstance(contains.get("seed"), str) else "",
+            "location_id": room_id, "generated_by": f"open:{dobj.id}",
+        }
+        if isinstance(contains.get("aliases"), list):
+            spawn["aliases"] = contains["aliases"]
+        if isinstance(contains.get("verbs"), list):
+            spawn["verbs"] = contains["verbs"]
+        if contains.get("readable"):
+            spawn["readable"] = True
+        effs.append(spawn)
+    _dispatch(actor, room_id, effs, spec)
+
+
+async def _handle_read(actor, room_id, dobj, iobj, args, spec) -> None:
+    """Narrate a readable's authored `text` (the words on the page), distinct
+    from `examine`'s physical description. Degrades gently when there is no
+    text. Deterministic (no LLM)."""
+    text = dobj.properties.get("text")
+    if isinstance(text, str) and text.strip():
+        _dispatch(actor, room_id, [{"kind": "narrate", "text": text.strip()}], spec)
+        return
+    _dispatch(actor, room_id, [{"kind": "narrate",
+        "text": f"There's nothing written on the {dobj.name} to read."}], spec)
+
+
 async def _handle_say(actor, room_id, dobj, iobj, args, spec) -> None:
     text = args.strip()
     if not text:
@@ -561,6 +649,8 @@ _ENGINE_HANDLERS = {
     "drop": _handle_drop,
     "give": _handle_give,
     "use": _handle_use,
+    "open": _handle_open,
+    "read": _handle_read,
     "say": _handle_say,
     "go": _handle_go,
     "inventory": _handle_inventory,
