@@ -18,6 +18,7 @@ let loadedBuild = null; // server build SHA this page's JS loaded against (redep
 let loadedWorldVersion = null;
 let lastCmd = null; // {key, t} -- debounce an accidental double-fire of one command
 let pendingDetail = null; // {verb, name, t} -- a targeted examine/read whose next narrate renders as a detail inset (the ledger reveal)
+let lastInventory = []; // the latest snapshot's carried things, for the keepsakes backpack foldout
 
 // Reconnect backoff: a dropped socket retries on a gentle, capped exponential
 // delay behind a single calm "the dream is sleeping" overlay (not a growing
@@ -155,8 +156,10 @@ function renderSnapshot(snap) {
   renderObjects("toons", others, "no one else is here", (t) => `${t.name} (${t.mood})`);
   // WHAT'S ON THE GROUND: room things (previously sent but never rendered).
   renderObjects("things", snap.items || [], "nothing around you");
-  // WHAT YOU'RE CARRYING: inventory (things located on you).
-  renderObjects("inventory", snap.inventory || [], "your hands are empty");
+  // WHAT YOU'RE CARRYING: inventory (things located on you). Cached so the
+  // keepsakes backpack foldout can render the same list as specimen cards.
+  lastInventory = snap.inventory || [];
+  renderObjects("inventory", lastInventory, "your hands are empty");
   // Re-hydrate the chat from the snapshot's recent events.
   const chat = document.getElementById("chat");
   clearPending();
@@ -629,12 +632,93 @@ document.getElementById("input-form").addEventListener("submit", (ev) => {
   inp.value = "";
 });
 
-// Backpack control: surface what you're carrying in the chat. Sends the same
-// `inventory` command the text input does (the carrying region also lists it
-// live in the scene). The click path makes no LLM call.
-document.getElementById("backpack-toggle").addEventListener("click", () => {
-  sendCommand("inventory");
+// Backpack control: open the keepsakes foldout over the live inventory (a
+// two-page specimen spread), replacing the old "print inventory to chat". No
+// server round-trip: it renders the last snapshot's inventory client-side.
+document.getElementById("backpack-toggle").addEventListener("click", openBackpack);
+document.getElementById("backpack-close").addEventListener("click", closeBackpack);
+document.getElementById("backpack-panel").addEventListener("click", (e) => {
+  if (e.target.id === "backpack-panel") closeBackpack(); // click the backdrop to close
 });
+
+function openBackpack() {
+  renderKeepsakes(lastInventory);
+  document.getElementById("backpack-panel").classList.remove("hidden");
+}
+
+function closeBackpack() {
+  document.getElementById("backpack-panel").classList.add("hidden");
+}
+
+function renderKeepsakes(items) {
+  const box = document.getElementById("keepsakes");
+  box.innerHTML = "";
+  if (!items || !items.length) {
+    const p = document.createElement("p");
+    p.className = "empty-note";
+    p.textContent = "your satchel is empty just now — keepsakes gather as you wander.";
+    box.appendChild(p);
+    return;
+  }
+  for (const it of items) box.appendChild(keepsakeCard(it));
+}
+
+function keepsakeCard(it) {
+  const card = document.createElement("div");
+  card.className = "specimen";
+  const mount = document.createElement("div");
+  mount.className = "mount";
+  mount.innerHTML = keepsakeGlyph(it.name || "");
+  card.appendChild(mount);
+  const body = document.createElement("div");
+  body.className = "s-body";
+  const name = document.createElement("div");
+  name.className = "s-name";
+  name.textContent = it.name || "a keepsake"; // real item name (never an id)
+  body.appendChild(name);
+  const desc = document.createElement("div");
+  desc.className = "s-desc";
+  desc.textContent = keepsakeCaption(it.name || "");
+  body.appendChild(desc);
+  const tag = document.createElement("span");
+  tag.className = "s-tag";
+  tag.textContent = "a keepsake";
+  body.appendChild(tag);
+  card.appendChild(body);
+  return card;
+}
+
+// Deterministic per-item flourish. The snapshot carries only name/kind (no
+// server-side item lore yet), so the mount glyph + caption are a stable,
+// generic keepsake presentation keyed by the name. They never fabricate
+// item-specific facts; the real content is the item's own name.
+function hashName(s) {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return h;
+}
+
+function keepsakeCaption(name) {
+  const pool = [
+    "carried with you, and kept.",
+    "a small thing, and yours.",
+    "kept for the comfort of it.",
+    "worn smooth by the carrying.",
+  ];
+  return pool[hashName(name) % pool.length];
+}
+
+function keepsakeGlyph(name) {
+  // One of a few gentle amber SVGs (generic, parameterized by the name), pressed
+  // into the mount like a specimen. Name is used only to pick a shape, never
+  // interpolated into markup.
+  const glyphs = [
+    '<svg width="88" height="88" viewBox="0 0 120 120" aria-hidden="true"><circle cx="60" cy="60" r="40" fill="none" stroke="#c8a06e" stroke-width="14" stroke-dasharray="11 9"/><circle cx="60" cy="60" r="32" fill="#e7c791" stroke="#a97b3e" stroke-width="2.5"/><circle cx="60" cy="60" r="10" fill="#efe8d6" stroke="#a97b3e" stroke-width="2.5"/></svg>',
+    '<svg width="88" height="88" viewBox="0 0 120 120" aria-hidden="true"><path d="M60 20 C 32 42, 32 82, 60 100 C 88 82, 88 42, 60 20 Z" fill="#dfe7cf" stroke="#8aa07f" stroke-width="2.5"/><path d="M60 28 L60 96" stroke="#8aa07f" stroke-width="2"/></svg>',
+    '<svg width="88" height="88" viewBox="0 0 120 120" aria-hidden="true"><circle cx="60" cy="60" r="30" fill="#fbe6b6" stroke="#c8a06e" stroke-width="2.5"/><circle cx="60" cy="60" r="12" fill="#fff4d8"/><path d="M60 12 L60 30 M60 90 L60 108 M12 60 L30 60 M90 60 L108 60" stroke="#c8a06e" stroke-width="2.5" stroke-linecap="round"/></svg>',
+  ];
+  return glyphs[hashName(name) % glyphs.length];
+}
 
 // ---- slot picker (toon-slot-management spec, 2026-05-07) -------------
 //

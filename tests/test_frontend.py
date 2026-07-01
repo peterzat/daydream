@@ -426,11 +426,15 @@ def test_main_js_shows_thinking_indicator_for_slow_actions():
 
 
 def test_index_html_has_backpack_control():
-    """C4 (SPEC 2026-06-30): a backpack-style control surfaces the inventory."""
+    """C3 (SPEC 2026-07-01): the backpack control opens the keepsakes foldout (a
+    two-page spread over the live inventory) with a close control."""
     with TestClient(app) as client:
         _login(client)
         r = client.get("/")
     assert 'id="backpack-toggle"' in r.text
+    assert 'id="backpack-panel"' in r.text
+    assert 'id="backpack-close"' in r.text
+    assert 'id="keepsakes"' in r.text
 
 
 def test_main_js_renders_self_and_filters_others_with_empty_states():
@@ -446,13 +450,20 @@ def test_main_js_renders_self_and_filters_others_with_empty_states():
 
 
 def test_main_js_inventory_backpack_and_verb_gating():
-    """C4 + C5: the backpack control sends the inventory command, and staging a
-    verb gates scene objects to those the verb applies to (so Talk never
-    prompts on a non-toon)."""
+    """C3 + C1: the backpack control opens the keepsakes foldout from the cached
+    snap.inventory (no longer prints `inventory` to chat), and staging a verb
+    gates scene objects to those the verb applies to (so Talk never prompts on a
+    non-toon)."""
     with TestClient(app) as client:
         _login(client)
         r = client.get("/assets/main.js")
-    assert 'sendCommand("inventory")' in r.text
+    # The backpack opens the foldout and renders inventory as specimen cards.
+    assert "openBackpack" in r.text
+    assert "renderKeepsakes" in r.text
+    assert "lastInventory" in r.text
+    # The old "print inventory to chat" behavior is gone.
+    assert 'sendCommand("inventory")' not in r.text
+    # Verb gating still applies.
     assert "applyVerbGating" in r.text
     assert "obj-ungated" in r.text
     assert "objectVerbs" in r.text  # click-path applicability guard
@@ -477,6 +488,18 @@ def test_style_css_has_object_and_verb_styles():
     assert ".obj" in r.text
     assert "#verb-bar" in r.text
     assert ".entity-link" in r.text
+
+
+def test_style_css_has_keepsakes_spread():
+    """C3: the keepsakes backpack foldout styles (the two-page book spread, the
+    specimen cards, the empty collection slots) are present."""
+    with TestClient(app) as client:
+        _login(client)
+        r = client.get("/assets/style.css")
+    assert ".backpack-overlay" in r.text
+    assert ".specimen" in r.text
+    assert ".slot-note" in r.text
+    assert ".grid2" in r.text
 
 
 # ---- no-cache on /assets/ ----------------------------------------------
