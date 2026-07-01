@@ -490,6 +490,17 @@ def test_style_css_has_object_and_verb_styles():
     assert ".entity-link" in r.text
 
 
+def test_style_css_has_responsive_single_column():
+    """C4: a phone-width media query collapses the two-column body to a single
+    readable column (marginalia below the prose)."""
+    with TestClient(app) as client:
+        _login(client)
+        r = client.get("/assets/style.css")
+    assert "@media (max-width: 640px)" in r.text
+    # the two-column body grid collapses to one column at narrow widths
+    assert "grid-template-columns: 1fr" in r.text
+
+
 def test_style_css_has_keepsakes_spread():
     """C3: the keepsakes backpack foldout styles (the two-page book spread, the
     specimen cards, the empty collection slots) are present."""

@@ -458,3 +458,32 @@ footer .slots-toggle:hover, footer .logout:hover { text-decoration: underline; }
   border-bottom: 1px dotted var(--sage);
 }
 .back-link:hover { color: var(--sage-deep); }
+
+/* ---------- responsive: collapse to a single readable column ---------- */
+/* On phone-width screens the storybook reflows to one column: the marginalia
+ * drops below the prose, the ribbon and compass wrap, the plate scales, and the
+ * keepsakes book becomes a single page. No horizontal scroll (SPEC C4). */
+@media (max-width: 640px) {
+  #app.page { margin: 12px auto 28px; padding: 18px 18px 20px; }
+  .wordmark, .comptag { display: none; } /* decorative chrome; reclaim the space */
+
+  #room-bg { height: 150px; }
+  .chapter-title { font-size: 2.4rem; }
+  .dropcap::first-letter { font-size: 3.4rem; padding: 4px 9px 0 0; }
+
+  /* prose + marginalia stack into one column */
+  .body { grid-template-columns: 1fr; gap: 0; }
+  .margin {
+    border-left: none; padding-left: 0;
+    margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--line);
+  }
+
+  /* keepsakes foldout: one page, no spine, close link in flow */
+  .backpack-overlay { padding: 16px 12px; }
+  .book { grid-template-columns: 1fr; }
+  .book::before { display: none; }
+  .pg, .pg.left, .pg.right { padding: 22px 22px 26px; }
+  .right .page-eyebrow { margin-top: 22px; } /* drop the desktop alignment hack */
+  .grid2 { grid-template-columns: 1fr; }
+  .back-link { position: static; display: inline-block; margin-top: 18px; }
+}
