@@ -270,6 +270,8 @@ bin/game world load <envelope.json>              # KEYLESS: build a world DB fro
 
 Cozy, soft, painterly. Spiritfarer / A Short Hike. NOT pixel art, NOT crunchy 8-bit. Bake this into placeholder PNGs and any narration prompts. The durable tone bible is [`WHIMSY.md`](WHIMSY.md) at the project root — read it before drafting any narration prompt template, image-gen prompt suffix, or asset choice. The image-gen prompt suffix lives both in `WHIMSY.md` (`## Prompt suffix`) and as `WHIMSY_PROMPT_SUFFIX` in `daydream/images/client.py`; `tests/test_whimsy_prompt_suffix.py` catches drift between the two.
 
+WHIMSY owns world tone/voice/image; the **interface** counterpart is [`DESIGN.md`](DESIGN.md) ("The Reading Room" storybook UI), the durable design language for anything the player touches on screen. Read `DESIGN.md` before touching the `web/` UI or authoring component CSS. Its design tokens (palette/typography/radius/shadow) are the single source of truth: they live once in `web/assets/style.css` `:root`, are mirrored in `DESIGN.md`'s token table, and `tests/drift/test_design_tokens.py` (tier_short) fails on any one-sided edit (same drift-guard model as the WHIMSY suffix). The canonical visual reference is [`docs/mockups/01-reading-room/`](docs/mockups/01-reading-room/). The hand-lettered display font is self-hosted under `web/assets/fonts/` (no CDN, per the generation policy).
+
 ## Tests
 
 `pytest` from the project root. Tests must not require GPU or a running vLLM; mock the LLM client. Slow/integration tests that boot the server with a stubbed LLM are fine if marked. Tests that need the real arbiter path opt in via `@pytest.mark.real_image_gen` (see `tests/conftest.py`).

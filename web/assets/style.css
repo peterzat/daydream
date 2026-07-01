@@ -1,5 +1,11 @@
-/* Cozy painterly palette. WHIMSY (the v1 tone bible) will refine this
- * but the seed is here: cream paper, sage ink, warm dust accents. */
+/* daydream SPA — "The Reading Room" storybook UI.
+ *
+ * The design tokens in :root below are the SINGLE SOURCE OF TRUTH for the
+ * interface. They are mirrored in DESIGN.md's token table and guarded by
+ * tests/drift/test_design_tokens.py (tier_short): edit a token here and you
+ * MUST edit DESIGN.md's table too, or the pre-commit gate fails. DESIGN.md is
+ * the durable design language (the interface counterpart to WHIMSY.md); read
+ * it before restyling. Visual reference: docs/mockups/01-reading-room/. */
 
 :root {
   --bg: #f6f3ec;
@@ -7,9 +13,29 @@
   --ink: #3a4a44;
   --sage: #5a7a6a;
   --sage-deep: #4a6a5a;
-  --warm: #c8a06e;
+  --amber: #c8a06e;
   --line: #d8d2c2;
   --speaker: #6a8a7a;
+  --table: #e6ddc8;
+  --parch: #f4ecd7;
+  --quest: #a97b3e;
+  --serif: Georgia, "Iowan Old Style", Palatino, "Book Antiqua", serif;
+  --sans: system-ui, "Segoe UI", "Helvetica Neue", sans-serif;
+  --hand: "Caveat", "Segoe Print", "Bradley Hand", cursive;
+  --radius: 12px;
+  --page-shadow: 0 34px 64px -26px rgba(74,106,90,.42), 0 12px 30px -14px rgba(78,84,120,.20);
+}
+
+/* Self-hosted hand-lettered display face (Caveat, SIL OFL 1.1; license at
+ * fonts/Caveat-OFL.txt). Bundled as a variable woff2 so the runtime loads NO
+ * external/CDN asset, per the local-only generation policy. Degrades to the
+ * system cursive stack in --hand if the file is unavailable. */
+@font-face {
+  font-family: "Caveat";
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url("/assets/fonts/caveat-latin-var.woff2") format("woff2");
 }
 
 html, body {
@@ -153,7 +179,7 @@ html, body {
 .evt { margin-bottom: 0.55em; }
 .evt-narrate { color: var(--ink); }
 .evt-say .speaker { color: var(--speaker); font-weight: bold; }
-.evt-system { color: var(--warm); font-style: italic; font-size: 0.88em; }
+.evt-system { color: var(--amber); font-style: italic; font-size: 0.88em; }
 
 #input-form { margin-bottom: 0.6em; }
 
@@ -269,8 +295,8 @@ footer .slots-toggle:hover { text-decoration: underline; }
   font: inherit; cursor: pointer;
 }
 .slots-panel button:hover { background: var(--sage); color: var(--paper); }
-.slots-panel .slot-delete { margin-left: 0.4em; border-color: var(--warm); color: var(--warm); }
-.slots-panel .slot-delete:hover { background: var(--warm); color: var(--paper); }
+.slots-panel .slot-delete { margin-left: 0.4em; border-color: var(--amber); color: var(--amber); }
+.slots-panel .slot-delete:hover { background: var(--amber); color: var(--paper); }
 
 /* Room description, rendered from the snapshot: full on first entry to a room
  * this session, a short "you return to ..." line on re-entry. */
@@ -293,7 +319,7 @@ footer .slots-toggle:hover { text-decoration: underline; }
 }
 .obj:hover { border-bottom-color: currentColor; }
 .obj-toon { color: var(--sage-deep); font-style: italic; }
-.obj-thing { color: var(--warm); }
+.obj-thing { color: var(--amber); }
 /* A scene object the staged verb can't apply to: dimmed + non-interactive,
  * so e.g. staging Talk leaves only toons clickable (SPEC 2026-06-30). */
 .obj-ungated { opacity: 0.3; cursor: default; pointer-events: none; }
