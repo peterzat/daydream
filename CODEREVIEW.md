@@ -1,53 +1,64 @@
-## Review — 2026-07-01 (commit: e769ad6)
+## Review — 2026-07-01 (commit: accfdb6)
 
-**Summary:** Refresh review of the playable-quest-loop turn
-(`origin/playtest-fixes-and-versioning`..`e769ad6`; 20 code/config files + 4
-docs). Scope: two-object verbs `give`/`use` + a `valid_iobj_kinds` iobj gate
-symmetric to the dobj gate (`daydream/verbs.py`), state-gated `open` + `read` +
-state-aware `examine` over free-form `properties.state` (no migration), the
-`spawn_object` `verbs` passthrough (`daydream/skills/effects.py`), the loader/
-validator extension for stateful authored objects + a `fixture` prototype
-(`daydream/llm/bootstrap.py`, `daydream/objects.py`), the parser two-target
-fast-path (`daydream/parser.py`), the `verb_bar` iobj payload + WS command
-forwarding (`daydream/api/ws.py`), the two-step click-staging UI
-(`web/assets/main.js`/`style.css`/`index.html`), the new canonical world
-(`worlds/clockmakers-loft.json`) + `bin/game world reset` retarget + a
-`WORLD_VERSION` 1.1 bump, and the paired tests (a deterministic golden
-playthrough, world-integrity invariants, loader/verb/parser/effects units).
-Baseline: 452 short / 700 medium, green. Security re-scan of the 11 changed
-runtime/config files: 0 BLOCK / 0 WARN / 1 NOTE.
+**Summary:** Full-depth review of the Reading Room UI retheme
+(`origin/playtest-fixes-and-versioning`..`accfdb6`; 6 UI/docs commits plus 2
+pre-session mockup-exploration commits). Scope: `DESIGN.md` (new durable UI
+design bible), the reconciled CSS design tokens + a self-hosted Caveat woff2 +
+its tier_short drift guard (`tests/drift/test_design_tokens.py`), the near-total
+restructure of `web/index.html` + `web/assets/style.css` + targeted
+`web/assets/main.js` into the storybook page (chapter plate, drop-cap prose,
+marginalia, ink-tab verb ribbon, compass, an examine/read detail inset), the
+keepsakes backpack foldout over live inventory, a phone-width single-column
+collapse, README showcase images, and the paired frontend source-scan tests. All
+changed code files read in full. Client-only: no `daydream/`/`worlds/`/DB change,
+no `WORLD_VERSION` bump. Baseline: 454 short / 704 medium, green. Security
+re-scan of the 3 changed runtime files: 0 BLOCK / 0 WARN / 1 NOTE.
 
 **External reviewers:** None configured.
 
 ### Findings
 
-No BLOCK/WARN issues. The new verb surface was traced adversarially and is
-sound:
+No BLOCK/WARN issues. The retheme was traced adversarially and is sound:
 
-- `execute_command` validates the iobj (scope + `valid_iobj_kinds`) BEFORE any
-  give/use handler runs, so `_handle_give`/`_handle_use` safely assume a valid,
-  in-scope iobj of the right kind; every authored field they read
-  (`wants`/`gives`/`use` rule/`state`/`*_text`) is `isinstance`-guarded with a
-  soft fallback, so a malformed world degrades rather than crashing.
-- `give` reparents the gift (single row move, no duplication), refuses
-  not-carried + give-to-self, and dedups its `gives` reward by `give:<npc>`
-  provenance; `open` returns early on `locked`/`open` so the payoff spawns
-  exactly once (belt-and-suspenders with the `open:<id>` spawn dedup).
-- Loader merge order is correct: an authored `properties` block is overlaid by
-  top-level `seed`/`is_unique`/`text`/`verbs`, so core fields always win;
-  malformed new fields fail validation loudly (tested).
-- Parser two-target fast-path grounds both ids only when the verb applies to the
-  dobj, else defers to the LLM; wrong-kind iobjs still ground and are refused
-  gracefully by the executor gate.
-- No spaghetti: 8 single-concern commits (verbs → state → loader → world →
-  parser → UI → docs/version). Aligns with SPEC.md 8/8.
+- **XSS surface unchanged and safe.** Every new `innerHTML` sink routes dynamic
+  data through a mitigation: `showSimpleHint` escapes the (closed-set) verb;
+  `renderDetailInset` reuses the vetted escape-then-wrap `linkifyEntities` on the
+  narrate text (the untrusted-LLM path); `keepsakeGlyph` returns a static
+  hash-selected SVG with the item name used only to pick an index, never
+  interpolated; item/toon names render via `textContent`. Confirmed by the
+  chained `/security` pass.
+- **No external runtime assets** (C7): the display font is a bundled `@font-face`
+  woff2, textures are inline `data:` SVG, the only script is same-origin. Grep
+  for `googleapis`/CDN/external `url()` is clean. The `Caveat-OFL.txt` license and
+  a code comment are the only "external" strings.
+- **No interaction regressed.** The scene-object gating selectors (`#scene .obj`)
+  still resolve because the marginalia `aside` carries `id="scene"`; verb staging,
+  two-step give/use, entity-link clicks, WS reconnect/`?since`, slots picker,
+  overlays, `painting…`→`room_image_ready` swap, and redeploy-reload are untouched.
+  The backpack rewiring drops `sendCommand("inventory")` for a client-side foldout;
+  the `inventory` verb stays reachable via text input. Verified by 43 green
+  frontend source-scan tests + a rendered visual review (desktop + 390px).
+- **No ids leak.** `nameForObject` returns a chip's display text or an entity
+  alias (never an id); the compass renders exit directions only (exit values are
+  room ids, deliberately not shown).
+- **No spaghetti:** single-concern commits (foundation → structure → backpack →
+  responsive → docs → spec). Aligns with SPEC.md 8/8.
 
-**NOTE (informational, not auto-fixed):** `web/index.html` ships no
-Content-Security-Policy / `X-Content-Type-Options`. Pre-existing (this turn only
-added the `#verb-hint` element); the concrete XSS surface (LLM narration + toon
-names) is fully mitigated by `escape()` / `textContent` / escape-then-wrap
-`linkifyEntities`, re-verified this pass. CSP would be belt-and-suspenders and
-is a deliberate cross-cutting change, out of scope here. Recorded in SECURITY.md.
+**NOTEs (informational, not auto-fixed):**
+
+- **`web/index.html` ships no Content-Security-Policy / `X-Content-Type-Options`.**
+  Carried unchanged; no reachable attack (the XSS surface is fully escaped), a
+  `default-src 'self'` CSP (all assets same-origin) would be belt-and-suspenders.
+  A deliberate cross-cutting change, out of scope here. Recorded in SECURITY.md.
+- **`web/assets/main.js` detail-inset timing.** A drift `narrate` arriving within
+  8 s of a targeted examine/read renders as a detail inset, since `pendingDetail`
+  matches the next narrate regardless of source. Cosmetic only (a drift line
+  shows as a ledger card); bounded by the 8 s window and reset on every snapshot.
+- **Keepsake specimen captions/tags are generic client-side flourish.**
+  `_object_card` carries no description/provenance, so the cards show the real
+  item name plus a name-hashed caption/tag; they never fabricate item-specific
+  facts. A server snapshot field would let them carry real lore (proposed backlog
+  `snapshot-item-lore`).
 
 ### Fixes Applied
 
@@ -55,34 +66,30 @@ None (no BLOCK/WARN findings).
 
 ### Accepted Risks
 
-Carried forward from the prior entry (unchanged and unaggravated this turn). The
-two-object verbs deliberately do NOT widen the LLM-target risk below: both dobj
-and iobj are scope-gated, and `_handle_use` hardcodes `key="state"` with the
-authored `to_state`, so a client never reaches a general arbitrary-property
-write; the `spawn_object` `verbs` passthrough only attaches closed-registry verb
-names (a granted `open`/`use` finds no authored rule and no-ops).
+Carried forward from the prior entry, none aggravated by this client-only UI turn
+(it touches no server/LLM/auth/data surface):
 
 - **LLM-emitted effects take an unscoped, LLM-chosen target id.** `set_property`
   / `move_object` / `spawn_object` trust the effect's target id; room-affordance
-  data skills dispatch with the full effect vocabulary, while `talk` (and the new
-  deterministic verbs) enforce a narrower per-verb `allowed` subset. No privilege
+  data skills dispatch with the full effect vocabulary, while `talk` + the
+  deterministic verbs enforce a narrower per-verb `allowed` subset. No privilege
   escalation. v2 `skills-authoring-and-security`. (SECURITY.md NOTE.)
 - Friend-scope on slot/session endpoints (CSRF-gated by `CsrfOriginMiddleware`;
-  `/ws` Origin-checked too); liveness-gated claim takeover; `/status/build`
-  + `/status/drift` + `/cache/...` session-unauthenticated but AccessMiddleware-
-  gated. Cookie `https_only=False`; `100.64.0.0/10` CGNAT hardcoding; tailscale
-  `is_authed` bypass. Stored prompt-injection via captured memory; bootstrap
-  `$MODEL` heredoc; `cmd_logs` path component; qpeek clone; `world reset` `rm -rf`
-  operator-trust. Unbounded slot-create body + event queues.
+  `/ws` Origin-checked); liveness-gated claim takeover; `/status/*` + `/cache/...`
+  session-unauthenticated but AccessMiddleware-gated. Cookie `https_only=False`;
+  `100.64.0.0/10` CGNAT hardcoding; tailscale `is_authed` bypass. Stored
+  prompt-injection via captured memory; bootstrap `$MODEL` heredoc; `cmd_logs`
+  path component; qpeek clone; `world reset` `rm -rf` operator-trust. Unbounded
+  slot-create body + event queues.
 
 ### Carried-forward open NOTEs (pre-existing)
 
 Parser raw-input not role-separated (low risk, output grounded); toon-view N+1
 inventory query; dead `interpreter.py`; admin.py + bootstrap.py `_write_db`
-non-transactional; no CSP/`X-Content-Type-Options` on the SPA shell (this turn's
-NOTE). None aggravated this turn.
+non-transactional; no CSP/`X-Content-Type-Options` on the SPA shell. None
+aggravated this turn.
 
 ---
-*Prior review (2026-07-01, commit 5b181d1): refresh review of the verification-infrastructure turn (offline `bin/game review` contact sheet, `toons.delete_slot` item-drop, forge perceptual anchor, glob-derived voice baselines, the `/ws` cross-origin handshake fix); 0 BLOCK / 0 WARN / 0 NOTE.*
+*Prior review (2026-07-01, commit e769ad6): refresh review of the playable-quest-loop turn (two-object give/use verbs + iobj gate, state-gated open/read, stateful world loader, The Clockmaker's Loft, WORLD_VERSION 1.1); 0 BLOCK / 0 WARN / 1 NOTE (CSP).*
 
-<!-- REVIEW_META: {"date":"2026-07-01","commit":"e769ad6","reviewed_up_to":"e769ad61b73b5f4d0a66898f4618b13b38856a74","base":"origin/playtest-fixes-and-versioning","tier":"refresh","block":0,"warn":0,"note":1} -->
+<!-- REVIEW_META: {"date":"2026-07-01","commit":"accfdb6","reviewed_up_to":"accfdb6488e377ff6cdc5368823cff6f26f6faf2","base":"origin/playtest-fixes-and-versioning","tier":"full","block":0,"warn":0,"note":3} -->
