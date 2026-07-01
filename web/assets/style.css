@@ -64,17 +64,12 @@ body::before {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.16'/%3E%3C/svg%3E");
 }
 
-/* quiet comp identifiers floating on the table */
-.wordmark, .comptag { position: fixed; top: 16px; z-index: 5; color: var(--sage-deep); opacity: .72; }
-.wordmark { left: 26px; font-family: var(--hand); font-size: 1.5rem; font-weight: 600; letter-spacing: .5px; }
-.comptag { right: 26px; font-family: var(--sans); font-size: .62rem; letter-spacing: .32em; text-transform: uppercase; opacity: .5; }
-
 /* ---------- the page (an open leaf on the table) ---------- */
 #app.page {
   position: relative; z-index: 1;
   width: min(844px, 100%);
-  margin: 26px auto 40px;
-  padding: 30px 46px 26px;
+  margin: 16px auto 28px;
+  padding: 20px 42px 18px;
   background: linear-gradient(180deg, #fdfbf5 0%, var(--paper) 40%, #f8f4ea 100%);
   border-radius: 14px;
   box-shadow: var(--page-shadow);
@@ -103,7 +98,7 @@ body::before {
 }
 .plate-figure { margin: 0; border-radius: 8px; overflow: hidden; }
 #room-bg {
-  display: block; width: 100%; height: 220px; object-fit: cover; object-position: center 44%;
+  display: block; width: 100%; height: 168px; object-fit: cover; object-position: center 44%;
   /* melt the watercolor edges softly into the mat */
   -webkit-mask-image: radial-gradient(128% 132% at 50% 46%, #000 74%, transparent 100%);
           mask-image: radial-gradient(128% 132% at 50% 46%, #000 74%, transparent 100%);
@@ -137,9 +132,9 @@ body::before {
 .dream-overlay.hidden { display: none; }
 
 /* ---------- title block ---------- */
-.titleblock { text-align: center; margin: 13px 0 2px; }
+.titleblock { text-align: center; margin: 8px 0 2px; }
 .chapter-title {
-  font-family: var(--hand); font-size: 3.3rem; line-height: .95; font-weight: 700;
+  font-family: var(--hand); font-size: 2.7rem; line-height: .98; font-weight: 700;
   color: var(--sage-deep); margin: 0; text-shadow: 0 1px 0 rgba(255,255,255,.6);
 }
 .folio {
@@ -150,7 +145,7 @@ body::before {
 .folio::before, .folio::after { content: ""; height: 1px; width: 44px; background: var(--line); }
 
 /* ---------- body: prose + marginalia ---------- */
-.body { display: grid; grid-template-columns: minmax(0,1.82fr) 1fr; gap: 0 34px; margin-top: 16px; }
+.body { display: grid; grid-template-columns: minmax(0,1.82fr) 1fr; gap: 0 34px; margin-top: 12px; }
 
 .prose { position: relative; font-size: 1.04rem; line-height: 1.66; min-width: 0; }
 
@@ -167,7 +162,7 @@ body::before {
 /* The running event log, styled as continuing prose (newest last) rather than
  * a terminal. A gentle max-height keeps a long session from blowing out the
  * page; it scrolls softly and auto-pins to the bottom (main.js). */
-#chat { max-height: 42vh; overflow-y: auto; }
+#chat { max-height: 30vh; overflow-y: auto; }
 .evt { margin: 0 0 .55em; }
 .evt-narrate { color: var(--ink); }
 .evt-say .speaker { color: var(--speaker); font-weight: bold; }
@@ -209,13 +204,21 @@ body::before {
   background: linear-gradient(135deg, transparent 50%, #e4d4ad 50%, #d8c79a 100%);
   border-bottom-right-radius: 9px; box-shadow: -2px -2px 4px -2px rgba(120,96,52,.4) inset;
 }
+/* Repeat examine/read of the same thing resurfaces its card with a warm glow
+ * instead of stacking a duplicate (main.js:renderDetailInset). */
+.detail-inset.detail-glow { animation: detail-glow 1.3s ease-out 1; }
+@keyframes detail-glow {
+  0%   { box-shadow: 0 0 0 0 rgba(200,160,110,0), 0 16px 30px -18px rgba(120,96,52,.55); }
+  30%  { box-shadow: 0 0 0 4px rgba(200,160,110,.6), 0 16px 34px -16px rgba(120,96,52,.55); }
+  100% { box-shadow: 0 0 0 0 rgba(200,160,110,0), 0 16px 30px -18px rgba(120,96,52,.55); }
+}
 
 /* ---------- marginalia column ---------- */
 .margin {
   border-left: 1px solid var(--line); padding-left: 26px;
-  display: flex; flex-direction: column; gap: 12px; font-family: var(--sans);
+  display: flex; flex-direction: column; gap: 10px; font-family: var(--sans);
 }
-.mgroup + .mgroup { padding-top: 12px; border-top: 1px dashed var(--line); }
+.mgroup + .mgroup { padding-top: 9px; border-top: 1px dashed var(--line); }
 .mlabel {
   font-size: .6rem; letter-spacing: .26em; text-transform: uppercase;
   color: var(--sage-deep); opacity: .85; margin-bottom: 6px;
@@ -261,7 +264,7 @@ body::before {
 .satchel-link:hover { color: var(--sage-deep); }
 
 /* ---------- action ribbon ---------- */
-.ribbon-wrap { margin-top: 18px; }
+.ribbon-wrap { margin-top: 12px; }
 .ribbon-label {
   font-family: var(--sans); font-size: .6rem; letter-spacing: .28em; text-transform: uppercase;
   color: var(--sage-deep); opacity: .75; text-align: center; margin-bottom: 10px;
@@ -300,7 +303,7 @@ body::before {
 .ribbon-hint b { color: var(--sage-deep); font-weight: 600; font-style: normal; }
 
 /* ---------- free-text input ---------- */
-#input-form { margin: 16px 0 0; }
+#input-form { margin: 10px 0 0; }
 #input-text {
   width: 100%; padding: 0.6em 0.85em; font-family: var(--serif); font-size: 1em;
   background: rgba(251,249,243,.7); border: 1px solid var(--line); border-radius: 9px;
@@ -311,7 +314,7 @@ body::before {
 
 /* ---------- footer: ways from here ---------- */
 .ways {
-  margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--line);
+  margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line);
   display: flex; align-items: center; justify-content: center; gap: 14px; flex-wrap: wrap;
 }
 .compass { flex: none; color: var(--sage); opacity: .85; }
@@ -329,7 +332,7 @@ body::before {
 #exit-bar:empty::after { content: "the ways are quiet just now."; font-family: var(--serif); font-style: italic; color: var(--sage); opacity: .7; font-size: .92rem; border: none; }
 
 /* ---------- meta footer (switch / leave) ---------- */
-footer { text-align: center; font-size: 0.85em; margin-top: 18px; opacity: 0.75; }
+footer { text-align: center; font-size: 0.85em; margin-top: 12px; opacity: 0.75; }
 footer .slots-toggle, footer .logout {
   background: none; border: none; padding: 0; font: inherit; cursor: pointer;
   color: var(--sage-deep); text-decoration: none;
@@ -464,10 +467,9 @@ footer .slots-toggle:hover, footer .logout:hover { text-decoration: underline; }
  * drops below the prose, the ribbon and compass wrap, the plate scales, and the
  * keepsakes book becomes a single page. No horizontal scroll (SPEC C4). */
 @media (max-width: 640px) {
-  #app.page { margin: 12px auto 28px; padding: 18px 18px 20px; }
-  .wordmark, .comptag { display: none; } /* decorative chrome; reclaim the space */
+  #app.page { margin: 10px auto 24px; padding: 16px 18px 18px; }
 
-  #room-bg { height: 150px; }
+  #room-bg { height: 132px; }
   .chapter-title { font-size: 2.4rem; }
   .dropcap::first-letter { font-size: 3.4rem; padding: 4px 9px 0 0; }
 
@@ -486,4 +488,30 @@ footer .slots-toggle:hover, footer .logout:hover { text-decoration: underline; }
   .right .page-eyebrow { margin-top: 22px; } /* drop the desktop alignment hack */
   .grid2 { grid-template-columns: 1fr; }
   .back-link { position: static; display: inline-block; margin-top: 18px; }
+}
+
+/* ---------- desktop app-shell: keep actions + ways in view ----------
+ * Fit the leaf to the viewport height so the verb ribbon, the input, and the
+ * "ways from here" compass are ALWAYS visible without scrolling; the reading
+ * column (room description + running log) and the marginalia scroll inside the
+ * page instead. The plate and title stay pinned at the top. On phones
+ * (max-width:640px) the page keeps its natural document scroll. */
+@media (min-width: 641px) {
+  html, body { height: 100%; overflow: hidden; }
+  #app.page {
+    height: calc(100vh - 24px);
+    margin: 12px auto;
+    display: flex; flex-direction: column;
+  }
+  #room-header.plate, .titleblock,
+  .ribbon-wrap, #input-form, .ways, footer { flex: none; }
+  .body {
+    flex: 1 1 auto; min-height: 0;
+    grid-template-rows: minmax(0, 1fr);
+    overflow: hidden;
+  }
+  .prose { min-height: 0; display: flex; flex-direction: column; }
+  #room-desc { flex: 0 0 auto; }
+  #chat { flex: 1 1 0; min-height: 0; max-height: none; overflow-y: auto; }
+  .margin { min-height: 0; overflow-y: auto; }
 }

@@ -392,6 +392,16 @@ def test_index_html_has_labelled_scene_regions():
     assert "on the ground" not in r.text  # relabelled
 
 
+def test_index_html_no_design_comptag():
+    """Playtest fix: the internal design-direction name ("The Reading Room") is
+    not shown to players as floating corner chrome; it was confusing in-game."""
+    with TestClient(app) as client:
+        _login(client)
+        r = client.get("/")
+    assert "comptag" not in r.text
+    assert "The Reading Room" not in r.text
+
+
 def test_main_js_clears_scene_and_log_on_picker_entry():
     """Playtest fix: entering the character picker clears the prior session's
     scene + chat (stale text used to sit visible under the picker until claim)."""
@@ -499,6 +509,29 @@ def test_style_css_has_responsive_single_column():
     assert "@media (max-width: 640px)" in r.text
     # the two-column body grid collapses to one column at narrow widths
     assert "grid-template-columns: 1fr" in r.text
+
+
+def test_style_css_desktop_shell_keeps_nav_in_view():
+    """Playtest fix (nav below the fold): a desktop app-shell fits the leaf to
+    the viewport so the verb ribbon + compass stay visible without scrolling,
+    the reading column scrolling inside. Plus the repeat-examine glow style."""
+    with TestClient(app) as client:
+        _login(client)
+        r = client.get("/assets/style.css")
+    assert "@media (min-width: 641px)" in r.text
+    assert ".detail-glow" in r.text
+
+
+def test_main_js_repeat_examine_glows_not_duplicates():
+    """Playtest fix: examining the same thing again with the same result should
+    resurface its detail card with a glow, not stack a duplicate line."""
+    with TestClient(app) as client:
+        _login(client)
+        r = client.get("/assets/main.js")
+    assert "glowElement" in r.text
+    assert "detail-glow" in r.text
+    assert "data-object-id" in r.text  # dedup keys on the object id...
+    assert "dataset.text" in r.text     # ...and the rendered text
 
 
 def test_style_css_has_keepsakes_spread():

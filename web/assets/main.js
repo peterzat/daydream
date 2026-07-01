@@ -274,19 +274,10 @@ function toggleStagedVerb(verb, btn) {
   stagedVerb = verb;
   btn.classList.add("verb-staged");
   applyVerbGating();
-  showSimpleHint(verb);
-}
-
-function showSimpleHint(verb) {
-  // The one-line "what's staged" prompt under the ribbon. A two-object verb
-  // (give/use) is refined by showStagedHint once its direct object is chosen.
-  const spec = verbSpecs[verb] || {};
-  const b = `<b>${escape(verb)}</b>`;
-  const hint = document.getElementById("verb-hint");
-  hint.innerHTML = spec.needs_iobj
-    ? `${b} &mdash; choose what to ${escape(verb)}.`
-    : `${b} is in your hand &mdash; choose what to ${escape(verb)}.`;
-  hint.classList.remove("hidden");
+  // No single-verb text hint: the staged chip (filled ink tab + amber pip) and
+  // the dimming of non-applicable targets already show what's staged. Only the
+  // genuinely two-step give/use flow gets a hint (showStagedHint, after the
+  // direct object is picked).
 }
 
 function clearStagedVerb() {
@@ -402,7 +393,7 @@ function onObjectClick(objectId, objectVerbs, objectKind) {
     // A targeted examine/read renders its narrate as a storybook detail inset
     // (the ledger reveal); remember the target so renderEvent can style it.
     if (verb === "examine" || verb === "read") {
-      pendingDetail = { verb, name: nameForObject(objectId), t: Date.now() };
+      pendingDetail = { verb, objectId, name: nameForObject(objectId), t: Date.now() };
     }
     sendCommand(verb, objectId);
   }
@@ -474,15 +465,33 @@ function renderDetailInset(e, detail) {
   // The storybook expression of examine/read: a warm parchment card with a tab
   // label and the described text, revealed inline in the prose (DESIGN.md).
   const chat = document.getElementById("chat");
+  const text = e.payload.text || "";
+  // Examining the same thing again with the same result should not stack a
+  // duplicate card: resurface the existing one at the bottom and glow it
+  // ("don't repeat, glow the answer").
+  if (detail.objectId) {
+    const prior = chat.querySelector(
+      `.detail-inset[data-object-id="${detail.objectId}"]`
+    );
+    if (prior && prior.dataset.text === text) {
+      clearPending();
+      chat.appendChild(prior); // move to the end, no duplicate
+      glowElement(prior);
+      chat.scrollTop = chat.scrollHeight;
+      return;
+    }
+  }
   const aside = document.createElement("aside");
   aside.className = "evt detail-inset";
+  if (detail.objectId) aside.dataset.objectId = detail.objectId;
+  aside.dataset.text = text; // for the repeat-examine glow check above
   const tab = document.createElement("span");
   tab.className = "tab";
   const nm = detail.name || "it";
   tab.textContent = detail.verb === "read" ? `${nm}, read` : `you examine ${nm}`;
   aside.appendChild(tab);
   const p = document.createElement("p");
-  p.innerHTML = linkifyEntities(e.payload.text || "", entities);
+  p.innerHTML = linkifyEntities(text, entities);
   p.querySelectorAll(".entity-link").forEach((span) => {
     span.onclick = () => onObjectClick(span.dataset.objectId);
   });
@@ -493,6 +502,13 @@ function renderDetailInset(e, detail) {
   clearPending();
   chat.appendChild(aside);
   chat.scrollTop = chat.scrollHeight;
+}
+
+function glowElement(el) {
+  // Restart the glow animation even if the class is already present.
+  el.classList.remove("detail-glow");
+  void el.offsetWidth; // force reflow so re-adding the class replays it
+  el.classList.add("detail-glow");
 }
 
 function setRoomBackground(room) {
