@@ -6,6 +6,46 @@ A small atmospheric multiplayer web game running on a single dev box. Players en
 
 The image above is the image-gen pipeline's first real output: prompt seeded from the meadow room, SDXL base + a watercolor LoRA via local ComfyUI, gated by the GPU arbiter, ~6 s of render on the dev box's RTX 4000 SFF Ada. It lives at the project root as a historical artifact — the cache layout has since changed (the file is no longer regenerable bit-for-bit by the current code path), but the rendering it captures is the moment v1 first proved itself. The aesthetic anchor is in [`WHIMSY.md`](WHIMSY.md): Spiritfarer / A Short Hike, soft and painterly.
 
+## The idea: a game you can grow from the inside
+
+Daydream is two things at once, and that is on purpose.
+
+It is a **finished, cozy game** you can just play: wander a shared watercolor world, talk to the people in it, gather small keepsakes, mend a clock that stopped. It is also a **small engine for growing that game from the inside**: the machinery that lets the world be extended by the people playing it, not only by the people who authored it.
+
+That second half can look like overbuild. One cozy game does not need a unified object/verb core, a permission model, and an allowlisted world-mutation API. But cloning a MUD was never the interesting part, and shipping a general game-design tool was never the goal. **The interesting part, the actual fun, is a game that players can meaningfully expand with a little in-game prompting.** The platform-shaped pieces exist only to explore that. We are not trying to become a popular way to build games like daydream; we are using daydream to try one specific idea, and to put *this* game online.
+
+### Semi-procedural gaming
+
+Call the idea **semi-procedurally generated** gameplay. Players are playing, not vibe-coding. Their character's actions are the inputs: "give the gear to Tace", "read the ledger", "go north". Those are not prompts in the Claude sense; they are ordinary moves, and the shared world responds to them and *remembers*. Play persistently changes the world.
+
+The new part is that some moves can **expand the world itself**, and that expansion is neither pre-authored nor freely hallucinated. It is **seeded with agentic boundaries and combined with a short, in-character freeform input from the player.** The boundaries keep it coherent, safe, and in-world; the player's own words make the result theirs.
+
+Here is where it is headed, concretely. A player finds a **magical world-seed**. They use it in a room and are asked, in character, "create a doorway to?". They answer with something small, like *"the sub-basement where we find a small hidden dormitory,"* and that new place comes into being and **persists**, there for everyone who wanders in afterward. The end state we are aiming at is enough control, expressed through gameplay and narrative rather than through a level editor, for a player to seed a small area and lay a **short quest** through it.
+
+### Permissions and wizardry
+
+World-shaping is powerful, so it is earned rather than free. Ordinary play (wander, talk, gather, use) stays open to anyone; reshaping the world (seeding rooms, authoring behavior) takes **"wizard" standing.** That implies a permission model layered over the object/verb core, with content filtering alongside it. The moment a player can author something that other players will trigger, permissions and filtering stop being optional, so they belong in the plan from the start rather than bolted on later.
+
+### The local GPU is a deliberate limit
+
+Every bit of live generation runs on one modest GPU (a 20 GB RTX 4000), and that ceiling is a **design choice, not an obstacle we are trying to route around.** The question we care about is not "can a giant LLM produce great gameplay?". With a big enough model, much of this simply gets easier. The question is the harder and more interesting one: **how far can small, targeted local models (a 7B language model for words, SDXL for pictures) be pushed to carry real, expandable gameplay?** The GPU budget is a rule of the game we are actually playing. Where the small models cannot reach, we pre-bake with a larger model at design time (see [Two dreamers](#two-dreamers)), never by calling a bigger model at runtime.
+
+### Where this could go: a little logic under the language
+
+The generative layer does not have to carry everything. A natural next step is to combine **plain logical building blocks (conditionals, if-then branches, simple state gates)** with the agentic LLM layer, so an authored or player-seeded area can hold real mechanics (a lever that opens a door, a gift that changes what a character will say) while the language model enriches the texture and voice around that logic. Deterministic bones, generative skin. That mix is where both the *playing* and the *making* get a lot richer.
+
+### Objects, verbs, and free-form input
+
+Underneath all of it is a small MOO-style core. The durable reference is [`CLAUDE.md`](CLAUDE.md); the short version:
+
+- **Everything is an object.** Rooms, characters, and things live in one store, and where a thing *is* is just another object (the room it sits in, or the character carrying it). Objects can be spawned into the world at runtime, not only defined up front.
+- **A closed set of verbs.** `look`, `examine`, `take`, `drop`, `talk`, `give`, `use`, `open`, `read`, `go`, and a handful more. Each verb knows what it can apply to, so "talk to a rock" or "take a person" are simply never offered, and two-object verbs like `give X to Y` and `use X on Y` are first-class.
+- **Two ways to act, one bus.** Clicking an object or a verb sends a **structured command** straight to the engine, with no language model in the loop, so it is instant and deterministic. Typing free text goes through a **grounded local-LLM parser** that maps your phrasing onto a verb and the specific in-scope object you meant. "hand Tace the gear", "give the gear to Tace", and clicking Give then the gear then Tace all resolve to the same move.
+- **Free phrasing, not a word list.** The parser is what keeps input natural: the vocabulary is not a fixed set of magic words. Novel phrasings are understood and *grounded*, but they always resolve to a real, permitted action on a real object, which is also what keeps a generative world from drifting into nonsense.
+- **Action discovery.** The interface shows what is present and what you might do with it (a verb ribbon, clickable objects in the prose, exits on a compass), so you are never left guessing what the parser knows; the text box is for everything the buttons do not anticipate.
+
+The same allowlisted, safety-checked path that runs a `talk` or an `examine` today is the path a world-shaping verb runs tomorrow. That is why the engine-shaped pieces earn their place: they are the groundwork for the semi-procedural world, not architecture for its own sake.
+
 ## The Reading Room
 
 Daydream presents as a storybook you act inside. A matted room painting opens each place, the narration is drop-cap prose on a paper page, who and what is with you is noted in the margin, and your moves are quiet ink-tab choices ("what you might do") with a compass of ways out. Object mentions in the prose are clickable, and examining or reading one opens an inline detail inset. The durable UI design language is [`DESIGN.md`](DESIGN.md) (the interface counterpart to `WHIMSY.md`); the visual reference is [`docs/mockups/01-reading-room/`](docs/mockups/01-reading-room/).
