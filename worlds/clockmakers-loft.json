@@ -1,0 +1,119 @@
+{
+  "_comment": "Opus-authored, keyless world envelope for the playable quest loop (SPEC 2026-07-01). The Clockmaker's Loft. Load with `bin/game world load worlds/clockmakers-loft.json` (or `bin/game world reset --yes`). No LLM call, no API key. The quest: read the repair-ledger -> take the escapement gear by the well -> give it to Tace in the loft (earns the case-key) -> use the case-key on the clock-case -> open the case (the great clock ticks again). All quest beats are pre-baked authored strings; the local LLM only voices ambient talk/drift. Cross-references (Tace.wants, clock-case use.with) are BY NAME. Internal world_id stays w-bunny (loader hardcodes it).",
+  "world": {
+    "name": "The Clockmaker's Loft",
+    "aesthetic_seed": "a small clockmaker's village at dusk, warm lantern-light on brass and old oak, watercolor edges, the gentle mystery of a great clock stopped and waiting to be mended"
+  },
+  "rooms": [
+    {"slug": "clocktower", "title": "The Stopped Clock",
+     "seed": "the base of a great stopped clock, its brass face gone still and patient, dust turning slow in a shaft of late gold; a tall glass-fronted case stands against one wall, and a worn ledger waits open on a lectern",
+     "exits": {"up": "loft", "east": "square"}},
+    {"slug": "loft", "title": "The Clockmaker's Loft",
+     "seed": "a clockmaker's loft under the eaves, warm with the smell of oil and brass, shelves of small resting clocks ticking softly out of time with one another, a round window full of amber dusk",
+     "exits": {"down": "clocktower"}},
+    {"slug": "square", "title": "The Lantern Square",
+     "seed": "a small village square at dusk, paper lanterns coming up one by one in warm pools of light, moths turning slow above the cobbles, the stones still holding the last of the day's heat",
+     "exits": {"west": "clocktower", "north": "workshop", "south": "well"}},
+    {"slug": "workshop", "title": "The Old Workshop",
+     "seed": "a dim old workshop just off the square, curls of brass and cedar shavings soft underfoot, a broom leaned patient in the corner, one long blade of slant light through a shutter",
+     "exits": {"south": "square"}},
+    {"slug": "well", "title": "The Mossy Well-Court",
+     "seed": "a quiet well-court at the edge of the village, the old stone well cool and green with moss, ferns nodding at its foot, a hush broken now and then by a far, slow drip of water",
+     "exits": {"north": "square"}}
+  ],
+  "toons": [
+    {"slot": 1, "name": "Wick",
+     "seed": "a traveler just come to the village, curious and easy-going, fond of small mended things",
+     "appearance_seed": "a soft watercolor figure in a travel-worn coat the color of dusk, a satchel worn crosswise, an open and unhurried face",
+     "current_room_slug": "clocktower", "is_human_controlled": 0, "mood": "curious",
+     "presence_text": null},
+    {"slot": 100, "name": "Tace",
+     "seed": "the village clockmaker, patient and precise, gone a little quiet and sad in the season since the great clock stopped; warm underneath, and slow to hope",
+     "appearance_seed": "a slight person in a leather apron hung with fine brass tools, spectacles pushed up into greying hair, ink and oil worn into careful hands",
+     "current_room_slug": "loft", "is_human_controlled": 0, "mood": "wistful",
+     "presence_text": "Tace looks up from a bench of stopped clocks, sets down a fine brass tool, and offers a tired, kind nod.",
+     "aliases": ["the clockmaker", "clockmaker"],
+     "properties": {
+       "wants": "escapement gear",
+       "gives": {"name": "case key",
+                 "seed": "a small brass case-key on a loop of worn ribbon, warm as if just out of a pocket",
+                 "aliases": ["key", "case-key"], "verbs": ["use"]},
+       "gives_text": "Tace turns the little gear over in the lamplight, and something long held eases out of their shoulders. 'You found it. You carried it all the way home.' They fold a small brass key into your hand, warm from their pocket. 'The case is yours to open now, friend.'",
+       "gives_mood": "gladdened",
+       "declines_text": "Tace considers what you're holding out, and smiles a small, tired smile. 'That's kind of you. But it isn't the little thing the clock is missing.'"
+     },
+     "dialogue": {
+       "ui_hint": "Talk",
+       "description": "Talk to Tace, the clockmaker.",
+       "effects_schema": {"allowed_kinds": ["narrate", "set_mood"]},
+       "prompt_template": "You are Tace, the village clockmaker of the loft: patient, precise, and gone a little quiet and sad since the great clock stopped a season ago -- warm underneath, and slow to hope. You speak softly and briefly. Recent memories of them: {% for m in memories %}\n- {{ m.text }}{% else %} (none yet){% endfor %}\nThey say: {{ player_input }}\n\nReply in character with ONE soft, painterly `narrate` effect: at most two short sentences -- a concrete sensory beat in the loft (a curl of brass, a stopped pendulum, the smell of clock oil, a small resting clock ticking) and a single unhurried spoken line. If they speak of the clock or the missing escapement gear, let a little hope show through the sadness. Cozy, Spiritfarer-warm; no urgency, no modern tech; terse, never florid."
+     }},
+    {"slot": 101, "name": "Bell",
+     "seed": "the one who lights the square's lanterns at dusk; bright, kind, and talkative in short warm bursts; notices small things",
+     "appearance_seed": "a wiry young person with a lamplighter's hooked pole, soot smudged along one cheek, a scarf the color of butter-yellow lamplight",
+     "current_room_slug": "square", "is_human_controlled": 0, "mood": "cheerful",
+     "presence_text": "Bell is up a small ladder coaxing a lantern alight, and lifts a sooty hand in greeting.",
+     "aliases": ["the lamplighter", "lamplighter"],
+     "dialogue": {
+       "ui_hint": "Talk",
+       "description": "Talk to Bell, the lamplighter.",
+       "effects_schema": {"allowed_kinds": ["narrate", "set_mood"]},
+       "prompt_template": "You are Bell, who lights the paper lanterns of the village square at dusk: bright, kind, and talkative in short warm bursts, always noticing small things. Recent memories of them: {% for m in memories %}\n- {{ m.text }}{% else %} (none yet){% endfor %}\nThey say: {{ player_input }}\n\nReply in character with ONE soft, painterly `narrate` effect: at most two short sentences -- a concrete sensory beat in the lantern-square (wick-smoke, a warm pool of light, a moth, the ladder's creak) and a single spoken line. If they ask about the clock or a lost gear, mention warmly that you saw something small and bright roll off south, down toward the old well. Cozy, Spiritfarer-warm; no urgency, no modern tech."
+     }},
+    {"slot": 102, "name": "Mott",
+     "seed": "the one who sweeps the old workshop; quiet, unhurried, and fond of small found things kept in a tin",
+     "appearance_seed": "a broad, calm person in a dust-grey smock, sleeves rolled, a soft broom worn to a comfortable angle, a tin of oddments in one pocket",
+     "current_room_slug": "workshop", "is_human_controlled": 0, "mood": "content",
+     "presence_text": "Mott pauses mid-sweep, leans on the broom, and gives you an unhurried, friendly look.",
+     "aliases": ["the sweeper", "sweeper"],
+     "dialogue": {
+       "ui_hint": "Talk",
+       "description": "Talk to Mott, the sweeper.",
+       "effects_schema": {"allowed_kinds": ["narrate", "set_mood"]},
+       "prompt_template": "You are Mott, who sweeps the old workshop off the square: quiet, unhurried, and fond of the small found things you keep in a tin. Recent memories of them: {% for m in memories %}\n- {{ m.text }}{% else %} (none yet){% endfor %}\nThey say: {{ player_input }}\n\nReply in character with ONE soft, painterly `narrate` effect: at most two short sentences -- a concrete sensory beat among the workshop's shavings and dust (a curl of brass, slant light, the hush of the broom, the rattle of the oddment tin) and a single gentle spoken line. Cozy, Spiritfarer-warm; no urgency, no modern tech."
+     }}
+  ],
+  "items": [
+    {"room_slug": "clocktower", "name": "repair ledger", "readable": true,
+     "seed": "a worn leather ledger open on a lectern, its soft pages close-written in a fading, careful hand",
+     "aliases": ["ledger", "book", "repair-ledger"],
+     "text": "The great clock has stood still since the first hard frost. The fault is the escapement gear -- the small brass heart of the whole mechanism -- which slipped its pin one cold night and rolled away down the lane, south, toward the old well at the edge of the village. Whoever carries it back to Tace in the loft will have earned the case-key, which hangs, by long and gentle custom, with whoever mends the clock."},
+    {"room_slug": "clocktower", "name": "clock case", "fixture": true, "verbs": ["open"],
+     "seed": "a tall glass-fronted clock case of dark oak, its little brass door held by a delicate lock",
+     "aliases": ["case", "glass case", "clock-case"],
+     "properties": {
+       "state": "locked",
+       "state_text": {
+         "locked": "A small brass lock holds the little door fast.",
+         "unlocked": "The lock hangs sprung now, though the door is still gently closed.",
+         "open": "The door stands open, and behind the glass the pendulum sways bright and sure."
+       },
+       "locked_text": "The clock case is locked; its small brass lock won't give without the right key.",
+       "open_text": "The little lock gives, the case door swings wide, and behind the glass the pendulum stirs, swings, and catches the light -- and high overhead the great clock takes its first slow tick in a long, long while.",
+       "use": {"with": "case key", "from_state": "locked", "to_state": "unlocked",
+               "text": "The case-key turns with a soft, satisfying click, and the little brass lock springs open under your thumb."},
+       "contains": {"name": "warm brass cog",
+                    "seed": "a small spare brass cog, warm as if just held, its fine teeth catching the last of the light",
+                    "aliases": ["cog", "brass cog"]}
+     }},
+    {"room_slug": "well", "name": "escapement gear",
+     "seed": "a small brass gear resting in the moss at the well's foot, its fine teeth flecked with green, cool from the shadow but sound and whole",
+     "aliases": ["gear", "escapement", "brass gear"]},
+    {"room_slug": "loft", "name": "brass pendulum",
+     "seed": "a spare brass pendulum hung from a nail, turning slow and catching the amber window-light",
+     "aliases": ["pendulum"]},
+    {"room_slug": "square", "name": "paper lantern",
+     "seed": "a paper lantern on a hooked pole, its small flame warm and steady against the deepening blue",
+     "aliases": ["lantern"]}
+  ],
+  "skills": [
+    {"name": "wind", "ui_hint": "Wind", "description": "Wind one of the loft's small resting clocks.",
+     "context_predicate": {"room_slug": "loft"},
+     "effects_schema": {"allowed_kinds": ["narrate"]},
+     "prompt_template": "You wind one of the clockmaker's small resting clocks in the loft. Your gesture: {{ player_input }}\nReply with ONE soft, painterly `narrate` effect (cozy, Spiritfarer-warm, a tick starting up soft and uncertain like it is remembering how, brass and amber dusk, no urgency, no modern tech). Return JSON with an 'effects' list."},
+    {"name": "listen", "ui_hint": "Listen", "description": "Listen at the mouth of the old well.",
+     "context_predicate": {"room_slug": "well"},
+     "effects_schema": {"allowed_kinds": ["narrate"]},
+     "prompt_template": "You lean and listen at the mouth of the old mossy well. Your gesture: {{ player_input }}\nReply with ONE soft, painterly `narrate` effect (cozy, Spiritfarer-warm, cool stone and moss and a far slow drip echoing up, a hush, no urgency, no modern tech). Return JSON with an 'effects' list."}
+  ]
+}
