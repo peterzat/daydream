@@ -520,6 +520,25 @@ def test_ws_snapshot_carries_scene_objects_verb_bar_and_entities():
     )
 
 
+@pytest.mark.asyncio
+async def test_command_frame_forwards_iobj_to_executor(monkeypatch):
+    """C6 (SPEC 2026-07-01): a two-object command frame (the click path for
+    give/use) reaches execute_command with BOTH the dobj and the iobj id."""
+    from daydream.api import ws
+
+    spy = AsyncMock()
+    monkeypatch.setattr("daydream.verbs.execute_command", spy)
+    await ws._handle_command(
+        {"kind": "command", "verb": "give", "dobj_id": "o-gear",
+         "iobj_id": "t-tace", "args": ""},
+        "t-actor",
+    )
+    spy.assert_awaited_once()
+    _, kwargs = spy.call_args
+    assert kwargs.get("dobj_id") == "o-gear"
+    assert kwargs.get("iobj_id") == "t-tace"
+
+
 def test_ws_snapshot_carries_self_identity():
     """C3 (SPEC 2026-06-30): the snapshot names the controlled toon (WHO YOU
     ARE) so the SPA renders it distinctly and separates it from co-located
