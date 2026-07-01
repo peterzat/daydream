@@ -1,64 +1,58 @@
-## Review — 2026-07-01 (commit: accfdb6)
+## Review — 2026-07-01 (commit: 94f419a)
 
-**Summary:** Full-depth review of the Reading Room UI retheme
-(`origin/playtest-fixes-and-versioning`..`accfdb6`; 6 UI/docs commits plus 2
-pre-session mockup-exploration commits). Scope: `DESIGN.md` (new durable UI
-design bible), the reconciled CSS design tokens + a self-hosted Caveat woff2 +
-its tier_short drift guard (`tests/drift/test_design_tokens.py`), the near-total
-restructure of `web/index.html` + `web/assets/style.css` + targeted
-`web/assets/main.js` into the storybook page (chapter plate, drop-cap prose,
-marginalia, ink-tab verb ribbon, compass, an examine/read detail inset), the
-keepsakes backpack foldout over live inventory, a phone-width single-column
-collapse, README showcase images, and the paired frontend source-scan tests. All
-changed code files read in full. Client-only: no `daydream/`/`worlds/`/DB change,
-no `WORLD_VERSION` bump. Baseline: 454 short / 704 medium, green. Security
-re-scan of the 3 changed runtime files: 0 BLOCK / 0 WARN / 1 NOTE.
+**Summary:** Refresh review of the Reading Room playtest-fixes + README turn
+(`origin/playtest-fixes-and-versioning`..`94f419a`; 1 code commit + 2 docs
+commits). Focus set: `web/assets/main.js`, `web/assets/style.css`,
+`web/index.html`, `tests/test_frontend.py` (all read in full), plus `README.md`
+(docs) and the regenerated `docs/pretty/reading-room-ui.png`. Client-only: no
+`daydream/`/`worlds/`/DB change, no `WORLD_VERSION` bump. Baseline: 454 short /
+707 medium, green. Security re-scan of the 3 changed runtime files: 0/0/1.
 
 **External reviewers:** None configured.
 
 ### Findings
 
-No BLOCK/WARN issues. The retheme was traced adversarially and is sound:
+No BLOCK/WARN. The playtest fixes were traced adversarially:
 
-- **XSS surface unchanged and safe.** Every new `innerHTML` sink routes dynamic
-  data through a mitigation: `showSimpleHint` escapes the (closed-set) verb;
-  `renderDetailInset` reuses the vetted escape-then-wrap `linkifyEntities` on the
-  narrate text (the untrusted-LLM path); `keepsakeGlyph` returns a static
-  hash-selected SVG with the item name used only to pick an index, never
-  interpolated; item/toon names render via `textContent`. Confirmed by the
-  chained `/security` pass.
-- **No external runtime assets** (C7): the display font is a bundled `@font-face`
-  woff2, textures are inline `data:` SVG, the only script is same-origin. Grep
-  for `googleapis`/CDN/external `url()` is clean. The `Caveat-OFL.txt` license and
-  a code comment are the only "external" strings.
-- **No interaction regressed.** The scene-object gating selectors (`#scene .obj`)
-  still resolve because the marginalia `aside` carries `id="scene"`; verb staging,
-  two-step give/use, entity-link clicks, WS reconnect/`?since`, slots picker,
-  overlays, `painting…`→`room_image_ready` swap, and redeploy-reload are untouched.
-  The backpack rewiring drops `sendCommand("inventory")` for a client-side foldout;
-  the `inventory` verb stays reachable via text input. Verified by 43 green
-  frontend source-scan tests + a rendered visual review (desktop + 390px).
-- **No ids leak.** `nameForObject` returns a chip's display text or an entity
-  alias (never an id); the compass renders exit directions only (exit values are
-  room ids, deliberately not shown).
-- **No spaghetti:** single-concern commits (foundation → structure → backpack →
-  responsive → docs → spec). Aligns with SPEC.md 8/8.
+- **Removed a markup sink.** `showSimpleHint` (an `innerHTML` write) is gone; the
+  staged-verb feedback is now purely the chip pip + target dimming. The security
+  surface shrank, confirmed by the chained `/security` pass.
+- **Repeat-examine de-dup is sound in the common case.** `renderDetailInset`
+  tags each inset with `data-object-id` + `data-text`; a repeat examine/read of
+  the same object with the same result resurfaces the existing card (moved to the
+  end) and glows it (`glowElement` reflow trick) instead of duplicating. The
+  `chat.querySelector` selector interpolates a server-generated object id (a safe
+  `<prefix>-<hex>` slug, never client-controlled), so it is not an injection
+  vector; `dataset.text` uses the DOM API, and the inset body still routes
+  through the vetted escape-then-wrap `linkifyEntities`.
+- **Layout changes are presentation-only.** The desktop app-shell
+  (`@media (min-width: 641px)`, `body { overflow:hidden }`, a viewport-height
+  flex leaf with the chat/marginalia scrolling inside) keeps the ribbon + compass
+  in view; fixed overlays (dream/slots/backpack) are `position:fixed` and
+  unaffected. Rendered-verified at 1366x768 (nav visible) and 390px (mobile
+  document scroll intact).
+- **No spaghetti / spec-aligned:** one coherent UI-polish commit from a single
+  playtest round, plus two docs commits. SPEC.md is closed 8/8; this is post-spec
+  polish + documentation.
 
 **NOTEs (informational, not auto-fixed):**
 
-- **`web/index.html` ships no Content-Security-Policy / `X-Content-Type-Options`.**
-  Carried unchanged; no reachable attack (the XSS surface is fully escaped), a
-  `default-src 'self'` CSP (all assets same-origin) would be belt-and-suspenders.
-  A deliberate cross-cutting change, out of scope here. Recorded in SECURITY.md.
-- **`web/assets/main.js` detail-inset timing.** A drift `narrate` arriving within
-  8 s of a targeted examine/read renders as a detail inset, since `pendingDetail`
-  matches the next narrate regardless of source. Cosmetic only (a drift line
-  shows as a ledger card); bounded by the 8 s window and reset on every snapshot.
-- **Keepsake specimen captions/tags are generic client-side flourish.**
-  `_object_card` carries no description/provenance, so the cards show the real
-  item name plus a name-hashed caption/tag; they never fabricate item-specific
-  facts. A server snapshot field would let them carry real lore (proposed backlog
-  `snapshot-item-lore`).
+- **`web/assets/main.js:472` de-dup keys on object id first.**
+  `renderDetailInset` finds the prior inset with `querySelector('.detail-inset
+  [data-object-id="X"]')` (first match) and only glows-instead-of-appends when
+  its stored text also matches. If an object's examine text *changes* between
+  looks (e.g. a stateful object examined in a new state), a later re-examine of
+  the new-state text can match the older inset by id but not by text and append a
+  duplicate. Cosmetic, narrow (static examine text is the norm); the common
+  re-examine case de-dups correctly.
+- **`web/index.html` ships no CSP / `X-Content-Type-Options`.** Carried; no
+  reachable attack (XSS sinks are fully escaped), a `default-src 'self'` CSP would
+  be belt-and-suspenders. Recorded in SECURITY.md.
+- **Detail-inset timing.** A drift `narrate` within 8 s of a targeted
+  examine/read still renders as a detail inset (cosmetic; bounded by the window +
+  snapshot reset). Carried.
+- **Keepsake captions/tags are generic client-side flourish** (no server item
+  lore yet); the real content is the item name. Backlog `snapshot-item-lore`.
 
 ### Fixes Applied
 
@@ -66,21 +60,18 @@ None (no BLOCK/WARN findings).
 
 ### Accepted Risks
 
-Carried forward from the prior entry, none aggravated by this client-only UI turn
-(it touches no server/LLM/auth/data surface):
+Carried forward, none aggravated by this client-only UI/docs turn:
 
 - **LLM-emitted effects take an unscoped, LLM-chosen target id.** `set_property`
-  / `move_object` / `spawn_object` trust the effect's target id; room-affordance
-  data skills dispatch with the full effect vocabulary, while `talk` + the
+  / `move_object` / `spawn_object` trust the effect's target id; `talk` + the
   deterministic verbs enforce a narrower per-verb `allowed` subset. No privilege
   escalation. v2 `skills-authoring-and-security`. (SECURITY.md NOTE.)
-- Friend-scope on slot/session endpoints (CSRF-gated by `CsrfOriginMiddleware`;
-  `/ws` Origin-checked); liveness-gated claim takeover; `/status/*` + `/cache/...`
-  session-unauthenticated but AccessMiddleware-gated. Cookie `https_only=False`;
-  `100.64.0.0/10` CGNAT hardcoding; tailscale `is_authed` bypass. Stored
-  prompt-injection via captured memory; bootstrap `$MODEL` heredoc; `cmd_logs`
-  path component; qpeek clone; `world reset` `rm -rf` operator-trust. Unbounded
-  slot-create body + event queues.
+- Friend-scope on slot/session endpoints (CSRF-gated; `/ws` Origin-checked);
+  liveness-gated claim takeover; `/status/*` + `/cache/...` session-unauthenticated
+  but AccessMiddleware-gated. Cookie `https_only=False`; `100.64.0.0/10` CGNAT
+  hardcoding; tailscale `is_authed` bypass. Stored prompt-injection via captured
+  memory; bootstrap `$MODEL` heredoc; `cmd_logs` path component; qpeek clone;
+  `world reset` `rm -rf` operator-trust. Unbounded slot-create body + event queues.
 
 ### Carried-forward open NOTEs (pre-existing)
 
@@ -90,6 +81,6 @@ non-transactional; no CSP/`X-Content-Type-Options` on the SPA shell. None
 aggravated this turn.
 
 ---
-*Prior review (2026-07-01, commit e769ad6): refresh review of the playable-quest-loop turn (two-object give/use verbs + iobj gate, state-gated open/read, stateful world loader, The Clockmaker's Loft, WORLD_VERSION 1.1); 0 BLOCK / 0 WARN / 1 NOTE (CSP).*
+*Prior review (2026-07-01, commit accfdb6): full-depth review of the Reading Room UI retheme (storybook SPA, keepsakes foldout, responsive collapse, DESIGN.md + token drift guard, self-hosted font); 0 BLOCK / 0 WARN / 3 NOTE.*
 
-<!-- REVIEW_META: {"date":"2026-07-01","commit":"accfdb6","reviewed_up_to":"accfdb6488e377ff6cdc5368823cff6f26f6faf2","base":"origin/playtest-fixes-and-versioning","tier":"full","block":0,"warn":0,"note":3} -->
+<!-- REVIEW_META: {"date":"2026-07-01","commit":"94f419a","reviewed_up_to":"94f419a9ef805cf43c6ac2967c4a1dca91db3ad7","base":"origin/playtest-fixes-and-versioning","tier":"refresh","block":0,"warn":0,"note":4} -->
