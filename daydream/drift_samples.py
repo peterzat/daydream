@@ -129,7 +129,8 @@ async def _run_prompt(prompt: dict) -> dict:
     fallback_reason: str | None = None
     try:
         response = await llm_client.acompletion_json(
-            system=drift._DRIFT_SYSTEM_PROMPT, user=rendered
+            system=drift._DRIFT_SYSTEM_PROMPT, user=rendered,
+            purpose="drift-samples",
         )
     except llm_client.LLMUnavailable as e:
         fallback_reason = f"LLMUnavailable: {e}"

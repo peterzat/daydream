@@ -87,7 +87,7 @@ _NO_DIRECTION = "Every way out of this place is already taken; the seed has nowh
 _PHRASE_TOO_LONG = "The seed trembles under so many words; hold a smaller vision."
 _OFF_TONE = "The seed stirs, but the dream won't hold that shape."
 _WONT_HOLD_YET = "The seed stirs, but the dream won't hold that shape yet."
-_FOGGY = "The dream is foggy right now; that thought slips away."
+_FOGGY = client.FOGGY_TEXT
 _HUSK_DEFAULT = "a spent dreamseed, its light gone soft; something of it lives on in this place"
 
 # ---- the growth prompt (rung a: exemplar-scaffolded free composition) ---
@@ -382,6 +382,7 @@ async def execute_plant(
             user=_user_prompt(growth, room, phrase),
             max_tokens=450,
             timeout=30.0,
+            purpose="growth",
         )
     except client.LLMUnavailable as e:
         logger.warning("plant: LLM unavailable: %s", e)

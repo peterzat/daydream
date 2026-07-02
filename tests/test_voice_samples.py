@@ -252,7 +252,7 @@ def test_reset_and_get_last_usage_flow():
     assert llm_client.get_last_usage() is None
     # Simulate an acompletion_json having just run: we set the
     # internal state as that function would, then read it.
-    llm_client._last_usage = {"prompt_tokens": 42, "completion_tokens": 17}
+    llm_client.set_last_usage_for_tests({"prompt_tokens": 42, "completion_tokens": 17})
     got = llm_client.get_last_usage()
     assert got is not None
     assert got["prompt_tokens"] == 42

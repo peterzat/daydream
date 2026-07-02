@@ -541,7 +541,8 @@ async def _llm_parse(actor_id: str, text: str, room: rooms.Room | None) -> Parse
     scope = _scope_entries(actor_id)
     try:
         result = await client.acompletion_json(
-            system=SYSTEM, user=_user_prompt(text, vocab, scope)
+            system=SYSTEM, user=_user_prompt(text, vocab, scope),
+            purpose="parser",
         )
     except client.LLMUnavailable as e:
         return Parse("none", error=str(e))

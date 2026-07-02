@@ -629,7 +629,8 @@ async def _generate_examine(dobj: objects.Object) -> str | None:
     a gentle 'too foggy' line). Local model only, behind the GPU arbiter."""
     try:
         result = await client.acompletion_json(
-            system=_EXAMINE_SYSTEM, user=f"Object: {dobj.name}\nDescribe it."
+            system=_EXAMINE_SYSTEM, user=f"Object: {dobj.name}\nDescribe it.",
+            purpose="examine",
         )
     except client.LLMUnavailable:
         return None

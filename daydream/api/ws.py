@@ -34,6 +34,7 @@ from daydream.api import auth, csrf
 from daydream.gpu import arbiter
 from daydream.images import cache as image_cache
 from daydream.images import client as image_client
+from daydream.llm import client as llm_client
 from daydream.skills import data as data_skills
 from daydream.skills import registry
 
@@ -435,7 +436,7 @@ async def _handle_input(text: str, toon_id: str, conn: dict) -> dict | None:
         # parser fast-path), but this open-text input degrades to "foggy".
         events.append(
             "system", None, "narrate",
-            {"text": "The dream is foggy right now; that thought slips away."},
+            {"text": llm_client.FOGGY_TEXT},
             room_id=room_id,
         )
         return None

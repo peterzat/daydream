@@ -31,6 +31,7 @@ async def interpret(input_text: str, available: list[SkillSpec]) -> Interpretati
         result = await client.acompletion_json(
             system=prompts.INTERPRETER_SYSTEM,
             user=prompts.interpreter_user(input_text, available),
+            purpose="interpreter",
         )
     except client.LLMUnavailable as e:
         return Interpretation(skill="none", args=input_text, error=str(e))

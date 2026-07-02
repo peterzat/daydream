@@ -177,6 +177,7 @@ async def maybe_retell(world_id: str, text: str, *, purpose: str = "narrate") ->
                 f"Retell this line:\n{text.strip()}",
                 temperature=RETELL_TEMPERATURE,
                 max_tokens=220,
+                purpose="retell",
                 timeout=float(timeout),
             ),
             timeout=float(timeout) + 0.5,

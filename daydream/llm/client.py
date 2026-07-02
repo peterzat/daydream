@@ -1,18 +1,32 @@
 """LLM client wrapper.
 
-All LLM calls flow through here so the v1 GPU arbiter (port from
-~/src/qwen-2.5-localreview/gpu_lock.py) can wrap the single call site
-without touching gameplay code. Uses litellm as a Python library, not as
-a proxy process; the same signature works against vLLM today and against
-Cloudflare Workers AI / OpenAI / Anthropic later by swapping the model
-name in config."""
+All LLM calls flow through here so the GPU arbiter can wrap the single
+call site without touching gameplay code. Uses litellm as a Python
+library, not as a proxy process; the same signature works against vLLM
+today and against Cloudflare Workers AI / OpenAI / Anthropic later by
+swapping the model name in config.
 
+Observability: every call is tagged with a caller-supplied `purpose`
+("parser", "dialogue", "growth", ...) and logged on the dedicated
+`daydream.llm.usage` logger — purpose, model, latency, token counts —
+so prompt/latency analysis has a durable feed (plan 2026-07-02: prompt
+monitoring infra)."""
+
+import contextvars
 import json
+import logging
+import time
 
 import litellm
 
 from daydream import config
 from daydream.gpu import arbiter
+
+usage_logger = logging.getLogger("daydream.llm.usage")
+
+# The one canonical LLM-outage line every caller narrates (previously
+# hand-copied at three sites). Player-facing; keep in the WHIMSY register.
+FOGGY_TEXT = "The dream is foggy right now; that thought slips away."
 
 
 class LLMUnavailable(Exception):
@@ -22,29 +36,34 @@ class LLMUnavailable(Exception):
 
 
 # Optional side channel for observability tools that need token-usage
-# metrics from the last call (e.g. voice-samples harness). Module-global
-# because acompletion_json is awaited from various layers and threading
-# the usage through every caller would leak implementation detail
-# through the whole skill pipeline. Cleared at the TOP of each call;
-# populated only on successful response. Not thread-safe by design —
-# the consumer reads this synchronously after awaiting a single
-# acompletion_json call. See SPEC 2026-04-24 criterion 2.
-_last_usage: dict | None = None
+# metrics from the last call (e.g. voice-samples harness). A ContextVar
+# (not a module global) so concurrent LLM calls in different tasks —
+# allowed since the arbiter's shared-LLM gate — can never smear each
+# other's numbers: each task reads the usage of ITS OWN awaited call.
+# Cleared at the TOP of each call; populated only on successful response.
+_last_usage: contextvars.ContextVar[dict | None] = contextvars.ContextVar(
+    "daydream_llm_last_usage", default=None
+)
 
 
 def reset_last_usage() -> None:
     """Clear the last-usage side channel. Callers that care about their
     own call's usage should call this, then acompletion_json, then
     get_last_usage() to read a clean record."""
-    global _last_usage
-    _last_usage = None
+    _last_usage.set(None)
 
 
 def get_last_usage() -> dict | None:
     """Return {prompt_tokens, completion_tokens} from the most recent
-    acompletion_json response, or None if the last call was never made,
-    failed before response, or the backend omitted a usage field."""
-    return _last_usage
+    acompletion_json response awaited IN THIS TASK, or None if the last
+    call was never made, failed before response, or the backend omitted
+    a usage field."""
+    return _last_usage.get()
+
+
+def set_last_usage_for_tests(value: dict | None) -> None:
+    """Test seam: poke the side channel the way acompletion_json would."""
+    _last_usage.set(value)
 
 
 async def acompletion_json(
@@ -55,22 +74,28 @@ async def acompletion_json(
     temperature: float = 0.0,
     max_tokens: int = 256,
     timeout: float = 10.0,
+    purpose: str = "unlabeled",
 ) -> dict:
     """Call the LLM and parse a JSON object from the response.
 
+    `purpose` names the calling surface ("parser", "dialogue", "drift",
+    "growth", "retell", "examine", ...) for the usage log; it never
+    reaches the model.
+
     Raises LLMUnavailable on any backend failure or unparseable output. The
-    caller decides how to recover (typically by narrating 'the dream is foggy')."""
+    caller decides how to recover (typically by narrating FOGGY_TEXT)."""
     # Clear any stale usage from a prior call before the side channel
     # could leak into a failed call's observability.
-    global _last_usage
-    _last_usage = None
-    # Hold the GPU arbiter for the duration of the LLM call so vLLM and
-    # any in-flight image-gen on ComfyUI never run simultaneously on the
-    # 20 GB GPU. The lock is in-process; see daydream/gpu/arbiter.py.
+    _last_usage.set(None)
+    resolved_model = model or config.llm_model()
+    t_enqueue = time.monotonic()
+    # Hold the GPU gate for the duration of the LLM call; see
+    # daydream/gpu/arbiter.py for the sharing semantics.
     try:
         async with arbiter.acquire():
+            t_start = time.monotonic()
             response = await litellm.acompletion(
-                model=model or config.llm_model(),
+                model=resolved_model,
                 api_base=config.llm_base_url(),
                 api_key=config.llm_api_key(),
                 messages=[
@@ -83,6 +108,10 @@ async def acompletion_json(
                 response_format={"type": "json_object"},
             )
     except Exception as e:
+        usage_logger.info(
+            "llm purpose=%s model=%s outcome=error error=%s",
+            purpose, resolved_model, type(e).__name__,
+        )
         raise LLMUnavailable(f"LLM call failed: {e}") from e
 
     try:
@@ -93,12 +122,23 @@ async def acompletion_json(
     # Capture usage after a successful response, BEFORE JSON parsing,
     # so even a malformed-JSON LLMUnavailable raise still leaves
     # diagnostic metrics behind for a caller to read.
+    prompt_tokens = completion_tokens = None
     usage_obj = getattr(response, "usage", None)
     if usage_obj is not None:
-        _last_usage = {
-            "prompt_tokens": getattr(usage_obj, "prompt_tokens", None),
-            "completion_tokens": getattr(usage_obj, "completion_tokens", None),
-        }
+        prompt_tokens = getattr(usage_obj, "prompt_tokens", None)
+        completion_tokens = getattr(usage_obj, "completion_tokens", None)
+        _last_usage.set({
+            "prompt_tokens": prompt_tokens,
+            "completion_tokens": completion_tokens,
+        })
+    now = time.monotonic()
+    usage_logger.info(
+        "llm purpose=%s model=%s wait_ms=%d call_ms=%d prompt_tokens=%s "
+        "completion_tokens=%s",
+        purpose, resolved_model,
+        int((t_start - t_enqueue) * 1000), int((now - t_start) * 1000),
+        prompt_tokens, completion_tokens,
+    )
 
     try:
         return json.loads(text)

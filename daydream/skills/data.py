@@ -179,7 +179,7 @@ def _matches_predicate(predicate: dict, room_slug: str | None) -> bool:
 
 
 _BANNED_FALLBACK_TEXT = "The dream won't hold that thought."
-_FOGGY_FALLBACK_TEXT = "The dream is foggy right now; that thought slips away."
+_FOGGY_FALLBACK_TEXT = llm_client.FOGGY_TEXT
 _RENDER_FAILURE_TEXT = "The dream loses the thread of that skill."
 
 # System message for PLAYER-ACTION affordance skills (wind, listen, forge...):
@@ -380,7 +380,9 @@ async def execute(
     logger.debug("skill %r prompt (system=%s...):\n%s",
                  spec.name, system[:60], prompt)
     try:
-        response = await llm_client.acompletion_json(system=system, user=prompt)
+        response = await llm_client.acompletion_json(
+            system=system, user=prompt, purpose="dialogue"
+        )
     except llm_client.LLMUnavailable as e:
         logger.warning("skill %r LLM unavailable: %s", spec.name, e)
         _emit_narrate(_FOGGY_FALLBACK_TEXT, room_id)

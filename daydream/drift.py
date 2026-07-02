@@ -456,7 +456,7 @@ async def _llm_narrate(npc: dict[str, Any]) -> str | None:
         return None
     try:
         response = await llm_client.acompletion_json(
-            system=_DRIFT_SYSTEM_PROMPT, user=prompt
+            system=_DRIFT_SYSTEM_PROMPT, user=prompt, purpose="drift"
         )
     except llm_client.LLMUnavailable as e:
         logger.info("drift LLM: unavailable, falling back to canned: %s", e)

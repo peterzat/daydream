@@ -127,9 +127,10 @@ modern dress, no machinery, no harsh edges, Spiritfarer-adjacent,
 A Short Hike-adjacent, low-saturation cream and sage palette
 ```
 
-Use it as the `WHIMSY_PROMPT_SUFFIX` constant in
-`daydream/llm/prompts.py` and `daydream/images/client.py`. Update
-both call sites if the suffix changes here.
+It lives in code as the `WHIMSY_PROMPT_SUFFIX` constant in
+`daydream/images/client.py`; `tests/test_whimsy_prompt_suffix.py`
+fails if this block and that constant ever drift apart, so update
+both together.
 
 ---
 
