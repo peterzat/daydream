@@ -53,7 +53,11 @@ router = APIRouter()
 # adding it would re-snapshot on every examine.
 _EFFECT_MUTATION_KINDS = frozenset(
     {"item_added", "mood_set", "object_moved", "object_spawned",
-     "room_grown", "exit_linked", "object_renamed"}
+     "room_grown", "exit_linked", "object_renamed",
+     # Zork-turn rule effects (SPEC 2026-07-02): a score change refreshes the
+     # status ribbon; a flag flip can reveal a secret exit or change panel
+     # state; a destroyed object must leave the scene panel.
+     "score_changed", "flag_set", "object_destroyed"}
 )
 # Starting room for the seeded toon; also the fallback used if the toon
 # somehow has a NULL current_room_id. After multi-room-navigation lands
@@ -157,14 +161,18 @@ def _state_snapshot(
     # (all co-located toons) for back-compat; the client filters it out there.
     self_toon = next((t for t in toons_in if t.id == toon_id), None) or toons.get_toon(toon_id)
     if resume_since is _REPLAY_RECENT:
-        # Move / effect re-snapshots: the room's recent history.
+        # Move / effect re-snapshots: the room's recent history. Private
+        # events addressed to other toons are filtered out (migration 014).
         recent = events.fetch_since(
-            max(0, last_seq - SNAPSHOT_HISTORY_DEPTH), room_id=room_id
+            max(0, last_seq - SNAPSHOT_HISTORY_DEPTH), room_id=room_id,
+            recipient_for=toon_id,
         )
     elif resume_since is None:
         recent = []  # fresh session: empty log, only new events stream in
     else:
-        recent = events.fetch_since(resume_since, room_id=room_id)  # reconnect resume
+        recent = events.fetch_since(
+            resume_since, room_id=room_id, recipient_for=toon_id
+        )  # reconnect resume
     available = registry.list_available_for_room(room_id)
 
     image_url: str | None = None
@@ -570,15 +578,24 @@ async def _broadcast_loop(
             # from the subscribe-before-snapshot ordering.
             if event.seq <= snapshot_seq:
                 continue
-            # Room filter follows the player: events in rooms the toon is
-            # NOT currently in get dropped. The toon's own events always
-            # pass — a move event has room_id=<departure>, which wouldn't
-            # match current_room after the move otherwise, and the client
-            # would never learn it moved.
-            own_event = event.actor_id == toon_id
-            if not own_event and event.room_id is not None:
-                if event.room_id != _current_room_id(toon_id):
+            # Private events (migration 014): addressed to this toon, always
+            # delivered — even across a room change (a death respawn's message
+            # lands in the old room while the toon is already in the new one).
+            # Addressed to anyone else, always dropped. NULL recipient falls
+            # through to the room filter as before.
+            if event.recipient_id is not None:
+                if event.recipient_id != toon_id:
                     continue
+            else:
+                # Room filter follows the player: events in rooms the toon is
+                # NOT currently in get dropped. The toon's own events always
+                # pass — a move event has room_id=<departure>, which wouldn't
+                # match current_room after the move otherwise, and the client
+                # would never learn it moved.
+                own_event = event.actor_id == toon_id
+                if not own_event and event.room_id is not None:
+                    if event.room_id != _current_room_id(toon_id):
+                        continue
             await ws.send_json({"kind": "event", "event": event.to_dict()})
             # After a mutation of observable room state, push a fresh
             # snapshot so the client's items / toons / exits / image

@@ -189,23 +189,27 @@ async def execute_command(
     room_id = actor.location_id or ""
     spec = get(verb)
     if spec is None:
-        _narrate(room_id, _DONT_UNDERSTAND)
+        _narrate(room_id, _DONT_UNDERSTAND, recipient_id=actor_id)
         return
 
     dobj = None
     if spec.needs_dobj:
+        # Validation refusals are actor-private (migration 014): your typo
+        # or out-of-reach grab never spams a co-located player's log.
         if not dobj_id:
             if dobj_name:
-                _narrate(room_id, f"You don't see the {dobj_name} here.")
+                _narrate(room_id, f"You don't see the {dobj_name} here.",
+                         recipient_id=actor_id)
             else:
-                _narrate(room_id, f"{spec.ui_hint} what?")
+                _narrate(room_id, f"{spec.ui_hint} what?", recipient_id=actor_id)
             return
         dobj = _resolve_in_scope(actor_id, dobj_id)
         if dobj is None:
-            _narrate(room_id, "You don't see that here.")
+            _narrate(room_id, "You don't see that here.", recipient_id=actor_id)
             return
         if spec.name not in objects.verbs_for(dobj):
-            _narrate(room_id, f"You can't {spec.name} {_the(dobj)}.")
+            _narrate(room_id, f"You can't {spec.name} {_the(dobj)}.",
+                     recipient_id=actor_id)
             return
 
     iobj = _resolve_in_scope(actor_id, iobj_id) if iobj_id else None
@@ -216,11 +220,13 @@ async def execute_command(
         prep = _iobj_prep(spec)
         if iobj is None:
             whom = "whom" if prep == "to" else "what"
-            _narrate(room_id, f"{spec.ui_hint} it {prep} {whom}?")
+            _narrate(room_id, f"{spec.ui_hint} it {prep} {whom}?",
+                     recipient_id=actor_id)
             return
         dn = _the(dobj) if dobj is not None else "that"
         if spec.valid_iobj_kinds and iobj.kind not in spec.valid_iobj_kinds:
-            _narrate(room_id, f"You can't {spec.name} {dn} {prep} {_the(iobj)}.")
+            _narrate(room_id, f"You can't {spec.name} {dn} {prep} {_the(iobj)}.",
+                     recipient_id=actor_id)
             return
 
     # MOO dispatch priority: the handler is resolved by searching player ->
@@ -252,8 +258,11 @@ def _resolve_in_scope(actor_id: str, object_id: str | None) -> objects.Object | 
     return None
 
 
-def _narrate(room_id: str, text: str) -> None:
-    events.append("system", None, "narrate", {"text": text}, room_id=room_id)
+def _narrate(room_id: str, text: str, recipient_id: str | None = None) -> None:
+    events.append(
+        "system", None, "narrate", {"text": text},
+        room_id=room_id, recipient_id=recipient_id,
+    )
 
 
 def _dispatch(actor: objects.Object, room_id: str, effs: list, spec: VerbSpec) -> None:
@@ -295,15 +304,17 @@ def _the(obj: objects.Object) -> str:
 
 
 async def _handle_look(actor, room_id, dobj, iobj, args, spec) -> None:
+    # Self-narration: `look` describes the room to the looker only (SPEC
+    # 2026-07-02 criterion 12); co-located players don't see your reading.
     room = rooms.get_room(room_id)
     if room is None:
-        _dispatch(actor, room_id, [{"kind": "narrate", "text": "You are nowhere recognizable."}], spec)
+        _dispatch(actor, room_id, [{"kind": "narrate", "text": "You are nowhere recognizable.", "to": "@actor"}], spec)
         return
     text = room.description_cached or f"You are in {room.title}."
     things = objects.contents(room_id, kind="thing")
     if things:
         text += " You see: " + ", ".join(t.name for t in things) + "."
-    _dispatch(actor, room_id, [{"kind": "narrate", "text": text}], spec)
+    _dispatch(actor, room_id, [{"kind": "narrate", "text": text, "to": "@actor"}], spec)
 
 
 def _terminate(text: str) -> str:
@@ -346,27 +357,27 @@ async def _handle_examine(actor, room_id, dobj, iobj, args, spec) -> None:
     cache."""
     cached = dobj.properties.get("examined_text")
     if isinstance(cached, str) and cached.strip():
-        _dispatch(actor, room_id, [{"kind": "narrate", "text": _examine_line(dobj, cached)}], spec)
+        _dispatch(actor, room_id, [{"kind": "narrate", "text": _examine_line(dobj, cached), "to": "@actor"}], spec)
         return
     if dobj.kind == "toon":
         appearance = dobj.properties.get("appearance_seed", "")
         parts = [p for p in (appearance, dobj.seed) if p and p.strip()]
         body = " ".join(_terminate(p) for p in parts)
         line = f"You see {dobj.name}: {body}" if body else f"You see {dobj.name}."
-        _dispatch(actor, room_id, [{"kind": "narrate", "text": line}], spec)
+        _dispatch(actor, room_id, [{"kind": "narrate", "text": line, "to": "@actor"}], spec)
         return
     if dobj.seed and dobj.seed.strip():
-        _dispatch(actor, room_id, [{"kind": "narrate", "text": _examine_line(dobj, _detail_with_state(dobj))}], spec)
+        _dispatch(actor, room_id, [{"kind": "narrate", "text": _examine_line(dobj, _detail_with_state(dobj)), "to": "@actor"}], spec)
         return
     # Lazy-cache generation (one LLM call, then cached).
     detail = await _generate_examine(dobj)
     if detail is None:
-        _dispatch(actor, room_id, [{"kind": "narrate",
+        _dispatch(actor, room_id, [{"kind": "narrate", "to": "@actor",
             "text": f"You look at the {dobj.name}, but the dream is too foggy to make out the details just now."}], spec)
         return
     _dispatch(actor, room_id, [
         {"kind": "set_property", "target_id": dobj.id, "key": "examined_text", "value": detail},
-        {"kind": "narrate", "text": _examine_line(dobj, detail)},
+        {"kind": "narrate", "text": _examine_line(dobj, detail), "to": "@actor"},
     ], spec)
 
 
@@ -579,9 +590,9 @@ async def _handle_read(actor, room_id, dobj, iobj, args, spec) -> None:
     text. Deterministic (no LLM)."""
     text = dobj.properties.get("text")
     if isinstance(text, str) and text.strip():
-        _dispatch(actor, room_id, [{"kind": "narrate", "text": text.strip()}], spec)
+        _dispatch(actor, room_id, [{"kind": "narrate", "text": text.strip(), "to": "@actor"}], spec)
         return
-    _dispatch(actor, room_id, [{"kind": "narrate",
+    _dispatch(actor, room_id, [{"kind": "narrate", "to": "@actor",
         "text": f"There's nothing written on the {dobj.name} to read."}], spec)
 
 
@@ -599,7 +610,7 @@ async def _handle_plant(actor, room_id, dobj, iobj, args, spec) -> None:
 async def _handle_say(actor, room_id, dobj, iobj, args, spec) -> None:
     text = args.strip()
     if not text:
-        _narrate(room_id, "Say what?")
+        _narrate(room_id, "Say what?", recipient_id=actor.id)
         return
     # `say` is the actor speaking, not system narration: emit a `say` event
     # keyed to the actor. Carry the speaker's display NAME in the payload so the
@@ -685,10 +696,10 @@ async def _handle_inventory(actor, room_id, dobj, iobj, args, spec) -> None:
     empty so the player always gets an answer."""
     carried = objects.contents(actor.id, kind="thing")
     if not carried:
-        _dispatch(actor, room_id, [{"kind": "narrate", "text": "You're carrying nothing."}], spec)
+        _dispatch(actor, room_id, [{"kind": "narrate", "text": "You're carrying nothing.", "to": "@actor"}], spec)
         return
     names = ", ".join(o.name for o in carried)
-    _dispatch(actor, room_id, [{"kind": "narrate", "text": f"You're carrying: {names}."}], spec)
+    _dispatch(actor, room_id, [{"kind": "narrate", "text": f"You're carrying: {names}.", "to": "@actor"}], spec)
 
 
 _ENGINE_HANDLERS = {

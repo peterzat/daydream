@@ -25,8 +25,11 @@ verb that declares them in its per-verb allowlist: a caller passing
 them, so an NPC dialogue or standalone data skill attempting either is
 rejected exactly like an unknown kind. `plant` is the sole consumer today.
 
-Future-prepared (documented, not built): `destroy_object` — reserved for the
-future clutter-GC / unmaking vocabulary.
+The rule-only kinds (Zork turn, SPEC 2026-07-02) — `set_flag`,
+`adjust_counter`, `adjust_score`, `destroy_object`, `teleport_actor`,
+`start_fuse`/`stop_fuse`, `start_daemon`/`stop_daemon`, `win` — are likewise
+restricted: they execute only under the declarative rule engine's
+`RULE_KINDS` allowlist. No LLM-facing path can emit them.
 
 The dispatcher stays closed to dynamic dispatch — there is no plugin mechanism,
 by design. Out of scope (BACKLOG `skills-authoring-and-security`): strict
@@ -37,7 +40,7 @@ import logging
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from daydream import events, objects
+from daydream import events, objects, worldstate
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +56,18 @@ ALLOWED_KINDS: frozenset[str] = frozenset({
     # Engine housekeeping (explicit per-verb declaration only): rename an
     # object's display name (the spent dreamseed husk).
     "rename_object",
+    # Rule-engine vocabulary (Zork turn, SPEC 2026-07-02): emitted only by
+    # authored world/object rules — never by an LLM-facing path.
+    "set_flag",
+    "adjust_counter",
+    "adjust_score",
+    "destroy_object",
+    "teleport_actor",
+    "start_fuse",
+    "stop_fuse",
+    "start_daemon",
+    "stop_daemon",
+    "win",
     # Retained aliases for existing data-skill author files.
     "add_item",
     "set_mood",
@@ -64,8 +79,27 @@ ALLOWED_KINDS: frozenset[str] = frozenset({
 # the capability, so an NPC dialogue or a standalone data skill can never
 # world-build (or vandalize a name) by omission.
 WORLD_SHAPING_KINDS: frozenset[str] = frozenset({"spawn_room", "link_exit"})
-RESTRICTED_KINDS: frozenset[str] = WORLD_SHAPING_KINDS | {"rename_object"}
+# Kinds reachable ONLY through the declarative rule engine's allowlist
+# (RULE_KINDS below). No LLM-emitted effects list can contain them: every
+# LLM-facing dispatch passes allowed=None (DEFAULT_KINDS) or a verb allowlist
+# that never includes these. Authored rule text is design-time data, so a
+# rule scoring points or starting a fuse is the author speaking, not a model.
+RULE_ONLY_KINDS: frozenset[str] = frozenset({
+    "set_flag", "adjust_counter", "adjust_score", "destroy_object",
+    "teleport_actor", "start_fuse", "stop_fuse", "start_daemon",
+    "stop_daemon", "win",
+})
+RESTRICTED_KINDS: frozenset[str] = (
+    WORLD_SHAPING_KINDS | {"rename_object"} | RULE_ONLY_KINDS
+)
 DEFAULT_KINDS: frozenset[str] = ALLOWED_KINDS - RESTRICTED_KINDS
+# The rule engine's dispatch allowlist: the basic vocabulary plus the
+# rule-only kinds. Deliberately excludes the world-shaping kinds (a rule
+# never grows rooms — exits with conditions are authored statically) and the
+# legacy aliases.
+RULE_KINDS: frozenset[str] = RULE_ONLY_KINDS | frozenset({
+    "narrate", "set_property", "spawn_object", "move_object",
+})
 
 
 @dataclass(frozen=True)
@@ -137,11 +171,25 @@ def dispatch_effects(
 def _apply_narrate(
     eff: dict, *, actor_id: str, room_id: str, world_id: str
 ) -> events.Event | None:
+    """Emit narration. Two optional routing fields (Zork turn):
+
+    `to: "@actor"` (or an explicit toon id) makes the line actor-private
+    (events.recipient_id, migration 014) — self-narrations and refusals
+    reach only the acting player. `room: <id>` overrides which room's log
+    the line lands in (a daemon narrating into its own room)."""
     text = eff.get("text")
     if not isinstance(text, str) or not text.strip():
         return None
+    to = eff.get("to")
+    recipient: str | None = None
+    if isinstance(to, str) and to.strip():
+        recipient = actor_id if to.strip() == "@actor" else to.strip()
+    target_room = eff.get("room")
+    if not (isinstance(target_room, str) and target_room.strip()):
+        target_room = room_id
     return events.append(
-        "system", None, "narrate", {"text": text.strip()}, room_id=room_id
+        "system", None, "narrate", {"text": text.strip()},
+        room_id=target_room, recipient_id=recipient,
     )
 
 
@@ -409,6 +457,217 @@ def _apply_rename_object(
     )
 
 
+# ---- rule-only kinds (Zork turn, SPEC 2026-07-02) ------------------------
+
+
+def _apply_set_flag(
+    eff: dict, *, actor_id: str, room_id: str, world_id: str
+) -> events.Event | None:
+    """Set one world flag (worldstate `flag:<NAME>`). `value` defaults true."""
+    name = eff.get("name")
+    if not isinstance(name, str) or not name.strip():
+        return None
+    value = bool(eff.get("value", True))
+    worldstate.set_flag(world_id, name.strip(), value)
+    return events.append(
+        "system", None, "flag_set",
+        {"name": name.strip(), "value": value}, room_id=room_id,
+    )
+
+
+def _apply_adjust_counter(
+    eff: dict, *, actor_id: str, room_id: str, world_id: str
+) -> events.Event | None:
+    name = eff.get("name")
+    delta = eff.get("delta")
+    if not isinstance(name, str) or not name.strip() or not isinstance(delta, int):
+        return None
+    value = worldstate.adjust_counter(world_id, name.strip(), delta)
+    return events.append(
+        "system", None, "counter_adjusted",
+        {"name": name.strip(), "value": value}, room_id=room_id,
+    )
+
+
+def _apply_adjust_score(
+    eff: dict, *, actor_id: str, room_id: str, world_id: str
+) -> events.Event | None:
+    """Adjust the world-shared score. An optional `once: "<key>"` makes the
+    award fire exactly once per world (taking a treasure scores on FIRST take
+    only): the second and later dispatches are no-ops (event=None, no
+    mutation), tracked via the worldstate `once:<key>` marker."""
+    delta = eff.get("delta")
+    if not isinstance(delta, int):
+        return None
+    once = eff.get("once")
+    if isinstance(once, str) and once.strip():
+        marker = "once:" + once.strip()
+        if worldstate.get(world_id, marker):
+            return None
+        worldstate.set(world_id, marker, True)
+    score = worldstate.adjust_score(world_id, delta)
+    return events.append(
+        "system", None, "score_changed",
+        {"delta": delta, "score": score}, room_id=room_id,
+    )
+
+
+def _apply_destroy_object(
+    eff: dict, *, actor_id: str, room_id: str, world_id: str
+) -> events.Event | None:
+    """Remove one object from the world. Its contents (a destroyed container's
+    payload, a dead hostile's hoard) drop to ITS location first, so nothing is
+    ever silently lost. Refuses (no mutation) on rooms, prototypes, and
+    human-controlled toons — a rule can unmake a thing or an NPC, never a
+    player or the world's geometry."""
+    object_id = eff.get("object_id")
+    if not isinstance(object_id, str) or not object_id.strip():
+        return None
+    target = objects.get(object_id.strip())
+    if target is None or target.kind in ("room", "prototype"):
+        return None
+    if target.kind == "toon" and (
+        target.is_human_controlled or target.controller_session
+    ):
+        return None
+    dest = target.location_id
+    for held in objects.contents(target.id):
+        objects.move(held.id, dest)
+    objects.delete(target.id)
+    return events.append(
+        "system", None, "object_destroyed",
+        {"object_id": target.id, "name": target.name}, room_id=room_id,
+    )
+
+
+def _apply_teleport_actor(
+    eff: dict, *, actor_id: str, room_id: str, world_id: str
+) -> events.Event | None:
+    """Relocate a toon (default: the acting toon) to `room_id`. Emits a `move`
+    event keyed to the toon — the same kind `go` emits — so the WS layer's
+    controlled-move branch re-snapshots and kicks image gen exactly as for a
+    walked move. The event's room_id is the DEPARTURE room (broadcast-filter
+    contract), with `teleport: true` so the client can narrate it differently."""
+    target_room = eff.get("room_id")
+    toon_id = eff.get("actor_id", actor_id)
+    if not isinstance(target_room, str) or not isinstance(toon_id, str):
+        return None
+    toon = objects.get(toon_id)
+    dest = objects.get(target_room)
+    if toon is None or toon.kind != "toon" or dest is None or dest.kind != "room":
+        return None
+    from_room = toon.location_id
+    objects.move(toon.id, dest.id)
+    return events.append(
+        "toon", toon.id, "move",
+        {"from_room": from_room, "to_room": dest.id, "teleport": True},
+        room_id=from_room,
+    )
+
+
+def _apply_start_fuse(
+    eff: dict, *, actor_id: str, room_id: str, world_id: str
+) -> events.Event | None:
+    """Arm one authored fuse (worldstate `fuse:<name>`): it fires after its
+    turn count with the context captured HERE (actor + room at arm time — the
+    exorcism candles warn the ritual-runner, not whoever walks by later).
+    `turns` overrides the authored `def:fuses` count. Re-arming an active
+    fuse resets its timer (relighting a candle restarts its burn window)."""
+    name = eff.get("name")
+    if not isinstance(name, str) or not name.strip():
+        return None
+    name = name.strip()
+    turns = eff.get("turns")
+    if not isinstance(turns, int):
+        defs = worldstate.get(world_id, "def:fuses")
+        d = defs.get(name) if isinstance(defs, dict) else None
+        turns = d.get("turns") if isinstance(d, dict) else None
+    if not isinstance(turns, int) or turns < 1:
+        return None
+    worldstate.set(world_id, worldstate.FUSE_PREFIX + name, {
+        "remaining": turns,
+        "context": {"actor_id": actor_id, "room_id": room_id},
+    })
+    return events.append(
+        "system", None, "fuse_started",
+        {"name": name, "turns": turns}, room_id=room_id,
+    )
+
+
+def _apply_stop_fuse(
+    eff: dict, *, actor_id: str, room_id: str, world_id: str
+) -> events.Event | None:
+    """Disarm a fuse. Stopping an inactive fuse is a quiet no-op (event=None):
+    rules stop fuses defensively ('the bell quiets whatever was counting')."""
+    name = eff.get("name")
+    if not isinstance(name, str) or not name.strip():
+        return None
+    key = worldstate.FUSE_PREFIX + name.strip()
+    if worldstate.get(world_id, key) is None:
+        return None
+    worldstate.delete(world_id, key)
+    return events.append(
+        "system", None, "fuse_stopped", {"name": name.strip()}, room_id=room_id,
+    )
+
+
+def _apply_start_daemon(
+    eff: dict, *, actor_id: str, room_id: str, world_id: str
+) -> events.Event | None:
+    """Activate one authored daemon (worldstate `daemon:<name>`); the world
+    clock runs it each turn. Restarting an active daemon preserves its
+    accumulated runtime state (a conveyor keeps its position)."""
+    name = eff.get("name")
+    if not isinstance(name, str) or not name.strip():
+        return None
+    name = name.strip()
+    key = worldstate.DAEMON_PREFIX + name
+    state = worldstate.get(world_id, key)
+    if not isinstance(state, dict):
+        state = {}
+    state["active"] = True
+    worldstate.set(world_id, key, state)
+    return events.append(
+        "system", None, "daemon_started", {"name": name}, room_id=room_id,
+    )
+
+
+def _apply_stop_daemon(
+    eff: dict, *, actor_id: str, room_id: str, world_id: str
+) -> events.Event | None:
+    """Deactivate a daemon, preserving its state dict (a stopped conveyor
+    holds its position). Stopping an inactive daemon is a quiet no-op."""
+    name = eff.get("name")
+    if not isinstance(name, str) or not name.strip():
+        return None
+    key = worldstate.DAEMON_PREFIX + name.strip()
+    state = worldstate.get(world_id, key)
+    if not isinstance(state, dict) or not state.get("active"):
+        return None
+    state["active"] = False
+    worldstate.set(world_id, key, state)
+    return events.append(
+        "system", None, "daemon_stopped", {"name": name.strip()}, room_id=room_id,
+    )
+
+
+def _apply_win(
+    eff: dict, *, actor_id: str, room_id: str, world_id: str
+) -> events.Event | None:
+    """Record the world as won (worldstate `won`) and broadcast the authored
+    moment. Idempotent: a world wins once; later dispatches no-op."""
+    if worldstate.get(world_id, "won") is not None:
+        return None
+    worldstate.set(world_id, "won", {
+        "actor_id": actor_id, "turn": worldstate.turn(world_id),
+    })
+    text = eff.get("text")
+    payload: dict = {"actor_id": actor_id}
+    if isinstance(text, str) and text.strip():
+        payload["text"] = text.strip()
+    return events.append("system", None, "game_won", payload, room_id=room_id)
+
+
 _HANDLERS: dict[str, Callable[..., events.Event | None]] = {
     "narrate": _apply_narrate,
     "set_property": _apply_set_property,
@@ -417,6 +676,16 @@ _HANDLERS: dict[str, Callable[..., events.Event | None]] = {
     "spawn_room": _apply_spawn_room,
     "link_exit": _apply_link_exit,
     "rename_object": _apply_rename_object,
+    "set_flag": _apply_set_flag,
+    "adjust_counter": _apply_adjust_counter,
+    "adjust_score": _apply_adjust_score,
+    "destroy_object": _apply_destroy_object,
+    "teleport_actor": _apply_teleport_actor,
+    "start_fuse": _apply_start_fuse,
+    "stop_fuse": _apply_stop_fuse,
+    "start_daemon": _apply_start_daemon,
+    "stop_daemon": _apply_stop_daemon,
+    "win": _apply_win,
     "add_item": _apply_add_item,
     "set_mood": _apply_set_mood,
 }

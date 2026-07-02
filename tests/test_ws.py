@@ -102,6 +102,77 @@ def test_ws_snapshot_carries_build_and_world_version():
     assert msg["world_version"] == version.WORLD_VERSION
 
 
+def _two_sessions(client: TestClient) -> tuple[str, str]:
+    """Two distinct authed sessions on ONE TestClient (one event loop — the
+    in-process pub-sub requires it): session A claims the seeded Wren, session
+    B creates Pip in slot 2. Returns their raw session-cookie values; pass
+    them as explicit Cookie headers on websocket_connect."""
+    _login(client)  # session A claims Wren
+    wren_cookie = client.cookies["daydream_session"]
+    client.cookies.delete("daydream_session")
+    _login_only(client)  # fresh session B
+    r = client.post(
+        "/api/slots/2/create",
+        json={"name": "Pip", "appearance_seed": "a quiet second dreamer"},
+    )
+    assert r.status_code == 200, r.text
+    pip_cookie = client.cookies["daydream_session"]
+    client.cookies.delete("daydream_session")  # sockets carry cookies explicitly
+    return wren_cookie, pip_cookie
+
+
+def test_ws_private_events_reach_only_the_actor():
+    """Actor-private routing (migration 014, SPEC 2026-07-02 criterion 12):
+    one player's `look` self-narration reaches their own log and NOT a
+    co-located player's; broadcast events (`say`) still reach both."""
+    with TestClient(app) as client:
+        wren_cookie, pip_cookie = _two_sessions(client)
+        with client.websocket_connect(
+            "/ws", headers={"cookie": f"daydream_session={wren_cookie}"}
+        ) as wren_ws, client.websocket_connect(
+            "/ws", headers={"cookie": f"daydream_session={pip_cookie}"}
+        ) as pip_ws:
+            assert wren_ws.receive_json()["kind"] == "state_snapshot"
+            assert pip_ws.receive_json()["kind"] == "state_snapshot"
+            # Wren looks: private. Then Wren says: broadcast. Pip must see
+            # ONLY the say — if the look leaked, it would arrive first.
+            wren_ws.send_json({"kind": "command", "verb": "look"})
+            wren_look = wren_ws.receive_json()
+            assert wren_look["kind"] == "event"
+            assert wren_look["event"]["kind"] == "narrate"
+            assert "meadow" in wren_look["event"]["payload"]["text"].lower()
+            wren_ws.send_json({"kind": "command", "verb": "say", "args": "hello"})
+            pip_first = pip_ws.receive_json()
+            assert pip_first["kind"] == "event"
+            assert pip_first["event"]["kind"] == "say"
+            assert pip_first["event"]["payload"]["text"] == "hello"
+
+
+def test_ws_reconnect_replay_excludes_others_private_events():
+    """The `since` replay path applies the same recipient filter as live
+    delivery: another player's private look never appears in your replayed
+    history, while broadcast events do."""
+    with TestClient(app) as client:
+        wren_cookie, pip_cookie = _two_sessions(client)
+        with client.websocket_connect(
+            "/ws", headers={"cookie": f"daydream_session={wren_cookie}"}
+        ) as wren_ws:
+            assert wren_ws.receive_json()["kind"] == "state_snapshot"
+            wren_ws.send_json({"kind": "command", "verb": "look"})
+            assert wren_ws.receive_json()["event"]["kind"] == "narrate"
+            wren_ws.send_json({"kind": "command", "verb": "say", "args": "marco"})
+            assert wren_ws.receive_json()["event"]["kind"] == "say"
+        # Pip reconnects with since=0: replay carries the say, not the look.
+        with client.websocket_connect(
+            "/ws?since=0", headers={"cookie": f"daydream_session={pip_cookie}"}
+        ) as pip_ws:
+            snap = pip_ws.receive_json()
+        kinds = [e["kind"] for e in snap["events"]]
+        texts = [e["payload"].get("text", "") for e in snap["events"]]
+        assert "say" in kinds
+        assert not any("meadow" in t.lower() for t in texts)
+
+
 def test_ws_snapshot_carries_world_status():
     """The snapshot carries the world-shared status block (score / rank /
     moves / deaths / lit) from the world_state KV; a world with no authored
