@@ -1,7 +1,10 @@
 {
   "_doc": "Zork anchor #3: the authored r-torch-room seed (verbatim from worlds/zork1.json). The underground signature image — one warm light source in soft dark, the watercolor GUE mood in a single frame.",
   "name": "zork_torch_room",
-  "prompt": "a domed chamber lit by one ivory torch on a white marble pedestal",
-  "expected_resolution": [1024, 1024],
+  "prompt": "a small marble pedestal bearing a single burning torch, its bright flame the only light in a vast dark domed stone chamber, warm gold against deep shadow",
+  "expected_resolution": [
+    1024,
+    1024
+  ],
   "phash_tolerance": 12
 }

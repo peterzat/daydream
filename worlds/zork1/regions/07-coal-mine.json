@@ -2,7 +2,9 @@
   "comment": "Region (d) part 2: the coal mine, from the squeaky door to the Machine Room. Mechanics per the ZIL source: the vampire bat carries anyone not holding garlic away into the mine (the original picks a random drop room; ours is a fixed one, a documented relaxation), the gas room detonates on any carried open flame (the dynamic `flame` property maintained by region 05/06 rules; the lamp is electric and safe), the four mine rooms are all alike (one shared image seed, like the maze), the Timber/Drafty crack passes only the empty-handed, and the basket dumbwaiter is the original's two-object trick: the real container plus a far-end dummy so the chain can be worked from either end. The machine turns coal into a diamond behind a closed lid and a screwdriver (the diamond is authored offstage and moved in, so the treasure ledger stays static); feeding it anything else is ignored rather than slagged (documented relaxation). Drafty Room carries the 13-point bonus.",
   "rooms": [
     {
-      "id": "r-mine-entrance", "slug": "mine-entrance", "title": "Mine Entrance",
+      "id": "r-mine-entrance",
+      "slug": "mine-entrance",
+      "title": "Mine Entrance",
       "zork_name": "Mine Entrance",
       "dark": true,
       "seed": "the mouth of an old coal mine, timber props, a squeak of wings somewhere within",
@@ -14,7 +16,9 @@
       }
     },
     {
-      "id": "r-squeaky-room", "slug": "squeaky-room", "title": "Squeaky Room",
+      "id": "r-squeaky-room",
+      "slug": "squeaky-room",
+      "title": "Squeaky Room",
       "zork_name": "Squeaky Room",
       "dark": true,
       "seed": "a small stone room, strange squeaking beyond the north passage",
@@ -25,7 +29,9 @@
       }
     },
     {
-      "id": "r-bat-room", "slug": "bat-room", "title": "Bat Room",
+      "id": "r-bat-room",
+      "slug": "bat-room",
+      "title": "Bat Room",
       "zork_name": "Bat Room",
       "dark": true,
       "seed": "a small cave room, an exquisite jade figurine below a ceiling occupied by one large bat",
@@ -35,23 +41,44 @@
         "east": "r-shaft-room"
       },
       "rules": [
-        {"on": "enter",
-         "if": [{"carried": "o-garlic", "not": true}],
-         "do": [
-           {"kind": "narrate", "to": "@actor",
-            "text": "A large vampire bat, hanging from the ceiling, swoops down at you!\n\n    Fweep!\n    Fweep!\n    Fweep!\n\nThe bat grabs you by the scruff of your neck and lifts you away...."},
-           {"kind": "teleport_actor", "room_id": "r-mine-4"}
-         ]},
-        {"on": "enter",
-         "stop": false,
-         "do": [
-           {"kind": "narrate", "to": "@actor",
-            "text": "In the corner of the room on the ceiling is a large vampire bat who is obviously deranged and holding his nose."}
-         ]}
+        {
+          "on": "enter",
+          "if": [
+            {
+              "carried": "o-garlic",
+              "not": true
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "A large vampire bat, hanging from the ceiling, swoops down at you!\n\n    Fweep!\n    Fweep!\n    Fweep!\n\nThe bat grabs you by the scruff of your neck and lifts you away...."
+            },
+            {
+              "kind": "teleport_actor",
+              "room_id": "r-mine-4"
+            }
+          ]
+        },
+        {
+          "on": "enter",
+          "stop": false,
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "In the corner of the room on the ceiling is a large vampire bat who is obviously deranged and holding his nose.",
+              "verbatim": true
+            }
+          ]
+        }
       ]
     },
     {
-      "id": "r-shaft-room", "slug": "shaft-room", "title": "Shaft Room",
+      "id": "r-shaft-room",
+      "slug": "shaft-room",
+      "title": "Shaft Room",
       "zork_name": "Shaft Room",
       "dark": true,
       "seed": "a large chamber over a narrow black shaft, iron framework and a heavy chain into the dark",
@@ -59,11 +86,15 @@
       "exits": {
         "west": "r-bat-room",
         "north": "r-smelly-room",
-        "down": {"text": "You wouldn't fit, and you would regret succeeding."}
+        "down": {
+          "text": "You wouldn't fit, and you would regret succeeding."
+        }
       }
     },
     {
-      "id": "r-smelly-room", "slug": "smelly-room", "title": "Smelly Room",
+      "id": "r-smelly-room",
+      "slug": "smelly-room",
+      "title": "Smelly Room",
       "zork_name": "Smelly Room",
       "dark": true,
       "seed": "a small nondescript room already thick with a gas smell rising from below",
@@ -74,7 +105,9 @@
       }
     },
     {
-      "id": "r-gas-room", "slug": "gas-room", "title": "Gas Room",
+      "id": "r-gas-room",
+      "slug": "gas-room",
+      "title": "Gas Room",
       "zork_name": "Gas Room",
       "dark": true,
       "seed": "a small chamber heavy with the smell of coal gas, a sapphire bracelet glinting on the floor",
@@ -84,17 +117,33 @@
         "east": "r-mine-1"
       },
       "rules": [
-        {"on": "enter",
-         "if": [{"carried_filter": {"key": "flame", "eq": true}}],
-         "do": [
-           {"kind": "narrate", "to": "@actor",
-            "text": "Oh dear. It appears that the smell in this room was coal gas, and you appear to have brought an open flame to discuss it with.\n\n    ** BOOOOOOOOOOOM **"},
-           {"kind": "kill_actor"}
-         ]}
+        {
+          "on": "enter",
+          "if": [
+            {
+              "carried_filter": {
+                "key": "flame",
+                "eq": true
+              }
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "Oh dear. It appears that the smell in this room was coal gas, and you appear to have brought an open flame to discuss it with.\n\n    ** BOOOOOOOOOOOM **"
+            },
+            {
+              "kind": "kill_actor"
+            }
+          ]
+        }
       ]
     },
     {
-      "id": "r-mine-1", "slug": "mine-1", "title": "Coal Mine",
+      "id": "r-mine-1",
+      "slug": "mine-1",
+      "title": "Coal Mine",
       "zork_name": "Coal Mine",
       "dark": true,
       "seed": "a non-descript gallery of the old coal mine, every direction alike",
@@ -106,7 +155,9 @@
       }
     },
     {
-      "id": "r-mine-2", "slug": "mine-2", "title": "Coal Mine",
+      "id": "r-mine-2",
+      "slug": "mine-2",
+      "title": "Coal Mine",
       "zork_name": "Coal Mine",
       "dark": true,
       "seed": "a non-descript gallery of the old coal mine, every direction alike",
@@ -118,7 +169,9 @@
       }
     },
     {
-      "id": "r-mine-3", "slug": "mine-3", "title": "Coal Mine",
+      "id": "r-mine-3",
+      "slug": "mine-3",
+      "title": "Coal Mine",
       "zork_name": "Coal Mine",
       "dark": true,
       "seed": "a non-descript gallery of the old coal mine, every direction alike",
@@ -130,7 +183,9 @@
       }
     },
     {
-      "id": "r-mine-4", "slug": "mine-4", "title": "Coal Mine",
+      "id": "r-mine-4",
+      "slug": "mine-4",
+      "title": "Coal Mine",
       "zork_name": "Coal Mine",
       "dark": true,
       "seed": "a non-descript gallery of the old coal mine, every direction alike",
@@ -142,7 +197,9 @@
       }
     },
     {
-      "id": "r-ladder-top", "slug": "ladder-top", "title": "Ladder Top",
+      "id": "r-ladder-top",
+      "slug": "ladder-top",
+      "title": "Ladder Top",
       "zork_name": "Ladder Top",
       "dark": true,
       "seed": "a narrow passage broken by the top of a rickety wooden ladder",
@@ -153,7 +210,9 @@
       }
     },
     {
-      "id": "r-ladder-bottom", "slug": "ladder-bottom", "title": "Ladder Bottom",
+      "id": "r-ladder-bottom",
+      "slug": "ladder-bottom",
+      "title": "Ladder Bottom",
       "zork_name": "Ladder Bottom",
       "dark": true,
       "seed": "the foot of a rickety ladder in a rough gallery, passages south and west",
@@ -165,7 +224,9 @@
       }
     },
     {
-      "id": "r-dead-end-5", "slug": "dead-end-5", "title": "Dead End",
+      "id": "r-dead-end-5",
+      "slug": "dead-end-5",
+      "title": "Dead End",
       "zork_name": "Dead End",
       "dark": true,
       "seed": "a dead end in the mine, a small pile of coal glinting dully",
@@ -175,20 +236,30 @@
       }
     },
     {
-      "id": "r-timber-room", "slug": "timber-room", "title": "Timber Room",
+      "id": "r-timber-room",
+      "slug": "timber-room",
+      "title": "Timber Room",
       "zork_name": "Timber Room",
       "dark": true,
       "seed": "a long narrow passage cluttered with broken timbers, a very narrow crack leading west",
       "description": "This is a long and narrow passage, which is cluttered with broken timbers. A wide passage comes from the east, and a very narrow passage leads west.",
       "exits": {
         "east": "r-ladder-bottom",
-        "west": {"to": "r-lower-shaft",
-                  "if": [{"empty_handed": true}],
-                  "blocked_text": "You cannot fit through this passage with that load."}
+        "west": {
+          "to": "r-lower-shaft",
+          "if": [
+            {
+              "empty_handed": true
+            }
+          ],
+          "blocked_text": "You cannot fit through this passage with that load."
+        }
       }
     },
     {
-      "id": "r-lower-shaft", "slug": "drafty-room", "title": "Drafty Room",
+      "id": "r-lower-shaft",
+      "slug": "drafty-room",
+      "title": "Drafty Room",
       "zork_name": "Drafty Room",
       "dark": true,
       "bonus": 13,
@@ -196,16 +267,30 @@
       "description": "This is a small drafty room in which is the bottom of a long shaft. To the south is a passageway and to the east a very narrow passage. In the shaft can be seen a heavy iron chain.",
       "exits": {
         "south": "r-machine-room",
-        "out": {"to": "r-timber-room",
-                 "if": [{"empty_handed": true}],
-                 "blocked_text": "You cannot fit through this passage with that load."},
-        "east": {"to": "r-timber-room",
-                  "if": [{"empty_handed": true}],
-                  "blocked_text": "You cannot fit through this passage with that load."}
+        "out": {
+          "to": "r-timber-room",
+          "if": [
+            {
+              "empty_handed": true
+            }
+          ],
+          "blocked_text": "You cannot fit through this passage with that load."
+        },
+        "east": {
+          "to": "r-timber-room",
+          "if": [
+            {
+              "empty_handed": true
+            }
+          ],
+          "blocked_text": "You cannot fit through this passage with that load."
+        }
       }
     },
     {
-      "id": "r-machine-room", "slug": "machine-room", "title": "Machine Room",
+      "id": "r-machine-room",
+      "slug": "machine-room",
+      "title": "Machine Room",
       "zork_name": "Machine Room",
       "dark": true,
       "seed": "a cool room dominated by one machine shaped suspiciously like a clothes dryer, a switch beside its lid",
@@ -217,149 +302,352 @@
   ],
   "things": [
     {
-      "id": "o-bat", "name": "vampire bat", "zork_name": "bat",
-      "location": {"room": "r-bat-room"},
-      "aliases": ["bat", "vampire"],
+      "id": "o-bat",
+      "name": "vampire bat",
+      "zork_name": "bat",
+      "location": {
+        "room": "r-bat-room"
+      },
+      "aliases": [
+        "bat",
+        "vampire"
+      ],
       "seed": "a large vampire bat of unsound mind, hanging from the ceiling",
       "fixture": true,
       "properties": {
         "examined_text": "The bat hangs from the ceiling with the deranged composure of a creature that has never once been contradicted. It is keeping a respectful distance from your garlic."
       },
       "rules": [
-        {"on": "take",
-         "do": [{"kind": "narrate", "to": "@actor",
-                 "text": "You can't reach him; he's on the ceiling."}]},
-        {"on": "attack",
-         "do": [{"kind": "narrate", "to": "@actor",
-                 "text": "You can't reach him; he's on the ceiling."}]}
+        {
+          "on": "take",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "You can't reach him; he's on the ceiling."
+            }
+          ]
+        },
+        {
+          "on": "attack",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "You can't reach him; he's on the ceiling."
+            }
+          ]
+        }
       ]
     },
     {
-      "id": "o-jade", "name": "jade figurine", "zork_name": "jade figurine",
-      "location": {"room": "r-bat-room"},
-      "aliases": ["jade", "figurine"],
+      "id": "o-jade",
+      "name": "jade figurine",
+      "zork_name": "jade figurine",
+      "location": {
+        "room": "r-bat-room"
+      },
+      "aliases": [
+        "jade",
+        "figurine"
+      ],
       "seed": "an exquisite jade figurine, small enough to pocket, fine enough to regret pocketing",
-      "treasure": {"take": 5, "case": 5},
-      "properties": {"size": 10}
+      "treasure": {
+        "take": 5,
+        "case": 5
+      },
+      "properties": {
+        "size": 10
+      }
     },
     {
-      "id": "o-bracelet", "name": "sapphire-encrusted bracelet", "zork_name": "sapphire-encrusted bracelet",
-      "location": {"room": "r-gas-room"},
-      "aliases": ["bracelet", "sapphire", "sapphire bracelet"],
+      "id": "o-bracelet",
+      "name": "sapphire-encrusted bracelet",
+      "zork_name": "sapphire-encrusted bracelet",
+      "location": {
+        "room": "r-gas-room"
+      },
+      "aliases": [
+        "bracelet",
+        "sapphire",
+        "sapphire bracelet"
+      ],
       "seed": "a bracelet crusted with sapphires, abandoned in a hurry by someone sensible",
-      "treasure": {"take": 5, "case": 5},
-      "properties": {"size": 10}
+      "treasure": {
+        "take": 5,
+        "case": 5
+      },
+      "properties": {
+        "size": 10
+      }
     },
     {
-      "id": "o-coal", "name": "small pile of coal", "zork_name": "small pile of coal",
-      "location": {"room": "r-dead-end-5"},
-      "aliases": ["coal", "pile of coal"],
+      "id": "o-coal",
+      "name": "small pile of coal",
+      "zork_name": "small pile of coal",
+      "location": {
+        "room": "r-dead-end-5"
+      },
+      "aliases": [
+        "coal",
+        "pile of coal"
+      ],
       "seed": "a small pile of honest coal, patient about its future",
-      "properties": {"size": 20}
+      "properties": {
+        "size": 20
+      }
     },
     {
-      "id": "o-basket", "name": "basket", "zork_name": "basket",
-      "location": {"room": "r-shaft-room"},
-      "aliases": ["cage", "dumbwaiter"],
+      "id": "o-basket",
+      "name": "basket",
+      "zork_name": "basket",
+      "location": {
+        "room": "r-shaft-room"
+      },
+      "aliases": [
+        "cage",
+        "dumbwaiter"
+      ],
       "seed": "a sturdy basket hung from the iron chain, a dumbwaiter for miners",
       "fixture": true,
-      "verbs": ["raise", "lower"],
+      "verbs": [
+        "raise",
+        "lower"
+      ],
       "properties": {
         "container": true,
         "capacity": 50,
         "transparent": true
       },
       "rules": [
-        {"on": "take",
-         "do": [{"kind": "narrate", "to": "@actor",
-                 "text": "The cage is securely fastened to the iron chain."}]},
-        {"on": "raise",
-         "if": [{"in": "r-shaft-room"}],
-         "do": [{"kind": "narrate", "to": "@actor",
-                 "text": "The basket is already at the top of the chain."}]},
-        {"on": "raise",
-         "do": [
-           {"kind": "move_object", "object_id": "o-basket",
-            "dest_id": "r-shaft-room"},
-           {"kind": "move_object", "object_id": "o-basket-far",
-            "dest_id": "r-lower-shaft"},
-           {"kind": "narrate",
-            "text": "The basket is raised to the top of the shaft."}
-         ]},
-        {"on": "lower",
-         "if": [{"in": "r-lower-shaft"}],
-         "do": [{"kind": "narrate", "to": "@actor",
-                 "text": "The basket is already at the bottom of the chain."}]},
-        {"on": "lower",
-         "do": [
-           {"kind": "move_object", "object_id": "o-basket",
-            "dest_id": "r-lower-shaft"},
-           {"kind": "move_object", "object_id": "o-basket-far",
-            "dest_id": "r-shaft-room"},
-           {"kind": "narrate",
-            "text": "The basket is lowered to the bottom of the shaft."}
-         ]}
+        {
+          "on": "take",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "The cage is securely fastened to the iron chain."
+            }
+          ]
+        },
+        {
+          "on": "raise",
+          "if": [
+            {
+              "in": "r-shaft-room"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "The basket is already at the top of the chain."
+            }
+          ]
+        },
+        {
+          "on": "raise",
+          "do": [
+            {
+              "kind": "move_object",
+              "object_id": "o-basket",
+              "dest_id": "r-shaft-room"
+            },
+            {
+              "kind": "move_object",
+              "object_id": "o-basket-far",
+              "dest_id": "r-lower-shaft"
+            },
+            {
+              "kind": "narrate",
+              "text": "The basket is raised to the top of the shaft."
+            }
+          ]
+        },
+        {
+          "on": "lower",
+          "if": [
+            {
+              "in": "r-lower-shaft"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "The basket is already at the bottom of the chain."
+            }
+          ]
+        },
+        {
+          "on": "lower",
+          "do": [
+            {
+              "kind": "move_object",
+              "object_id": "o-basket",
+              "dest_id": "r-lower-shaft"
+            },
+            {
+              "kind": "move_object",
+              "object_id": "o-basket-far",
+              "dest_id": "r-shaft-room"
+            },
+            {
+              "kind": "narrate",
+              "text": "The basket is lowered to the bottom of the shaft."
+            }
+          ]
+        }
       ]
     },
     {
-      "id": "o-basket-far", "name": "basket", "zork_name": "basket",
-      "location": {"room": "r-lower-shaft"},
-      "aliases": ["cage", "chain", "dumbwaiter"],
+      "id": "o-basket-far",
+      "name": "basket",
+      "zork_name": "basket",
+      "location": {
+        "room": "r-lower-shaft"
+      },
+      "aliases": [
+        "cage",
+        "chain",
+        "dumbwaiter"
+      ],
       "seed": "the far end of the dumbwaiter chain, the basket itself away at the other end",
       "fixture": true,
-      "verbs": ["raise", "lower"],
+      "verbs": [
+        "raise",
+        "lower"
+      ],
       "properties": {
         "examined_text": "The basket is at the other end of the chain."
       },
       "rules": [
-        {"on": "take",
-         "do": [{"kind": "narrate", "to": "@actor",
-                 "text": "The basket is at the other end of the chain."}]},
-        {"on": "put", "as": "iobj",
-         "do": [{"kind": "narrate", "to": "@actor",
-                 "text": "The basket is at the other end of the chain."}]},
-        {"on": "raise",
-         "if": [{"in": "r-shaft-room"}],
-         "do": [
-           {"kind": "move_object", "object_id": "o-basket",
-            "dest_id": "r-shaft-room"},
-           {"kind": "move_object", "object_id": "o-basket-far",
-            "dest_id": "r-lower-shaft"},
-           {"kind": "narrate",
-            "text": "The basket is raised to the top of the shaft."}
-         ]},
-        {"on": "raise",
-         "do": [{"kind": "narrate", "to": "@actor",
-                 "text": "The basket is already at the top of the chain."}]},
-        {"on": "lower",
-         "if": [{"in": "r-lower-shaft"}],
-         "do": [
-           {"kind": "move_object", "object_id": "o-basket",
-            "dest_id": "r-lower-shaft"},
-           {"kind": "move_object", "object_id": "o-basket-far",
-            "dest_id": "r-shaft-room"},
-           {"kind": "narrate",
-            "text": "The basket is lowered to the bottom of the shaft."}
-         ]},
-        {"on": "lower",
-         "do": [{"kind": "narrate", "to": "@actor",
-                 "text": "The basket is already at the bottom of the chain."}]}
+        {
+          "on": "take",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "The basket is at the other end of the chain."
+            }
+          ]
+        },
+        {
+          "on": "put",
+          "as": "iobj",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "The basket is at the other end of the chain."
+            }
+          ]
+        },
+        {
+          "on": "raise",
+          "if": [
+            {
+              "in": "r-shaft-room"
+            }
+          ],
+          "do": [
+            {
+              "kind": "move_object",
+              "object_id": "o-basket",
+              "dest_id": "r-shaft-room"
+            },
+            {
+              "kind": "move_object",
+              "object_id": "o-basket-far",
+              "dest_id": "r-lower-shaft"
+            },
+            {
+              "kind": "narrate",
+              "text": "The basket is raised to the top of the shaft."
+            }
+          ]
+        },
+        {
+          "on": "raise",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "The basket is already at the top of the chain."
+            }
+          ]
+        },
+        {
+          "on": "lower",
+          "if": [
+            {
+              "in": "r-lower-shaft"
+            }
+          ],
+          "do": [
+            {
+              "kind": "move_object",
+              "object_id": "o-basket",
+              "dest_id": "r-lower-shaft"
+            },
+            {
+              "kind": "move_object",
+              "object_id": "o-basket-far",
+              "dest_id": "r-shaft-room"
+            },
+            {
+              "kind": "narrate",
+              "text": "The basket is lowered to the bottom of the shaft."
+            }
+          ]
+        },
+        {
+          "on": "lower",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "The basket is already at the bottom of the chain."
+            }
+          ]
+        }
       ]
     },
     {
-      "id": "o-timbers", "name": "broken timber", "zork_name": "broken timber",
-      "location": {"room": "r-timber-room"},
-      "aliases": ["timbers", "timber", "wooden pile"],
+      "id": "o-timbers",
+      "name": "broken timber",
+      "zork_name": "broken timber",
+      "location": {
+        "room": "r-timber-room"
+      },
+      "aliases": [
+        "timbers",
+        "timber",
+        "wooden pile"
+      ],
       "seed": "a broken length of mine timber, heavy and profoundly useless",
-      "properties": {"size": 50}
+      "properties": {
+        "size": 50
+      }
     },
     {
-      "id": "o-machine", "name": "machine", "zork_name": "machine",
-      "location": {"room": "r-machine-room"},
-      "aliases": ["lid", "dryer", "pdp10"],
+      "id": "o-machine",
+      "name": "machine",
+      "zork_name": "machine",
+      "location": {
+        "room": "r-machine-room"
+      },
+      "aliases": [
+        "lid",
+        "dryer",
+        "pdp10"
+      ],
       "seed": "a machine reminiscent of a clothes dryer, lid on top, an air of dwarvish patents about it",
       "fixture": true,
-      "verbs": ["open", "close"],
+      "verbs": [
+        "open",
+        "close"
+      ],
       "properties": {
         "container": true,
         "state": "closed",
@@ -368,46 +656,111 @@
       }
     },
     {
-      "id": "o-switch", "name": "switch", "zork_name": "switch",
-      "location": {"room": "r-machine-room"},
-      "aliases": ["machine switch"],
+      "id": "o-switch",
+      "name": "switch",
+      "zork_name": "switch",
+      "location": {
+        "room": "r-machine-room"
+      },
+      "aliases": [
+        "machine switch"
+      ],
       "seed": "a stubby switch beside the machine's lid, slotted for a tool",
       "fixture": true,
-      "verbs": ["turn"],
+      "verbs": [
+        "turn"
+      ],
       "rules": [
-        {"on": "turn",
-         "if": [{"iobj": "o-screwdriver"},
-                 {"prop": "state", "of": "o-machine", "eq": "open"}],
-         "do": [{"kind": "narrate", "to": "@actor",
-                 "text": "The machine gives an offended click. It will not perform with its lid open."}]},
-        {"on": "turn",
-         "if": [{"iobj": "o-screwdriver"},
-                 {"contains": "o-coal", "of": "o-machine"}],
-         "do": [
-           {"kind": "destroy_object", "object_id": "o-coal"},
-           {"kind": "move_object", "object_id": "o-diamond",
-            "dest_id": "o-machine"},
-           {"kind": "narrate",
-            "text": "The machine comes to life (figuratively) with a dazzling display of colored lights and bizarre noises. After a few moments, the excitement abates."}
-         ]},
-        {"on": "turn",
-         "if": [{"iobj": "o-screwdriver"}],
-         "do": [
-           {"kind": "narrate",
-            "text": "The machine shudders through its cycle with nothing to work on, and settles back into disappointment."}
-         ]},
-        {"on": "turn",
-         "do": [{"kind": "narrate", "to": "@actor",
-                 "text": "The switch wants a flat blade and some conviction; fingers are neither."}]}
+        {
+          "on": "turn",
+          "if": [
+            {
+              "iobj": "o-screwdriver"
+            },
+            {
+              "prop": "state",
+              "of": "o-machine",
+              "eq": "open"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "The machine gives an offended click. It will not perform with its lid open."
+            }
+          ]
+        },
+        {
+          "on": "turn",
+          "if": [
+            {
+              "iobj": "o-screwdriver"
+            },
+            {
+              "contains": "o-coal",
+              "of": "o-machine"
+            }
+          ],
+          "do": [
+            {
+              "kind": "destroy_object",
+              "object_id": "o-coal"
+            },
+            {
+              "kind": "move_object",
+              "object_id": "o-diamond",
+              "dest_id": "o-machine"
+            },
+            {
+              "kind": "narrate",
+              "text": "The machine comes to life (figuratively) with a dazzling display of colored lights and bizarre noises. After a few moments, the excitement abates."
+            }
+          ]
+        },
+        {
+          "on": "turn",
+          "if": [
+            {
+              "iobj": "o-screwdriver"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "text": "The machine shudders through its cycle with nothing to work on, and settles back into disappointment."
+            }
+          ]
+        },
+        {
+          "on": "turn",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "The switch wants a flat blade and some conviction; fingers are neither."
+            }
+          ]
+        }
       ]
     },
     {
-      "id": "o-diamond", "name": "huge diamond", "zork_name": "huge diamond",
+      "id": "o-diamond",
+      "name": "huge diamond",
+      "zork_name": "huge diamond",
       "location": "offstage",
-      "aliases": ["diamond", "enormous diamond"],
+      "aliases": [
+        "diamond",
+        "enormous diamond"
+      ],
       "seed": "a huge diamond, all its coal years behind it",
-      "treasure": {"take": 10, "case": 10},
-      "properties": {"size": 5}
+      "treasure": {
+        "take": 10,
+        "case": 10
+      },
+      "properties": {
+        "size": 5
+      }
     }
   ]
 }

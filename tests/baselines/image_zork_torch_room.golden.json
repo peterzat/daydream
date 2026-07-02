@@ -1,0 +1,12 @@
+{
+  "captured_at": "2026-07-02T14:47:30+00:00",
+  "dhash": 7309677878825571121,
+  "lora": "watercolor_v1_sdxl.safetensors",
+  "model": "sd_xl_base_1.0.safetensors",
+  "resolution": [
+    1024,
+    384
+  ],
+  "wall_clock_ms": 4591.9234380126,
+  "workflow_hash": "7e4a73881d522134"
+}

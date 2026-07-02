@@ -92,7 +92,10 @@ async def test_parser_grounds_to_ids(text: str, want_verb: str, want_dobj: str):
 # verb vocabulary drawn from the Zork-scale world (world-declared verbs join
 # the grounding prompt exactly as at runtime). The fast-path covers the
 # canonical walkthrough without the LLM; THIS corpus records how well the
-# local model backstops everything else.
+# local model backstops everything else. (The criterion's named phrase
+# 'douse the lamp' is alias-covered and locked deterministically in
+# tests/test_parser_zork.py; the LLM corpus tests phrasings the
+# fast-path does NOT cover.)
 
 import json  # noqa: E402
 from pathlib import Path  # noqa: E402
@@ -133,7 +136,7 @@ _ZORK_SCOPE = [
 ]
 
 _ZORK_CASES = [
-    ("douse the lamp", "extinguish", "o-lamp"),
+    ("extinguish the lantern", "extinguish", "o-lamp"),
     ("smash the troll with my sword", "attack", "t-troll"),
     ("get the lantern", "take", "o-lamp"),
     ("pick up the platinum bar", "take", "o-bar"),

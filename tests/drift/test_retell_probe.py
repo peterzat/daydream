@@ -3,7 +3,8 @@
 Runs the SHIPPED retell layer — the Zork world's voice block, the real
 system prompt, real vLLM — over a fixed corpus of eligible authored
 narrations sampled deterministically from worlds/zork1.json, and
-fingerprints the aggregate: how many lines retold (survived validation),
+fingerprints the SECOND telling of each line (the scoped rung: first
+tellings are always authored): how many retold (survived validation),
 how many fell back, and the per-line valid/fallback split. Texts are
 captured to the .latest file for the agent's in-session voice grading
 (the ratification step: the agent reads the samples against the voice
@@ -91,6 +92,8 @@ async def test_retell_layer_holds_register(probe_world):
     retold_count = 0
     t0 = time.monotonic()
     for text in corpus:
+        primed = await retell.maybe_retell(_WORLD, text, purpose="probe-prime")
+        assert primed == text, "the scoped rung: first telling is authored"
         out = await retell.maybe_retell(_WORLD, text, purpose="probe")
         changed = out != text
         retold_count += changed

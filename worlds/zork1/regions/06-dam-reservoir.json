@@ -2,9 +2,11 @@
   "comment": "Region (c) part 1 + connective tissue: Flood Control Dam #3 and its works, the reservoir at both tides, the Loud Room, and the cold northern caves down to the Slide Room. Mechanics transcribed from the ZIL source: the bolt toggles the gates (yellow/brown buttons arm it), draining/filling are 8-turn fuses, the trunk surfaces at low tide (starts offstage; the drain fuse moves it in — the refill fuse leaves a surfaced trunk visible, a documented relaxation), the Loud Room is quiet iff ECHO was said or (gates closed AND low tide), unbearable (it ejects you) while the gates are open at high tide, and the blue button's flood seals the maintenance room 12 turns later (entry blocked; a drowning death for a lingerer is not modeled). Open-flame discipline: things that burn carry a dynamic `flame` property toggled by their light/extinguish rules; the gas room keys on it. Prose freshly authored in the dry register (R10).",
   "rooms": [
     {
-      "id": "r-dam", "slug": "dam", "title": "Dam",
+      "id": "r-dam",
+      "slug": "dam",
+      "title": "Dam",
       "zork_name": "Dam",
-      "seed": "the crest of a great stone dam, control panel with one large bolt and a green bubble, water on one side and a long drop on the other",
+      "seed": "standing atop a great stone dam, its long rampart stretching away, white water thundering through open sluice gates below, a green reservoir behind, one iron control pedestal on the walkway",
       "description": "You stand atop Flood Control Dam #3, once a wonder of imperial engineering and still a competent wall. A control panel juts from the stone, dominated by a large metal bolt with a small green plastic bubble mounted above it. The reservoir side lies west; the river resumes, thinner and disappointed, far below to the east. The dam's lobby stands north, and a path follows the canyon rim south.",
       "exits": {
         "south": "r-deep-canyon",
@@ -15,22 +17,40 @@
       }
     },
     {
-      "id": "r-dam-lobby", "slug": "dam-lobby", "title": "Dam Lobby",
+      "id": "r-dam-lobby",
+      "slug": "dam-lobby",
+      "title": "Dam Lobby",
       "zork_name": "Dam Lobby",
       "seed": "a dusty visitor lobby with faded tour notices, a dispenser of matchbooks, imperial optimism gone stale",
       "description": "This room appears to have been the waiting room for groups touring the dam. Faded notices on the walls announce tours that no longer run and refreshments that no longer exist. Doorways lead south onto the dam itself, and north and east into the works.",
       "exits": {
         "south": "r-dam",
-        "north": {"to": "r-maintenance-room",
-                   "if": [{"flag": "MAINT-FLOODED", "eq": false}],
-                   "blocked_text": "The maintenance room is full of water and quite firm about it."},
-        "east": {"to": "r-maintenance-room",
-                  "if": [{"flag": "MAINT-FLOODED", "eq": false}],
-                  "blocked_text": "The maintenance room is full of water and quite firm about it."}
+        "north": {
+          "to": "r-maintenance-room",
+          "if": [
+            {
+              "flag": "MAINT-FLOODED",
+              "eq": false
+            }
+          ],
+          "blocked_text": "The maintenance room is full of water and quite firm about it."
+        },
+        "east": {
+          "to": "r-maintenance-room",
+          "if": [
+            {
+              "flag": "MAINT-FLOODED",
+              "eq": false
+            }
+          ],
+          "blocked_text": "The maintenance room is full of water and quite firm about it."
+        }
       }
     },
     {
-      "id": "r-maintenance-room", "slug": "maintenance-room", "title": "Maintenance Room",
+      "id": "r-maintenance-room",
+      "slug": "maintenance-room",
+      "title": "Maintenance Room",
       "zork_name": "Maintenance Room",
       "dark": true,
       "seed": "a cramped maintenance room, four colored buttons on a panel, tool chests, pipes climbing every wall",
@@ -41,20 +61,30 @@
       }
     },
     {
-      "id": "r-dam-base", "slug": "dam-base", "title": "Dam Base",
+      "id": "r-dam-base",
+      "slug": "dam-base",
+      "title": "Dam Base",
       "zork_name": "Dam Base",
       "seed": "the stony base of the great dam, the Frigid River gathering itself below, spray on old stone",
       "description": "You are at the base of Flood Control Dam #3, which looms above you to the north like a decision already made. The Frigid River gathers itself back together here and sets off south with somewhere to be.",
       "exits": {
         "north": "r-dam",
         "up": "r-dam",
-        "launch": {"to": "r-river-1",
-                    "if": [{"in_vehicle": "o-boat"}],
-                    "blocked_text": "You have nothing under you fit to launch."}
+        "launch": {
+          "to": "r-river-1",
+          "if": [
+            {
+              "in_vehicle": "o-boat"
+            }
+          ],
+          "blocked_text": "You have nothing under you fit to launch."
+        }
       }
     },
     {
-      "id": "r-reservoir-south", "slug": "reservoir-south", "title": "Reservoir South",
+      "id": "r-reservoir-south",
+      "slug": "reservoir-south",
+      "title": "Reservoir South",
       "zork_name": "Reservoir South",
       "dark": true,
       "seed": "a long stony southern shore of the reservoir, water line written on every rock",
@@ -64,13 +94,21 @@
         "southwest": "r-chasm-room",
         "east": "r-dam",
         "west": "r-stream-view",
-        "north": {"to": "r-reservoir",
-                   "if": [{"flag": "LOW-TIDE"}],
-                   "blocked_text": "You would drown."}
+        "north": {
+          "to": "r-reservoir",
+          "if": [
+            {
+              "flag": "LOW-TIDE"
+            }
+          ],
+          "blocked_text": "You would drown."
+        }
       }
     },
     {
-      "id": "r-reservoir", "slug": "reservoir", "title": "Reservoir",
+      "id": "r-reservoir",
+      "slug": "reservoir",
+      "title": "Reservoir",
       "zork_name": "Reservoir",
       "dark": true,
       "seed": "the broad basin of the reservoir, silt and stranded weed between two shores",
@@ -78,41 +116,69 @@
       "exits": {
         "north": "r-reservoir-north",
         "south": "r-reservoir-south",
-        "up": {"to": "r-in-stream",
-                "if": [{"in_vehicle": true}],
-                "blocked_text": "The stream is too swift for swimming."},
-        "west": {"to": "r-in-stream",
-                  "if": [{"in_vehicle": true}],
-                  "blocked_text": "The stream is too swift for swimming."},
-        "down": {"text": "The dam blocks your way."}
+        "up": {
+          "to": "r-in-stream",
+          "if": [
+            {
+              "in_vehicle": true
+            }
+          ],
+          "blocked_text": "The stream is too swift for swimming."
+        },
+        "west": {
+          "to": "r-in-stream",
+          "if": [
+            {
+              "in_vehicle": true
+            }
+          ],
+          "blocked_text": "The stream is too swift for swimming."
+        },
+        "down": {
+          "text": "The dam blocks your way."
+        }
       }
     },
     {
-      "id": "r-reservoir-north", "slug": "reservoir-north", "title": "Reservoir North",
+      "id": "r-reservoir-north",
+      "slug": "reservoir-north",
+      "title": "Reservoir North",
       "zork_name": "Reservoir North",
       "dark": true,
       "seed": "the reservoir's northern shore, stones with long underwater careers, a passage north into rock",
       "description": "This is the reservoir's north shore, a margin of stones that have all been underwater at some point in their careers. A passage leads north into the rock.",
       "exits": {
         "north": "r-atlantis-room",
-        "south": {"to": "r-reservoir",
-                   "if": [{"flag": "LOW-TIDE"}],
-                   "blocked_text": "You would drown."}
+        "south": {
+          "to": "r-reservoir",
+          "if": [
+            {
+              "flag": "LOW-TIDE"
+            }
+          ],
+          "blocked_text": "You would drown."
+        }
       }
     },
     {
-      "id": "r-stream-view", "slug": "stream-view", "title": "Stream View",
+      "id": "r-stream-view",
+      "slug": "stream-view",
+      "title": "Stream View",
       "zork_name": "Stream View",
       "dark": true,
       "seed": "the mouth of a small stream giving itself up to the reservoir, a gap in the rock too small to enter",
       "description": "You are standing at the mouth of a small stream where it gives up and joins the reservoir. The water comes out of a gap in the rock too small for anything with shoulders.",
       "exits": {
         "east": "r-reservoir-south",
-        "west": {"text": "The stream emerges from a spot too small for you to enter."}
+        "west": {
+          "text": "The stream emerges from a spot too small for you to enter."
+        }
       }
     },
     {
-      "id": "r-in-stream", "slug": "in-stream", "title": "Stream",
+      "id": "r-in-stream",
+      "slug": "in-stream",
+      "title": "Stream",
       "zork_name": "Stream",
       "dark": true,
       "seed": "a narrow stone-walled stream channel, current patient and unanimous, flowing toward the reservoir",
@@ -121,12 +187,18 @@
         "land": "r-stream-view",
         "down": "r-reservoir",
         "east": "r-reservoir",
-        "up": {"text": "The channel is too narrow."},
-        "west": {"text": "The channel is too narrow."}
+        "up": {
+          "text": "The channel is too narrow."
+        },
+        "west": {
+          "text": "The channel is too narrow."
+        }
       }
     },
     {
-      "id": "r-deep-canyon", "slug": "deep-canyon", "title": "Deep Canyon",
+      "id": "r-deep-canyon",
+      "slug": "deep-canyon",
+      "title": "Deep Canyon",
       "zork_name": "Deep Canyon",
       "dark": true,
       "seed": "the rim of a deep stone canyon, a rough stairway descending into the dark",
@@ -139,7 +211,9 @@
       }
     },
     {
-      "id": "r-loud-room", "slug": "loud-room", "title": "Loud Room",
+      "id": "r-loud-room",
+      "slug": "loud-room",
+      "title": "Loud Room",
       "zork_name": "Loud Room",
       "dark": true,
       "seed": "a tall stone chamber where every surface has an opinion about sound, a platinum gleam on the floor",
@@ -150,45 +224,123 @@
         "up": "r-deep-canyon"
       },
       "rules": [
-        {"on": "enter",
-         "if": [{"flag": "GATES-OPEN"}, {"flag": "LOW-TIDE", "eq": false}],
-         "do": [
-           {"kind": "narrate", "to": "@actor",
-            "text": "The roar in here is a physical fact: water hammering through the dam somewhere in the rock, every wall repeating it at full volume. Your head refuses the assignment, and your legs carry you out before you are consulted."},
-           {"kind": "teleport_actor", "room_id": "r-damp-cave"}
-         ]},
-        {"on": "enter",
-         "if": [{"flag": "LOUD-QUIET", "eq": false}, {"flag": "GATES-OPEN"}],
-         "stop": false,
-         "do": [
-           {"kind": "narrate", "to": "@actor",
-            "text": "The room is deafeningly loud with an undetermined rushing sound, which the walls take up and hand back until it is difficult even to think."}
-         ]},
-        {"on": "enter",
-         "if": [{"flag": "LOUD-QUIET", "eq": false}, {"flag": "LOW-TIDE", "eq": false}],
-         "stop": false,
-         "do": [
-           {"kind": "narrate", "to": "@actor",
-            "text": "The room is deafeningly loud with an undetermined rushing sound, which the walls take up and hand back until it is difficult even to think."}
-         ]},
-        {"on": "echo",
-         "if": [{"flag": "LOUD-QUIET", "eq": false}, {"flag": "GATES-OPEN"}],
-         "do": [
-           {"kind": "set_flag", "name": "LOUD-QUIET", "value": true},
-           {"kind": "narrate",
-            "text": "The acoustics of the room change subtly."}
-         ]},
-        {"on": "echo",
-         "if": [{"flag": "LOUD-QUIET", "eq": false}, {"flag": "LOW-TIDE", "eq": false}],
-         "do": [
-           {"kind": "set_flag", "name": "LOUD-QUIET", "value": true},
-           {"kind": "narrate",
-            "text": "The acoustics of the room change subtly."}
-         ]}
+        {
+          "on": "enter",
+          "if": [
+            {
+              "flag": "GATES-OPEN"
+            },
+            {
+              "flag": "LOW-TIDE",
+              "eq": false
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "The roar in here is a physical fact: water hammering through the dam somewhere in the rock, every wall repeating it at full volume. Your head refuses the assignment, and your legs carry you out before you are consulted."
+            },
+            {
+              "kind": "teleport_actor",
+              "room_id": "r-damp-cave"
+            }
+          ]
+        },
+        {
+          "on": "enter",
+          "if": [
+            {
+              "flag": "LOUD-QUIET",
+              "eq": false
+            },
+            {
+              "flag": "GATES-OPEN"
+            }
+          ],
+          "stop": false,
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "The room is deafeningly loud with an undetermined rushing sound, which the walls take up and hand back until it is difficult even to think."
+            }
+          ]
+        },
+        {
+          "on": "enter",
+          "if": [
+            {
+              "flag": "LOUD-QUIET",
+              "eq": false
+            },
+            {
+              "flag": "LOW-TIDE",
+              "eq": false
+            }
+          ],
+          "stop": false,
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "The room is deafeningly loud with an undetermined rushing sound, which the walls take up and hand back until it is difficult even to think."
+            }
+          ]
+        },
+        {
+          "on": "echo",
+          "if": [
+            {
+              "flag": "LOUD-QUIET",
+              "eq": false
+            },
+            {
+              "flag": "GATES-OPEN"
+            }
+          ],
+          "do": [
+            {
+              "kind": "set_flag",
+              "name": "LOUD-QUIET",
+              "value": true
+            },
+            {
+              "kind": "narrate",
+              "text": "The acoustics of the room change subtly."
+            }
+          ]
+        },
+        {
+          "on": "echo",
+          "if": [
+            {
+              "flag": "LOUD-QUIET",
+              "eq": false
+            },
+            {
+              "flag": "LOW-TIDE",
+              "eq": false
+            }
+          ],
+          "do": [
+            {
+              "kind": "set_flag",
+              "name": "LOUD-QUIET",
+              "value": true
+            },
+            {
+              "kind": "narrate",
+              "text": "The acoustics of the room change subtly."
+            }
+          ]
+        }
       ]
     },
     {
-      "id": "r-ns-passage", "slug": "ns-passage", "title": "North-South Passage",
+      "id": "r-ns-passage",
+      "slug": "ns-passage",
+      "title": "North-South Passage",
       "zork_name": "North-South Passage",
       "dark": true,
       "seed": "a high squared north-south passage cut by tools a thousand years gone",
@@ -200,7 +352,9 @@
       }
     },
     {
-      "id": "r-chasm-room", "slug": "chasm", "title": "Chasm",
+      "id": "r-chasm-room",
+      "slug": "chasm",
+      "title": "Chasm",
       "zork_name": "Chasm",
       "dark": true,
       "seed": "a great chasm splitting the rock southwest to northeast, path clinging to the south edge",
@@ -210,11 +364,15 @@
         "southwest": "r-ew-passage",
         "up": "r-ew-passage",
         "south": "r-ns-passage",
-        "down": {"text": "The chasm has a bottom, but you would meet it all at once."}
+        "down": {
+          "text": "The chasm has a bottom, but you would meet it all at once."
+        }
       }
     },
     {
-      "id": "r-damp-cave", "slug": "damp-cave", "title": "Damp Cave",
+      "id": "r-damp-cave",
+      "slug": "damp-cave",
+      "title": "Damp Cave",
       "zork_name": "Damp Cave",
       "dark": true,
       "seed": "a cave wet in the committed way of places never once dry, passage running east and west",
@@ -222,11 +380,15 @@
       "exits": {
         "west": "r-loud-room",
         "east": "r-white-cliffs-north",
-        "south": {"text": "It narrows to a crack that even the insects treat as a formality."}
+        "south": {
+          "text": "It narrows to a crack that even the insects treat as a formality."
+        }
       }
     },
     {
-      "id": "r-cold-passage", "slug": "cold-passage", "title": "Cold Passage",
+      "id": "r-cold-passage",
+      "slug": "cold-passage",
+      "title": "Cold Passage",
       "zork_name": "Cold Passage",
       "dark": true,
       "seed": "a cold damp corridor where the air moves with somewhere to be",
@@ -237,7 +399,9 @@
       }
     },
     {
-      "id": "r-mirror-room-north", "slug": "mirror-room-north", "title": "Mirror Room",
+      "id": "r-mirror-room-north",
+      "slug": "mirror-room-north",
+      "title": "Mirror Room",
       "zork_name": "Mirror Room",
       "dark": true,
       "seed": "a room dominated by one enormous flawless mirror, dark and cold, indistinguishable from its twin",
@@ -249,7 +413,9 @@
       }
     },
     {
-      "id": "r-small-cave", "slug": "small-cave", "title": "Cave",
+      "id": "r-small-cave",
+      "slug": "small-cave",
+      "title": "Cave",
       "zork_name": "Cave",
       "dark": true,
       "seed": "a small cave, hardly more than a widening of the rock, stairway leading down",
@@ -262,7 +428,9 @@
       }
     },
     {
-      "id": "r-twisting-passage", "slug": "twisting-passage", "title": "Twisting Passage",
+      "id": "r-twisting-passage",
+      "slug": "twisting-passage",
+      "title": "Twisting Passage",
       "zork_name": "Twisting Passage",
       "dark": true,
       "seed": "a passage that winds and unwinds without committing to a direction",
@@ -273,7 +441,9 @@
       }
     },
     {
-      "id": "r-atlantis-room", "slug": "atlantis-room", "title": "Atlantis Room",
+      "id": "r-atlantis-room",
+      "slug": "atlantis-room",
+      "title": "Atlantis Room",
       "zork_name": "Atlantis Room",
       "dark": true,
       "seed": "an ancient room long under water in its day, crusted salt line on the walls, a crystal trident gleaming",
@@ -284,7 +454,9 @@
       }
     },
     {
-      "id": "r-slide-room", "slug": "slide-room", "title": "Slide Room",
+      "id": "r-slide-room",
+      "slug": "slide-room",
+      "title": "Slide Room",
       "zork_name": "Slide Room",
       "dark": true,
       "seed": "a small chamber with the top of a steep metal slide polished bright, a low tunnel north",
@@ -292,338 +464,846 @@
       "exits": {
         "east": "r-cold-passage",
         "north": "r-mine-entrance",
-        "down": {"to": "r-cellar",
-                  "on_traverse": [
-                    {"kind": "narrate",
-                     "text": "You sit down on the slide out of respect for physics, and physics takes it from there. The cellar receives you at speed."}
-                  ]}
+        "down": {
+          "to": "r-cellar",
+          "on_traverse": [
+            {
+              "kind": "narrate",
+              "text": "You sit down on the slide out of respect for physics, and physics takes it from there. The cellar receives you at speed."
+            }
+          ]
+        }
       }
     }
   ],
   "things": [
     {
-      "id": "o-bolt", "name": "bolt", "zork_name": "bolt",
-      "location": {"room": "r-dam"},
-      "aliases": ["nut", "metal bolt"],
+      "id": "o-bolt",
+      "name": "bolt",
+      "zork_name": "bolt",
+      "location": {
+        "room": "r-dam"
+      },
+      "aliases": [
+        "nut",
+        "metal bolt"
+      ],
       "seed": "a large metal bolt mounted dead center in the control panel",
       "fixture": true,
-      "verbs": ["turn"],
+      "verbs": [
+        "turn"
+      ],
       "rules": [
-        {"on": "take",
-         "do": [{"kind": "narrate", "to": "@actor",
-                 "text": "It is an integral part of the control panel."}]},
-        {"on": "turn",
-         "if": [{"iobj": "o-wrench"}, {"flag": "GATE-UNLOCKED"},
-                 {"flag": "GATES-OPEN", "eq": false}],
-         "do": [
-           {"kind": "set_flag", "name": "GATES-OPEN", "value": true},
-           {"kind": "narrate",
-            "text": "The sluice gates open. Water pours through the dam."},
-           {"kind": "stop_fuse", "name": "reservoir-fill"},
-           {"kind": "start_fuse", "name": "reservoir-drain"}
-         ]},
-        {"on": "turn",
-         "if": [{"iobj": "o-wrench"}, {"flag": "GATE-UNLOCKED"},
-                 {"flag": "GATES-OPEN"}],
-         "do": [
-           {"kind": "set_flag", "name": "GATES-OPEN", "value": false},
-           {"kind": "set_flag", "name": "LOW-TIDE", "value": false},
-           {"kind": "narrate",
-            "text": "The sluice gates close and water starts to collect behind the dam."},
-           {"kind": "stop_fuse", "name": "reservoir-drain"},
-           {"kind": "start_fuse", "name": "reservoir-fill"}
-         ]},
-        {"on": "turn",
-         "if": [{"iobj": "o-wrench"}],
-         "do": [{"kind": "narrate", "to": "@actor",
-                 "text": "The bolt won't turn with your best effort."}]},
-        {"on": "turn",
-         "do": [{"kind": "narrate", "to": "@actor",
-                 "text": "The bolt won't turn using that."}]}
+        {
+          "on": "take",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "It is an integral part of the control panel."
+            }
+          ]
+        },
+        {
+          "on": "turn",
+          "if": [
+            {
+              "iobj": "o-wrench"
+            },
+            {
+              "flag": "GATE-UNLOCKED"
+            },
+            {
+              "flag": "GATES-OPEN",
+              "eq": false
+            }
+          ],
+          "do": [
+            {
+              "kind": "set_flag",
+              "name": "GATES-OPEN",
+              "value": true
+            },
+            {
+              "kind": "narrate",
+              "text": "The sluice gates open. Water pours through the dam."
+            },
+            {
+              "kind": "stop_fuse",
+              "name": "reservoir-fill"
+            },
+            {
+              "kind": "start_fuse",
+              "name": "reservoir-drain"
+            }
+          ]
+        },
+        {
+          "on": "turn",
+          "if": [
+            {
+              "iobj": "o-wrench"
+            },
+            {
+              "flag": "GATE-UNLOCKED"
+            },
+            {
+              "flag": "GATES-OPEN"
+            }
+          ],
+          "do": [
+            {
+              "kind": "set_flag",
+              "name": "GATES-OPEN",
+              "value": false
+            },
+            {
+              "kind": "set_flag",
+              "name": "LOW-TIDE",
+              "value": false
+            },
+            {
+              "kind": "narrate",
+              "text": "The sluice gates close and water starts to collect behind the dam."
+            },
+            {
+              "kind": "stop_fuse",
+              "name": "reservoir-drain"
+            },
+            {
+              "kind": "start_fuse",
+              "name": "reservoir-fill"
+            }
+          ]
+        },
+        {
+          "on": "turn",
+          "if": [
+            {
+              "iobj": "o-wrench"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "The bolt won't turn with your best effort."
+            }
+          ]
+        },
+        {
+          "on": "turn",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "The bolt won't turn using that."
+            }
+          ]
+        }
       ]
     },
     {
-      "id": "o-bubble", "name": "green bubble", "zork_name": "green bubble",
-      "location": {"room": "r-dam"},
-      "aliases": ["bubble", "plastic bubble"],
+      "id": "o-bubble",
+      "name": "green bubble",
+      "zork_name": "green bubble",
+      "location": {
+        "room": "r-dam"
+      },
+      "aliases": [
+        "bubble",
+        "plastic bubble"
+      ],
       "seed": "a small green plastic bubble set above the bolt, dark or glowing by the dam's mood",
       "fixture": true,
       "rules": [
-        {"on": "take",
-         "do": [{"kind": "narrate", "to": "@actor",
-                 "text": "It is an integral part of the control panel."}]},
-        {"on": "examine",
-         "if": [{"flag": "GATE-UNLOCKED"}],
-         "do": [{"kind": "narrate", "to": "@actor",
-                 "text": "The green bubble is glowing serenely, which in the language of control panels means yes."}]},
-        {"on": "examine",
-         "do": [{"kind": "narrate", "to": "@actor",
-                 "text": "The green bubble is dark and unhelpful."}]}
+        {
+          "on": "take",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "It is an integral part of the control panel."
+            }
+          ]
+        },
+        {
+          "on": "examine",
+          "if": [
+            {
+              "flag": "GATE-UNLOCKED"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "The green bubble is glowing serenely, which in the language of control panels means yes."
+            }
+          ]
+        },
+        {
+          "on": "examine",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "The green bubble is dark and unhelpful."
+            }
+          ]
+        }
       ]
     },
     {
-      "id": "o-yellow-button", "name": "yellow button", "zork_name": "yellow button",
-      "location": {"room": "r-maintenance-room"},
-      "aliases": ["yellow"],
+      "id": "o-yellow-button",
+      "name": "yellow button",
+      "zork_name": "yellow button",
+      "location": {
+        "room": "r-maintenance-room"
+      },
+      "aliases": [
+        "yellow"
+      ],
       "seed": "a yellow button worn smooth by official thumbs",
       "fixture": true,
-      "verbs": ["push"],
+      "verbs": [
+        "push"
+      ],
       "rules": [
-        {"on": "push",
-         "do": [
-           {"kind": "set_flag", "name": "GATE-UNLOCKED", "value": true},
-           {"kind": "narrate", "text": "Click."}
-         ]}
+        {
+          "on": "push",
+          "do": [
+            {
+              "kind": "set_flag",
+              "name": "GATE-UNLOCKED",
+              "value": true
+            },
+            {
+              "kind": "narrate",
+              "text": "Click."
+            }
+          ]
+        }
       ]
     },
     {
-      "id": "o-brown-button", "name": "brown button", "zork_name": "brown button",
-      "location": {"room": "r-maintenance-room"},
-      "aliases": ["brown"],
+      "id": "o-brown-button",
+      "name": "brown button",
+      "zork_name": "brown button",
+      "location": {
+        "room": "r-maintenance-room"
+      },
+      "aliases": [
+        "brown"
+      ],
       "seed": "a brown button, purpose forgotten by everyone but the dam",
       "fixture": true,
-      "verbs": ["push"],
+      "verbs": [
+        "push"
+      ],
       "rules": [
-        {"on": "push",
-         "do": [
-           {"kind": "set_flag", "name": "GATE-UNLOCKED", "value": false},
-           {"kind": "narrate", "text": "Click."}
-         ]}
+        {
+          "on": "push",
+          "do": [
+            {
+              "kind": "set_flag",
+              "name": "GATE-UNLOCKED",
+              "value": false
+            },
+            {
+              "kind": "narrate",
+              "text": "Click."
+            }
+          ]
+        }
       ]
     },
     {
-      "id": "o-blue-button", "name": "blue button", "zork_name": "blue button",
-      "location": {"room": "r-maintenance-room"},
-      "aliases": ["blue"],
+      "id": "o-blue-button",
+      "name": "blue button",
+      "zork_name": "blue button",
+      "location": {
+        "room": "r-maintenance-room"
+      },
+      "aliases": [
+        "blue"
+      ],
       "seed": "a blue button that has been waiting a long time to cause trouble",
       "fixture": true,
-      "verbs": ["push"],
+      "verbs": [
+        "push"
+      ],
       "rules": [
-        {"on": "push",
-         "if": [{"flag": "MAINT-LEAKING", "eq": false}],
-         "do": [
-           {"kind": "set_flag", "name": "MAINT-LEAKING", "value": true},
-           {"kind": "start_fuse", "name": "maint-flood"},
-           {"kind": "narrate",
-            "text": "There is a rumble from within the wall, and a stream of water bursts from a pipe joint at the east side of the room. The dam has sprung a leak, and this room is where it keeps it."}
-         ]},
-        {"on": "push",
-         "do": [{"kind": "narrate", "to": "@actor",
-                 "text": "The blue button appears to be jammed."}]}
+        {
+          "on": "push",
+          "if": [
+            {
+              "flag": "MAINT-LEAKING",
+              "eq": false
+            }
+          ],
+          "do": [
+            {
+              "kind": "set_flag",
+              "name": "MAINT-LEAKING",
+              "value": true
+            },
+            {
+              "kind": "start_fuse",
+              "name": "maint-flood"
+            },
+            {
+              "kind": "narrate",
+              "text": "There is a rumble from within the wall, and a stream of water bursts from a pipe joint at the east side of the room. The dam has sprung a leak, and this room is where it keeps it."
+            }
+          ]
+        },
+        {
+          "on": "push",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "The blue button appears to be jammed."
+            }
+          ]
+        }
       ]
     },
     {
-      "id": "o-red-button", "name": "red button", "zork_name": "red button",
-      "location": {"room": "r-maintenance-room"},
-      "aliases": ["red"],
+      "id": "o-red-button",
+      "name": "red button",
+      "zork_name": "red button",
+      "location": {
+        "room": "r-maintenance-room"
+      },
+      "aliases": [
+        "red"
+      ],
       "seed": "a red button connected, in the imperial style, to the lights",
       "fixture": true,
-      "verbs": ["push"],
+      "verbs": [
+        "push"
+      ],
       "rules": [
-        {"on": "push",
-         "if": [{"prop": "dark", "of": "r-maintenance-room", "eq": true}],
-         "do": [
-           {"kind": "set_property", "target_id": "r-maintenance-room",
-            "key": "dark", "value": false},
-           {"kind": "narrate",
-            "text": "The lights within the room come on with a dazzling brilliance, as though showing off."}
-         ]},
-        {"on": "push",
-         "do": [
-           {"kind": "set_property", "target_id": "r-maintenance-room",
-            "key": "dark", "value": true},
-           {"kind": "narrate", "text": "The lights within the room go out."}
-         ]}
+        {
+          "on": "push",
+          "if": [
+            {
+              "prop": "dark",
+              "of": "r-maintenance-room",
+              "eq": true
+            }
+          ],
+          "do": [
+            {
+              "kind": "set_property",
+              "target_id": "r-maintenance-room",
+              "key": "dark",
+              "value": false
+            },
+            {
+              "kind": "narrate",
+              "text": "The lights within the room come on with a dazzling brilliance, as though showing off."
+            }
+          ]
+        },
+        {
+          "on": "push",
+          "do": [
+            {
+              "kind": "set_property",
+              "target_id": "r-maintenance-room",
+              "key": "dark",
+              "value": true
+            },
+            {
+              "kind": "narrate",
+              "text": "The lights within the room go out."
+            }
+          ]
+        }
       ]
     },
     {
-      "id": "o-tool-chests", "name": "group of tool chests", "zork_name": "group of tool chests",
-      "location": {"room": "r-maintenance-room"},
-      "aliases": ["tool chests", "chests", "chest", "toolchests"],
+      "id": "o-tool-chests",
+      "name": "group of tool chests",
+      "zork_name": "group of tool chests",
+      "location": {
+        "room": "r-maintenance-room"
+      },
+      "aliases": [
+        "tool chests",
+        "chests",
+        "chest",
+        "toolchests"
+      ],
       "seed": "a group of tool chests, every one of them empty",
       "fixture": true,
       "properties": {
         "examined_text": "Dozens of tool chests, and every one of them empty. The maintainers took their tools with them when they went, which says something about their faith in the dam."
       },
       "rules": [
-        {"on": "take",
-         "do": [{"kind": "narrate", "to": "@actor",
-                 "text": "The chests are so rusted to the floor that they and the floor are now one school of thought."}]}
+        {
+          "on": "take",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "The chests are so rusted to the floor that they and the floor are now one school of thought."
+            }
+          ]
+        }
       ]
     },
     {
-      "id": "o-wrench", "name": "wrench", "zork_name": "wrench",
-      "location": {"room": "r-maintenance-room"},
-      "aliases": ["tool"],
+      "id": "o-wrench",
+      "name": "wrench",
+      "zork_name": "wrench",
+      "location": {
+        "room": "r-maintenance-room"
+      },
+      "aliases": [
+        "tool"
+      ],
       "seed": "a heavy adjustable wrench, jaws rusted to one width",
-      "properties": {"size": 10, "tool": true}
+      "properties": {
+        "size": 10,
+        "tool": true
+      }
     },
     {
-      "id": "o-screwdriver", "name": "screwdriver", "zork_name": "screwdriver",
-      "location": {"room": "r-maintenance-room"},
-      "aliases": ["driver"],
+      "id": "o-screwdriver",
+      "name": "screwdriver",
+      "zork_name": "screwdriver",
+      "location": {
+        "room": "r-maintenance-room"
+      },
+      "aliases": [
+        "driver"
+      ],
       "seed": "a flat-bladed screwdriver with a chewed wooden handle",
-      "properties": {"size": 5, "tool": true}
+      "properties": {
+        "size": 5,
+        "tool": true
+      }
     },
     {
-      "id": "o-tube", "name": "tube", "zork_name": "tube",
-      "location": {"room": "r-maintenance-room"},
-      "aliases": ["toothpaste"],
+      "id": "o-tube",
+      "name": "tube",
+      "zork_name": "tube",
+      "location": {
+        "room": "r-maintenance-room"
+      },
+      "aliases": [
+        "toothpaste"
+      ],
       "seed": "a large tube like a toothpaste tube that has never met a tooth",
       "readable": true,
       "text": "--> Frobozz Magic Gunk Company <--\n          All-Purpose Gunk\nGrip it. Glob it. Gunk it. Contents: one (1) application, viscous. The Frobozz Magic Gunk Company accepts no responsibility for the consequences of adhesion.",
-      "verbs": ["open", "close"],
-      "properties": {"size": 5, "container": true, "state": "closed",
-                     "capacity": 7,
-                     "open_text": "The tube unscrews with a sigh of old air. Inside is a quantity of viscous material with clear ambitions to be elsewhere."}
+      "verbs": [
+        "open",
+        "close"
+      ],
+      "properties": {
+        "size": 5,
+        "container": true,
+        "state": "closed",
+        "capacity": 7,
+        "open_text": "The tube unscrews with a sigh of old air. Inside is a quantity of viscous material with clear ambitions to be elsewhere."
+      }
     },
     {
-      "id": "o-putty", "name": "viscous material", "zork_name": "viscous material",
-      "location": {"in": "o-tube"},
-      "aliases": ["putty", "gunk", "material"],
+      "id": "o-putty",
+      "name": "viscous material",
+      "zork_name": "viscous material",
+      "location": {
+        "in": "o-tube"
+      },
+      "aliases": [
+        "putty",
+        "gunk",
+        "material"
+      ],
       "seed": "a wad of viscous material, gray and patient",
-      "properties": {"size": 6, "tool": true}
+      "properties": {
+        "size": 6,
+        "tool": true
+      }
     },
     {
-      "id": "o-leak", "name": "leak", "zork_name": "leak",
-      "location": {"room": "r-maintenance-room"},
-      "aliases": ["pipe", "drip"],
+      "id": "o-leak",
+      "name": "leak",
+      "zork_name": "leak",
+      "location": {
+        "room": "r-maintenance-room"
+      },
+      "aliases": [
+        "pipe",
+        "drip"
+      ],
       "seed": "a pipe joint on the east wall, weeping under pressure",
       "fixture": true,
-      "verbs": ["plug"],
+      "verbs": [
+        "plug"
+      ],
       "rules": [
-        {"on": "plug",
-         "if": [{"iobj": "o-putty"}, {"flag": "MAINT-LEAKING"},
-                 {"flag": "MAINT-FLOODED", "eq": false}],
-         "do": [
-           {"kind": "stop_fuse", "name": "maint-flood"},
-           {"kind": "narrate",
-            "text": "By some miracle of Frobozz Magic adhesion, the viscous material clings, sets, and the leak surrenders."}
-         ]},
-        {"on": "plug",
-         "if": [{"flag": "MAINT-LEAKING"}, {"flag": "MAINT-FLOODED", "eq": false}],
-         "do": [{"kind": "narrate", "to": "@actor",
-                 "text": "The idea is right; the material is wrong."}]},
-        {"on": "plug",
-         "do": [{"kind": "narrate", "to": "@actor",
-                 "text": "The pipe joint is weeping quietly to itself, but it holds for now."}]}
+        {
+          "on": "plug",
+          "if": [
+            {
+              "iobj": "o-putty"
+            },
+            {
+              "flag": "MAINT-LEAKING"
+            },
+            {
+              "flag": "MAINT-FLOODED",
+              "eq": false
+            }
+          ],
+          "do": [
+            {
+              "kind": "stop_fuse",
+              "name": "maint-flood"
+            },
+            {
+              "kind": "narrate",
+              "text": "By some miracle of Frobozz Magic adhesion, the viscous material clings, sets, and the leak surrenders."
+            }
+          ]
+        },
+        {
+          "on": "plug",
+          "if": [
+            {
+              "flag": "MAINT-LEAKING"
+            },
+            {
+              "flag": "MAINT-FLOODED",
+              "eq": false
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "The idea is right; the material is wrong."
+            }
+          ]
+        },
+        {
+          "on": "plug",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "The pipe joint is weeping quietly to itself, but it holds for now."
+            }
+          ]
+        }
       ]
     },
     {
-      "id": "o-matchbook", "name": "matchbook", "zork_name": "matchbook",
-      "location": {"room": "r-dam-lobby"},
-      "aliases": ["match", "matches", "book of matches"],
+      "id": "o-matchbook",
+      "name": "matchbook",
+      "zork_name": "matchbook",
+      "location": {
+        "room": "r-dam-lobby"
+      },
+      "aliases": [
+        "match",
+        "matches",
+        "book of matches"
+      ],
       "seed": "a matchbook whose cover advertises the dam it was abandoned in",
       "readable": true,
       "text": "(Close cover before striking.)\n\nVISIT BEAUTIFUL FLOOD CONTROL DAM #3 — wonder of the age, pride of the Empire. Tours daily. Refreshments formerly available. The management is not responsible for anything.",
-      "verbs": ["light", "extinguish"],
+      "verbs": [
+        "light",
+        "extinguish"
+      ],
       "properties": {
-        "size": 2, "light": true, "lit": false, "flame": false,
+        "size": 2,
+        "light": true,
+        "lit": false,
+        "flame": false,
         "ignition": true,
         "burnout_text": "The match burns down to your fingers and goes out."
       },
       "rules": [
-        {"on": "light",
-         "do": [
-           {"kind": "set_property", "target_id": "@self", "key": "burned_out", "value": false},
-           {"kind": "set_property", "target_id": "@self", "key": "lit", "value": true},
-           {"kind": "set_property", "target_id": "@self", "key": "flame", "value": true},
-           {"kind": "set_property", "target_id": "@self", "key": "fuel", "value": 2},
-           {"kind": "narrate",
-            "text": "One of the matches scratches to life. The flame is small and in a hurry."}
-         ]},
-        {"on": "extinguish",
-         "if": [{"prop": "lit", "of": "@self", "eq": true}],
-         "do": [
-           {"kind": "set_property", "target_id": "@self", "key": "lit", "value": false},
-           {"kind": "set_property", "target_id": "@self", "key": "flame", "value": false},
-           {"kind": "narrate", "text": "The match is out."}
-         ]},
-        {"on": "extinguish",
-         "do": [{"kind": "narrate", "to": "@actor",
-                 "text": "No match is burning."}]}
+        {
+          "on": "light",
+          "do": [
+            {
+              "kind": "set_property",
+              "target_id": "@self",
+              "key": "burned_out",
+              "value": false
+            },
+            {
+              "kind": "set_property",
+              "target_id": "@self",
+              "key": "lit",
+              "value": true
+            },
+            {
+              "kind": "set_property",
+              "target_id": "@self",
+              "key": "flame",
+              "value": true
+            },
+            {
+              "kind": "set_property",
+              "target_id": "@self",
+              "key": "fuel",
+              "value": 2
+            },
+            {
+              "kind": "narrate",
+              "text": "One of the matches scratches to life. The flame is small and in a hurry."
+            }
+          ]
+        },
+        {
+          "on": "extinguish",
+          "if": [
+            {
+              "prop": "lit",
+              "of": "@self",
+              "eq": true
+            }
+          ],
+          "do": [
+            {
+              "kind": "set_property",
+              "target_id": "@self",
+              "key": "lit",
+              "value": false
+            },
+            {
+              "kind": "set_property",
+              "target_id": "@self",
+              "key": "flame",
+              "value": false
+            },
+            {
+              "kind": "narrate",
+              "text": "The match is out."
+            }
+          ]
+        },
+        {
+          "on": "extinguish",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "No match is burning."
+            }
+          ]
+        }
       ]
     },
     {
-      "id": "o-guidebook", "name": "tour guidebook", "zork_name": "tour guidebook",
-      "location": {"room": "r-dam-lobby"},
-      "aliases": ["guidebook", "guide"],
+      "id": "o-guidebook",
+      "name": "tour guidebook",
+      "zork_name": "tour guidebook",
+      "location": {
+        "room": "r-dam-lobby"
+      },
+      "aliases": [
+        "guidebook",
+        "guide"
+      ],
       "seed": "a stack of tour guidebooks, foxed at the corners, boastful throughout",
       "readable": true,
       "text": "\"Flood Control Dam #3, admired yearly by thousands, was constructed in 783 GUE to harness the mighty Frigid River. The dam took 112 GUE-years to complete, consumed 370 million zorkmids, and is fitted with a control panel of advanced design. Visitors are asked not to touch the bolt. We hope you enjoy your visit, and remind you that the Empire's engineers thought of everything, whatever you may shortly observe.\"",
-      "properties": {"size": 3}
+      "properties": {
+        "size": 3
+      }
     },
     {
-      "id": "o-bar", "name": "platinum bar", "zork_name": "platinum bar",
-      "location": {"room": "r-loud-room"},
-      "aliases": ["bar", "platinum"],
+      "id": "o-bar",
+      "name": "platinum bar",
+      "zork_name": "platinum bar",
+      "location": {
+        "room": "r-loud-room"
+      },
+      "aliases": [
+        "bar",
+        "platinum"
+      ],
       "seed": "a bar of solid platinum, heavier than it looks, and it looks heavy",
-      "treasure": {"take": 10, "case": 5},
-      "properties": {"size": 20},
+      "treasure": {
+        "take": 10,
+        "case": 5
+      },
+      "properties": {
+        "size": 20
+      },
       "rules": [
-        {"on": "take",
-         "if": [{"flag": "LOUD-QUIET", "eq": false}, {"flag": "GATES-OPEN"}],
-         "do": [{"kind": "narrate", "to": "@actor",
-                 "text": "Your words come straight back at you from every wall — bar ... bar ... bar — until the room has argued you out of it."}]},
-        {"on": "take",
-         "if": [{"flag": "LOUD-QUIET", "eq": false}, {"flag": "LOW-TIDE", "eq": false}],
-         "do": [{"kind": "narrate", "to": "@actor",
-                 "text": "Your words come straight back at you from every wall — bar ... bar ... bar — until the room has argued you out of it."}]}
+        {
+          "on": "take",
+          "if": [
+            {
+              "flag": "LOUD-QUIET",
+              "eq": false
+            },
+            {
+              "flag": "GATES-OPEN"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "Your words come straight back at you from every wall — bar ... bar ... bar — until the room has argued you out of it."
+            }
+          ]
+        },
+        {
+          "on": "take",
+          "if": [
+            {
+              "flag": "LOUD-QUIET",
+              "eq": false
+            },
+            {
+              "flag": "LOW-TIDE",
+              "eq": false
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "Your words come straight back at you from every wall — bar ... bar ... bar — until the room has argued you out of it."
+            }
+          ]
+        }
       ]
     },
     {
-      "id": "o-trunk", "name": "trunk of jewels", "zork_name": "trunk of jewels",
+      "id": "o-trunk",
+      "name": "trunk of jewels",
+      "zork_name": "trunk of jewels",
       "location": "offstage",
-      "aliases": ["trunk", "jewels", "old trunk"],
+      "aliases": [
+        "trunk",
+        "jewels",
+        "old trunk"
+      ],
       "seed": "an old trunk bursting with jewels that outlasted their owners",
-      "treasure": {"take": 15, "case": 5},
-      "properties": {"size": 35}
+      "treasure": {
+        "take": 15,
+        "case": 5
+      },
+      "properties": {
+        "size": 35
+      }
     },
     {
-      "id": "o-pump", "name": "hand-held air pump", "zork_name": "hand-held air pump",
-      "location": {"room": "r-reservoir-north"},
-      "aliases": ["pump", "air pump", "airpump"],
+      "id": "o-pump",
+      "name": "hand-held air pump",
+      "zork_name": "hand-held air pump",
+      "location": {
+        "room": "r-reservoir-north"
+      },
+      "aliases": [
+        "pump",
+        "air pump",
+        "airpump"
+      ],
       "seed": "a small hand-held air pump, factory-stamped and optimistic",
-      "properties": {"size": 5, "tool": true}
+      "properties": {
+        "size": 5,
+        "tool": true
+      }
     },
     {
-      "id": "o-trident", "name": "crystal trident", "zork_name": "crystal trident",
-      "location": {"room": "r-atlantis-room"},
-      "aliases": ["trident", "fork", "poseidon"],
+      "id": "o-trident",
+      "name": "crystal trident",
+      "zork_name": "crystal trident",
+      "location": {
+        "room": "r-atlantis-room"
+      },
+      "aliases": [
+        "trident",
+        "fork",
+        "poseidon"
+      ],
       "seed": "a crystal trident taller than a man's arm, cut for a god's hand",
-      "treasure": {"take": 4, "case": 11},
-      "properties": {"size": 20}
+      "treasure": {
+        "take": 4,
+        "case": 11
+      },
+      "properties": {
+        "size": 20
+      }
     },
     {
-      "id": "o-mirror-north", "name": "enormous mirror", "zork_name": "mirror",
-      "location": {"room": "r-mirror-room-north"},
-      "aliases": ["mirror"],
+      "id": "o-mirror-north",
+      "name": "enormous mirror",
+      "zork_name": "mirror",
+      "location": {
+        "room": "r-mirror-room-north"
+      },
+      "aliases": [
+        "mirror"
+      ],
       "seed": "an enormous flawless mirror filling the wall, reflecting a room that might be this one",
       "fixture": true,
-      "verbs": ["rub"],
+      "verbs": [
+        "rub"
+      ],
       "rules": [
-        {"on": "rub",
-         "do": [
-           {"kind": "narrate", "to": "@actor",
-            "text": "There is a rumble from deep within the earth and the room shakes, and when it settles you would swear the room is the same and everything beyond it is not."},
-           {"kind": "teleport_actor", "room_id": "r-mirror-room-south"}
-         ]}
+        {
+          "on": "rub",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "There is a rumble from deep within the earth and the room shakes, and when it settles you would swear the room is the same and everything beyond it is not."
+            },
+            {
+              "kind": "teleport_actor",
+              "room_id": "r-mirror-room-south"
+            }
+          ]
+        }
       ]
     },
     {
-      "id": "o-mirror-south", "name": "enormous mirror", "zork_name": "mirror",
-      "location": {"room": "r-mirror-room-south"},
-      "aliases": ["mirror"],
+      "id": "o-mirror-south",
+      "name": "enormous mirror",
+      "zork_name": "mirror",
+      "location": {
+        "room": "r-mirror-room-south"
+      },
+      "aliases": [
+        "mirror"
+      ],
       "seed": "an enormous flawless mirror filling the wall, reflecting a room that might be this one",
       "fixture": true,
-      "verbs": ["rub"],
+      "verbs": [
+        "rub"
+      ],
       "rules": [
-        {"on": "rub",
-         "do": [
-           {"kind": "narrate", "to": "@actor",
-            "text": "There is a rumble from deep within the earth and the room shakes, and when it settles you would swear the room is the same and everything beyond it is not."},
-           {"kind": "teleport_actor", "room_id": "r-mirror-room-north"}
-         ]}
+        {
+          "on": "rub",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "There is a rumble from deep within the earth and the room shakes, and when it settles you would swear the room is the same and everything beyond it is not."
+            },
+            {
+              "kind": "teleport_actor",
+              "room_id": "r-mirror-room-north"
+            }
+          ]
+        }
       ]
     }
   ]

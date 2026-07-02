@@ -24,11 +24,20 @@ Verbatim zones protect iconic and mechanical lines two ways:
 Validation is strict and cheap: proper nouns preserved (every capitalized
 token that isn't sentence-initial), digit runs preserved, length ratio
 within the authored cap (and not gutted), banlist respected. The identity
-stays verbatim; only the prose around it breathes (R10)."""
+stays verbatim; only the prose around it breathes (R10).
+
+THE SHIPPED RUNG IS SCOPED (probe-ratified 2026-07-02): the authored line
+always speaks FIRST — a text is retold only once this world has already
+told it verbatim at least once (a per-text seen counter in worldstate).
+First impressions and one-shot beats (a wall-breaking flight, the win) are
+therefore always the author's; the LLM varies the echoes, which is where
+staleness would otherwise live. The rung ladder remains ON -> scoped ->
+OFF; the retell drift probe measures the SECOND telling."""
 
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import logging
 import os
 import re
@@ -129,9 +138,25 @@ def _system_prompt(voice: dict) -> str:
         "Rules: keep every proper noun, name, number, and stated fact exactly; "
         "change only the phrasing; similar length or shorter; never add new "
         "events or objects; no exclamation marks unless the original has them. "
+        "Use plain, short words — NEVER swap a plain word for a fancier "
+        "synonym; keep any joke or understatement intact. "
         'Return JSON: {"text": "<the retold line>"}'
     )
     return "\n".join(lines)
+
+
+def _seen_key(text: str) -> str:
+    return "retell_seen:" + hashlib.sha1(text.strip().encode()).hexdigest()[:16]
+
+
+def _first_telling(world_id: str, text: str) -> bool:
+    """True exactly once per (world, text): the authored line's turn to
+    speak. Subsequent tellings are the retell layer's to vary."""
+    key = _seen_key(text)
+    count = worldstate.get(world_id, key)
+    count = count if isinstance(count, int) else 0
+    worldstate.set(world_id, key, count + 1)
+    return count == 0
 
 
 async def maybe_retell(world_id: str, text: str, *, purpose: str = "narrate") -> str:
@@ -140,6 +165,8 @@ async def maybe_retell(world_id: str, text: str, *, purpose: str = "narrate") ->
     cfg = enabled_config(world_id)
     if cfg is None or not eligible(text):
         return text
+    if _first_telling(world_id, text):
+        return text  # the scoped rung: the authored line speaks first
     timeout = cfg.get("timeout")
     if not isinstance(timeout, (int, float)) or timeout <= 0:
         timeout = DEFAULT_TIMEOUT

@@ -118,22 +118,33 @@ async def test_env_killswitch_wins_over_world_config(retell_world, monkeypatch):
     assert spy.await_count == 0
 
 
-async def test_valid_candidate_replaces_text(retell_world, monkeypatch):
+async def test_first_telling_is_always_authored(retell_world, monkeypatch):
+    """The scoped rung: the authored line speaks first; the LLM varies
+    only the echoes."""
+    spy = mock_llm(monkeypatch, {"text": "should not be consulted yet"})
+    assert await retell.maybe_retell(WORLD, ELIGIBLE) == ELIGIBLE
+    assert spy.await_count == 0
+
+
+async def test_valid_candidate_replaces_text_on_retelling(retell_world, monkeypatch):
     retold = (
         "With a long, diminishing sigh the water behind the dam falls away, "
         "and the reservoir gives up its bed."
     )
     mock_llm(monkeypatch, {"text": retold})
+    assert await retell.maybe_retell(WORLD, ELIGIBLE) == ELIGIBLE  # prime
     assert await retell.maybe_retell(WORLD, ELIGIBLE) == retold
 
 
 async def test_invalid_candidate_falls_back(retell_world, monkeypatch):
     mock_llm(monkeypatch, {"text": "A cozy little pond drains."})
+    await retell.maybe_retell(WORLD, ELIGIBLE)  # prime
     assert await retell.maybe_retell(WORLD, ELIGIBLE) == ELIGIBLE
 
 
 async def test_backend_failure_falls_back(retell_world, monkeypatch):
     mock_llm(monkeypatch, LLMUnavailable("down"))
+    await retell.maybe_retell(WORLD, ELIGIBLE)  # prime
     assert await retell.maybe_retell(WORLD, ELIGIBLE) == ELIGIBLE
 
 
@@ -170,10 +181,13 @@ async def test_rule_narration_is_retold_through_dispatch(retell_world, monkeypat
                                "do": [{"kind": "narrate", "text": ELIGIBLE}]}]},
     )
     fired = await rules.dispatch(actor, "examine", thing, None, room_id=room.id)
-    assert fired
+    assert fired  # first telling: authored
+    fired = await rules.dispatch(actor, "examine", thing, None, room_id=room.id)
+    assert fired  # second telling: retold
     texts = [e.payload.get("text") for e in events.fetch_since(0)
              if e.kind == "narrate"]
-    assert retold in texts and ELIGIBLE not in texts
+    assert ELIGIBLE in texts and retold in texts
+    assert texts.index(ELIGIBLE) < texts.index(retold)
 
 
 async def test_spine_unchanged_when_llm_absent(retell_world, monkeypatch):

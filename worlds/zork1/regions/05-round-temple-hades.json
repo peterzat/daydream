@@ -2,7 +2,9 @@
   "comment": "Region (b) part 2 + (c) part 2: the Round Room hub, the mirror/winding caves down to Hades, the dome-and-rope descent to the torch, the temple with the exorcism ritual, and the Egyptian wing with the coffin. Matchbook mechanics: one book, matches struck as needed (a documented relaxation; the count never binds the walkthrough).",
   "rooms": [
     {
-      "id": "r-ew-passage", "slug": "ew-passage", "title": "East-West Passage",
+      "id": "r-ew-passage",
+      "slug": "ew-passage",
+      "title": "East-West Passage",
       "zork_name": "East-West Passage",
       "dark": true,
       "bonus": 5,
@@ -16,7 +18,9 @@
       }
     },
     {
-      "id": "r-round-room", "slug": "round-room", "title": "Round Room",
+      "id": "r-round-room",
+      "slug": "round-room",
+      "title": "Round Room",
       "zork_name": "Round Room",
       "dark": true,
       "seed": "a circular stone chamber where five ways meet, every footstep multiplied",
@@ -30,7 +34,9 @@
       }
     },
     {
-      "id": "r-narrow-passage", "slug": "narrow-passage", "title": "Narrow Passage",
+      "id": "r-narrow-passage",
+      "slug": "narrow-passage",
+      "title": "Narrow Passage",
       "zork_name": "Narrow Passage",
       "dark": true,
       "seed": "a shoulder-tight north-south passage of cold stone",
@@ -41,7 +47,9 @@
       }
     },
     {
-      "id": "r-mirror-room-south", "slug": "mirror-room-south", "title": "Mirror Room",
+      "id": "r-mirror-room-south",
+      "slug": "mirror-room-south",
+      "title": "Mirror Room",
       "zork_name": "Mirror Room",
       "seed": "a room dominated by one enormous flawless mirror, lit by its own pale reflection",
       "description": "You are in a large square room with tall ceilings. On the south wall is an enormous mirror which fills the entire wall. There are exits on the other three sides of the room.",
@@ -52,7 +60,9 @@
       }
     },
     {
-      "id": "r-winding-passage", "slug": "winding-passage", "title": "Winding Passage",
+      "id": "r-winding-passage",
+      "slug": "winding-passage",
+      "title": "Winding Passage",
       "zork_name": "Winding Passage",
       "dark": true,
       "seed": "a passage that winds like a thought that will not finish",
@@ -63,7 +73,9 @@
       }
     },
     {
-      "id": "r-tiny-cave", "slug": "tiny-cave", "title": "Cave",
+      "id": "r-tiny-cave",
+      "slug": "tiny-cave",
+      "title": "Cave",
       "zork_name": "Cave",
       "dark": true,
       "seed": "a tiny cave, more interval than room, a cold draft rising from below",
@@ -75,20 +87,38 @@
       }
     },
     {
-      "id": "r-entrance-to-hades", "slug": "entrance-to-hades", "title": "Entrance to Hades",
+      "id": "r-entrance-to-hades",
+      "slug": "entrance-to-hades",
+      "title": "Entrance to Hades",
       "zork_name": "Entrance to Hades",
       "seed": "a cavern mouth lit by no visible flame, gates of black iron, a congregation of spirits barring the way",
       "description": "You are outside a large gateway, on which is inscribed:\n\n  Abandon every hope all ye who enter here!\n\nThe gate is open; through it you can see a desolation, with a pile of mangled bodies in one corner. Thousands of voices, lamenting some hideous fate, can be heard. The way through the gate is barred by evil spirits, who jeer at your attempts to pass.",
       "exits": {
         "up": "r-tiny-cave",
-        "in": {"to": "r-land-of-living-dead", "if": [{"flag": "SPIRITS-BANISHED"}],
-                "blocked_text": "Some invisible force prevents you from passing through the gate."},
-        "south": {"to": "r-land-of-living-dead", "if": [{"flag": "SPIRITS-BANISHED"}],
-                   "blocked_text": "Some invisible force prevents you from passing through the gate."}
+        "in": {
+          "to": "r-land-of-living-dead",
+          "if": [
+            {
+              "flag": "SPIRITS-BANISHED"
+            }
+          ],
+          "blocked_text": "Some invisible force prevents you from passing through the gate."
+        },
+        "south": {
+          "to": "r-land-of-living-dead",
+          "if": [
+            {
+              "flag": "SPIRITS-BANISHED"
+            }
+          ],
+          "blocked_text": "Some invisible force prevents you from passing through the gate."
+        }
       }
     },
     {
-      "id": "r-land-of-living-dead", "slug": "land-of-living-dead", "title": "Land of the Dead",
+      "id": "r-land-of-living-dead",
+      "slug": "land-of-living-dead",
+      "title": "Land of the Dead",
       "zork_name": "Land of the Dead",
       "seed": "a wide grey shore of the underworld, quiet now, one crystal gleam among the cairns",
       "description": "You have entered the Land of the Living Dead. Thousands of lost souls can be heard weeping and moaning. In the corner are stacked the remains of dozens of previous adventurers less fortunate than you. A passage exits to the north.",
@@ -98,7 +128,9 @@
       }
     },
     {
-      "id": "r-engravings-cave", "slug": "engravings-cave", "title": "Engravings Cave",
+      "id": "r-engravings-cave",
+      "slug": "engravings-cave",
+      "title": "Engravings Cave",
       "zork_name": "Engravings Cave",
       "dark": true,
       "seed": "a low cave whose walls carry old engravings, inscrutable and proud",
@@ -109,34 +141,51 @@
       }
     },
     {
-      "id": "r-dome-room", "slug": "dome-room", "title": "Dome Room",
+      "id": "r-dome-room",
+      "slug": "dome-room",
+      "title": "Dome Room",
       "zork_name": "Dome Room",
       "dark": true,
       "seed": "the top of a great stone dome, a wooden railing at the rim, the torch room far below",
       "description": "You are at the periphery of a large dome, which forms the ceiling of another room below. Protecting you from a precipitous drop is a wooden railing which circles the dome.",
       "exits": {
         "west": "r-engravings-cave",
-        "down": {"to": "r-torch-room", "if": [{"flag": "DOME-ROPE-TIED"}],
-                  "blocked_text": "You cannot go down without fracturing many bones.",
-                  "on_traverse": [
-                    {"kind": "narrate",
-                     "text": "You climb down the rope, hand over hand, and drop the last foot to the floor of the torch room."}
-                  ]}
+        "down": {
+          "to": "r-torch-room",
+          "if": [
+            {
+              "flag": "DOME-ROPE-TIED"
+            }
+          ],
+          "blocked_text": "You cannot go down without fracturing many bones.",
+          "on_traverse": [
+            {
+              "kind": "narrate",
+              "text": "You climb down the rope, hand over hand, and drop the last foot to the floor of the torch room."
+            }
+          ]
+        }
       }
     },
     {
-      "id": "r-torch-room", "slug": "torch-room", "title": "Torch Room",
+      "id": "r-torch-room",
+      "slug": "torch-room",
+      "title": "Torch Room",
       "zork_name": "Torch Room",
-      "seed": "a domed chamber lit by one ivory torch on a white marble pedestal",
+      "seed": "a small marble pedestal bearing a single burning torch, its bright flame the only light in a vast dark domed stone chamber, warm gold against deep shadow",
       "description": "This is a large room with a prominent doorway leading to a down staircase. Above you is a large dome. Up around the edge of the dome (20 feet up) is a wooden railing. In the center of the room sits a white marble pedestal.",
       "exits": {
-        "up": {"text": "You cannot reach the rope."},
+        "up": {
+          "text": "You cannot reach the rope."
+        },
         "south": "r-north-temple",
         "down": "r-north-temple"
       }
     },
     {
-      "id": "r-north-temple", "slug": "temple", "title": "Temple",
+      "id": "r-north-temple",
+      "slug": "temple",
+      "title": "Temple",
       "zork_name": "Temple",
       "seed": "a temple of the old faith, brasswork gone green, a bell hung in its frame",
       "description": "This is the north end of a large temple. On the east wall is an ancient inscription, probably a prayer in a long-forgotten language. Below the prayer is a staircase leading down. The temple's north wall is solid granite. The entrance is through a huge marble arch to the south.",
@@ -150,27 +199,46 @@
       }
     },
     {
-      "id": "r-south-temple", "slug": "altar", "title": "Altar",
+      "id": "r-south-temple",
+      "slug": "altar",
+      "title": "Altar",
       "zork_name": "Altar",
       "seed": "the south end of the temple, a broad marble altar, two candle stubs burning",
       "description": "This is the south end of a large temple. In front of you is what appears to be an altar. In one corner is a small hole in the floor which leads into darkness. You probably could not get back up it.",
       "exits": {
         "north": "r-north-temple",
-        "down": {"to": "r-tiny-cave",
-                  "if": [{"carried": "o-coffin", "not": true}],
-                  "blocked_text": "You haven't a prayer of getting the coffin down there."}
+        "down": {
+          "to": "r-tiny-cave",
+          "if": [
+            {
+              "carried": "o-coffin",
+              "not": true
+            }
+          ],
+          "blocked_text": "You haven't a prayer of getting the coffin down there."
+        }
       },
       "rules": [
-        {"on": "pray",
-         "do": [
-           {"kind": "narrate",
-            "text": "The air shimmers with something that is not quite approval, and the temple lets you go."},
-           {"kind": "teleport_actor", "room_id": "r-forest-1"}
-         ]}
+        {
+          "on": "pray",
+          "do": [
+            {
+              "kind": "narrate",
+              "text": "The air shimmers with something that is not quite approval, and the temple lets you go.",
+              "verbatim": true
+            },
+            {
+              "kind": "teleport_actor",
+              "room_id": "r-forest-1"
+            }
+          ]
+        }
       ]
     },
     {
-      "id": "r-egypt-room", "slug": "egyptian-room", "title": "Egyptian Room",
+      "id": "r-egypt-room",
+      "slug": "egyptian-room",
+      "title": "Egyptian Room",
       "zork_name": "Egyptian Room",
       "dark": true,
       "seed": "a chamber done in the style of old Egypt, wall paintings of ibis and eye, a gold coffin on a plinth",
@@ -183,78 +251,192 @@
   ],
   "things": [
     {
-      "id": "o-railing", "name": "wooden railing", "zork_name": "railing",
-      "location": {"room": "r-dome-room"},
-      "aliases": ["railing", "rail"],
+      "id": "o-railing",
+      "name": "wooden railing",
+      "zork_name": "railing",
+      "location": {
+        "room": "r-dome-room"
+      },
+      "aliases": [
+        "railing",
+        "rail"
+      ],
       "seed": "a stout wooden railing circling the dome's rim",
       "fixture": true
     },
     {
-      "id": "o-torch", "name": "ivory torch", "zork_name": "torch",
-      "location": {"room": "r-torch-room"},
-      "aliases": ["torch"],
+      "id": "o-torch",
+      "name": "ivory torch",
+      "zork_name": "torch",
+      "location": {
+        "room": "r-torch-room"
+      },
+      "aliases": [
+        "torch"
+      ],
       "seed": "an ivory torch burning with a flame that has never once flickered",
-      "treasure": {"take": 14, "case": 6},
-      "verbs": ["extinguish"],
-      "properties": {"size": 20, "light": true, "lit": true, "flame": true},
+      "treasure": {
+        "take": 14,
+        "case": 6
+      },
+      "verbs": [
+        "extinguish"
+      ],
+      "properties": {
+        "size": 20,
+        "light": true,
+        "lit": true,
+        "flame": true
+      },
       "rules": [
-        {"on": "extinguish",
-         "do": [{"kind": "narrate", "to": "@actor",
-                 "text": "You nearly burn your hand trying to extinguish the flame."}]}
+        {
+          "on": "extinguish",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "You nearly burn your hand trying to extinguish the flame."
+            }
+          ]
+        }
       ]
     },
     {
-      "id": "o-pedestal", "name": "marble pedestal", "zork_name": "pedestal",
-      "location": {"room": "r-torch-room"},
-      "aliases": ["pedestal"],
+      "id": "o-pedestal",
+      "name": "marble pedestal",
+      "zork_name": "pedestal",
+      "location": {
+        "room": "r-torch-room"
+      },
+      "aliases": [
+        "pedestal"
+      ],
       "seed": "a white marble pedestal, torch-scorched at the crown",
       "fixture": true,
-      "properties": {"surface": true, "capacity": 30}
+      "properties": {
+        "surface": true,
+        "capacity": 30
+      }
     },
     {
-      "id": "o-bell", "name": "brass bell", "zork_name": "brass bell",
-      "location": {"room": "r-north-temple"},
-      "aliases": ["bell"],
+      "id": "o-bell",
+      "name": "brass bell",
+      "zork_name": "brass bell",
+      "location": {
+        "room": "r-north-temple"
+      },
+      "aliases": [
+        "bell"
+      ],
       "seed": "a small brass bell, temple-green with age",
-      "verbs": ["ring"],
+      "verbs": [
+        "ring"
+      ],
       "properties": {
-        "size": 6, "state": "normal",
+        "size": 6,
+        "state": "normal",
         "state_text": {
           "red-hot": "It is glowing an angry red, far too hot to hold."
         }
       },
       "rules": [
-        {"on": "ring",
-         "if": [{"in": "r-entrance-to-hades"},
-                 {"flag": "SPIRITS-BANISHED", "eq": false},
-                 {"carried": "@self"}],
-         "do": [
-           {"kind": "set_flag", "name": "BELL-RUNG", "value": true},
-           {"kind": "start_fuse", "name": "bell-window"},
-           {"kind": "set_property", "target_id": "o-bell", "key": "state",
-            "value": "red-hot"},
-           {"kind": "start_fuse", "name": "bell-cool"},
-           {"kind": "move_object", "object_id": "o-bell",
-            "dest_id": "r-entrance-to-hades"},
-           {"kind": "narrate",
-            "text": "The bell suddenly becomes red hot and falls to the ground. The wraiths, as if paralyzed, stop their jeering and slowly turn to face you. On their ashen faces, the expression of a long-forgotten terror takes shape."}
-         ]},
-        {"on": "ring", "if": [{"prop": "state", "of": "@self", "eq": "red-hot"}],
-         "do": [{"kind": "narrate", "to": "@actor",
-                 "text": "The bell is too hot to touch, let alone ring."}]},
-        {"on": "ring",
-         "do": [{"kind": "narrate", "to": "@actor",
-                 "text": "Ding, dong."}]}
+        {
+          "on": "ring",
+          "if": [
+            {
+              "in": "r-entrance-to-hades"
+            },
+            {
+              "flag": "SPIRITS-BANISHED",
+              "eq": false
+            },
+            {
+              "carried": "@self"
+            }
+          ],
+          "do": [
+            {
+              "kind": "set_flag",
+              "name": "BELL-RUNG",
+              "value": true
+            },
+            {
+              "kind": "start_fuse",
+              "name": "bell-window"
+            },
+            {
+              "kind": "set_property",
+              "target_id": "o-bell",
+              "key": "state",
+              "value": "red-hot"
+            },
+            {
+              "kind": "start_fuse",
+              "name": "bell-cool"
+            },
+            {
+              "kind": "move_object",
+              "object_id": "o-bell",
+              "dest_id": "r-entrance-to-hades"
+            },
+            {
+              "kind": "narrate",
+              "text": "The bell suddenly becomes red hot and falls to the ground. The wraiths, as if paralyzed, stop their jeering and slowly turn to face you. On their ashen faces, the expression of a long-forgotten terror takes shape."
+            }
+          ]
+        },
+        {
+          "on": "ring",
+          "if": [
+            {
+              "prop": "state",
+              "of": "@self",
+              "eq": "red-hot"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "The bell is too hot to touch, let alone ring."
+            }
+          ]
+        },
+        {
+          "on": "ring",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "Ding, dong."
+            }
+          ]
+        }
       ]
     },
     {
-      "id": "o-candles", "name": "pair of candles", "zork_name": "pair of candles",
-      "location": {"room": "r-south-temple"},
-      "aliases": ["candles", "candle", "pair"],
+      "id": "o-candles",
+      "name": "pair of candles",
+      "zork_name": "pair of candles",
+      "location": {
+        "room": "r-south-temple"
+      },
+      "aliases": [
+        "candles",
+        "candle",
+        "pair"
+      ],
       "seed": "a pair of altar candles, out cold, wax pooled at their feet",
-      "verbs": ["light", "extinguish"],
+      "verbs": [
+        "light",
+        "extinguish"
+      ],
       "properties": {
-        "size": 10, "light": true, "lit": false, "flame": false, "fuel": 40,
+        "size": 10,
+        "light": true,
+        "lit": false,
+        "flame": false,
+        "fuel": 40,
         "fuel_warnings": {
           "10": "The candles grow shorter.",
           "5": "The candles are becoming quite short."
@@ -262,129 +444,390 @@
         "burnout_text": "The candles gutter and go out for the last time."
       },
       "rules": [
-        {"on": "light",
-         "if": [{"in": "r-entrance-to-hades"},
-                 {"flag": "BELL-RUNG"},
-                 {"flag": "SPIRITS-BANISHED", "eq": false},
-                 {"iobj": "o-matchbook"},
-                 {"prop": "lit", "of": "o-matchbook", "eq": true},
-                 {"prop": "burned_out", "of": "@self", "ne": true}],
-         "do": [
-           {"kind": "set_property", "target_id": "@self", "key": "lit", "value": true},
-           {"kind": "set_property", "target_id": "@self", "key": "flame", "value": true},
-           {"kind": "set_flag", "name": "CANDLES-RITUAL", "value": true},
-           {"kind": "start_fuse", "name": "candle-window"},
-           {"kind": "narrate",
-            "text": "The candles catch. The flames flicker low, as though scared, and the spirits shrink back from their light. Somewhere a voice that has not spoken in centuries clears its throat."}
-         ]},
-        {"on": "light",
-         "if": [{"prop": "lit", "of": "@self", "eq": true}],
-         "do": [{"kind": "narrate", "to": "@actor",
-                 "text": "The candles are already lit."}]},
-        {"on": "light",
-         "if": [{"iobj": "o-matchbook"},
-                 {"prop": "lit", "of": "o-matchbook", "eq": true},
-                 {"prop": "burned_out", "of": "@self", "ne": true}],
-         "do": [
-           {"kind": "set_property", "target_id": "@self", "key": "lit", "value": true},
-           {"kind": "set_property", "target_id": "@self", "key": "flame", "value": true},
-           {"kind": "narrate", "text": "The candles are lit."}
-         ]},
-        {"on": "light", "if": [{"prop": "burned_out", "of": "@self", "eq": true}],
-         "do": [{"kind": "narrate", "to": "@actor",
-                 "text": "There is not enough left of the candles to light."}]},
-        {"on": "light",
-         "do": [{"kind": "narrate", "to": "@actor",
-                 "text": "You have nothing lit to light them with."}]},
-        {"on": "extinguish", "if": [{"prop": "lit", "of": "@self", "eq": true}],
-         "do": [
-           {"kind": "set_property", "target_id": "@self", "key": "lit", "value": false},
-           {"kind": "set_property", "target_id": "@self", "key": "flame", "value": false},
-           {"kind": "narrate", "text": "The flames are extinguished."}
-         ]},
-        {"on": "extinguish",
-         "do": [{"kind": "narrate", "to": "@actor",
-                 "text": "The candles are not lit."}]}
+        {
+          "on": "light",
+          "if": [
+            {
+              "in": "r-entrance-to-hades"
+            },
+            {
+              "flag": "BELL-RUNG"
+            },
+            {
+              "flag": "SPIRITS-BANISHED",
+              "eq": false
+            },
+            {
+              "iobj": "o-matchbook"
+            },
+            {
+              "prop": "lit",
+              "of": "o-matchbook",
+              "eq": true
+            },
+            {
+              "prop": "burned_out",
+              "of": "@self",
+              "ne": true
+            }
+          ],
+          "do": [
+            {
+              "kind": "set_property",
+              "target_id": "@self",
+              "key": "lit",
+              "value": true
+            },
+            {
+              "kind": "set_property",
+              "target_id": "@self",
+              "key": "flame",
+              "value": true
+            },
+            {
+              "kind": "set_flag",
+              "name": "CANDLES-RITUAL",
+              "value": true
+            },
+            {
+              "kind": "start_fuse",
+              "name": "candle-window"
+            },
+            {
+              "kind": "narrate",
+              "text": "The candles catch. The flames flicker low, as though scared, and the spirits shrink back from their light. Somewhere a voice that has not spoken in centuries clears its throat."
+            }
+          ]
+        },
+        {
+          "on": "light",
+          "if": [
+            {
+              "prop": "lit",
+              "of": "@self",
+              "eq": true
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "The candles are already lit."
+            }
+          ]
+        },
+        {
+          "on": "light",
+          "if": [
+            {
+              "iobj": "o-matchbook"
+            },
+            {
+              "prop": "lit",
+              "of": "o-matchbook",
+              "eq": true
+            },
+            {
+              "prop": "burned_out",
+              "of": "@self",
+              "ne": true
+            }
+          ],
+          "do": [
+            {
+              "kind": "set_property",
+              "target_id": "@self",
+              "key": "lit",
+              "value": true
+            },
+            {
+              "kind": "set_property",
+              "target_id": "@self",
+              "key": "flame",
+              "value": true
+            },
+            {
+              "kind": "narrate",
+              "text": "The candles are lit."
+            }
+          ]
+        },
+        {
+          "on": "light",
+          "if": [
+            {
+              "prop": "burned_out",
+              "of": "@self",
+              "eq": true
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "There is not enough left of the candles to light."
+            }
+          ]
+        },
+        {
+          "on": "light",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "You have nothing lit to light them with."
+            }
+          ]
+        },
+        {
+          "on": "extinguish",
+          "if": [
+            {
+              "prop": "lit",
+              "of": "@self",
+              "eq": true
+            }
+          ],
+          "do": [
+            {
+              "kind": "set_property",
+              "target_id": "@self",
+              "key": "lit",
+              "value": false
+            },
+            {
+              "kind": "set_property",
+              "target_id": "@self",
+              "key": "flame",
+              "value": false
+            },
+            {
+              "kind": "narrate",
+              "text": "The flames are extinguished."
+            }
+          ]
+        },
+        {
+          "on": "extinguish",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "The candles are not lit."
+            }
+          ]
+        }
       ]
     },
     {
-      "id": "o-black-book", "name": "black book", "zork_name": "black book",
-      "location": {"room": "r-south-temple"},
-      "aliases": ["book", "prayer book"],
+      "id": "o-black-book",
+      "name": "black book",
+      "zork_name": "black book",
+      "location": {
+        "room": "r-south-temple"
+      },
+      "aliases": [
+        "book",
+        "prayer book"
+      ],
       "seed": "a large black book, its cover worn smooth by centuries of reluctant hands",
       "readable": true,
-      "properties": {"size": 8},
+      "properties": {
+        "size": 8
+      },
       "text": "Commandment #12592: Oh ye who go about saying unto each other, 'Hello sailor': Dost thou know the magnitude of thy sin before the gods? Verily, thou shalt be ground between two stones. Shall the angry gods cast thy body into the whirlpool? Surely, thy eye shall be put out with a sharp stick! Even unto the ends of the earth shalt thou wander and unto the land of the dead shalt thou be sent at last.",
       "rules": [
-        {"on": "read",
-         "if": [{"in": "r-entrance-to-hades"},
-                 {"flag": "BELL-RUNG"},
-                 {"flag": "CANDLES-RITUAL"},
-                 {"flag": "SPIRITS-BANISHED", "eq": false}],
-         "do": [
-           {"kind": "set_flag", "name": "SPIRITS-BANISHED", "value": true},
-           {"kind": "narrate",
-            "text": "Each word of the prayer reverberates through the hall in a deafening confusion. As the last word fades, a voice, loud and commanding, speaks: \"Begone, fiends!\" A heart-stopping scream fills the cavern, and the spirits, sensing a greater power, flee through the walls."}
-         ]}
+        {
+          "on": "read",
+          "if": [
+            {
+              "in": "r-entrance-to-hades"
+            },
+            {
+              "flag": "BELL-RUNG"
+            },
+            {
+              "flag": "CANDLES-RITUAL"
+            },
+            {
+              "flag": "SPIRITS-BANISHED",
+              "eq": false
+            }
+          ],
+          "do": [
+            {
+              "kind": "set_flag",
+              "name": "SPIRITS-BANISHED",
+              "value": true
+            },
+            {
+              "kind": "narrate",
+              "text": "Each word of the prayer reverberates through the hall in a deafening confusion. As the last word fades, a voice, loud and commanding, speaks: \"Begone, fiends!\" A heart-stopping scream fills the cavern, and the spirits, sensing a greater power, flee through the walls."
+            }
+          ]
+        }
       ]
     },
     {
-      "id": "o-coffin", "name": "gold coffin", "zork_name": "gold coffin",
-      "location": {"room": "r-egypt-room"},
-      "aliases": ["coffin", "casket", "sarcophagus"],
+      "id": "o-coffin",
+      "name": "gold coffin",
+      "zork_name": "gold coffin",
+      "location": {
+        "room": "r-egypt-room"
+      },
+      "aliases": [
+        "coffin",
+        "casket",
+        "sarcophagus"
+      ],
       "seed": "a solid gold coffin worked with the seal of an ancient king, absurdly heavy and worth it",
-      "treasure": {"take": 10, "case": 15},
-      "verbs": ["open", "close"],
-      "properties": {"size": 55, "container": true, "state": "closed",
-                     "capacity": 35,
-                     "open_text": "The gold coffin opens on hinges that remember their duty. Inside lies a sceptre, possibly that of ancient Egypt itself."}
+      "treasure": {
+        "take": 10,
+        "case": 15
+      },
+      "verbs": [
+        "open",
+        "close"
+      ],
+      "properties": {
+        "size": 55,
+        "container": true,
+        "state": "closed",
+        "capacity": 35,
+        "open_text": "The gold coffin opens on hinges that remember their duty. Inside lies a sceptre, possibly that of ancient Egypt itself."
+      }
     },
     {
-      "id": "o-sceptre", "name": "sceptre", "zork_name": "sceptre",
-      "location": {"in": "o-coffin"},
-      "aliases": ["scepter", "wand"],
+      "id": "o-sceptre",
+      "name": "sceptre",
+      "zork_name": "sceptre",
+      "location": {
+        "in": "o-coffin"
+      },
+      "aliases": [
+        "scepter",
+        "wand"
+      ],
       "seed": "an ornamented sceptre tapering to a sharp point, of Egyptian workmanship",
-      "treasure": {"take": 4, "case": 6},
-      "verbs": ["wave"],
-      "properties": {"size": 3, "pointy": true},
+      "treasure": {
+        "take": 4,
+        "case": 6
+      },
+      "verbs": [
+        "wave"
+      ],
+      "properties": {
+        "size": 3,
+        "pointy": true
+      },
       "rules": [
-        {"on": "wave",
-         "if": [{"carried": "@self"},
-                 {"in": "r-aragain-falls"},
-                 {"flag": "RAINBOW-SOLID", "eq": false}],
-         "do": [
-           {"kind": "set_flag", "name": "RAINBOW-SOLID", "value": true},
-           {"kind": "move_object", "object_id": "o-pot-of-gold",
-            "dest_id": "r-end-of-rainbow"},
-           {"kind": "narrate",
-            "text": "Suddenly, the rainbow appears to become solid and, I venture, walkable (I think the giveaway was the stairs and bannister)."}
-         ]},
-        {"on": "wave",
-         "if": [{"carried": "@self"},
-                 {"in": "r-end-of-rainbow"},
-                 {"flag": "RAINBOW-SOLID", "eq": false}],
-         "do": [
-           {"kind": "set_flag", "name": "RAINBOW-SOLID", "value": true},
-           {"kind": "move_object", "object_id": "o-pot-of-gold",
-            "dest_id": "r-end-of-rainbow"},
-           {"kind": "narrate",
-            "text": "Suddenly, the rainbow appears to become solid and, I venture, walkable (I think the giveaway was the stairs and bannister)."}
-         ]},
-        {"on": "wave", "if": [{"carried": "@self"}],
-         "do": [{"kind": "narrate", "to": "@actor",
-                 "text": "A dazzling display of colorful lights briefly emanates from the sceptre."}]},
-        {"on": "wave",
-         "do": [{"kind": "narrate", "to": "@actor",
-                 "text": "You aren't holding the sceptre."}]}
+        {
+          "on": "wave",
+          "if": [
+            {
+              "carried": "@self"
+            },
+            {
+              "in": "r-aragain-falls"
+            },
+            {
+              "flag": "RAINBOW-SOLID",
+              "eq": false
+            }
+          ],
+          "do": [
+            {
+              "kind": "set_flag",
+              "name": "RAINBOW-SOLID",
+              "value": true
+            },
+            {
+              "kind": "move_object",
+              "object_id": "o-pot-of-gold",
+              "dest_id": "r-end-of-rainbow"
+            },
+            {
+              "kind": "narrate",
+              "text": "Suddenly, the rainbow appears to become solid and, I venture, walkable (I think the giveaway was the stairs and bannister)."
+            }
+          ]
+        },
+        {
+          "on": "wave",
+          "if": [
+            {
+              "carried": "@self"
+            },
+            {
+              "in": "r-end-of-rainbow"
+            },
+            {
+              "flag": "RAINBOW-SOLID",
+              "eq": false
+            }
+          ],
+          "do": [
+            {
+              "kind": "set_flag",
+              "name": "RAINBOW-SOLID",
+              "value": true
+            },
+            {
+              "kind": "move_object",
+              "object_id": "o-pot-of-gold",
+              "dest_id": "r-end-of-rainbow"
+            },
+            {
+              "kind": "narrate",
+              "text": "Suddenly, the rainbow appears to become solid and, I venture, walkable (I think the giveaway was the stairs and bannister)."
+            }
+          ]
+        },
+        {
+          "on": "wave",
+          "if": [
+            {
+              "carried": "@self"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "A dazzling display of colorful lights briefly emanates from the sceptre."
+            }
+          ]
+        },
+        {
+          "on": "wave",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "You aren't holding the sceptre."
+            }
+          ]
+        }
       ]
     },
     {
-      "id": "o-skull", "name": "crystal skull", "zork_name": "crystal skull",
-      "location": {"room": "r-land-of-living-dead"},
-      "aliases": ["skull"],
+      "id": "o-skull",
+      "name": "crystal skull",
+      "zork_name": "crystal skull",
+      "location": {
+        "room": "r-land-of-living-dead"
+      },
+      "aliases": [
+        "skull"
+      ],
       "seed": "a crystal skull, cold to the touch, catching light that is not there",
-      "treasure": {"take": 10, "case": 10},
-      "properties": {"size": 8}
+      "treasure": {
+        "take": 10,
+        "case": 10
+      },
+      "properties": {
+        "size": 8
+      }
     }
   ]
 }

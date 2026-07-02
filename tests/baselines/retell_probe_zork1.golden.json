@@ -1,0 +1,49 @@
+{
+  "captured_at": "2026-07-02T14:48:30+00:00",
+  "fallbacks": 0,
+  "results": [
+    {
+      "changed": true,
+      "original": "Inside the barrow, the dark is not empty: it is expectant. Somewhere below, the Great Underground Empire keeps a place for the one who gathered all its scattered brightness. Your adventure here is done, and well done.",
+      "retold": "Within the barrow, the darkness is not vacant: it awaits. Somewhere beneath, the Great Underground Empire reserves a spot for the one who collected its dispersed luminescence. Your quest ends here, and it ends well."
+    },
+    {
+      "changed": true,
+      "original": "The trap door crashes shut, and you hear someone barring it.",
+      "retold": "The trap door collapses, and a sound indicates it is secured."
+    },
+    {
+      "changed": true,
+      "original": "The cyclops, hearing the name of his father's deadly nemesis, flees the room by knocking down the wall on the east of the room.",
+      "retold": "The cyclops, upon hearing the name of his father's fatal foe, departs the chamber by collapsing the wall on the eastern side."
+    },
+    {
+      "changed": true,
+      "original": "The thief is here, of course; this is his den, and he its jealous keeper. He rises from among the bags with his stiletto out, eyes already doing arithmetic on everything you carry.",
+      "retold": "The thief is, of course, present; this is his lair, and he guards it jealously. He emerges from the bags, stiletto in hand, eyes already calculating what you possess."
+    },
+    {
+      "changed": true,
+      "original": "The roar in here is a physical fact: water hammering through the dam somewhere in the rock, every wall repeating it at full volume. Your head refuses the assignment, and your legs carry you out before you are consulted.",
+      "retold": "The sound within is a constant: water striking the dam deep in the stone, each wall echoing it loudly. Your mind resists, and your legs lead you away before you are asked."
+    },
+    {
+      "changed": true,
+      "original": "The room is deafeningly loud with an undetermined rushing sound, which the walls take up and hand back until it is difficult even to think.",
+      "retold": "The chamber echoes with an indefinite rush, which the walls amplify until it is hard to think."
+    },
+    {
+      "changed": true,
+      "original": "The clasp is cunning past your skill. Perhaps a specialist \u2014 someone with delicate fingers and flexible ethics \u2014 could open it without ruin.",
+      "retold": "The fastening is complex beyond your ability. Maybe a specialist\u2014someone with nimble digits and adaptable morals\u2014could unlock it without damage."
+    },
+    {
+      "changed": true,
+      "original": "You pick up the pile of leaves, which was heavier than it looked; beneath it, a grating is revealed.",
+      "retold": "You lift the heap of leaves, finding it more substantial than it appeared; beneath lies a grating."
+    }
+  ],
+  "retold": 8,
+  "samples": 8,
+  "total_latency_ms": 5491
+}

@@ -2014,7 +2014,7 @@
       "id": "r-torch-room",
       "slug": "torch-room",
       "title": "Torch Room",
-      "seed": "a domed chamber lit by one ivory torch on a white marble pedestal",
+      "seed": "a small marble pedestal bearing a single burning torch, its bright flame the only light in a vast dark domed stone chamber, warm gold against deep shadow",
       "description": "This is a large room with a prominent doorway leading to a down staircase. Above you is a large dome. Up around the edge of the dome (20 feet up) is a wooden railing. In the center of the room sits a white marble pedestal.",
       "exits": {
         "up": {
@@ -2064,7 +2064,8 @@
           "do": [
             {
               "kind": "narrate",
-              "text": "The air shimmers with something that is not quite approval, and the temple lets you go."
+              "text": "The air shimmers with something that is not quite approval, and the temple lets you go.",
+              "verbatim": true
             },
             {
               "kind": "teleport_actor",
@@ -2090,7 +2091,7 @@
       "id": "r-dam",
       "slug": "dam",
       "title": "Dam",
-      "seed": "the crest of a great stone dam, control panel with one large bolt and a green bubble, water on one side and a long drop on the other",
+      "seed": "standing atop a great stone dam, its long rampart stretching away, white water thundering through open sluice gates below, a green reservoir behind, one iron control pedestal on the walkway",
       "description": "You stand atop Flood Control Dam #3, once a wonder of imperial engineering and still a competent wall. A control panel juts from the stone, dominated by a large metal bolt with a small green plastic bubble mounted above it. The reservoir side lies west; the river resumes, thinner and disappointed, far below to the east. The dam's lobby stands north, and a path follows the canyon rim south.",
       "exits": {
         "south": "r-deep-canyon",
@@ -2604,7 +2605,8 @@
             {
               "kind": "narrate",
               "to": "@actor",
-              "text": "In the corner of the room on the ceiling is a large vampire bat who is obviously deranged and holding his nose."
+              "text": "In the corner of the room on the ceiling is a large vampire bat who is obviously deranged and holding his nose.",
+              "verbatim": true
             }
           ]
         }
