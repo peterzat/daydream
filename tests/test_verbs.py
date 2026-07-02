@@ -52,7 +52,7 @@ def test_closed_verb_registry_with_arg_specs():
     assert set(verbs.VERBS) == {
         "look", "examine", "take", "drop", "talk", "give", "use",
         "open", "close", "put", "read", "plant", "say", "go", "inventory",
-        "board", "disembark",
+        "attack", "diagnose", "board", "disembark",
     }
     # Arg-specs: object-targeted verbs declare a dobj + valid kinds.
     assert verbs.VERBS["take"].needs_dobj

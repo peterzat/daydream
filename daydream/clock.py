@@ -195,10 +195,12 @@ def _run_daemons(world_id: str, actor: objects.Object) -> None:
         kind = d.get("kind", "script")
         if kind == "script":
             _run_script_daemon(world_id, name, d, actor)
-        elif kind in ("wanderer", "conveyor"):
-            # Land with the hostiles/river increment; an authored world can
-            # already declare them, they just don't act yet.
-            logger.debug("daemon %r kind %r not yet ticking", name, kind)
+        elif kind == "wanderer":
+            _run_wanderer(world_id, name, d)
+        elif kind == "conveyor":
+            _run_conveyor(world_id, name, d)
+        elif kind == "glow":
+            _run_glow(world_id, name, d)
         else:
             logger.warning("daemon %r has unknown kind %r", name, kind)
 
@@ -228,6 +230,165 @@ def _run_script_daemon(
         if isinstance(state, dict):
             state["active"] = False
             worldstate.set(world_id, key, state)
+
+
+def _narrate_room(world_id: str, room_id: str | None, text, recipient=None) -> None:
+    if not room_id or not isinstance(text, str) or not text.strip():
+        return
+    events.append("system", None, "narrate", {"text": text.strip()},
+                  room_id=room_id, recipient_id=recipient)
+
+
+def _players_in(room_id: str | None) -> list[objects.Object]:
+    if not room_id:
+        return []
+    return [o for o in objects.contents(room_id, kind="toon")
+            if o.is_human_controlled or o.controller_session]
+
+
+def _run_wanderer(world_id: str, name: str, d: dict) -> None:
+    """The roaming hostile (SPEC criterion 8): moves through its authored
+    room set, steals qualifying loot from rooms and players into its own
+    hands, and empties its pockets in its lair. Every roll seeded per turn.
+    Authored: toon, rooms, move_chance, steal_from_room_chance,
+    steal_from_player_chance, steal_filter {key, eq}, deposit_room,
+    arrive_text, leave_text, steal_text (to the victim)."""
+    toon = objects.get(d.get("toon", ""))
+    if toon is None or toon.kind != "toon":
+        return  # killed (or never authored): the daemon idles harmlessly
+    rooms_set = [r for r in d.get("rooms", []) if isinstance(r, str)]
+    rng = worldstate.rng(world_id, f"wanderer:{name}")
+    here = toon.location_id
+
+    def matches(thing: objects.Object) -> bool:
+        f = d.get("steal_filter")
+        if not isinstance(f, dict) or not isinstance(f.get("key"), str):
+            return False
+        return thing.properties.get(f["key"]) == f.get("eq", True)
+
+    # Steal from the room it stands in (not its own lair).
+    if here and here != d.get("deposit_room"):
+        chance = d.get("steal_from_room_chance", 0)
+        for thing in objects.contents(here, kind="thing"):
+            if matches(thing) and rng.random() < float(chance or 0):
+                objects.move(thing.id, toon.id)
+                _narrate_room(world_id, here, d.get("steal_room_text"))
+                break
+    # Pick a co-located player's pocket.
+    if here:
+        chance = d.get("steal_from_player_chance", 0)
+        for player in _players_in(here):
+            stolen = False
+            for thing in objects.contents(player.id, kind="thing"):
+                if matches(thing) and rng.random() < float(chance or 0):
+                    objects.move(thing.id, toon.id)
+                    _narrate_room(world_id, here, d.get("steal_text"),
+                                  recipient=player.id)
+                    stolen = True
+                    break
+            if stolen:
+                break
+    # Empty its pockets in the lair.
+    if here and here == d.get("deposit_room"):
+        for thing in objects.contents(toon.id, kind="thing"):
+            if matches(thing):
+                objects.move(thing.id, here)
+    # Roam.
+    if rooms_set and rng.random() < float(d.get("move_chance", 0) or 0):
+        dest = rooms_set[rng.randrange(len(rooms_set))]
+        if dest != here and objects.get(dest) is not None:
+            if _players_in(here):
+                _narrate_room(world_id, here, d.get("leave_text"))
+            objects.move(toon.id, dest)
+            if _players_in(dest):
+                _narrate_room(world_id, dest, d.get("arrive_text"))
+
+
+def _run_conveyor(world_id: str, name: str, d: dict) -> None:
+    """The current (SPEC criterion 7): carries an authored vehicle along an
+    authored path with per-cell delays; riders (toons aboard it) ride along.
+    State (per-cell progress) lives on the daemon's worldstate entry."""
+    vehicle = objects.get(d.get("vehicle", ""))
+    if vehicle is None or vehicle.kind != "thing":
+        return
+    path = [r for r in d.get("path", []) if isinstance(r, str)]
+    delays = d.get("delays", [])
+    here = vehicle.location_id
+    if here not in path:
+        return  # ashore: the current has no grip
+    idx = path.index(here)
+    if idx >= len(path) - 1:
+        return  # the last cell: drift ends (land, or stay)
+    delay = delays[idx] if idx < len(delays) and isinstance(delays[idx], int) else 1
+    key = worldstate.DAEMON_PREFIX + name
+    state = worldstate.get(world_id, key)
+    if not isinstance(state, dict):
+        state = {"active": True}
+    progress = state.get("progress")
+    progress = (progress if isinstance(progress, int) else 0) + 1
+    if progress < delay:
+        state["progress"] = progress
+        worldstate.set(world_id, key, state)
+        return
+    state["progress"] = 0
+    worldstate.set(world_id, key, state)
+    dest = path[idx + 1]
+    if objects.get(dest) is None:
+        return
+    riders = [t for t in objects.contents(here, kind="toon")
+              if t.properties.get("aboard") == vehicle.id]
+    objects.move(vehicle.id, dest)
+    for rider in riders:
+        objects.move(rider.id, dest)
+        events.append(
+            "toon", rider.id, "move",
+            {"from_room": here, "to_room": dest, "teleport": True},
+            room_id=here,
+        )
+        _narrate_room(world_id, dest, d.get("carry_text"), recipient=rider.id)
+
+
+def _run_glow(world_id: str, name: str, d: dict) -> None:
+    """The warning item (SPEC criterion 8): while a player carries the
+    authored item, it glows bright with a hostile in the room, faint with
+    one a single exit away, and dims when clear. Narrates only on CHANGE,
+    privately to the holder; the level persists as properties.glow_level."""
+    item = objects.get(d.get("item", ""))
+    if item is None:
+        return
+    holder = _holder_toon(item)
+    room_id = _thing_room(item)
+    hostiles = [h for h in d.get("hostiles", []) if isinstance(h, str)]
+    level = 0
+    if holder is not None and room_id:
+        here_ids = {o.id for o in objects.contents(room_id, kind="toon")}
+        if any(h in here_ids for h in hostiles):
+            level = 2
+        else:
+            room = objects.get(room_id)
+            exits = room.properties.get("exits") if room else {}
+            adjacent: set[str] = set()
+            if isinstance(exits, dict):
+                for value in exits.values():
+                    dest = value if isinstance(value, str) else (
+                        value.get("to") if isinstance(value, dict) else None
+                    )
+                    if isinstance(dest, str):
+                        adjacent.update(
+                            o.id for o in objects.contents(dest, kind="toon")
+                        )
+            if any(h in adjacent for h in hostiles):
+                level = 1
+    prior = item.properties.get("glow_level")
+    prior = prior if isinstance(prior, int) else 0
+    if level == prior:
+        return
+    objects.set_property(item.id, "glow_level", level)
+    if holder is None:
+        return
+    texts = {2: d.get("bright_text"), 1: d.get("faint_text"),
+             0: d.get("dim_text")}
+    _narrate_room(world_id, room_id, texts.get(level), recipient=holder.id)
 
 
 # ---- darkness -------------------------------------------------------------------

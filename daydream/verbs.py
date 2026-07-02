@@ -178,6 +178,24 @@ VERBS: dict[str, VerbSpec] = {
         on_bar=True, free_text=True,
         needs_text=True, text_prompt="What do you see growing there?",
     ),
+    "attack": VerbSpec(
+        name="attack", ui_hint="Attack",
+        description="Attack someone with a weapon you carry. "
+                    "Target: the foe, then the weapon.",
+        needs_dobj=True, needs_iobj=True,
+        valid_dobj_kinds=frozenset({"toon"}), valid_iobj_kinds=frozenset({"thing"}),
+        # destroy_object / kill_actor are rule-only in general; combat is the
+        # explicit opt-in (the villain's fall, the villain's counterblow).
+        allowed_effects=frozenset({"narrate", "set_property", "destroy_object",
+                                   "kill_actor"}),
+        preps=("with",),
+        aliases=("kill", "hit", "strike", "fight", "stab", "slay"),
+    ),
+    "diagnose": VerbSpec(
+        name="diagnose", ui_hint="Diagnose",
+        description="Take stock of yourself. No target.",
+        allowed_effects=frozenset({"narrate"}),
+    ),
     "board": VerbSpec(
         name="board", ui_hint="Board",
         description="Climb into a vehicle (a boat, a basket). Target: the vehicle.",
@@ -1103,6 +1121,30 @@ async def _handle_go(actor, room_id, dobj, iobj, args, spec) -> None:
     rules.dispatch(actor, "enter", None, None, room_id=target_id)
 
 
+async def _handle_attack(actor, room_id, dobj, iobj, args, spec) -> None:
+    """Seeded outcome-faithful combat: thin delegate to daydream.combat,
+    which reads the villain's authored `properties.combat` block."""
+    from daydream import combat
+
+    await combat.execute_attack(actor, room_id, dobj, iobj, args, spec)
+
+
+async def _handle_diagnose(actor, room_id, dobj, iobj, args, spec) -> None:
+    """Self-assessment (actor-private): fidelity relaxation R2 surfaces the
+    world-shared deaths counter here in place of permadeath."""
+    from daydream import worldstate
+
+    deaths = worldstate.counter(actor.world_id, "deaths")
+    if deaths == 0:
+        line = "You are in perfect health."
+    elif deaths == 1:
+        line = "You are in perfect health, all things considered. You have died once."
+    else:
+        line = (f"You are in perfect health, all things considered. "
+                f"You have died {deaths} times.")
+    _dispatch(actor, room_id, [{"kind": "narrate", "text": line, "to": "@actor"}], spec)
+
+
 async def _handle_board(actor, room_id, dobj, iobj, args, spec) -> None:
     """Board a vehicle: sets the actor's `aboard` property (NOT containment —
     the actor's location stays the room, so every location read in the
@@ -1175,6 +1217,8 @@ _ENGINE_HANDLERS = {
     "put": _handle_put,
     "read": _handle_read,
     "plant": _handle_plant,
+    "attack": _handle_attack,
+    "diagnose": _handle_diagnose,
     "board": _handle_board,
     "disembark": _handle_disembark,
     "say": _handle_say,

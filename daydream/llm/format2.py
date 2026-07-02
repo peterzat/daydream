@@ -48,7 +48,7 @@ logger = logging.getLogger(__name__)
 MAX_ERRORS_SHOWN = 12
 
 _EXIT_VALUE_KEYS = frozenset({"to", "if", "blocked_text", "on_traverse", "secret", "text"})
-_DAEMON_KINDS = frozenset({"script", "wanderer", "conveyor"})
+_DAEMON_KINDS = frozenset({"script", "wanderer", "conveyor", "glow"})
 
 
 class Format2ValidationError(Exception):
@@ -201,6 +201,31 @@ def validate_envelope2(env: dict) -> list[str]:
             errors.extend(rules.validate_effect_list(
                 d.get("do"), f"{where}.do", require_nonempty=True, **known,
             ))
+        elif kind == "wanderer":
+            if not isinstance(d.get("toon"), str) or d["toon"] not in all_ids:
+                errors.append(f"{where}.toon must name a declared toon id")
+            for rid in d.get("rooms", []):
+                if rid not in all_ids:
+                    errors.append(f"{where}.rooms: unknown room {rid!r}")
+            dep = d.get("deposit_room")
+            if dep is not None and dep not in all_ids:
+                errors.append(f"{where}.deposit_room: unknown room {dep!r}")
+        elif kind == "conveyor":
+            if not isinstance(d.get("vehicle"), str) or d["vehicle"] not in all_ids:
+                errors.append(f"{where}.vehicle must name a declared thing id")
+            path = d.get("path")
+            if not isinstance(path, list) or len(path) < 2:
+                errors.append(f"{where}.path must list at least two rooms")
+            else:
+                for rid in path:
+                    if rid not in all_ids:
+                        errors.append(f"{where}.path: unknown room {rid!r}")
+        elif kind == "glow":
+            if not isinstance(d.get("item"), str) or d["item"] not in all_ids:
+                errors.append(f"{where}.item must name a declared thing id")
+            for hid in d.get("hostiles", []):
+                if hid not in all_ids:
+                    errors.append(f"{where}.hostiles: unknown toon {hid!r}")
 
     # Scoring.
     scoring = env.get("scoring")
