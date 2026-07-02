@@ -1,29 +1,22 @@
 ## Security Review — 2026-07-02 (scope: paths)
 
-**Summary:** Reviewed the five playtest-fix commits after the Dreamseeds turn
-(`8b4e865..56a633d`): the third-person NPC dialogue voice + direct memory
-binding (`data.py:_dialogue_system`, `verbs._handle_talk` passing `npc`), the
-engine-announced open-reveal line, the phrase-hinted growth direction pick,
-lowercased composed object names, the new restricted `rename_object` effect
-(husk rename), the `object_renamed` WS refresh kind, natural-article refusal
-lines, and the SPA stale-art veil + verbatim-narrate glow de-dup. Every
-security-relevant dependency outside the scoped paths (`llm/safety.py`,
-`api/auth.py`, `api/csrf.py`, `api/access.py`, `parser.py`, `api/slots.py`,
-`pyproject.toml`) is byte-identical to the last reviewed commit `02788f7`, so
-the previously verified wrapping/banlist/auth posture still holds underneath
-this diff. The new mutation surface is correctly gated: `rename_object` joins
-`RESTRICTED_KINDS` (excluded from `DEFAULT_KINDS`, declared only by `plant`,
-regression-tested in `tests/test_effects.py` and `tests/test_verbs.py`), its
-only producer is the engine-constructed husk rename in `growth._commit_growth`
-with a fixed name (never LLM- or player-supplied), and `objects.rename` is
-parameterized SQL. The dialogue system prompt now interpolates the NPC's
-display name; traced and cleared below. Client-side, the new code paths add no
-DOM sink: the narrate de-dup compares `dataset.text` and toggles classes, the
-bg veil sets `src`/classes on server-controlled URLs, and `object_renamed`
-frames fall into `renderEvent`'s non-rendering branch (no ids in player-visible
-text). No secrets in the scoped files or in any commit of the range
-(per-commit added-line scan); no external assets in `style.css` (self-hosted
-font + inline data: URIs); no PII. Net: **0 BLOCK / 0 WARN / 0 NOTE.**
+**Summary:** Path-scoped audit of `tests/test_growth.py` (596 lines, the
+Dreamseeds per-rule unit suite) at commit `60001de`. The file is pytest-only
+code with no runtime surface: the fixture isolates all state to a per-test
+tmp DB (`db.init_live(path=tmp_path / "test.db")` with `close_db` +
+`reset_subscribers` teardown; `monkeypatch.setenv` auto-reverts), the single
+raw SQL statement (`_grown_rooms`, lines 94-98) is a static string with no
+interpolation, the LLM is `AsyncMock`ed so no key and no network is touched
+(consistent with the no-API-key policy), and the full git history of the file
+(4 commits, per-commit patch scan) contains no secret-like strings. No PII;
+all names are fictional world entities. Substantively the suite is itself the
+regression guard for the growth pipeline's security posture: it pins
+no-ids-or-directions-in-prompt (line 202), role-separator wrapping of the
+player phrase (line 212), phrase cap and input banlist, output schema
+reject-not-truncate windows, output banlist, anti-copy, the refusal hatch,
+cap gates both pre-LLM and at commit, mid-await race re-checks, and the
+universal seed-preserved / nothing-mutated postcondition
+(`_assert_nothing_grew`). Net: **0 BLOCK / 0 WARN / 0 NOTE.**
 
 ### Findings
 
@@ -31,37 +24,22 @@ No security issues identified in the reviewed scope.
 
 Traced and cleared this run (not findings):
 
-- **NPC-name interpolation into the dialogue system prompt is not a new
-  injection surface.** `_dialogue_system(npc_obj.name, ...)` receives either
-  the talk dobj (reachable only when the toon has a bound dialogue skill) or
-  the legacy `t-<skill>` NPC; both are operator-authored in shipped worlds.
-  Player-created toons (`t-slot{N}-{uuid8}` ids, no `dialogue` property) derive
-  a skill name that matches nothing, so talk hits the no-dialogue stub with
-  zero LLM calls. The only route for a player-chosen name to reach the prompt
-  is the already-accepted LLM `set_property` chain (dialogue LLM writes a
-  `dialogue` key onto a player toon), and even then the attacker gains nothing
-  beyond what their own `args` already steer: output still passes refusal
-  parse, output banlist, and talk's effect allowlist.
-- **The open-reveal line ("Inside, you find: ...") narrates `contains` entry
-  names.** These are operator-authored (or written via the accepted
-  LLM-`set_property` risk) and render client-side through the escape-first
-  `linkifyEntities`. No reachable XSS.
-- **`growth._pick_direction` is a deterministic keyword scan** of a phrase
-  already length-capped (120) and input-banlist-checked; it feeds no prompt
-  and picks only from free engine directions. The rename effect in the same
-  commit block uses the fixed name "spent dreamseed".
-- **New `logger.debug` prompt/response lines in `data.py` are dormant** at the
-  server's default (INFO) logging config; even if enabled they write player
-  chat only to user-scoped runtime logs on this single-operator box, the same
-  class as existing INFO logs.
-- **Dependency manifests are out of this path scope**; `pyproject.toml` is
-  unchanged in the reviewed range (verified).
+- **The test-local `PLANT_ALLOWED` mirror (lines 23-27) cannot mask an
+  allowlist regression.** It is currently byte-identical to the production
+  `verbs.VERBS["plant"].allowed_effects` (`daydream/verbs.py:132-134`), and
+  the load-bearing contract (restricted kinds `spawn_room`/`link_exit`/
+  `rename_object` reachable via `plant` only, intersecting no other verb's
+  allowlist) is independently pinned against the real `verbs.VERBS` in
+  `tests/test_verbs.py:73-76`. A drifted mirror would weaken only this
+  suite's isolation fidelity, not the runtime gate.
+- **Tests weaken no production control.** `DAYDREAM_GROWTH_MAX_ROOMS`
+  overrides are per-test monkeypatch scope; world mutations land on the
+  throwaway tmp DB; nothing touches `~/data/daydream/` or a live server.
 
 ### Accepted Risks
 
-Durable register carried forward; not re-flagged as findings. Backend items
-whose controls live outside the scoped files were not re-verified this pass
-except where this diff touches them (noted above).
+Durable register carried forward; not re-flagged as findings. Controls live
+outside this scope and were not re-verified this pass.
 
 - **LLM-emitted effects take an unscoped, LLM-chosen target id.** Applies to
   the `talk` dialogue path (`set_property`/`move_object`/`spawn_object` trust
@@ -96,11 +74,10 @@ except where this diff touches them (noted above).
   scope; XSS sinks are escaped).
 
 ---
-*Prior review (2026-07-02, paths, commit `02788f7`): the Dreamseeds turn —
-traced the new player-phrase → local-LLM → persistent-world path end to end
-(length cap, banlists, role-separator wrapping, strict schema validation,
-engine-constructed effects with engine-picked ids/slug/direction), verified the
-`spawn_room`/`link_exit` opt-in gating and the escape-first rendering of grown
-text, and confirmed no secrets. 0 BLOCK / 0 WARN / 0 NOTE.*
+*Prior review (2026-07-02, paths, commit `56a633d`): the five playtest-fix
+commits (third-person dialogue voice, open-reveal line, phrase-hinted
+direction, restricted `rename_object` husk rename, SPA veil/glow); verified
+the new mutation surface stayed gated and all auth/banlist dependencies
+byte-identical to the previously reviewed commit; 0 BLOCK / 0 WARN / 0 NOTE.*
 
-<!-- SECURITY_META: {"date":"2026-07-02","commit":"56a633d5fb4e5b01e916bae9d176989155a705d2","scope":"paths","block":0,"warn":0,"note":0,"scanned_files":["daydream/api/ws.py","daydream/growth.py","daydream/objects.py","daydream/skills/data.py","daydream/skills/effects.py","daydream/verbs.py","tests/test_dialogue_voice.py","tests/test_effects.py","tests/test_frontend.py","tests/test_growth.py","tests/test_quest_playthrough.py","tests/test_verbs.py","tests/test_ws_grow.py","web/assets/main.js","web/assets/style.css"]} -->
+<!-- SECURITY_META: {"date":"2026-07-02","commit":"60001de72f8092c555c92d7d3eb2eee6949af335","scope":"paths","scanned_files":["tests/test_growth.py"],"block":0,"warn":0,"note":0} -->

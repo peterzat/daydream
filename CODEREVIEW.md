@@ -1,46 +1,37 @@
-## Review — 2026-07-02 (commit: f406c3c)
+## Review — 2026-07-02 (commit: 60001de)
 
-**Summary:** Refresh review of the playtest-fix round
-(`8b4e865..f406c3c`; 7 commits from the operator's first live playthrough):
-third-person NPC dialogue voice + direct memory binding (the dlg-* zero-rows
-fix), the engine open-reveal line, phrase-hinted growth direction + lowercase
-composed names + the husk rename (`rename_object`, restricted), the SPA
-stale-art veil + narrate glow de-dup, natural articles in refusal lines, and
-FIRST-FABLE.md Part 2. Focus set: 17 files, all read at full depth. Tests:
-528 short / 807 medium green after the fix loop. The third-person voice fix
-was additionally verified LIVE against real vLLM (Mott: "Mott looks up from
-the broom... 'Good evening...'"; no player-body narration). Chained
-`/security` over the 15 changed code files: 0/0/0.
+**Summary:** Refresh review for the single-branch consolidation push: `main`
+fast-forwarded to `60001de`, which is byte-identical to
+`origin/playtest-fixes-and-versioning` (already on the remote), so this push
+publishes no new content, it only moves the `main` ref. The 81-commit /
+94-file diff vs `origin/main` is exactly the content reviewed across the
+recorded chain (Reading Room UI at b971c08, playtest fixes + README at
+8c755b0, Dreamseeds at e69bdcf, playtest-fix round at d8069f1). Focus set
+since the last recorded review (`reviewed_up_to` f406c3c): two commits,
+d8069f1 (review-record files, excluded from scope) and 60001de
+(FIRST-FABLE.md Part 3, docs-only; light checks: link targets exist
+(docs/history/GOAL.md, README.md), no secrets in prose, factually consistent
+with the git history it describes). Tests re-run at this HEAD: 528 short /
+807 medium green (matches the prior baseline). Chained `/security` over the
+one code file changed since the last scan (tests/test_growth.py): 0/0/0,
+SECURITY_META now at 60001de.
 
 **External reviewers:** None configured.
 
 ### Findings
 
-[WARN] tests/test_growth.py:334 — the direction-hint suite misnamed its
-order-contract test and left the up-hint branch untested. **FIXED.**
-  Evidence: `test_phrase_hint_picks_up_and_compass` planted "a balcony under
-  the stars" and asserted the exit opens DOWN — it pins the hint-declaration
-  order (down's "under" beats up's "stars"), not an up pick; no test
-  exercised `_DIRECTION_HINTS`' up branch, though it is live behavior.
-
-[NOTE] web/assets/main.js:setRoomBackground — the bg-loading veil has no
-`onerror` unveil: if a room's art URL fails to load (404/evicted cache), the
-plate stays transparent instead of showing anything. The pre-existing
-behavior in that path (broken-image glyph / stale art) was also degraded;
-acceptable for now.
+[NOTE] web/assets/main.js:setRoomBackground — carried forward (still
+present): the bg-loading veil has no `onerror` unveil; if a room's art URL
+fails to load (404/evicted cache), the plate stays transparent instead of
+showing anything.
 
 ### Fixes Applied
 
-- [WARN] tests/test_growth.py — renamed the order-contract test to
-  `test_phrase_hint_order_down_wins_over_up` (docstring states the
-  declaration-order contract) and added `test_phrase_hint_picks_up`
-  ("a balcony in the sky" → up exit, "down" reverse, "above" in the payoff).
-  Re-review clean; 528 short / 807 medium green (+1 is the new test).
+None.
 
 ### Accepted Risks
 
-Carried forward from the prior entry (none aggravated; `rename_object` is
-restricted like the world-shaping kinds and engine-produced only):
+Carried forward from the prior entry (none aggravated):
 
 - **LLM-emitted effects take an unscoped, LLM-chosen target id.** `set_property`
   / `move_object` / `spawn_object` trust the effect's target id; `talk` + the
@@ -63,8 +54,10 @@ detail-inset de-dup keys on object id first; keepsake captions are client-side
 flourish. None aggravated this turn.
 
 ---
-*Prior review (2026-07-02, commit 8b4e865): full-depth refresh of the
-Dreamseeds turn (35 files); 0 BLOCK / 1 WARN (malformed-growth gate, fixed in
-one cycle) / 1 NOTE; security 0/0/0-new.*
+*Prior review (2026-07-02, commit f406c3c): refresh of the playtest-fix round
+(7 commits, 17-file focus set): third-person NPC voice + memory binding,
+engine open-reveal line, phrase-hinted growth direction, SPA veil/glow
+polish; 0 BLOCK / 1 WARN (misnamed direction-hint test + untested up-hint
+branch, fixed in one cycle) / 1 NOTE; security over 15 changed files 0/0/0.*
 
-<!-- REVIEW_META: {"date":"2026-07-02","commit":"f406c3c","reviewed_up_to":"f406c3c0f36d77bc68e00b8b2ab1419609493674","base":"origin/playtest-fixes-and-versioning","tier":"refresh","block":0,"warn":1,"note":1} -->
+<!-- REVIEW_META: {"date":"2026-07-02","commit":"60001de","reviewed_up_to":"60001de72f8092c555c92d7d3eb2eee6949af335","base":"origin/main","tier":"refresh","block":0,"warn":0,"note":1} -->
