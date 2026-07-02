@@ -305,6 +305,22 @@ def test_main_js_two_step_staging_for_two_object_verbs():
     assert "valid_iobj_kinds).includes" in r.text or "validIobjKinds.includes" in r.text
 
 
+def test_main_js_plant_prompts_for_vision_and_sends_command():
+    """SPEC 2026-07-02 criterion 5: staging Plant and clicking the seed prompts
+    for the vision (mirroring Talk's prompt) and sends one structured command
+    frame with the vision as args; the slow LLM-backed grow shows the calm
+    pending beat. No plant-specific parser or LLM code client-side."""
+    with TestClient(app) as client:
+        _login(client)
+        r = client.get("/assets/main.js")
+    assert 'verb === "plant"' in r.text
+    assert "where does the new way lead?" in r.text
+    assert 'sendCommand("plant", objectId, vision)' in r.text
+    # The vision prompt path shows the pending beat like talk does.
+    plant_branch = r.text.split('verb === "plant"')[1].split("} else {")[0]
+    assert "showPending()" in plant_branch
+
+
 def test_main_js_no_generic_go_control_only_data_affordances():
     """No generic "go" button: the per-direction exit buttons are the only nav
     affordance, and the affordance bar renders DATA skills only (so core verbs,

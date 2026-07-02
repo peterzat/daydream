@@ -389,6 +389,14 @@ function onObjectClick(objectId, objectVerbs, objectKind) {
     const msg = (window.prompt("say what to them?") || "").trim();
     sendCommand("talk", objectId, msg);
     showPending();
+  } else if (verb === "plant") {
+    // The dreamseed's vision prompt (SPEC 2026-07-02), mirroring Talk's
+    // window.prompt. An empty answer still sends: the server replies with
+    // the seed's authored question (the typed two-turn path). The grow is
+    // LLM-backed and slow, so show the calm pending beat.
+    const vision = (window.prompt("where does the new way lead?") || "").trim();
+    sendCommand("plant", objectId, vision);
+    showPending();
   } else {
     // A targeted examine/read renders its narrate as a storybook detail inset
     // (the ledger reveal); remember the target so renderEvent can style it.
