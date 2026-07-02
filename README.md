@@ -187,9 +187,15 @@ plain-text conventions) so that model-generation improvements express themselves
 through it rather than being absorbed by scaffolding; the companion essay is
 [The Bitter Lesson of Agentic Coding](https://agent-hypervisor.ai/posts/bitter-lesson-of-agentic-coding/).
 
-An earlier experiment drove whole increments unattended with Claude Code's `/goal` (two
-runs, pre-registered predictions, candid retrospective). `/goal` is not in active use; the
-full record lives in [`docs/history/GOAL.md`](docs/history/GOAL.md).
+Two experiment records live alongside the code:
+
+- [`FIRST-FABLE.md`](FIRST-FABLE.md) — the project's first Claude Fable 5 session
+  (2026-07-02), run as a pre-registered experiment on whether a model-generation step
+  function expresses itself through the unchanged thin harness: predictions written down
+  at the session break, results appended after the implementation turn.
+- [`docs/history/GOAL.md`](docs/history/GOAL.md) — an earlier experiment driving whole
+  increments unattended with Claude Code's `/goal` (two runs, pre-registered predictions,
+  candid retrospective). `/goal` is not in active use.
 
 ## Release notes
 
