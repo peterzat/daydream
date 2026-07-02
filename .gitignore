@@ -41,5 +41,5 @@ external/
 # before ratifying a new golden. See TESTING.md "The drift loop".
 tests/baselines/*.latest.json
 
-# Original design prompt — local-only working copy.
-ORIGINAL-PROMPT.md
+# Original design prompt — local-only working copy (lives under docs/history/).
+docs/history/ORIGINAL-PROMPT.md

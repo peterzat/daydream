@@ -55,7 +55,7 @@ Right now, before reading further, run:
 bin/game test short
 ```
 
-Expected: under 10 seconds, exits 0, ~407 tests pass (~3 s wall-clock at HEAD bfb202c). The marker expression, not the exact count, is the contract — the count grows with features. If not, the venv is broken or the repo is in a weird state — fix that first. The rest of this document assumes you have a green `short` tier as a starting point.
+Expected: under 10 seconds, exits 0, several hundred tests pass (~454 in ~4 s at HEAD 8c755b0). The marker expression, not the exact count, is the contract — the count grows with features. If not, the venv is broken or the repo is in a weird state — fix that first. The rest of this document assumes you have a green `short` tier as a starting point.
 
 ## The single entry point
 

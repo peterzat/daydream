@@ -112,8 +112,8 @@ both obey this tone bible and the Banned moods above:
 - **Generative objects (spawn).** A dialogue's `spawn_object` effect names a
   real thing (Rook's "a sheaf of papers"). Author such names + their seeds as
   cozy, specific-sensory nouns ("loose pages, soft at the edges, covered in
-  small careful drawings"), never grand or systemy. The reset world's dialogue
-  prompts (`worlds/bunny.json`) carry this voice; copy their register.
+  small careful drawings"), never grand or systemy. The canonical world's dialogue
+  prompts (`worlds/clockmakers-loft.json`) carry this voice; copy their register.
 
 ## Prompt suffix
 

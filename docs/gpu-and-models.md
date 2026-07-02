@@ -104,7 +104,7 @@ The smoke harness's strict-JSON probe was specifically chosen because it surface
 ### What we picked: SDXL base 1.0 + `ostris/watercolor_style_lora_sdxl`, served by ComfyUI
 
 - **SDXL base** instead of SDXL Turbo. Turbo's distillation actively *resists* soft watercolor wash because its 1-4 step sampler can't gently accumulate value. Documented at length in `~/.claude/plans/let-s-design-a-fairly-giggly-narwhal.md` (Risk #1) and the original WHIMSY pivot.
-- **`ostris/watercolor_style_lora_sdxl`** (`watercolor_v1_sdxl.safetensors`, 12 MB). Picked from a small set of HF candidates after the user picked Spiritfarer / A Short Hike as the aesthetic anchor. Produces visibly painterly, not crunchy, output (see `docs/pretty/meadow-at-dusk.png` for the v1 first-output proof).
+- **`ostris/watercolor_style_lora_sdxl`** (`watercolor_v1_sdxl.safetensors`, 12 MB). Picked from a small set of HF candidates after the user picked Spiritfarer / A Short Hike as the aesthetic anchor. Produces visibly painterly, not crunchy, output (see `meadow-at-dusk.png` at the repo root for the v1 first-output proof).
 - **22 steps, dpmpp_2m + karras, cfg 5.5** in `daydream/images/workflows/painterly_room.json`. Standard SDXL settings; nothing exotic.
 - **1024×384** output to match the SPA's room-background slot. Wider than tall; framed as a landscape vignette behind the chat log.
 - **ComfyUI** as the inference server (over A1111, raw `diffusers`, etc.). Node-based JSON workflows let the same file drive both the room-bg path (`images/client.py`) and the test harness (`images/cli.py`). Programmatic, reproducible, swappable.
@@ -143,16 +143,14 @@ Swapping is config, not code, by design. The places it touches:
 ### What we have
 
 - **`tools/arbiter-smoke.py`** — runs 5 alternating LLM + image requests through the real call paths. Verifies arbiter serialization (no OOM), latency budget, AND output format (the LLM probe demands strict JSON; this is what caught the fp8-KV regression).
-- **`tests/`** — 128 pytest tests covering DB, events, skills, LLM client (mocked), image client (mocked), image cache, WS protocol, frontend SPA assets. All GPU-free; run on every change.
+- **`tests/`** — the tiered pytest suite (`bin/game test short|medium|long`, see `TESTING.md`) covering DB, events, objects + verbs + parser, skills, LLM client (mocked), image client (mocked), image cache, WS protocol, frontend SPA assets. The GPU-free tiers run on every change.
 - **WHIMSY.md** — the durable tone bible. Tested via `tests/test_whimsy.py` for presence of the named sections.
+- **Voice / narration quality benchmark.** `bin/game voice-samples` renders a fixed prompt corpus against the current model into dated markdown under `docs/pretty/voice-samples/`, and `tests/test_voice_baseline.py` (tier_short) asserts pairwise-distinct narrate openers across every tracked baseline — the tic-regression gate. `bin/game drift-samples` is the drift-side counterpart.
+- **Image-gen aesthetic benchmark.** `tests/drift/aesthetics/*.json` anchor prompts render under `tier_long` and compare dHash perceptual baselines committed at `tests/baselines/image_*.golden.json`; `bin/game review` batches anchor renders + NPC voice samples into one offline contact sheet, graded by the Claude Code agent against `WHIMSY.md` (no API key, per the generation policy).
 
 ### What we don't have
 
-- **No LLM voice / narration quality benchmark.** The smoke catches "model returned garbage." It does not catch "model returned valid JSON but the narration tone shifted toward generic AI-speak after a version bump." Today the only check on this is human eyes-on of `bin/game image-test` and the SPA when a real player connects.
-- **No image-gen aesthetic benchmark.** Same shape: we look at the output and judge. There's no fixture set of anchor prompts that gets regenerated on a model/LoRA bump for side-by-side.
-- **No drift alarm.** If we bump vLLM or swap LoRA and the smoke passes, we won't know if the *quality* changed unless someone happens to look.
-
-The `voice-and-aesthetic-audit-trail` BACKLOG entry is the proposed cheap fix — a `tools/voice-bench.py` (and image counterpart) that renders a small fixture of anchor prompts to dated directories under `docs/pretty/voice-samples/<date>.md` and `docs/pretty/aesthetic-samples/<date>/`. Not a pass/fail check; just a chronology you can scroll back through to see when the vibe shifted.
+- **No automatic drift alarm.** A ratified-golden divergence fails `bin/game test long` by design — the baseline-update loop IS the drift alarm while the project is single-operator, since every golden change passes through the operator's review. Auto-opening a review session when a baseline changes on a branch is BACKLOG `drift-alarms`, deferred until a second contributor ratifies baselines independently.
 
 ## Things we have not tried yet
 

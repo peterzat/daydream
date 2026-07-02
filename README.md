@@ -58,14 +58,14 @@ What you carry opens as a keepsakes spread, each thing a pressed specimen with r
 
 ## Status
 
-Latest stable cut: **v0.3.0** (objects + verbs; the live world reset onto the new schema is the one pending operator step). Runs on a single Linux dev box (RTX 4000 SFF Ada, 20 GB VRAM); designed to port to Cloudflare and containers later. Test gates: 396 fast tests (`bin/game test short`, ~3 s) and 622 integration tests (`bin/game test medium`, ~9 s); both 100% green. Real-GPU drift + parser-grounding probes run on-demand under `bin/game test long`.
+Latest stable cut: **v0.4.0** (a playable quest loop in The Clockmaker's Loft, presented in the Reading Room storybook UI). Runs on a single Linux dev box (RTX 4000 SFF Ada, 20 GB VRAM); designed to port to Cloudflare and containers later. Test gates: the fast and integration tiers (see [Tests](#tests)) are both 100% green; real-GPU drift + parser-grounding probes run on-demand under `bin/game test long`.
 
 What works today:
 
-- MOO-style object/verb core: toons, NPCs, things, and rooms are one `objects` table (containment by location, verbs by prototype). A closed verb set (Examine/Take/Drop/Talk/Say/Go) runs through one command bus; UI clicks send structured commands (no LLM), and free text is routed by a grounded local-LLM parser so natural phrasings ("say hi to rook", "pick up the lamp") resolve to the right verb + in-scope object. Things render as distinct, clickable chips with a verb bar; objects mentioned in narration are clickable. Verbs emit only the world-mutation effects they declare (`narrate`/`set_property`/`spawn_object`/`move_object`), and a dialogue can spawn a real, clickable object (Rook's "sheaf of papers"), described lazily on first examine and cached after. The local LLM is a hard runtime dependency for natural language: with vLLM down, free text degrades to "the dream is foggy" while clicks/exits/cached verbs still work.
-- Multi-room world (5 rooms, bidirectional exits) with two hand-authored NPCs (Rook the forge-keeper at `r-forge`; Iris the attic archivist at `r-attic`) you talk to via the `talk` verb (their dialogue runs the safety + LLM + memory pipeline).
+- MOO-style object/verb core: toons, NPCs, things, and rooms are one `objects` table (containment by location, verbs by prototype). A closed verb set (Examine/Take/Drop/Talk/Say/Go, plus two-object Give/Use and state-gated Open/Read) runs through one command bus; UI clicks send structured commands (no LLM), and free text is routed by a grounded local-LLM parser so natural phrasings ("say hi to rook", "pick up the lamp") resolve to the right verb + in-scope object. Things render as distinct, clickable chips with a verb bar; objects mentioned in narration are clickable. Verbs emit only the world-mutation effects they declare (`narrate`/`set_property`/`spawn_object`/`move_object`), and a dialogue can spawn a real, clickable object (Rook's "sheaf of papers"), described lazily on first examine and cached after. The local LLM is a hard runtime dependency for natural language: with vLLM down, free text degrades to "the dream is foggy" while clicks/exits/cached verbs still work.
+- Multi-room world (5 rooms, bidirectional exits) with three hand-authored NPCs. The canonical world is **The Clockmaker's Loft** (`worlds/clockmakers-loft.json`): Tace the clockmaker, Bell the lamplighter, and Mott the sweeper, each reached via the `talk` verb (dialogue runs the safety + LLM + memory pipeline), plus one complete quest — read the repair ledger, find the escapement gear by the old well, give it to Tace for the case-key, use the key on the clock case, and open it so the great clock ticks again, for everyone.
 - NPC drift loop emits per-NPC narrate ticks so the world feels inhabited (every 5 min idle, every ~4 min when a human is connected). Drift composes each tick via the LLM from the NPC's recent memories + mood, falling back to a mood-bucketed canned pool when vLLM is down or the response trips the WHIMSY banlist. Hand-authored NPCs draw their canned voice from a per-NPC pool; bootstrapped NPCs (and any NPC without one) fall back to a shared generic, name-templated pool so they drift on the offline path too. Witnessed, not hidden: drift is no longer suppressed in a room a human occupies — a co-located NPC's ambient body-language beat is shown to the present player as a quiet "the world is alive around you" moment (the room-filtered broadcast delivers it), on the minutes-scale present-player cadence; each tick has a small chance to nudge the NPC's mood to a different bucket so the world drifts over hours of play.
-- NPC dialogue memory: each Rook / Iris exchange is captured to a per-world `memories` table with a 384-dim CPU embedding (BGE-small via `sentence-transformers`), and the next turn pulls top-K by `cosine_similarity * exp(-age/24h)` and weaves them into the prompt as context. Fail-closed (capture/retrieve return `None` / `[]` if the embedder isn't installed) so the dialogue path stays warm even before `bin/memory-bootstrap` runs. CPU-only by construction; no GPU arbiter contention.
+- NPC dialogue memory: each NPC exchange is captured to a per-world `memories` table with a 384-dim CPU embedding (BGE-small via `sentence-transformers`), and the next turn pulls top-K by `cosine_similarity * exp(-age/24h)` and weaves them into the prompt as context. Fail-closed (capture/retrieve return `None` / `[]` if the embedder isn't installed) so the dialogue path stays warm even before `bin/memory-bootstrap` runs. CPU-only by construction; no GPU arbiter contention.
 - Watercolor SDXL backgrounds for any room, generated locally via ComfyUI behind the GPU arbiter. vLLM (Qwen 2.5 7B Instruct AWQ) serves narration. Both engines optional; the game runs at all engine combinations.
 - Voice-bench audit-trail harness (`bin/game voice-samples`) captures dated narrate samples for any model swap; four baselines in tree under `docs/pretty/voice-samples/` (pre-fix and post-fix AWQ plus two Mistral-Nemo Q4 failure modes — see Release notes).
 - World admin: `bin/game world list / archive / restore / snapshot / snapshot-restore / swap / load / verify / delete` covers per-world archival, full-bundle ship-to-friend, fast DB-only point-in-time snapshots (and restore-refusing-overwrite), live in-process hot-swap of the running server's world (`swap`, no restart; connected clients re-snapshot), keyless world authoring (`load`), integrity checks, cascade delete. World authoring is keyless per the generation policy: author the world in a Claude Code session, then `bin/game world load <envelope.json>` (no API key). (`bin/game world bootstrap`, which called the Anthropic API, is deprecated.)
@@ -177,28 +177,19 @@ bin/game review         # offline contact sheet: anchors + NPC voices, one glanc
 
 One entry point; four tiers; durations scale with what the tier verifies. Bare `.venv/bin/pytest` still runs every test (backward compat). The drift probes under `tests/drift/` exercise the real LLM + image-gen paths and compare to git-committed baselines under `tests/baselines/*.golden.json` — a divergence fails the test with a diff and the operator ratifies a new baseline with `mv .latest .golden` + commit. The tic-detection probe at `tests/test_voice_baseline.py` parses captured voice-bench markdown and asserts pairwise-distinct body-language openers; it now globs `docs/pretty/voice-samples/*.md` classified by a `baseline-class` marker, so a new tracked baseline auto-extends the regression with no code edit. `bin/game review` rolls the qualitative checks up into one offline contact sheet (anchor renders incl. the forge, a `talk` sample per NPC, the connection-overlay browser checklist) so a review is a single glance, not a live reset; the aesthetic critic is the Claude Code agent, which Reads the renders and grades them against `WHIMSY.md` in-session (no API key), escalating to `qpeek` or an in-game look when a human eye is wanted. The durable philosophy and extension guide live in [`TESTING.md`](TESTING.md); read it before adding a test or bumping a model / LoRA / workflow.
 
-## How this is built (zat.env + `/goal`)
+## How this is built (zat.env)
 
-daydream is built one reviewed increment at a time on the zat.env turn loop: a `SPEC.md`
-acceptance contract is consumed, implemented with paired tests, run through adversarial
-`/codereview` + `/security`, and committed, with a pre-push marker gating unreviewed code.
-Recent turns drive a whole increment unattended with Claude Code's `/goal`, which keeps the
-agent working until a stated completion condition holds. The first such run took the
-`drift-bootstrapped-npcs` spec from 0/7 to a committed, reviewed increment:
+daydream is built one reviewed increment at a time on the [zat.env](https://github.com/peterzat/zat.env)
+turn loop: a `SPEC.md` acceptance contract is consumed, implemented with paired tests, run
+through adversarial `/codereview` + `/security`, and committed, with a pre-push marker
+gating unreviewed code. The harness is deliberately thin (Markdown specs, bash hooks,
+plain-text conventions) so that model-generation improvements express themselves directly
+through it rather than being absorbed by scaffolding; the companion essay is
+[The Bitter Lesson of Agentic Coding](https://agent-hypervisor.ai/posts/bitter-lesson-of-agentic-coding/).
 
-```
-/goal Take the drift-bootstrapped-npcs SPEC (SPEC.md, currently 0/7) to a committed
-increment on the current branch WITHOUT pushing. [...condition prescribed the five
-daydream/drift.py changes, the new tier_short tests, and the README roll-forward...]
-DONE = pasted in this session: `bin/game test short` and `bin/game test medium` both
-exiting 0; the latest CODEREVIEW.md footer showing "block":0,"warn":0; a SECURITY.md
-entry; and `git log --oneline -3` plus `git status` showing the increment committed,
-working tree clean, nothing pushed.
-```
-
-The full verbatim condition, a candid retrospective (what we predicted, where the run fell
-short of really testing `/goal`, and why), and the outcome-framed condition queued for the
-next run all live in [`GOAL.md`](GOAL.md).
+An earlier experiment drove whole increments unattended with Claude Code's `/goal` (two
+runs, pre-registered predictions, candid retrospective). `/goal` is not in active use; the
+full record lives in [`docs/history/GOAL.md`](docs/history/GOAL.md).
 
 ## Release notes
 

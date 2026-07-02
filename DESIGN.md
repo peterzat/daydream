@@ -122,6 +122,9 @@ of room narration takes a **drop cap** in `--amber`.
   `a small errand`. Chips stay clickable.
 - **Ink-tab verb ribbon** (`#verb-bar`): "what you might do" chips; the staged verb
   gets a pip and a one-line hint (`#verb-hint`).
+- **Affordance ribbon** (`#skill-bar`): a quieter, italic second row beneath the verb
+  ribbon for room-anchored data skills (`wind`, `listen`); present only when the room
+  offers them, styled as whispers rather than tabs.
 - **Compass footer** (`#exit-bar`): "ways from here", one route per exit.
 - **Keepsakes backpack** (`#backpack-panel`): a two-page foldout spread of the
   carried inventory as specimen cards plus empty collection slots.

@@ -6,6 +6,12 @@ context for every entry below lives in `~/.claude/plans/let-s-design-a-fairly-gi
 
 ## v1: cozy single-player loop
 
+### drift-pools-for-loft-npcs
+- **One-line description:** `daydream/drift.py`'s hand-authored canned pools (`_DRIFT_POOLS`) and selection weights (`_NPC_DRIFT_WEIGHT`) are still keyed to the retired bunny-world NPCs (`t-rook`/`t-iris`); the live Clockmaker's Loft NPCs (Tace/Bell/Mott) fall through to the shared generic pool on the offline path, so canned drift is voice-neutral in the canonical world. Author per-NPC pools for the loft, or better, let the world envelope carry pools so `world load` installs them for any future world.
+- **Why deferred:** The LLM drift path (the normal case, vLLM up) already composes per-NPC from seed + mood + memories; only the offline fallback is generic. Surfaced during the 2026-07-02 doc/state audit.
+- **Revisit criteria:** vLLM-down play feels voice-flat, or the next world-authoring pass touches drift anyway (envelope-carried pools would close this for every world at once).
+- **Origin:** state audit 2026-07-02 (first Fable session sweep).
+
 ### drift-variety-richer-beats
 - **One-line description:** Reduce NPC drift repetition beyond the v0 mitigation (laconic prompt + a "vary the beat" nudge in `_DRIFT_SYSTEM_PROMPT` + a consecutive-near-duplicate suppressor in `daydream/drift.py:_tick`). Options: per-NPC canned-pool rotation tracking recently-used beats, a "recently noticed" exclusion passed into the drift prompt, or richer hand-authored pools so Qwen 7B isn't leaned on for variety. The 7B reliably fixates on a seed's most salient image (Rook -> "hums softly, moving the bellows") regardless of mood/memory.
 - **Why deferred:** v0's de-dup suppresses the *visible* consecutive repeats (the player won't see them stacked), so this is variety polish, not a correctness fix. Wants the drift-samples golden + a "distinctness over N ticks" metric before tuning.
@@ -68,16 +74,12 @@ Deferred depth from the objects + local-LLMs spec (plan `the-output-of-this-gree
 - **Revisit criteria:** Authored content needs an object that OVERRIDES a verb's default behavior (not just adds a verb), or a prototype that extends another prototype.
 - **Origin:** plan the-output-of-this-greedy-hedgehog (§2); per-object-verbs slice shipped by plan this-plan-will-be-peppy-kay.
 
-### two-object-verbs — done (2026-07-01)
-- **Resolution:** Shipped as the playable-quest-loop turn (SPEC 2026-07-01). `give X to Y` (thing → toon) and `use X on Y` (thing → thing) joined the closed verb set with `needs_iobj` + a new `VerbSpec.valid_iobj_kinds`; `execute_command` gained an iobj gate symmetric to the dobj gate. Plus `open` (state-gated) and `read` (authored text, distinct from examine). Both producers drive them: the parser grounds "give X to Y"/"use X on|with Y" deterministically (`daydream/parser.py:_two_target_fast_path`) and the UI does two-step click staging (`web/assets/main.js`). The Clockmaker's Loft world (`worlds/clockmakers-loft.json`) exercises the full loop, guarded by the deterministic golden playthrough (`tests/test_quest_playthrough.py`). The revisit criterion (a gameplay need for combining/transferring objects) was met by that quest.
-- **Original description (for history):** `give X to Y`, `use X on Y`, and a richer verb set (open/close, put-in, read-vs-examine). The command/parser/effect plumbing already carried an `iobj_id` and an indirect-object arg-spec slot; the handlers and parser grounding were the work.
-- **Origin:** plan the-output-of-this-greedy-hedgehog (decisions locked; give/use → backlog); shipped by plan this-plan-will-be-peppy-kay.
-
 ### user-authored-llm-driven-world-building-verbs
-- **One-line description:** The headline future direction: a player/admin authors a verb whose LLM output BUILDS new rooms and objects (MOO-style). The world-mutation effect API is deliberately shaped for this — `spawn_room`, `link_exit`, `destroy_object` are documented (not built) as the vocabulary such a verb would emit, alongside the existing `spawn_object`/`move_object`/`set_property`.
-- **Why deferred:** Architecture + docs are prepared (the allowlisted effect API + role-separation + refusal/banlist safety generalize to it); the authoring surface + the new effect handlers + the safety story for player-authored world-mutation are the work. Couples to `skills-authoring-and-security` and `player-authored-skills`.
-- **Revisit criteria:** The single-player object/verb loop feels good AND there's appetite to let players shape the world; the effect-allowlist safety model has been exercised on dialogue-driven spawns first.
-- **Origin:** plan the-output-of-this-greedy-hedgehog (the explicit future direction; §5 future-prepared vocabulary).
+- **2026-07-02 narrowing (Dreamseeds spec):** the effect-vocabulary half is being built. The Dreamseeds increment implements `spawn_room` + `link_exit` behind an ENGINE-authored verb (`plant`), gated by a quest-earned seed item whose Opus-authored `growth` boundaries constrain one local-LLM room composition. What remains in this entry is the player/admin-AUTHORED verb surface: a player authoring a verb whose LLM output builds rooms/objects, plus `destroy_object` and the authoring UI + safety story.
+- **One-line description (remaining):** A player/admin authors a verb whose LLM output BUILDS new rooms and objects (MOO-style). `destroy_object` stays documented-not-built.
+- **Why deferred:** The authoring surface + the safety story for player-authored world-mutation are the work. Couples to `skills-authoring-and-security` and `player-authored-skills`.
+- **Revisit criteria:** Dreamseeds ships and feels good in play (the effect vocabulary + boundary model exercised on an authored verb first); appetite to hand authoring to players.
+- **Origin:** plan the-output-of-this-greedy-hedgehog (the explicit future direction; §5 future-prepared vocabulary); narrowed by the Dreamseeds spec 2026-07-02.
 
 ### per-npc-event-log-visibility-filtering
 - **One-line description:** Filter which events an NPC "sees" so dialogue stays consistent (an NPC shouldn't reference an event that happened in another room or that it couldn't have witnessed). A research-suggested consistency guard for the LLM dialogue path.
@@ -118,10 +120,6 @@ Captured from the comprehensive GPU/ML doc pass; full rationale per item lives i
 ## Test architecture follow-ups
 
 Captured from the test-architecture landing (2026-04-23); scaffolding for these is in place, the work itself is deferred until the triggering signal arrives. See `TESTING.md` for the full architecture and philosophy.
-
-### claude-vision-quality-gate — done, reframed to agent-driven (2026-07-01)
-- **Resolution:** The aesthetic critic is the Claude Code agent, not a cloud API. A first cut (`daydream/testing/vision_gate.py` + a `tier_long` litellm probe, 2026-06-30) called Opus vision via litellm behind `DAYDREAM_CLAUDE_VISION_GATE`; it was REMOVED 2026-07-01 because it needed an `ANTHROPIC_API_KEY`, which the generation policy forbids in tooling as much as in runtime. The right design: `bin/game review` renders each anchor and the agent Reads the PNGs and grades them against `WHIMSY.md` in-session (demonstrated on the forge, where the agent caught that the render reads as a basin/hearth). No key, repeatable every turn. Human escalation is `qpeek` (`bin/game test human`) or an in-game look. The CLAUDE.md generation policy now spells this out.
-- **Origin:** test architecture plan (2026-04-23); shipped then reframed 2026-06-30 / 2026-07-01.
 
 ### archive-restore-roundtrip-test
 - **One-line description:** Add a `tier_long` test that archives a world via `bin/game world archive`, deletes it, restores from the archive, then diffs the restored DB + cache against the pre-archive state. Goes deeper than the current `test_admin.py` unit coverage (belt-and-suspenders on the E2E flow).
@@ -203,21 +201,21 @@ Captured from the test-architecture landing (2026-04-23); scaffolding for these 
 - **Revisit criteria:** Operator wants definitive closure on Mistral arch suitability before authoring a different LLM-pipeline change; OR a Mistral 7B creative-writing finetune publishes on HF (which would make the Mistral-vs-Qwen axis question load-bearing).
 - **Origin:** spec 2026-05-07
 
-## Session & presence (captured 2026-06-29 playtest)
+## UI & presentation (captured 2026-07-01 Reading Room turn)
 
+### snapshot-enrichments-for-reading-room
+- **One-line description:** Three small server-side snapshot enrichments the client-only Reading Room turn deliberately skipped: item description/provenance in the snapshot's `_object_card` so keepsake specimen cards read richer than name + generic tag; exit destination TITLES so the compass can say "up — the Clockmaker's Loft" without leaking room ids; a server-derived objective string for the "a small errand" marginalia group.
+- **Why deferred:** The Reading Room spec was explicitly client-only (no server/world change, no WORLD_VERSION bump); each of these is a deliberate server change weighed against that stance.
+- **Revisit criteria:** The next server-touching increment lands (cheap to ride along), or playtest feedback that the compass/keepsakes feel thin.
+- **Origin:** SPEC proposal block 2026-07-01 (Reading Room turn), preserved here when the Dreamseeds spec replaced that block.
 
-### toon-delete-drops-items — done (2026-06-30)
-- **Resolution:** Shipped. `toons.delete_slot` now reparents the toon's carried things to its `current_room_id` (drops them on the ground) before deleting the toon, instead of DELETEing them; the FK is still satisfied because no child references the gone row, and a deleted character's belongings persist in the world to be found. Falls back to removing items only if the toon somehow has no room (no orphan top-level rows). Tests: `tests/test_slots_delete.py::test_delete_drops_carried_items_into_room` (drop-to-room contract) + the updated `test_delete_handles_carried_items_without_fk_error` (FK guarantee with reparent). CLAUDE.md "Toon delete" updated.
-- **Origin:** spec 2026-06-30; closed same day.
+## Closed
 
-### forge-render-drift-anchor — done (2026-06-30)
-- **Resolution:** Shipped and ratified. `tests/drift/aesthetics/forge.json` carries the authored `r-forge` seed verbatim (so the proxy tracks the shipped forge render), the existing `tests/drift/test_image_perceptual.py` framework auto-globs it as a 4th probe, and `tests/baselines/image_forge.golden.json` is committed (ratified after rendering via `bin/game review` and confirming the forge reads as a working forge in the WHIMSY tone). The `tier_long` probe passes; a future forge seed/LoRA/workflow change that shifts the render past tolerance now fails by design.
-- **Origin:** `tester design 2026-06-30`; shipped + ratified same day. NOTE (2026-07-01): the render was later judged NOT to read as a forge (basin/hearth, no legible anvil/bellows), so the seed needs rework and this golden will be re-ratified. The aesthetic-review counterpart (`claude-vision-quality-gate`) is agent-driven, no API key.
+Resolved and rejected entries, compressed to a line each; full narratives live in git history (this file, pre-2026-07-02) and the linked plans.
 
-### present-player-drift-cadence-guard — already covered (rejected 2026-06-30)
-- **Resolution:** Redundant; not built. The premise (only a tier_medium behavior test guards the cadence) was wrong: the magnitude is already pinned in tier_short by `tests/test_drift.py::test_compute_next_interval_busy_default` (`_compute_next_interval(1) == 240.0`), which fails on any revert toward the 30-min busy cadence. The only non-redundant variant would relax that exact pin to a semantic `<= 600` SPEC-floor that also resists editing the pin to accommodate a regression; judged not worth a second test. Kept as a record so a future design pass does not re-propose it.
-- **Origin:** `tester design 2026-06-30`; triaged + closed same day (see commit 68dbcbf).
-
-### voice-baseline-add-model-helper — done (2026-06-30)
-- **Resolution:** Shipped. `tests/test_voice_baseline.py` now derives its parametrization from a glob over `docs/pretty/voice-samples/*.md`, classified by an optional `<!-- baseline-class: ... -->` marker: `tracked` (the default for an unmarked file) must show 5/5 distinct openers, `regression-demo` (the frozen pre-fix before-shot) must retain its tic, `documented-failure` (the two Mistral-Nemo captures, now marked) is excluded. A new tracked baseline auto-extends the set with no code edit; a future failure opts out with one marker line. The `2026-06-30` AWQ capture is now covered where the old hardcoded pair missed it. Discriminator + discovery unit tests added.
-- **Origin:** `tester design 2026-06-30`; shipped same day.
+- **two-object-verbs — done 2026-07-01.** `give`/`use` (+ state-gated `open`, `read`) shipped as the playable-quest-loop turn; exercised by the Clockmaker's Loft quest, guarded by `tests/test_quest_playthrough.py`.
+- **claude-vision-quality-gate — done, reframed 2026-07-01.** The aesthetic critic is the Claude Code agent Reading renders against `WHIMSY.md` in-session; the env-gated litellm vision gate was removed for needing an API key (generation policy). Human escalation: `qpeek` or in-game.
+- **toon-delete-drops-items — done 2026-06-30.** `toons.delete_slot` reparents carried things to the toon's room before deletion; belongings persist in the world.
+- **forge-render-drift-anchor — done 2026-06-30, golden pending re-ratification.** The forge dHash anchor + golden shipped; NOTE (2026-07-01): the render was later judged NOT to read as a forge (see `forge-render-legibility`, still open), so the golden gets re-ratified after that fix.
+- **present-player-drift-cadence-guard — rejected 2026-06-30.** Redundant: the busy-cadence magnitude is already pinned in tier_short (`test_compute_next_interval_busy_default`). Kept so a future design pass does not re-propose it.
+- **voice-baseline-add-model-helper — done 2026-06-30.** `tests/test_voice_baseline.py` derives its parametrization from a glob + `baseline-class` markers; new tracked baselines auto-extend the regression with no code edit.
