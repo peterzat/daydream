@@ -82,6 +82,15 @@ def llm_api_key() -> str:
     return os.environ.get("DAYDREAM_LLM_API_KEY", "unused")
 
 
+def growth_max_rooms() -> int:
+    """Cap on runtime-GROWN rooms per world (dreamseed plants, SPEC
+    2026-07-02). Counts only grown rooms (`rooms.grown_room_count`), never
+    authored ones, so a bigger authored world doesn't eat the growth budget.
+    Checked before the growth LLM call and again at commit. Override via
+    DAYDREAM_GROWTH_MAX_ROOMS."""
+    return int(os.environ.get("DAYDREAM_GROWTH_MAX_ROOMS", "12"))
+
+
 def comfyui_base_url() -> str:
     """ComfyUI HTTP server endpoint (default ComfyUI port). Override with
     DAYDREAM_COMFYUI_BASE_URL when running ComfyUI on a non-default port."""

@@ -504,7 +504,7 @@ def test_ws_snapshot_carries_scene_objects_verb_bar_and_entities():
     assert lantern["verbs"] == ["examine", "take", "drop"]
     # The verb bar offers the interaction verbs (verb-then-object).
     assert [v["name"] for v in snap["verb_bar"]] == [
-        "examine", "take", "drop", "talk", "give", "use", "open", "read",
+        "examine", "take", "drop", "talk", "give", "use", "open", "read", "plant",
     ]
     # Two-object verbs advertise needs_iobj + valid_iobj_kinds so the client can
     # drive step 2 and gate it by kind; single-object verbs report false / [].

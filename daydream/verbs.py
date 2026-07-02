@@ -121,6 +121,17 @@ VERBS: dict[str, VerbSpec] = {
         needs_dobj=True, valid_dobj_kinds=frozenset({"thing"}),
         allowed_effects=frozenset({"narrate"}), on_bar=True,
     ),
+    "plant": VerbSpec(
+        name="plant", ui_hint="Plant",
+        description="Plant a dreamseed you're carrying to grow a new place. "
+                    "Target: the seed. Args: your vision of where it leads.",
+        needs_dobj=True, valid_dobj_kinds=frozenset({"thing"}),
+        # The first (and sole) consumer of the world-shaping effect kinds —
+        # this allowlist is what makes spawn_room/link_exit reachable at all.
+        allowed_effects=frozenset({"spawn_room", "link_exit", "spawn_object",
+                                   "move_object", "set_property", "narrate"}),
+        on_bar=True, free_text=True,
+    ),
     "say": VerbSpec(
         name="say", ui_hint="Say",
         description="Speak something aloud to the room. Args: the text to say.",
@@ -497,8 +508,11 @@ async def _handle_open(actor, room_id, dobj, iobj, args, spec) -> None:
                  authored `contains` payload into the room (deduped by
                  provenance so a re-open never doubles it).
 
-    Deterministic; all text is pre-baked (no LLM). A plain thing with no state
-    just opens with a generic line."""
+    `contains` is a single object or a list of them (SPEC 2026-07-02); each
+    entry's optional `properties` dict is forwarded into the spawn so an
+    authored payload can carry state / growth blocks. Deterministic; all text
+    is pre-baked (no LLM). A plain thing with no state just opens with a
+    generic line."""
     state = dobj.properties.get("state")
     if state == "locked":
         locked = dobj.properties.get("locked_text")
@@ -519,18 +533,24 @@ async def _handle_open(actor, room_id, dobj, iobj, args, spec) -> None:
     else:
         effs.append({"kind": "narrate", "text": f"You open the {dobj.name}."})
     contains = dobj.properties.get("contains")
-    if isinstance(contains, dict) and isinstance(contains.get("name"), str) and contains["name"].strip():
+    entries = contains if isinstance(contains, list) else [contains]
+    for entry in entries:
+        if not (isinstance(entry, dict) and isinstance(entry.get("name"), str)
+                and entry["name"].strip()):
+            continue
         spawn: dict = {
-            "kind": "spawn_object", "name": contains["name"],
-            "seed": contains["seed"] if isinstance(contains.get("seed"), str) else "",
+            "kind": "spawn_object", "name": entry["name"],
+            "seed": entry["seed"] if isinstance(entry.get("seed"), str) else "",
             "location_id": room_id, "generated_by": f"open:{dobj.id}",
         }
-        if isinstance(contains.get("aliases"), list):
-            spawn["aliases"] = contains["aliases"]
-        if isinstance(contains.get("verbs"), list):
-            spawn["verbs"] = contains["verbs"]
-        if contains.get("readable"):
+        if isinstance(entry.get("aliases"), list):
+            spawn["aliases"] = entry["aliases"]
+        if isinstance(entry.get("verbs"), list):
+            spawn["verbs"] = entry["verbs"]
+        if entry.get("readable"):
             spawn["readable"] = True
+        if isinstance(entry.get("properties"), dict):
+            spawn["properties"] = entry["properties"]
         effs.append(spawn)
     _dispatch(actor, room_id, effs, spec)
 
@@ -545,6 +565,17 @@ async def _handle_read(actor, room_id, dobj, iobj, args, spec) -> None:
         return
     _dispatch(actor, room_id, [{"kind": "narrate",
         "text": f"There's nothing written on the {dobj.name} to read."}], spec)
+
+
+async def _handle_plant(actor, room_id, dobj, iobj, args, spec) -> None:
+    """Plant a dreamseed (SPEC 2026-07-02): thin delegate to the growth
+    pipeline, mirroring `_handle_talk`'s lazy-import dispatch shape. All the
+    gates, the single LLM call, and the synchronous commit block live in
+    `daydream.growth`; the verb's allowlist rides along so every mutation
+    stays inside what `plant` declares."""
+    from daydream import growth
+
+    await growth.execute_plant(actor, room_id, dobj, args, spec.allowed_effects)
 
 
 async def _handle_say(actor, room_id, dobj, iobj, args, spec) -> None:
@@ -651,6 +682,7 @@ _ENGINE_HANDLERS = {
     "use": _handle_use,
     "open": _handle_open,
     "read": _handle_read,
+    "plant": _handle_plant,
     "say": _handle_say,
     "go": _handle_go,
     "inventory": _handle_inventory,

@@ -44,10 +44,16 @@ router = APIRouter()
 # SPA's scene/inventory panels reflect the change without the player
 # having to navigate away and back. `object_moved` covers take/drop,
 # `object_spawned` covers generative spawns; `item_added`/`mood_set`
-# are the legacy add_item/set_mood aliases. `property_set` is omitted:
-# its dominant use (lazy-cache examine text) changes no visible panel.
+# are the legacy add_item/set_mood aliases; `room_grown`/`exit_linked`
+# cover a dreamseed plant (the new exit appears in place, SPEC
+# 2026-07-02) — a plant batch triggers several refresh snapshots
+# (one per mutation event), which is harmless and idempotent.
+# `property_set` is deliberately omitted: its dominant use (lazy-cache
+# examine text, mood-adjacent writes) changes no visible panel, and
+# adding it would re-snapshot on every examine.
 _EFFECT_MUTATION_KINDS = frozenset(
-    {"item_added", "mood_set", "object_moved", "object_spawned"}
+    {"item_added", "mood_set", "object_moved", "object_spawned",
+     "room_grown", "exit_linked"}
 )
 # Starting room for the seeded toon; also the fallback used if the toon
 # somehow has a NULL current_room_id. After multi-room-navigation lands

@@ -51,7 +51,7 @@ def _install_dialogue(name: str) -> None:
 def test_closed_verb_registry_with_arg_specs():
     assert set(verbs.VERBS) == {
         "look", "examine", "take", "drop", "talk", "give", "use",
-        "open", "read", "say", "go", "inventory",
+        "open", "read", "plant", "say", "go", "inventory",
     }
     # Arg-specs: object-targeted verbs declare a dobj + valid kinds.
     assert verbs.VERBS["take"].needs_dobj
@@ -64,9 +64,20 @@ def test_closed_verb_registry_with_arg_specs():
     assert verbs.VERBS["give"].valid_iobj_kinds == frozenset({"toon"})
     assert verbs.VERBS["use"].valid_dobj_kinds == frozenset({"thing"})
     assert verbs.VERBS["use"].valid_iobj_kinds == frozenset({"thing"})
+    # plant: single-object, free-text vision args, and the SOLE declarer of
+    # the world-shaping effect kinds (SPEC 2026-07-02).
+    assert verbs.VERBS["plant"].needs_dobj and not verbs.VERBS["plant"].needs_iobj
+    assert verbs.VERBS["plant"].valid_dobj_kinds == frozenset({"thing"})
+    assert verbs.VERBS["plant"].free_text
+    assert {"spawn_room", "link_exit"} <= verbs.VERBS["plant"].allowed_effects
+    for name, spec in verbs.VERBS.items():
+        if name != "plant":
+            assert not ({"spawn_room", "link_exit"} & spec.allowed_effects), (
+                f"{name} must not declare world-shaping effects"
+            )
     # The verb bar offers the interaction verbs, verb-then-object.
     assert [v.name for v in verbs.bar_verbs()] == [
-        "examine", "take", "drop", "talk", "give", "use", "open", "read",
+        "examine", "take", "drop", "talk", "give", "use", "open", "read", "plant",
     ]
 
 
@@ -351,6 +362,35 @@ async def test_open_unlocked_transitions_spawns_payoff_once():
 
 
 @pytest.mark.asyncio
+async def test_open_reveals_list_payload_with_properties():
+    """`contains` as a LIST (SPEC 2026-07-02): every entry spawns, per-entry
+    `verbs` + `properties` ride into the spawned objects (the dreamseed keeps
+    its growth block and offers plant), and a re-open doubles nothing."""
+    growth = {"question": "Where does the new way lead?", "theme": ["dusk"],
+              "palette": "amber", "exemplars": [
+                  {"title": "T", "seed": "s", "description": "d"}]}
+    box = objects.spawn("w-bunny", "thing", "clock case", "r-meadow",
+        prototype_id=objects.PROTO_THING, properties={
+            "state": "unlocked", "verbs": ["open"], "seed": "a tall case",
+            "contains": [
+                {"name": "warm brass cog", "seed": "a small warm cog"},
+                {"name": "dreamseed", "seed": "a seed like a folded lantern",
+                 "verbs": ["plant"], "properties": {"growth": growth}},
+            ]})
+    await verbs.execute_command("t-wren", "open", dobj_id=box.id)
+    things = objects.contents("r-meadow", "thing")
+    assert sum(1 for o in things if o.name == "warm brass cog") == 1
+    seeds = [o for o in things if o.name == "dreamseed"]
+    assert len(seeds) == 1
+    assert seeds[0].properties["growth"] == growth
+    assert "plant" in objects.verbs_for(seeds[0])
+    # Re-open says already-open and re-spawns nothing.
+    await verbs.execute_command("t-wren", "open", dobj_id=box.id)
+    things = objects.contents("r-meadow", "thing")
+    assert sum(1 for o in things if o.name in ("warm brass cog", "dreamseed")) == 2
+
+
+@pytest.mark.asyncio
 async def test_read_surfaces_authored_text():
     ledger = objects.spawn("w-bunny", "thing", "repair ledger", "r-meadow",
         prototype_id=objects.PROTO_READABLE,
@@ -376,6 +416,27 @@ async def test_examine_appends_state_without_overwriting_seed():
     line = _last_narrate().lower()
     assert "glass-fronted clock case" in line  # the physical seed survives
     assert "brass lock" in line                # the current-state line appended
+
+
+# ---- plant (verb-level gates; the pipeline itself is tests/test_growth.py) --
+
+
+@pytest.mark.asyncio
+async def test_plant_non_growth_thing_refused_by_verb_gate(monkeypatch):
+    """The lantern doesn't offer `plant`, so the existing verbs_for gate
+    refuses before the growth pipeline (or any LLM) is reached."""
+    spy = AsyncMock(return_value={})
+    monkeypatch.setattr("daydream.llm.client.acompletion_json", spy)
+    await verbs.execute_command("t-wren", "plant", dobj_id="i-lantern",
+                                args="a moonlit orchard")
+    assert "can't plant" in _last_narrate().lower()
+    spy.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_bare_plant_asks_plant_what():
+    await verbs.execute_command("t-wren", "plant")
+    assert "plant what" in _last_narrate().lower()
 
 
 # ---- MOO dispatch priority: bound dialogue wins over the stub ----------
