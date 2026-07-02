@@ -122,9 +122,9 @@ The 100.64.0.0/10 hardcoding is correct because Tailscale's CGNAT range is fixed
 
 ## GPU posture
 
-20 GB VRAM ceiling on this box (RTX 4000 SFF Ada, compute capability 8.9). vLLM (Qwen 2.5 7B Instruct AWQ, ~5 GB resident) and ComfyUI (SDXL base + watercolor LoRA, ~6 GB resident, ~10-12 GB peak during inference) coexist behind a flock-free in-process arbiter at `daydream/gpu/arbiter.py` (`asyncio.Lock`) that serializes inference requests. All LLM calls flow through `daydream/llm/client.py` and all image-gen through `daydream/images/client.py` so the arbiter has exactly two call sites.
+20 GB VRAM ceiling on this box (RTX 4000 SFF Ada, compute capability 8.9). vLLM (Qwen 2.5 7B Instruct AWQ, ~5 GB resident) and ComfyUI (SDXL base + watercolor LoRA, ~6 GB resident, ~10-12 GB peak during inference) coexist behind a flock-free in-process arbiter at `daydream/gpu/arbiter.py` — a shared/exclusive gate (v2, 2026-07-02): LLM calls take shared slots and run CONCURRENTLY up to `DAYDREAM_LLM_CONCURRENCY` (default 3; vLLM batches natively inside its preallocated slice, so concurrency costs KV tokens, not extra VRAM), while every image render takes the exclusive slot and runs alone. Admission is text-priority — a queued LLM call is admitted before a queued render (renders lazy-paint; text is a player waiting). Observability: `GET /status/arbiter`, surfaced in `bin/game status`. All LLM calls flow through `daydream/llm/client.py` (acquires `"llm"` internally) and all image-gen through `daydream/images/client.py` (caller wraps in `arbiter.acquire()`) so the gate has exactly two call sites.
 
-This project assumes Daydream is the only GPU consumer on this box. The `qwen-2.5-localreview` warm server is off (per its `.env`) and is assumed to stay off indefinitely; no external process competes for VRAM. The arbiter therefore needs only in-process coordination (asyncio.Lock is sufficient; flock is still a fine code template at `~/src/qwen-2.5-localreview/gpu_lock.py`).
+This project assumes Daydream is the only GPU consumer on this box. The `qwen-2.5-localreview` warm server is off (per its `.env`) and is assumed to stay off indefinitely; no external process competes for VRAM. The arbiter therefore needs only in-process coordination (an asyncio gate is sufficient; flock is still a fine code template at `~/src/qwen-2.5-localreview/gpu_lock.py`).
 
 **Full narrative — VRAM math, model selection rationale, things we tried and rejected (the fp8-KV story especially), things to try later — lives in [`docs/gpu-and-models.md`](docs/gpu-and-models.md).** Read that before bumping a model, swapping an engine, or adding a tuning flag.
 
@@ -195,9 +195,9 @@ bin/game vllm-up             # start daemon (PID owned by daydream)
 bin/game vllm-down           # stop daemon
 ```
 
-`bin/game vllm-up` launches with `--gpu-memory-utilization 0.45` (~9 GB on the 20 GB card) leaving headroom for SDXL during inference. Both daemons can stay resident under the arbiter; the arbiter's lock means only one inference runs at a time, so the peak is bounded by whichever inference is in flight, not the sum. `--max-model-len 8192` is the default context window; increase if v2 long-context needs warrant it (raises KV cache memory).
+`bin/game vllm-up` launches with `--gpu-memory-utilization 0.45` (~9 GB on the 20 GB card) leaving headroom for SDXL during inference. Both daemons can stay resident under the arbiter; concurrent LLM calls batch inside vLLM's preallocated slice while an image render runs exclusively, so the VRAM peak is bounded by (residents + one render's working set), never two engines inferencing at once. `--max-model-len 8192` is the default context window; increase if v2 long-context needs warrant it (raises KV cache memory).
 
-daydream calls vLLM through `daydream/llm/client.py` via `litellm.acompletion` against the OpenAI-compatible endpoint, all wrapped in `daydream.gpu.arbiter.acquire()` so it serializes with image-gen on the same GPU.
+daydream calls vLLM through `daydream/llm/client.py` via `litellm.acompletion` against the OpenAI-compatible endpoint, all wrapped in `daydream.gpu.arbiter.acquire("llm")` so text shares the GPU under the arbiter's cap and never overlaps an image render.
 
 ### vLLM tunings on Ada
 

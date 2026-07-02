@@ -89,10 +89,12 @@ async def acompletion_json(
     _last_usage.set(None)
     resolved_model = model or config.llm_model()
     t_enqueue = time.monotonic()
-    # Hold the GPU gate for the duration of the LLM call; see
-    # daydream/gpu/arbiter.py for the sharing semantics.
+    # Hold a shared "llm" slot for the duration of the call: LLM calls run
+    # concurrently with each other (vLLM batches natively, capped at
+    # config.llm_concurrency()) but never overlap an exclusive image
+    # render. See daydream/gpu/arbiter.py for the admission policy.
     try:
-        async with arbiter.acquire():
+        async with arbiter.acquire("llm"):
             t_start = time.monotonic()
             response = await litellm.acompletion(
                 model=resolved_model,

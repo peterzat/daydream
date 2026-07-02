@@ -22,22 +22,37 @@ If you only read one section, read [The fp8-KV story](#the-fp8-kv-story) and [Th
 | ComfyUI (SDXL base + watercolor LoRA, smart-managed) | ~6 GB when warm; drops idle | ~10-12 GB during a 1024×384 generation |
 | **Sum (both resident, one inferencing)** | ~11 GB idle | ~17 GB peak (whichever side is in flight) |
 
-The arbiter (`daydream/gpu/arbiter.py`) makes "both resident, one inferencing" the worst case by serializing inference requests. Without it, two simultaneous inferences would peak around 19-22 GB and OOM stochastically.
+The arbiter (`daydream/gpu/arbiter.py`) makes "both resident, one image render inferencing" the worst case. Without it, an LLM decode overlapping an SDXL render would peak around 19-22 GB and OOM stochastically. LLM-vs-LLM overlap is NOT a VRAM hazard (see below), so the arbiter only forces exclusivity around image renders.
 
 The `--gpu-memory-utilization 0.45` we pass to `vllm serve` (~9 GB ceiling for vLLM on 20 GB) is set so vLLM's KV cache reservation doesn't crowd ComfyUI out. With more margin we'd see better LLM throughput at long contexts; with less we'd see more headroom for ComfyUI to load larger SDXL variants.
 
 ## The arbiter, explained simply
 
-`daydream/gpu/arbiter.py` is an `asyncio.Lock` wrapped in an async context manager. Both inference call sites (the LLM client and the image-gen client) acquire it before talking to their respective daemons. That's it.
+`daydream/gpu/arbiter.py` (v2, 2026-07-02) is a shared/exclusive gate: `acquire("llm")` grants a shared slot (up to `DAYDREAM_LLM_CONCURRENCY`, default 3, concurrent LLM calls), `acquire()` grants the exclusive slot every image render uses (runs alone: no LLM call, no other render). Admission is text-priority: a queued LLM call barges past a queued render, and a render is admitted only when nothing is active and no LLM call is waiting. Rationale: renders are lazy paint (the SPA shows "painting..." until `room_image_ready`), while a text call is a player standing at the prompt — before v2, a free-text parse could wait up to ~2 min behind a cold render. Sustained text can starve a queued render; that's accepted and observable (`/status/arbiter`, `arbiter.stats()`).
 
-We considered (and the localreview pattern uses) a flock-based mutex for cross-process coordination. We don't need it: daydream is a single Python process, so an in-process `asyncio.Lock` does the job. The flock pattern is documented in CLAUDE.md as the upgrade path if a second process ever needs to contend.
+Why shared LLM slots are VRAM-safe: vLLM batches natively inside its preallocated 0.45 slice. Concurrent requests cost KV-cache *tokens* out of a pool vLLM already reserved at boot, not new VRAM. The v1 `asyncio.Lock` (every inference strictly serialized) was leaving that preallocation idle and queueing players behind each other for no memory benefit.
+
+Implementation is a future-queue with synchronous wake/release (release in a `finally` can never be interrupted by task cancellation — the failure mode that rules out `asyncio.Condition`). Cancellation is handled both ways: granted-then-cancelled waiters return the slot; cancelled-while-queued waiters are removed eagerly so a ghost entry can't wedge the exclusive admission check.
+
+We considered (and the localreview pattern uses) a flock-based mutex for cross-process coordination. We don't need it: daydream is a single Python process, so an in-process asyncio gate does the job. The flock pattern is documented in CLAUDE.md as the upgrade path if a second process ever needs to contend.
 
 There are two arbiter contracts in the code, intentionally different:
 
-- **`llm/client.acompletion_json`** — acquires the arbiter *internally*. Callers just `await acompletion_json(...)`.
-- **`images/client.generate_room_background`** — expects the caller to acquire externally (`async with arbiter.acquire(): await generate_room_background(...)`). This is what `api/ws.py:_generate_and_emit` does.
+- **`llm/client.acompletion_json`** — acquires its shared `"llm"` slot *internally*. Callers just `await acompletion_json(...)`.
+- **`images/client.generate_image`** — expects the caller to acquire the exclusive gate externally (`async with arbiter.acquire(): await generate_image(...)`). This is what `api/ws.py:_generate_and_emit` does.
 
-The asymmetry is so neither function tries to re-acquire (asyncio.Lock is not reentrant; double-acquire would deadlock). If you add a third call site, follow whichever pattern matches: callers wrap if the function is meant to be composable; the function wraps if it's the obvious top-level entry.
+The asymmetry is so neither function tries to re-acquire (the gate is not reentrant; double-acquire of the exclusive slot would deadlock). If you add a third call site, follow whichever pattern matches: callers wrap if the function is meant to be composable; the function wraps if it's the obvious top-level entry. The tier_long tripwire (`tests/drift/conftest.py:enforce_arbiter_held`) asserts `exclusive_held()` at the ComfyUI HTTP boundary, so an unwrapped render fails loudly in the drift suite.
+
+## VRAM headroom audit (2026-07-02): keep 0.45, spend the slack on concurrency
+
+The operator observed ~16.4/20 GB constant with bursts to ~85% and asked whether the idle ~3.5 GB could be put to work. Verdict: **the fraction is already right; the slack is consumed by the arbiter v2 concurrency, not by raising limits.**
+
+- Resident math: vLLM preallocates ~9.4 GB (0.45 × 20.9). ComfyUI holds ~6.9 GB warm (smart model management, flagless). Sum ≈ 16.3 GB — exactly the observed constant. The burst to ~17 GB is an SDXL render's working set on top of its resident weights.
+- KV-cache math (Qwen2.5-7B: 28 layers, GQA 4 KV heads × 128 dims, fp16 ⇒ 56 KiB/token): the 0.45 slice leaves ~2.8-3.3 GB of KV pool after weights ≈ 50-60k tokens. Worst case under the new concurrency (3 × 8192 full-context requests) = 24.6k tokens — comfortably 2× headroom *without* touching the fraction.
+- Raising to 0.50 would buy nothing the workload needs and would take ~1 GB from the burst absorber that keeps a render + resident LLM under the ceiling. Not taken.
+- The one engine-side change: `--max-num-seqs 4` on vllm-up, because a client that *times out* (litellm timeout) abandons a request that keeps decoding server-side; the engine cap — not app-level admission — is what bounds engine-side concurrency. Keep `DAYDREAM_LLM_CONCURRENCY <= --max-num-seqs`.
+
+Measured boot-log KV numbers and the render-peak sample are recorded below when the flag landed (see "Measurements").
 
 ## LLM stack
 

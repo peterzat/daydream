@@ -99,6 +99,27 @@ async def status_drift():
     )
 
 
+@app.get("/status/arbiter")
+async def status_arbiter():
+    """GPU-gate observability for `bin/game status` and the swarm harness.
+    Plain-text one-liner (no JSON parser dependency in bin/game), loopback/
+    tailnet-only via AccessMiddleware. Always non-empty: an idle gate is
+    still worth a line, unlike drift's silent-until-first-tick counters."""
+    from fastapi.responses import PlainTextResponse
+
+    from daydream.gpu import arbiter
+
+    s = arbiter.stats()
+    return PlainTextResponse(
+        f"arbiter: llm {s['active_llm']}/{s['llm_concurrency']} active"
+        f" +{s['waiting_llm']} waiting"
+        f" / image {'busy' if s['active_exclusive'] else 'idle'}"
+        f" +{s['waiting_exclusive']} waiting"
+        f" / max wait llm {s['max_wait_ms_llm']}ms"
+        f" image {s['max_wait_ms_exclusive']}ms\n"
+    )
+
+
 @app.get("/status/build")
 async def status_build():
     """Build + version observability for `bin/game status`. Plain-text, one

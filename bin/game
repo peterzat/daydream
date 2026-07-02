@@ -376,6 +376,11 @@ cmd_status() {
             if [[ -n "$drift_line" ]]; then
                 printf "%s" "$drift_line"
             fi
+            local arbiter_line
+            arbiter_line="$(curl -s --max-time 1 "http://0.0.0.0:${PORT}/status/arbiter" 2>/dev/null)"
+            if [[ -n "$arbiter_line" ]]; then
+                printf "%s" "$arbiter_line"
+            fi
             _print_build_staleness
         fi
     else

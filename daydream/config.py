@@ -97,6 +97,20 @@ def comfyui_base_url() -> str:
     return os.environ.get("DAYDREAM_COMFYUI_BASE_URL", "http://localhost:8188")
 
 
+def llm_concurrency() -> int:
+    """Max concurrent LLM calls admitted by the GPU arbiter's shared "llm"
+    gate. vLLM batches internally within its preallocated VRAM slice, so
+    concurrency here costs KV-cache tokens, not extra weights memory; the
+    KV math behind the default of 3 (pool ~50-60k tokens vs 24.6k worst
+    case at 3x8192) is in docs/gpu-and-models.md. Override with
+    DAYDREAM_LLM_CONCURRENCY; keep <= vLLM's --max-num-seqs."""
+    raw = os.environ.get("DAYDREAM_LLM_CONCURRENCY", "3")
+    try:
+        return max(1, int(raw))
+    except ValueError:
+        return 3
+
+
 def password() -> str:
     """Source the shared site password from DAYDREAM_PASSWORD. Empty string
     means no password is configured; the auth endpoint refuses logins in

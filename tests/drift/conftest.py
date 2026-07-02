@@ -182,14 +182,19 @@ def assert_within(
 
 @pytest.fixture(autouse=True)
 def enforce_arbiter_held(request, monkeypatch):
-    """tier_long tests running real image-gen must hold the GPU arbiter
-    for the duration of the call. This fixture monkey-patches
-    daydream.images.client._execute_workflow to assert arbiter.is_locked()
+    """tier_long tests running real image-gen must hold the GPU arbiter's
+    EXCLUSIVE gate for the duration of the call. This fixture monkey-patches
+    daydream.images.client._execute_workflow to assert arbiter.exclusive_held()
     at call time. Turns the 'caller MUST hold the arbiter' policy into a
     mechanical tripwire. No-op for tests not marked tier_long.
 
-    The LLM client acquires internally, so no such patch is needed on
-    that path — the lock is always held when the HTTP call fires."""
+    exclusive_held (not is_locked) because arbiter v2 admits shared LLM
+    slots: is_locked() would pass if a concurrent LLM call merely had the
+    gate busy while the render fired unprotected.
+
+    The LLM client acquires its shared slot internally, so no such patch
+    is needed on that path — the slot is always held when the HTTP call
+    fires."""
     if not request.node.get_closest_marker("tier_long"):
         return
 
@@ -199,9 +204,10 @@ def enforce_arbiter_held(request, monkeypatch):
     real_execute = image_client._execute_workflow
 
     async def checked_execute(*args, **kwargs):
-        assert arbiter.is_locked(), (
-            "real-GPU image-gen call fired without arbiter held. Wrap "
-            "the generate_image call in `async with arbiter.acquire():`."
+        assert arbiter.exclusive_held(), (
+            "real-GPU image-gen call fired without the exclusive arbiter "
+            "gate held. Wrap the generate_image call in "
+            "`async with arbiter.acquire():` (default kind is exclusive)."
         )
         return await real_execute(*args, **kwargs)
 
