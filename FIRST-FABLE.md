@@ -258,3 +258,187 @@ recorded), append a `## Part 2 — results` section covering:
 Keep the register of this file: plain, specific, storytelling over checklist where the two
 conflict. If the implement turn spans multiple sessions, say so plainly in M7 and grade P4
 accordingly.
+
+## Part 2 — results
+
+Written 2026-07-02, at the close of the implementation turn, by the implementing session.
+Part 1 above is untouched.
+
+### 1. Git evidence
+
+Start: `8a5239a` (the pre-registration commit; SPEC at 8 criteria, 0 met). End: `e69bdcf`.
+Eleven commits in the turn:
+
+```
+e69bdcf codereview/security: record the dreamseeds review (0 BLOCK / 1 WARN fixed / 1 NOTE)
+8b4e865 growth: harden the has-growth gate against malformed runtime growth blocks
+02788f7 spec: dreamseeds 7/8 — all built and verified; the operator's in-browser glance remains
+594d1ed docs: roll forward for dreamseeds (v0.5.0)
+8a91634 drift: ratify growth-compose goldens — RUNG (a) SHIPS, zero prompt iterations
+5d907f7 drift: growth-composition probe (the mitigation-ladder gate) + plant grounding case
+80d4365 spa: plant prompts for the vision and sends one command frame
+3a32a11 world: the quest-earned dreamseed (authored growth boundaries); WORLD_VERSION 1.2
+2180aed growth: the plant pipeline — one LLM call, atomic commit, seed always preserved
+4c2d2c8 loader: validate contains (dict-or-list) + dreamseed growth blocks fail-loudly
+c1aebd8 effects: build spawn_room + link_exit; world-shaping kinds are per-verb opt-in
+```
+
+Final SPEC_META: `{"criteria_total":8,"criteria_met":7}` — the eighth is checked-all-but-one-clause:
+the operator's in-browser glance, which by construction no session can perform for him.
+
+### 2. M1–M7 actuals
+
+- **M1 (operator interventions): 0 corrections, 0 redirections.** The implement session
+  received exactly two operator messages: the opening word ("implement") and one "continue"
+  after a turn ended early on a harness infrastructure error (see M-note below). Neither
+  corrected or redirected anything.
+- **M2 (spec survival): 0 amendments.** Every design decision in SPEC.md's Context —
+  the module boundary, the effect-batch order, the gate list, the direction/involution
+  scheme, the verb spec, the prompt-as-engine-constant, the skeletons-validated-early
+  hedge — shipped exactly as written. (Evidence: the spec's Context section vs
+  `daydream/growth.py`, commit `2180aed`.)
+- **M3 (increments / first-try rate): 10 working commits, 100% first-try green.** A
+  wrinkle worth recording honestly: for roughly the first half of the session the
+  harness's Bash permission classifier was down (a Claude-infrastructure outage, not this
+  box), so no command could run. The session wrote increments 1–7 — code, ~90 new tests,
+  the world content — entirely blind, then ran everything in one batch when Bash
+  returned. First batch execution: 74/74 new effects+growth tests, then 511 short / 787
+  medium / 807 long (real engines), all green with zero post-hoc fixes. Every commit was
+  additionally hook-verified (`bin/game test short` at each `git commit`).
+- **M4 (review outcome): 0 BLOCK / 1 WARN / 1 NOTE on the first `/codereview` pass; 1 fix
+  cycle.** The WARN was real and subtle (a malformed runtime-spawned growth block could
+  raise through the prompt builder and drop the planter's WebSocket — found by the review
+  pass, not the test suite), fixed via `/codefix` with a paired regression test in one
+  cycle (`8b4e865`). Chained `/security` over the 27 changed code files: 0/0/0-new.
+- **M5 (the rung): rung (a), ZERO prompt iterations.** All three probe phrases produced
+  valid, phrase-woven, exemplar-distinct compositions on the first real-GPU run
+  (`8a91634`). Details in §5.
+- **M6 (suite health): 100% green throughout; no unplanned golden re-ratifications.**
+  Final counts 512 short / 788 medium / 807+1 long; every pre-existing golden (forge
+  dHash, parser grounding, JSON adherence, arbiter smoke) matched untouched.
+- **M7 (sessions): 1.** The whole increment — implementation, probe, ratification, world
+  reset, live playthrough, reviews, this document — landed in the single post-`/clear`
+  session, as targeted.
+
+### 3. P1–P6 grades
+
+- **P1 (design altitude): ✓** — pre-resolved at write time; nothing in implementation
+  revised it.
+- **P2 (debt discovery): ✓** — pre-resolved at write time.
+- **P3 (spec survival): partial (7/8; 0 amendments).** All eight criteria were built and
+  the design survived contact with a zero-context session without a single amendment —
+  but criterion 8 contains a clause only a human can satisfy (the in-browser glance), so
+  the session closes at 7/8 checked with the eighth annotated and waiting. Grading the
+  letter, not the spirit: partial.
+- **P4 (one-session implement): ✓** — 1 session, 1 review cycle, 0 BLOCK, 1 WARN (≤ 2
+  predicted).
+- **P5 (the thesis bet): ✓** — rung (a) shipped with zero prompt iterations against a
+  predicted budget of two. The Fable-authored exemplars and prompt scaffolding were
+  enough for the local 7B on the first try.
+- **P6 (no step function where the model is not the constraint): ✓, with an ironic
+  twist.** Qwen's runtime prose is the same 7B voice (charming, occasionally clunky — see
+  §5), and machine time was spent where predicted (GPU renders, test runs). But the
+  single largest wall-clock cost was neither: it was a harness-side model outage (the
+  Bash-approval classifier, which runs on Opus, was unavailable for a long stretch).
+  The prediction said the step function would not appear in speed; in fact the
+  infrastructure AROUND the model, not the model, was the binding constraint.
+
+**Against the pre-registered falsifiers:** no spec rework, no fix cycle exceeded one, no
+BLOCKs, rung (a) shipped, and the operator steered zero times. By Part 1's own
+definition, this does not look like "no step function."
+
+### 4. Deviations
+
+Small and process-level; none touched the design:
+
+- **Commit granularity.** The spec suggested 8 increments; 3 of them (growth core, verb
+  wiring, WS refresh kinds) landed as one commit (`2180aed`) because the classifier
+  outage forced writing ahead of testing, and `verbs.py` carried halves of two increments
+  that could not be staged separately without interactive git. Each landed commit was
+  still test-green (pre-commit hook ran the short tier at every one).
+- **The live playthrough.** The session drove the full live loop itself over a WebSocket
+  client against the running server and real engines (quest → case → seed → plant → walk
+  in → watch the render land), then reset the world to pristine so the operator's
+  in-browser glance sees the untouched experience. The browser half of criterion 8
+  remains his.
+- **The push-gate marker was re-written after the review** to cover the two docs-only
+  commits (this file and the review record) that landed after the reviewed HEAD — the
+  light-tier case the review protocol reserves for pure documentation.
+
+### 5. The rung decision
+
+**Rung (a) ships: exemplar-scaffolded free composition, zero prompt iterations.** The
+probe corpus (three phrases against the shipped seed's boundaries, temp 0, real vLLM,
+3.7–4.9 s per compose): 3/3 valid against the strict schema, 3/3 phrase-woven, 3/3
+distinct from the authored exemplars, 0 refusals, 1–2 objects each.
+
+Verbatim samples with the WHIMSY grading recorded at ratification (`8a91634`):
+
+> *"a mossy stair down to a slow river"* → **The Mossy Descender** — "Moss covers the
+> steps, clinging like a soft blanket. Each step is worn smooth, a testament to countless
+> treads. At the bottom, the river whispers secrets, its current as slow as the ticking
+> of a clock." On-aesthetic: warm, sensory, and it ties the player's vision back to the
+> loft's kept-time theme unprompted. The title is the run's weakest artifact — "Descender"
+> clunks — but within tolerance.
+
+> *"an attic where the moths keep the hours"* → **The Moth Library** — "Books line the
+> walls, their spines worn and pages yellowed, each one marked by a tiny, folded paper
+> hour. Moth wings flutter softly, keeping the hours as they have for generations."
+> On-aesthetic; it reuses the seed's folded-paper-hours motif inside the boundaries
+> without copying an exemplar.
+
+> *"a warm kitchen that smells of cedar and rain"* → **The Cedar Hearth** — "The hearth
+> glows warmly, casting a soft light over the shelves lined with jars of preserved herbs
+> and spices... Each jar tells a story of something carefully gathered and stored away
+> for another day." Strongly on-aesthetic, with charming concrete objects (Preserved
+> Lemons; a Raindrop Candle).
+
+And the one that wasn't a test: the live playthrough's plant, *"a small observatory where
+fireflies chart the stars"*, grew **The Firefly Observatory** — "Fireflies dance around
+the room, their glowing lights mapping the night sky with delicate precision. Through the
+glass roof, the stars twinkle softly, as if guided by the fireflies themselves." — with a
+Clockwork Telescope and Folded Paper Hours resting inside, and a watercolor (a
+glass-domed pavilion in cream, sage, and warm wood) that the agent graded squarely inside
+the tone bible. That room existed for twenty minutes and was then reset away so the
+operator could grow his own; it was, briefly, the whole thesis working.
+
+### 6. Surprises
+
+Better than the baseline led us to expect:
+
+- **Writing blind worked.** ~90 tests and seven increments authored with no ability to
+  execute anything, then a 100% first-batch pass across three tiers. Prior turns
+  interleaved run-fix loops; this one had the loop amputated by the outage and did not
+  need it.
+- **The live model over-delivered on the first real plant.** The Firefly Observatory
+  (glass roof, gear-ribbed telescope, fireflies-as-cartographers) is better than any of
+  the three probe compositions, and it was composed for a phrase no test had rehearsed.
+- **The review WARN was a genuine catch** — a cross-feature interaction (the new
+  `properties` passthrough on `spawn_object` × the growth gate) that 90 feature tests
+  missed and one adversarial read found.
+
+Not better:
+
+- **The harness infrastructure, not the model, was the bottleneck** — a long
+  mid-session stretch where no command could run at all. The session stayed productive
+  by inverting its loop (write everything, verify in batch), but wall-clock suffered.
+- **Titles are the 7B's weakest surface.** "The Mossy Descender" is the kind of
+  almost-right that a bigger model wouldn't produce. Prose held; naming wobbled.
+
+### 7. The felt comparison
+
+Candidly, for the bitter-lesson readers: the step function did not feel like speed, and it
+did not feel like magic. It felt like **absence of friction at the judgment layer**. The
+Opus 4.8 turns recorded in this repository were good — 8/8 specs, clean reviews — but they
+were steered: an operator answering questions, nudging altitude, catching the occasional
+wrong-shaped increment. This turn had two operator inputs, one of which was the word
+"implement" and the other the word "continue" after an infrastructure outage. The spec
+survived a zero-context session without one amended decision; the riskiest pre-registered
+bet (that a 7B could compose acceptable rooms inside Fable-authored boundaries) resolved
+on the first attempt at the top rung of the mitigation ladder; and when the harness
+itself failed for an hour, the session restructured its own workflow around the outage
+instead of stalling — the kind of move that used to be the operator's job. Where the step
+function did NOT show, exactly as predicted: the game's live text is the same modest,
+charming 7B, wall-clock was dominated by things that are not the model, and the one WARN
+proves review pressure still earns its keep. The harness was thin; the capability passed
+through it. That was the design, and this time it is also the observation.
