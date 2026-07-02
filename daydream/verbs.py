@@ -534,6 +534,7 @@ async def _handle_open(actor, room_id, dobj, iobj, args, spec) -> None:
         effs.append({"kind": "narrate", "text": f"You open the {dobj.name}."})
     contains = dobj.properties.get("contains")
     entries = contains if isinstance(contains, list) else [contains]
+    revealed: list[str] = []
     for entry in entries:
         if not (isinstance(entry, dict) and isinstance(entry.get("name"), str)
                 and entry["name"].strip()):
@@ -552,6 +553,14 @@ async def _handle_open(actor, room_id, dobj, iobj, args, spec) -> None:
         if isinstance(entry.get("properties"), dict):
             spawn["properties"] = entry["properties"]
         effs.append(spawn)
+        revealed.append(entry["name"].strip())
+    if revealed:
+        # The ENGINE announces what the payload holds, by name, so a reveal is
+        # never silent — authors write the payoff (`open_text`) for the moment
+        # and the engine handles the inventory-of-what-appeared (playtest
+        # 2026-07-02: the dreamseed materialized without a word).
+        effs.append({"kind": "narrate",
+                     "text": "Inside, you find: " + ", ".join(revealed) + "."})
     _dispatch(actor, room_id, effs, spec)
 
 

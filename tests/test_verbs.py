@@ -353,7 +353,11 @@ async def test_open_unlocked_transitions_spawns_payoff_once():
     assert objects.get(box).properties.get("state") == "open"
     cogs = [o for o in objects.contents("r-meadow", "thing") if o.name == "warm brass cog"]
     assert len(cogs) == 1
-    assert "pendulum" in _last_narrate().lower()
+    # The authored payoff narrates AND the engine announces the reveal by name
+    # (playtest 2026-07-02: a payload must never materialize silently).
+    texts = [e.payload["text"] for e in events.fetch_since(0) if e.kind == "narrate"]
+    assert any("pendulum" in t.lower() for t in texts)
+    assert texts[-1] == "Inside, you find: warm brass cog."
     # Re-open: says already-open and does NOT re-spawn the payoff.
     await verbs.execute_command("t-wren", "open", dobj_id=box)
     assert "already open" in _last_narrate().lower()
@@ -384,6 +388,8 @@ async def test_open_reveals_list_payload_with_properties():
     assert len(seeds) == 1
     assert seeds[0].properties["growth"] == growth
     assert "plant" in objects.verbs_for(seeds[0])
+    # The engine's reveal line names every payload entry.
+    assert _last_narrate() == "Inside, you find: warm brass cog, dreamseed."
     # Re-open says already-open and re-spawns nothing.
     await verbs.execute_command("t-wren", "open", dobj_id=box.id)
     things = objects.contents("r-meadow", "thing")

@@ -114,11 +114,14 @@ async def test_golden_quest_playthrough_zero_llm(loft, monkeypatch):
     await verbs.execute_command(actor, "use", dobj_id=keys[0].id, iobj_id=case)
     assert objects.get(case).properties.get("state") == "unlocked"
 
-    # 5. Open the case -> unlocked -> open, the payoff narrates, and the reward
-    #    spawns exactly once. A re-open says so and does NOT double it.
+    # 5. Open the case -> unlocked -> open, the payoff narrates, the engine
+    #    announces the revealed payload by name, and the reward spawns exactly
+    #    once. A re-open says so and does NOT double it.
     await verbs.execute_command(actor, "open", dobj_id=case)
     assert objects.get(case).properties.get("state") == "open"
-    assert "clock" in _last_narrate().lower()  # the great clock ticks again
+    texts = _narrates()
+    assert any("clock" in t.lower() for t in texts)  # the great clock ticks again
+    assert texts[-1] == "Inside, you find: warm brass cog, dreamseed."
     assert _count_in_room(clocktower, "warm brass cog") == 1
     await verbs.execute_command(actor, "open", dobj_id=case)
     assert "already open" in _last_narrate().lower()
