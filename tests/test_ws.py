@@ -102,6 +102,20 @@ def test_ws_snapshot_carries_build_and_world_version():
     assert msg["world_version"] == version.WORLD_VERSION
 
 
+def test_ws_snapshot_carries_world_status():
+    """The snapshot carries the world-shared status block (score / rank /
+    moves / deaths / lit) from the world_state KV; a world with no authored
+    scoring reports zeros and a null rank."""
+    with TestClient(app) as client:
+        _login(client)
+        with client.websocket_connect("/ws") as ws:
+            msg = ws.receive_json()
+    assert msg["kind"] == "state_snapshot"
+    assert msg["status"] == {
+        "score": 0, "rank": None, "moves": 0, "deaths": 0, "lit": True,
+    }
+
+
 def test_session_liveness_refcounts_multiple_connections():
     """A session with two live WS connections (two tabs on one toon) stays live
     until BOTH close -- is_session_live is backed by a Counter, not a set, so one

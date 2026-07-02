@@ -642,6 +642,7 @@ def cmd_delete(world_id: str, yes: bool) -> int:
     # rather than blanket-deleting. Multi-world DBs no longer get clobbered.
     conn.execute("DELETE FROM generated_assets WHERE world_id = ?", (world_id,))
     conn.execute("DELETE FROM memories WHERE world_id = ?", (world_id,))
+    conn.execute("DELETE FROM world_state WHERE world_id = ?", (world_id,))
     # One table now holds rooms / toons / things / prototypes (migration 011).
     objects.delete_world_objects(world_id)
     conn.execute("DELETE FROM worlds WHERE id = ?", (world_id,))

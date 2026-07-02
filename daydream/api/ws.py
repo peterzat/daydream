@@ -27,7 +27,7 @@ from collections import Counter
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, status
 
-from daydream import events, objects, parser, rooms, toons, verbs, version
+from daydream import events, objects, parser, rooms, toons, verbs, version, worldstate
 from daydream.api import auth, csrf
 from daydream.gpu import arbiter
 from daydream.images import cache as image_cache
@@ -227,6 +227,11 @@ def _state_snapshot(
         # move / effect / swap, so this rides it; no separate control frame.
         "build": version.build_sha(),
         "world_version": version.WORLD_VERSION,
+        # World-shared status (score / rank / moves / deaths / lit) from the
+        # world_state KV. Present on every snapshot; a world that authors no
+        # scoring simply reports zeros and a null rank, and the SPA decides
+        # whether to render a ribbon.
+        "status": worldstate.status_block(room.world_id) if room else None,
     }
 
 
