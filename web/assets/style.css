@@ -521,3 +521,62 @@ footer .slots-toggle:hover, footer .logout:hover { text-decoration: underline; }
   #chat { flex: 1 1 0; min-height: 0; max-height: none; overflow-y: auto; }
   .margin { min-height: 0; overflow-y: auto; }
 }
+
+/* ---- Zork-turn affordances (SPEC 2026-07-02 criterion 12) ---------------
+ * Status ribbon, darkness veil, nested container chips, clarify options,
+ * and the death interstitial. All colors from the :root tokens. */
+
+.status-ribbon {
+  display: flex;
+  gap: 0.9em;
+  justify-content: center;
+  align-items: baseline;
+  font-family: var(--sans);
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--sage);
+  margin-top: 0.35rem;
+}
+.status-ribbon .st-part { white-space: nowrap; }
+.status-ribbon #st-rank { color: var(--quest); }
+.status-ribbon .st-light.unlit { color: var(--ink); opacity: 0.8; }
+.status-ribbon .st-light.lit { color: var(--amber); }
+
+/* Darkness: the plate goes near-black; the header keeps its frame. */
+.plate-dark #room-bg {
+  filter: brightness(0.07) saturate(0.3);
+  transition: filter 0.6s ease;
+}
+
+/* Nested container contents: indented child chips under their container. */
+.obj-wrap { display: block; }
+.obj-nest {
+  display: block;
+  margin-left: 1.1em;
+  padding-left: 0.5em;
+  border-left: 1px solid var(--line);
+}
+
+/* Clarify options: small parchment buttons in the prose flow. */
+.evt-clarify { margin: 0.3rem 0 0.5rem; }
+.evt-clarify .clarify-opt {
+  font-family: var(--serif);
+  font-size: 0.9rem;
+  background: var(--parch);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 0.2rem 0.7rem;
+  margin-right: 0.4rem;
+  cursor: pointer;
+}
+.evt-clarify .clarify-opt:hover { border-color: var(--quest); color: var(--quest); }
+
+/* Death interstitial: a full black beat over everything, briefly. */
+.death-overlay {
+  background: rgba(8, 10, 9, 0.96);
+  color: var(--parch);
+  font-family: var(--serif);
+  font-style: italic;
+}

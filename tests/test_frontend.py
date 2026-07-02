@@ -306,19 +306,25 @@ def test_main_js_two_step_staging_for_two_object_verbs():
 
 
 def test_main_js_plant_prompts_for_vision_and_sends_command():
-    """SPEC 2026-07-02 criterion 5: staging Plant and clicking the seed prompts
-    for the vision (mirroring Talk's prompt) and sends one structured command
-    frame with the vision as args; the slow LLM-backed grow shows the calm
-    pending beat. No plant-specific parser or LLM code client-side."""
+    """SPEC 2026-07-02 criterion 5 (dreamseeds), updated by criterion 12 (the
+    Zork turn): staging Plant and clicking the seed still prompts for the
+    vision and sends one structured command frame — but through the GENERIC
+    needs_text flow driven by verb_bar data, with plant's authored
+    text_prompt served by the server. No verb-name hardcode client-side."""
+    from daydream import verbs
+
     with TestClient(app) as client:
         _login(client)
         r = client.get("/assets/main.js")
-    assert 'verb === "plant"' in r.text
-    assert "where does the new way lead?" in r.text
-    assert 'sendCommand("plant", objectId, vision)' in r.text
-    # The vision prompt path shows the pending beat like talk does.
-    plant_branch = r.text.split('verb === "plant"')[1].split("} else {")[0]
-    assert "showPending()" in plant_branch
+    # The generic flow: prompt from verb data, one command, pending beat.
+    assert "stagedSpec.needs_text" in r.text
+    assert "window.prompt(stagedSpec.text_prompt" in r.text
+    assert "sendCommand(verb, objectId, msg)" in r.text
+    needs_text_branch = r.text.split("stagedSpec.needs_text")[1].split("} else {")[0]
+    assert "showPending()" in needs_text_branch
+    # Plant's prompt is authored on its VerbSpec and rides the verb_bar.
+    assert verbs.VERBS["plant"].needs_text
+    assert verbs.VERBS["plant"].text_prompt
 
 
 def test_main_js_room_change_veils_stale_art():

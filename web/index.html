@@ -9,6 +9,8 @@
 <body>
   <!-- Calm connection / hot-swap wash (fixed; recovers on its own). -->
   <div id="dream-overlay" class="dream-overlay hidden" aria-live="polite"></div>
+  <!-- Death interstitial: a brief black beat before the respawn snapshot. -->
+  <div id="death-overlay" class="dream-overlay death-overlay hidden" aria-live="polite"></div>
 
   <!-- The open leaf: the storybook page. -->
   <main id="app" class="page">
@@ -27,6 +29,9 @@
     <div class="titleblock">
       <h1 id="room-title" class="chapter-title">drifting...</h1>
       <div class="folio">the dream</div>
+      <!-- Status ribbon (Zork turn): score / rank / moves / light. Rendered
+           only for worlds that author a rank ladder; hidden otherwise. -->
+      <div id="status-ribbon" class="status-ribbon hidden" aria-live="polite"></div>
     </div>
 
     <!-- body: narration prose (wide) + marginalia (narrow) -->

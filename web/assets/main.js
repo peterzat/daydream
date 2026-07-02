@@ -90,6 +90,8 @@ function connect(isReconnect) {
       renderSnapshot(data);
     } else if (data.kind === "event") {
       renderEvent(data.event);
+    } else if (data.kind === "clarify") {
+      renderClarify(data);
     } else if (data.kind === "needs_toon") {
       enterPicker();
     } else if (data.kind === "world_changed") {
@@ -122,6 +124,13 @@ function renderSnapshot(snap) {
     snap.room ? snap.room.title : "drifting...";
   document.getElementById("room-desc").textContent =
     snap.room && snap.room.description ? snap.room.description : "";
+  renderStatusRibbon(snap.status);
+  // Darkness veils the room art (criterion 6/12): the authored darkness
+  // line is already the description, the scene panels arrive empty from the
+  // server, and the plate goes near-black while inventory stays usable.
+  document
+    .getElementById("room-header")
+    .classList.toggle("plate-dark", !!(snap.room && snap.room.dark));
   setRoomBackground(snap.room);
   // In-scope object mentions become clickable in narration.
   entities = (snap.entities || []).slice().sort(
@@ -263,6 +272,18 @@ function objectChip(o, label) {
   span.dataset.verbs = (o.verbs || []).join(",");
   span.textContent = label;
   span.onclick = () => onObjectClick(o.id, o.verbs || [], o.kind);
+  // A see-through container nests its contents as indented child chips
+  // (criterion 4/12); each child is itself clickable (and may nest again).
+  if (o.contents && o.contents.length) {
+    const wrap = document.createElement("span");
+    wrap.className = "obj-wrap";
+    wrap.appendChild(span);
+    const nest = document.createElement("span");
+    nest.className = "obj-nest";
+    for (const c of o.contents) nest.appendChild(objectChip(c, c.name));
+    wrap.appendChild(nest);
+    return wrap;
+  }
   return span;
 }
 
@@ -299,8 +320,10 @@ function clearStagedVerb() {
 function showStagedHint(verb, dobjName) {
   // The two-step prompt after a needs_iobj dobj is chosen: "give <X> to..." /
   // "use <X> on...". Names the chosen direct object so the second click reads.
-  const prep = (verbSpecs[verb] || {}).valid_iobj_kinds || [];
-  const word = prep.indexOf("toon") !== -1 ? "to" : "on";
+  const spec = verbSpecs[verb] || {};
+  const kinds = spec.valid_iobj_kinds || [];
+  const word = (spec.preps && spec.preps[0]) ||
+    (kinds.indexOf("toon") !== -1 ? "to" : "on");
   const hint = document.getElementById("verb-hint");
   hint.textContent = `${verb} ${dobjName} ${word}... (click a target, or the verb again to cancel)`;
   hint.classList.remove("hidden");
@@ -387,17 +410,15 @@ function onObjectClick(objectId, objectVerbs, objectKind) {
   // a no-op, so we never prompt for talk text on a non-toon.
   const verb = stagedVerb || "examine";
   if (stagedVerb && objectVerbs && !objectVerbs.includes(stagedVerb)) return;
-  if (verb === "talk") {
-    const msg = (window.prompt("say what to them?") || "").trim();
-    sendCommand("talk", objectId, msg);
-    showPending();
-  } else if (verb === "plant") {
-    // The dreamseed's vision prompt (SPEC 2026-07-02), mirroring Talk's
-    // window.prompt. An empty answer still sends: the server replies with
-    // the seed's authored question (the typed two-turn path). The grow is
-    // LLM-backed and slow, so show the calm pending beat.
-    const vision = (window.prompt("where does the new way lead?") || "").trim();
-    sendCommand("plant", objectId, vision);
+  const stagedSpec = verbSpecs[verb] || {};
+  if (stagedSpec.needs_text) {
+    // Free-text prompting is verb DATA (criterion 12): the server's verb_bar
+    // carries needs_text + text_prompt, so talk, plant, and any world verb
+    // prompt through one generic flow — no verb names hardcoded here. An
+    // empty answer still sends (the server may reply with its own authored
+    // question); the action may be LLM-backed, so show the pending beat.
+    const msg = (window.prompt(stagedSpec.text_prompt || "and what do you say?") || "").trim();
+    sendCommand(verb, objectId, msg);
     showPending();
   } else {
     // A targeted examine/read renders its narrate as a storybook detail inset
@@ -470,8 +491,19 @@ function renderEvent(e) {
       span.onclick = () => onObjectClick(span.dataset.objectId);
     });
   } else if (e.kind === "move") {
-    const dir = e.payload.direction || "somewhere";
-    div.textContent = "you go " + dir + ".";
+    if (e.payload && e.payload.died) {
+      // Death interstitial: a brief black beat before the respawn snapshot
+      // re-renders the world; the authored message arrives as its own
+      // narrate. No "you go" line for dying.
+      showDeathOverlay();
+      return;
+    }
+    if (e.payload && e.payload.teleport) {
+      div.textContent = "the world shifts around you.";
+    } else {
+      const dir = e.payload.direction || "somewhere";
+      div.textContent = "you go " + dir + ".";
+    }
   } else {
     // Other event kinds (object_moved / object_spawned / item_added /
     // mood_set / ...) are state-sync signals: the accompanying snapshot
@@ -571,6 +603,71 @@ function handleRoomImageReady(event) {
   }
   // image_url null means generation failed; leave the placeholder showing.
   // The error string is in event.payload.error if anything wants to surface it.
+}
+
+function renderStatusRibbon(status) {
+  // Visible only for worlds that author a rank ladder (rank non-null);
+  // clockmakers keeps its quiet header. Score / rank / moves / light.
+  const el = document.getElementById("status-ribbon");
+  if (!status || status.rank === null || status.rank === undefined) {
+    el.classList.add("hidden");
+    el.innerHTML = "";
+    return;
+  }
+  el.classList.remove("hidden");
+  el.innerHTML = "";
+  const parts = [
+    ["st-score", "score " + (status.score || 0)],
+    ["st-rank", String(status.rank)],
+    ["st-moves", "moves " + (status.moves || 0)],
+  ];
+  for (const [id, text] of parts) {
+    const span = document.createElement("span");
+    span.id = id;
+    span.className = "st-part";
+    span.textContent = text;
+    el.appendChild(span);
+  }
+  const light = document.createElement("span");
+  light.id = "st-light";
+  light.className = "st-part st-light " + (status.lit ? "lit" : "unlit");
+  light.title = status.lit ? "you can see" : "it is dark";
+  light.textContent = status.lit ? "\u2600" : "\u263D";
+  el.appendChild(light);
+}
+
+function renderClarify(c) {
+  // The ambiguity question's clickable options (the prompt text itself
+  // arrives as a private narrate). Clicking one completes the pending
+  // command via the normal command frame; any other action abandons it.
+  const chat = document.getElementById("chat");
+  const div = document.createElement("div");
+  div.className = "evt evt-clarify";
+  for (const opt of c.options || []) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "clarify-opt";
+    btn.textContent = opt.name;
+    btn.onclick = () => {
+      if (c.slot === "iobj") {
+        sendCommand(c.verb, c.dobj_id, "", opt.id);
+      } else {
+        sendCommand(c.verb, opt.id, "", c.iobj_id);
+      }
+      div.remove();
+    };
+    div.appendChild(btn);
+  }
+  clearPending();
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function showDeathOverlay() {
+  const o = document.getElementById("death-overlay");
+  o.textContent = "everything goes black...";
+  o.classList.remove("hidden");
+  setTimeout(() => o.classList.add("hidden"), 2200);
 }
 
 function sendInput(text) {

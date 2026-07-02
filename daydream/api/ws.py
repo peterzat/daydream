@@ -239,9 +239,11 @@ def _state_snapshot(
                 "valid_iobj_kinds": sorted(v.valid_iobj_kinds),
                 # Free-text prompting is verb DATA (SPEC 2026-07-02
                 # criterion 12): the SPA reads these instead of hardcoding
-                # verb names for its prompt flow.
+                # verb names for its prompt flow. preps drives the two-step
+                # staging hint ("put the coal in...").
                 "needs_text": v.needs_text,
                 "text_prompt": v.text_prompt,
+                "preps": list(v.preps),
             }
             for v in verbs.bar_verbs(room.world_id if room else None)
         ],
