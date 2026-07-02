@@ -293,6 +293,214 @@ def test_per_verb_allowlist_permits_declared_kind():
     assert objects.get("i-lantern").location_id == "t-wren"
 
 
+# ---- world-shaping kinds: spawn_room / link_exit (SPEC 2026-07-02) ---------
+
+
+_GROW = frozenset({"spawn_room", "link_exit", "narrate"})
+
+
+def _spawn_room(room_id="r-test-grove", slug="test-grove", *, properties=None,
+                allowed=_GROW, **overrides):
+    eff = {
+        "kind": "spawn_room", "room_id": room_id, "slug": slug,
+        "title": "The Test Grove", "seed": "a soft grove of test pines",
+        "description": "A quiet grove where assertions grow on low branches.",
+    }
+    if properties is not None:
+        eff["properties"] = properties
+    eff.update(overrides)
+    return effects.dispatch_effects(
+        [eff], actor_id="t-wren", room_id="r-meadow", world_id="w-bunny",
+        allowed=allowed,
+    )
+
+
+def test_default_kinds_exclude_world_shaping():
+    """allowed=None (the data-skill default) must never grant world-shaping:
+    spawn_room / link_exit are in ALLOWED_KINDS but NOT in DEFAULT_KINDS."""
+    assert effects.WORLD_SHAPING_KINDS <= effects.ALLOWED_KINDS
+    assert not (effects.WORLD_SHAPING_KINDS & effects.DEFAULT_KINDS)
+    assert "narrate" in effects.DEFAULT_KINDS  # the standard vocabulary remains
+
+
+def test_spawn_room_creates_first_class_room():
+    from daydream import objects, rooms
+    applied = _spawn_room()
+    assert applied[0].event is not None
+    assert applied[0].event.kind == "room_grown"
+    assert applied[0].event.payload["room_id"] == "r-test-grove"
+    # The existing Room reader consumes it with zero changes.
+    room = rooms.get_room("r-test-grove")
+    assert room is not None
+    assert room.slug == "test-grove"
+    assert room.title == "The Test Grove"
+    assert room.seed == "a soft grove of test pines"
+    assert room.description_cached.startswith("A quiet grove")
+    assert room.exits == {}
+    obj = objects.get("r-test-grove")
+    assert obj.kind == "room" and obj.prototype_id == objects.PROTO_ROOM
+    assert obj.location_id is None  # rooms are top-level
+
+
+def test_spawn_room_duplicate_id_rejected():
+    from daydream import objects
+    _spawn_room()
+    applied = _spawn_room(slug="other-slug")  # same id, different slug
+    assert applied[0].event is None
+    assert objects.get("r-test-grove").properties["slug"] == "test-grove"
+
+
+def test_spawn_room_duplicate_slug_rejected():
+    from daydream import objects
+    _spawn_room()
+    applied = _spawn_room(room_id="r-other")  # different id, same slug
+    assert applied[0].event is None
+    assert objects.get("r-other") is None
+
+
+def test_spawn_room_missing_fields_rejected():
+    from daydream import objects
+    for missing in ("room_id", "slug", "title", "seed"):
+        applied = _spawn_room(**{missing: ""})
+        assert applied[0].event is None, f"empty {missing} must reject"
+    assert objects.get("r-test-grove") is None
+
+
+def test_spawn_room_properties_passthrough_computed_keys_win():
+    from daydream import objects
+    applied = _spawn_room(properties={
+        "generated_by": "plant:o-seed", "grown": {"seed_id": "o-seed"},
+        "slug": "evil-slug", "exits": {"north": "r-meadow"},
+    })
+    assert applied[0].event is not None
+    props = objects.get("r-test-grove").properties
+    # Provenance passes through; the computed room shape wins on collision.
+    assert props["generated_by"] == "plant:o-seed"
+    assert props["grown"] == {"seed_id": "o-seed"}
+    assert props["slug"] == "test-grove"
+    assert props["exits"] == {}
+
+
+def test_link_exit_writes_both_sides():
+    from daydream import rooms
+    _spawn_room()
+    applied = effects.dispatch_effects(
+        [{"kind": "link_exit", "from_room_id": "r-meadow",
+          "to_room_id": "r-test-grove", "direction": "up",
+          "reverse_direction": "down"}],
+        actor_id="t-wren", room_id="r-meadow", world_id="w-bunny",
+        allowed=_GROW,
+    )
+    assert applied[0].event is not None
+    assert applied[0].event.kind == "exit_linked"
+    assert rooms.get_room("r-meadow").exits["up"] == "r-test-grove"
+    assert rooms.get_room("r-test-grove").exits["down"] == "r-meadow"
+
+
+def test_link_exit_occupied_direction_all_or_nothing():
+    """A link whose TO side is taken writes NEITHER side — never a one-way
+    exit."""
+    from daydream import rooms
+    _spawn_room()  # r-test-grove
+    _spawn_room(room_id="r-test-attic", slug="test-attic")
+    ok = effects.dispatch_effects(
+        [{"kind": "link_exit", "from_room_id": "r-test-grove",
+          "to_room_id": "r-test-attic", "direction": "north",
+          "reverse_direction": "south"}],
+        actor_id="t-wren", room_id="r-meadow", world_id="w-bunny", allowed=_GROW,
+    )
+    assert ok[0].event is not None
+    _spawn_room(room_id="r-test-cellar", slug="test-cellar")
+    # cellar -> attic: 'east' is free on the cellar, but 'south' is taken on
+    # the attic. The whole link must reject with neither side written.
+    applied = effects.dispatch_effects(
+        [{"kind": "link_exit", "from_room_id": "r-test-cellar",
+          "to_room_id": "r-test-attic", "direction": "east",
+          "reverse_direction": "south"}],
+        actor_id="t-wren", room_id="r-meadow", world_id="w-bunny", allowed=_GROW,
+    )
+    assert applied[0].event is None
+    assert rooms.get_room("r-test-cellar").exits == {}
+    assert rooms.get_room("r-test-attic").exits == {"south": "r-test-grove"}
+
+
+def test_link_exit_rejects_unknown_or_non_room_or_self():
+    from daydream import rooms
+    _spawn_room()
+    for bad in (
+        {"from_room_id": "r-test-grove", "to_room_id": "r-nowhere"},
+        {"from_room_id": "r-nowhere", "to_room_id": "r-test-grove"},
+        {"from_room_id": "r-test-grove", "to_room_id": "i-lantern"},
+        {"from_room_id": "r-test-grove", "to_room_id": "r-test-grove"},
+    ):
+        applied = effects.dispatch_effects(
+            [{"kind": "link_exit", "direction": "north",
+              "reverse_direction": "south", **bad}],
+            actor_id="t-wren", room_id="r-meadow", world_id="w-bunny",
+            allowed=_GROW,
+        )
+        assert applied[0].event is None, f"link must reject: {bad}"
+    assert rooms.get_room("r-test-grove").exits == {}
+
+
+def test_spawn_object_properties_passthrough():
+    """An authored `properties` dict rides into the spawned object; the
+    computed keys (seed et al.) win on collision."""
+    from daydream import objects
+    effects.dispatch_effects(
+        [{"kind": "spawn_object", "name": "dreamseed", "seed": "winner",
+          "verbs": ["plant"],
+          "properties": {"growth": {"question": "where to?"}, "seed": "loser"}}],
+        actor_id="t-wren", room_id="r-meadow", world_id="w-bunny",
+    )
+    seed_obj = next(o for o in objects.contents("r-meadow", "thing")
+                    if o.name == "dreamseed")
+    assert seed_obj.properties["growth"] == {"question": "where to?"}
+    assert seed_obj.seed == "winner"
+    assert seed_obj.properties["verbs"] == ["plant"]
+
+
+def test_world_shaping_rejected_for_data_skill_default():
+    """allowed=None (an NPC dialogue / standalone data skill) attempting
+    spawn_room or link_exit is rejected exactly like an unknown kind: fallback
+    narrate, NO mutation (SPEC 2026-07-02 criterion 4)."""
+    from daydream import objects
+    applied = effects.dispatch_effects(
+        [{"kind": "spawn_room", "room_id": "r-sneaky", "slug": "sneaky",
+          "title": "Sneaky", "seed": "s"},
+         {"kind": "link_exit", "from_room_id": "r-meadow",
+          "to_room_id": "r-forge", "direction": "up", "reverse_direction": "down"}],
+        actor_id="t-wren", room_id="r-meadow", world_id="w-bunny",
+        allowed=None,
+    )
+    assert [a.event.kind for a in applied] == ["narrate", "narrate"]  # fallbacks
+    assert objects.get("r-sneaky") is None
+
+
+def test_world_shaping_rejected_for_undeclaring_verb():
+    """A verb whose allowlist omits the world-shaping kinds cannot emit them."""
+    from daydream import objects
+    applied = effects.dispatch_effects(
+        [{"kind": "spawn_room", "room_id": "r-sneaky", "slug": "sneaky",
+          "title": "Sneaky", "seed": "s"}],
+        actor_id="t-wren", room_id="r-meadow", world_id="w-bunny",
+        allowed=frozenset({"narrate", "spawn_object"}),
+    )
+    assert applied[0].event is not None and applied[0].event.kind == "narrate"
+    assert objects.get("r-sneaky") is None
+
+
+def test_grown_room_count_counts_only_grown():
+    from daydream import rooms
+    assert rooms.grown_room_count("w-bunny") == 0
+    _spawn_room()  # no `grown` provenance: an authored-style room
+    assert rooms.grown_room_count("w-bunny") == 0
+    _spawn_room(room_id="r-test-fern", slug="test-fern",
+                properties={"grown": {"seed_id": "o-seed", "planter_id": "t-wren",
+                                      "phrase": "a mossy hollow", "at": "now"}})
+    assert rooms.grown_room_count("w-bunny") == 1
+
+
 def test_one_bad_effect_does_not_poison_others():
     applied = effects.dispatch_effects(
         [

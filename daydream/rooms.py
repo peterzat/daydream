@@ -44,6 +44,19 @@ def get_room_by_slug(world_id: str, slug: str) -> Room | None:
     return Room.from_object(obj) if obj is not None else None
 
 
+def grown_room_count(world_id: str) -> int:
+    """How many of a world's rooms were grown at runtime (a `plant`), keyed on
+    the structured `grown` provenance property every grown room carries (SPEC
+    2026-07-02). Authored rooms don't count: the growth cap
+    (DAYDREAM_GROWTH_MAX_ROOMS) bounds runtime growth, not world size."""
+    row = db.get_conn().execute(
+        "SELECT COUNT(*) AS n FROM objects WHERE world_id = ? AND kind = 'room' "
+        "AND json_extract(properties_json, '$.grown') IS NOT NULL",
+        (world_id,),
+    ).fetchone()
+    return int(row["n"]) if row else 0
+
+
 def starting_room_id(world_id: str) -> str | None:
     """The world's designated 'starting room' -- where a toon wakes after a
     rest and where a new toon spawns (migration 010, `worlds.starting_room_id`).

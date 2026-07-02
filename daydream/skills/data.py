@@ -185,14 +185,17 @@ _RENDER_FAILURE_TEXT = "The dream loses the thread of that skill."
 # System message for the data-skill dispatcher LLM call. Instructs SECOND
 # PERSON for player-action narration so the player is always addressed as
 # "you", never "the visitor" / third person (SPEC 2026-06-30). Built once at
-# import; ALLOWED_KINDS is stable.
+# import; DEFAULT_KINDS is stable. (DEFAULT_KINDS, not ALLOWED_KINDS: the
+# world-shaping kinds are per-verb opt-in and unreachable from a data skill's
+# allowed=None dispatch, so advertising them here would only teach the model
+# to emit effects the dispatcher then rejects.)
 _DISPATCHER_SYSTEM = (
     "You are a skill dispatcher for a cozy watercolor text-adventure. "
     "Narrate the player's own actions in the SECOND PERSON: address the player "
     "as 'you', never as 'the visitor' or any third-person label. "
     "Return strict JSON with an 'effects' list; each effect has a 'kind' plus "
     "the fields that kind requires. Allowed kinds: "
-    + ", ".join(sorted(effects.ALLOWED_KINDS))
+    + ", ".join(sorted(effects.DEFAULT_KINDS))
     + '. If the request is off-tone or outside this skill, return '
     '{"refused": true, "reason": "<in-fiction gentle refusal>"}. '
     "Keep all narrative text tone-matched: cozy, soft, painterly."
@@ -282,8 +285,8 @@ async def execute(
 
     `allowed`, when given, is the per-verb effect allowlist forwarded to the
     effect dispatcher (e.g. the `talk` verb constrains an NPC's dialogue to
-    narrate/set_property/set_mood/spawn_object). None = the full ALLOWED_KINDS,
-    the standalone data-skill default."""
+    narrate/set_property/set_mood/spawn_object). None = DEFAULT_KINDS, the
+    standalone data-skill default (world-shaping kinds excluded)."""
     # (0) Bind the skill to its backing NPC (if any) and pull recent
     # memories. Both retrieval and capture are no-ops for skills that
     # don't have a matching NPC row (e.g., room-anchored skills like
