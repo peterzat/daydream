@@ -2541,20 +2541,301 @@
       }
     },
     {
-      "id": "r-aragain-falls",
-      "slug": "stub-aragain-falls",
-      "title": "Unfinished Dark",
-      "seed": "unfinished dark",
+      "id": "r-mine-entrance",
+      "slug": "mine-entrance",
+      "title": "Mine Entrance",
       "dark": true,
-      "description": "This part of the empire is still being excavated.",
-      "exits": {},
-      "properties": {
-        "stub": true
+      "seed": "the mouth of an old coal mine, timber props, a squeak of wings somewhere within",
+      "description": "You are standing at the entrance of what might have been a coal mine. The shaft enters the west wall, and there is another exit on the south end of the room.",
+      "exits": {
+        "south": "r-slide-room",
+        "west": "r-squeaky-room",
+        "in": "r-squeaky-room"
       }
     },
     {
-      "id": "r-mine-entrance",
-      "slug": "stub-mine-entrance",
+      "id": "r-squeaky-room",
+      "slug": "squeaky-room",
+      "title": "Squeaky Room",
+      "dark": true,
+      "seed": "a small stone room, strange squeaking beyond the north passage",
+      "description": "You are in a small room. Strange squeaky sounds may be heard coming from the passage at the north end. You may also escape to the east.",
+      "exits": {
+        "north": "r-bat-room",
+        "east": "r-mine-entrance"
+      }
+    },
+    {
+      "id": "r-bat-room",
+      "slug": "bat-room",
+      "title": "Bat Room",
+      "dark": true,
+      "seed": "a small cave room, an exquisite jade figurine below a ceiling occupied by one large bat",
+      "description": "You are in a small room which has doors only to the east and south.",
+      "exits": {
+        "south": "r-squeaky-room",
+        "east": "r-shaft-room"
+      },
+      "rules": [
+        {
+          "on": "enter",
+          "if": [
+            {
+              "carried": "o-garlic",
+              "not": true
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "A large vampire bat, hanging from the ceiling, swoops down at you!\n\n    Fweep!\n    Fweep!\n    Fweep!\n\nThe bat grabs you by the scruff of your neck and lifts you away...."
+            },
+            {
+              "kind": "teleport_actor",
+              "room_id": "r-mine-4"
+            }
+          ]
+        },
+        {
+          "on": "enter",
+          "stop": false,
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "In the corner of the room on the ceiling is a large vampire bat who is obviously deranged and holding his nose."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "r-shaft-room",
+      "slug": "shaft-room",
+      "title": "Shaft Room",
+      "dark": true,
+      "seed": "a large chamber over a narrow black shaft, iron framework and a heavy chain into the dark",
+      "description": "This is a large room, in the middle of which is a small shaft descending through the floor into darkness below. To the west and the north are exits from this room. Constructed over the top of the shaft is a metal framework to which a heavy iron chain is attached.",
+      "exits": {
+        "west": "r-bat-room",
+        "north": "r-smelly-room",
+        "down": {
+          "text": "You wouldn't fit, and you would regret succeeding."
+        }
+      }
+    },
+    {
+      "id": "r-smelly-room",
+      "slug": "smelly-room",
+      "title": "Smelly Room",
+      "dark": true,
+      "seed": "a small nondescript room already thick with a gas smell rising from below",
+      "description": "This is a small non-descript room. However, from the direction of a small descending staircase a foul odor can be detected. To the south is a narrow tunnel.",
+      "exits": {
+        "south": "r-shaft-room",
+        "down": "r-gas-room"
+      }
+    },
+    {
+      "id": "r-gas-room",
+      "slug": "gas-room",
+      "title": "Gas Room",
+      "dark": true,
+      "seed": "a small chamber heavy with the smell of coal gas, a sapphire bracelet glinting on the floor",
+      "description": "This is a small room which smells strongly of coal gas. There is a short climb up some stairs and a narrow tunnel leading east.",
+      "exits": {
+        "up": "r-smelly-room",
+        "east": "r-mine-1"
+      },
+      "rules": [
+        {
+          "on": "enter",
+          "if": [
+            {
+              "carried_filter": {
+                "key": "flame",
+                "eq": true
+              }
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "Oh dear. It appears that the smell in this room was coal gas, and you appear to have brought an open flame to discuss it with.\n\n    ** BOOOOOOOOOOOM **"
+            },
+            {
+              "kind": "kill_actor"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "r-mine-1",
+      "slug": "mine-1",
+      "title": "Coal Mine",
+      "dark": true,
+      "seed": "a non-descript gallery of the old coal mine, every direction alike",
+      "description": "This is a non-descript part of a coal mine.",
+      "exits": {
+        "north": "r-gas-room",
+        "east": "r-mine-1",
+        "northeast": "r-mine-2"
+      }
+    },
+    {
+      "id": "r-mine-2",
+      "slug": "mine-2",
+      "title": "Coal Mine",
+      "dark": true,
+      "seed": "a non-descript gallery of the old coal mine, every direction alike",
+      "description": "This is a non-descript part of a coal mine.",
+      "exits": {
+        "north": "r-mine-2",
+        "south": "r-mine-1",
+        "southeast": "r-mine-3"
+      }
+    },
+    {
+      "id": "r-mine-3",
+      "slug": "mine-3",
+      "title": "Coal Mine",
+      "dark": true,
+      "seed": "a non-descript gallery of the old coal mine, every direction alike",
+      "description": "This is a non-descript part of a coal mine.",
+      "exits": {
+        "south": "r-mine-3",
+        "southwest": "r-mine-4",
+        "east": "r-mine-2"
+      }
+    },
+    {
+      "id": "r-mine-4",
+      "slug": "mine-4",
+      "title": "Coal Mine",
+      "dark": true,
+      "seed": "a non-descript gallery of the old coal mine, every direction alike",
+      "description": "This is a non-descript part of a coal mine.",
+      "exits": {
+        "north": "r-mine-3",
+        "west": "r-mine-4",
+        "down": "r-ladder-top"
+      }
+    },
+    {
+      "id": "r-ladder-top",
+      "slug": "ladder-top",
+      "title": "Ladder Top",
+      "dark": true,
+      "seed": "a narrow passage broken by the top of a rickety wooden ladder",
+      "description": "This is a very small room. In the corner is a rickety wooden ladder, leading downward. It might be safe to descend. There is also a staircase leading upward.",
+      "exits": {
+        "down": "r-ladder-bottom",
+        "up": "r-mine-4"
+      }
+    },
+    {
+      "id": "r-ladder-bottom",
+      "slug": "ladder-bottom",
+      "title": "Ladder Bottom",
+      "dark": true,
+      "seed": "the foot of a rickety ladder in a rough gallery, passages south and west",
+      "description": "This is a rather wide room. On one side is the bottom of a narrow wooden ladder. To the west and the south are passages leaving the room.",
+      "exits": {
+        "south": "r-dead-end-5",
+        "west": "r-timber-room",
+        "up": "r-ladder-top"
+      }
+    },
+    {
+      "id": "r-dead-end-5",
+      "slug": "dead-end-5",
+      "title": "Dead End",
+      "dark": true,
+      "seed": "a dead end in the mine, a small pile of coal glinting dully",
+      "description": "You have come to a dead end in the mine.",
+      "exits": {
+        "north": "r-ladder-bottom"
+      }
+    },
+    {
+      "id": "r-timber-room",
+      "slug": "timber-room",
+      "title": "Timber Room",
+      "dark": true,
+      "seed": "a long narrow passage cluttered with broken timbers, a very narrow crack leading west",
+      "description": "This is a long and narrow passage, which is cluttered with broken timbers. A wide passage comes from the east, and a very narrow passage leads west.",
+      "exits": {
+        "east": "r-ladder-bottom",
+        "west": {
+          "to": "r-lower-shaft",
+          "if": [
+            {
+              "empty_handed": true
+            }
+          ],
+          "blocked_text": "You cannot fit through this passage with that load."
+        }
+      }
+    },
+    {
+      "id": "r-lower-shaft",
+      "slug": "drafty-room",
+      "title": "Drafty Room",
+      "dark": true,
+      "seed": "a small drafty chamber at the bottom of the long shaft, the iron chain descending into it",
+      "description": "This is a small drafty room in which is the bottom of a long shaft. To the south is a passageway and to the east a very narrow passage. In the shaft can be seen a heavy iron chain.",
+      "exits": {
+        "south": "r-machine-room",
+        "out": {
+          "to": "r-timber-room",
+          "if": [
+            {
+              "empty_handed": true
+            }
+          ],
+          "blocked_text": "You cannot fit through this passage with that load."
+        },
+        "east": {
+          "to": "r-timber-room",
+          "if": [
+            {
+              "empty_handed": true
+            }
+          ],
+          "blocked_text": "You cannot fit through this passage with that load."
+        }
+      },
+      "rules": [
+        {
+          "on": "enter",
+          "stop": false,
+          "do": [
+            {
+              "kind": "adjust_score",
+              "delta": 13,
+              "once": "room:r-lower-shaft"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "r-machine-room",
+      "slug": "machine-room",
+      "title": "Machine Room",
+      "dark": true,
+      "seed": "a cool room dominated by one machine shaped suspiciously like a clothes dryer, a switch beside its lid",
+      "description": "This is a large, cold room whose sole exit is to the north. In one corner there is a machine which is reminiscent of a clothes dryer. On its face is a switch which is labelled in a dialect of Dwarvish, though fortunately the usage is obvious: it takes a tool, not a finger.",
+      "exits": {
+        "north": "r-lower-shaft"
+      }
+    },
+    {
+      "id": "r-aragain-falls",
+      "slug": "stub-aragain-falls",
       "title": "Unfinished Dark",
       "seed": "unfinished dark",
       "dark": true,
@@ -5796,6 +6077,454 @@
           ]
         }
       ]
+    },
+    {
+      "id": "o-bat",
+      "name": "vampire bat",
+      "location": {
+        "room": "r-bat-room"
+      },
+      "aliases": [
+        "bat",
+        "vampire"
+      ],
+      "seed": "a large vampire bat of unsound mind, hanging from the ceiling",
+      "fixture": true,
+      "properties": {
+        "examined_text": "The bat hangs from the ceiling with the deranged composure of a creature that has never once been contradicted. It is keeping a respectful distance from your garlic."
+      },
+      "rules": [
+        {
+          "on": "take",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "You can't reach him; he's on the ceiling."
+            }
+          ]
+        },
+        {
+          "on": "attack",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "You can't reach him; he's on the ceiling."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "o-jade",
+      "name": "jade figurine",
+      "location": {
+        "room": "r-bat-room"
+      },
+      "aliases": [
+        "jade",
+        "figurine"
+      ],
+      "seed": "an exquisite jade figurine, small enough to pocket, fine enough to regret pocketing",
+      "properties": {
+        "size": 10,
+        "treasure": true,
+        "score_take": 5,
+        "score_case": 5
+      }
+    },
+    {
+      "id": "o-bracelet",
+      "name": "sapphire-encrusted bracelet",
+      "location": {
+        "room": "r-gas-room"
+      },
+      "aliases": [
+        "bracelet",
+        "sapphire",
+        "sapphire bracelet"
+      ],
+      "seed": "a bracelet crusted with sapphires, abandoned in a hurry by someone sensible",
+      "properties": {
+        "size": 10,
+        "treasure": true,
+        "score_take": 5,
+        "score_case": 5
+      }
+    },
+    {
+      "id": "o-coal",
+      "name": "small pile of coal",
+      "location": {
+        "room": "r-dead-end-5"
+      },
+      "aliases": [
+        "coal",
+        "pile of coal"
+      ],
+      "seed": "a small pile of honest coal, patient about its future",
+      "properties": {
+        "size": 20
+      }
+    },
+    {
+      "id": "o-basket",
+      "name": "basket",
+      "location": {
+        "room": "r-shaft-room"
+      },
+      "aliases": [
+        "cage",
+        "dumbwaiter"
+      ],
+      "seed": "a sturdy basket hung from the iron chain, a dumbwaiter for miners",
+      "fixture": true,
+      "verbs": [
+        "raise",
+        "lower"
+      ],
+      "properties": {
+        "container": true,
+        "capacity": 50,
+        "transparent": true
+      },
+      "rules": [
+        {
+          "on": "take",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "The cage is securely fastened to the iron chain."
+            }
+          ]
+        },
+        {
+          "on": "raise",
+          "if": [
+            {
+              "in": "r-shaft-room"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "The basket is already at the top of the chain."
+            }
+          ]
+        },
+        {
+          "on": "raise",
+          "do": [
+            {
+              "kind": "move_object",
+              "object_id": "o-basket",
+              "dest_id": "r-shaft-room"
+            },
+            {
+              "kind": "move_object",
+              "object_id": "o-basket-far",
+              "dest_id": "r-lower-shaft"
+            },
+            {
+              "kind": "narrate",
+              "text": "The basket is raised to the top of the shaft."
+            }
+          ]
+        },
+        {
+          "on": "lower",
+          "if": [
+            {
+              "in": "r-lower-shaft"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "The basket is already at the bottom of the chain."
+            }
+          ]
+        },
+        {
+          "on": "lower",
+          "do": [
+            {
+              "kind": "move_object",
+              "object_id": "o-basket",
+              "dest_id": "r-lower-shaft"
+            },
+            {
+              "kind": "move_object",
+              "object_id": "o-basket-far",
+              "dest_id": "r-shaft-room"
+            },
+            {
+              "kind": "narrate",
+              "text": "The basket is lowered to the bottom of the shaft."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "o-basket-far",
+      "name": "basket",
+      "location": {
+        "room": "r-lower-shaft"
+      },
+      "aliases": [
+        "cage",
+        "chain",
+        "dumbwaiter"
+      ],
+      "seed": "the far end of the dumbwaiter chain, the basket itself away at the other end",
+      "fixture": true,
+      "verbs": [
+        "raise",
+        "lower"
+      ],
+      "properties": {
+        "examined_text": "The basket is at the other end of the chain."
+      },
+      "rules": [
+        {
+          "on": "take",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "The basket is at the other end of the chain."
+            }
+          ]
+        },
+        {
+          "on": "put",
+          "as": "iobj",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "The basket is at the other end of the chain."
+            }
+          ]
+        },
+        {
+          "on": "raise",
+          "if": [
+            {
+              "in": "r-shaft-room"
+            }
+          ],
+          "do": [
+            {
+              "kind": "move_object",
+              "object_id": "o-basket",
+              "dest_id": "r-shaft-room"
+            },
+            {
+              "kind": "move_object",
+              "object_id": "o-basket-far",
+              "dest_id": "r-lower-shaft"
+            },
+            {
+              "kind": "narrate",
+              "text": "The basket is raised to the top of the shaft."
+            }
+          ]
+        },
+        {
+          "on": "raise",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "The basket is already at the top of the chain."
+            }
+          ]
+        },
+        {
+          "on": "lower",
+          "if": [
+            {
+              "in": "r-lower-shaft"
+            }
+          ],
+          "do": [
+            {
+              "kind": "move_object",
+              "object_id": "o-basket",
+              "dest_id": "r-lower-shaft"
+            },
+            {
+              "kind": "move_object",
+              "object_id": "o-basket-far",
+              "dest_id": "r-shaft-room"
+            },
+            {
+              "kind": "narrate",
+              "text": "The basket is lowered to the bottom of the shaft."
+            }
+          ]
+        },
+        {
+          "on": "lower",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "The basket is already at the bottom of the chain."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "o-timbers",
+      "name": "broken timber",
+      "location": {
+        "room": "r-timber-room"
+      },
+      "aliases": [
+        "timbers",
+        "timber",
+        "wooden pile"
+      ],
+      "seed": "a broken length of mine timber, heavy and profoundly useless",
+      "properties": {
+        "size": 50
+      }
+    },
+    {
+      "id": "o-machine",
+      "name": "machine",
+      "location": {
+        "room": "r-machine-room"
+      },
+      "aliases": [
+        "lid",
+        "dryer",
+        "pdp10"
+      ],
+      "seed": "a machine reminiscent of a clothes dryer, lid on top, an air of dwarvish patents about it",
+      "fixture": true,
+      "verbs": [
+        "open",
+        "close"
+      ],
+      "properties": {
+        "container": true,
+        "state": "closed",
+        "capacity": 25,
+        "open_text": "The lid opens, revealing the machine's hopper: a scorched chamber that has clearly held stranger cargo than yours."
+      }
+    },
+    {
+      "id": "o-switch",
+      "name": "switch",
+      "location": {
+        "room": "r-machine-room"
+      },
+      "aliases": [
+        "machine switch"
+      ],
+      "seed": "a stubby switch beside the machine's lid, slotted for a tool",
+      "fixture": true,
+      "verbs": [
+        "turn"
+      ],
+      "rules": [
+        {
+          "on": "turn",
+          "if": [
+            {
+              "iobj": "o-screwdriver"
+            },
+            {
+              "prop": "state",
+              "of": "o-machine",
+              "eq": "open"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "The machine gives an offended click. It will not perform with its lid open."
+            }
+          ]
+        },
+        {
+          "on": "turn",
+          "if": [
+            {
+              "iobj": "o-screwdriver"
+            },
+            {
+              "contains": "o-coal",
+              "of": "o-machine"
+            }
+          ],
+          "do": [
+            {
+              "kind": "destroy_object",
+              "object_id": "o-coal"
+            },
+            {
+              "kind": "move_object",
+              "object_id": "o-diamond",
+              "dest_id": "o-machine"
+            },
+            {
+              "kind": "narrate",
+              "text": "The machine comes to life (figuratively) with a dazzling display of colored lights and bizarre noises. After a few moments, the excitement abates."
+            }
+          ]
+        },
+        {
+          "on": "turn",
+          "if": [
+            {
+              "iobj": "o-screwdriver"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "text": "The machine shudders through its cycle with nothing to work on, and settles back into disappointment."
+            }
+          ]
+        },
+        {
+          "on": "turn",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "The switch wants a flat blade and some conviction; fingers are neither."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "o-diamond",
+      "name": "huge diamond",
+      "location": "offstage",
+      "aliases": [
+        "diamond",
+        "enormous diamond"
+      ],
+      "seed": "a huge diamond, all its coal years behind it",
+      "properties": {
+        "size": 5,
+        "treasure": true,
+        "score_take": 10,
+        "score_case": 10
+      }
     },
     {
       "id": "o-boat",

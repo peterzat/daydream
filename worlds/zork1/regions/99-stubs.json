@@ -14,18 +14,6 @@
       }
     },
     {
-      "id": "r-mine-entrance",
-      "slug": "stub-mine-entrance",
-      "title": "Unfinished Dark",
-      "seed": "unfinished dark",
-      "dark": true,
-      "description": "This part of the empire is still being excavated.",
-      "exits": {},
-      "properties": {
-        "stub": true
-      }
-    },
-    {
       "id": "r-on-rainbow",
       "slug": "stub-on-rainbow",
       "title": "Unfinished Dark",

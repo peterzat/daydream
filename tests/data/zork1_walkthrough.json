@@ -1474,6 +1474,596 @@
           }
         }
       ]
+    },
+    {
+      "name": "screwdriver-and-the-mine",
+      "commands": [
+        {
+          "cmd": "open trap door"
+        },
+        {
+          "cmd": "down",
+          "expect": {
+            "room": "r-cellar",
+            "flag": {
+              "TRAP-DOOR-OPEN": true
+            }
+          }
+        },
+        {
+          "cmd": "north",
+          "expect": {
+            "room": "r-troll-room"
+          }
+        },
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-ew-passage"
+          }
+        },
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-round-room"
+          }
+        },
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-loud-room"
+          }
+        },
+        {
+          "cmd": "up",
+          "expect": {
+            "room": "r-deep-canyon"
+          }
+        },
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-dam"
+          }
+        },
+        {
+          "cmd": "north",
+          "expect": {
+            "room": "r-dam-lobby"
+          }
+        },
+        {
+          "cmd": "north",
+          "expect": {
+            "room": "r-maintenance-room"
+          }
+        },
+        {
+          "cmd": "take screwdriver",
+          "expect": {
+            "carrying": [
+              "screwdriver"
+            ]
+          }
+        },
+        {
+          "cmd": "south",
+          "expect": {
+            "room": "r-dam-lobby"
+          }
+        },
+        {
+          "cmd": "south",
+          "expect": {
+            "room": "r-dam"
+          }
+        },
+        {
+          "cmd": "west",
+          "expect": {
+            "room": "r-reservoir-south"
+          }
+        },
+        {
+          "cmd": "north",
+          "expect": {
+            "room": "r-reservoir"
+          }
+        },
+        {
+          "cmd": "north",
+          "expect": {
+            "room": "r-reservoir-north"
+          }
+        },
+        {
+          "cmd": "north",
+          "expect": {
+            "room": "r-atlantis-room"
+          }
+        },
+        {
+          "cmd": "up",
+          "expect": {
+            "room": "r-small-cave"
+          }
+        },
+        {
+          "cmd": "north",
+          "expect": {
+            "room": "r-mirror-room-north"
+          }
+        },
+        {
+          "cmd": "north",
+          "expect": {
+            "room": "r-cold-passage"
+          }
+        },
+        {
+          "cmd": "west",
+          "expect": {
+            "room": "r-slide-room"
+          }
+        },
+        {
+          "cmd": "north",
+          "expect": {
+            "room": "r-mine-entrance"
+          }
+        },
+        {
+          "cmd": "west",
+          "expect": {
+            "room": "r-squeaky-room"
+          }
+        },
+        {
+          "cmd": "north",
+          "expect": {
+            "room": "r-bat-room",
+            "narrate_contains": "holding his nose"
+          }
+        },
+        {
+          "cmd": "take jade",
+          "expect": {
+            "score": 245,
+            "carrying": [
+              "jade figurine"
+            ]
+          }
+        },
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-shaft-room"
+          }
+        },
+        {
+          "cmd": "put torch and screwdriver in basket",
+          "expect": {
+            "narrate_contains": "screwdriver"
+          }
+        },
+        {
+          "cmd": "turn on lamp",
+          "expect": {
+            "narrate_contains": "now on"
+          }
+        }
+      ]
+    },
+    {
+      "name": "the-coal-run",
+      "commands": [
+        {
+          "cmd": "north",
+          "expect": {
+            "room": "r-smelly-room"
+          }
+        },
+        {
+          "cmd": "down",
+          "expect": {
+            "room": "r-gas-room"
+          }
+        },
+        {
+          "cmd": "take bracelet",
+          "expect": {
+            "score": 250,
+            "carrying": [
+              "sapphire-encrusted bracelet"
+            ]
+          }
+        },
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-mine-1"
+          }
+        },
+        {
+          "cmd": "northeast",
+          "expect": {
+            "room": "r-mine-2"
+          }
+        },
+        {
+          "cmd": "southeast",
+          "expect": {
+            "room": "r-mine-3"
+          }
+        },
+        {
+          "cmd": "southwest",
+          "expect": {
+            "room": "r-mine-4"
+          }
+        },
+        {
+          "cmd": "down",
+          "expect": {
+            "room": "r-ladder-top"
+          }
+        },
+        {
+          "cmd": "down",
+          "expect": {
+            "room": "r-ladder-bottom"
+          }
+        },
+        {
+          "cmd": "south",
+          "expect": {
+            "room": "r-dead-end-5"
+          }
+        },
+        {
+          "cmd": "take coal",
+          "expect": {
+            "carrying": [
+              "small pile of coal"
+            ]
+          }
+        },
+        {
+          "cmd": "north",
+          "expect": {
+            "room": "r-ladder-bottom"
+          }
+        },
+        {
+          "cmd": "up",
+          "expect": {
+            "room": "r-ladder-top"
+          }
+        },
+        {
+          "cmd": "up",
+          "expect": {
+            "room": "r-mine-4"
+          }
+        },
+        {
+          "cmd": "north",
+          "expect": {
+            "room": "r-mine-3"
+          }
+        },
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-mine-2"
+          }
+        },
+        {
+          "cmd": "south",
+          "expect": {
+            "room": "r-mine-1"
+          }
+        },
+        {
+          "cmd": "north",
+          "expect": {
+            "room": "r-gas-room"
+          }
+        },
+        {
+          "cmd": "up",
+          "expect": {
+            "room": "r-smelly-room"
+          }
+        },
+        {
+          "cmd": "south",
+          "expect": {
+            "room": "r-shaft-room"
+          }
+        },
+        {
+          "cmd": "put coal in basket"
+        },
+        {
+          "cmd": "lower basket",
+          "expect": {
+            "narrate_contains": "lowered to the bottom"
+          }
+        }
+      ]
+    },
+    {
+      "name": "the-drafty-machine",
+      "commands": [
+        {
+          "cmd": "north",
+          "expect": {
+            "room": "r-smelly-room"
+          }
+        },
+        {
+          "cmd": "down",
+          "expect": {
+            "room": "r-gas-room"
+          }
+        },
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-mine-1"
+          }
+        },
+        {
+          "cmd": "northeast",
+          "expect": {
+            "room": "r-mine-2"
+          }
+        },
+        {
+          "cmd": "southeast",
+          "expect": {
+            "room": "r-mine-3"
+          }
+        },
+        {
+          "cmd": "southwest",
+          "expect": {
+            "room": "r-mine-4"
+          }
+        },
+        {
+          "cmd": "down",
+          "expect": {
+            "room": "r-ladder-top"
+          }
+        },
+        {
+          "cmd": "down",
+          "expect": {
+            "room": "r-ladder-bottom"
+          }
+        },
+        {
+          "cmd": "west",
+          "expect": {
+            "room": "r-timber-room"
+          }
+        },
+        {
+          "cmd": "drop all"
+        },
+        {
+          "cmd": "west",
+          "expect": {
+            "room": "r-lower-shaft",
+            "score": 263
+          }
+        },
+        {
+          "cmd": "take coal and screwdriver and torch",
+          "expect": {
+            "carrying": [
+              "small pile of coal",
+              "screwdriver",
+              "ivory torch"
+            ]
+          }
+        },
+        {
+          "cmd": "south",
+          "expect": {
+            "room": "r-machine-room"
+          }
+        },
+        {
+          "cmd": "open lid",
+          "expect": {
+            "narrate_contains": "hopper"
+          }
+        },
+        {
+          "cmd": "put coal in machine"
+        },
+        {
+          "cmd": "close lid"
+        },
+        {
+          "cmd": "turn switch with screwdriver",
+          "expect": {
+            "narrate_contains": "dazzling display"
+          }
+        },
+        {
+          "cmd": "open lid"
+        },
+        {
+          "cmd": "take diamond",
+          "expect": {
+            "score": 273,
+            "carrying": [
+              "huge diamond"
+            ]
+          }
+        },
+        {
+          "cmd": "north",
+          "expect": {
+            "room": "r-lower-shaft"
+          }
+        },
+        {
+          "cmd": "put diamond and torch and screwdriver in basket"
+        },
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-timber-room"
+          }
+        },
+        {
+          "cmd": "take all except timber",
+          "expect": {
+            "carrying": [
+              "brass lantern",
+              "clove of garlic",
+              "sceptre",
+              "hand-held air pump",
+              "jade figurine",
+              "sapphire-encrusted bracelet"
+            ]
+          }
+        },
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-ladder-bottom"
+          }
+        },
+        {
+          "cmd": "up",
+          "expect": {
+            "room": "r-ladder-top"
+          }
+        },
+        {
+          "cmd": "up",
+          "expect": {
+            "room": "r-mine-4"
+          }
+        },
+        {
+          "cmd": "north",
+          "expect": {
+            "room": "r-mine-3"
+          }
+        },
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-mine-2"
+          }
+        },
+        {
+          "cmd": "south",
+          "expect": {
+            "room": "r-mine-1"
+          }
+        },
+        {
+          "cmd": "north",
+          "expect": {
+            "room": "r-gas-room"
+          }
+        },
+        {
+          "cmd": "up",
+          "expect": {
+            "room": "r-smelly-room"
+          }
+        },
+        {
+          "cmd": "south",
+          "expect": {
+            "room": "r-shaft-room"
+          }
+        },
+        {
+          "cmd": "raise basket",
+          "expect": {
+            "narrate_contains": "raised to the top"
+          }
+        },
+        {
+          "cmd": "take diamond and torch",
+          "expect": {
+            "carrying": [
+              "huge diamond",
+              "ivory torch"
+            ]
+          }
+        },
+        {
+          "cmd": "turn off lamp",
+          "expect": {
+            "narrate_contains": "now off"
+          }
+        }
+      ]
+    },
+    {
+      "name": "mine-tribute",
+      "commands": [
+        {
+          "cmd": "west",
+          "expect": {
+            "room": "r-bat-room"
+          }
+        },
+        {
+          "cmd": "south",
+          "expect": {
+            "room": "r-squeaky-room"
+          }
+        },
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-mine-entrance"
+          }
+        },
+        {
+          "cmd": "south",
+          "expect": {
+            "room": "r-slide-room"
+          }
+        },
+        {
+          "cmd": "down",
+          "expect": {
+            "room": "r-cellar",
+            "narrate_contains": "at speed"
+          }
+        },
+        {
+          "cmd": "up",
+          "expect": {
+            "room": "r-living-room"
+          }
+        },
+        {
+          "cmd": "put jade and diamond and bracelet and torch in case",
+          "expect": {
+            "score": 299,
+            "in_case": [
+              "jade figurine",
+              "huge diamond",
+              "sapphire-encrusted bracelet",
+              "ivory torch"
+            ]
+          }
+        }
+      ]
     }
   ]
 }

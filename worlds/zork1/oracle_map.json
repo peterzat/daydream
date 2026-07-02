@@ -81,7 +81,23 @@
     "r-small-cave": "Cave",
     "r-twisting-passage": "Twisting Passage",
     "r-atlantis-room": "Atlantis Room",
-    "r-slide-room": "Slide Room"
+    "r-slide-room": "Slide Room",
+    "r-mine-entrance": "Mine Entrance",
+    "r-squeaky-room": "Squeaky Room",
+    "r-bat-room": "Bat Room",
+    "r-shaft-room": "Shaft Room",
+    "r-smelly-room": "Smelly Room",
+    "r-gas-room": "Gas Room",
+    "r-mine-1": "Coal Mine",
+    "r-mine-2": "Coal Mine",
+    "r-mine-3": "Coal Mine",
+    "r-mine-4": "Coal Mine",
+    "r-ladder-top": "Ladder Top",
+    "r-ladder-bottom": "Ladder Bottom",
+    "r-dead-end-5": "Dead End",
+    "r-timber-room": "Timber Room",
+    "r-lower-shaft": "Drafty Room",
+    "r-machine-room": "Machine Room"
   },
   "toons": {
     "t-troll": "troll",
@@ -150,6 +166,16 @@
     "o-pump": "hand-held air pump",
     "o-trident": "crystal trident",
     "o-mirror-north": "mirror",
-    "o-mirror-south": "mirror"
+    "o-mirror-south": "mirror",
+    "o-bat": "bat",
+    "o-jade": "jade figurine",
+    "o-bracelet": "sapphire-encrusted bracelet",
+    "o-coal": "small pile of coal",
+    "o-basket": "basket",
+    "o-basket-far": "basket",
+    "o-timbers": "broken timber",
+    "o-machine": "machine",
+    "o-switch": "switch",
+    "o-diamond": "huge diamond"
   }
 }
