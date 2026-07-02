@@ -241,6 +241,19 @@ async def test_growthless_seed_refuses(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_malformed_growth_refuses_in_character(monkeypatch):
+    """A runtime-created seed can carry an arbitrary growth dict (e.g. via a
+    spawn_object properties passthrough); a malformed one must narrate the
+    no-growth line, never raise through the prompt builder."""
+    spy = _mock_llm(monkeypatch, dict(VALID_COMPOSITION))
+    seed = _seed(growth_block={"exemplars": [{}]})
+    await _plant(seed)
+    spy.assert_not_called()
+    assert "wants to grow" in _last_narrate().lower()
+    _assert_nothing_grew(seed.id)
+
+
+@pytest.mark.asyncio
 async def test_phrase_over_cap_refuses(monkeypatch):
     spy = _mock_llm(monkeypatch, dict(VALID_COMPOSITION))
     seed = _seed()

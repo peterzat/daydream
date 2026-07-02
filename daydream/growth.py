@@ -106,6 +106,38 @@ GROWTH_SYSTEM = (
 )
 
 
+def _growth_shape_ok(growth: object) -> bool:
+    """True when a growth block has the shape `_user_prompt` (and the
+    exemplar checks in `validate_growth_output`) rely on. Loader-authored
+    seeds are validated at load (`bootstrap._validate_growth`), but a
+    runtime-created seed can carry an arbitrary `growth` dict (e.g. via a
+    `spawn_object` effect's properties passthrough); a malformed one must
+    refuse in character, never raise."""
+    if not isinstance(growth, dict):
+        return False
+    exemplars = growth.get("exemplars")
+    if not isinstance(exemplars, list) or not exemplars:
+        return False
+    for ex in exemplars:
+        if not isinstance(ex, dict) or not all(
+            isinstance(ex.get(k), str) and ex[k].strip()
+            for k in ("title", "seed", "description")
+        ):
+            return False
+    for key in ("theme", "motifs"):
+        value = growth.get(key)
+        if value is not None and (
+            not isinstance(value, list)
+            or not all(isinstance(item, str) for item in value)
+        ):
+            return False
+    for key in ("palette", "question"):
+        value = growth.get(key)
+        if value is not None and not isinstance(value, str):
+            return False
+    return True
+
+
 def _user_prompt(growth: dict, room: "rooms.Room", phrase: str) -> str:
     """The per-plant user block: the seed's authored boundaries + exemplars,
     the room being grown from (title + seed only — never ids), and the
@@ -277,7 +309,7 @@ async def execute_plant(
         _narrate(room_id, _SPENT)
         return
     growth = seed.properties.get("growth")
-    if not isinstance(growth, dict) or not growth.get("exemplars"):
+    if not _growth_shape_ok(growth):
         _narrate(room_id, _NO_GROWTH)
         return
     if rooms.grown_room_count(world_id) >= config.growth_max_rooms():
