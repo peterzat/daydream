@@ -610,3 +610,167 @@ second turn closes, record here:*
 6. *Grades against expectations set in Part 3, honestly; a partial is a partial.*
 7. *The felt comparison, one candid paragraph — including whether the operator's
    "not convinced it was magical" verdict moved, in either direction.*
+
+### Part 4 pre-registration — the Zork turn (written 2026-07-02, before implementation)
+
+Same discipline as Part 1: this section is written before any implementation session
+begins and is never edited afterward. Results get appended below it and graded against
+what is written here. Same model, same harness, no configuration changed: Claude Fable 5
+at `/effort max`, the loop is plan → `/spec` → implement. This section covers items 1
+and 2 of the header instructions above (the prompt, and the plan/spec round with its
+intervention count); items 3 through 7 belong to the results append.
+
+**The prompt.** Verbatim, the message that opened the turn (plan mode):
+
+```
+We'll take a more ambitious turn following what just happened and was recorded in
+@FIRST-FABLE.md.  The output of this plan mode will pass to /spec.
+
+We will build a full clone of Zork using the daydream platform.  The visuals will stay
+the same, as will the UI, but otherwise store our current world, and make and swap to a
+brand-new world which will allow a full playthrough of the classic Infocom game.  The UI
+(buttons, etc.) of course weren't present in the original text game, and part of this
+turn will also usefully map those buttons and click-UI to the exact Zork playthough
+(effectively extending the game UI, but you could solve a true playthrough with just
+typing text).  The generated graphics will include appropriate prompts for each room,
+the NPCs will be the same, etc.  The only parts that we can alter from a 1:1 copy of the
+original Zork will be to use the text generation / parsing capabilities of the local
+LLM.  The goal is to use them if at all possible, so variance would be expected.  If it
+isn't possible to keep the game actually being fully playthrough capable like the
+original, that's okay but worth a strong effort.
+
+The key elements here are that we want to use the agentic-enabled platform part of
+daydream (as described in the README).  Be informed by the zat.env philosophy and
+approach (see README) and the concepts from
+https://agent-hypervisor.ai/posts/bitter-lesson-of-agentic-coding/.  Importantly, we
+want to limit hardcoding as much as possible to make it Zork, but instead extend the
+daydream enging/platform bits so that it's possible to naturally copy the game.  Where
+there's a tradeoff, always make the one that attempts to extend the game platform before
+trying to force the game to work.
+
+Research Zork with multiple agents.  Note that it's uses a special data "language"
+(z-code, z-machine).  You should be able to easily find the original z-code for the
+game, as well as z-code interpreters.  There are also full playthrough examples out
+there, discussions about the tech used and how such an old game was able to make the
+gameplay seem like today's NLP or even agentic experiences.
+
+Where practical, we should treat Zork as an "oracle" in the bitter-lesson sense.  Or at
+least a pretty strong proxy for the capabilities daydream would need to render really
+rich experiences, since Zork most definitely did this and if we can build Zork we can
+build lots of great stuff.
+
+In FIRST-FABLE, Document the thinking for this turn, why we think it's ambituous, the
+"oracle" theory and hope that a "step function increase" in coding agent will make this
+actually work, guesses how Fable will perform, a note on what we will measure at the
+end.  I think it's fair to make the claim that Peter thinks that this probably wouldn't
+be possible in Opus 4.8 without significant manual work, multiple turns, and a very
+hands-on multi-day approach.  Peter is curious to see how this turn goes.  Leave hooks
+in the doc as memory that will survive /clears etc. so that we know how to continue
+adding to tthe narrative in FIRST-FABLE.  Save verbatim prompts like this where
+appropriate (usefully summarize/edit if it adds clarity; we're not making a recipe, but
+capturing impressions to form an opinion about how amazing -- or not -- Fable is).
+```
+
+**The planning session, for the record (the M1 analogue).** Three research agents ran in
+parallel: one built a structural inventory of Zork I by reading the actual Infocom ZIL
+source (Microsoft MIT-licensed it in November 2025, a fact the research surfaced and the
+turn now leans on), one mapped z-machine internals, oracle tooling, and the essay's
+verification hierarchy, and one mapped daydream's engine seams file:line by file:line.
+A design agent then produced the platform-extension design; the session accepted four of
+its five pushbacks and overrode the fifth (it wanted the LLM retell layer off by
+default; the operator's own prompt says to use the local LLM "if at all possible," so it
+ships on, probe-gated). Operator interventions during planning: zero design corrections.
+Two operational asides (consolidate GitHub to a single `main` branch; investigate a
+phantom PR, which turned out to be GitHub's compare banner) and one calibration that now
+governs the whole turn. When the session over-applied caution about Zork's text,
+proposing fresh prose a bit too broadly, the operator pulled it back: "for the oracle to
+work, it has to *be* Zork when I playtest, so the Flood Control Dam, elvish sword,
+grues, etc. are needed," alongside "we shouldn't be paranoid about copyright here at
+all... this is purely for testing; daydream the game is the final product." The settled
+line: identity verbatim (names, map, mechanics, scoring, beats), long-form prose freshly
+authored in Zork's dry register, LLM variance on top, which is what the prompt asked for
+in the first place. The plan was approved without edits; `/spec` produced 16 acceptance
+criteria, committed at `0be1ba9`.
+
+**Why this target is deliberately out of reach.** Dreamseeds, the turn Parts 1 and 2
+recorded, was one new module behind one new verb: 8 criteria, ten working commits, one
+implementation session. This turn's contract is 16 criteria spanning seven new engine
+modules (world state, rules, world verbs, clock, lighting, combat, retell), six extended
+ones (effects, verbs, objects, parser, WS, loader) plus the SPA, two migrations, a
+parser growing ALL/IT/AGAIN/THEN and a clarify round-trip, roughly thirteen increments,
+a 110-room / 120-object world authored entirely as data, and an external harness that
+drives the real 1980 game as a differential test. Part 3 closed by saying the sharper
+test is a target that is not comfortably inside reach; this is that target, chosen by
+the operator rather than the model this time. The pre-registered claim, quoted from the
+prompt above: this "probably wouldn't be possible in Opus 4.8 without significant manual
+work, multiple turns, and a very hands-on multi-day approach." The claim will not be
+re-run on Opus, so it is graded only against this repo's own Opus-era baseline (steered
+turns, an operator answering questions throughout) and against how this turn actually
+goes. Peter is curious; that curiosity is the experiment.
+
+**The oracle theory.** The essay ranks verification tiers: an oracle (a ground-truth
+reference, "like Carlini's diff against the GCC torture suite") beats a proxy beats a
+critic. Daydream has had proxies (goldens, perceptual hashes) and critics (adversarial
+review, the agent grading watercolors against the tone bible). This turn adds the top
+tier, twice over. As a capability oracle, Zork I is a dense proxy for everything a rich
+world needs (containers, light and time, hostiles, vehicles, scoring, a parser that
+feels smart), so if daydream can host it as pure data, the platform thesis is proven
+against the hardest fixture in the genre's history: build Zork and you can build lots of
+great stuff. As a literal oracle, the actual game, pinned to one release and a fixed RNG
+seed under a dumb-terminal interpreter, replays the same walkthrough and must agree with
+our engine on state (room, score, inventory) at every checkpoint. Prose is never
+compared; the local LLM's variance is the point, the state machine underneath is the
+contract. There is also a symmetry the results section should revisit: in 1980, ZIL
+built the illusion of intelligence out of hand-authored breadth (syntax tables, GWIM,
+per-object action routines, dense witty defaults for every wrong thing a player might
+type). Daydream is rebuilding that trinity as declarative data plus a small local model
+that generalizes what Infocom had to enumerate by hand. If it works, a 46-year-old game
+becomes the regression suite for the new substrate.
+
+**Guesses: how Fable will perform.** Pre-registered, falsifiable:
+
+- **P7 (spec survival).** The implementing sessions land all of it without amending any
+  design decision in SPEC.md (mechanical clarifications allowed). The bar P3 set, on a
+  contract twice the size.
+- **P8 (sessions, the honest one).** Implementation takes 2 to 4 sessions, not 1.
+  Pre-registered on scale alone; predicting a repeat of Part 2's single session would be
+  bravado, and the doc is worth more honest than flattering.
+- **P9 (the centerpiece).** The committed walkthrough reaches exactly 350 points and the
+  win, in-engine, with zero LLM calls, by turn close.
+- **P10 (the oracle earns its keep).** Once the story file is in place, the differential
+  harness catches at least one real authored-data error the test suite missed (that is
+  what oracles are for) and fewer than three, none requiring engine rework.
+- **P11 (the retell rung).** The 7B rephrases short outcome lines acceptably: retell
+  ships ON or scoped-down, not OFF, within 2 prompt iterations of the probe.
+- **P12 (reviews).** 0 BLOCK across the turn's reviews, at most 2 WARN total, no fix
+  cycle exceeding one pass.
+- **P13 (the Part 3 lesson, re-armed).** The operator's playtest still finds at least 3
+  experience-level issues no automated verifier caught, because the oracle checks state
+  and a human checks feel. If this one fails LOW, that is the headline: it would mean
+  thick verification finally reached the delight layer.
+
+**What we will measure (M8 through M14).** M8: sessions, and where wall-clock actually
+went. M9: criteria closed of 16, increments landed, first-try green rate. M10: the
+walkthrough outcome (score reached, LLM-call count) and the oracle's checkpoint
+agreement. M11: the no-Zork-literals grep over engine code, the mechanical hardcoding
+metric, which should be zero hits. M12: review outcomes across the turn. M13: operator
+interventions during implementation, corrections versus answered questions. M14:
+playtest findings, count and class (latent platform defect / under-imagined moment /
+fidelity miss / oracle-caught).
+
+**What "no step function" looks like this time.** The spec needs structural rework once
+implementation starts; the turn exceeds 4 sessions or stalls; the walkthrough cannot
+reach 350 without Zork-specific engine code (M11 nonzero); the oracle exposes systematic
+misreadings of the game's mechanics; or the operator has to steer implementation the way
+the archived GOAL.md records steering the pre-Fable era.
+
+**Continuation hooks (for whichever session picks this up after a /clear).** The
+contract is `SPEC.md` (16 criteria, 2026-07-02, commit `0be1ba9`). The full design and
+research record, including the ZIL-verified Zork facts and the seam map, is the plan
+file at `~/.claude/plans/we-ll-take-a-more-vectorized-pearl.md`. The pre-turn world
+archive is `~/data/daydream/archives/w-bunny-20260702-075742.tar.gz` (the operator's
+played clockmakers world, grown room and art included). The auto-memory index carries a
+`zork-turn-in-flight` pointer back to this section. When the turn closes, append
+`### Part 4 — results` BELOW this section, covering items 3 through 7 of the header
+instructions above and grading P7 through P13 with one line of evidence each. Honestly;
+a partial is a partial. Never edit anything above it.
