@@ -77,11 +77,9 @@ def test_closed_verb_registry_with_arg_specs():
             assert not (restricted & spec.allowed_effects), (
                 f"{name} must not declare restricted effects"
             )
-    # The verb bar offers the interaction verbs, verb-then-object.
-    assert [v.name for v in verbs.bar_verbs()] == [
-        "examine", "take", "drop", "talk", "give", "use", "open", "close",
-        "put", "read", "plant",
-    ]
+    # The static (actor-less) bar is the stable core; everything else is
+    # granted contextually by the scene (playtest 2026-07-02).
+    assert [v.name for v in verbs.bar_verbs()] == ["examine", "take", "drop"]
 
 
 def test_available_verbs_derive_from_kind_prototype():
@@ -607,3 +605,41 @@ def test_exit_direction_for_place_resolves_adjacent_only():
     assert verbs._exit_direction_for_place(meadow, "the forge") == "north"
     assert verbs._exit_direction_for_place(meadow, "attic") is None  # not adjacent
     assert verbs._exit_direction_for_place(meadow, "narnia") is None  # unknown
+
+
+def test_scene_aware_bar_offers_only_what_applies():
+    """Playtest 2026-07-02: the bar reflects THIS moment. An NPC brings Talk;
+    a carried thing + a recipient brings Give; a container brings Put; a
+    granted per-object verb (open) appears with its object; none of them
+    show in an empty room."""
+    room = objects.spawn("w-bunny", "room", "Bar Room", None,
+                         properties={"slug": "bar-room", "seed": "s", "exits": {}},
+                         object_id="r-bar-room")
+    actor = objects.spawn("w-bunny", "toon", "Barrist", room.id,
+                          object_id="t-barrist", properties={})
+    # Empty room: exactly the core.
+    assert [v.name for v in verbs.bar_verbs("w-bunny", actor.id)] == [
+        "examine", "take", "drop"]
+    # A carried thing alone: still no give (no recipient), no put (no
+    # container). (The migration-seeded prototype omits give; loader worlds
+    # grant it — the explicit grant here mirrors those.)
+    objects.spawn("w-bunny", "thing", "pebble", actor.id,
+                  prototype_id=objects.PROTO_THING,
+                  properties={"verbs": ["give"]}, object_id="o-bar-pebble")
+    names = [v.name for v in verbs.bar_verbs("w-bunny", actor.id)]
+    assert "give" not in names and "put" not in names
+    # An NPC arrives: Talk appears, and Give's recipient requirement is met.
+    objects.spawn("w-bunny", "toon", "Keeper", room.id,
+                  prototype_id=objects.PROTO_NPC, object_id="t-bar-keeper")
+    names = [v.name for v in verbs.bar_verbs("w-bunny", actor.id)]
+    assert "talk" in names and "give" in names
+    # A closed container on the floor: Put appears (and open, per its grant).
+    objects.spawn("w-bunny", "thing", "crate", room.id,
+                  prototype_id=objects.PROTO_THING,
+                  properties={"container": True, "state": "open",
+                              "verbs": ["open", "close"]},
+                  object_id="o-bar-crate")
+    names = [v.name for v in verbs.bar_verbs("w-bunny", actor.id)]
+    assert "put" in names and "open" in names
+    # The core stays first and stable throughout.
+    assert names[:3] == ["examine", "take", "drop"]

@@ -157,7 +157,7 @@ async def parse_line(
     if pending is not None:
         answered = _resolve_clarify(actor_id, pending, text)
         if answered is not None:
-            _remember(actor_id, [answered], text=None)
+            _remember(actor_id, [answered])
             return LineParse(commands=(answered,))
         # Not an answer: fall through and parse as a fresh line.
 
@@ -177,18 +177,18 @@ async def parse_line(
         seg = await _parse_segment(actor_id, segment.strip(), room)
         if isinstance(seg, Clarify):
             # Ask; anything already parsed before the ambiguity still runs.
-            _remember(actor_id, commands, text=None)
+            _remember(actor_id, commands)
             return LineParse(commands=tuple(commands), clarify=seg)
         if isinstance(seg, LineParse):  # message or error bubble
             if seg.error:
                 return LineParse(commands=tuple(commands), error=seg.error)
             return LineParse(commands=tuple(commands), message=seg.message)
         commands.extend(seg)
-    _remember(actor_id, commands, text=None)
+    _remember(actor_id, commands)
     return LineParse(commands=tuple(commands))
 
 
-def _remember(actor_id: str, commands: list[Parse], text: str | None) -> None:
+def _remember(actor_id: str, commands: list[Parse]) -> None:
     """IT tracks the last grounded direct object of the line."""
     for cmd in reversed(commands):
         if cmd.dobj_id:
@@ -479,7 +479,10 @@ def _expand_multi(
             kept.append(o)
         if not kept:
             msgs = {
-                "take": "There's nothing here to take.",
+                # "carry off" over "take": a room full of furniture and
+                # fixtures should read as "nothing portable", not "nothing
+                # here" (playtest 2026-07-02).
+                "take": "There's nothing here you can carry off.",
                 "drop": "You're carrying nothing.",
                 "put": "You're carrying nothing.",
             }

@@ -245,7 +245,7 @@ def _state_snapshot(
                 "text_prompt": v.text_prompt,
                 "preps": list(v.preps),
             }
-            for v in verbs.bar_verbs(room.world_id if room else None)
+            for v in verbs.bar_verbs(room.world_id if room else None, toon_id)
         ],
         # Entity sidecar: in-scope names/aliases -> object ids, so the client
         # can wrap object mentions in narration as clickable spans.

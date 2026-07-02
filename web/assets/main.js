@@ -6,6 +6,7 @@ const PLACEHOLDER_BG = "/assets/placeholder-meadow.png";
 let ws = null;
 let lastSeq = 0;
 let actorNames = {};
+let selfToonId = null;
 let awaitingPick = false; // showing the picker after leaving; suppresses auto-reconnect
 let entities = []; // in-scope {alias, object_id, kind} for narration linking
 let stagedVerb = null; // the verb-bar verb awaiting an object click
@@ -143,6 +144,7 @@ function renderSnapshot(snap) {
   actorNames = {};
   for (const t of snap.toons || []) actorNames[t.id] = t.name;
   const selfId = snap.self ? snap.self.id : null;
+  selfToonId = selfId;
   // WHO YOU ARE: the controlled toon, shown distinctly (not clickable —
   // it is identity, not a target).
   const selfEl = document.getElementById("self");
@@ -491,18 +493,35 @@ function renderEvent(e) {
       span.onclick = () => onObjectClick(span.dataset.objectId);
     });
   } else if (e.kind === "move") {
+    // Whose move is this? Co-located departures arrive on the room
+    // filter too (playtest 2026-07-02: another player's walk rendered as
+    // "you go west"). Only the controlled toon's moves read as "you" —
+    // and only YOUR death blacks out YOUR screen.
+    const mine = e.actor_id === selfToonId;
+    const mover = actorNames[e.actor_id] || "someone";
     if (e.payload && e.payload.died) {
       // Death interstitial: a brief black beat before the respawn snapshot
       // re-renders the world; the authored message arrives as its own
       // narrate. No "you go" line for dying.
-      showDeathOverlay();
+      if (mine) {
+        showDeathOverlay();
+      } else {
+        div.textContent = mover + " crumples, and is elsewhere.";
+        clearPending();
+        chat.appendChild(div);
+        chat.scrollTop = chat.scrollHeight;
+      }
       return;
     }
     if (e.payload && e.payload.teleport) {
-      div.textContent = "the world shifts around you.";
+      div.textContent = mine
+        ? "the world shifts around you."
+        : mover + " is suddenly elsewhere.";
     } else {
       const dir = e.payload.direction || "somewhere";
-      div.textContent = "you go " + dir + ".";
+      div.textContent = mine
+        ? "you go " + dir + "."
+        : mover + " heads " + dir + ".";
     }
   } else {
     // Other event kinds (object_moved / object_spawned / item_added /

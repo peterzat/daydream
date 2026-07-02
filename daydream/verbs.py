@@ -114,7 +114,7 @@ VERBS: dict[str, VerbSpec] = {
         description="Talk to someone. Target: the toon. Args: what you say.",
         needs_dobj=True, valid_dobj_kinds=frozenset({"toon"}),
         allowed_effects=frozenset({"narrate", "set_property", "set_mood", "spawn_object"}),
-        on_bar=True, free_text=True,
+        free_text=True,
         needs_text=True, text_prompt="What do you say?",
     ),
     "give": VerbSpec(
@@ -123,7 +123,7 @@ VERBS: dict[str, VerbSpec] = {
         needs_dobj=True, needs_iobj=True,
         valid_dobj_kinds=frozenset({"thing"}), valid_iobj_kinds=frozenset({"toon"}),
         allowed_effects=frozenset({"move_object", "set_mood", "spawn_object", "narrate"}),
-        on_bar=True, preps=("to",),
+        preps=("to",),
     ),
     "use": VerbSpec(
         name="use", ui_hint="Use",
@@ -131,21 +131,20 @@ VERBS: dict[str, VerbSpec] = {
         needs_dobj=True, needs_iobj=True,
         valid_dobj_kinds=frozenset({"thing"}), valid_iobj_kinds=frozenset({"thing"}),
         allowed_effects=frozenset({"set_property", "spawn_object", "move_object", "narrate"}),
-        on_bar=True, preps=("on", "with"),
+        preps=("on", "with"),
     ),
     "open": VerbSpec(
         name="open", ui_hint="Open",
         description="Open a thing (a case, a box, a door). Target: the thing.",
         needs_dobj=True, valid_dobj_kinds=frozenset({"thing"}),
         allowed_effects=frozenset({"set_property", "spawn_object", "narrate"}),
-        on_bar=True,
     ),
     "close": VerbSpec(
         name="close", ui_hint="Close",
         description="Close an open thing (a lid, a case). Target: the thing.",
         needs_dobj=True, valid_dobj_kinds=frozenset({"thing"}),
         allowed_effects=frozenset({"set_property", "narrate"}),
-        on_bar=True, aliases=("shut",),
+        aliases=("shut",),
     ),
     "put": VerbSpec(
         name="put", ui_hint="Put",
@@ -156,13 +155,13 @@ VERBS: dict[str, VerbSpec] = {
         # adjust_score: the authored deposit award (score_case property into
         # a score_deposits container), mirroring take's declaration.
         allowed_effects=frozenset({"move_object", "narrate", "adjust_score"}),
-        on_bar=True, preps=("in", "into", "inside", "on", "onto"),
+        preps=("in", "into", "inside", "on", "onto"),
     ),
     "read": VerbSpec(
         name="read", ui_hint="Read",
         description="Read a thing's writing (a ledger, a letter). Target: the thing.",
         needs_dobj=True, valid_dobj_kinds=frozenset({"thing"}),
-        allowed_effects=frozenset({"narrate"}), on_bar=True,
+        allowed_effects=frozenset({"narrate"}),
     ),
     "plant": VerbSpec(
         name="plant", ui_hint="Plant",
@@ -175,7 +174,7 @@ VERBS: dict[str, VerbSpec] = {
         allowed_effects=frozenset({"spawn_room", "link_exit", "rename_object",
                                    "spawn_object", "move_object",
                                    "set_property", "narrate"}),
-        on_bar=True, free_text=True,
+        free_text=True,
         needs_text=True, text_prompt="What do you see growing there?",
     ),
     "attack": VerbSpec(
@@ -256,14 +255,72 @@ def resolve(world_id: str | None, name: str) -> VerbSpec | None:
     return None
 
 
-def bar_verbs(world_id: str | None = None) -> list[VerbSpec]:
-    """The verbs the UI verb bar offers: engine verbs in declaration order,
-    then the world's authored bar verbs."""
-    out = [v for v in VERBS.values() if v.on_bar]
-    if world_id:
-        from daydream import worldverbs
+# The always-on verb-bar core: meaningful in any room, stable so muscle
+# memory holds. Everything else earns its button contextually (below).
+CORE_BAR: tuple[str, ...] = ("examine", "take", "drop")
 
-        out.extend(worldverbs.bar_verbs(world_id))
+
+def bar_verbs(
+    world_id: str | None = None, actor_id: str | None = None
+) -> list[VerbSpec]:
+    """The verbs the UI verb bar offers.
+
+    Without an actor (legacy/static callers): engine `on_bar` verbs in
+    declaration order, then the world's authored bar verbs.
+
+    With an actor (the snapshot path; playtest 2026-07-02): the bar reflects
+    THIS moment — the stable core (examine/take/drop) plus a contextual row
+    derived from what the present objects actually grant. Ring appears when
+    the bell is here, Board by the boat, Plant only while a seed is in scope,
+    Talk only with someone to talk to. Two-object verbs additionally require
+    a kind-valid indirect object in scope (Give needs another toon; Put needs
+    an open-able container or surface), so the bar never offers a dead end.
+    Room-rule verbs (magic words) are deliberately NOT surfaced: secrets stay
+    secrets. World verbs authored `on_bar: true` stay pinned regardless."""
+    from daydream import worldverbs
+
+    if actor_id is None:
+        out = [v for v in VERBS.values() if v.on_bar]
+        if world_id:
+            out.extend(worldverbs.bar_verbs(world_id))
+        return out
+
+    core = [VERBS[n] for n in CORE_BAR]
+    scope = objects.in_scope(actor_id)
+    granted: set[str] = set()
+    for o in scope:
+        if o.id == actor_id or o.kind in ("room", "prototype"):
+            continue
+        granted.update(objects.verbs_for(o))
+
+    def iobj_available(spec: VerbSpec) -> bool:
+        for o in scope:
+            if o.id == actor_id or o.kind not in spec.valid_iobj_kinds:
+                continue
+            if spec.name == "put" and not (
+                objects.is_container(o) or o.properties.get("surface")
+            ):
+                continue
+            return True
+        return False
+
+    contextual: list[VerbSpec] = []
+    for name in sorted(granted):
+        if name in CORE_BAR:
+            continue
+        spec = VERBS.get(name)
+        if spec is None and world_id:
+            spec = worldverbs.get(world_id, name)
+        if spec is None or not spec.needs_dobj:
+            continue
+        if spec.needs_iobj and not iobj_available(spec):
+            continue
+        contextual.append(spec)
+    out = core + contextual
+    if world_id:
+        for spec in worldverbs.bar_verbs(world_id):
+            if all(v.name != spec.name for v in out):
+                out.append(spec)
     return out
 
 

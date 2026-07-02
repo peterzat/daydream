@@ -580,3 +580,9 @@ footer .slots-toggle:hover, footer .logout:hover { text-decoration: underline; }
   font-family: var(--serif);
   font-style: italic;
 }
+
+/* WHO YOU ARE: breathe between the name and its mood (playtest 2026-07-02:
+   "Adventurer(resolute)" read as one word). */
+#self .you-name {
+  margin-right: 0.55em;
+}
