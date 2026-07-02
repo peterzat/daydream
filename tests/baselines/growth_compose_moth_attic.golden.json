@@ -1,0 +1,24 @@
+{
+  "captured_at": "2026-07-02T01:10:19+00:00",
+  "description": "Books line the walls, their spines worn and pages yellowed, each one marked by a tiny, folded paper hour. Moth wings flutter softly, keeping the hours as they have for generations. The air is thick with the scent of aged paper and the gentle fluttering of wings, creating a cozy, almost whispering atmosphere.",
+  "distinct_from_exemplars": true,
+  "latency_ms": 3999.4016519922297,
+  "model": "hosted_vllm/Qwen/Qwen2.5-7B-Instruct-AWQ",
+  "object_count": 2,
+  "objects": [
+    {
+      "name": "Folded Paper Hours",
+      "seed": "Each page marked by a tiny, folded paper hour, each one carefully labeled with the time it represents."
+    },
+    {
+      "name": "Moth Wings",
+      "seed": "Soft, delicate wings fluttering gently, marking the passage of time in this attic."
+    }
+  ],
+  "phrase": "an attic where the moths keep the hours",
+  "phrase_woven": true,
+  "refused": false,
+  "room_seed": "An attic filled with old books and moth wings, each page marked by a tiny, folded paper hour, the air thick with the scent of aged paper and the gentle fluttering of wings.",
+  "title": "The Moth Library",
+  "valid": true
+}

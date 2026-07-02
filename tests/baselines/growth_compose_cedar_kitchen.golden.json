@@ -1,0 +1,24 @@
+{
+  "captured_at": "2026-07-02T01:10:24+00:00",
+  "description": "The hearth glows warmly, casting a soft light over the shelves lined with jars of preserved herbs and spices. The air is rich with the scent of cedar and rain, as if the kitchen is a part of the forest itself. Each jar tells a story of something carefully gathered and stored away for another day.",
+  "distinct_from_exemplars": true,
+  "latency_ms": 4855.694551981287,
+  "model": "hosted_vllm/Qwen/Qwen2.5-7B-Instruct-AWQ",
+  "object_count": 2,
+  "objects": [
+    {
+      "name": "Preserved Lemons",
+      "seed": "A jar filled with lemons, their skins peeled back to reveal the tender flesh beneath, preserved in a sweet syrup. Each lemon tells a story of the sun and rain that nurtured it."
+    },
+    {
+      "name": "Raindrop Candle",
+      "seed": "A candle shaped like a raindrop, its wick flickering softly. The wax is a deep, rich blue, as if it captures the essence of a rain-soaked night."
+    }
+  ],
+  "phrase": "a warm kitchen that smells of cedar and rain",
+  "phrase_woven": true,
+  "refused": false,
+  "room_seed": "A cozy kitchen where the hearth glows with a warm ember light, surrounded by shelves lined with jars of preserved herbs and spices. The air is filled with the scent of cedar and rain, as if the walls themselves are made of the forest.",
+  "title": "The Cedar Hearth",
+  "valid": true
+}

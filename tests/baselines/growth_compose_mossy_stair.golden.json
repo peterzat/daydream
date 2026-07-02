@@ -1,0 +1,20 @@
+{
+  "captured_at": "2026-07-02T01:10:15+00:00",
+  "description": "Moss covers the steps, clinging like a soft blanket. Each step is worn smooth, a testament to countless treads. At the bottom, the river whispers secrets, its current as slow as the ticking of a clock. The air is filled with the scent of damp earth and the distant chime of a clock somewhere above.",
+  "distinct_from_exemplars": true,
+  "latency_ms": 3726.0626000061166,
+  "model": "hosted_vllm/Qwen/Qwen2.5-7B-Instruct-AWQ",
+  "object_count": 1,
+  "objects": [
+    {
+      "name": "Folded Paper Hour",
+      "seed": "A small folded paper hour, carefully labeled 'The River's Pace', tucked into a crevice of moss."
+    }
+  ],
+  "phrase": "a mossy stair down to a slow river",
+  "phrase_woven": true,
+  "refused": false,
+  "room_seed": "A moss-covered stone staircase descends into a tranquil river, where the current flows as slowly as the ticking of a clock. Each step is worn smooth by time, and the moss clings like a gentle embrace.",
+  "title": "The Mossy Descender",
+  "valid": true
+}
