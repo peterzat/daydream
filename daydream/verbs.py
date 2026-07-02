@@ -174,6 +174,19 @@ VERBS: dict[str, VerbSpec] = {
         on_bar=True, free_text=True,
         needs_text=True, text_prompt="What do you see growing there?",
     ),
+    "board": VerbSpec(
+        name="board", ui_hint="Board",
+        description="Climb into a vehicle (a boat, a basket). Target: the vehicle.",
+        needs_dobj=True, valid_dobj_kinds=frozenset({"thing"}),
+        allowed_effects=frozenset({"set_property", "narrate"}),
+        aliases=("embark",),
+    ),
+    "disembark": VerbSpec(
+        name="disembark", ui_hint="Disembark",
+        description="Climb out of the vehicle you're aboard. No target.",
+        allowed_effects=frozenset({"set_property", "narrate"}),
+        aliases=("debark",),
+    ),
     "say": VerbSpec(
         name="say", ui_hint="Say",
         description="Speak something aloud to the room. Args: the text to say.",
@@ -856,6 +869,76 @@ async def _handle_say(actor, room_id, dobj, iobj, args, spec) -> None:
     )
 
 
+# ---- exits (Zork turn, SPEC 2026-07-02 criterion 7) ---------------------
+#
+# An exits-map value is one of:
+#   "r-forge"                                   legacy plain destination
+#   {"to": "r-x", "if": [conds], "blocked_text": "...",
+#    "on_traverse": [effects, each with optional inline "if"],
+#    "secret": true}                            conditional / secret exit
+#   {"text": "The door is boarded."}            message-only non-exit
+#
+# All three producers (go, the parser fast-path, the UI exit buttons) route
+# through `go`; visibility for snapshots comes from `visible_exits` (secret
+# exits hidden until currently passable; blocked and message-only exits
+# stay visible and refuse with their text on use).
+
+
+def _exit_ctx(actor: objects.Object, room_id: str, direction: str) -> dict:
+    return rules._build_ctx(actor, None, None, room_id, None, f"exit:{direction}")
+
+
+def _exit_outcome(
+    actor: objects.Object, room_id: str, direction: str, value
+) -> tuple[str | None, str | None, list]:
+    """Evaluate one exit value for this actor NOW. Returns
+    (dest_id, refusal_text, on_traverse): dest_id None means no passage —
+    refusal_text carries the authored message."""
+    if isinstance(value, str):
+        return value, None, []
+    if not isinstance(value, dict):
+        return None, None, []
+    if "to" not in value:
+        text = value.get("text")
+        return None, (text if isinstance(text, str) and text.strip()
+                      else "You can't go that way."), []
+    conds = value.get("if")
+    if conds and not rules.conditions_hold(conds, _exit_ctx(actor, room_id, direction)):
+        blocked = value.get("blocked_text")
+        return None, (blocked if isinstance(blocked, str) and blocked.strip()
+                      else "Something bars the way."), []
+    traverse = value.get("on_traverse")
+    return value["to"], None, traverse if isinstance(traverse, list) else []
+
+
+def _exit_dest(value) -> str | None:
+    """An exit value's destination id, ignoring conditions (for place-name
+    resolution and integrity checks). None for message-only entries."""
+    if isinstance(value, str):
+        return value
+    if isinstance(value, dict):
+        to = value.get("to")
+        return to if isinstance(to, str) else None
+    return None
+
+
+def visible_exits(room: "rooms.Room", actor: objects.Object) -> dict:
+    """The exits map as the snapshot should present it: `{direction:
+    dest-or-None}`. Secret exits appear only while currently passable;
+    ordinary blocked exits stay visible (clicking narrates the refusal);
+    message-only entries appear with a null destination."""
+    out: dict = {}
+    for direction, value in room.exits.items():
+        if isinstance(value, dict) and value.get("secret"):
+            dest, refusal, _ = _exit_outcome(actor, room.id, direction, value)
+            if dest is None:
+                continue
+            out[direction] = dest
+        else:
+            out[direction] = _exit_dest(value)
+    return out
+
+
 _PLACE_ARTICLES = ("the ", "a ", "an ")
 
 
@@ -878,7 +961,10 @@ def _exit_direction_for_place(room: "rooms.Room", place: str) -> str | None:
     needle = _normalize_place(place)
     if not needle:
         return None
-    for direction, dest_id in room.exits.items():
+    for direction, value in room.exits.items():
+        dest_id = _exit_dest(value)
+        if dest_id is None:
+            continue
         dest = objects.get(dest_id)
         if dest is None or dest.kind != "room":
             continue
@@ -896,26 +982,55 @@ def _exit_direction_for_place(room: "rooms.Room", place: str) -> str | None:
 async def _handle_go(actor, room_id, dobj, iobj, args, spec) -> None:
     raw = args.strip()
     if not raw:
-        _narrate(room_id, "Go where?")
+        _narrate(room_id, "Go where?", recipient_id=actor.id)
         return
     room = rooms.get_room(room_id)
     if room is None:
-        _narrate(room_id, "You are nowhere recognizable.")
+        _narrate(room_id, "You are nowhere recognizable.", recipient_id=actor.id)
         return
     direction = raw.lower()
-    target_id = room.exits.get(direction)
-    if target_id is None:
+    exit_value = room.exits.get(direction)
+    if exit_value is None:
         # Not a literal direction: try "go to <place>" / "go <place>" by
         # resolving the place name/alias/slug to an ADJACENT exit (one hop, no
         # pathfinding). SPEC 2026-06-30.
         resolved = _exit_direction_for_place(room, raw)
         if resolved is not None:
             direction = resolved
-            target_id = room.exits.get(direction)
-    if target_id is None:
-        _narrate(room_id, f"You can't go {raw} from here.")
+            exit_value = room.exits.get(direction)
+    if exit_value is None:
+        _narrate(room_id, f"You can't go {raw} from here.", recipient_id=actor.id)
         return
+    # Conditional / secret / message-only exits (criterion 7). A refusal
+    # narrates the authored text and still ticks the clock (the tick lives
+    # in execute_command's tail, which this return path reaches).
+    target_id, refusal, on_traverse = _exit_outcome(actor, room_id, direction, exit_value)
+    if target_id is None:
+        _narrate(room_id, refusal or f"You can't go {raw} from here.",
+                 recipient_id=actor.id)
+        return
+    dest = objects.get(target_id)
+    if dest is None or dest.kind != "room":
+        _narrate(room_id, "The way shimmers closed.", recipient_id=actor.id)
+        return
+    # Destination entry gate: a room can require conditions to enter (a
+    # water room refuses foot entry: enter_if [{"in_vehicle": true}]).
+    enter_if = dest.properties.get("enter_if")
+    if enter_if and not rules.conditions_hold(
+        enter_if, _exit_ctx(actor, room_id, direction)
+    ):
+        blocked = dest.properties.get("enter_blocked_text")
+        _narrate(room_id,
+                 blocked if isinstance(blocked, str) and blocked.strip()
+                 else f"You can't go {raw} from here.",
+                 recipient_id=actor.id)
+        return
+    # The vehicle rides along: while aboard, going somewhere moves the
+    # vehicle (and, by co-location, keeps the aboard flag valid there).
+    vehicle = rules.vehicle_of(actor)
     objects.move(actor.id, target_id)
+    if vehicle is not None:
+        objects.move(vehicle.id, target_id)
     # The move event's room_id is the DEPARTURE room so the WS broadcast filter
     # routes it to the leaving connection (mirrors the prior `go` core skill).
     events.append(
@@ -923,6 +1038,77 @@ async def _handle_go(actor, room_id, dobj, iobj, args, spec) -> None:
         {"from_room": room_id, "to_room": target_id, "direction": direction},
         room_id=room_id,
     )
+    # Authored traversal beats ("You slide down the coal chute...") run
+    # after the move, in the destination, each with an optional inline "if".
+    if on_traverse:
+        ctx = rules._build_ctx(actor, None, None, target_id, None,
+                               f"traverse:{direction}")
+        effs = []
+        for eff in on_traverse:
+            if not isinstance(eff, dict):
+                continue
+            conds = eff.get("if")
+            if conds and not rules.conditions_hold(conds, ctx):
+                continue
+            eff = {k: v for k, v in eff.items() if k != "if"}
+            effs.append(eff)
+        if effs:
+            effects.dispatch_effects(
+                rules.resolve_sigils(effs, ctx),
+                actor_id=actor.id, room_id=target_id,
+                world_id=actor.world_id, allowed=effects.RULE_KINDS,
+            )
+    # Room/world "enter" rules: authored arrival behavior (first-visit room
+    # bonuses score here via adjust_score's once-key).
+    rules.dispatch(actor, "enter", None, None, room_id=target_id)
+
+
+async def _handle_board(actor, room_id, dobj, iobj, args, spec) -> None:
+    """Board a vehicle: sets the actor's `aboard` property (NOT containment —
+    the actor's location stays the room, so every location read in the
+    engine keeps meaning 'the room'). The vehicle must be one, and be here
+    on the ground (you can't board a boat you're carrying)."""
+    if not dobj.properties.get("vehicle"):
+        _dispatch(actor, room_id, [{"kind": "narrate",
+            "text": f"You can't board the {dobj.name}.", "to": "@actor"}], spec)
+        return
+    if dobj.location_id != room_id:
+        _dispatch(actor, room_id, [{"kind": "narrate",
+            "text": f"Put the {dobj.name} down first.", "to": "@actor"}], spec)
+        return
+    current = rules.vehicle_of(actor)
+    if current is not None:
+        if current.id == dobj.id:
+            _dispatch(actor, room_id, [{"kind": "narrate",
+                "text": f"You're already aboard the {dobj.name}.", "to": "@actor"}], spec)
+            return
+        _dispatch(actor, room_id, [{"kind": "narrate",
+            "text": f"You're already aboard the {current.name}.", "to": "@actor"}], spec)
+        return
+    board_text = dobj.properties.get("board_text")
+    if not (isinstance(board_text, str) and board_text.strip()):
+        board_text = f"You climb into the {dobj.name}."
+    _dispatch(actor, room_id, [
+        {"kind": "set_property", "target_id": actor.id, "key": "aboard",
+         "value": dobj.id},
+        {"kind": "narrate", "text": board_text},
+    ], spec)
+
+
+async def _handle_disembark(actor, room_id, dobj, iobj, args, spec) -> None:
+    vehicle = rules.vehicle_of(actor)
+    if vehicle is None:
+        _dispatch(actor, room_id, [{"kind": "narrate",
+            "text": "You aren't aboard anything.", "to": "@actor"}], spec)
+        return
+    out_text = vehicle.properties.get("disembark_text")
+    if not (isinstance(out_text, str) and out_text.strip()):
+        out_text = f"You climb out of the {vehicle.name}."
+    _dispatch(actor, room_id, [
+        {"kind": "set_property", "target_id": actor.id, "key": "aboard",
+         "value": None},
+        {"kind": "narrate", "text": out_text},
+    ], spec)
 
 
 async def _handle_inventory(actor, room_id, dobj, iobj, args, spec) -> None:
@@ -949,6 +1135,8 @@ _ENGINE_HANDLERS = {
     "put": _handle_put,
     "read": _handle_read,
     "plant": _handle_plant,
+    "board": _handle_board,
+    "disembark": _handle_disembark,
     "say": _handle_say,
     "go": _handle_go,
     "inventory": _handle_inventory,

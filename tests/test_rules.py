@@ -327,15 +327,19 @@ def test_contains_condition():
 
 
 def test_in_vehicle_condition():
-    boat = objects.spawn(WORLD, "thing", "boat", ROOM,
-                         properties={"vehicle": True}, object_id="o-boat")
+    objects.spawn(WORLD, "thing", "boat", ROOM,
+                  properties={"vehicle": True}, object_id="o-boat")
     ctx = ctx_for()
     assert rules.conditions_hold([{"in_vehicle": False}], ctx)
-    objects.move(ACTOR, boat.id)
+    objects.set_property(ACTOR, "aboard", "o-boat")
     ctx = ctx_for()
     assert rules.conditions_hold([{"in_vehicle": True}], ctx)
     assert rules.conditions_hold([{"in_vehicle": "o-boat"}], ctx)
     assert not rules.conditions_hold([{"in_vehicle": "o-other"}], ctx)
+    # The boat drifting to another room strands the flag: no longer aboard.
+    objects.move("o-boat", "r-forge")
+    ctx = ctx_for()
+    assert rules.conditions_hold([{"in_vehicle": False}], ctx)
 
 
 def test_chance_condition_is_seeded_deterministic():

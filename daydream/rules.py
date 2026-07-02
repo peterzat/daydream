@@ -149,6 +149,24 @@ def _carried_things(actor_id: str) -> list[objects.Object]:
     return objects.contents(actor_id, kind="thing")
 
 
+def vehicle_of(actor: objects.Object) -> objects.Object | None:
+    """The vehicle the actor is aboard, or None. `properties.aboard` names
+    it; it counts only while co-located in the actor's room and still
+    flagged `vehicle` (a boat that drifted off without you doesn't carry
+    you). Single source of truth for the in_vehicle condition, the go
+    handler, and the board/disembark verbs."""
+    aboard = actor.properties.get("aboard")
+    if not isinstance(aboard, str) or not aboard:
+        return None
+    v = objects.get(aboard)
+    if (
+        v is None or v.kind != "thing" or not v.properties.get("vehicle")
+        or v.location_id != actor.location_id
+    ):
+        return None
+    return v
+
+
 def _eval_condition(cond: dict, ctx: dict) -> bool:
     actor: objects.Object = ctx["actor"]
     world_id: str = ctx["world_id"]
@@ -212,16 +230,17 @@ def _eval_condition(cond: dict, ctx: dict) -> bool:
             return False
         return want in objects.content_ids(holder.id)
     if "in_vehicle" in cond:
-        loc = objects.get(actor.location_id) if actor.location_id else None
-        aboard = loc is not None and loc.kind == "thing" and bool(
-            loc.properties.get("vehicle")
-        )
+        # Embarkation is the actor's `aboard` property (NOT containment —
+        # location_id stays the room so every location read in the engine
+        # keeps meaning "the room"). Valid only while the vehicle is
+        # co-located and still a vehicle.
+        vehicle = vehicle_of(actor)
         want = cond["in_vehicle"]
         if want is True:
-            return aboard
+            return vehicle is not None
         if want is False:
-            return not aboard
-        return aboard and loc.id == _ref_id(want, ctx)
+            return vehicle is None
+        return vehicle is not None and vehicle.id == _ref_id(want, ctx)
     if "in" in cond:
         return actor.location_id == _ref_id(cond["in"], ctx)
 

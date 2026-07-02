@@ -202,10 +202,16 @@ def _state_snapshot(
                     else lighting.darkness_text(room.world_id)
                 ),
                 "dark": not lit,
-                # exits is the SPA's source of truth for nav buttons;
-                # room.exits is the parsed dict shape of exits_json
-                # (migration 004 populates it bidirectionally).
-                "exits": room.exits,
+                # exits is the SPA's source of truth for nav buttons:
+                # {direction: dest-or-null}, secret exits hidden until
+                # passable, blocked/message-only entries kept (clicking
+                # narrates their refusal). verbs.visible_exits evaluates
+                # per-actor, per-snapshot (SPEC 2026-07-02 criterion 7).
+                "exits": (
+                    verbs.visible_exits(room, actor_obj)
+                    if (actor_obj := objects.get(toon_id)) is not None
+                    else {}
+                ),
                 "image_url": image_url,
             }
             if room
