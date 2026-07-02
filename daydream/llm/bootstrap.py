@@ -541,8 +541,8 @@ def _proto_id(kind: str) -> str:
 _PROTOTYPES: tuple[tuple[str, list[str]], ...] = (
     ("room", ["look"]),
     ("npc", ["examine", "talk"]),
-    ("thing", ["examine", "take", "drop", "give"]),
-    ("readable", ["examine", "take", "drop", "give", "read"]),
+    ("thing", ["examine", "take", "drop", "give", "put"]),
+    ("readable", ["examine", "take", "drop", "give", "put", "read"]),
     ("fixture", ["examine"]),
 )
 

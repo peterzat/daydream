@@ -138,6 +138,22 @@ VERBS: dict[str, VerbSpec] = {
         allowed_effects=frozenset({"set_property", "spawn_object", "narrate"}),
         on_bar=True,
     ),
+    "close": VerbSpec(
+        name="close", ui_hint="Close",
+        description="Close an open thing (a lid, a case). Target: the thing.",
+        needs_dobj=True, valid_dobj_kinds=frozenset({"thing"}),
+        allowed_effects=frozenset({"set_property", "narrate"}),
+        on_bar=True, aliases=("shut",),
+    ),
+    "put": VerbSpec(
+        name="put", ui_hint="Put",
+        description="Put a thing you're carrying in or on another thing. "
+                    "Target: the thing, then the container.",
+        needs_dobj=True, needs_iobj=True,
+        valid_dobj_kinds=frozenset({"thing"}), valid_iobj_kinds=frozenset({"thing"}),
+        allowed_effects=frozenset({"move_object", "narrate"}),
+        on_bar=True, preps=("in", "into", "inside", "on", "onto"),
+    ),
     "read": VerbSpec(
         name="read", ui_hint="Read",
         description="Read a thing's writing (a ledger, a letter). Target: the thing.",
@@ -380,6 +396,12 @@ async def _handle_look(actor, room_id, dobj, iobj, args, spec) -> None:
     things = objects.contents(room_id, kind="thing")
     if things:
         text += " You see: " + ", ".join(t.name for t in things) + "."
+    # Visible container contents compose into the look (criterion 4): an
+    # open sack on the floor reads out what it holds; a closed one doesn't.
+    for t in things:
+        inner = objects.visible_contents(t)
+        if inner:
+            text += f" The {t.name} holds: " + ", ".join(o.name for o in inner) + "."
     _dispatch(actor, room_id, [{"kind": "narrate", "text": text, "to": "@actor"}], spec)
 
 
@@ -397,6 +419,19 @@ def _examine_line(dobj: objects.Object, detail: str) -> str:
     if not detail:
         return f"You examine the {dobj.name}."
     return f"You examine the {dobj.name}: {_terminate(detail)}"
+
+
+def _container_glance(dobj: objects.Object) -> str:
+    """Examine's container suffix: what a see-through container holds, that
+    it's empty, or that it's closed. Empty string for non-containers."""
+    if not objects.is_container(dobj):
+        return ""
+    if not objects.contents_visible(dobj):
+        return f" The {dobj.name} is closed."
+    inner = objects.contents(dobj.id, kind="thing")
+    if not inner:
+        return f" The {dobj.name} is empty."
+    return f" The {dobj.name} holds: " + ", ".join(o.name for o in inner) + "."
 
 
 def _detail_with_state(dobj: objects.Object) -> str:
@@ -423,7 +458,7 @@ async def _handle_examine(actor, room_id, dobj, iobj, args, spec) -> None:
     cache."""
     cached = dobj.properties.get("examined_text")
     if isinstance(cached, str) and cached.strip():
-        _dispatch(actor, room_id, [{"kind": "narrate", "text": _examine_line(dobj, cached), "to": "@actor"}], spec)
+        _dispatch(actor, room_id, [{"kind": "narrate", "text": _examine_line(dobj, cached) + _container_glance(dobj), "to": "@actor"}], spec)
         return
     if dobj.kind == "toon":
         appearance = dobj.properties.get("appearance_seed", "")
@@ -433,7 +468,13 @@ async def _handle_examine(actor, room_id, dobj, iobj, args, spec) -> None:
         _dispatch(actor, room_id, [{"kind": "narrate", "text": line, "to": "@actor"}], spec)
         return
     if dobj.seed and dobj.seed.strip():
-        _dispatch(actor, room_id, [{"kind": "narrate", "text": _examine_line(dobj, _detail_with_state(dobj)), "to": "@actor"}], spec)
+        _dispatch(actor, room_id, [{"kind": "narrate", "text": _examine_line(dobj, _detail_with_state(dobj)) + _container_glance(dobj), "to": "@actor"}], spec)
+        return
+    if objects.is_container(dobj):
+        # A seedless authored container still answers with its contents
+        # instead of burning an LLM call on emptiness.
+        _dispatch(actor, room_id, [{"kind": "narrate",
+            "text": _examine_line(dobj, "") + _container_glance(dobj), "to": "@actor"}], spec)
         return
     # Lazy-cache generation (one LLM call, then cached).
     detail = await _generate_examine(dobj)
@@ -476,9 +517,36 @@ async def _generate_examine(dobj: objects.Object) -> str | None:
     return text.strip()
 
 
+def _carry_capacity(actor: objects.Object) -> int | None:
+    """The actor's carry limit in size units: per-toon `properties.capacity`
+    first, else the world config's `carry_capacity`. None = unlimited (every
+    pre-Zork world)."""
+    cap = actor.properties.get("capacity")
+    if isinstance(cap, int):
+        return cap
+    from daydream import worldstate
+
+    cfg = worldstate.get(actor.world_id, "config")
+    wcap = cfg.get("carry_capacity") if isinstance(cfg, dict) else None
+    return wcap if isinstance(wcap, int) else None
+
+
 async def _handle_take(actor, room_id, dobj, iobj, args, spec) -> None:
     if dobj.location_id == actor.id:
         _dispatch(actor, room_id, [{"kind": "narrate", "text": f"You're already carrying the {dobj.name}."}], spec)
+        return
+    # Container gate: reaching INTO a closed container is refused. This only
+    # bites for closed TRANSPARENT ones — a closed opaque container's
+    # contents are already out of scope entirely (criterion 4).
+    holder = objects.get(dobj.location_id) if dobj.location_id else None
+    if holder is not None and holder.kind == "thing" and not objects.container_open(holder):
+        _dispatch(actor, room_id, [{"kind": "narrate",
+            "text": f"The {holder.name} is closed.", "to": "@actor"}], spec)
+        return
+    cap = _carry_capacity(actor)
+    if cap is not None and objects.load_of(actor.id) + objects.size_of(dobj) > cap:
+        _dispatch(actor, room_id, [{"kind": "narrate",
+            "text": "You're carrying too much already.", "to": "@actor"}], spec)
         return
     _dispatch(actor, room_id, [
         {"kind": "move_object", "object_id": dobj.id, "dest_id": actor.id},
@@ -650,6 +718,73 @@ async def _handle_open(actor, room_id, dobj, iobj, args, spec) -> None:
     _dispatch(actor, room_id, effs, spec)
 
 
+async def _handle_close(actor, room_id, dobj, iobj, args, spec) -> None:
+    """Close an open stateful thing (the machine lid, a sack). Only a thing
+    whose `state` is literally 'open' closes; anything else is already shut
+    (or was never openable — an always-open basket doesn't offer `close`)."""
+    if dobj.properties.get("state") != "open":
+        _dispatch(actor, room_id, [{"kind": "narrate",
+            "text": f"The {dobj.name} is already closed.", "to": "@actor"}], spec)
+        return
+    close_text = dobj.properties.get("close_text")
+    if not (isinstance(close_text, str) and close_text.strip()):
+        close_text = f"You close the {dobj.name}."
+    _dispatch(actor, room_id, [
+        {"kind": "set_property", "target_id": dobj.id, "key": "state", "value": "closed"},
+        {"kind": "narrate", "text": close_text},
+    ], spec)
+
+
+async def _handle_put(actor, room_id, dobj, iobj, args, spec) -> None:
+    """Put a carried thing (dobj) in/on a container or surface (iobj), with
+    the criterion-4 gates: must be carrying it; the target must be a
+    container; a closed container refuses; no putting a thing inside itself
+    (or inside its own contents); authored `capacity` versus item sizes.
+    Deterministic; every string pre-baked (no LLM)."""
+    if dobj.location_id != actor.id:
+        _dispatch(actor, room_id, [{"kind": "narrate",
+            "text": f"You aren't carrying the {dobj.name}.", "to": "@actor"}], spec)
+        return
+    surface = bool(iobj.properties.get("surface"))
+    prep = "on" if surface else "in"
+    if dobj.id == iobj.id:
+        _dispatch(actor, room_id, [{"kind": "narrate",
+            "text": f"You can't put the {dobj.name} inside itself.", "to": "@actor"}], spec)
+        return
+    if not objects.is_container(iobj):
+        _dispatch(actor, room_id, [{"kind": "narrate",
+            "text": f"You can't put things {prep} the {iobj.name}.", "to": "@actor"}], spec)
+        return
+    if not objects.container_open(iobj):
+        _dispatch(actor, room_id, [{"kind": "narrate",
+            "text": f"The {iobj.name} is closed.", "to": "@actor"}], spec)
+        return
+    # Containment-cycle gate: walking up from the target, the carried thing
+    # must not appear (putting the sack into the box inside the sack).
+    cur = iobj
+    for _ in range(objects.CONTAINER_SCOPE_DEPTH + 1):
+        if cur.location_id is None:
+            break
+        if cur.location_id == dobj.id:
+            _dispatch(actor, room_id, [{"kind": "narrate",
+                "text": f"You can't put the {dobj.name} inside itself.", "to": "@actor"}], spec)
+            return
+        parent = objects.get(cur.location_id)
+        if parent is None:
+            break
+        cur = parent
+    cap = iobj.properties.get("capacity")
+    if isinstance(cap, int) and objects.load_of(iobj.id) + objects.size_of(dobj) > cap:
+        _dispatch(actor, room_id, [{"kind": "narrate",
+            "text": f"The {dobj.name} won't fit {prep} the {iobj.name}.",
+            "to": "@actor"}], spec)
+        return
+    _dispatch(actor, room_id, [
+        {"kind": "move_object", "object_id": dobj.id, "dest_id": iobj.id},
+        {"kind": "narrate", "text": f"You put the {dobj.name} {prep} the {iobj.name}."},
+    ], spec)
+
+
 async def _handle_read(actor, room_id, dobj, iobj, args, spec) -> None:
     """Narrate a readable's authored `text` (the words on the page), distinct
     from `examine`'s physical description. Degrades gently when there is no
@@ -776,6 +911,8 @@ _ENGINE_HANDLERS = {
     "give": _handle_give,
     "use": _handle_use,
     "open": _handle_open,
+    "close": _handle_close,
+    "put": _handle_put,
     "read": _handle_read,
     "plant": _handle_plant,
     "say": _handle_say,

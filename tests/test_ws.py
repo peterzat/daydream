@@ -173,6 +173,41 @@ def test_ws_reconnect_replay_excludes_others_private_events():
         assert not any("meadow" in t.lower() for t in texts)
 
 
+def test_ws_container_contents_nest_and_reveal_live():
+    """Criterion 4 over the wire: a closed opaque container renders
+    childless; the `open` click reveals its nested contents in a fresh
+    snapshot on the SAME connection (no reconnect)."""
+    from daydream import objects
+
+    with TestClient(app) as client:
+        _login(client)
+        with client.websocket_connect("/ws") as ws:
+            snap = ws.receive_json()
+            assert snap["kind"] == "state_snapshot"
+            objects.spawn(
+                "w-bunny", "thing", "sack", "r-meadow",
+                prototype_id=objects.PROTO_THING,
+                properties={"container": True, "state": "closed",
+                            "verbs": ["open", "close"]},
+                object_id="o-sack",
+            )
+            objects.spawn("w-bunny", "thing", "garlic", "o-sack",
+                          prototype_id=objects.PROTO_THING, object_id="o-garlic")
+            ws.send_json({"kind": "command", "verb": "look"})  # any event flows
+            ws.receive_json()
+            ws.send_json({"kind": "command", "verb": "open", "dobj_id": "o-sack"})
+            # property_set(state) triggers a re-snapshot; drain frames until
+            # it arrives, then check nesting.
+            for _ in range(8):
+                msg = ws.receive_json()
+                if msg["kind"] == "state_snapshot":
+                    break
+            else:
+                pytest.fail("no refreshed snapshot after open")
+            sack_card = next(it for it in msg["items"] if it["id"] == "o-sack")
+            assert [c["id"] for c in sack_card.get("contents", [])] == ["o-garlic"]
+
+
 def test_ws_snapshot_carries_world_status():
     """The snapshot carries the world-shared status block (score / rank /
     moves / deaths / lit) from the world_state KV; a world with no authored
@@ -586,10 +621,11 @@ def test_ws_snapshot_carries_scene_objects_verb_bar_and_entities():
     # The lantern (previously sent but unrendered) carries its verbs + kind.
     lantern = next(i for i in snap["items"] if i["name"] == "lantern")
     assert lantern["kind"] == "thing"
-    assert lantern["verbs"] == ["examine", "take", "drop"]
+    assert lantern["verbs"] == ["examine", "take", "drop", "put"]
     # The verb bar offers the interaction verbs (verb-then-object).
     assert [v["name"] for v in snap["verb_bar"]] == [
-        "examine", "take", "drop", "talk", "give", "use", "open", "read", "plant",
+        "examine", "take", "drop", "talk", "give", "use", "open", "close",
+        "put", "read", "plant",
     ]
     # Two-object verbs advertise needs_iobj + valid_iobj_kinds so the client can
     # drive step 2 and gate it by kind; single-object verbs report false / [].

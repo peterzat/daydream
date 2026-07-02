@@ -124,7 +124,7 @@ def test_set_and_get_property_round_trip():
 def test_prototypes_seeded_with_verb_sets():
     proto = objects.get(objects.PROTO_THING)
     assert proto is not None and proto.kind == "prototype"
-    assert proto.properties["verbs"] == ["examine", "take", "drop"]
+    assert proto.properties["verbs"] == ["examine", "take", "drop", "put"]
 
 
 def test_concrete_object_inherits_prototype_verbs():
@@ -135,7 +135,7 @@ def test_concrete_object_inherits_prototype_verbs():
         prototype_id=objects.PROTO_READABLE, properties={"seed": "loose pages"},
         object_id="o-papers2",
     )
-    assert objects.verbs_for(papers) == ["examine", "take", "drop"]
+    assert objects.verbs_for(papers) == ["examine", "take", "drop", "put"]
     # An NPC inherits examine + talk from proto-npc.
     assert objects.verbs_for(objects.get("t-rook")) == ["examine", "talk"]
 
@@ -148,7 +148,7 @@ def test_per_object_verbs_union_with_prototype():
         properties={"seed": "tinkling", "verbs": ["wind"]},
         object_id="o-box",
     )
-    assert objects.verbs_for(obj) == ["examine", "take", "drop", "wind"]
+    assert objects.verbs_for(obj) == ["examine", "take", "drop", "put", "wind"]
 
 
 # ---- spawn -------------------------------------------------------------

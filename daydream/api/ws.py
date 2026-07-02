@@ -248,16 +248,23 @@ def _state_snapshot(
     }
 
 
-def _object_card(o: "objects.Object") -> dict:
+def _object_card(o: "objects.Object", depth: int = 0) -> dict:
     """A scene object as the SPA needs it: id + kind + name + verb affordances
-    (and aliases, for client-side narration linking)."""
-    return {
+    (and aliases, for client-side narration linking). A see-through container
+    nests its contents as child cards (criterion 4) — a closed opaque one
+    renders childless, and opening it re-snapshots the reveal live."""
+    card = {
         "id": o.id,
         "name": o.name,
         "kind": o.kind,
         "aliases": o.aliases,
         "verbs": objects.verbs_for(o),
     }
+    if depth < 3 and o.kind == "thing":
+        inner = objects.visible_contents(o)
+        if inner:
+            card["contents"] = [_object_card(c, depth + 1) for c in inner]
+    return card
 
 
 def _toon_card(t: "toons.Toon") -> dict:
@@ -615,7 +622,16 @@ async def _broadcast_loop(
             # aren't dropped as "covered by snapshot" when they weren't.
             is_controlled_move = event.kind == "move" and event.actor_id == toon_id
             is_effect_mutation = event.kind in _EFFECT_MUTATION_KINDS
-            if is_controlled_move or is_effect_mutation:
+            # A `state` property flip is a visibility event (opening/closing
+            # a container reveals/hides nested contents; a locked door
+            # unlatches): re-snapshot so panels update live. Other
+            # property_set writes (cached examine text, moods) stay excluded
+            # — see _EFFECT_MUTATION_KINDS.
+            is_state_change = (
+                event.kind == "property_set"
+                and event.payload.get("key") == "state"
+            )
+            if is_controlled_move or is_effect_mutation or is_state_change:
                 snapshot_seq = events.max_seq()
                 await ws.send_json(_state_snapshot(snapshot_seq, toon_id, view))
                 if is_controlled_move:

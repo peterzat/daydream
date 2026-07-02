@@ -155,8 +155,11 @@ def by_slug(world_id: str, slug: str, kind: str = "room") -> Object | None:
 
 def in_scope(actor_id: str) -> list[Object]:
     """The objects an actor can currently refer to: the actor itself, its
-    room, the room's contents (co-located toons + things on the ground), and
-    the actor's own inventory. Deduplicated by id, prototypes excluded.
+    room, the room's contents (co-located toons + things on the ground), the
+    actor's own inventory — and, recursively, the visible contents of any
+    open / transparent / surface container among them (depth-capped). A thing
+    inside a closed opaque container is NOT in scope (SPEC 2026-07-02
+    criterion 4). Deduplicated by id, prototypes excluded.
 
     This is the grounding set handed to the natural-language parser and the
     scope gate `execute_command` validates a target against."""
@@ -175,7 +178,42 @@ def in_scope(actor_id: str) -> list[Object]:
     for o in contents(actor_id):
         if o.kind != "prototype":
             seen.setdefault(o.id, o)
+    # Containers: descend into see-through ones breadth-first. The actor's
+    # own location may itself be a container (aboard a vehicle) — already in
+    # `seen` via the actor row's location handling above only when it's a
+    # room, so add a boarded vehicle's other contents through the frontier.
+    frontier = [o for o in seen.values() if o.kind == "thing" and contents_visible(o)]
+    for _ in range(CONTAINER_SCOPE_DEPTH):
+        if not frontier:
+            break
+        next_frontier: list[Object] = []
+        for c in frontier:
+            for o in contents(c.id):
+                if o.kind == "prototype" or o.id in seen:
+                    continue
+                seen[o.id] = o
+                if o.kind == "thing" and contents_visible(o):
+                    next_frontier.append(o)
+        frontier = next_frontier
     return list(seen.values())
+
+
+def find_all_in_scope_by_name(actor_id: str, name: str) -> list[Object]:
+    """Every in-scope object whose name or alias matches, in scope order —
+    the parser's disambiguation set ('which do you mean, the brass lantern
+    or the broken lantern?'). The actor itself is excluded, like the
+    first-match resolver below."""
+    needle = name.strip().lower()
+    if not needle:
+        return []
+    out: list[Object] = []
+    for o in in_scope(actor_id):
+        if o.id == actor_id:
+            continue
+        names = [o.name.lower()] + [str(a).lower() for a in o.aliases]
+        if needle in names:
+            out.append(o)
+    return out
 
 
 def find_in_scope_by_name(actor_id: str, name: str) -> Object | None:
@@ -210,6 +248,64 @@ def verbs_for(obj: Object) -> list[str]:
         if isinstance(v, str) and v not in out:
             out.append(v)
     return out
+
+
+# ---- containers (Zork turn, SPEC 2026-07-02 criterion 4) ----------------
+
+# ZIL's default object SIZE; authored `properties.size` overrides.
+DEFAULT_SIZE = 5
+# How deep in_scope descends into nested visible containers.
+CONTAINER_SCOPE_DEPTH = 4
+
+
+def is_container(obj: Object) -> bool:
+    """Things can be put in it (`container: true`) or on it (`surface:
+    true`). Rooms and toons hold contents too, but through their own paths —
+    this predicate is for things only."""
+    return obj.kind == "thing" and bool(
+        obj.properties.get("container") or obj.properties.get("surface")
+    )
+
+
+def container_open(obj: Object) -> bool:
+    """Reach-through openness: surfaces always; stateful containers when
+    `state == "open"`; a container with NO state key is an always-open
+    basket. Authors of closable containers set state explicitly."""
+    p = obj.properties
+    if p.get("surface"):
+        return True
+    if not is_container(obj):
+        return False
+    state = p.get("state")
+    return state == "open" if isinstance(state, str) else True
+
+
+def contents_visible(obj: Object) -> bool:
+    """See-through: open (or surface) containers, plus closed TRANSPARENT
+    ones (a corked glass bottle: you see the water, you can't reach it)."""
+    if not is_container(obj):
+        return False
+    return container_open(obj) or bool(obj.properties.get("transparent"))
+
+
+def visible_contents(obj: Object) -> list[Object]:
+    """Direct contents when see-through, else [] — the snapshot-nesting and
+    look-composition helper."""
+    if not contents_visible(obj):
+        return []
+    return contents(obj.id, kind="thing")
+
+
+def size_of(obj: Object) -> int:
+    s = obj.properties.get("size")
+    return s if isinstance(s, int) and s >= 0 else DEFAULT_SIZE
+
+
+def load_of(container_id: str) -> int:
+    """Sum of the sizes of a container's DIRECT thing contents (capacity
+    checks are direct-only; nested weight does not propagate — documented
+    fidelity simplification)."""
+    return sum(size_of(o) for o in contents(container_id, kind="thing"))
 
 
 # ---- writes ------------------------------------------------------------

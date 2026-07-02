@@ -200,7 +200,7 @@ def test_authored_bunny_world_loads_and_rook_spawns_papers(tmp_path: Path, monke
         ]
         assert len(papers) == 1
         # Readable prototype now grants give + read alongside examine/take/drop.
-        assert objects.verbs_for(papers[0]) == ["examine", "take", "drop", "give", "read"]
+        assert objects.verbs_for(papers[0]) == ["examine", "take", "drop", "give", "put", "read"]
     finally:
         db.close_db()
         events.reset_subscribers()

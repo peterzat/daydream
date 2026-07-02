@@ -51,7 +51,7 @@ def _install_dialogue(name: str) -> None:
 def test_closed_verb_registry_with_arg_specs():
     assert set(verbs.VERBS) == {
         "look", "examine", "take", "drop", "talk", "give", "use",
-        "open", "read", "plant", "say", "go", "inventory",
+        "open", "close", "put", "read", "plant", "say", "go", "inventory",
     }
     # Arg-specs: object-targeted verbs declare a dobj + valid kinds.
     assert verbs.VERBS["take"].needs_dobj
@@ -78,14 +78,15 @@ def test_closed_verb_registry_with_arg_specs():
             )
     # The verb bar offers the interaction verbs, verb-then-object.
     assert [v.name for v in verbs.bar_verbs()] == [
-        "examine", "take", "drop", "talk", "give", "use", "open", "read", "plant",
+        "examine", "take", "drop", "talk", "give", "use", "open", "close",
+        "put", "read", "plant",
     ]
 
 
 def test_available_verbs_derive_from_kind_prototype():
     # A thing exposes examine/take/drop; an NPC exposes examine/talk — from the
     # prototype, with no per-object re-declaration.
-    assert objects.verbs_for(objects.get("i-lantern")) == ["examine", "take", "drop"]
+    assert objects.verbs_for(objects.get("i-lantern")) == ["examine", "take", "drop", "put"]
     assert objects.verbs_for(objects.get("t-rook")) == ["examine", "talk"]
 
 

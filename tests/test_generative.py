@@ -69,7 +69,7 @@ async def test_talk_dialogue_spawns_one_clickable_thing(monkeypatch):
     p = papers[0]
     # Persistent, clickable (carries inheritable verbs), and readable-typed.
     assert p.kind == "thing"
-    assert objects.verbs_for(p) == ["examine", "take", "drop"]
+    assert objects.verbs_for(p) == ["examine", "take", "drop", "put"]
     assert "papers" in p.aliases
     assert p.properties.get("generated_by") == "talk:t-rook"
 
