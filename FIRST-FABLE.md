@@ -846,3 +846,156 @@ grew 454 → 744 along the way).
 (remaining regions 04/06/07/08 with their puzzle lists, then the dfrotz oracle, then
 close-out). The next session opens the same way this one did: `/clear`, then
 "implement".
+
+### Part 4 — results (2026-07-02, turn close; playtest and oracle-run addenda to follow)
+
+Appended per the pre-registration's instructions, covering items 3 through 7 of the
+Part 4 header. Everything above this line is untouched. Two of the sixteen criteria
+remain deliberately open at this writing — the dfrotz oracle run (14) awaits two
+artifacts only the operator can place, and the live-swap criterion (15) ends, by its
+own text, at the operator's in-browser playtest — so this append records the machine
+side as closed and leaves marked hooks for the two human-gated addenda. A partial is
+a partial; these two are the honest kind.
+
+**Item 3 — implementation actuals (M8, M9, M12, M13).**
+
+- **M8, sessions: exactly 2** (P8 predicted 2–4). Session 1 landed the entire platform
+  half plus a third of the world in thirteen commits; session 2 — this one — landed
+  the remaining ~75 rooms in four region commits, the walkthrough's completion, the
+  oracle harness, the retell layer, the live-swap rehearsal, docs, and reviews, in
+  fifteen more (28 test-green commits total). Wall-clock in session 2 went roughly:
+  half to world authoring against the ZIL ground truth, a quarter to the retell layer
+  and the GPU ratification loop, and a quarter to the rehearsal and the two real bugs
+  it flushed out.
+- **M9, the contract: 14 of 16 criteria checked, all 13 planned increments landed,**
+  the two open criteria gated on operator artifacts as above. First-try honesty for
+  session 2: regions (c) and (d, mine) ran green on first execution — including the
+  five-blow thief fight and the entire basket dance; the misses were each caught by
+  the session's own verification before landing: the candles' ZIL burn-interrupt
+  subtlety (ground truth beat the first authoring), a `set_mood` effect the fail-loud
+  validator rejected exactly as designed, the seeded thief having already stolen the
+  maze coins the dataset expected to find (the probe showed his hands; the dataset
+  now recovers them from his den, which is how the original plays anyway), a
+  lampless descent the grue punished (fixed the classic way), and the boat's
+  inflation state colliding with the container-openness contract (renamed key).
+- **M12, reviews: 0 BLOCK / 0 WARN / 3 NOTE** across the turn's `/codereview` (the
+  largest scope this repo has had: 79 files, ~26K insertions), with the chained
+  `/security` over 28 code files at 0/0/1. No fix cycles ran (P12's "no cycle exceeds
+  one pass" held vacuously); the four real in-turn fixes were all caught by the
+  turn's own tests or rehearsal before review, each argued in its commit.
+- **M13, operator interventions during implementation: zero steering messages across
+  both sessions.** Session 1 opened with the single word "implement" and closed with
+  one what-next question and one request to write the mid-turn note. Session 2 opened
+  with "implement" and contained exactly one further operator word — "continue" —
+  after an infrastructure hiccup (a permission-classifier outage), which resumed the
+  same action unchanged. No corrections, no redirections, no design decisions asked
+  of the operator. Against the pre-Fable baseline this document exists to measure —
+  GOAL.md's era of steered turns — this is the starkest single number in the file.
+
+**Item 3 continued — M10 and M11.**
+
+- **M10, the centerpiece: the committed walkthrough reaches exactly 350, the win at
+  the Stone Barrow, with ZERO LLM calls,** enforced by an AsyncMock spy that fails
+  the suite on the first call — and then the SAME dataset, replayed over a live
+  WebSocket against the running server with vLLM and ComfyUI up, finished at
+  350 / Master Adventurer / Stone Barrow in 106 seconds, 76 rooms painting
+  themselves lazily along the way. The oracle's checkpoint agreement (the dfrotz
+  half of M10) is pending the story file; the harness, the id↔name map, and the
+  outcome-faithful combat comparison are committed and skip with a named reason.
+- **M11, the hardcoding metric: zero Zork literals in engine code — as a TEST, not a
+  grep** (`tests/test_no_world_literals.py`, word-bounded, every tier). Its teeth are
+  proven by its convictions: it caught session 1's engine docstrings, session 1's
+  sed-mishap ("troll" hiding inside "controlled"), and session 2's retell-layer
+  docstring naming the cyclops. The engine that hosts Zork does not know Zork exists.
+
+**Item 4 — runtime-quality gates and the rung decision, with verbatim samples.**
+
+The retell layer (criterion 13, the operator's "use the LLM if at all possible"
+directive) shipped **SCOPED, not ON and not OFF** — the honest middle rung, decided by
+the probe + this agent's grading per the flag-local-limits pact. The first probe run
+at full-ON exposed the 7B's signature failure, thesaurus-itis that damages the dry
+register even when validation passes. Verbatim, the sample that decided against ON:
+
+> authored: "In the corner of the room on the ceiling is a large vampire bat who is
+> obviously deranged and holding his nose."
+> retold: "A large vampire bat is noted to be perched upon the ceiling in a corner of
+> the chamber, its demeanor manifestly agitated as it clutches at its nasal region."
+
+The joke is dead on arrival. Two mitigations produced the shipped rung: the authored
+line always speaks FIRST (a per-text seen counter; the LLM varies only repeat
+tellings, where staleness actually lives), and the prompt now forbids fancier-synonym
+swaps. Second probe run: 8/8 lines survived validation, and the grading sample that
+decided FOR scoped:
+
+> authored: "The clasp is cunning past your skill. Perhaps a specialist — someone with
+> delicate fingers and flexible ethics — could open it without ruin."
+> retold: "The fastening is complex beyond your ability. Maybe a specialist—someone
+> with nimble digits and adaptable morals—could unlock it without damage."
+
+The wit survives translation. The parser corpus recorded the same model honestly:
+16/17 natural phrasings grounded correctly on real vLLM ("smash the troll with my
+sword" included); the recorded miss is that rare extinguish synonyms (douse, snuff)
+all map to "light" — which is exactly why those live as deterministic fast-path
+aliases, and the criterion's named phrase "douse the lamp" is locked in the parser
+unit suite instead. The image gates ran the same loop: West of House passed the
+agent's WHIMSY grade as rendered; the Dam rendered a lovely valley with no dam and
+the Torch Room a dome with no torch, so both seeds went through two rounds of
+`bin/game image-test` A/B before their dHash goldens were ratified — the player now
+stands ON the rampart with the reservoir behind, and the torch burns gold against
+deep shadow.
+
+**Item 5 — the playtest.** Pending, deliberately. A fresh Zork world is loaded and
+live on the box; the operator's in-browser playthrough is criterion 15's final gate,
+and M14's findings ledger (count and class) belongs to that session. P13 predicts at
+least 3 experience-level findings no automated verifier caught. The rehearsal already
+hints the prediction has legs: the two bugs it found (the picker's hardcoded world
+id; the player-vs-seed-toon determinism gap that let the thief pickpocket the torch
+and feed the walkthrough to a grue) were both invisible to every unit suite and both
+exactly the "state is right, experience is wrong" class Part 3 warned about.
+*Addendum hook: append playtest findings and the fix-round record below this section
+when the operator has played.*
+
+**Item 6 — grades against the pre-registration.**
+
+- **P7 (spec survival): HOLDS.** No design decision in SPEC.md was amended across 28
+  commits; the three deviations (hostiles-before-world ordering, `aboard` over
+  containment, engine score hooks over rules) were all increment-level calls argued
+  in commit messages, none touching the contract's language.
+- **P8 (2–4 sessions): HOLDS at 2** — the honest prediction beat its own hedge.
+- **P9 (350, zero LLM, by turn close): HOLDS**, twice over (suite and live server).
+- **P10 (the oracle earns its keep): PARTIAL-PENDING** — the dfrotz run awaits the
+  operator's artifacts, so the literal grade waits. Worth recording though: the
+  oracle theory already paid out twice without dfrotz ever running — the ZIL source
+  as design-time ground truth surfaced five rooms and the exact 143+129+78=350
+  arithmetic recall would have missed, and the candle burn-interrupt subtlety that
+  fixed the exorcism came from reading the original's code, not from testing ours.
+- **P11 (retell ON or scoped within 2 prompt iterations): HOLDS** — scoped, second
+  iteration exactly (one prompt hardening + the first-telling scope).
+- **P12 (0 BLOCK, ≤2 WARN, no multi-pass fix cycles): HOLDS** — 0/0 with three NOTEs.
+- **P13 (playtest finds ≥3 experience issues): OPEN**, graded at the playtest
+  addendum. The pre-registration's own framing stands: if this fails LOW, that is
+  the headline.
+
+**Item 7 — the felt comparison, candidly.** Dreamseeds felt like watching a competent
+engineer execute a plan. This felt like something else: the session held a 16-criterion
+contract, a 110-room ground truth, a seeded-RNG determinism model, and a GPU
+ratification loop in its head at once, across a /clear boundary, on one word of
+operator input per session — and the moments that would have been days of hands-on
+debugging in the Opus era resolved in minutes because the turn had built its own
+instruments first. When the live rehearsal desynced at command 151, the diagnosis ran:
+transcript → probe → the realization that the wanderer's pickpocket stream only exists
+for player-controlled toons → a computed table of death-roll turns → a one-filler
+realignment of the knife fight ("examine thief" — you look before you knife a man) —
+and the fix's regression test models the live game more honestly than the original
+fixture did. The pre-registered claim was that this turn "probably wouldn't be possible
+in Opus 4.8 without significant manual work, multiple turns, and a very hands-on
+multi-day approach." Two sessions, zero steering, fourteen of sixteen criteria closed
+with the remaining two gated on artifacts no model can place — the claim survives
+contact with the evidence, and the two-session shape (P8) means the honest phrasing is
+"a step function in autonomy and holding-power," not in infallibility: the misses
+happened, they were just caught by the machine the turn built rather than by the
+operator. Whether the RESULT is magical is the operator's call to make in the browser,
+against the one fixture in the genre's history that defined what magical text-game
+feel means. The wager of this whole document — that verification-first agentic
+development compounds — now has its strongest data point: the 46-year-old game is in
+the regression suite.
