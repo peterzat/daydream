@@ -774,3 +774,75 @@ played clockmakers world, grown room and art included). The auto-memory index ca
 `### Part 4 — results` BELOW this section, covering items 3 through 7 of the header
 instructions above and grading P7 through P13 with one line of evidence each. Honestly;
 a partial is a partial. Never edit anything above it.
+
+### Part 4 — mid-turn note: implementation session 1 (2026-07-02)
+
+An interim entry, appended while the memory is fresh so the results append has evidence
+instead of reconstruction. This is NOT the results section; items 3–7 and the P7–P13
+grades still go below, at turn close, per the instructions above. Nothing above is
+edited.
+
+**The session in one line.** The operator's entire steering input was the word
+"implement"; thirteen test-green commits later (`132ec08..59d7bcd`) the session had
+landed the COMPLETE platform half of the contract — all ten engine increments,
+including the three the plan pre-registered as its risks (the rule engine, the wide
+parser, the hostile engines) — plus the criterion-2 purity gate and the first third of
+the Zork world, with the clockmakers regression suite green at every commit (short tier
+grew 454 → 744 along the way).
+
+**Evidence the results append will want:**
+
+- **M13 so far: zero corrections, zero redirections.** One word opened the session; the
+  only other operator messages were an end-of-session what-next question (answered:
+  keep clockmakers live, swap at criterion 15's rehearsal) and the request to write
+  this note — a scope addition of the Part-1 kind, not a steer.
+- **P8 tracking:** this is session 1 of the predicted 2–4. Frontier at close: 34 of 110
+  rooms authored across four region files; SIX walkthrough segments green under the
+  zero-LLM spy — the opening through the egg, the house, the once-barring trap door,
+  the seeded troll fight (resolving in exactly two sword blows, repeated via AGAIN),
+  the dome rope, down to the barred gate of Hades. The final-world integrity checks
+  (110 rooms, the 350 sum, full reachability) are committed and armed: they fire
+  automatically the moment the generated stub region disappears.
+- **The oracle earned its keep before the oracle existed.** The session pulled the
+  MIT-licensed ZIL source as the design-time reference and extracted it mechanically:
+  exactly 110 rooms (the extraction surfaced five rooms recall alone would have missed
+  — Mountains, East of Chasm, the two small caves, On the Rainbow) and the treasure
+  ledger confirmed to the point: 143 take + 129 case + 78 room bonuses = 350 across 19
+  treasures, matching the plan's numbers independently. Ground truth beat memory; that
+  is the oracle theory in miniature, at authoring time.
+- **M11 is now a test, not a grep** (`tests/test_no_world_literals.py`, word-bounded,
+  tier_short). Its first run convicted the session's own engine docstrings, which had
+  been cheerfully labeling increments "(Zork turn)" — the gate forced the engine
+  comments generic, which is the criterion working as intended. The sweep also produced
+  the session's one genuine self-inflicted mess: "troll" hides inside "controlled" and
+  "controller", and a blanket replace briefly renamed half the toon auth columns,
+  turning 328 tests red. Restored in two passes; the gate has been green since. Worth
+  keeping for the honesty ledger: the largest failure of the session was a sed-class
+  error, not a design one.
+- **First-try ledger, honestly:** most increments ran green on first execution
+  (the 39-test rule engine and the 6-segment walkthrough both did). The misses were
+  small, and every one was caught by the session's own verification before commit:
+  `kill_actor` missing from one allowlist; give/use prepositions lost in a
+  generalization and caught by the EXISTING parser suite; a WS test deadlock that was
+  test-infrastructure (two event loops sharing the in-process pub-sub), not product;
+  and "take all" in the kitchen exposing that ALL must reach onto surfaces, exactly as
+  the original behaves — fixed in the parser, not the walkthrough.
+- **Deviations already on the record** (for item 4 at close, all argued in commit
+  messages): the hostile engines landed BEFORE the world authoring, inverting the
+  plan's increment order so the world is authored once against a finished engine;
+  vehicles ride an `aboard` property instead of literal containment (blast-radius
+  through every location read); and treasure take/case scoring is an engine
+  success-hook (score only when the take actually happened) rather than rules, because
+  a rule fires before the handler's refusal gates.
+- **A note for the felt comparison:** the walkthrough segments passing first-run
+  includes the part that had no right to — the troll fight is seeded combat under a
+  pinned world seed, authored in data, and the two-blow kill plus AGAIN repeat worked
+  on the first execution of the segment. The session's own reaction is recorded here
+  so the final paragraph doesn't have to trust recollection: it felt less like
+  implementing a spec and more like transcription against a ground truth, with the
+  test harness confirming the transcription faster than doubt could accumulate.
+
+**Continuation:** the auto-memory `zork-turn-in-flight` carries the precise frontier
+(remaining regions 04/06/07/08 with their puzzle lists, then the dfrotz oracle, then
+close-out). The next session opens the same way this one did: `/clear`, then
+"implement".
