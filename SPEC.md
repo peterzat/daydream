@@ -34,7 +34,7 @@
 
 - [ ] **15. The dream swaps to Zork live.** `world load worlds/zork1.json --output` builds a side DB and `world swap` moves the running server onto it with connected clients re-snapshotting; a full solo playthrough is driven over WS against the live server with real engines (room art rendering lazily along the way); the operator's in-browser playtest is the final human gate, with findings recorded for the fix round.
 
-- [ ] **16. The turn closes on the record.** README and CLAUDE.md roll forward (v0.6.0: Zork world ops, oracle setup, the new platform primitives); BACKLOG annotated where this turn moved entries (`destroy_object` ships; per-object verb behavior overrides ship via rules) plus new deferrals captured; `/codereview` + `/security` recorded; FIRST-FABLE.md Part 4 receives its results append per the pre-registration's own instructions (M8–M14 actuals with evidence, P7–P13 grades, verbatim runtime samples, the felt comparison) — append-only, Parts 1–3 and the pre-registration untouched.
+- [x] **16. The turn closes on the record.** README and CLAUDE.md roll forward (v0.6.0: Zork world ops, oracle setup, the new platform primitives); BACKLOG annotated where this turn moved entries (`destroy_object` ships; per-object verb behavior overrides ship via rules) plus new deferrals captured; `/codereview` + `/security` recorded; FIRST-FABLE.md Part 4 receives its results append per the pre-registration's own instructions (M8–M14 actuals with evidence, P7–P13 grades, verbatim runtime samples, the felt comparison) — append-only, Parts 1–3 and the pre-registration untouched.
 
 ### Context
 
@@ -53,4 +53,4 @@
 ---
 *Prior spec (2026-07-02): Dreamseeds — quest-earned world growth (v0.5.0); closed 8/8, playtested live, fix round recorded in FIRST-FABLE Part 3.*
 
-<!-- SPEC_META: {"date":"2026-07-02","title":"Zork I on daydream: the platform turn (v0.6.0)","criteria_total":16,"criteria_met":13} -->
+<!-- SPEC_META: {"date":"2026-07-02","title":"Zork I on daydream: the platform turn (v0.6.0)","criteria_total":16,"criteria_met":14} -->
