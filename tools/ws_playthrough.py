@@ -35,7 +35,8 @@ ROOT = Path(__file__).resolve().parent.parent
 DATASET = json.loads((ROOT / "tests/data/zork1_walkthrough.json").read_text())
 
 
-async def drive(base: str, slot: int, delay: float, transcript_path: Path) -> int:
+async def drive(base: str, slot: int, delay: float, transcript_path: Path,
+                verify: bool = False) -> int:
     async with httpx.AsyncClient(base_url=base, timeout=30.0) as http:
         r = await http.post("/api/login", data={"password": ""})
         if r.status_code not in (200, 303):
@@ -56,7 +57,8 @@ async def drive(base: str, slot: int, delay: float, transcript_path: Path) -> in
         cookies = "; ".join(f"{k}={v}" for k, v in http.cookies.items())
 
     ws_url = base.replace("http", "ws", 1) + "/ws"
-    state = {"room": None, "score": None, "rank": None, "moves": None}
+    state = {"room": None, "room_id": None, "score": None, "rank": None,
+             "moves": None}
     lines: list[str] = []
     t0 = time.monotonic()
 
@@ -70,7 +72,8 @@ async def drive(base: str, slot: int, delay: float, transcript_path: Path) -> in
                 room = frame.get("room") or {}
                 status = frame.get("status") or {}
                 state.update(
-                    room=room.get("title"), score=status.get("score"),
+                    room=room.get("title"), room_id=room.get("id"),
+                    score=status.get("score"),
                     rank=status.get("rank"), moves=status.get("moves"),
                 )
             elif kind == "event":
@@ -92,6 +95,21 @@ async def drive(base: str, slot: int, delay: float, transcript_path: Path) -> in
                     return
                 absorb(json.loads(raw), cmd)
 
+        async def await_ack(cmd: str, quiet_for: float, ack_timeout: float = 60.0) -> None:
+            """Every executed command produces at least one frame for this
+            client (private narrate, event, or snapshot). Block for the
+            first one — retells can stall seconds behind the art queue on
+            the GPU arbiter — then absorb a short quiet tail. Pacing by
+            acknowledgment keeps the driver from outrunning the server's
+            receive loop and dropping the tail on close."""
+            try:
+                raw = await asyncio.wait_for(ws.recv(), timeout=ack_timeout)
+            except asyncio.TimeoutError:
+                print(f"  !! no acknowledgment for {cmd!r} within {ack_timeout}s")
+                return
+            absorb(json.loads(raw), cmd)
+            await drain(cmd, quiet_for)
+
         await drain("(connect)", 1.5)
         total = sum(len(s["commands"]) for s in DATASET["segments"])
         n = 0
@@ -100,7 +118,20 @@ async def drive(base: str, slot: int, delay: float, transcript_path: Path) -> in
                 n += 1
                 cmd = step["cmd"]
                 await ws.send(json.dumps({"kind": "input", "text": cmd}))
-                await drain(cmd, delay)
+                await await_ack(cmd, delay)
+                if verify and "expect" in step:
+                    exp = step["expect"]
+                    bad = []
+                    if "room" in exp and state["room_id"] != exp["room"]:
+                        bad.append(f"room {state['room_id']!r} != {exp['room']!r}")
+                    if "score" in exp and state["score"] != exp["score"]:
+                        bad.append(f"score {state['score']} != {exp['score']}")
+                    if bad:
+                        print(f"\nDIVERGED at [{n}] {cmd!r}: " + "; ".join(bad))
+                        print("last narrations:")
+                        for line in lines[-8:]:
+                            print("   " + line)
+                        return 3
             print(f"  [{n:3d}/{total}] {seg['name']:28s} room={state['room']!r} "
                   f"score={state['score']} moves={state['moves']}")
         await drain("(final)", 3.0)
@@ -124,11 +155,14 @@ def main() -> int:
     ap.add_argument("--slot", type=int, default=1)
     ap.add_argument("--delay", type=float, default=0.15,
                     help="quiet-period per command (seconds)")
+    ap.add_argument("--verify", action="store_true",
+                    help="check each step's expectations; stop at first divergence")
     ap.add_argument("--transcript", type=Path,
                     default=Path.home() / "data/daydream/rehearsals" /
                     f"zork1-{datetime.now(tz=timezone.utc).strftime('%Y%m%d-%H%M%S')}.log")
     args = ap.parse_args()
-    return asyncio.run(drive(args.base, args.slot, args.delay, args.transcript))
+    return asyncio.run(drive(args.base, args.slot, args.delay,
+                             args.transcript, verify=args.verify))
 
 
 if __name__ == "__main__":

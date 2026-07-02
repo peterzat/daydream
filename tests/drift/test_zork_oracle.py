@@ -69,6 +69,11 @@ def our_engine(tmp_path, monkeypatch):
     out = tmp_path / "zork1.db"
     bootstrap.load_world("zork1", env, out)
     db.init_live(path=out, migrations_dir=config.MIGRATIONS_DIR)
+    # Replay as a player (matches the live game and the walkthrough test:
+    # the wanderer's pickpocket stream only exists for player toons).
+    db.get_conn().execute(
+        "UPDATE objects SET is_human_controlled = 1 WHERE id = ?", (ACTOR,)
+    )
     yield
     db.close_db()
     events.reset_subscribers()

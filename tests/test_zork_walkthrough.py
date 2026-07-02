@@ -36,6 +36,13 @@ def zork_world(tmp_path, monkeypatch):
     out = tmp_path / "zork1.db"
     bootstrap.load_world("zork1", env, out)
     db.init_live(path=out, migrations_dir=config.MIGRATIONS_DIR)
+    # The canonical run is played BY A PLAYER: the wanderer daemon's
+    # pickpocket rolls only target player-controlled toons, so an
+    # unclaimed actor would replay a different seeded stream than the
+    # live game (the swap rehearsal caught exactly this divergence).
+    db.get_conn().execute(
+        "UPDATE objects SET is_human_controlled = 1 WHERE id = ?", (ACTOR,)
+    )
     assert worldstate.rng_seed(WORLD) == "zork1-release-88"  # pinned seed
     yield spy
     db.close_db()

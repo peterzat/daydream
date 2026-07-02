@@ -297,6 +297,30 @@
       "carry_text": "The current takes the little boat and carries it on downriver.",
       "active": true
     },
+    "thief-opens-egg": {
+      "kind": "script",
+      "once": true,
+      "if": [
+        {
+          "contains": "o-egg",
+          "of": "t-thief"
+        },
+        {
+          "prop": "state",
+          "of": "o-egg",
+          "eq": "clasped"
+        }
+      ],
+      "do": [
+        {
+          "kind": "set_property",
+          "target_id": "o-egg",
+          "key": "state",
+          "value": "open"
+        }
+      ],
+      "active": true
+    },
     "map-reveal": {
       "kind": "script",
       "once": true,
