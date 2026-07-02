@@ -142,6 +142,22 @@ def content_ids(container_id: str, kind: str | None = None) -> list[str]:
     return [r["id"] for r in rows]
 
 
+def things_where_property(world_id: str, key: str, value) -> list[Object]:
+    """Things in a world whose `properties[key]` equals `value` (booleans
+    compare as SQLite json 1/0). The clock's lit-source sweep; small worlds,
+    one indexed-ish scan per tick."""
+    if value is True:
+        value = 1
+    elif value is False:
+        value = 0
+    rows = db.get_conn().execute(
+        "SELECT * FROM objects WHERE world_id = ? AND kind = 'thing' "
+        "AND json_extract(properties_json, '$.' || ?) = ?",
+        (world_id, key, value),
+    ).fetchall()
+    return [Object.from_row(r) for r in rows]
+
+
 def by_slug(world_id: str, slug: str, kind: str = "room") -> Object | None:
     """Find an object by its `properties.slug` within a world. Rooms carry a
     slug; this is the slug→room resolver the view layer needs."""
@@ -168,13 +184,20 @@ def in_scope(actor_id: str) -> list[Object]:
         return []
     seen: dict[str, Object] = {actor.id: actor}
     room_id = actor.location_id
+    # Darkness reduces scope to actor + room + own inventory (SPEC 2026-07-02
+    # criterion 6): in an unlit room you can feel what you carry, nothing
+    # else. Lazy import dodges the objects <-> lighting cycle.
+    from daydream import lighting
+
+    dark = not lighting.room_lit(room_id)
     if room_id is not None:
         room = get(room_id)
         if room is not None and room.kind != "prototype":
             seen.setdefault(room.id, room)
-        for o in contents(room_id):
-            if o.kind != "prototype":
-                seen.setdefault(o.id, o)
+        if not dark:
+            for o in contents(room_id):
+                if o.kind != "prototype":
+                    seen.setdefault(o.id, o)
     for o in contents(actor_id):
         if o.kind != "prototype":
             seen.setdefault(o.id, o)

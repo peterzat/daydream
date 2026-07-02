@@ -260,8 +260,34 @@ async def execute_command(
     room_id = actor.location_id or ""
     spec = resolve(actor.world_id, verb)
     if spec is None:
+        # An unrecognized verb is a parse-level miss: no turn passes
+        # (matching the original's "I don't know that word" behavior).
         _narrate(room_id, _DONT_UNDERSTAND, recipient_id=actor_id)
         return
+    try:
+        await _execute_resolved(
+            actor, room_id, spec, dobj_id, iobj_id, args, dobj_name
+        )
+    finally:
+        # The world clock (SPEC 2026-07-02 criterion 5): every executed
+        # command — including an in-world refusal — advances the turn.
+        # room_id is the pre-command room, so the darkness beat can tell a
+        # move from standing still.
+        from daydream import clock
+
+        clock.tick(actor_id, from_room_id=room_id)
+
+
+async def _execute_resolved(
+    actor: objects.Object,
+    room_id: str,
+    spec: VerbSpec,
+    dobj_id: str | None,
+    iobj_id: str | None,
+    args: str,
+    dobj_name: str | None,
+) -> None:
+    actor_id = actor.id
 
     dobj = None
     if spec.needs_dobj:
@@ -391,6 +417,14 @@ async def _handle_look(actor, room_id, dobj, iobj, args, spec) -> None:
     room = rooms.get_room(room_id)
     if room is None:
         _dispatch(actor, room_id, [{"kind": "narrate", "text": "You are nowhere recognizable.", "to": "@actor"}], spec)
+        return
+    from daydream import lighting
+
+    if not lighting.room_lit(room_id):
+        # Darkness suppresses the description behind the authored line
+        # (criterion 6); scope is already reduced to self + inventory.
+        _dispatch(actor, room_id, [{"kind": "narrate",
+            "text": lighting.darkness_text(actor.world_id), "to": "@actor"}], spec)
         return
     text = room.description_cached or f"You are in {room.title}."
     things = objects.contents(room_id, kind="thing")

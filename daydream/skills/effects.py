@@ -63,6 +63,7 @@ ALLOWED_KINDS: frozenset[str] = frozenset({
     "adjust_score",
     "destroy_object",
     "teleport_actor",
+    "kill_actor",
     "start_fuse",
     "stop_fuse",
     "start_daemon",
@@ -86,8 +87,8 @@ WORLD_SHAPING_KINDS: frozenset[str] = frozenset({"spawn_room", "link_exit"})
 # rule scoring points or starting a fuse is the author speaking, not a model.
 RULE_ONLY_KINDS: frozenset[str] = frozenset({
     "set_flag", "adjust_counter", "adjust_score", "destroy_object",
-    "teleport_actor", "start_fuse", "stop_fuse", "start_daemon",
-    "stop_daemon", "win",
+    "teleport_actor", "kill_actor", "start_fuse", "stop_fuse",
+    "start_daemon", "stop_daemon", "win",
 })
 RESTRICTED_KINDS: frozenset[str] = (
     WORLD_SHAPING_KINDS | {"rename_object"} | RULE_ONLY_KINDS
@@ -586,6 +587,9 @@ def _apply_start_fuse(
         return None
     worldstate.set(world_id, worldstate.FUSE_PREFIX + name, {
         "remaining": turns,
+        # The clock skips a fuse's own arming tick (same-turn guard), so
+        # "turns: N" means N further commands pass before it fires.
+        "armed_turn": worldstate.turn(world_id),
         "context": {"actor_id": actor_id, "room_id": room_id},
     })
     return events.append(
@@ -651,6 +655,103 @@ def _apply_stop_daemon(
     )
 
 
+def _scatter_destination(
+    thing: objects.Object, scatter: dict, room_id: str, rng
+) -> str:
+    """Where one carried thing lands on death: an exact `special` mapping
+    first (the lamp goes home), then the first matching `filters` entry
+    (treasures scatter into a seeded-random pick from its room list), then a
+    seeded pick from `default_rooms`, else the death room itself."""
+    special = scatter.get("special")
+    if isinstance(special, dict):
+        dest = special.get(thing.id)
+        if isinstance(dest, str):
+            return dest
+    for f in scatter.get("filters") or []:
+        if not isinstance(f, dict):
+            continue
+        key = f.get("key")
+        rooms = f.get("rooms")
+        if not isinstance(key, str) or not isinstance(rooms, list) or not rooms:
+            continue
+        if thing.properties.get(key) == f.get("eq", True):
+            return str(rng.choice(rooms))
+    defaults = scatter.get("default_rooms")
+    if isinstance(defaults, list) and defaults:
+        return str(rng.choice(defaults))
+    return room_id
+
+
+def _apply_kill_actor(
+    eff: dict, *, actor_id: str, room_id: str, world_id: str
+) -> events.Event | None:
+    """Apply the world's authored death policy (`config.death`) to a toon
+    (default: the acting one): score penalty, deaths counter, inventory
+    scatter (special-case destinations, property-filtered room sets, seeded
+    random picks), authored flag resets, fuse/daemon stops, respawn, and an
+    escalating authored message (fidelity relaxation R2: no permadeath — the
+    counter and the messages carry the weight). Emits the respawn as a
+    `move` event flagged died+teleport so the client can play its death
+    moment before the fresh snapshot. Play continues cleanly: same toon,
+    same session, standing in the respawn room. No authored policy = warn +
+    no-op (a world without death shouldn't reach this)."""
+    toon_id = eff.get("actor_id", actor_id)
+    toon = objects.get(toon_id) if isinstance(toon_id, str) else None
+    if toon is None or toon.kind != "toon":
+        return None
+    cfg = worldstate.get(world_id, "config")
+    policy = cfg.get("death") if isinstance(cfg, dict) else None
+    if not isinstance(policy, dict):
+        logger.warning("kill_actor with no config.death policy; no-op")
+        return None
+    penalty = policy.get("penalty")
+    if isinstance(penalty, int) and penalty:
+        score = worldstate.adjust_score(world_id, -penalty)
+        events.append("system", None, "score_changed",
+                      {"delta": -penalty, "score": score}, room_id=room_id)
+    deaths = worldstate.adjust_counter(world_id, "deaths", 1)
+    scatter = policy.get("scatter")
+    if isinstance(scatter, dict):
+        rng = worldstate.rng(world_id, f"death-scatter:{deaths}")
+        for thing in objects.contents(toon.id, kind="thing"):
+            dest = _scatter_destination(thing, scatter, room_id, rng)
+            if objects.get(dest) is not None:
+                objects.move(thing.id, dest)
+    flags = policy.get("set_flags")
+    if isinstance(flags, dict):
+        for name, value in flags.items():
+            if isinstance(name, str) and name.strip():
+                worldstate.set_flag(world_id, name.strip(), bool(value))
+    for name in policy.get("stop_fuses") or []:
+        if isinstance(name, str):
+            worldstate.delete(world_id, worldstate.FUSE_PREFIX + name)
+    for name in policy.get("stop_daemons") or []:
+        if isinstance(name, str):
+            state = worldstate.get(world_id, worldstate.DAEMON_PREFIX + name)
+            if isinstance(state, dict) and state.get("active"):
+                state["active"] = False
+                worldstate.set(world_id, worldstate.DAEMON_PREFIX + name, state)
+    messages = policy.get("messages")
+    if isinstance(messages, list) and messages:
+        text = messages[min(deaths - 1, len(messages) - 1)]
+    else:
+        text = "You have died."
+    from_room = toon.location_id
+    respawn = policy.get("respawn_room")
+    dest = objects.get(respawn) if isinstance(respawn, str) else None
+    if dest is not None and dest.kind == "room":
+        objects.move(toon.id, dest.id)
+    events.append("system", None, "narrate", {"text": str(text)},
+                  room_id=toon.location_id if dest else from_room,
+                  recipient_id=toon.id)
+    return events.append(
+        "toon", toon.id, "move",
+        {"from_room": from_room, "to_room": objects.get(toon.id).location_id,
+         "teleport": True, "died": True, "deaths": deaths},
+        room_id=from_room,
+    )
+
+
 def _apply_win(
     eff: dict, *, actor_id: str, room_id: str, world_id: str
 ) -> events.Event | None:
@@ -681,6 +782,7 @@ _HANDLERS: dict[str, Callable[..., events.Event | None]] = {
     "adjust_score": _apply_adjust_score,
     "destroy_object": _apply_destroy_object,
     "teleport_actor": _apply_teleport_actor,
+    "kill_actor": _apply_kill_actor,
     "start_fuse": _apply_start_fuse,
     "stop_fuse": _apply_stop_fuse,
     "start_daemon": _apply_start_daemon,

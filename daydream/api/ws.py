@@ -27,7 +27,9 @@ from collections import Counter
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, status
 
-from daydream import events, objects, parser, rooms, toons, verbs, version, worldstate
+from daydream import (
+    events, lighting, objects, parser, rooms, toons, verbs, version, worldstate,
+)
 from daydream.api import auth, csrf
 from daydream.gpu import arbiter
 from daydream.images import cache as image_cache
@@ -153,9 +155,13 @@ def _state_snapshot(
     without the caller having to pass the id in."""
     room_id = _current_room_id(toon_id)
     room = rooms.get_room(room_id)
-    things_in = objects.contents(room_id, kind="thing")
+    # Darkness veils the room (SPEC 2026-07-02 criterion 6): description and
+    # scene panels behind the authored darkness text, no art, no co-located
+    # toons — inventory stays usable.
+    lit = lighting.room_lit(room_id)
+    things_in = objects.contents(room_id, kind="thing") if lit else []
     inventory_in = objects.contents(toon_id, kind="thing")
-    toons_in = toons.get_toons_in_room(room_id)
+    toons_in = toons.get_toons_in_room(room_id) if lit else []
     # The controlled toon's own identity, so the SPA can render WHO YOU ARE
     # distinctly and separate it from WHO ELSE IS HERE. It is also in `toons`
     # (all co-located toons) for back-compat; the client filters it out there.
@@ -176,7 +182,7 @@ def _state_snapshot(
     available = registry.list_available_for_room(room_id)
 
     image_url: str | None = None
-    if room is not None:
+    if room is not None and lit:
         target = _room_target(room.world_id, room.id, room.seed)
         if image_client.is_persistent_cached(target):
             workflow = image_client.load_workflow()
@@ -191,7 +197,11 @@ def _state_snapshot(
                 "id": room.id,
                 "slug": room.slug,
                 "title": room.title,
-                "description": _room_description(room, view),
+                "description": (
+                    _room_description(room, view) if lit
+                    else lighting.darkness_text(room.world_id)
+                ),
+                "dark": not lit,
                 # exits is the SPA's source of truth for nav buttons;
                 # room.exits is the parsed dict shape of exits_json
                 # (migration 004 populates it bidirectionally).
@@ -243,8 +253,12 @@ def _state_snapshot(
         # World-shared status (score / rank / moves / deaths / lit) from the
         # world_state KV. Present on every snapshot; a world that authors no
         # scoring simply reports zeros and a null rank, and the SPA decides
-        # whether to render a ribbon.
-        "status": worldstate.status_block(room.world_id) if room else None,
+        # whether to render a ribbon. `lit` is per-connection truth: whether
+        # the toon's current room is lit right now.
+        "status": (
+            {**worldstate.status_block(room.world_id), "lit": lit}
+            if room else None
+        ),
     }
 
 
