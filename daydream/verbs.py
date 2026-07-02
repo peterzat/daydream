@@ -28,7 +28,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, field
 
-from daydream import events, objects, rooms
+from daydream import events, objects, rooms, rules
 from daydream.llm import client, safety
 from daydream.skills import effects
 
@@ -59,13 +59,34 @@ class VerbSpec:
     # so the parser's deterministic fast-path must NOT claim "<verb> <args>" —
     # it hands such input to the LLM to disambiguate say-vs-talk.
     free_text: bool = False
+    # ---- Zork-turn fields (SPEC 2026-07-02) ----
+    # Alternate words that resolve to this verb ("get" -> take; "douse" ->
+    # a world verb). Parser fast-path + resolve() honor them.
+    aliases: tuple[str, ...] = ()
+    # Prepositions that split "verb DOBJ <prep> IOBJ" for this verb ("put X
+    # in Y", "turn X with Y"). Generalizes the old parser two-target table.
+    preps: tuple[str, ...] = ()
+    # UI free-text prompting: when a click stages this verb, the SPA opens a
+    # text prompt with `text_prompt` as its placeholder (drives talk/plant
+    # today; world verbs author their own — no verb-name hardcode in main.js).
+    needs_text: bool = False
+    text_prompt: str = ""
+    # World verbs only: narrated to the actor when no rule matches anywhere.
+    fail_text: str = ""
+    # GWIM slot-default filters ({"key": ..., "eq"/...}): when the player
+    # omits a slot, the parser fills it iff exactly one in-scope object
+    # matches ("light match" finds the matchbook). Data for the parser.
+    dobj_default: dict | None = None
+    iobj_default: dict | None = None
+    # True for world-declared (data) verbs, which execute only through rules.
+    world: bool = False
 
 
 VERBS: dict[str, VerbSpec] = {
     "look": VerbSpec(
         name="look", ui_hint="Look",
         description="Describe the current room and what's in it. No target.",
-        allowed_effects=frozenset({"narrate"}),
+        allowed_effects=frozenset({"narrate"}), aliases=("l",),
     ),
     "examine": VerbSpec(
         name="examine", ui_hint="Examine",
@@ -78,6 +99,7 @@ VERBS: dict[str, VerbSpec] = {
         description="Pick up a thing from the room. Target: the thing.",
         needs_dobj=True, valid_dobj_kinds=frozenset({"thing"}),
         allowed_effects=frozenset({"move_object", "narrate"}), on_bar=True,
+        aliases=("get",),
     ),
     "drop": VerbSpec(
         name="drop", ui_hint="Drop",
@@ -91,6 +113,7 @@ VERBS: dict[str, VerbSpec] = {
         needs_dobj=True, valid_dobj_kinds=frozenset({"toon"}),
         allowed_effects=frozenset({"narrate", "set_property", "set_mood", "spawn_object"}),
         on_bar=True, free_text=True,
+        needs_text=True, text_prompt="What do you say?",
     ),
     "give": VerbSpec(
         name="give", ui_hint="Give",
@@ -133,6 +156,7 @@ VERBS: dict[str, VerbSpec] = {
                                    "spawn_object", "move_object",
                                    "set_property", "narrate"}),
         on_bar=True, free_text=True,
+        needs_text=True, text_prompt="What do you see growing there?",
     ),
     "say": VerbSpec(
         name="say", ui_hint="Say",
@@ -147,18 +171,49 @@ VERBS: dict[str, VerbSpec] = {
     "inventory": VerbSpec(
         name="inventory", ui_hint="Inventory",
         description="List what you're carrying. No target.",
-        allowed_effects=frozenset({"narrate"}),
+        allowed_effects=frozenset({"narrate"}), aliases=("i", "inv"),
     ),
+}
+
+# Engine alias -> canonical name, derived once from the declarations above.
+_ALIAS_TO_NAME: dict[str, str] = {
+    alias: spec.name for spec in VERBS.values() for alias in spec.aliases
 }
 
 
 def get(name: str) -> VerbSpec | None:
-    return VERBS.get(name.strip().lower())
+    n = name.strip().lower()
+    spec = VERBS.get(n)
+    if spec is not None:
+        return spec
+    canonical = _ALIAS_TO_NAME.get(n)
+    return VERBS.get(canonical) if canonical else None
 
 
-def bar_verbs() -> list[VerbSpec]:
-    """The verbs the UI verb bar offers, in declaration order."""
-    return [v for v in VERBS.values() if v.on_bar]
+def resolve(world_id: str | None, name: str) -> VerbSpec | None:
+    """Resolve a verb word to its spec: engine verbs (name or alias) first,
+    then the world's declared verbs (`daydream.worldverbs`). Engine wins on
+    collision by construction — and the format-2 validator refuses a world
+    verb that would collide, so the shadowing case never loads."""
+    spec = get(name)
+    if spec is not None:
+        return spec
+    if world_id:
+        from daydream import worldverbs
+
+        return worldverbs.get(world_id, name)
+    return None
+
+
+def bar_verbs(world_id: str | None = None) -> list[VerbSpec]:
+    """The verbs the UI verb bar offers: engine verbs in declaration order,
+    then the world's authored bar verbs."""
+    out = [v for v in VERBS.values() if v.on_bar]
+    if world_id:
+        from daydream import worldverbs
+
+        out.extend(worldverbs.bar_verbs(world_id))
+    return out
 
 
 # ---- the executor ------------------------------------------------------
@@ -187,7 +242,7 @@ async def execute_command(
     if actor is None:
         return
     room_id = actor.location_id or ""
-    spec = get(verb)
+    spec = resolve(actor.world_id, verb)
     if spec is None:
         _narrate(room_id, _DONT_UNDERSTAND, recipient_id=actor_id)
         return
@@ -229,19 +284,30 @@ async def execute_command(
                      recipient_id=actor_id)
             return
 
-    # MOO dispatch priority: the handler is resolved by searching player ->
-    # room -> dobj -> iobj, first match wins. v1 has one engine handler per
-    # verb, but a verb bound to a specific object (an NPC's `talk` dialogue,
-    # found on the dobj) is selected over the generic default. The talk
-    # special-case below IS that resolution for v1; per-object / per-room
-    # overrides slot into the same order later.
+    # MOO dispatch priority (SPEC 2026-07-02 criterion 3): authored
+    # declarative rules run FIRST, scanned dobj -> iobj -> room -> world,
+    # ordered first-match. A fired rule consumes the command; legacy engine
+    # handlers (and the talk dialogue special-case) run only when no rule
+    # fires — rules SHADOW legacy verb Python, so a world that authors no
+    # rules behaves byte-identically to before.
+    if rules.dispatch(actor, spec.name, dobj, iobj, room_id=room_id):
+        return
+
     if spec.name == "talk" and dobj is not None:
         await _handle_talk(actor, room_id, dobj, args, spec)
         return
 
     handler = _ENGINE_HANDLERS.get(spec.name)
-    if handler is None:  # defensive: every verb has an engine handler
-        _narrate(room_id, _DONT_UNDERSTAND)
+    if handler is None:
+        # A world-declared verb with no matching rule: its authored fail_text
+        # (actor-private, like every refusal). Engine verbs always have a
+        # handler, so reaching here without one otherwise is a bug narrated
+        # gently rather than raised.
+        if spec.world:
+            _narrate(room_id, spec.fail_text or "Nothing happens.",
+                     recipient_id=actor_id)
+        else:
+            _narrate(room_id, _DONT_UNDERSTAND, recipient_id=actor_id)
         return
     await handler(actor, room_id, dobj, iobj, args, spec)
 

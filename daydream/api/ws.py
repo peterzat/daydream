@@ -221,8 +221,13 @@ def _state_snapshot(
                 "name": v.name, "ui_hint": v.ui_hint,
                 "needs_iobj": v.needs_iobj,
                 "valid_iobj_kinds": sorted(v.valid_iobj_kinds),
+                # Free-text prompting is verb DATA (SPEC 2026-07-02
+                # criterion 12): the SPA reads these instead of hardcoding
+                # verb names for its prompt flow.
+                "needs_text": v.needs_text,
+                "text_prompt": v.text_prompt,
             }
-            for v in verbs.bar_verbs()
+            for v in verbs.bar_verbs(room.world_id if room else None)
         ],
         # Entity sidecar: in-scope names/aliases -> object ids, so the client
         # can wrap object mentions in narration as clickable spans.
@@ -408,7 +413,9 @@ async def _handle_input(text: str, toon_id: str) -> None:
             room_id=room_id,
         )
         return
-    if p.verb in verbs.VERBS:
+    actor = objects.get(toon_id)
+    world_id = actor.world_id if actor is not None else None
+    if verbs.resolve(world_id, p.verb) is not None:
         await verbs.execute_command(
             toon_id, p.verb, p.dobj_id, p.iobj_id, p.args, dobj_name=p.dobj_name
         )
