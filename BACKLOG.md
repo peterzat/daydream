@@ -68,6 +68,7 @@ Deferred depth from the objects + local-LLMs spec (plan `the-output-of-this-gree
 - **Origin:** plan the-output-of-this-greedy-hedgehog (§6, provenance + minimal lifecycle).
 
 ### deep-prototype-inheritance-and-per-object-verbs
+- **Behavior-overrides slice: SHIPPED via the rule engine (2026-07-02, Zork turn).** Objects/rooms/worlds now declare ordered first-match RULES that dispatch BEFORE the engine handler (dobj -> iobj -> room -> world), which IS per-object verb behavior override in data (a bolt that turns, a bell whose ring is a ritual, a room that ejects you). What remains here is deeper: multi-level prototype chains and PYTHON-handler replacement (rules shadow the legacy handlers; they never replace them).
 - **Per-object-verbs slice: SHIPPED (2026-07-01).** The playable-quest-loop turn added a `fixture` prototype (immovable: examine only) and lets authored objects declare per-object `verbs` in the world envelope (a case is `open`-able, a given key is `use`-able) and a spawn declare its own verbs (`spawn_object` verbs passthrough → the given case-key becomes use-able). The `properties.verbs` union with prototype defaults (`objects.verbs_for`) is now load-bearing, exercised by the Clockmaker's Loft quest. What REMAINS deferred is the multi-level part below.
 - **One-line description (remaining):** Multi-level prototype chains (today inheritance is one level, shallow) + per-object *behavior overrides* beyond adding verbs (an object that overrides a verb's default HANDLER, not just its verb list). The MOO "generic object" pattern taken further.
 - **Why deferred:** v1 has one handler per verb and one prototype level; the resolution ORDER (player→room→dobj→iobj) is already implemented so overrides slot in without re-architecting. Depth is only worth it once authored content wants a prototype that extends another prototype or an object that replaces a verb's behavior.
@@ -75,8 +76,8 @@ Deferred depth from the objects + local-LLMs spec (plan `the-output-of-this-gree
 - **Origin:** plan the-output-of-this-greedy-hedgehog (§2); per-object-verbs slice shipped by plan this-plan-will-be-peppy-kay.
 
 ### user-authored-llm-driven-world-building-verbs
-- **2026-07-02 narrowing (Dreamseeds spec, SHIPPED same day):** the effect-vocabulary half is built. The Dreamseeds increment implemented `spawn_room` + `link_exit` behind an ENGINE-authored verb (`plant`), gated by a quest-earned seed item whose Opus-authored `growth` boundaries constrain one local-LLM room composition; the kinds are per-verb opt-in (`effects.DEFAULT_KINDS` excludes them for every `allowed=None` caller). What remains in this entry is the player/admin-AUTHORED verb surface: a player authoring a verb whose LLM output builds rooms/objects, plus `destroy_object` and the authoring UI + safety story.
-- **One-line description (remaining):** A player/admin authors a verb whose LLM output BUILDS new rooms and objects (MOO-style). `destroy_object` stays documented-not-built.
+- **2026-07-02 narrowing (Dreamseeds spec, SHIPPED same day):** the effect-vocabulary half is built. The Dreamseeds increment implemented `spawn_room` + `link_exit` behind an ENGINE-authored verb (`plant`), gated by a quest-earned seed item whose Opus-authored `growth` boundaries constrain one local-LLM room composition; the kinds are per-verb opt-in (`effects.DEFAULT_KINDS` excludes them for every `allowed=None` caller). What remains in this entry is the player/admin-AUTHORED verb surface: a player authoring a verb whose LLM output builds rooms/objects, plus the authoring UI + safety story. (`destroy_object` SHIPPED 2026-07-02 in the Zork turn: rule-only kind, contents drop to the holder's location, combat's death path consumes it.)
+- **One-line description (remaining):** A player/admin authors a verb whose LLM output BUILDS new rooms and objects (MOO-style).
 - **Why deferred:** The authoring surface + the safety story for player-authored world-mutation are the work. Couples to `skills-authoring-and-security` and `player-authored-skills`.
 - **Revisit criteria:** Dreamseeds ships and feels good in play (the effect vocabulary + boundary model exercised on an authored verb first); appetite to hand authoring to players.
 - **Origin:** plan the-output-of-this-greedy-hedgehog (the explicit future direction; §5 future-prepared vocabulary); narrowed by the Dreamseeds spec 2026-07-02.
@@ -210,6 +211,38 @@ Captured from the test-architecture landing (2026-04-23); scaffolding for these 
 - **Origin:** SPEC proposal block 2026-07-01 (Reading Room turn), preserved here when the Dreamseeds spec replaced that block.
 
 ## Closed
+
+## Zork turn deferrals (captured 2026-07-02)
+
+### zork-oracle-ratification-run
+- **One-line description:** The differential oracle harness (`tools/zork_oracle.py`, `tests/drift/test_zork_oracle.py`) is built and skip-if-absent; the actual ratification run against real dfrotz + a Zork I story file has not happened (the sandboxed session could not compile the frotz dumb target; `bin/zork-oracle-bootstrap` is the operator's one-command setup, or `sudo apt-get install frotz` which ships dfrotz). Expect seed-shopping `DAYDREAM_ZORK_ORACLE_SEED` for a clean real-thief stream, and possibly small oracle-runner accommodations on first contact with real output.
+- **Why deferred:** Needs artifacts only the operator can place (compiler run + story file, never committed). Pre-registered as fidelity relaxation R8: the harness is optional, never load-bearing.
+- **Revisit criteria:** Operator runs the bootstrap and exports `DAYDREAM_ZORK_ORACLE_STORY`; criterion 14 is checked off after the first green replay.
+- **Origin:** SPEC 2026-07-02 criterion 14; sandbox denial recorded in the oracle commit.
+
+### zork-fidelity-relaxations-second-pass
+- **One-line description:** Small documented divergences from the original, each noted in its region-file comment, revisitable as a batch: the Loud Room garbles no commands (the bar take refuses instead); drop-a-weapon-while-aboard and attack-from-the-boat do not puncture (boarding and stowing do); River 5 refuses the falls instead of killing; the maintenance-room flood blocks entry but never drowns a lingerer; the reservoir refill cannot drown a wader; the bat's drop room is fixed rather than random; the skeleton's curse is a bark without the item banishment; the machine ignores non-coal contents rather than slagging them; the thief stops stealing once confronted in his den.
+- **Why deferred:** None is load-bearing for the 350 or the oracle's checkpoint comparison; each was cut consciously to keep rules/data simple (most would be one more rule or one engine hook).
+- **Revisit criteria:** The operator playtest or the oracle run trips over one of them, or a fidelity-polish pass gets appetite.
+- **Origin:** region-file comments, Zork turn 2026-07-02.
+
+### walkthrough-turn-alignment-brittleness
+- **One-line description:** Combat and daemon rolls key on (rng_seed, turn, purpose) with turn = command index - 1, so ANY dataset edit upstream of the thief fight shifts its counter-roll turns; the fight is currently aligned to the safe 103-107 window with one authored filler (`examine thief`). A future dataset edit needs the roll table re-derived (the two-model union: death turns 102/107/114/117/118 at 8%). Consider a small tool that recomputes safe windows, or an authored `counter_kill_chance: 0` on the thief if the brittleness bites repeatedly.
+- **Why deferred:** The dataset is stable and green; the brittleness only matters when someone edits the walkthrough's first ~100 commands.
+- **Revisit criteria:** Any walkthrough restructure, or a second alignment hunt.
+- **Origin:** swap rehearsal 2026-07-02 (the turn-key discovery).
+
+### retell-rung-revisit
+- **One-line description:** The retell layer shipped at the SCOPED rung (authored line first, LLM varies repeat tellings; plain-words prompt). The full-ON rung (first tellings too) reopens if a stronger local model lands or the prompt improves further; the probe (`tests/drift/test_retell_probe.py`) plus in-session grading is the ladder's gate either way. Also unexplored: retell for fuse/daemon narrations (sync path today) and per-player retell variety (currently one shared telling stream per world).
+- **Why deferred:** The 7B's thesaurus-itis damaged the dry register on first tellings; scoped is the honest rung (flag-local-limits pact).
+- **Revisit criteria:** Model bump on the box, or playtest reports the echoes reading better than the firsts.
+- **Origin:** retell ratification commit 2026-07-02.
+
+### zork-postgame-and-polish
+- **One-line description:** Post-win play is unshaped: the map appears and the barrow accepts the winner, but there is no "inside the barrow" beat (the original ends there advertising the sequel), diagnose is minimal, and the deaths counter surfaces nowhere in the UI. Also unshipped: OOPS, save/restore verbs (R5: operator snapshots are the save), spirit-mode afterlife (pre-registered skip).
+- **Why deferred:** Out of the 16-criterion contract by design; the win records and play continues cleanly, which is what the spec asked.
+- **Revisit criteria:** Operator playtest reaches the barrow and wants a beat there; or Zork II appetite (same platform, new envelope).
+- **Origin:** SPEC 2026-07-02 out-of-scope list + turn-close sweep.
 
 Resolved and rejected entries, compressed to a line each; full narratives live in git history (this file, pre-2026-07-02) and the linked plans.
 
