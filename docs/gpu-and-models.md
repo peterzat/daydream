@@ -52,7 +52,29 @@ The operator observed ~16.4/20 GB constant with bursts to ~85% and asked whether
 - Raising to 0.50 would buy nothing the workload needs and would take ~1 GB from the burst absorber that keeps a render + resident LLM under the ceiling. Not taken.
 - The one engine-side change: `--max-num-seqs 4` on vllm-up, because a client that *times out* (litellm timeout) abandons a request that keeps decoding server-side; the engine cap — not app-level admission — is what bounds engine-side concurrency. Keep `DAYDREAM_LLM_CONCURRENCY <= --max-num-seqs`.
 
-Measured boot-log KV numbers and the render-peak sample are recorded below when the flag landed (see "Measurements").
+### Measurements (2026-07-02, flag-landing pass)
+
+Taken on this box, both engines resident, after adding `--max-num-seqs 4`. vLLM at `--gpu-memory-utilization 0.45`, `--max-model-len 8192`, `--enforce-eager`, Qwen 2.5 7B Instruct AWQ; ComfyUI SDXL base + watercolor LoRA at 1024×384 / 22 steps.
+
+vLLM boot log (INFO, captured via `VLLM_LOG_LEVEL=INFO bin/game vllm-up`):
+
+```
+non-default args: {... 'max_model_len': 8192, 'gpu_memory_utilization': 0.45, 'max_num_seqs': 4}
+Available KV cache memory: 3.26 GiB
+GPU KV cache size: 61,024 tokens
+Maximum concurrency for 8,192 tokens per request: 7.45x
+```
+
+This ratifies the KV math above: the 0.45 slice yields a 61k-token KV pool, and vLLM itself reports it can hold **7.45×** full-8192-token requests. Our engine cap of 4 sits at ~54% of that, and the app cap of 3 lower still; real prompts (parser/dialogue: hundreds of tokens, not 8192) leave far more slack than the full-context worst case. Raising `--gpu-memory-utilization` would only grow a pool that is already ~2× oversized for the workload.
+
+GPU memory (via `nvidia-smi`, 20,475 MiB total):
+
+| State | Used | % |
+|---|---|---|
+| Both engines resident, idle | 16,013 MiB | 78% |
+| Peak during a real 1024×384 render | 16,205 MiB | 79% |
+
+vLLM resident is ~9,414 MiB; ComfyUI resident is ~6.8 GB. The **marginal** render working set at our resolution is only ~200 MiB (SDXL weights stay resident; a 1024×384 latent's activations are cheap, and the render completes in ~4 s). The operator's observed ~85% bursts come from heavier moments (concurrent probes under `bin/game test long`), not steady play. Steady state, even mid-render, leaves ~4 GB free — that is the burst absorber the 0.45 fraction was chosen to preserve, and the reason we did NOT raise it.
 
 ## LLM stack
 

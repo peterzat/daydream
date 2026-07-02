@@ -55,6 +55,11 @@ VLLM_MODEL="${DAYDREAM_VLLM_MODEL:-Qwen/Qwen2.5-7B-Instruct-AWQ}"
 # 0.45 = ~9 GB on a 20 GB card; leaves room for SDXL during inference.
 VLLM_GPU_FRACTION="${DAYDREAM_VLLM_GPU_FRACTION:-0.45}"
 VLLM_MAX_LEN="${DAYDREAM_VLLM_MAX_LEN:-8192}"
+# Engine-side concurrency cap. The app admits at most DAYDREAM_LLM_CONCURRENCY
+# (default 3) LLM calls through the arbiter, but a client that TIMES OUT
+# abandons a request that keeps decoding server-side, so the engine cap is
+# the real bound. Keep >= DAYDREAM_LLM_CONCURRENCY. KV math in docs/gpu-and-models.md.
+VLLM_MAX_NUM_SEQS="${DAYDREAM_VLLM_MAX_NUM_SEQS:-4}"
 
 COMFY_HOST="${DAYDREAM_COMFYUI_HOST:-127.0.0.1}"
 # Note on COMFY_HOST: 127.0.0.1 default means ComfyUI's web UI is not
@@ -371,15 +376,19 @@ cmd_status() {
         # Endpoint returns empty body when all counters are zero, so
         # the line is silent until drift fires for the first time.
         if [[ "$reach" == "reachable" ]] && command -v curl >/dev/null 2>&1; then
+            # $(...) strips the endpoints' trailing newline, so re-add one
+            # with printf "%s\n" or these status lines butt together.
             local drift_line
             drift_line="$(curl -s --max-time 1 "http://0.0.0.0:${PORT}/status/drift" 2>/dev/null)"
             if [[ -n "$drift_line" ]]; then
-                printf "%s" "$drift_line"
+                printf "%s\n" "$drift_line"
             fi
             local arbiter_line
             arbiter_line="$(curl -s --max-time 1 "http://0.0.0.0:${PORT}/status/arbiter" 2>/dev/null)"
-            if [[ -n "$arbiter_line" ]]; then
-                printf "%s" "$arbiter_line"
+            # Guard on the known prefix so a stale server that predates the
+            # endpoint (404 JSON body) doesn't leak into the status line.
+            if [[ "$arbiter_line" == arbiter:* ]]; then
+                printf "%s\n" "$arbiter_line"
             fi
             _print_build_staleness
         fi
@@ -502,6 +511,7 @@ cmd_vllm_up() {
         --host "$VLLM_HOST" --port "$VLLM_PORT" \
         --gpu-memory-utilization "$VLLM_GPU_FRACTION" \
         --max-model-len "$VLLM_MAX_LEN" \
+        --max-num-seqs "$VLLM_MAX_NUM_SEQS" \
         --enforce-eager \
         > "$logf" 2>&1 < /dev/null &
     echo $! > "$(_pid_file vllm)"
