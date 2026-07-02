@@ -1,87 +1,96 @@
-## Security Review — 2026-07-01 (scope: paths)
+## Security Review — 2026-07-02 (scope: paths)
 
-**Summary:** Re-review of the three live frontend files at HEAD `94f419a`
-(`web/assets/main.js`, `web/index.html`, `web/assets/style.css`) after the
-playtest-fixes commit `41df573` — the only change to these files since the prior
-run at `accfdb6`. The diff is almost entirely cosmetic (CSS spacing/sizing, the
-new desktop app-shell layout, the removed decorative `.wordmark`/`.comptag`) and,
-notably, REMOVES an `innerHTML` sink (`showSimpleHint`, which wrote an escaped
-verb into `#verb-hint.innerHTML`), so the client's markup-writing surface shrank.
-The one functional addition is a repeat-examine de-dup in `renderDetailInset`
-(`main.js:472`) that interpolates `detail.objectId` into a `chat.querySelector`
-attribute selector. Traced it: `detail.objectId` is only ever a server-generated
-object id — runtime spawns are `<kindprefix>-<8 hex>` from `uuid4().hex[:8]`
-(`objects.py:266`; both `spawn` callers in `skills/effects.py` use the default id,
-never a caller-supplied one), and seeded ids are design-time author slugs. It is
-not runtime attacker-controllable with selector-breaking characters, and
-`querySelector` is a read-only DOM query that executes nothing (worst-conceivable
-case is a thrown `SyntaxError` on the viewer's own screen, and that path isn't
-even reachable), so it is not an injection vector. Re-verified the rest of the
-XSS surface at HEAD: every `innerHTML` assignment still routes dynamic values
-through `escape()` (`main.js:633`), the escape-then-wrap `linkifyEntities`
-(`main.js:569`, escapes the full string before the alias regex so LLM narration
-and player names cannot inject markup), a hash-selected static SVG
-(`keepsakeGlyph`, name picks a shape only), `textContent`, or the DB-constrained
-integer `entry.slot`. No `eval`/`new Function`/`document.write`/
-`insertAdjacentHTML`/`outerHTML`; `setTimeout` takes only function callbacks;
-`img.src` takes server cache paths (an `<img>` src runs no script). **No external
-assets** (grep for external `url()`/`src`/`href`/`@import`/`http(s):` returns
-nothing): self-hosted woff2 font, inline `data:` SVG textures, one same-origin
-script tag — supply-chain surface nil, matching the local-only policy. **No
-secrets** in the files or their full git history. Net, unchanged from the prior
-run: **0 BLOCK / 0 WARN / 1 NOTE.**
+**Summary:** Reviewed the Dreamseeds "grow the world from the inside" turn
+(v0.5.0, HEAD `02788f7`): the new `plant` verb, its LLM growth pipeline
+(`daydream/growth.py`), the two new world-shaping effects (`spawn_room` /
+`link_exit`), the loader's `growth`/`contains` validation, the WS refresh
+wiring, the authored dreamseed in `worlds/clockmakers-loft.json`, and the SPA's
+plant prompt. The feature adds a NEW attacker-influenced path — a player's free
+vision phrase feeds a local-LLM room composition that becomes persistent world
+state visible to everyone — so I traced that path end to end. It is well
+contained: the phrase is length-capped (120), input-banlist-checked, and
+role-separator wrapped before the prompt; the LLM output is strictly validated
+(schema windows, ≤2 objects reject-not-truncate, WHIMSY banlist over every text
+field, anti-copy) before any mutation; and, critically, the ENGINE (not the LLM)
+constructs every effect with engine-picked ids/slug/direction/kind — the model
+supplies only text data (title/seed/description/object names), never an effect
+kind, target id, direction, or property key. The world-shaping kinds are
+correctly gated: `spawn_room`/`link_exit` are excluded from `DEFAULT_KINDS`, so a
+data skill or NPC dialogue (both `allowed=None`) cannot emit them, and `data.py`
+now advertises `DEFAULT_KINDS` (not `ALLOWED_KINDS`) to the dispatcher LLM.
+Client-side, the LLM+player-influenced strings (grown room title/description,
+spawned object names) reach the DOM only through `textContent`
+(`main.js:120-123`) or the escape-first `linkifyEntities` (`main.js:177-184`,
+`584`) — no XSS. The room-id slug is sanitized to `[a-z0-9-]`
+(`growth._slugify`) so the `r-<slug>` id is safe in the image-cache path; all new
+SQL (`rooms.grown_room_count`, `objects.by_slug`) is parameterized. The
+`.gitignore` change correctly keeps the moved design-prompt working copy
+(`docs/history/ORIGINAL-PROMPT.md`) untracked (verified: not in `git ls-files`,
+never committed). **No secrets** in any scoped file. Net: **0 BLOCK / 0 WARN /
+0 NEW NOTE.**
 
 ### Findings
 
-- **[NOTE] web/index.html:1-8 — no Content-Security-Policy (defense in depth).**
-  The app shell ships no CSP (meta tag or response header) and no
-  `X-Content-Type-Options: nosniff`.
-  - Attack vector: none reachable today. The concrete XSS surface (LLM-generated
-    narration, player-supplied toon names, keepsake item names rendered via
-    `innerHTML`) is fully mitigated by `escape()` / `textContent` / the
-    escape-then-wrap `linkifyEntities`, all re-verified this run. CSP is a second,
-    orthogonal layer that would blunt any future escaping regression and forbid
-    inline/remote script.
-  - Evidence: `web/index.html:1-8` has no CSP; the sole script is same-origin
-    (`web/index.html:122`) and every asset is same-origin or inline `data:`, so a
-    strict policy would not break the app.
-  - Remediation: add `Content-Security-Policy: default-src 'self'` plus
-    `X-Content-Type-Options: nosniff`, ideally as FastAPI response headers so the
-    policy also covers `/assets/*` (not just the shell). Carried unchanged from
-    the prior two reviews.
+No security issues identified in the reviewed scope.
+
+Notes traced and cleared this run (not findings):
+- **Growth prompt-injection blast radius is bounded.** A crafted vision phrase
+  cannot escape the `<player_input>` wrapper (`safety.wrap_player_input`
+  neutralizes case/space-variant close tags), and even a "successful" steer only
+  yields a room whose text passes the WHIMSY banlist, fits the length windows,
+  and is HTML-escaped on render. Same class as the accepted NPC-dialogue
+  injection risk, and strictly more contained (no LLM-chosen effect/id here).
+- **Growth is not a resource-exhaustion vector.** `DAYDREAM_GROWTH_MAX_ROOMS`
+  (default 12) is checked pre-LLM and again at commit; the shipped world has a
+  single quest-earned seed that becomes a `spent` husk (losing the `plant` verb)
+  after one plant, so live growth is naturally bounded. LLM-invocation-per-verb
+  is the pre-existing accepted "authed session drives verbs" risk, unchanged.
+- **No CSP re-flag this run:** the carried missing-CSP NOTE pertains to
+  `web/index.html`, which is out of this path scope. It remains in the register
+  below; the new DOM sinks reached by grown-room text are `textContent` /
+  escape-first, so no reachable XSS regardless.
 
 ### Accepted Risks
 
-Durable register carried forward from prior reviews; not re-flagged as findings.
-This run is frontend-scoped, so the backend items below were not re-verified
-against source this pass (their controls live outside the three reviewed files);
-they remain accepted.
+Durable register carried forward; not re-flagged as findings. Backend items
+whose controls live outside the scoped files were not re-verified this pass
+except where the Dreamseeds change touches them (noted above).
 
-- **LLM-emitted effects take an unscoped, LLM-chosen target id.** `set_property` /
-  `move_object` / `spawn_object` trust the effect's target id; the `talk` dialogue
-  path is the one LLM producer, bound to its per-verb `allowed` subset. v2
-  `skills-authoring-and-security`.
+- **LLM-emitted effects take an unscoped, LLM-chosen target id.** Applies to the
+  `talk` dialogue path (`set_property`/`move_object`/`spawn_object` trust the
+  effect's target id, bound to the verb's `allowed` subset). NOTE: the new
+  `plant`/growth path does NOT share this shape — its effects are
+  engine-constructed with engine-picked ids — so growth adds no new instance.
+  v2 `skills-authoring-and-security`.
 - **Shared-world mutation: any authed tailnet session may drive verbs on any
-  in-scope shared object.** Intended single-shared-world design; per-session
-  ownership is v2. State-changing POSTs are CSRF-gated; `/ws` is Origin-gated.
+  in-scope shared object** (now including `plant` on a carried dreamseed).
+  Intended single-shared-world design; per-session ownership is v2.
+  State-changing POSTs are CSRF-gated; `/ws` is Origin-gated + auth-gated.
 - **Tailscale-mode auth is tailnet membership.** `auth.is_authed()` returns True
   in `tailscale` mode; `AccessMiddleware` (CGNAT `100.64.0.0/10` + loopback) is
   the real network gate.
-- **NPC dialogue prompt-injection via player input / captured memory.** Player
-  text is a `SandboxedEnvironment` render var (no SSTI), role-separator wrapped,
-  banlist-checked; output is structured effects, not trusted text.
-- **Operator-trust, not request-controlled (`bin/game`).** `world reset`'s
-  `rm -rf`, `.env`/`secrets.env` sourcing, `0.0.0.0` bind. None take network input.
+- **NPC dialogue / growth prompt-injection via player input.** Player text is
+  role-separator wrapped, length-capped, input-banlist-checked; LLM output is
+  structured/validated, not trusted text; output is banlist-scanned before
+  mutation. (Data-skill dialogue additionally renders through Jinja
+  `SandboxedEnvironment`; the growth prompt is a plain string build, no template
+  surface.)
+- **Operator-trust, not request-controlled (`bin/game`, `world load`).** World
+  envelopes (incl. the authored `growth`/`contains` blocks) are design-time
+  operator content, loader-validated fail-loudly (`bootstrap._validate_growth`);
+  `world reset`'s `rm -rf`, `.env`/`secrets.env` sourcing, `0.0.0.0` bind. None
+  take network input.
 - Cookie `https_only=False`; `/status/*` + `/cache/...` session-unauthenticated
   (AccessMiddleware-gated); liveness-gated claim takeover; the deprecated
   `bootstrap_world` LLM path reading `ANTHROPIC_API_KEY` (design-time admin tool,
-  never runtime). All carried; none touched by the in-scope frontend files.
+  never runtime). Missing CSP / `X-Content-Type-Options` on the SPA shell
+  (`web/index.html`, out of this scope; XSS sinks are escaped).
 
 ---
-*Prior review (2026-07-01, paths, commit `accfdb6`): reviewed the same three
-frontend files after the Reading Room retheme, keepsakes backpack foldout,
-responsive collapse, and self-hosted font. Traced every XSS sink and confirmed
-all server/LLM/player data is escaped before render; no external assets, no
-secrets. Found 0 BLOCK / 0 WARN / 1 NOTE (the same missing-CSP item).*
+*Prior review (2026-07-01, paths, commit `94f419a`): re-review of the three live
+frontend files after the playtest-fixes commit; traced every XSS sink (all
+dynamic values escaped / `textContent` / escape-then-wrap `linkifyEntities`), no
+external assets, no secrets. 0 BLOCK / 0 WARN / 1 NOTE (missing CSP on the SPA
+shell).*
 
-<!-- SECURITY_META: {"date":"2026-07-01","commit":"94f419a9ef805cf43c6ac2967c4a1dca91db3ad7","scope":"paths","block":0,"warn":0,"note":1,"scanned_files":["web/assets/main.js","web/assets/style.css","web/index.html"]} -->
+<!-- SECURITY_META: {"date":"2026-07-02","commit":"02788f7e507d6b2a8a80fb153d0047ddab81aa90","scope":"paths","block":0,"warn":0,"note":0,"scanned_files":[".gitignore","daydream/api/ws.py","daydream/config.py","daydream/growth.py","daydream/llm/bootstrap.py","daydream/rooms.py","daydream/skills/data.py","daydream/skills/effects.py","daydream/verbs.py","daydream/version.py","tests/baselines/growth_compose_cedar_kitchen.golden.json","tests/baselines/growth_compose_mossy_stair.golden.json","tests/baselines/growth_compose_moth_attic.golden.json","tests/drift/test_growth_compose.py","tests/drift/test_parser_grounding.py","tests/test_bootstrap.py","tests/test_effects.py","tests/test_frontend.py","tests/test_growth.py","tests/test_parser.py","tests/test_quest_playthrough.py","tests/test_verbs.py","tests/test_world_integrity.py","tests/test_ws.py","tests/test_ws_grow.py","web/assets/main.js","worlds/clockmakers-loft.json"]} -->
