@@ -92,6 +92,19 @@ def delete_world_state(world_id: str) -> None:
     db.get_conn().execute("DELETE FROM world_state WHERE world_id = ?", (world_id,))
 
 
+def write_rows(conn, world_id: str, values: dict[str, Any]) -> None:
+    """Write KV rows on an EXPLICIT connection — the world loader's path
+    (it builds a side DB that is not the live connection). Keeps world_state
+    SQL inside this module; everything at runtime uses get/set above."""
+    for key, value in values.items():
+        conn.execute(
+            "INSERT INTO world_state (world_id, key, value_json) VALUES (?, ?, ?) "
+            "ON CONFLICT (world_id, key) DO UPDATE SET "
+            "value_json = excluded.value_json, updated_at = CURRENT_TIMESTAMP",
+            (world_id, key, json.dumps(value)),
+        )
+
+
 # ---- turn clock ----------------------------------------------------------
 
 

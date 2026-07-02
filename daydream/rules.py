@@ -383,6 +383,95 @@ def _check_ref(value, known_ids: set[str], errors: list[str], where: str) -> Non
         errors.append(f"{where}: dangling reference {value!r}")
 
 
+def validate_condition_list(
+    conds, where: str, *, known_flags: set[str], known_ids: set[str]
+) -> list[str]:
+    """Named errors for one authored condition list (a rule's `if`, an
+    exit's `if`, a room's `enter_if`, a script daemon's `if`)."""
+    errors: list[str] = []
+    if conds is None:
+        return errors
+    if not isinstance(conds, list):
+        return [f"{where}: must be a list"]
+    for cidx, cond in enumerate(conds):
+        cwhere = f"{where}[{cidx}]"
+        if not isinstance(cond, dict):
+            errors.append(f"{cwhere}: condition must be an object")
+            continue
+        discs = [k for k in CONDITION_KEYS if k in cond]
+        # `in` doubles as prop/counter's membership operator; it is a
+        # discriminator only when no higher-precedence form claimed it.
+        if "in" in discs and any(d in cond for d in ("prop", "counter")):
+            discs.remove("in")
+        if len(discs) != 1:
+            errors.append(
+                f"{cwhere}: expected exactly one condition key, got {sorted(cond)}"
+            )
+            continue
+        disc = discs[0]
+        allowed_keys = {disc} | _CONDITION_AUX[disc]
+        unknown = set(cond) - allowed_keys
+        if unknown:
+            errors.append(
+                f"{cwhere}: unknown condition key(s) {sorted(unknown)} for {disc!r}"
+            )
+        if disc == "flag" and cond.get("flag") not in known_flags:
+            errors.append(f"{cwhere}: undeclared flag {cond.get('flag')!r}")
+        if disc in ("dobj", "iobj", "carried", "present", "in"):
+            _check_ref(cond.get(disc), known_ids, errors, cwhere)
+        if disc == "contains":
+            _check_ref(cond.get("contains"), known_ids, errors, cwhere)
+            _check_ref(cond.get("of", "@self"), known_ids, errors, cwhere)
+        if disc == "prop":
+            _check_ref(cond.get("of", "@self"), known_ids, errors, cwhere)
+        if disc == "in_vehicle" and isinstance(cond.get("in_vehicle"), str):
+            _check_ref(cond.get("in_vehicle"), known_ids, errors, cwhere)
+    return errors
+
+
+def validate_effect_list(
+    effs, where: str, *,
+    known_flags: set[str], known_ids: set[str],
+    known_fuses: set[str], known_daemons: set[str],
+    require_nonempty: bool = False,
+    allow_inline_if: bool = False,
+) -> list[str]:
+    """Named errors for one authored effect list (a rule's `do`, a fuse's
+    `do`, a daemon's `do`, an exit's `on_traverse` — the last with inline
+    per-effect `if` allowed)."""
+    errors: list[str] = []
+    if not isinstance(effs, list) or (require_nonempty and not effs):
+        return [f"{where}: must be a non-empty list" if require_nonempty
+                else f"{where}: must be a list"]
+    for eidx, eff in enumerate(effs):
+        ewhere = f"{where}[{eidx}]"
+        if not isinstance(eff, dict):
+            errors.append(f"{ewhere}: effect must be an object")
+            continue
+        if allow_inline_if and "if" in eff:
+            errors.extend(validate_condition_list(
+                eff["if"], f"{ewhere}.if",
+                known_flags=known_flags, known_ids=known_ids,
+            ))
+        elif "if" in eff:
+            errors.append(f"{ewhere}: inline 'if' not allowed here")
+        kind = eff.get("kind")
+        if kind not in effects.RULE_KINDS:
+            errors.append(f"{ewhere}: effect kind {kind!r} not in RULE_KINDS")
+            continue
+        if kind == "set_flag" and eff.get("name") not in known_flags:
+            errors.append(f"{ewhere}: undeclared flag {eff.get('name')!r}")
+        if kind in ("start_fuse", "stop_fuse") and eff.get("name") not in known_fuses:
+            errors.append(f"{ewhere}: undeclared fuse {eff.get('name')!r}")
+        if kind in ("start_daemon", "stop_daemon") \
+                and eff.get("name") not in known_daemons:
+            errors.append(f"{ewhere}: undeclared daemon {eff.get('name')!r}")
+        for field in _EFFECT_ID_FIELDS:
+            if field in eff:
+                _check_ref(eff[field], known_ids, errors, f"{ewhere}.{field}")
+    return errors
+
+
 def validate_rules(
     rule_list,
     *,
@@ -411,66 +500,16 @@ def validate_rules(
             errors.append(f"{where}: unknown verb {on!r} in 'on'")
         if rule.get("as") not in (None, "dobj", "iobj"):
             errors.append(f"{where}: 'as' must be 'dobj' or 'iobj'")
-        conds = rule.get("if", [])
-        if not isinstance(conds, list):
-            errors.append(f"{where}: 'if' must be a list")
-            conds = []
-        for cidx, cond in enumerate(conds):
-            cwhere = f"{where}.if[{cidx}]"
-            if not isinstance(cond, dict):
-                errors.append(f"{cwhere}: condition must be an object")
-                continue
-            discs = [k for k in CONDITION_KEYS if k in cond]
-            # `in` doubles as prop/counter's membership operator; it is a
-            # discriminator only when no higher-precedence form claimed it.
-            if "in" in discs and any(d in cond for d in ("prop", "counter")):
-                discs.remove("in")
-            if len(discs) != 1:
-                errors.append(
-                    f"{cwhere}: expected exactly one condition key, got {sorted(cond)}"
-                )
-                continue
-            disc = discs[0]
-            allowed_keys = {disc} | _CONDITION_AUX[disc]
-            unknown = set(cond) - allowed_keys
-            if unknown:
-                errors.append(
-                    f"{cwhere}: unknown condition key(s) {sorted(unknown)} for {disc!r}"
-                )
-            if disc == "flag" and cond.get("flag") not in known_flags:
-                errors.append(f"{cwhere}: undeclared flag {cond.get('flag')!r}")
-            if disc in ("dobj", "iobj", "carried", "present", "in"):
-                _check_ref(cond.get(disc), known_ids, errors, cwhere)
-            if disc == "contains":
-                _check_ref(cond.get("contains"), known_ids, errors, cwhere)
-                _check_ref(cond.get("of", "@self"), known_ids, errors, cwhere)
-            if disc == "prop":
-                _check_ref(cond.get("of", "@self"), known_ids, errors, cwhere)
-            if disc == "in_vehicle" and isinstance(cond.get("in_vehicle"), str):
-                _check_ref(cond.get("in_vehicle"), known_ids, errors, cwhere)
-        do = rule.get("do", [])
-        if not isinstance(do, list) or not do:
-            errors.append(f"{where}: 'do' must be a non-empty list")
-            do = []
-        for eidx, eff in enumerate(do):
-            ewhere = f"{where}.do[{eidx}]"
-            if not isinstance(eff, dict):
-                errors.append(f"{ewhere}: effect must be an object")
-                continue
-            kind = eff.get("kind")
-            if kind not in effects.RULE_KINDS:
-                errors.append(f"{ewhere}: effect kind {kind!r} not in RULE_KINDS")
-                continue
-            if kind == "set_flag" and eff.get("name") not in known_flags:
-                errors.append(f"{ewhere}: undeclared flag {eff.get('name')!r}")
-            if kind in ("start_fuse", "stop_fuse") and eff.get("name") not in known_fuses:
-                errors.append(f"{ewhere}: undeclared fuse {eff.get('name')!r}")
-            if kind in ("start_daemon", "stop_daemon") \
-                    and eff.get("name") not in known_daemons:
-                errors.append(f"{ewhere}: undeclared daemon {eff.get('name')!r}")
-            for field in _EFFECT_ID_FIELDS:
-                if field in eff:
-                    _check_ref(eff[field], known_ids, errors, f"{ewhere}.{field}")
+        errors.extend(validate_condition_list(
+            rule.get("if", []), f"{where}.if",
+            known_flags=known_flags, known_ids=known_ids,
+        ))
+        errors.extend(validate_effect_list(
+            rule.get("do", []), f"{where}.do",
+            known_flags=known_flags, known_ids=known_ids,
+            known_fuses=known_fuses, known_daemons=known_daemons,
+            require_nonempty=True,
+        ))
         if "stop" in rule and not isinstance(rule["stop"], bool):
             errors.append(f"{where}: 'stop' must be a boolean")
         unknown_rule_keys = set(rule) - {"on", "as", "if", "do", "stop"}

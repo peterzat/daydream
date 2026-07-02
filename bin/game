@@ -523,27 +523,41 @@ cmd_world() {
 }
 
 cmd_world_reset() {
-    # Destructive re-seed of the live world from worlds/clockmakers-loft.json:
-    # stop the server, wipe the live DB + its image cache, rebuild keyless from
-    # the authored envelope, and start back up on current code. The one-command
-    # runbook the version-gate's "run 'bin/game world reset'" message points
-    # at. Gated behind --yes.
-    if [[ "${1:-}" != "--yes" ]]; then
+    # Destructive re-seed of the live world from an authored envelope:
+    # stop the server, wipe the live DB + image caches, rebuild keyless, and
+    # start back up on current code. The one-command runbook the
+    # version-gate's "run 'bin/game world reset'" message points at. Gated
+    # behind --yes; `--world <envelope.json>` selects the world (default
+    # worlds/clockmakers-loft.json — the Zork turn adds worlds/zork1.json).
+    local envelope="$PROJECT_ROOT/worlds/clockmakers-loft.json"
+    local confirmed=""
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --yes) confirmed=1; shift ;;
+            --world) envelope="$2"; shift 2 ;;
+            *) echo "unknown world reset arg: $1" >&2; return 2 ;;
+        esac
+    done
+    if [[ -z "$confirmed" ]]; then
         echo "world reset is DESTRUCTIVE: it wipes the live world" >&2
         echo "  (worlds-${ENV_NAME}/live.db) and its image cache, then re-seeds" >&2
-        echo "  from worlds/clockmakers-loft.json. Re-run to confirm:" >&2
-        echo "    bin/game world reset --yes" >&2
+        echo "  from ${envelope}. Re-run to confirm:" >&2
+        echo "    bin/game world reset --yes [--world <envelope.json>]" >&2
+        return 2
+    fi
+    if [[ ! -f "$envelope" ]]; then
+        echo "error: envelope not found: $envelope" >&2
         return 2
     fi
     _require_venv
     local data_dir="${DAYDREAM_DATA_DIR:-$HOME/data/daydream}"
     echo "==> world reset: stopping server"
     cmd_down
-    echo "==> world reset: wiping live DB + image cache"
+    echo "==> world reset: wiping live DB + image caches"
     rm -f "$LIVE_DB" "${LIVE_DB}-wal" "${LIVE_DB}-shm"
-    rm -rf "${data_dir}/images/cache/w-bunny"
-    echo "==> world reset: loading worlds/clockmakers-loft.json (keyless)"
-    "$VENV_PY" -m daydream.admin load "$PROJECT_ROOT/worlds/clockmakers-loft.json" --force --output "$LIVE_DB"
+    rm -rf "${data_dir}/images/cache/"w-*
+    echo "==> world reset: loading ${envelope} (keyless)"
+    "$VENV_PY" -m daydream.admin load "$envelope" --force --output "$LIVE_DB"
     echo "==> world reset: starting server on current code"
     cmd_up
 }

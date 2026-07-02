@@ -98,8 +98,10 @@ VERBS: dict[str, VerbSpec] = {
         name="take", ui_hint="Take",
         description="Pick up a thing from the room. Target: the thing.",
         needs_dobj=True, valid_dobj_kinds=frozenset({"thing"}),
-        allowed_effects=frozenset({"move_object", "narrate"}), on_bar=True,
-        aliases=("get",),
+        # adjust_score is rule-only in general; take declares it explicitly
+        # for the authored first-take treasure award (score_take property).
+        allowed_effects=frozenset({"move_object", "narrate", "adjust_score"}),
+        on_bar=True, aliases=("get",),
     ),
     "drop": VerbSpec(
         name="drop", ui_hint="Drop",
@@ -151,7 +153,9 @@ VERBS: dict[str, VerbSpec] = {
                     "Target: the thing, then the container.",
         needs_dobj=True, needs_iobj=True,
         valid_dobj_kinds=frozenset({"thing"}), valid_iobj_kinds=frozenset({"thing"}),
-        allowed_effects=frozenset({"move_object", "narrate"}),
+        # adjust_score: the authored deposit award (score_case property into
+        # a score_deposits container), mirroring take's declaration.
+        allowed_effects=frozenset({"move_object", "narrate", "adjust_score"}),
         on_bar=True, preps=("in", "into", "inside", "on", "onto"),
     ),
     "read": VerbSpec(
@@ -595,10 +599,17 @@ async def _handle_take(actor, room_id, dobj, iobj, args, spec) -> None:
         _dispatch(actor, room_id, [{"kind": "narrate",
             "text": "You're carrying too much already.", "to": "@actor"}], spec)
         return
-    _dispatch(actor, room_id, [
+    effs: list = [
         {"kind": "move_object", "object_id": dobj.id, "dest_id": actor.id},
         {"kind": "narrate", "text": f"You take the {dobj.name}."},
-    ], spec)
+    ]
+    # Authored first-take treasure value (Zork turn): awarded exactly once,
+    # and only on a take that actually succeeded (gates above returned).
+    score_take = dobj.properties.get("score_take")
+    if isinstance(score_take, int) and score_take:
+        effs.append({"kind": "adjust_score", "delta": score_take,
+                     "once": f"take:{dobj.id}"})
+    _dispatch(actor, room_id, effs, spec)
 
 
 async def _handle_drop(actor, room_id, dobj, iobj, args, spec) -> None:
@@ -826,10 +837,19 @@ async def _handle_put(actor, room_id, dobj, iobj, args, spec) -> None:
             "text": f"The {dobj.name} won't fit {prep} the {iobj.name}.",
             "to": "@actor"}], spec)
         return
-    _dispatch(actor, room_id, [
+    effs: list = [
         {"kind": "move_object", "object_id": dobj.id, "dest_id": iobj.id},
         {"kind": "narrate", "text": f"You put the {dobj.name} {prep} the {iobj.name}."},
-    ], spec)
+    ]
+    # Authored deposit value (Zork turn): a treasure's score_case awards once
+    # when it lands in a container that declares score_deposits (the trophy
+    # case), only on a put that actually succeeded.
+    score_case = dobj.properties.get("score_case")
+    if iobj.properties.get("score_deposits") and isinstance(score_case, int) \
+            and score_case:
+        effs.append({"kind": "adjust_score", "delta": score_case,
+                     "once": f"case:{dobj.id}"})
+    _dispatch(actor, room_id, effs, spec)
 
 
 async def _handle_read(actor, room_id, dobj, iobj, args, spec) -> None:

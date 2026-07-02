@@ -155,6 +155,12 @@ def load_world(
         raise BootstrapOutputExistsError(
             f"output path exists: {output_path} (pass --force to overwrite)"
         )
+    # Format-2 envelopes (Zork turn, SPEC 2026-07-02) take the new loader;
+    # this v1 path stays byte-identical for existing worlds.
+    if isinstance(envelope, dict) and envelope.get("format") == 2:
+        from daydream.llm import format2
+
+        return format2.load_world2(envelope, output_path, force=force)
     spec = _validate_envelope(envelope)
     if output_path.exists():
         output_path.unlink()
