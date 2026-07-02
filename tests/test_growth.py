@@ -412,14 +412,26 @@ async def test_phrase_hint_picks_down(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_phrase_hint_picks_up_and_compass(monkeypatch):
+async def test_phrase_hint_picks_up(monkeypatch):
+    """A phrase with only up-words ('a balcony in the sky') should open UP
+    when up is free."""
+    _mock_llm(monkeypatch, dict(VALID_COMPOSITION))
+    seed = _seed()
+    await _plant(seed, "a balcony in the sky")
+    room = rooms.get_room_by_slug("w-bunny", "the-moss-stair")
+    assert rooms.get_room("r-meadow").exits["up"] == room.id
+    assert room.exits["down"] == "r-meadow"
+    assert "above" in _last_narrate()  # the payoff names the way
+
+
+@pytest.mark.asyncio
+async def test_phrase_hint_order_down_wins_over_up(monkeypatch):
+    """'A balcony under the stars' mixes hints ('under' -> down; 'balcony' /
+    'stars' -> up). Pin the contract: first hint match in _DIRECTION_HINTS
+    declaration order wins, and down is declared before up."""
     _mock_llm(monkeypatch, dict(VALID_COMPOSITION))
     seed = _seed()
     await _plant(seed, "a balcony under the stars")
-    # 'stars'/'balcony' hint up (the 'under' down-hint loses to hint order?
-    # no: down is checked first — but 'under' IS in the down set, so this
-    # phrase hints down first). Pin the actual contract: first hint match in
-    # declaration order wins.
     room = rooms.get_room_by_slug("w-bunny", "the-moss-stair")
     assert rooms.get_room("r-meadow").exits["down"] == room.id
 
