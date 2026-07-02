@@ -59,7 +59,7 @@ class VerbSpec:
     # so the parser's deterministic fast-path must NOT claim "<verb> <args>" —
     # it hands such input to the LLM to disambiguate say-vs-talk.
     free_text: bool = False
-    # ---- Zork-turn fields (SPEC 2026-07-02) ----
+    # ---- platform-turn fields (SPEC 2026-07-02) ----
     # Alternate words that resolve to this verb ("get" -> take; "douse" ->
     # a world verb). Parser fast-path + resolve() honor them.
     aliases: tuple[str, ...] = ()
@@ -589,7 +589,7 @@ async def _generate_examine(dobj: objects.Object) -> str | None:
 def _carry_capacity(actor: objects.Object) -> int | None:
     """The actor's carry limit in size units: per-toon `properties.capacity`
     first, else the world config's `carry_capacity`. None = unlimited (every
-    pre-Zork world)."""
+    pre-the original game world)."""
     cap = actor.properties.get("capacity")
     if isinstance(cap, int):
         return cap
@@ -621,7 +621,7 @@ async def _handle_take(actor, room_id, dobj, iobj, args, spec) -> None:
         {"kind": "move_object", "object_id": dobj.id, "dest_id": actor.id},
         {"kind": "narrate", "text": f"You take the {dobj.name}."},
     ]
-    # Authored first-take treasure value (Zork turn): awarded exactly once,
+    # Authored first-take treasure value (platform turn): awarded exactly once,
     # and only on a take that actually succeeded (gates above returned).
     score_take = dobj.properties.get("score_take")
     if isinstance(score_take, int) and score_take:
@@ -859,7 +859,7 @@ async def _handle_put(actor, room_id, dobj, iobj, args, spec) -> None:
         {"kind": "move_object", "object_id": dobj.id, "dest_id": iobj.id},
         {"kind": "narrate", "text": f"You put the {dobj.name} {prep} the {iobj.name}."},
     ]
-    # Authored deposit value (Zork turn): a treasure's score_case awards once
+    # Authored deposit value (platform turn): a treasure's score_case awards once
     # when it lands in a container that declares score_deposits (the trophy
     # case), only on a put that actually succeeded.
     score_case = dobj.properties.get("score_case")
@@ -907,7 +907,7 @@ async def _handle_say(actor, room_id, dobj, iobj, args, spec) -> None:
     )
 
 
-# Compass + movement vocabulary (Zork turn, criterion 9). Exits are authored
+# Compass + movement vocabulary (platform turn, criterion 9). Exits are authored
 # with canonical names; the parser and `go` accept the abbreviations.
 DIRECTION_ALIASES: dict[str, str] = {
     "n": "north", "s": "south", "e": "east", "w": "west",
@@ -927,7 +927,7 @@ def canonical_direction(word: str) -> str:
     return DIRECTION_ALIASES.get(w, w)
 
 
-# ---- exits (Zork turn, SPEC 2026-07-02 criterion 7) ---------------------
+# ---- exits (platform turn, SPEC 2026-07-02 criterion 7) ---------------------
 #
 # An exits-map value is one of:
 #   "r-forge"                                   legacy plain destination

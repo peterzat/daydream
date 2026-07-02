@@ -522,7 +522,7 @@ footer .slots-toggle:hover, footer .logout:hover { text-decoration: underline; }
   .margin { min-height: 0; overflow-y: auto; }
 }
 
-/* ---- Zork-turn affordances (SPEC 2026-07-02 criterion 12) ---------------
+/* ---- platform-turn affordances (SPEC 2026-07-02 criterion 12) ---------------
  * Status ribbon, darkness veil, nested container chips, clarify options,
  * and the death interstitial. All colors from the :root tokens. */
 

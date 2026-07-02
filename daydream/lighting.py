@@ -1,4 +1,4 @@
-"""Lighting: dark rooms, light sources, and the reduced dark scope (Zork
+"""Lighting: dark rooms, light sources, and the reduced dark scope (the original game
 turn, SPEC 2026-07-02 criterion 6).
 
 A room is dark when it authors `properties.dark: true`. Darkness is beaten

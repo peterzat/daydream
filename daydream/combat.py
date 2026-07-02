@@ -1,4 +1,4 @@
-"""Seeded, outcome-faithful combat (Zork turn, SPEC 2026-07-02 criterion 8;
+"""Seeded, outcome-faithful combat (platform turn, SPEC 2026-07-02 criterion 8;
 fidelity relaxation R3: outcomes match the original, blow-by-blow sub-states
 don't ship).
 
@@ -28,7 +28,7 @@ Mechanics, deterministic under the world rng_seed:
 - A survivor swings back: a seeded roll under counter_kill_chance applies
   kill_actor (the authored death policy); otherwise an authored counter
   line narrates.
-- An unkillable villain refuses combat entirely (the cyclops wants a magic
+- An unkillable villain refuses combat entirely (the unkillable villain wants a magic
   word or a meal, not a sword)."""
 
 from __future__ import annotations

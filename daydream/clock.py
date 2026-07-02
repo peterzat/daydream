@@ -1,4 +1,4 @@
-"""The world clock: one tick at the tail of every executed command (Zork
+"""The world clock: one tick at the tail of every executed command (the original game
 turn, SPEC 2026-07-02 criterion 5).
 
 Tick order, deterministic under a pinned world `rng_seed`:
@@ -398,7 +398,7 @@ def _darkness_beat(
     world_id: str, actor: objects.Object, from_room_id: str | None
 ) -> None:
     """Entering an unlit room warns (the authored darkness text, privately);
-    a move that started AND ended unlit rolls the authored hazard. Zork
+    a move that started AND ended unlit rolls the authored hazard. the original game
     semantics: the warning move itself is safe, standing still is safe,
     pressing on in the dark is how the world eats you."""
     now_room = actor.location_id

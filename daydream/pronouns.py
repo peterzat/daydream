@@ -1,4 +1,4 @@
-"""Per-actor parser memory: the IT referent and the AGAIN last-input (Zork
+"""Per-actor parser memory: the IT referent and the AGAIN last-input (the original game
 turn, SPEC 2026-07-02 criterion 9). Tiny, dependency-free, in-process —
 pronoun state is conversational, not world state, so it lives and dies with
 the server process (a reconnecting player just names the thing once)."""

@@ -25,7 +25,7 @@ verb that declares them in its per-verb allowlist: a caller passing
 them, so an NPC dialogue or standalone data skill attempting either is
 rejected exactly like an unknown kind. `plant` is the sole consumer today.
 
-The rule-only kinds (Zork turn, SPEC 2026-07-02) — `set_flag`,
+The rule-only kinds (platform turn, SPEC 2026-07-02) — `set_flag`,
 `adjust_counter`, `adjust_score`, `destroy_object`, `teleport_actor`,
 `start_fuse`/`stop_fuse`, `start_daemon`/`stop_daemon`, `win` — are likewise
 restricted: they execute only under the declarative rule engine's
@@ -56,7 +56,7 @@ ALLOWED_KINDS: frozenset[str] = frozenset({
     # Engine housekeeping (explicit per-verb declaration only): rename an
     # object's display name (the spent dreamseed husk).
     "rename_object",
-    # Rule-engine vocabulary (Zork turn, SPEC 2026-07-02): emitted only by
+    # Rule-engine vocabulary (platform turn, SPEC 2026-07-02): emitted only by
     # authored world/object rules — never by an LLM-facing path.
     "set_flag",
     "adjust_counter",
@@ -172,7 +172,7 @@ def dispatch_effects(
 def _apply_narrate(
     eff: dict, *, actor_id: str, room_id: str, world_id: str
 ) -> events.Event | None:
-    """Emit narration. Two optional routing fields (Zork turn):
+    """Emit narration. Two optional routing fields (platform turn):
 
     `to: "@actor"` (or an explicit toon id) makes the line actor-private
     (events.recipient_id, migration 014) — self-narrations and refusals
@@ -458,7 +458,7 @@ def _apply_rename_object(
     )
 
 
-# ---- rule-only kinds (Zork turn, SPEC 2026-07-02) ------------------------
+# ---- rule-only kinds (platform turn, SPEC 2026-07-02) ------------------------
 
 
 def _apply_set_flag(

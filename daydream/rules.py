@@ -1,5 +1,5 @@
 """Declarative rule engine: authored, deterministic verb behavior as world
-data (Zork turn, SPEC 2026-07-02 criterion 3).
+data (platform turn, SPEC 2026-07-02 criterion 3).
 
 A rule is a dict authored on an object or room (`properties.rules`) or on the
 world (worldstate `def:rules`):

@@ -1,4 +1,4 @@
-"""Format-2 world envelopes: the Zork-scale keyless loader (SPEC 2026-07-02).
+"""Format-2 world envelopes: the platform-scale keyless loader (SPEC 2026-07-02).
 
 An envelope with `"format": 2` routes here from `bootstrap.load_world`; the
 v1 path stays byte-identical for existing worlds. Format 2 relaxes v1's
@@ -328,7 +328,7 @@ def validate_envelope2(env: dict) -> list[str]:
             ))
         if "properties" in r and not isinstance(r["properties"], dict):
             errors.append(f"{where}.properties must be an object")
-    # One-way exits are legal in format 2 (Zork's slide, the chimney):
+    # One-way exits are legal in format 2 (a one-way slide or chimney):
     # reciprocity is a LINT, not an error.
     for src, dst in sorted(edges):
         if (dst, src) not in edges:

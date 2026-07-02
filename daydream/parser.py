@@ -7,7 +7,7 @@ and objects resolve to in-scope IDS — "grounded resolution", which plays to
 a 7B model's strict-JSON strength. The deterministic engine, not the model,
 mutates state.
 
-The deterministic surface (Zork turn, SPEC 2026-07-02 criterion 9), all with
+The deterministic surface (platform turn, SPEC 2026-07-02 criterion 9), all with
 ZERO LLM calls:
 
 - exit directions incl. abbreviations (n/ne/u/d, in/out, world directions)
@@ -25,7 +25,7 @@ ZERO LLM calls:
 - ambiguous names (two in-scope "lantern"s) return a CLARIFY question; the
   next typed reply (or a click) resolves it
 
-Then one grounded LLM call for everything else ("smash the troll with my
+Then one grounded LLM call for everything else ("smash the villain with my
 sword"), and the fail-safe: unknown verb / out-of-scope target → verb
 `none`, no mutation; LLM outage → `error` (the caller narrates "foggy" —
 deterministic play continues without the model)."""

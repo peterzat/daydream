@@ -56,7 +56,7 @@ router = APIRouter()
 _EFFECT_MUTATION_KINDS = frozenset(
     {"item_added", "mood_set", "object_moved", "object_spawned",
      "room_grown", "exit_linked", "object_renamed",
-     # Zork-turn rule effects (SPEC 2026-07-02): a score change refreshes the
+     # platform-turn rule effects (SPEC 2026-07-02): a score change refreshes the
      # status ribbon; a flag flip can reveal a secret exit or change panel
      # state; a destroyed object must leave the scene panel.
      "score_changed", "flag_set", "object_destroyed"}
@@ -81,7 +81,7 @@ def _resolve_controlled_toon_id(session_id: str | None) -> str | None:
     `session_id` (set by the slot picker's create / claim endpoints) that is
     not kicked and is human-controlled (`toons.get_toon_by_session`). A None
     return routes the connection to the character picker (a `needs_toon`
-    frame) rather than auto-controlling a default toon: picker-first entry
+    frame) rather than auto-controling a default toon: picker-first entry
     (SPEC 2026-06-30) removed the legacy `t-wren` fallback, which silently
     resolved every unclaimed session to a single seeded toon and, in a
     `world load`ed world (uuid'd ids, no literal `t-wren`), to a phantom
@@ -503,9 +503,9 @@ async def _dispatch_parsed(p: "parser.Parse", toon_id: str) -> None:
     )
 
 
-# Per-session COUNT of live WS connections controlling a toon, maintained by the
+# Per-session COUNT of live WS connections controling a toon, maintained by the
 # handler (incremented on connect, decremented on disconnect). The slot-claim
-# path reads this so a player can adopt a toon whose controlling session is gone
+# path reads this so a player can adopt a toon whose controling session is gone
 # (an abandoned claim) while a toon an ACTIVE player holds stays protected. A
 # count (not a set) so a session with two tabs stays live until BOTH close.
 _live_session_counts: "Counter[str]" = Counter()
@@ -528,7 +528,7 @@ def _unmark_session_live(session_id: str | None) -> None:
 
 def is_session_live(session_id: str | None) -> bool:
     """True if `session_id` currently has at least one live WS connection
-    controlling a toon. Used by the slot-claim takeover logic
+    controling a toon. Used by the slot-claim takeover logic
     (daydream/api/slots.py)."""
     return bool(session_id) and _live_session_counts.get(session_id, 0) > 0
 
@@ -554,7 +554,7 @@ async def ws_endpoint(ws: WebSocket):
     if toon_id is None:
         # No claimed/controllable toon (a fresh connect, a session that left
         # the dream, or one whose toon was kicked/deleted): route to the
-        # character picker instead of auto-controlling a default toon
+        # character picker instead of auto-controling a default toon
         # (picker-first entry, SPEC 2026-06-30). This subsumes the prior
         # `left`-flag branch — leaving the dream rests the toon, so it
         # resolves to None here.

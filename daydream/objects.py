@@ -273,7 +273,7 @@ def verbs_for(obj: Object) -> list[str]:
     return out
 
 
-# ---- containers (Zork turn, SPEC 2026-07-02 criterion 4) ----------------
+# ---- containers (platform turn, SPEC 2026-07-02 criterion 4) ----------------
 
 # ZIL's default object SIZE; authored `properties.size` overrides.
 DEFAULT_SIZE = 5

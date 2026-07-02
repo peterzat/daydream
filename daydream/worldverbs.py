@@ -1,5 +1,5 @@
 """World-declared verbs: authored verb vocabulary loaded from the world's
-`def:verbs` block (Zork turn, SPEC 2026-07-02 criterion 3).
+`def:verbs` block (platform turn, SPEC 2026-07-02 criterion 3).
 
 A world verb is pure data — there is NO Python handler. It executes only
 through the declarative rule engine (`daydream.rules`); when no rule matches,
