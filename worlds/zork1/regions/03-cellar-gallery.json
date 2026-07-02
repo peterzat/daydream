@@ -163,7 +163,8 @@
       "properties": {
         "verbs": [
           "attack",
-          "examine"
+          "examine",
+          "talk"
         ],
         "combat": {
           "strength": 2,
@@ -191,6 +192,17 @@
             }
           ]
         }
+      },
+      "dialogue": {
+        "ui_hint": "Talk",
+        "description": "Talk to the troll, if you must.",
+        "effects_schema": {
+          "allowed_kinds": [
+            "narrate",
+            "set_mood"
+          ]
+        },
+        "prompt_template": "You are the troll who keeps the passages below the trap door in the Great Underground Empire: dull, huge, territorial, and paid in whatever he takes. You speak in grunts and short threats of three to ten words; you do not negotiate, explain, or use words over two syllables. Recent memories of them: {% for m in memories %}\n- {{ m.text }}{% else %} (none yet){% endfor %}\nThey say: {{ player_input }}\n\nReply in character with ONE `narrate` effect: a single short beat of troll menace in a dry register — the axe shifting, a wet grin, a two-word answer. Never helpful, never modern, never more than two sentences."
       }
     }
   ],

@@ -3159,7 +3159,8 @@
       "properties": {
         "verbs": [
           "attack",
-          "examine"
+          "examine",
+          "talk"
         ],
         "combat": {
           "strength": 2,
@@ -3187,6 +3188,17 @@
             }
           ]
         }
+      },
+      "dialogue": {
+        "ui_hint": "Talk",
+        "description": "Talk to the troll, if you must.",
+        "effects_schema": {
+          "allowed_kinds": [
+            "narrate",
+            "set_mood"
+          ]
+        },
+        "prompt_template": "You are the troll who keeps the passages below the trap door in the Great Underground Empire: dull, huge, territorial, and paid in whatever he takes. You speak in grunts and short threats of three to ten words; you do not negotiate, explain, or use words over two syllables. Recent memories of them: {% for m in memories %}\n- {{ m.text }}{% else %} (none yet){% endfor %}\nThey say: {{ player_input }}\n\nReply in character with ONE `narrate` effect: a single short beat of troll menace in a dry register — the axe shifting, a wet grin, a two-word answer. Never helpful, never modern, never more than two sentences."
       }
     },
     {
@@ -3206,7 +3218,8 @@
         "verbs": [
           "attack",
           "examine",
-          "give"
+          "give",
+          "talk"
         ],
         "declines_text": "The cyclops is not so stupid as to eat THAT!",
         "combat": {
@@ -3310,7 +3323,18 @@
             }
           ]
         }
-      ]
+      ],
+      "dialogue": {
+        "ui_hint": "Talk",
+        "description": "Talk to the cyclops, who is mostly thinking about food.",
+        "effects_schema": {
+          "allowed_kinds": [
+            "narrate",
+            "set_mood"
+          ]
+        },
+        "prompt_template": "You are the cyclops at the foot of the staircase in the Great Underground Empire: enormous, hungry, single-minded, and not stupid so much as uninterested in anything inedible. Every topic returns to food within a sentence. Recent memories of them: {% for m in memories %}\n- {{ m.text }}{% else %} (none yet){% endfor %}\nThey say: {{ player_input }}\n\nReply in character with ONE `narrate` effect: at most two dry sentences — a stomach-first observation and one line sizing up the speaker as a course. Menacing but unhurried; never modern; never actually attack."
+      }
     },
     {
       "id": "t-thief",
@@ -3330,7 +3354,8 @@
         "verbs": [
           "attack",
           "examine",
-          "give"
+          "give",
+          "talk"
         ],
         "declines_text": "The thief examines your offer with a professional eye and hands it back; he prefers to acquire things on his own terms.",
         "combat": {
@@ -3388,7 +3413,18 @@
             }
           ]
         }
-      ]
+      ],
+      "dialogue": {
+        "ui_hint": "Talk",
+        "description": "Talk to the thief, who is listening for the jingle of your pockets.",
+        "effects_schema": {
+          "allowed_kinds": [
+            "narrate",
+            "set_mood"
+          ]
+        },
+        "prompt_template": "You are the gentleman thief of the Great Underground Empire: courteous, larcenous, evasive, armed with a stiletto and better manners than anyone expects. You never answer a question straight, you compliment what they carry, and you commit to nothing. Recent memories of them: {% for m in memories %}\n- {{ m.text }}{% else %} (none yet){% endfor %}\nThey say: {{ player_input }}\n\nReply in character with ONE `narrate` effect: at most two dry sentences — a small courteous gesture (a bow, a tip of an invisible hat, an appraising glance at their satchel) and one spoken line of polished evasion. Never modern, never sincere, never violent unprovoked."
+      }
     }
   ],
   "things": [

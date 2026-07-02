@@ -1,0 +1,7 @@
+{
+  "_doc": "Zork anchor #2: the authored r-dam seed (verbatim from worlds/zork1.json). The set-piece engineering vista — the control panel, bolt, and bubble must stay legible in watercolor.",
+  "name": "zork_dam",
+  "prompt": "the crest of a great stone dam, control panel with one large bolt and a green bubble, water on one side and a long drop on the other",
+  "expected_resolution": [1024, 1024],
+  "phash_tolerance": 12
+}

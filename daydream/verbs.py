@@ -367,7 +367,7 @@ async def _execute_resolved(
     # handlers (and the talk dialogue special-case) run only when no rule
     # fires — rules SHADOW legacy verb Python, so a world that authors no
     # rules behaves byte-identically to before.
-    if rules.dispatch(actor, spec.name, dobj, iobj, room_id=room_id):
+    if await rules.dispatch(actor, spec.name, dobj, iobj, room_id=room_id):
         return
 
     if spec.name == "talk" and dobj is not None:
@@ -1118,7 +1118,7 @@ async def _handle_go(actor, room_id, dobj, iobj, args, spec) -> None:
             )
     # Room/world "enter" rules: authored arrival behavior (first-visit room
     # bonuses score here via adjust_score's once-key).
-    rules.dispatch(actor, "enter", None, None, room_id=target_id)
+    await rules.dispatch(actor, "enter", None, None, room_id=target_id)
 
 
 async def _handle_attack(actor, room_id, dobj, iobj, args, spec) -> None:

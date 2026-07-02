@@ -70,6 +70,12 @@ os.environ["DAYDREAM_DRIFT_MOOD_DRIFT_ENABLED"] = "0"
 # AND mock daydream.memories._embed to avoid loading the real model.
 os.environ["DAYDREAM_MEMORY_ENABLED"] = "0"
 
+# The retell layer (criterion 13) is additive polish: off by default in
+# tests so the deterministic spine stays provably LLM-free (the zork
+# walkthrough's zero-call spy is the teeth). Retell tests opt in via
+# monkeypatch.setenv("DAYDREAM_RETELL_ENABLED", "1") and mock the client.
+os.environ["DAYDREAM_RETELL_ENABLED"] = "0"
+
 # Redirect HOME to a session-scoped temp dir as a belt-and-suspenders measure:
 # any other code that resolves `~/...` during tests writes under this dir,
 # which the OS reaps. Use mkdtemp (not TemporaryDirectory) so the dir lives

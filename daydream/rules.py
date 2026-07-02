@@ -307,7 +307,7 @@ def world_rules(world_id: str) -> list[dict]:
     return [r for r in rules if isinstance(r, dict)] if isinstance(rules, list) else []
 
 
-def dispatch(
+async def dispatch(
     actor: objects.Object,
     verb_name: str,
     dobj: objects.Object | None,
@@ -318,7 +318,14 @@ def dispatch(
     """Run the first matching rule for `verb_name` (or the pseudo-event
     `enter`) across dobj -> iobj -> room -> world. Returns True if any rule
     fired (the caller then skips the legacy engine handler). Effects run
-    under the RULE_KINDS allowlist with sigils resolved per holder."""
+    under the RULE_KINDS allowlist with sigils resolved per holder.
+
+    Async solely for the retell layer (criterion 13): a retell-enabled
+    world may rephrase eligible narrate texts through the local LLM before
+    dispatch, with the authored text as the unconditional fallback — a
+    world with retell off (or the LLM absent) takes a zero-await path
+    identical to the old sync dispatch. Fuses and daemons keep their own
+    sync path (clock.tick) and are never retold."""
     room = objects.get(room_id) if room_id else None
     fired = False
     holders: list[tuple[objects.Object | None, str]] = [
@@ -349,6 +356,9 @@ def dispatch(
             if not conditions_hold(rule.get("if"), ctx):
                 continue
             effs = resolve_sigils(rule.get("do", []), ctx)
+            from daydream import retell
+
+            effs = await retell.retell_effects(actor.world_id, effs)
             effects.dispatch_effects(
                 effs, actor_id=actor.id, room_id=room_id,
                 world_id=actor.world_id, allowed=effects.RULE_KINDS,

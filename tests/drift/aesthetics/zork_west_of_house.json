@@ -1,0 +1,7 @@
+{
+  "_doc": "Zork anchor #1: the authored r-west-of-house seed (verbatim from worlds/zork1.json). The opening image of the game — a seed/LoRA/checkpoint/workflow change that shifts it past tolerance fails tier_long. Ratified by the agent against WHIMSY.md (watercolor GUE: soft, painterly, no crunch).",
+  "name": "zork_west_of_house",
+  "prompt": "a white clapboard house at the edge of a field, boarded front door, long grass, late watercolor light",
+  "expected_resolution": [1024, 1024],
+  "phash_tolerance": 12
+}
