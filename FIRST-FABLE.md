@@ -999,3 +999,117 @@ against the one fixture in the genre's history that defined what magical text-ga
 feel means. The wager of this whole document — that verification-first agentic
 development compounds — now has its strongest data point: the 46-year-old game is in
 the regression suite.
+
+### Part 4 — the operator's first verdict, the fix round, and the step-function reading (2026-07-02, mid-playtest)
+
+Appended while the operator is still playing, at his request. Two things happened in
+the hour after the results section above was written: the in-browser playtest began
+and produced its first findings ledger, and the operator delivered a first verdict —
+verbatim: **"Okay, my initial impression is that this is pretty amazing (how you
+applied Zork to this project)."** Part 3's headline was "not convinced it was
+magical." Item 7 above asked whether that verdict would move. It moved.
+
+**The first playtest findings (M14, partial — the session continues).** Five
+findings in the opening minutes, classed per the pre-registration: one **latent
+platform defect** (the client rendered every co-located move event as "you go west,"
+including OTHER toons' departures — this session's own probe toons walking through
+the operator's rooms made it visible; a genuinely multiplayer presentation bug that
+no solo suite, no oracle, and no 380-command rehearsal could ever have seen, because
+they were all alone in the world); two **under-imagined moments** (the verb bar
+showed Plant — a clockmakers verb — in the Great Underground Empire, which on
+reflection was not a bug but a design absence: the bar was a capability inventory
+when it should have been a scene; and "take all" among unportable furniture said
+"nothing here," which is true and unhelpful); and two **polish** items (name/mood
+spacing; the take-all message). P13 predicted at least 3 experience-level findings
+no automated verifier caught; **the threshold was crossed in the first ten minutes
+of play, and the session is not over. P13: HOLDS.** The Part 3 lesson stands
+re-armed and re-confirmed: the oracle checks state, a human checks feel, and the
+gap between them is where the findings live.
+
+**The fix round held the near-zero-friction property (item 5's question).** All
+five findings were reproduced, root-caused, fixed, tested, and deployed to the
+live server in well under an hour, mid-playtest, while the operator kept playing:
+moves now attribute by actor ("you go west" vs "Probe heads west" — and only your
+own death blacks out your screen, a sibling bug found by reading the same code);
+the verb bar became scene-aware server-side with zero client changes (a stable
+Examine/Take/Drop core plus a contextual row derived from what the present objects
+actually grant — Ring appears at the bell, Board by the boat, Plant only while a
+seed is in scope, and magic words deliberately stay off the bar because secrets
+are secrets); the take-all message now says "nothing here you can carry off." The
+diagnosis of the attribution bug is worth one sentence of record: the fix session
+queried the live event log, found its own probe toon's footsteps interleaved with
+the operator's, and understood the bug from the victim's own transcript — the
+instruments keep paying.
+
+**The step-function reading, against the essay this experiment borrows its frame
+from.** The bitter-lesson essay claims coding capability "does not improve
+linearly. It arrives in step changes," and that at each step "the scaffolding you
+built to compensate for the old model's weaknesses becomes the thing preventing
+you from benefiting from the new model's strengths... all at once." It divides
+scaffolding into the kind that compounds (verification infrastructure, specs as
+"the control plane," turn-based iteration) and the kind that gets wiped out
+(compensations for what the old model couldn't do). Reading this turn against
+that ledger produces the clearest evidence this document has:
+
+- **The step shows up as consumption, not decoration.** Nothing about the harness
+  changed between Dreamseeds and Zork — same loop, same skills, same tiers, same
+  /effort. What changed is what fit through it: an 8-criterion single-subsystem
+  contract became a 16-criterion, seven-new-module, 110-room contract with an
+  external differential harness, consumed in two sessions on two words of operator
+  input ("implement", twice). A step function in the essay's sense would look
+  exactly like this: the rails hold, the payload an order of magnitude heavier.
+- **zat.env: helping, and the evidence is specific.** The honest question was
+  helping/hurting/neutral, and the answer is helping — not because the turn felt
+  smooth but because every load-bearing moment ran on a zat.env rail that existed
+  before Fable did. The tiered test gate is why 28 commits could each land green
+  without a human watching. The drift-golden pattern is why the retell probe, the
+  image anchors, and the parser corpus were an afternoon's work instead of new
+  infrastructure. The spec-as-contract discipline (check a criterion only when
+  verified) is why a /clear between sessions cost nothing: session 2 rebuilt its
+  entire context from SPEC.md, the memory file, and the artifacts on disk. The
+  review/marker machinery produced a recorded 0-BLOCK close without a human in
+  the loop. And this document's own append-only pre-registration is the only
+  reason any of these sentences is gradeable rather than vibes. Crucially — and
+  this is the essay's distinction doing real work — zat.env holds almost NO
+  scaffolding of the wiped-out kind: it never grew prompt chains or decomposition
+  crutches that compensated for model weakness. It bet nearly everything on the
+  durable side of the ledger (verification, specs, review, memory), which is why
+  a capability step LANDED on it instead of invalidating it. The rails built to
+  guard a weaker model turned out to be the instruments a stronger one plays.
+- **One environment datum on the hurting side, recorded precisely:** the only
+  hard block this turn was not the model but the sandbox — the permission
+  classifier refused compilation of the (operator-pre-approved) frotz source,
+  deferring criterion 14 to a one-command operator step. The safety layer, not
+  capability, set that boundary; worth remembering when reading M-numbers.
+- **Where the step function is NOT.** The local 7B is unchanged, and the turn's
+  most instructive quality decision — the retell layer shipping SCOPED because
+  the small model gilds "holding his nose" into "clutches at its nasal region" —
+  is the same class of local-limit negotiation as ever. Fable moved the
+  design-time ceiling (what can be authored, verified, and orchestrated); the
+  runtime ceiling (what the near dream can compose live) did not move an inch.
+  The scoped rung is the honest interface between those two facts, and the
+  project's premise — pre-bake with the deep dreamer, let the small ones carry
+  it live — is if anything MORE true with a stronger deep dreamer.
+- **The misses are the calibration.** The turn was not error-free: a lampless
+  descent fed the grue, the thief's counter-rolls killed the walkthrough twice
+  before the turn computed the roll table, a state-key collision silently ate
+  "put sceptre in boat," and the live rehearsal desynced at command 151. The
+  step is not infallibility. The step is that every one of those was caught,
+  diagnosed, and regression-tested by machinery the turn itself had built hours
+  earlier — the operator learned about them from commit messages. In the essay's
+  terms: verification is the ceiling, and the ceiling is what rose.
+
+**The claim, revisited.** The pre-registration quoted the operator: this
+"probably wouldn't be possible in Opus 4.8 without significant manual work,
+multiple turns, and a very hands-on multi-day approach." That counterfactual was
+never going to be re-run; it is graded against this repo's own recorded history —
+an Opus era of steered, operator-answered, GOAL.md-guided turns — and against a
+Fable turn that took two one-word sessions, zero steering messages, and ended
+with the operator's first unprompted word being "amazing." The evidence-based
+conclusion this document can actually stand behind: **on identical rails, the
+payload capacity stepped, the autonomy stepped, the self-diagnosis stepped, and
+the operator's verdict moved from "not convinced it was magical" to "pretty
+amazing" — while the runtime models, the harness, and the human's role (write
+the spec, judge the feel) stayed exactly where they were.** That is what the
+essay says a step function through durable scaffolding should look like from
+the inside.
