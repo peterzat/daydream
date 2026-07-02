@@ -2,7 +2,9 @@
   "comment": "Region (d) part 1: the maze of twisty little passages (all alike — one shared image seed on purpose), the grating room's underside, the cyclops, the strange passage, and the thief's treasure room. Topology transcribed edge-for-edge from the ZIL source including the four one-way 'diode' downs (2->4, 7->DE1, 9->11, 12->5), each with the original's warning on traverse. The cyclops: ODYSSEUS breaks the east wall (MAGIC-FLAG, which also un-bars the trap door) and clears the stairs (CYCLOPS-GONE); the pepper-lunch-then-water path puts him to sleep (CYCLOPS-FED gates the drink, CYCLOPS-GONE opens the stairs, wall stays shut) — his wrath timer is not modeled (he blocks passively; documented relaxation). The thief: roams via the world wanderer daemon until the player first enters his den, where he stops roaming and stands his ground (stop_daemon + homing on the room's enter rule — the original always confronts you there; that he no longer steals after being confronted is the relaxation). Giving him the egg is the one way it opens intact. The skeleton's curse is a bark without the item-banishment (documented relaxation); the rusty knife turns on its wielder exactly as the original. The thief's large bag is scenery folded into his description, not an object.",
   "rooms": [
     {
-      "id": "r-maze-1", "slug": "maze-1", "title": "Maze",
+      "id": "r-maze-1",
+      "slug": "maze-1",
+      "title": "Maze",
       "zork_name": "Maze",
       "dark": true,
       "seed": "a twisty little stone passage, exactly like the others",
@@ -15,7 +17,9 @@
       }
     },
     {
-      "id": "r-maze-2", "slug": "maze-2", "title": "Maze",
+      "id": "r-maze-2",
+      "slug": "maze-2",
+      "title": "Maze",
       "zork_name": "Maze",
       "dark": true,
       "seed": "a twisty little stone passage, exactly like the others",
@@ -23,15 +27,22 @@
       "exits": {
         "south": "r-maze-1",
         "east": "r-maze-3",
-        "down": {"to": "r-maze-4",
-                  "on_traverse": [
-                    {"kind": "narrate", "to": "@actor",
-                     "text": "You won't be able to get back up to the tunnel you are going through when it gets to the next room."}
-                  ]}
+        "down": {
+          "to": "r-maze-4",
+          "on_traverse": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "You won't be able to get back up to the tunnel you are going through when it gets to the next room."
+            }
+          ]
+        }
       }
     },
     {
-      "id": "r-maze-3", "slug": "maze-3", "title": "Maze",
+      "id": "r-maze-3",
+      "slug": "maze-3",
+      "title": "Maze",
       "zork_name": "Maze",
       "dark": true,
       "seed": "a twisty little stone passage, exactly like the others",
@@ -43,7 +54,9 @@
       }
     },
     {
-      "id": "r-maze-4", "slug": "maze-4", "title": "Maze",
+      "id": "r-maze-4",
+      "slug": "maze-4",
+      "title": "Maze",
       "zork_name": "Maze",
       "dark": true,
       "seed": "a twisty little stone passage, exactly like the others",
@@ -55,7 +68,9 @@
       }
     },
     {
-      "id": "r-maze-5", "slug": "maze-5", "title": "Maze",
+      "id": "r-maze-5",
+      "slug": "maze-5",
+      "title": "Maze",
       "zork_name": "Maze",
       "dark": true,
       "seed": "a twisty little stone passage where an earlier adventurer stopped for good",
@@ -67,7 +82,9 @@
       }
     },
     {
-      "id": "r-maze-6", "slug": "maze-6", "title": "Maze",
+      "id": "r-maze-6",
+      "slug": "maze-6",
+      "title": "Maze",
       "zork_name": "Maze",
       "dark": true,
       "seed": "a twisty little stone passage, exactly like the others",
@@ -80,7 +97,9 @@
       }
     },
     {
-      "id": "r-maze-7", "slug": "maze-7", "title": "Maze",
+      "id": "r-maze-7",
+      "slug": "maze-7",
+      "title": "Maze",
       "zork_name": "Maze",
       "dark": true,
       "seed": "a twisty little stone passage, exactly like the others",
@@ -90,15 +109,22 @@
         "west": "r-maze-6",
         "east": "r-maze-8",
         "south": "r-maze-15",
-        "down": {"to": "r-dead-end-1",
-                  "on_traverse": [
-                    {"kind": "narrate", "to": "@actor",
-                     "text": "You won't be able to get back up to the tunnel you are going through when it gets to the next room."}
-                  ]}
+        "down": {
+          "to": "r-dead-end-1",
+          "on_traverse": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "You won't be able to get back up to the tunnel you are going through when it gets to the next room."
+            }
+          ]
+        }
       }
     },
     {
-      "id": "r-maze-8", "slug": "maze-8", "title": "Maze",
+      "id": "r-maze-8",
+      "slug": "maze-8",
+      "title": "Maze",
       "zork_name": "Maze",
       "dark": true,
       "seed": "a twisty little stone passage, exactly like the others",
@@ -110,7 +136,9 @@
       }
     },
     {
-      "id": "r-maze-9", "slug": "maze-9", "title": "Maze",
+      "id": "r-maze-9",
+      "slug": "maze-9",
+      "title": "Maze",
       "zork_name": "Maze",
       "dark": true,
       "seed": "a twisty little stone passage, exactly like the others",
@@ -121,15 +149,22 @@
         "south": "r-maze-13",
         "west": "r-maze-12",
         "northwest": "r-maze-9",
-        "down": {"to": "r-maze-11",
-                  "on_traverse": [
-                    {"kind": "narrate", "to": "@actor",
-                     "text": "You won't be able to get back up to the tunnel you are going through when it gets to the next room."}
-                  ]}
+        "down": {
+          "to": "r-maze-11",
+          "on_traverse": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "You won't be able to get back up to the tunnel you are going through when it gets to the next room."
+            }
+          ]
+        }
       }
     },
     {
-      "id": "r-maze-10", "slug": "maze-10", "title": "Maze",
+      "id": "r-maze-10",
+      "slug": "maze-10",
+      "title": "Maze",
       "zork_name": "Maze",
       "dark": true,
       "seed": "a twisty little stone passage, exactly like the others",
@@ -141,7 +176,9 @@
       }
     },
     {
-      "id": "r-maze-11", "slug": "maze-11", "title": "Maze",
+      "id": "r-maze-11",
+      "slug": "maze-11",
+      "title": "Maze",
       "zork_name": "Maze",
       "dark": true,
       "seed": "a twisty little stone passage, exactly like the others",
@@ -154,7 +191,9 @@
       }
     },
     {
-      "id": "r-maze-12", "slug": "maze-12", "title": "Maze",
+      "id": "r-maze-12",
+      "slug": "maze-12",
+      "title": "Maze",
       "zork_name": "Maze",
       "dark": true,
       "seed": "a twisty little stone passage, exactly like the others",
@@ -164,15 +203,22 @@
         "east": "r-maze-13",
         "up": "r-maze-9",
         "north": "r-dead-end-4",
-        "down": {"to": "r-maze-5",
-                  "on_traverse": [
-                    {"kind": "narrate", "to": "@actor",
-                     "text": "You won't be able to get back up to the tunnel you are going through when it gets to the next room."}
-                  ]}
+        "down": {
+          "to": "r-maze-5",
+          "on_traverse": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "You won't be able to get back up to the tunnel you are going through when it gets to the next room."
+            }
+          ]
+        }
       }
     },
     {
-      "id": "r-maze-13", "slug": "maze-13", "title": "Maze",
+      "id": "r-maze-13",
+      "slug": "maze-13",
+      "title": "Maze",
       "zork_name": "Maze",
       "dark": true,
       "seed": "a twisty little stone passage, exactly like the others",
@@ -185,7 +231,9 @@
       }
     },
     {
-      "id": "r-maze-14", "slug": "maze-14", "title": "Maze",
+      "id": "r-maze-14",
+      "slug": "maze-14",
+      "title": "Maze",
       "zork_name": "Maze",
       "dark": true,
       "seed": "a twisty little stone passage, exactly like the others",
@@ -198,7 +246,9 @@
       }
     },
     {
-      "id": "r-maze-15", "slug": "maze-15", "title": "Maze",
+      "id": "r-maze-15",
+      "slug": "maze-15",
+      "title": "Maze",
       "zork_name": "Maze",
       "dark": true,
       "seed": "a twisty little stone passage, exactly like the others",
@@ -210,7 +260,9 @@
       }
     },
     {
-      "id": "r-dead-end-1", "slug": "dead-end-1", "title": "Dead End",
+      "id": "r-dead-end-1",
+      "slug": "dead-end-1",
+      "title": "Dead End",
       "zork_name": "Dead End",
       "dark": true,
       "seed": "a dead end in the twisty maze, rubble underfoot",
@@ -220,7 +272,9 @@
       }
     },
     {
-      "id": "r-dead-end-2", "slug": "dead-end-2", "title": "Dead End",
+      "id": "r-dead-end-2",
+      "slug": "dead-end-2",
+      "title": "Dead End",
       "zork_name": "Dead End",
       "dark": true,
       "seed": "a dead end in the twisty maze, rubble underfoot",
@@ -230,7 +284,9 @@
       }
     },
     {
-      "id": "r-dead-end-3", "slug": "dead-end-3", "title": "Dead End",
+      "id": "r-dead-end-3",
+      "slug": "dead-end-3",
+      "title": "Dead End",
       "zork_name": "Dead End",
       "dark": true,
       "seed": "a dead end in the twisty maze, rubble underfoot",
@@ -240,7 +296,9 @@
       }
     },
     {
-      "id": "r-dead-end-4", "slug": "dead-end-4", "title": "Dead End",
+      "id": "r-dead-end-4",
+      "slug": "dead-end-4",
+      "title": "Dead End",
       "zork_name": "Dead End",
       "dark": true,
       "seed": "a dead end in the twisty maze, rubble underfoot",
@@ -250,47 +308,94 @@
       }
     },
     {
-      "id": "r-grating-room", "slug": "grating-room", "title": "Grating Room",
+      "id": "r-grating-room",
+      "slug": "grating-room",
+      "title": "Grating Room",
       "zork_name": "Grating Room",
       "dark": true,
       "seed": "a small stone room beneath an iron grating, a hint of weather beyond it",
       "description": "This is a small room near the maze. There are twisty passages in the immediate vicinity. Set into the ceiling is an iron grating, beyond which is a suggestion of the world that has weather.",
       "exits": {
         "southwest": "r-maze-11",
-        "up": {"to": "r-grating-clearing",
-                "if": [{"flag": "GRATING-OPEN"}],
-                "blocked_text": "The grating is closed."}
+        "up": {
+          "to": "r-grating-clearing",
+          "if": [
+            {
+              "flag": "GRATING-OPEN"
+            }
+          ],
+          "blocked_text": "The grating is closed."
+        }
       }
     },
     {
-      "id": "r-cyclops-room", "slug": "cyclops-room", "title": "Cyclops Room",
+      "id": "r-cyclops-room",
+      "slug": "cyclops-room",
+      "title": "Cyclops Room",
       "zork_name": "Cyclops Room",
       "dark": true,
       "seed": "a broad cave room, a stone staircase leading up, one wall cracked as if something considered leaving through it",
       "description": "This room has an exit on the northwest, and a staircase leading up. The east wall bears old cracks, as though something very large once thought hard about leaving through it.",
       "exits": {
         "northwest": "r-maze-15",
-        "east": {"to": "r-strange-passage",
-                  "if": [{"flag": "MAGIC-FLAG"}],
-                  "blocked_text": "The east wall is solid rock."},
-        "up": {"to": "r-treasure-room",
-                "if": [{"flag": "CYCLOPS-GONE"}],
-                "blocked_text": "The cyclops doesn't look like he'll let you past."}
+        "east": {
+          "to": "r-strange-passage",
+          "if": [
+            {
+              "flag": "MAGIC-FLAG"
+            }
+          ],
+          "blocked_text": "The east wall is solid rock."
+        },
+        "up": {
+          "to": "r-treasure-room",
+          "if": [
+            {
+              "flag": "CYCLOPS-GONE"
+            }
+          ],
+          "blocked_text": "The cyclops doesn't look like he'll let you past."
+        }
       },
       "rules": [
-        {"on": "odysseus",
-         "if": [{"present": "t-cyclops"}, {"flag": "CYCLOPS-GONE", "eq": false}],
-         "do": [
-           {"kind": "narrate",
-            "text": "The cyclops, hearing the name of his father's deadly nemesis, flees the room by knocking down the wall on the east of the room."},
-           {"kind": "set_flag", "name": "MAGIC-FLAG", "value": true},
-           {"kind": "set_flag", "name": "CYCLOPS-GONE", "value": true},
-           {"kind": "destroy_object", "object_id": "t-cyclops"}
-         ]}
+        {
+          "on": "odysseus",
+          "if": [
+            {
+              "present": "t-cyclops"
+            },
+            {
+              "flag": "CYCLOPS-GONE",
+              "eq": false
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "text": "The cyclops, hearing the name of his father's deadly nemesis, flees the room by knocking down the wall on the east of the room."
+            },
+            {
+              "kind": "set_flag",
+              "name": "MAGIC-FLAG",
+              "value": true
+            },
+            {
+              "kind": "set_flag",
+              "name": "CYCLOPS-GONE",
+              "value": true
+            },
+            {
+              "kind": "destroy_object",
+              "object_id": "t-cyclops"
+            }
+          ]
+        }
       ]
     },
     {
-      "id": "r-strange-passage", "slug": "strange-passage", "title": "Strange Passage",
+      "id": "r-strange-passage",
+      "slug": "strange-passage",
+      "title": "Strange Passage",
       "zork_name": "Strange Passage",
       "dark": true,
       "seed": "a long rough passage ending at an old wooden door with a very large hole in it",
@@ -302,7 +407,9 @@
       }
     },
     {
-      "id": "r-treasure-room", "slug": "treasure-room", "title": "Treasure Room",
+      "id": "r-treasure-room",
+      "slug": "treasure-room",
+      "title": "Treasure Room",
       "zork_name": "Treasure Room",
       "dark": true,
       "bonus": 25,
@@ -312,30 +419,55 @@
         "down": "r-cyclops-room"
       },
       "rules": [
-        {"on": "enter",
-         "if": [{"prop": "combat", "of": "t-thief"}],
-         "stop": false,
-         "do": [
-           {"kind": "stop_daemon", "name": "thief"},
-           {"kind": "move_object", "object_id": "t-thief",
-            "dest_id": "r-treasure-room"},
-           {"kind": "narrate",
-            "text": "The thief is here, of course; this is his den, and he its jealous keeper. He rises from among the bags with his stiletto out, eyes already doing arithmetic on everything you carry."}
-         ]}
+        {
+          "on": "enter",
+          "if": [
+            {
+              "prop": "combat",
+              "of": "t-thief"
+            }
+          ],
+          "stop": false,
+          "do": [
+            {
+              "kind": "stop_daemon",
+              "name": "thief"
+            },
+            {
+              "kind": "move_object",
+              "object_id": "t-thief",
+              "dest_id": "r-treasure-room"
+            },
+            {
+              "kind": "narrate",
+              "text": "The thief is here, of course; this is his den, and he its jealous keeper. He rises from among the bags with his stiletto out, eyes already doing arithmetic on everything you carry."
+            }
+          ]
+        }
       ]
     }
   ],
   "toons": [
     {
-      "id": "t-cyclops", "name": "cyclops", "zork_name": "cyclops",
-      "slot": 120, "room": "r-cyclops-room",
-      "aliases": ["monster", "one-eyed giant"],
+      "id": "t-cyclops",
+      "name": "cyclops",
+      "zork_name": "cyclops",
+      "slot": 120,
+      "room": "r-cyclops-room",
+      "aliases": [
+        "monster",
+        "one-eyed giant"
+      ],
       "appearance_seed": "a hungry cyclops the size of a doorway problem, one large expectant eye",
       "seed": "a cyclops of imperial appetite, guarding a staircase out of professional habit",
       "mood": "hungry",
       "presence_text": "A cyclops, who looks prepared to eat horses (much less mere adventurers), blocks the staircase leading upward.",
       "properties": {
-        "verbs": ["attack", "examine", "give"],
+        "verbs": [
+          "attack",
+          "examine",
+          "give"
+        ],
         "declines_text": "The cyclops is not so stupid as to eat THAT!",
         "combat": {
           "unkillable": true,
@@ -343,49 +475,124 @@
         }
       },
       "rules": [
-        {"on": "give", "as": "iobj",
-         "if": [{"dobj": "o-lunch"}, {"flag": "CYCLOPS-FED", "eq": false}],
-         "do": [
-           {"kind": "destroy_object", "object_id": "o-lunch"},
-           {"kind": "set_flag", "name": "CYCLOPS-FED", "value": true},
-           {"kind": "narrate",
-            "text": "The cyclops says \"Mmm Mmm. I love hot peppers! But oh, could I use a drink. Perhaps I could drink the blood of that thing.\" From the gleam in his eye, it could be surmised that you are \"that thing\"."}
-         ]},
-        {"on": "give", "as": "iobj",
-         "if": [{"dobj": "o-water"}, {"flag": "CYCLOPS-FED"},
-                 {"flag": "CYCLOPS-GONE", "eq": false}],
-         "do": [
-           {"kind": "destroy_object", "object_id": "o-water"},
-           {"kind": "set_flag", "name": "CYCLOPS-GONE", "value": true},
-           {"kind": "set_property", "target_id": "t-cyclops", "key": "mood",
-            "value": "asleep"},
-           {"kind": "narrate",
-            "text": "The cyclops takes the water, checks it against the light, and drinks it in one go. A moment later he lets out a yawn that nearly blows you over, and then falls fast asleep (what did you put in that drink, anyway?)."}
-         ]},
-        {"on": "give", "as": "iobj",
-         "if": [{"dobj": "o-water"}],
-         "do": [
-           {"kind": "narrate",
-            "text": "The cyclops apparently is not thirsty and refuses your generous offer."}
-         ]},
-        {"on": "give", "as": "iobj",
-         "if": [{"dobj": "o-garlic"}],
-         "do": [
-           {"kind": "narrate",
-            "text": "The cyclops may be hungry, but there is a limit."}
-         ]}
+        {
+          "on": "give",
+          "as": "iobj",
+          "if": [
+            {
+              "dobj": "o-lunch"
+            },
+            {
+              "flag": "CYCLOPS-FED",
+              "eq": false
+            }
+          ],
+          "do": [
+            {
+              "kind": "destroy_object",
+              "object_id": "o-lunch"
+            },
+            {
+              "kind": "set_flag",
+              "name": "CYCLOPS-FED",
+              "value": true
+            },
+            {
+              "kind": "narrate",
+              "text": "The cyclops says \"Mmm Mmm. I love hot peppers! But oh, could I use a drink. Perhaps I could drink the blood of that thing.\" From the gleam in his eye, it could be surmised that you are \"that thing\"."
+            }
+          ]
+        },
+        {
+          "on": "give",
+          "as": "iobj",
+          "if": [
+            {
+              "dobj": "o-water"
+            },
+            {
+              "flag": "CYCLOPS-FED"
+            },
+            {
+              "flag": "CYCLOPS-GONE",
+              "eq": false
+            }
+          ],
+          "do": [
+            {
+              "kind": "destroy_object",
+              "object_id": "o-water"
+            },
+            {
+              "kind": "set_flag",
+              "name": "CYCLOPS-GONE",
+              "value": true
+            },
+            {
+              "kind": "set_property",
+              "target_id": "t-cyclops",
+              "key": "mood",
+              "value": "asleep"
+            },
+            {
+              "kind": "narrate",
+              "text": "The cyclops takes the water, checks it against the light, and drinks it in one go. A moment later he lets out a yawn that nearly blows you over, and then falls fast asleep (what did you put in that drink, anyway?)."
+            }
+          ]
+        },
+        {
+          "on": "give",
+          "as": "iobj",
+          "if": [
+            {
+              "dobj": "o-water"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "text": "The cyclops apparently is not thirsty and refuses your generous offer."
+            }
+          ]
+        },
+        {
+          "on": "give",
+          "as": "iobj",
+          "if": [
+            {
+              "dobj": "o-garlic"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "text": "The cyclops may be hungry, but there is a limit."
+            }
+          ]
+        }
       ]
     },
     {
-      "id": "t-thief", "name": "thief", "zork_name": "thief",
-      "slot": 121, "room": "r-round-room",
-      "aliases": ["robber", "seedy gentleman", "suspicious individual"],
+      "id": "t-thief",
+      "name": "thief",
+      "zork_name": "thief",
+      "slot": 121,
+      "room": "r-round-room",
+      "aliases": [
+        "robber",
+        "seedy gentleman",
+        "suspicious individual"
+      ],
       "appearance_seed": "a lean gentleman of the shadows with a large bag and a vicious stiletto, courteous and larcenous",
       "seed": "a gentleman thief of the old school: light fingers, good manners, no scruples worth naming",
       "mood": "appraising",
       "presence_text": "There is a suspicious-looking individual, holding a large bag, leaning against one wall. He is armed with a vicious stiletto.",
       "properties": {
-        "verbs": ["attack", "examine", "give"],
+        "verbs": [
+          "attack",
+          "examine",
+          "give"
+        ],
         "declines_text": "The thief examines your offer with a professional eye and hands it back; he prefers to acquire things on his own terms.",
         "combat": {
           "strength": 5,
@@ -408,162 +615,408 @@
           ],
           "death_text": "The thief bows with the last of his strength, as though acknowledging a colleague, and dies. His collection meets the floor with the clatter of a career ending.",
           "on_death": [
-            {"kind": "narrate",
-             "text": "As the thief dies, the power of his magic decreases, and the treasures of his den lie plainly where they fell."}
+            {
+              "kind": "narrate",
+              "text": "As the thief dies, the power of his magic decreases, and the treasures of his den lie plainly where they fell."
+            }
           ]
         }
       },
       "rules": [
-        {"on": "give", "as": "iobj",
-         "if": [{"dobj": "o-egg"}],
-         "do": [
-           {"kind": "move_object", "object_id": "o-egg", "dest_id": "t-thief"},
-           {"kind": "set_property", "target_id": "o-egg", "key": "state",
-            "value": "open"},
-           {"kind": "narrate",
-            "text": "The thief is taken aback by your unexpected generosity, but accepts the egg and stops to admire its beauty. His nimble fingers find the clasp your blunter ones could not, and the egg opens on its hinge without a scratch."}
-         ]}
+        {
+          "on": "give",
+          "as": "iobj",
+          "if": [
+            {
+              "dobj": "o-egg"
+            }
+          ],
+          "do": [
+            {
+              "kind": "move_object",
+              "object_id": "o-egg",
+              "dest_id": "t-thief"
+            },
+            {
+              "kind": "set_property",
+              "target_id": "o-egg",
+              "key": "state",
+              "value": "open"
+            },
+            {
+              "kind": "narrate",
+              "text": "The thief is taken aback by your unexpected generosity, but accepts the egg and stops to admire its beauty. His nimble fingers find the clasp your blunter ones could not, and the egg opens on its hinge without a scratch."
+            }
+          ]
+        }
       ]
     }
   ],
   "things": [
     {
-      "id": "o-skeleton-key", "name": "skeleton key", "zork_name": "skeleton key",
-      "location": {"room": "r-maze-5"},
-      "aliases": ["key"],
+      "id": "o-skeleton-key",
+      "name": "skeleton key",
+      "zork_name": "skeleton key",
+      "location": {
+        "room": "r-maze-5"
+      },
+      "aliases": [
+        "key"
+      ],
       "seed": "a skeleton key, named for its company as much as its wards",
-      "properties": {"size": 10, "tool": true}
+      "properties": {
+        "size": 10,
+        "tool": true
+      }
     },
     {
-      "id": "o-coins", "name": "leather bag of coins", "zork_name": "leather bag of coins",
-      "location": {"room": "r-maze-5"},
-      "aliases": ["coins", "bag of coins", "old bag"],
+      "id": "o-coins",
+      "name": "leather bag of coins",
+      "zork_name": "leather bag of coins",
+      "location": {
+        "room": "r-maze-5"
+      },
+      "aliases": [
+        "coins",
+        "bag of coins",
+        "old bag"
+      ],
       "seed": "an old leather bag, heavy with zorkmid coins that outlived their empire",
-      "treasure": {"take": 10, "case": 5},
-      "properties": {"size": 15}
+      "treasure": {
+        "take": 10,
+        "case": 5
+      },
+      "properties": {
+        "size": 15
+      }
     },
     {
-      "id": "o-skeleton", "name": "skeleton", "zork_name": "skeleton",
-      "location": {"room": "r-maze-5"},
-      "aliases": ["bones", "remains"],
+      "id": "o-skeleton",
+      "name": "skeleton",
+      "zork_name": "skeleton",
+      "location": {
+        "room": "r-maze-5"
+      },
+      "aliases": [
+        "bones",
+        "remains"
+      ],
       "seed": "the skeleton of a luckless adventurer, picked over by time and colleagues",
       "fixture": true,
-      "verbs": ["move"],
+      "verbs": [
+        "move"
+      ],
       "properties": {
         "examined_text": "The bones belonged to an adventurer with your general itinerary and, presumably, one fewer lucky day. Their equipment has been picked over by earlier arrivals; what remains is best left in peace."
       },
       "rules": [
-        {"on": "take",
-         "do": [{"kind": "narrate",
-                 "text": "A ghost appears in the room and is appalled at your desecration of the remains of a fellow adventurer. He glowers, weighs a curse on your valuables, and thinks better of spending it on you. The ghost leaves, muttering obscenities."}]},
-        {"on": "move",
-         "do": [{"kind": "narrate",
-                 "text": "A ghost appears in the room and is appalled at your desecration of the remains of a fellow adventurer. He glowers, weighs a curse on your valuables, and thinks better of spending it on you. The ghost leaves, muttering obscenities."}]}
+        {
+          "on": "take",
+          "do": [
+            {
+              "kind": "narrate",
+              "text": "A ghost appears in the room and is appalled at your desecration of the remains of a fellow adventurer. He glowers, weighs a curse on your valuables, and thinks better of spending it on you. The ghost leaves, muttering obscenities."
+            }
+          ]
+        },
+        {
+          "on": "move",
+          "do": [
+            {
+              "kind": "narrate",
+              "text": "A ghost appears in the room and is appalled at your desecration of the remains of a fellow adventurer. He glowers, weighs a curse on your valuables, and thinks better of spending it on you. The ghost leaves, muttering obscenities."
+            }
+          ]
+        }
       ]
     },
     {
-      "id": "o-rusty-knife", "name": "rusty knife", "zork_name": "rusty knife",
-      "location": {"room": "r-maze-5"},
-      "aliases": ["rusty blade"],
+      "id": "o-rusty-knife",
+      "name": "rusty knife",
+      "zork_name": "rusty knife",
+      "location": {
+        "room": "r-maze-5"
+      },
+      "aliases": [
+        "rusty blade"
+      ],
       "seed": "a rusty knife with an edge of bad history, humming faintly wrong",
-      "properties": {"size": 20, "weapon": true},
+      "properties": {
+        "size": 20,
+        "weapon": true,
+        "pointy": true
+      },
       "rules": [
-        {"on": "attack", "as": "iobj",
-         "do": [
-           {"kind": "narrate",
-            "text": "As the rusty knife approaches its victim, your mind is submerged by an overmastering will. Slowly, your hand turns, until the rusty blade is an inch from your neck. It would appear that the knife has made up your mind for you."},
-           {"kind": "kill_actor"}
-         ]}
+        {
+          "on": "attack",
+          "as": "iobj",
+          "do": [
+            {
+              "kind": "narrate",
+              "text": "As the rusty knife approaches its victim, your mind is submerged by an overmastering will. Slowly, your hand turns, until the rusty blade is an inch from your neck. It would appear that the knife has made up your mind for you."
+            },
+            {
+              "kind": "kill_actor"
+            }
+          ]
+        }
       ]
     },
     {
-      "id": "o-burned-lantern", "name": "burned-out lantern", "zork_name": "burned-out lantern",
-      "location": {"room": "r-maze-5"},
-      "aliases": ["useless lantern", "dead lamp"],
+      "id": "o-burned-lantern",
+      "name": "burned-out lantern",
+      "zork_name": "burned-out lantern",
+      "location": {
+        "room": "r-maze-5"
+      },
+      "aliases": [
+        "useless lantern",
+        "dead lamp"
+      ],
       "seed": "a rusty lantern burned down to a souvenir of someone else's planning",
-      "properties": {"size": 20}
+      "properties": {
+        "size": 20
+      }
     },
     {
-      "id": "o-grating-below", "name": "grating", "zork_name": "grating",
-      "location": {"room": "r-grating-room"},
-      "aliases": ["grate"],
+      "id": "o-grating-below",
+      "name": "grating",
+      "zork_name": "grating",
+      "location": {
+        "room": "r-grating-room"
+      },
+      "aliases": [
+        "grate"
+      ],
       "seed": "the underside of an iron grating, its lock within reach of this side only",
       "fixture": true,
-      "verbs": ["open", "close", "unlock", "lock"],
+      "verbs": [
+        "open",
+        "close",
+        "unlock",
+        "lock"
+      ],
       "rules": [
-        {"on": "unlock",
-         "if": [{"iobj": "o-skeleton-key"}],
-         "do": [
-           {"kind": "set_flag", "name": "GRATING-UNLOCKED", "value": true},
-           {"kind": "narrate", "text": "The grate is unlocked."}
-         ]},
-        {"on": "unlock",
-         "do": [{"kind": "narrate", "to": "@actor",
-                 "text": "It takes a key, and a skeleton's key at that."}]},
-        {"on": "lock",
-         "if": [{"flag": "GRATING-OPEN", "eq": false}],
-         "do": [
-           {"kind": "set_flag", "name": "GRATING-UNLOCKED", "value": false},
-           {"kind": "narrate", "text": "The grate is locked."}
-         ]},
-        {"on": "lock",
-         "do": [{"kind": "narrate", "to": "@actor",
-                 "text": "You'd have to close it first."}]},
-        {"on": "open",
-         "if": [{"flag": "GRATING-UNLOCKED", "eq": false}],
-         "do": [{"kind": "narrate", "to": "@actor",
-                 "text": "The grating is locked."}]},
-        {"on": "open",
-         "if": [{"flag": "GRATING-OPEN"}],
-         "do": [{"kind": "narrate", "to": "@actor",
-                 "text": "The grating is already open."}]},
-        {"on": "open",
-         "if": [{"flag": "LEAVES-MOVED", "eq": false}],
-         "do": [
-           {"kind": "set_flag", "name": "GRATING-OPEN", "value": true},
-           {"kind": "set_flag", "name": "LEAVES-MOVED", "value": true},
-           {"kind": "move_object", "object_id": "o-leaves",
-            "dest_id": "r-grating-room"},
-           {"kind": "set_property", "target_id": "r-grating-room",
-            "key": "dark", "value": false},
-           {"kind": "narrate",
-            "text": "The grating opens to reveal trees above you. A pile of leaves falls onto your head and to the ground."}
-         ]},
-        {"on": "open",
-         "do": [
-           {"kind": "set_flag", "name": "GRATING-OPEN", "value": true},
-           {"kind": "set_property", "target_id": "r-grating-room",
-            "key": "dark", "value": false},
-           {"kind": "narrate",
-            "text": "The grating opens to reveal trees above you."}
-         ]},
-        {"on": "close",
-         "if": [{"flag": "GRATING-OPEN"}],
-         "do": [
-           {"kind": "set_flag", "name": "GRATING-OPEN", "value": false},
-           {"kind": "set_property", "target_id": "r-grating-room",
-            "key": "dark", "value": true},
-           {"kind": "narrate", "text": "The grating is closed."}
-         ]},
-        {"on": "close",
-         "do": [{"kind": "narrate", "to": "@actor",
-                 "text": "It is already closed."}]}
+        {
+          "on": "unlock",
+          "if": [
+            {
+              "iobj": "o-skeleton-key"
+            }
+          ],
+          "do": [
+            {
+              "kind": "set_flag",
+              "name": "GRATING-UNLOCKED",
+              "value": true
+            },
+            {
+              "kind": "narrate",
+              "text": "The grate is unlocked."
+            }
+          ]
+        },
+        {
+          "on": "unlock",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "It takes a key, and a skeleton's key at that."
+            }
+          ]
+        },
+        {
+          "on": "lock",
+          "if": [
+            {
+              "flag": "GRATING-OPEN",
+              "eq": false
+            }
+          ],
+          "do": [
+            {
+              "kind": "set_flag",
+              "name": "GRATING-UNLOCKED",
+              "value": false
+            },
+            {
+              "kind": "narrate",
+              "text": "The grate is locked."
+            }
+          ]
+        },
+        {
+          "on": "lock",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "You'd have to close it first."
+            }
+          ]
+        },
+        {
+          "on": "open",
+          "if": [
+            {
+              "flag": "GRATING-UNLOCKED",
+              "eq": false
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "The grating is locked."
+            }
+          ]
+        },
+        {
+          "on": "open",
+          "if": [
+            {
+              "flag": "GRATING-OPEN"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "The grating is already open."
+            }
+          ]
+        },
+        {
+          "on": "open",
+          "if": [
+            {
+              "flag": "LEAVES-MOVED",
+              "eq": false
+            }
+          ],
+          "do": [
+            {
+              "kind": "set_flag",
+              "name": "GRATING-OPEN",
+              "value": true
+            },
+            {
+              "kind": "set_flag",
+              "name": "LEAVES-MOVED",
+              "value": true
+            },
+            {
+              "kind": "move_object",
+              "object_id": "o-leaves",
+              "dest_id": "r-grating-room"
+            },
+            {
+              "kind": "set_property",
+              "target_id": "r-grating-room",
+              "key": "dark",
+              "value": false
+            },
+            {
+              "kind": "narrate",
+              "text": "The grating opens to reveal trees above you. A pile of leaves falls onto your head and to the ground."
+            }
+          ]
+        },
+        {
+          "on": "open",
+          "do": [
+            {
+              "kind": "set_flag",
+              "name": "GRATING-OPEN",
+              "value": true
+            },
+            {
+              "kind": "set_property",
+              "target_id": "r-grating-room",
+              "key": "dark",
+              "value": false
+            },
+            {
+              "kind": "narrate",
+              "text": "The grating opens to reveal trees above you."
+            }
+          ]
+        },
+        {
+          "on": "close",
+          "if": [
+            {
+              "flag": "GRATING-OPEN"
+            }
+          ],
+          "do": [
+            {
+              "kind": "set_flag",
+              "name": "GRATING-OPEN",
+              "value": false
+            },
+            {
+              "kind": "set_property",
+              "target_id": "r-grating-room",
+              "key": "dark",
+              "value": true
+            },
+            {
+              "kind": "narrate",
+              "text": "The grating is closed."
+            }
+          ]
+        },
+        {
+          "on": "close",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "It is already closed."
+            }
+          ]
+        }
       ]
     },
     {
-      "id": "o-chalice", "name": "silver chalice", "zork_name": "chalice",
-      "location": {"room": "r-treasure-room"},
-      "aliases": ["chalice", "cup", "silver cup"],
+      "id": "o-chalice",
+      "name": "silver chalice",
+      "zork_name": "chalice",
+      "location": {
+        "room": "r-treasure-room"
+      },
+      "aliases": [
+        "chalice",
+        "cup",
+        "silver cup"
+      ],
       "seed": "a silver chalice, intricately engraved, the pride of somebody's altar once",
-      "treasure": {"take": 10, "case": 5},
-      "properties": {"size": 10}
+      "treasure": {
+        "take": 10,
+        "case": 5
+      },
+      "properties": {
+        "size": 10
+      }
     },
     {
-      "id": "o-stiletto", "name": "stiletto", "zork_name": "stiletto",
-      "location": {"toon": "t-thief"},
-      "aliases": ["vicious stiletto"],
+      "id": "o-stiletto",
+      "name": "stiletto",
+      "zork_name": "stiletto",
+      "location": {
+        "toon": "t-thief"
+      },
+      "aliases": [
+        "vicious stiletto"
+      ],
       "seed": "a vicious stiletto with a needle's point and a professional's balance",
-      "properties": {"size": 10, "weapon": true}
+      "properties": {
+        "size": 10,
+        "weapon": true,
+        "pointy": true
+      }
     }
   ]
 }

@@ -1,6 +1,6 @@
 {
   "comment": "The canonical walkthrough (criterion 1), segmented. Grows region by region; 'complete' flips true when the endgame segment lands, which arms the final 350/win assertions in tests/test_zork_walkthrough.py. Every command must parse deterministically (the runner's LLM spy fails the suite otherwise).",
-  "complete": false,
+  "complete": true,
   "segments": [
     {
       "name": "opening-egg",
@@ -2061,6 +2061,371 @@
               "sapphire-encrusted bracelet",
               "ivory torch"
             ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "down-to-the-river",
+      "commands": [
+        {
+          "cmd": "turn on lamp",
+          "expect": {
+            "narrate_contains": "now on"
+          }
+        },
+        {
+          "cmd": "down",
+          "expect": {
+            "room": "r-cellar"
+          }
+        },
+        {
+          "cmd": "north",
+          "expect": {
+            "room": "r-troll-room"
+          }
+        },
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-ew-passage"
+          }
+        },
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-round-room"
+          }
+        },
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-loud-room"
+          }
+        },
+        {
+          "cmd": "up",
+          "expect": {
+            "room": "r-deep-canyon"
+          }
+        },
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-dam"
+          }
+        },
+        {
+          "cmd": "down",
+          "expect": {
+            "room": "r-dam-base"
+          }
+        },
+        {
+          "cmd": "inflate boat with pump",
+          "expect": {
+            "narrate_contains": "seaworthy"
+          }
+        },
+        {
+          "cmd": "drop pump"
+        },
+        {
+          "cmd": "put sceptre in boat"
+        },
+        {
+          "cmd": "board boat",
+          "expect": {
+            "narrate_contains": "professional calm"
+          }
+        },
+        {
+          "cmd": "launch",
+          "expect": {
+            "room": "r-river-1"
+          }
+        },
+        {
+          "cmd": "look"
+        },
+        {
+          "cmd": "look"
+        },
+        {
+          "cmd": "look",
+          "expect": {
+            "room": "r-river-2"
+          }
+        },
+        {
+          "cmd": "look"
+        },
+        {
+          "cmd": "look"
+        },
+        {
+          "cmd": "look"
+        },
+        {
+          "cmd": "look",
+          "expect": {
+            "room": "r-river-3"
+          }
+        },
+        {
+          "cmd": "look"
+        },
+        {
+          "cmd": "look"
+        },
+        {
+          "cmd": "look",
+          "expect": {
+            "room": "r-river-4"
+          }
+        },
+        {
+          "cmd": "take buoy",
+          "expect": {
+            "carrying": [
+              "red buoy"
+            ]
+          }
+        },
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-sandy-beach"
+          }
+        }
+      ]
+    },
+    {
+      "name": "scarab-and-emerald",
+      "commands": [
+        {
+          "cmd": "disembark",
+          "expect": {
+            "narrate_contains": "solid ground"
+          }
+        },
+        {
+          "cmd": "take sceptre",
+          "expect": {
+            "carrying": [
+              "sceptre"
+            ]
+          }
+        },
+        {
+          "cmd": "take shovel",
+          "expect": {
+            "carrying": [
+              "shovel"
+            ]
+          }
+        },
+        {
+          "cmd": "open buoy",
+          "expect": {
+            "narrate_contains": "emerald"
+          }
+        },
+        {
+          "cmd": "take emerald",
+          "expect": {
+            "score": 304,
+            "carrying": [
+              "large emerald"
+            ]
+          }
+        },
+        {
+          "cmd": "drop buoy"
+        },
+        {
+          "cmd": "northeast",
+          "expect": {
+            "room": "r-sandy-cave"
+          }
+        },
+        {
+          "cmd": "dig sand with shovel",
+          "expect": {
+            "narrate_contains": "digging a hole"
+          }
+        },
+        {
+          "cmd": "dig sand with shovel",
+          "expect": {
+            "narrate_contains": "getting deeper"
+          }
+        },
+        {
+          "cmd": "dig sand with shovel",
+          "expect": {
+            "narrate_contains": "scarab"
+          }
+        },
+        {
+          "cmd": "take scarab",
+          "expect": {
+            "score": 309,
+            "carrying": [
+              "beautiful jeweled scarab"
+            ]
+          }
+        },
+        {
+          "cmd": "drop shovel"
+        },
+        {
+          "cmd": "southwest",
+          "expect": {
+            "room": "r-sandy-beach"
+          }
+        },
+        {
+          "cmd": "south",
+          "expect": {
+            "room": "r-shore"
+          }
+        },
+        {
+          "cmd": "south",
+          "expect": {
+            "room": "r-aragain-falls"
+          }
+        }
+      ]
+    },
+    {
+      "name": "the-rainbow-and-the-pot",
+      "commands": [
+        {
+          "cmd": "wave sceptre",
+          "expect": {
+            "flag": {
+              "RAINBOW-SOLID": true
+            },
+            "narrate_contains": "become solid"
+          }
+        },
+        {
+          "cmd": "west",
+          "expect": {
+            "room": "r-on-rainbow"
+          }
+        },
+        {
+          "cmd": "west",
+          "expect": {
+            "room": "r-end-of-rainbow"
+          }
+        },
+        {
+          "cmd": "take pot of gold",
+          "expect": {
+            "score": 319,
+            "carrying": [
+              "pot of gold"
+            ]
+          }
+        },
+        {
+          "cmd": "southwest",
+          "expect": {
+            "room": "r-canyon-bottom"
+          }
+        },
+        {
+          "cmd": "up",
+          "expect": {
+            "room": "r-cliff-middle"
+          }
+        },
+        {
+          "cmd": "up",
+          "expect": {
+            "room": "r-canyon-view"
+          }
+        },
+        {
+          "cmd": "northwest",
+          "expect": {
+            "room": "r-clearing"
+          }
+        },
+        {
+          "cmd": "west",
+          "expect": {
+            "room": "r-behind-house"
+          }
+        },
+        {
+          "cmd": "in",
+          "expect": {
+            "room": "r-kitchen"
+          }
+        },
+        {
+          "cmd": "west",
+          "expect": {
+            "room": "r-living-room"
+          }
+        },
+        {
+          "cmd": "put emerald and scarab and pot of gold and sceptre in case",
+          "expect": {
+            "score": 350,
+            "flag": {
+              "WON-ENABLED": true
+            },
+            "in_case": [
+              "large emerald",
+              "beautiful jeweled scarab",
+              "pot of gold",
+              "sceptre"
+            ],
+            "narrate_contains": "ancient parchment map"
+          }
+        }
+      ]
+    },
+    {
+      "name": "the-stone-barrow",
+      "commands": [
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-kitchen"
+          }
+        },
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-behind-house"
+          }
+        },
+        {
+          "cmd": "south",
+          "expect": {
+            "room": "r-south-of-house"
+          }
+        },
+        {
+          "cmd": "west",
+          "expect": {
+            "room": "r-west-of-house"
+          }
+        },
+        {
+          "cmd": "southwest",
+          "expect": {
+            "room": "r-stone-barrow",
+            "score": 350,
+            "narrate_contains": "well done"
           }
         }
       ]

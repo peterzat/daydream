@@ -346,7 +346,7 @@
       "seed": "an ornamented sceptre tapering to a sharp point, of Egyptian workmanship",
       "treasure": {"take": 4, "case": 6},
       "verbs": ["wave"],
-      "properties": {"size": 3},
+      "properties": {"size": 3, "pointy": true},
       "rules": [
         {"on": "wave",
          "if": [{"carried": "@self"},
@@ -354,6 +354,8 @@
                  {"flag": "RAINBOW-SOLID", "eq": false}],
          "do": [
            {"kind": "set_flag", "name": "RAINBOW-SOLID", "value": true},
+           {"kind": "move_object", "object_id": "o-pot-of-gold",
+            "dest_id": "r-end-of-rainbow"},
            {"kind": "narrate",
             "text": "Suddenly, the rainbow appears to become solid and, I venture, walkable (I think the giveaway was the stairs and bannister)."}
          ]},
@@ -363,6 +365,8 @@
                  {"flag": "RAINBOW-SOLID", "eq": false}],
          "do": [
            {"kind": "set_flag", "name": "RAINBOW-SOLID", "value": true},
+           {"kind": "move_object", "object_id": "o-pot-of-gold",
+            "dest_id": "r-end-of-rainbow"},
            {"kind": "narrate",
             "text": "Suddenly, the rainbow appears to become solid and, I venture, walkable (I think the giveaway was the stairs and bannister)."}
          ]},

@@ -97,7 +97,19 @@
     "r-dead-end-5": "Dead End",
     "r-timber-room": "Timber Room",
     "r-lower-shaft": "Drafty Room",
-    "r-machine-room": "Machine Room"
+    "r-machine-room": "Machine Room",
+    "r-river-1": "Frigid River",
+    "r-river-2": "Frigid River",
+    "r-river-3": "Frigid River",
+    "r-river-4": "Frigid River",
+    "r-river-5": "Frigid River",
+    "r-white-cliffs-north": "White Cliffs Beach",
+    "r-white-cliffs-south": "White Cliffs Beach",
+    "r-shore": "Shore",
+    "r-sandy-beach": "Sandy Beach",
+    "r-sandy-cave": "Sandy Cave",
+    "r-aragain-falls": "Aragain Falls",
+    "r-on-rainbow": "On the Rainbow"
   },
   "toons": {
     "t-troll": "troll",
@@ -176,6 +188,14 @@
     "o-timbers": "broken timber",
     "o-machine": "machine",
     "o-switch": "switch",
-    "o-diamond": "huge diamond"
+    "o-diamond": "huge diamond",
+    "o-boat": "magic boat",
+    "o-boat-label": "tan label",
+    "o-buoy": "red buoy",
+    "o-emerald": "large emerald",
+    "o-shovel": "shovel",
+    "o-sand": "sand",
+    "o-scarab": "beautiful jeweled scarab",
+    "o-pot-of-gold": "pot of gold"
   }
 }

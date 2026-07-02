@@ -2,7 +2,9 @@
   "comment": "Region (b) part 1: the cellar descent, the troll gate, and the art wing. The trap door bars on EVERY open descent until the cyclops opens his wall (MAGIC-FLAG), exactly as the original has it; TRAP-TOUCHED still records the first slam. The troll's death opens both his exits (TROLL-DEAD).",
   "rooms": [
     {
-      "id": "r-cellar", "slug": "cellar", "title": "Cellar",
+      "id": "r-cellar",
+      "slug": "cellar",
+      "title": "Cellar",
       "zork_name": "Cellar",
       "dark": true,
       "bonus": 25,
@@ -11,39 +13,85 @@
       "exits": {
         "north": "r-troll-room",
         "south": "r-east-of-chasm",
-        "up": {"to": "r-living-room", "if": [{"flag": "TRAP-DOOR-OPEN"}],
-                "blocked_text": "The trap door is closed and, by the sound of it, barred."},
-        "west": {"text": "You try to ascend the ramp, but it is impossible, and you slide back down."}
+        "up": {
+          "to": "r-living-room",
+          "if": [
+            {
+              "flag": "TRAP-DOOR-OPEN"
+            }
+          ],
+          "blocked_text": "The trap door is closed and, by the sound of it, barred."
+        },
+        "west": {
+          "text": "You try to ascend the ramp, but it is impossible, and you slide back down."
+        }
       },
       "rules": [
-        {"on": "enter",
-         "if": [{"flag": "MAGIC-FLAG", "eq": false},
-                 {"flag": "TRAP-DOOR-OPEN"}],
-         "stop": false,
-         "do": [
-           {"kind": "set_flag", "name": "TRAP-TOUCHED", "value": true},
-           {"kind": "set_flag", "name": "TRAP-DOOR-OPEN", "value": false},
-           {"kind": "narrate",
-            "text": "The trap door crashes shut, and you hear someone barring it."}
-         ]}
+        {
+          "on": "enter",
+          "if": [
+            {
+              "flag": "MAGIC-FLAG",
+              "eq": false
+            },
+            {
+              "flag": "TRAP-DOOR-OPEN"
+            }
+          ],
+          "stop": false,
+          "do": [
+            {
+              "kind": "set_flag",
+              "name": "TRAP-TOUCHED",
+              "value": true
+            },
+            {
+              "kind": "set_flag",
+              "name": "TRAP-DOOR-OPEN",
+              "value": false
+            },
+            {
+              "kind": "narrate",
+              "text": "The trap door crashes shut, and you hear someone barring it."
+            }
+          ]
+        }
       ]
     },
     {
-      "id": "r-troll-room", "slug": "troll-room", "title": "The Troll Room",
+      "id": "r-troll-room",
+      "slug": "troll-room",
+      "title": "The Troll Room",
       "zork_name": "The Troll Room",
       "dark": true,
       "seed": "a small square room, walls scarred by old blades, an axe-worn floor",
       "description": "This is a small room with passages to the east and south and a forbidding hole leading west. Bloodstains and deep scratches (perhaps made by an axe) mar the walls.",
       "exits": {
         "south": "r-cellar",
-        "east": {"to": "r-ew-passage", "if": [{"flag": "TROLL-DEAD"}],
-                  "blocked_text": "The troll fends you off with a menacing gesture."},
-        "west": {"to": "r-maze-1", "if": [{"flag": "TROLL-DEAD"}],
-                  "blocked_text": "The troll fends you off with a menacing gesture."}
+        "east": {
+          "to": "r-ew-passage",
+          "if": [
+            {
+              "flag": "TROLL-DEAD"
+            }
+          ],
+          "blocked_text": "The troll fends you off with a menacing gesture."
+        },
+        "west": {
+          "to": "r-maze-1",
+          "if": [
+            {
+              "flag": "TROLL-DEAD"
+            }
+          ],
+          "blocked_text": "The troll fends you off with a menacing gesture."
+        }
       }
     },
     {
-      "id": "r-east-of-chasm", "slug": "east-of-chasm", "title": "East of Chasm",
+      "id": "r-east-of-chasm",
+      "slug": "east-of-chasm",
+      "title": "East of Chasm",
       "zork_name": "East of Chasm",
       "dark": true,
       "seed": "the lip of a great chasm falling away to the south, a path skirting east",
@@ -51,11 +99,15 @@
       "exits": {
         "north": "r-cellar",
         "east": "r-gallery",
-        "down": {"text": "The chasm probably leads straight to the infernal regions."}
+        "down": {
+          "text": "The chasm probably leads straight to the infernal regions."
+        }
       }
     },
     {
-      "id": "r-gallery", "slug": "gallery", "title": "Gallery",
+      "id": "r-gallery",
+      "slug": "gallery",
+      "title": "Gallery",
       "zork_name": "Gallery",
       "seed": "an art gallery of the old empire, most frames looted empty, one painting left glowing in lamplight",
       "description": "This is an art gallery. Most of the paintings have been stolen by vandals with exceptional taste. The vandals left through either the north or west exits.",
@@ -65,34 +117,54 @@
       }
     },
     {
-      "id": "r-studio", "slug": "studio", "title": "Studio",
+      "id": "r-studio",
+      "slug": "studio",
+      "title": "Studio",
       "zork_name": "Studio",
       "dark": true,
       "seed": "a paint-spattered studio, brushes gone stiff, a dark chimney mouth in the north wall",
       "description": "This appears to have been an artist's studio. The walls and floors are splattered with paints of 69 different colors. Strangely enough, nothing of value is hanging here. At the north end of the room is an open door (also covered with paint). A dark and narrow chimney leads up from a fireplace; although you might be able to get up it, it seems unlikely you could get back down.",
       "exits": {
         "south": "r-gallery",
-        "up": {"to": "r-kitchen",
-                "if": [{"carrying_count": {"lte": 2}}],
-                "blocked_text": "You can't get up there with what you're carrying.",
-                "on_traverse": [
-                  {"kind": "narrate",
-                   "text": "You squirm up the chimney, gathering soot as you go, and emerge in the fireplace."}
-                ]}
+        "up": {
+          "to": "r-kitchen",
+          "if": [
+            {
+              "carrying_count": {
+                "lte": 2
+              }
+            }
+          ],
+          "blocked_text": "You can't get up there with what you're carrying.",
+          "on_traverse": [
+            {
+              "kind": "narrate",
+              "text": "You squirm up the chimney, gathering soot as you go, and emerge in the fireplace."
+            }
+          ]
+        }
       }
     }
   ],
   "toons": [
     {
-      "id": "t-troll", "name": "troll", "zork_name": "troll",
-      "slot": 100, "room": "r-troll-room",
-      "aliases": ["nasty troll"],
+      "id": "t-troll",
+      "name": "troll",
+      "zork_name": "troll",
+      "slot": 100,
+      "room": "r-troll-room",
+      "aliases": [
+        "nasty troll"
+      ],
       "appearance_seed": "a pungent troll, all knuckle and appetite, holding a bloody axe",
       "seed": "a nasty-looking troll brandishing a bloody axe, doorkeeper by trade and temperament",
       "mood": "belligerent",
       "presence_text": "A nasty-looking troll, brandishing a bloody axe, blocks all passages out of the room.",
       "properties": {
-        "verbs": ["attack", "examine"],
+        "verbs": [
+          "attack",
+          "examine"
+        ],
         "combat": {
           "strength": 2,
           "weak_to": "o-sword",
@@ -112,7 +184,11 @@
             "The axe crashes against the rock, throwing sparks!"
           ],
           "on_death": [
-            {"kind": "set_flag", "name": "TROLL-DEAD", "value": true}
+            {
+              "kind": "set_flag",
+              "name": "TROLL-DEAD",
+              "value": true
+            }
           ]
         }
       }
@@ -120,19 +196,42 @@
   ],
   "things": [
     {
-      "id": "o-axe", "name": "bloody axe", "zork_name": "bloody axe",
-      "location": {"toon": "t-troll"},
-      "aliases": ["axe"],
+      "id": "o-axe",
+      "name": "bloody axe",
+      "zork_name": "bloody axe",
+      "location": {
+        "toon": "t-troll"
+      },
+      "aliases": [
+        "axe"
+      ],
       "seed": "a heavy axe, its edge dark with old arguments",
-      "properties": {"size": 25, "weapon": true}
+      "properties": {
+        "size": 25,
+        "weapon": true,
+        "pointy": true
+      }
     },
     {
-      "id": "o-painting", "name": "painting", "zork_name": "painting",
-      "location": {"room": "r-gallery"},
-      "aliases": ["art", "canvas", "masterpiece"],
+      "id": "o-painting",
+      "name": "painting",
+      "zork_name": "painting",
+      "location": {
+        "room": "r-gallery"
+      },
+      "aliases": [
+        "art",
+        "canvas",
+        "masterpiece"
+      ],
       "seed": "a painting of unparalleled beauty, somehow overlooked by the vandals",
-      "treasure": {"take": 4, "case": 6},
-      "properties": {"size": 15}
+      "treasure": {
+        "take": 4,
+        "case": 6
+      },
+      "properties": {
+        "size": 15
+      }
     }
   ]
 }

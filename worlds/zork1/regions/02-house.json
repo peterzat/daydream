@@ -594,7 +594,8 @@
       "seed": "an elvish sword of great antiquity, runes down the blade, a faint readiness about it",
       "properties": {
         "size": 30,
-        "weapon": true
+        "weapon": true,
+        "pointy": true
       }
     },
     {
@@ -628,7 +629,8 @@
       "seed": "a nasty-looking knife on a squat table, honest about its intentions",
       "properties": {
         "size": 5,
-        "weapon": true
+        "weapon": true,
+        "pointy": true
       }
     },
     {

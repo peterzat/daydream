@@ -2834,99 +2834,302 @@
       }
     },
     {
-      "id": "r-aragain-falls",
-      "slug": "stub-aragain-falls",
-      "title": "Unfinished Dark",
-      "seed": "unfinished dark",
-      "dark": true,
-      "description": "This part of the empire is still being excavated.",
-      "exits": {},
-      "properties": {
-        "stub": true
-      }
-    },
-    {
-      "id": "r-on-rainbow",
-      "slug": "stub-on-rainbow",
-      "title": "Unfinished Dark",
-      "seed": "unfinished dark",
-      "dark": true,
-      "description": "This part of the empire is still being excavated.",
-      "exits": {},
-      "properties": {
-        "stub": true
-      }
-    },
-    {
       "id": "r-river-1",
-      "slug": "stub-river-1",
-      "title": "Unfinished Dark",
-      "seed": "unfinished dark",
-      "dark": true,
-      "description": "This part of the empire is still being excavated.",
-      "exits": {},
-      "properties": {
-        "stub": true
+      "slug": "river-1",
+      "title": "Frigid River",
+      "seed": "the cold green Frigid River below the dam, a landing on the west shore",
+      "description": "You are on the Frigid River in the vicinity of the Dam. The river flows quietly here. There is a landing on the west shore.",
+      "exits": {
+        "west": "r-dam-base",
+        "land": "r-dam-base",
+        "down": {
+          "to": "r-river-2",
+          "if": [
+            {
+              "in_vehicle": "o-boat"
+            }
+          ],
+          "blocked_text": "You'd be swimming, briefly."
+        },
+        "up": {
+          "text": "You cannot go upstream due to strong currents."
+        },
+        "east": {
+          "text": "The White Cliffs prevent your landing here."
+        }
       }
     },
     {
       "id": "r-river-2",
-      "slug": "stub-river-2",
-      "title": "Unfinished Dark",
-      "seed": "unfinished dark",
+      "slug": "river-2",
+      "title": "Frigid River",
       "dark": true,
-      "description": "This part of the empire is still being excavated.",
-      "exits": {},
-      "properties": {
-        "stub": true
+      "seed": "the river between white cliffs and wet rocks, the dam gone from view",
+      "description": "The river turns a corner here making it impossible to see the Dam. The White Cliffs loom along the east bank and large rocks prevent landing on the west.",
+      "exits": {
+        "down": {
+          "to": "r-river-3",
+          "if": [
+            {
+              "in_vehicle": "o-boat"
+            }
+          ],
+          "blocked_text": "You'd be swimming, briefly."
+        },
+        "land": {
+          "text": "There is no safe landing spot here."
+        },
+        "east": {
+          "text": "The White Cliffs prevent your landing here."
+        },
+        "west": {
+          "text": "Just in time you steer away from the rocks."
+        },
+        "up": {
+          "text": "You cannot go upstream due to strong currents."
+        }
       }
     },
     {
       "id": "r-river-3",
-      "slug": "stub-river-3",
-      "title": "Unfinished Dark",
-      "seed": "unfinished dark",
+      "slug": "river-3",
+      "title": "Frigid River",
       "dark": true,
-      "description": "This part of the empire is still being excavated.",
-      "exits": {},
-      "properties": {
-        "stub": true
+      "seed": "the river descending into a valley, a narrow beach under the cliffs, a far rumbling",
+      "description": "The river descends here into a valley. There is a narrow beach on the west shore below the cliffs. In the distance a faint rumbling can be heard.",
+      "exits": {
+        "down": {
+          "to": "r-river-4",
+          "if": [
+            {
+              "in_vehicle": "o-boat"
+            }
+          ],
+          "blocked_text": "You'd be swimming, briefly."
+        },
+        "land": "r-white-cliffs-north",
+        "west": "r-white-cliffs-north",
+        "east": {
+          "text": "The White Cliffs prevent your landing here."
+        },
+        "up": {
+          "text": "You cannot go upstream due to strong currents."
+        }
       }
     },
     {
       "id": "r-river-4",
-      "slug": "stub-river-4",
-      "title": "Unfinished Dark",
-      "seed": "unfinished dark",
+      "slug": "river-4",
+      "title": "Frigid River",
       "dark": true,
-      "description": "This part of the empire is still being excavated.",
-      "exits": {},
-      "properties": {
-        "stub": true
+      "seed": "the river running faster, a sandy beach east, a red buoy riding the current",
+      "description": "The river is running faster here, and the sound from ahead is unmistakably rushing water. On the east shore is a sandy beach. A small area of beach can also be seen below the cliffs on the west shore.",
+      "exits": {
+        "down": {
+          "to": "r-river-5",
+          "if": [
+            {
+              "in_vehicle": "o-boat"
+            }
+          ],
+          "blocked_text": "You'd be swimming, briefly."
+        },
+        "west": "r-white-cliffs-south",
+        "east": "r-sandy-beach",
+        "land": {
+          "text": "You can land either to the east or the west."
+        },
+        "up": {
+          "text": "You cannot go upstream due to strong currents."
+        }
       }
     },
     {
       "id": "r-river-5",
-      "slug": "stub-river-5",
-      "title": "Unfinished Dark",
-      "seed": "unfinished dark",
-      "dark": true,
-      "description": "This part of the empire is still being excavated.",
-      "exits": {},
-      "properties": {
-        "stub": true
+      "slug": "river-5",
+      "title": "Frigid River",
+      "seed": "the river gathering itself for Aragain Falls, an island splitting the current, a rocky shore east",
+      "description": "The sound of rushing water is nearly deafening here, and the mist ahead marks where the river stops being a river. An island splits the current, and a rocky shore lies along the east.",
+      "exits": {
+        "east": "r-shore",
+        "land": "r-shore",
+        "up": {
+          "text": "You cannot go upstream due to strong currents."
+        },
+        "down": {
+          "text": "That way lies the bottom of Aragain Falls, at speed and briefly."
+        }
       }
     },
     {
       "id": "r-white-cliffs-north",
-      "slug": "stub-white-cliffs-north",
-      "title": "Unfinished Dark",
-      "seed": "unfinished dark",
+      "slug": "white-cliffs-north",
+      "title": "White Cliffs Beach",
       "dark": true,
-      "description": "This part of the empire is still being excavated.",
-      "exits": {},
-      "properties": {
-        "stub": true
+      "seed": "a narrow strip of beach at the base of the towering White Cliffs",
+      "description": "You are on a narrow strip of beach which runs along the base of the White Cliffs. There is a narrow path heading south along the cliffs, and a tight passage leads west into the rock.",
+      "exits": {
+        "south": {
+          "to": "r-white-cliffs-south",
+          "if": [
+            {
+              "carried_filter": {
+                "key": "inflation",
+                "eq": "inflated"
+              },
+              "not": true
+            }
+          ],
+          "blocked_text": "The path is too narrow to squeeze past with the boat."
+        },
+        "west": {
+          "to": "r-damp-cave",
+          "if": [
+            {
+              "carried_filter": {
+                "key": "inflation",
+                "eq": "inflated"
+              },
+              "not": true
+            }
+          ],
+          "blocked_text": "The passage is too narrow to squeeze through with the boat."
+        },
+        "launch": {
+          "to": "r-river-3",
+          "if": [
+            {
+              "in_vehicle": "o-boat"
+            }
+          ],
+          "blocked_text": "You have nothing under you fit to launch."
+        }
+      }
+    },
+    {
+      "id": "r-white-cliffs-south",
+      "slug": "white-cliffs-south",
+      "title": "White Cliffs Beach",
+      "dark": true,
+      "seed": "a rocky narrow beach beside the White Cliffs, the river hurrying past",
+      "description": "You are on a rocky, narrow strip of beach beside the White Cliffs. A narrow path leads north along the shore.",
+      "exits": {
+        "north": {
+          "to": "r-white-cliffs-north",
+          "if": [
+            {
+              "carried_filter": {
+                "key": "inflation",
+                "eq": "inflated"
+              },
+              "not": true
+            }
+          ],
+          "blocked_text": "The path is too narrow to squeeze past with the boat."
+        },
+        "launch": {
+          "to": "r-river-4",
+          "if": [
+            {
+              "in_vehicle": "o-boat"
+            }
+          ],
+          "blocked_text": "You have nothing under you fit to launch."
+        }
+      }
+    },
+    {
+      "id": "r-shore",
+      "slug": "shore",
+      "title": "Shore",
+      "seed": "the east shore of the river above the falls, a long path running north to south",
+      "description": "You are on the east shore of the river. The water here seems somewhat treacherous, as though rehearsing for the falls. A path travels from north to south along the shore.",
+      "exits": {
+        "north": "r-sandy-beach",
+        "south": "r-aragain-falls",
+        "launch": {
+          "to": "r-river-5",
+          "if": [
+            {
+              "in_vehicle": "o-boat"
+            }
+          ],
+          "blocked_text": "You have nothing under you fit to launch."
+        }
+      }
+    },
+    {
+      "id": "r-sandy-beach",
+      "slug": "sandy-beach",
+      "title": "Sandy Beach",
+      "dark": true,
+      "seed": "a broad sandy beach on the east bank, a shovel standing where somebody quit",
+      "description": "You are on a large sandy beach on the east shore of the river, which is flowing quickly by. A path runs beside the river to the south here, and a passage is partially buried in sand to the northeast.",
+      "exits": {
+        "northeast": "r-sandy-cave",
+        "south": "r-shore",
+        "launch": {
+          "to": "r-river-4",
+          "if": [
+            {
+              "in_vehicle": "o-boat"
+            }
+          ],
+          "blocked_text": "You have nothing under you fit to launch."
+        }
+      }
+    },
+    {
+      "id": "r-sandy-cave",
+      "slug": "sandy-cave",
+      "title": "Sandy Cave",
+      "dark": true,
+      "seed": "a cave half-full of drifted sand, its floor asking to be dug",
+      "description": "This is a sand-filled cave whose exit is to the southwest.",
+      "exits": {
+        "southwest": "r-sandy-beach"
+      }
+    },
+    {
+      "id": "r-aragain-falls",
+      "slug": "aragain-falls",
+      "title": "Aragain Falls",
+      "seed": "the top of Aragain Falls, a 450-foot drop wearing a rainbow that ends in mist",
+      "description": "You are at the top of Aragain Falls, an enormous waterfall with a drop of about 450 feet. The only path here is on the north end. A rainbow crosses over the falls to the west and ends somewhere in the mist.",
+      "exits": {
+        "north": "r-shore",
+        "west": {
+          "to": "r-on-rainbow",
+          "if": [
+            {
+              "flag": "RAINBOW-SOLID"
+            }
+          ],
+          "blocked_text": "Rainbows are lovely, but they are not stairs."
+        },
+        "up": {
+          "to": "r-on-rainbow",
+          "if": [
+            {
+              "flag": "RAINBOW-SOLID"
+            }
+          ],
+          "blocked_text": "Rainbows are lovely, but they are not stairs."
+        },
+        "down": {
+          "text": "It's a long way, taken all at once."
+        }
+      }
+    },
+    {
+      "id": "r-on-rainbow",
+      "slug": "on-rainbow",
+      "title": "On the Rainbow",
+      "seed": "standing on a solid rainbow over Aragain Falls, colors underfoot, mist below",
+      "description": "You are on top of a rainbow (I bet you never thought you would walk on a rainbow), with a magnificent view of the Falls. The rainbow travels east-west here.",
+      "exits": {
+        "west": "r-end-of-rainbow",
+        "east": "r-aragain-falls"
       }
     }
   ],
@@ -4158,7 +4361,8 @@
       "seed": "an elvish sword of great antiquity, runes down the blade, a faint readiness about it",
       "properties": {
         "size": 30,
-        "weapon": true
+        "weapon": true,
+        "pointy": true
       }
     },
     {
@@ -4190,7 +4394,8 @@
       "seed": "a nasty-looking knife on a squat table, honest about its intentions",
       "properties": {
         "size": 5,
-        "weapon": true
+        "weapon": true,
+        "pointy": true
       }
     },
     {
@@ -4342,7 +4547,8 @@
       "seed": "a heavy axe, its edge dark with old arguments",
       "properties": {
         "size": 25,
-        "weapon": true
+        "weapon": true,
+        "pointy": true
       }
     },
     {
@@ -4449,7 +4655,8 @@
       "seed": "a rusty knife with an edge of bad history, humming faintly wrong",
       "properties": {
         "size": 20,
-        "weapon": true
+        "weapon": true,
+        "pointy": true
       },
       "rules": [
         {
@@ -4714,7 +4921,8 @@
       "seed": "a vicious stiletto with a needle's point and a professional's balance",
       "properties": {
         "size": 10,
-        "weapon": true
+        "weapon": true,
+        "pointy": true
       }
     },
     {
@@ -5171,6 +5379,7 @@
       ],
       "properties": {
         "size": 3,
+        "pointy": true,
         "treasure": true,
         "score_take": 4,
         "score_case": 6
@@ -5197,6 +5406,11 @@
               "value": true
             },
             {
+              "kind": "move_object",
+              "object_id": "o-pot-of-gold",
+              "dest_id": "r-end-of-rainbow"
+            },
+            {
               "kind": "narrate",
               "text": "Suddenly, the rainbow appears to become solid and, I venture, walkable (I think the giveaway was the stairs and bannister)."
             }
@@ -5221,6 +5435,11 @@
               "kind": "set_flag",
               "name": "RAINBOW-SOLID",
               "value": true
+            },
+            {
+              "kind": "move_object",
+              "object_id": "o-pot-of-gold",
+              "dest_id": "r-end-of-rainbow"
             },
             {
               "kind": "narrate",
@@ -6528,11 +6747,550 @@
     },
     {
       "id": "o-boat",
-      "name": "stub-boat",
-      "location": "offstage",
-      "seed": "a thing not yet made",
+      "name": "magic boat",
+      "location": {
+        "room": "r-dam-base"
+      },
+      "aliases": [
+        "boat",
+        "raft",
+        "pile of plastic",
+        "plastic",
+        "pile"
+      ],
+      "seed": "a folded pile of seaworthy plastic with a valve, boat by profession when inflated",
+      "verbs": [
+        "board",
+        "disembark",
+        "inflate",
+        "deflate"
+      ],
       "properties": {
-        "stub": true
+        "size": 20,
+        "inflation": "deflated",
+        "container": true,
+        "capacity": 100,
+        "board_text": "You climb into the magic boat, which takes your weight with professional calm.",
+        "disembark_text": "You climb out of the magic boat onto solid ground."
+      },
+      "rules": [
+        {
+          "on": "examine",
+          "if": [
+            {
+              "prop": "inflation",
+              "of": "@self",
+              "eq": "deflated"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "At the moment it is a folded pile of plastic with an air valve, dreaming of the river."
+            }
+          ]
+        },
+        {
+          "on": "examine",
+          "if": [
+            {
+              "prop": "inflation",
+              "of": "@self",
+              "eq": "inflated"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "It is inflated and appears seaworthy, in the way of boats that call themselves magic."
+            }
+          ]
+        },
+        {
+          "on": "examine",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "It is a large sheet of punctured plastic, its seafaring days behind it."
+            }
+          ]
+        },
+        {
+          "on": "inflate",
+          "if": [
+            {
+              "iobj": "o-pump"
+            },
+            {
+              "prop": "inflation",
+              "of": "@self",
+              "eq": "deflated"
+            }
+          ],
+          "do": [
+            {
+              "kind": "set_property",
+              "target_id": "@self",
+              "key": "inflation",
+              "value": "inflated"
+            },
+            {
+              "kind": "set_property",
+              "target_id": "@self",
+              "key": "vehicle",
+              "value": true
+            },
+            {
+              "kind": "narrate",
+              "text": "The boat inflates and appears seaworthy. A tan label is lying inside the boat."
+            }
+          ]
+        },
+        {
+          "on": "inflate",
+          "if": [
+            {
+              "prop": "inflation",
+              "of": "@self",
+              "eq": "inflated"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "Inflating it further would probably burst it."
+            }
+          ]
+        },
+        {
+          "on": "inflate",
+          "if": [
+            {
+              "prop": "inflation",
+              "of": "@self",
+              "eq": "punctured"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "Air seems less the problem than the hole."
+            }
+          ]
+        },
+        {
+          "on": "inflate",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "With that? Surely you jest!"
+            }
+          ]
+        },
+        {
+          "on": "deflate",
+          "if": [
+            {
+              "in_vehicle": "o-boat"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "You can't deflate the boat while you're in it."
+            }
+          ]
+        },
+        {
+          "on": "deflate",
+          "if": [
+            {
+              "prop": "inflation",
+              "of": "@self",
+              "eq": "inflated"
+            }
+          ],
+          "do": [
+            {
+              "kind": "set_property",
+              "target_id": "@self",
+              "key": "inflation",
+              "value": "deflated"
+            },
+            {
+              "kind": "set_property",
+              "target_id": "@self",
+              "key": "vehicle",
+              "value": false
+            },
+            {
+              "kind": "narrate",
+              "text": "The boat deflates."
+            }
+          ]
+        },
+        {
+          "on": "deflate",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "It isn't inflated."
+            }
+          ]
+        },
+        {
+          "on": "board",
+          "if": [
+            {
+              "carried_filter": {
+                "key": "pointy",
+                "eq": true
+              }
+            },
+            {
+              "prop": "inflation",
+              "of": "@self",
+              "eq": "inflated"
+            }
+          ],
+          "do": [
+            {
+              "kind": "set_property",
+              "target_id": "@self",
+              "key": "inflation",
+              "value": "punctured"
+            },
+            {
+              "kind": "set_property",
+              "target_id": "@self",
+              "key": "vehicle",
+              "value": false
+            },
+            {
+              "kind": "narrate",
+              "text": "Oops! Something sharp seems to have slipped and punctured the boat. The boat deflates to the sounds of hissing, sputtering, and cursing."
+            }
+          ]
+        },
+        {
+          "on": "board",
+          "if": [
+            {
+              "prop": "inflation",
+              "of": "@self",
+              "ne": "inflated"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "In its current condition it will hold air sooner than passengers."
+            }
+          ]
+        },
+        {
+          "on": "put",
+          "as": "iobj",
+          "if": [
+            {
+              "prop": "weapon",
+              "of": "@dobj",
+              "eq": true
+            },
+            {
+              "prop": "inflation",
+              "of": "@self",
+              "eq": "inflated"
+            }
+          ],
+          "do": [
+            {
+              "kind": "set_property",
+              "target_id": "@self",
+              "key": "inflation",
+              "value": "punctured"
+            },
+            {
+              "kind": "set_property",
+              "target_id": "@self",
+              "key": "vehicle",
+              "value": false
+            },
+            {
+              "kind": "narrate",
+              "text": "It seems that item didn't agree with the boat, as evidenced by the loud hissing noise issuing therefrom. With a pathetic sputter, the boat deflates, leaving you without."
+            }
+          ]
+        },
+        {
+          "on": "plug",
+          "if": [
+            {
+              "iobj": "o-putty"
+            },
+            {
+              "prop": "inflation",
+              "of": "@self",
+              "eq": "punctured"
+            }
+          ],
+          "do": [
+            {
+              "kind": "set_property",
+              "target_id": "@self",
+              "key": "inflation",
+              "value": "deflated"
+            },
+            {
+              "kind": "narrate",
+              "text": "Well done. The boat is repaired, and needs only air to call itself a boat again."
+            }
+          ]
+        },
+        {
+          "on": "plug",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "There is no leak to plug, or nothing that would plug it."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "o-boat-label",
+      "name": "tan label",
+      "location": {
+        "in": "o-boat"
+      },
+      "aliases": [
+        "label",
+        "fine print"
+      ],
+      "seed": "a tan label sewn into the boat, dense with legal fine print",
+      "readable": true,
+      "text": "          !!!!FROBOZZ MAGIC BOAT COMPANY!!!!\n\nHello, Sailor!\n\nInstructions for use: To get into a body of water, say \"Launch\". To get to shore, say \"Land\" or the direction in which you want to maneuver the boat.\n\nWarranty: This boat is guaranteed against all defects for a period of 76 milliseconds from date of purchase or until first used, whichever comes first.\n\nWarning: This boat is made of thin plastic. Good Luck!",
+      "properties": {
+        "size": 2
+      }
+    },
+    {
+      "id": "o-buoy",
+      "name": "red buoy",
+      "location": {
+        "room": "r-river-4"
+      },
+      "aliases": [
+        "buoy"
+      ],
+      "seed": "a red buoy riding the current with something denser than duty inside it",
+      "verbs": [
+        "open",
+        "close"
+      ],
+      "properties": {
+        "size": 10,
+        "container": true,
+        "state": "closed",
+        "capacity": 20,
+        "examined_text": "There is something funny about the feel of the buoy: a heaviness low in its belly, as though it swallowed better than it floats.",
+        "open_text": "The buoy opens at its seam, and inside, wrapped against the water, lies a large emerald."
+      }
+    },
+    {
+      "id": "o-emerald",
+      "name": "large emerald",
+      "location": {
+        "in": "o-buoy"
+      },
+      "aliases": [
+        "emerald"
+      ],
+      "seed": "an emerald the size of a plum, green as the river is cold",
+      "properties": {
+        "size": 5,
+        "treasure": true,
+        "score_take": 5,
+        "score_case": 10
+      }
+    },
+    {
+      "id": "o-shovel",
+      "name": "shovel",
+      "location": {
+        "room": "r-sandy-beach"
+      },
+      "aliases": [
+        "spade"
+      ],
+      "seed": "a long-handled shovel stood upright in the sand, mid-thought",
+      "properties": {
+        "size": 15,
+        "tool": true,
+        "digger": true
+      }
+    },
+    {
+      "id": "o-sand",
+      "name": "sand",
+      "location": {
+        "room": "r-sandy-cave"
+      },
+      "aliases": [
+        "pile of sand",
+        "floor of sand"
+      ],
+      "seed": "deep drifted sand with the patience of a thing that buries",
+      "fixture": true,
+      "verbs": [
+        "dig"
+      ],
+      "rules": [
+        {
+          "on": "dig",
+          "if": [
+            {
+              "iobj": "o-shovel"
+            },
+            {
+              "counter": "sand-digs",
+              "eq": 0
+            }
+          ],
+          "do": [
+            {
+              "kind": "adjust_counter",
+              "name": "sand-digs",
+              "delta": 1
+            },
+            {
+              "kind": "narrate",
+              "text": "You seem to be digging a hole here."
+            }
+          ]
+        },
+        {
+          "on": "dig",
+          "if": [
+            {
+              "iobj": "o-shovel"
+            },
+            {
+              "counter": "sand-digs",
+              "eq": 1
+            }
+          ],
+          "do": [
+            {
+              "kind": "adjust_counter",
+              "name": "sand-digs",
+              "delta": 1
+            },
+            {
+              "kind": "narrate",
+              "text": "The hole is getting deeper, but that's about it."
+            }
+          ]
+        },
+        {
+          "on": "dig",
+          "if": [
+            {
+              "iobj": "o-shovel"
+            },
+            {
+              "counter": "sand-digs",
+              "eq": 2
+            }
+          ],
+          "do": [
+            {
+              "kind": "adjust_counter",
+              "name": "sand-digs",
+              "delta": 1
+            },
+            {
+              "kind": "move_object",
+              "object_id": "o-scarab",
+              "dest_id": "r-sandy-cave"
+            },
+            {
+              "kind": "narrate",
+              "text": "You can see a scarab here in the sand."
+            }
+          ]
+        },
+        {
+          "on": "dig",
+          "if": [
+            {
+              "iobj": "o-shovel"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "text": "The hole collapses, smothering you."
+            },
+            {
+              "kind": "kill_actor"
+            }
+          ]
+        },
+        {
+          "on": "dig",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "Digging with your hands is slow, clumsy, and beneath you."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "o-scarab",
+      "name": "beautiful jeweled scarab",
+      "location": "offstage",
+      "aliases": [
+        "scarab",
+        "bug",
+        "beetle"
+      ],
+      "seed": "a jeweled scarab worked in lapis and gold, older than the empire that lost it",
+      "properties": {
+        "size": 8,
+        "treasure": true,
+        "score_take": 5,
+        "score_case": 5
+      }
+    },
+    {
+      "id": "o-pot-of-gold",
+      "name": "pot of gold",
+      "location": "offstage",
+      "aliases": [
+        "pot",
+        "gold"
+      ],
+      "seed": "a pot of gold exactly where the stories always said it would be",
+      "properties": {
+        "size": 15,
+        "treasure": true,
+        "score_take": 10,
+        "score_case": 10
       }
     }
   ]
