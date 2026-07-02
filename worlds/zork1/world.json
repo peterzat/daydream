@@ -135,6 +135,7 @@
     "LOUD-QUIET",
     "MAGIC-FLAG",
     "CYCLOPS-FED",
+    "CYCLOPS-GONE",
     "BELL-RUNG",
     "CANDLES-RITUAL",
     "SPIRITS-BANISHED",
@@ -418,7 +419,7 @@
       "do": [
         {
           "kind": "narrate",
-          "text": "Nothing happens.",
+          "text": "Wasn't he a sailor?",
           "to": "@actor"
         }
       ]
@@ -808,7 +809,7 @@
       "aliases": [
         "ulysses"
       ],
-      "fail_text": "Nothing happens."
+      "fail_text": "Wasn't he a sailor?"
     }
   }
 }

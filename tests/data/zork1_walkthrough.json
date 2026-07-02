@@ -1102,6 +1102,378 @@
           }
         }
       ]
+    },
+    {
+      "name": "egg-and-into-the-maze",
+      "commands": [
+        {
+          "cmd": "take egg",
+          "expect": {
+            "score": 163,
+            "carrying": [
+              "jewel-encrusted egg"
+            ]
+          }
+        },
+        {
+          "cmd": "open trap door"
+        },
+        {
+          "cmd": "down",
+          "expect": {
+            "room": "r-cellar",
+            "flag": {
+              "TRAP-DOOR-OPEN": false
+            }
+          }
+        },
+        {
+          "cmd": "north",
+          "expect": {
+            "room": "r-troll-room"
+          }
+        },
+        {
+          "cmd": "take knife",
+          "expect": {
+            "carrying": [
+              "nasty knife"
+            ]
+          }
+        },
+        {
+          "cmd": "west",
+          "expect": {
+            "room": "r-maze-1"
+          }
+        },
+        {
+          "cmd": "south",
+          "expect": {
+            "room": "r-maze-2"
+          }
+        },
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-maze-3"
+          }
+        },
+        {
+          "cmd": "up",
+          "expect": {
+            "room": "r-maze-5"
+          }
+        },
+        {
+          "cmd": "take key",
+          "expect": {
+            "score": 163,
+            "carrying": [
+              "skeleton key"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "grating-and-cyclops",
+      "commands": [
+        {
+          "cmd": "southwest",
+          "expect": {
+            "room": "r-maze-6"
+          }
+        },
+        {
+          "cmd": "up",
+          "expect": {
+            "room": "r-maze-9"
+          }
+        },
+        {
+          "cmd": "down",
+          "expect": {
+            "room": "r-maze-11",
+            "narrate_contains": "won't be able to get back up"
+          }
+        },
+        {
+          "cmd": "northeast",
+          "expect": {
+            "room": "r-grating-room"
+          }
+        },
+        {
+          "cmd": "unlock grating with key",
+          "expect": {
+            "flag": {
+              "GRATING-UNLOCKED": true
+            },
+            "narrate_contains": "grate is unlocked"
+          }
+        },
+        {
+          "cmd": "open grating",
+          "expect": {
+            "flag": {
+              "GRATING-OPEN": true,
+              "LEAVES-MOVED": true
+            },
+            "narrate_contains": "trees above you"
+          }
+        },
+        {
+          "cmd": "southwest",
+          "expect": {
+            "room": "r-maze-11"
+          }
+        },
+        {
+          "cmd": "northwest",
+          "expect": {
+            "room": "r-maze-13"
+          }
+        },
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-maze-9"
+          }
+        },
+        {
+          "cmd": "north",
+          "expect": {
+            "room": "r-maze-6"
+          }
+        },
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-maze-7"
+          }
+        },
+        {
+          "cmd": "south",
+          "expect": {
+            "room": "r-maze-15"
+          }
+        },
+        {
+          "cmd": "southeast",
+          "expect": {
+            "room": "r-cyclops-room"
+          }
+        },
+        {
+          "cmd": "odysseus",
+          "expect": {
+            "flag": {
+              "MAGIC-FLAG": true,
+              "CYCLOPS-GONE": true
+            },
+            "narrate_contains": "knocking down the wall"
+          }
+        }
+      ]
+    },
+    {
+      "name": "the-thief-and-his-due",
+      "commands": [
+        {
+          "cmd": "up",
+          "expect": {
+            "room": "r-treasure-room",
+            "score": 188,
+            "narrate_contains": "his den"
+          }
+        },
+        {
+          "cmd": "give egg to thief",
+          "expect": {
+            "narrate_contains": "nimble fingers"
+          }
+        },
+        {
+          "cmd": "kill thief with knife"
+        },
+        {
+          "cmd": "again"
+        },
+        {
+          "cmd": "again"
+        },
+        {
+          "cmd": "again"
+        },
+        {
+          "cmd": "again",
+          "expect": {
+            "narrate_contains": "career ending"
+          }
+        },
+        {
+          "cmd": "take chalice",
+          "expect": {
+            "score": 198,
+            "carrying": [
+              "silver chalice"
+            ]
+          }
+        },
+        {
+          "cmd": "take egg",
+          "expect": {
+            "carrying": [
+              "jewel-encrusted egg"
+            ]
+          }
+        },
+        {
+          "cmd": "take canary",
+          "expect": {
+            "score": 204,
+            "carrying": [
+              "golden clockwork canary"
+            ]
+          }
+        },
+        {
+          "cmd": "drop knife"
+        },
+        {
+          "cmd": "drop key"
+        },
+        {
+          "cmd": "take coins",
+          "expect": {
+            "score": 214,
+            "carrying": [
+              "leather bag of coins"
+            ]
+          }
+        },
+        {
+          "cmd": "take painting",
+          "expect": {
+            "score": 218,
+            "carrying": [
+              "painting"
+            ]
+          }
+        },
+        {
+          "cmd": "down",
+          "expect": {
+            "room": "r-cyclops-room"
+          }
+        },
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-strange-passage"
+          }
+        },
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-living-room"
+          }
+        },
+        {
+          "cmd": "put coins and chalice and egg and painting in case",
+          "expect": {
+            "score": 234,
+            "in_case": [
+              "leather bag of coins",
+              "silver chalice",
+              "jewel-encrusted egg",
+              "painting"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "bauble-and-canary",
+      "commands": [
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-kitchen"
+          }
+        },
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-behind-house"
+          }
+        },
+        {
+          "cmd": "north",
+          "expect": {
+            "room": "r-north-of-house"
+          }
+        },
+        {
+          "cmd": "north",
+          "expect": {
+            "room": "r-forest-path"
+          }
+        },
+        {
+          "cmd": "wind canary",
+          "expect": {
+            "flag": {
+              "EGG-TREASURED": true
+            },
+            "narrate_contains": "brass bauble"
+          }
+        },
+        {
+          "cmd": "take bauble",
+          "expect": {
+            "score": 235,
+            "carrying": [
+              "beautiful brass bauble"
+            ]
+          }
+        },
+        {
+          "cmd": "south",
+          "expect": {
+            "room": "r-north-of-house"
+          }
+        },
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-behind-house"
+          }
+        },
+        {
+          "cmd": "in",
+          "expect": {
+            "room": "r-kitchen"
+          }
+        },
+        {
+          "cmd": "west",
+          "expect": {
+            "room": "r-living-room"
+          }
+        },
+        {
+          "cmd": "put canary and bauble in case",
+          "expect": {
+            "score": 240,
+            "in_case": [
+              "golden clockwork canary",
+              "beautiful brass bauble"
+            ]
+          }
+        }
+      ]
     }
   ]
 }
