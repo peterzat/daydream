@@ -1,0 +1,2638 @@
+{
+  "format": 2,
+  "world": {
+    "name": "Zork I: The Great Underground Empire",
+    "slug": "zork1",
+    "aesthetic_seed": "a watercolor Great Underground Empire: white clapboard house at the wood's edge, lantern-lit stone passages, cold green river water, brass and dust and old imperial grandeur gone soft at the edges",
+    "rng_seed": "zork1-release-88"
+  },
+  "start_room": "r-west-of-house",
+  "config": {
+    "carry_capacity": 100,
+    "darkness": {
+      "text": "It is pitch black. You are likely to be eaten by a grue.",
+      "hazard_chance": 0.8,
+      "hazard_text": "Oh, no! You have walked into the slavering fangs of a lurking grue!"
+    },
+    "death": {
+      "penalty": 10,
+      "respawn_room": "r-forest-1",
+      "messages": [
+        "You have died. The world goes quiet for a moment, and then you are among trees, with the smell of earth and the certainty that this has cost you.",
+        "You have died again. The forest takes you back without comment, though you sense its patience is not a compliment.",
+        "You have died once more. At this rate the forest floor will learn the shape of you."
+      ],
+      "scatter": {
+        "special": {
+          "o-lamp": "r-living-room",
+          "o-coffin": "r-egypt-room"
+        },
+        "filters": [
+          {
+            "key": "treasure",
+            "eq": true,
+            "rooms": [
+              "r-troll-room",
+              "r-gallery",
+              "r-round-room",
+              "r-loud-room",
+              "r-damp-cave",
+              "r-mine-entrance",
+              "r-cold-passage"
+            ]
+          }
+        ],
+        "default_rooms": [
+          "r-west-of-house",
+          "r-north-of-house",
+          "r-south-of-house",
+          "r-behind-house",
+          "r-forest-2",
+          "r-forest-path",
+          "r-clearing"
+        ]
+      },
+      "set_flags": {
+        "TRAP-DOOR-OPEN": false
+      },
+      "stop_fuses": [
+        "bell-window",
+        "candle-window"
+      ]
+    }
+  },
+  "voice": {
+    "register": "Dry, precise, unhurried; wit by understatement, never exclamation. Rooms are reported like a surveyor's notes with one flourish allowed. The world is old, imperial, and indifferent to you.",
+    "examples": [
+      "You are standing in an open field west of a white house, with a boarded front door.",
+      "This is a forest, with trees in all directions. To the east, there appears to be sunlight.",
+      "A chasm runs southwest to northeast and the path follows it. You are on the south side."
+    ],
+    "parser_hints": [
+      "douse means extinguish",
+      "get means take",
+      "smash/whack a foe means attack it with the carried weapon"
+    ],
+    "retell": {
+      "enabled": true,
+      "banlist": [
+        "cozy",
+        "whimsical",
+        "magical",
+        "adorable"
+      ],
+      "max_ratio": 1.6
+    }
+  },
+  "scoring": {
+    "ranks": [
+      {
+        "min": 0,
+        "name": "Beginner"
+      },
+      {
+        "min": 25,
+        "name": "Amateur Adventurer"
+      },
+      {
+        "min": 50,
+        "name": "Novice Adventurer"
+      },
+      {
+        "min": 100,
+        "name": "Junior Adventurer"
+      },
+      {
+        "min": 200,
+        "name": "Adventurer"
+      },
+      {
+        "min": 300,
+        "name": "Master"
+      },
+      {
+        "min": 330,
+        "name": "Wizard"
+      },
+      {
+        "min": 350,
+        "name": "Master Adventurer"
+      }
+    ]
+  },
+  "flags": [
+    "TRAP-DOOR-REVEALED",
+    "TRAP-DOOR-OPEN",
+    "TRAP-TOUCHED",
+    "KITCHEN-WINDOW-OPEN",
+    "GRATING-UNLOCKED",
+    "GRATING-OPEN",
+    "LEAVES-MOVED",
+    "GATES-OPEN",
+    "LOW-TIDE",
+    "LOUD-QUIET",
+    "MAGIC-FLAG",
+    "CYCLOPS-FED",
+    "BELL-RUNG",
+    "CANDLES-RITUAL",
+    "SPIRITS-BANISHED",
+    "RAINBOW-SOLID",
+    "DOME-ROPE-TIED",
+    "MAINT-FLOODED",
+    "WON-ENABLED",
+    "EGG-TREASURED"
+  ],
+  "fuses": {
+    "bell-window": {
+      "turns": 6,
+      "do": [
+        {
+          "kind": "set_flag",
+          "name": "BELL-RUNG",
+          "value": false
+        }
+      ]
+    },
+    "candle-window": {
+      "turns": 3,
+      "do": [
+        {
+          "kind": "set_flag",
+          "name": "CANDLES-RITUAL",
+          "value": false
+        }
+      ]
+    },
+    "bell-cool": {
+      "turns": 20,
+      "do": [
+        {
+          "kind": "set_property",
+          "target_id": "o-bell",
+          "key": "state",
+          "value": "normal"
+        }
+      ]
+    },
+    "reservoir-drain": {
+      "turns": 8,
+      "do": [
+        {
+          "kind": "set_flag",
+          "name": "LOW-TIDE",
+          "value": true
+        },
+        {
+          "kind": "narrate",
+          "room": "r-reservoir-south",
+          "text": "The water level behind the dam falls away with a long, diminishing sigh; the reservoir gives up its bed."
+        }
+      ]
+    },
+    "maint-flood": {
+      "turns": 12,
+      "do": [
+        {
+          "kind": "set_flag",
+          "name": "MAINT-FLOODED",
+          "value": true
+        },
+        {
+          "kind": "narrate",
+          "room": "r-maintenance-room",
+          "text": "The water reaches the ceiling pipes. The maintenance room is a maintenance pond now."
+        }
+      ]
+    }
+  },
+  "daemons": {
+    "thief": {
+      "kind": "wanderer",
+      "toon": "t-thief",
+      "rooms": [
+        "r-round-room",
+        "r-ew-passage",
+        "r-narrow-passage",
+        "r-winding-passage",
+        "r-deep-canyon",
+        "r-damp-cave",
+        "r-cold-passage",
+        "r-ns-passage",
+        "r-chasm-room",
+        "r-engravings-cave",
+        "r-gallery",
+        "r-studio",
+        "r-mine-entrance",
+        "r-maze-2",
+        "r-maze-5",
+        "r-maze-11"
+      ],
+      "move_chance": 0.5,
+      "steal_from_room_chance": 0.35,
+      "steal_from_player_chance": 0.08,
+      "steal_filter": {
+        "key": "treasure",
+        "eq": true
+      },
+      "deposit_room": "r-treasure-room",
+      "arrive_text": "A seedy-looking gentleman with a large bag slips in, giving you a nod that manages to be both courteous and appraising.",
+      "leave_text": "The seedy-looking gentleman ducks away into the dark, bag first.",
+      "steal_room_text": "A quick shadow crosses the room; something that was there is not.",
+      "steal_text": "You feel a light finger's touch at your satchel, and a moment later the seedy-looking gentleman is elsewhere and slightly richer.",
+      "active": true
+    },
+    "swordglow": {
+      "kind": "glow",
+      "item": "o-sword",
+      "hostiles": [
+        "t-troll",
+        "t-thief",
+        "t-cyclops"
+      ],
+      "bright_text": "Your sword has begun to glow very brightly.",
+      "faint_text": "Your sword is glowing with a faint blue glow.",
+      "dim_text": "Your sword is no longer glowing.",
+      "active": true
+    },
+    "river": {
+      "kind": "conveyor",
+      "vehicle": "o-boat",
+      "path": [
+        "r-river-1",
+        "r-river-2",
+        "r-river-3",
+        "r-river-4",
+        "r-river-5"
+      ],
+      "delays": [
+        4,
+        4,
+        3,
+        2
+      ],
+      "carry_text": "The current takes the little boat and carries it on downriver.",
+      "active": true
+    },
+    "map-reveal": {
+      "kind": "script",
+      "once": true,
+      "if": [
+        {
+          "score": {
+            "gte": 350
+          }
+        }
+      ],
+      "do": [
+        {
+          "kind": "set_flag",
+          "name": "WON-ENABLED",
+          "value": true
+        },
+        {
+          "kind": "spawn_object",
+          "name": "ancient map",
+          "location_id": "o-trophy-case",
+          "seed": "a parchment map of the land surrounding the white house, marked with one path that was never there before",
+          "generated_by": "world:won",
+          "aliases": [
+            "map",
+            "parchment"
+          ]
+        },
+        {
+          "kind": "narrate",
+          "room": "r-living-room",
+          "text": "Inside the trophy case, where there was nothing left to want, an ancient parchment map has quietly appeared."
+        }
+      ],
+      "active": true
+    }
+  },
+  "rules": [
+    {
+      "on": "xyzzy",
+      "do": [
+        {
+          "kind": "narrate",
+          "text": "A hollow voice says \"Fool.\"",
+          "to": "@actor"
+        }
+      ]
+    },
+    {
+      "on": "plugh",
+      "do": [
+        {
+          "kind": "narrate",
+          "text": "A hollow voice says \"Fool.\"",
+          "to": "@actor"
+        }
+      ]
+    },
+    {
+      "on": "zork",
+      "do": [
+        {
+          "kind": "narrate",
+          "text": "At your service!",
+          "to": "@actor"
+        }
+      ]
+    },
+    {
+      "on": "hello",
+      "do": [
+        {
+          "kind": "narrate",
+          "text": "Nothing happens here.",
+          "to": "@actor"
+        }
+      ]
+    },
+    {
+      "on": "jump",
+      "do": [
+        {
+          "kind": "narrate",
+          "text": "Wheeeeeeeeee!!!!!",
+          "to": "@actor"
+        }
+      ]
+    },
+    {
+      "on": "wait",
+      "do": [
+        {
+          "kind": "narrate",
+          "text": "Time passes.",
+          "to": "@actor"
+        }
+      ]
+    },
+    {
+      "on": "pray",
+      "do": [
+        {
+          "kind": "narrate",
+          "text": "If you pray enough, your prayers may be answered.",
+          "to": "@actor"
+        }
+      ]
+    },
+    {
+      "on": "echo",
+      "do": [
+        {
+          "kind": "narrate",
+          "text": "echo ... echo ... echo",
+          "to": "@actor"
+        }
+      ]
+    },
+    {
+      "on": "odysseus",
+      "do": [
+        {
+          "kind": "narrate",
+          "text": "Nothing happens.",
+          "to": "@actor"
+        }
+      ]
+    },
+    {
+      "on": "dig",
+      "do": [
+        {
+          "kind": "narrate",
+          "text": "The ground here is too hard for digging.",
+          "to": "@actor"
+        }
+      ]
+    },
+    {
+      "on": "count",
+      "do": [
+        {
+          "kind": "narrate",
+          "text": "You have lost count already.",
+          "to": "@actor"
+        }
+      ]
+    }
+  ],
+  "verbs": {
+    "light": {
+      "ui_hint": "Light",
+      "description": "Set something alight or switch it on.",
+      "needs_dobj": true,
+      "valid_dobj_kinds": [
+        "thing"
+      ],
+      "aliases": [
+        "turn on",
+        "ignite",
+        "activate"
+      ],
+      "preps": [
+        "with"
+      ],
+      "iobj_default": {
+        "key": "ignition",
+        "eq": true
+      },
+      "fail_text": "You can't light that."
+    },
+    "extinguish": {
+      "ui_hint": "Extinguish",
+      "description": "Put a light or flame out.",
+      "needs_dobj": true,
+      "valid_dobj_kinds": [
+        "thing"
+      ],
+      "aliases": [
+        "turn off",
+        "douse",
+        "blow out",
+        "deactivate"
+      ],
+      "fail_text": "You can't put that out."
+    },
+    "move": {
+      "ui_hint": "Move",
+      "description": "Shift something heavy aside.",
+      "needs_dobj": true,
+      "valid_dobj_kinds": [
+        "thing"
+      ],
+      "aliases": [
+        "shift",
+        "slide"
+      ],
+      "fail_text": "Moving it reveals nothing."
+    },
+    "push": {
+      "ui_hint": "Push",
+      "description": "Push something (a button, say).",
+      "needs_dobj": true,
+      "valid_dobj_kinds": [
+        "thing"
+      ],
+      "aliases": [
+        "press",
+        "depress"
+      ],
+      "fail_text": "Pushing it has no visible effect."
+    },
+    "turn": {
+      "ui_hint": "Turn",
+      "description": "Turn a mechanism, usually with a tool.",
+      "needs_dobj": true,
+      "needs_iobj": true,
+      "valid_dobj_kinds": [
+        "thing"
+      ],
+      "valid_iobj_kinds": [
+        "thing"
+      ],
+      "preps": [
+        "with"
+      ],
+      "fail_text": "It won't turn."
+    },
+    "tie": {
+      "ui_hint": "Tie",
+      "description": "Tie one thing to another.",
+      "needs_dobj": true,
+      "needs_iobj": true,
+      "valid_dobj_kinds": [
+        "thing"
+      ],
+      "valid_iobj_kinds": [
+        "thing"
+      ],
+      "preps": [
+        "to",
+        "around"
+      ],
+      "fail_text": "You can't tie that."
+    },
+    "untie": {
+      "ui_hint": "Untie",
+      "description": "Untie something tied.",
+      "needs_dobj": true,
+      "valid_dobj_kinds": [
+        "thing"
+      ],
+      "fail_text": "It isn't tied."
+    },
+    "unlock": {
+      "ui_hint": "Unlock",
+      "description": "Unlock a lock with a key.",
+      "needs_dobj": true,
+      "needs_iobj": true,
+      "valid_dobj_kinds": [
+        "thing"
+      ],
+      "valid_iobj_kinds": [
+        "thing"
+      ],
+      "preps": [
+        "with"
+      ],
+      "fail_text": "It has no lock you can see."
+    },
+    "lock": {
+      "ui_hint": "Lock",
+      "description": "Lock a lock with a key.",
+      "needs_dobj": true,
+      "needs_iobj": true,
+      "valid_dobj_kinds": [
+        "thing"
+      ],
+      "valid_iobj_kinds": [
+        "thing"
+      ],
+      "preps": [
+        "with"
+      ],
+      "fail_text": "It has no lock you can see."
+    },
+    "dig": {
+      "ui_hint": "Dig",
+      "description": "Dig, given something to dig with.",
+      "needs_dobj": true,
+      "valid_dobj_kinds": [
+        "thing"
+      ],
+      "preps": [
+        "with"
+      ],
+      "iobj_default": {
+        "key": "digger",
+        "eq": true
+      },
+      "fail_text": "The ground here is too hard for digging."
+    },
+    "inflate": {
+      "ui_hint": "Inflate",
+      "description": "Inflate something with a pump.",
+      "needs_dobj": true,
+      "needs_iobj": true,
+      "valid_dobj_kinds": [
+        "thing"
+      ],
+      "valid_iobj_kinds": [
+        "thing"
+      ],
+      "preps": [
+        "with"
+      ],
+      "fail_text": "It doesn't hold air."
+    },
+    "deflate": {
+      "ui_hint": "Deflate",
+      "description": "Let the air out of something.",
+      "needs_dobj": true,
+      "valid_dobj_kinds": [
+        "thing"
+      ],
+      "fail_text": "It isn't inflated."
+    },
+    "plug": {
+      "ui_hint": "Plug",
+      "description": "Plug a leak with something.",
+      "needs_dobj": true,
+      "needs_iobj": true,
+      "valid_dobj_kinds": [
+        "thing"
+      ],
+      "valid_iobj_kinds": [
+        "thing"
+      ],
+      "preps": [
+        "with"
+      ],
+      "fail_text": "There's nothing to plug it with."
+    },
+    "ring": {
+      "ui_hint": "Ring",
+      "description": "Ring a bell.",
+      "needs_dobj": true,
+      "valid_dobj_kinds": [
+        "thing"
+      ],
+      "fail_text": "It makes no useful sound."
+    },
+    "wave": {
+      "ui_hint": "Wave",
+      "description": "Wave something about.",
+      "needs_dobj": true,
+      "valid_dobj_kinds": [
+        "thing"
+      ],
+      "aliases": [
+        "brandish"
+      ],
+      "fail_text": "You look silly waving it."
+    },
+    "rub": {
+      "ui_hint": "Rub",
+      "description": "Rub or touch a surface.",
+      "needs_dobj": true,
+      "valid_dobj_kinds": [
+        "thing"
+      ],
+      "aliases": [
+        "touch",
+        "polish"
+      ],
+      "fail_text": "Nothing happens."
+    },
+    "wind": {
+      "ui_hint": "Wind",
+      "description": "Wind a clockwork thing.",
+      "needs_dobj": true,
+      "valid_dobj_kinds": [
+        "thing"
+      ],
+      "fail_text": "It has no winding to it."
+    },
+    "raise": {
+      "ui_hint": "Raise",
+      "description": "Raise something on a rope or pulley.",
+      "needs_dobj": true,
+      "valid_dobj_kinds": [
+        "thing"
+      ],
+      "aliases": [
+        "pull up"
+      ],
+      "fail_text": "It won't lift."
+    },
+    "lower": {
+      "ui_hint": "Lower",
+      "description": "Lower something on a rope or pulley.",
+      "needs_dobj": true,
+      "valid_dobj_kinds": [
+        "thing"
+      ],
+      "aliases": [
+        "let down"
+      ],
+      "fail_text": "It won't go lower."
+    },
+    "eat": {
+      "ui_hint": "Eat",
+      "description": "Eat something edible.",
+      "needs_dobj": true,
+      "valid_dobj_kinds": [
+        "thing"
+      ],
+      "aliases": [
+        "devour",
+        "consume"
+      ],
+      "fail_text": "It is not the eating kind."
+    },
+    "drink": {
+      "ui_hint": "Drink",
+      "description": "Drink something drinkable.",
+      "needs_dobj": true,
+      "valid_dobj_kinds": [
+        "thing"
+      ],
+      "aliases": [
+        "sip",
+        "quaff"
+      ],
+      "fail_text": "You can't drink that."
+    },
+    "knock": {
+      "ui_hint": "Knock",
+      "description": "Knock on something.",
+      "needs_dobj": true,
+      "valid_dobj_kinds": [
+        "thing"
+      ],
+      "preps": [
+        "on"
+      ],
+      "fail_text": "Nobody answers."
+    },
+    "count": {
+      "ui_hint": "Count",
+      "description": "Count something countable.",
+      "needs_dobj": true,
+      "valid_dobj_kinds": [
+        "thing"
+      ],
+      "fail_text": "You have lost count already."
+    },
+    "pray": {
+      "ui_hint": "Pray",
+      "description": "Offer a prayer.",
+      "fail_text": "If you pray enough, your prayers may be answered."
+    },
+    "jump": {
+      "ui_hint": "Jump",
+      "description": "Jump on the spot.",
+      "aliases": [
+        "leap"
+      ],
+      "fail_text": "Wheeeeeeeeee!!!!!"
+    },
+    "wait": {
+      "ui_hint": "Wait",
+      "description": "Let a turn pass.",
+      "aliases": [
+        "z"
+      ],
+      "fail_text": "Time passes."
+    },
+    "echo": {
+      "ui_hint": "Echo",
+      "description": "Say the word aloud.",
+      "fail_text": "echo ... echo ... echo"
+    },
+    "xyzzy": {
+      "ui_hint": "Xyzzy",
+      "description": "An old word from another cave.",
+      "fail_text": "A hollow voice says \"Fool.\""
+    },
+    "plugh": {
+      "ui_hint": "Plugh",
+      "description": "Another old word from another cave.",
+      "fail_text": "A hollow voice says \"Fool.\""
+    },
+    "hello": {
+      "ui_hint": "Hello",
+      "description": "Greet whatever is listening.",
+      "aliases": [
+        "hello sailor",
+        "hi"
+      ],
+      "fail_text": "Nothing happens here."
+    },
+    "zork": {
+      "ui_hint": "Zork",
+      "description": "Invoke the name itself.",
+      "fail_text": "At your service!"
+    },
+    "odysseus": {
+      "ui_hint": "Odysseus",
+      "description": "Invoke the name of an old hero.",
+      "aliases": [
+        "ulysses"
+      ],
+      "fail_text": "Nothing happens."
+    }
+  },
+  "rooms": [
+    {
+      "id": "r-west-of-house",
+      "slug": "west-of-house",
+      "title": "West of House",
+      "seed": "a white clapboard house at the edge of a field, boarded front door, long grass, late watercolor light",
+      "description": "You are standing in an open field west of a white house, with a boarded front door. The grass has grown long and gone to seed, and nobody has minded in years.",
+      "exits": {
+        "north": "r-north-of-house",
+        "south": "r-south-of-house",
+        "northeast": "r-north-of-house",
+        "southeast": "r-south-of-house",
+        "west": "r-forest-1",
+        "east": {
+          "text": "The door is boarded and you can't remove the boards."
+        },
+        "southwest": {
+          "to": "r-stone-barrow",
+          "if": [
+            {
+              "flag": "WON-ENABLED"
+            }
+          ],
+          "secret": true
+        },
+        "in": {
+          "to": "r-stone-barrow",
+          "if": [
+            {
+              "flag": "WON-ENABLED"
+            }
+          ],
+          "secret": true
+        }
+      }
+    },
+    {
+      "id": "r-north-of-house",
+      "slug": "north-of-house",
+      "title": "North of House",
+      "seed": "the shaded north face of a white house, boarded windows, a path into dark firs",
+      "description": "You are facing the north side of a white house. There is no door here, and all the windows are boarded up. To the north a narrow path winds through the trees.",
+      "exits": {
+        "southwest": "r-west-of-house",
+        "southeast": "r-behind-house",
+        "west": "r-west-of-house",
+        "east": "r-behind-house",
+        "north": "r-forest-path",
+        "south": {
+          "text": "The windows are all boarded."
+        }
+      }
+    },
+    {
+      "id": "r-south-of-house",
+      "slug": "south-of-house",
+      "title": "South of House",
+      "seed": "the south face of a white house, boarded windows, brambles at the sill",
+      "description": "You are facing the south side of a white house. There is no door here, and all the windows are boarded.",
+      "exits": {
+        "west": "r-west-of-house",
+        "east": "r-behind-house",
+        "northeast": "r-behind-house",
+        "northwest": "r-west-of-house",
+        "south": "r-forest-3",
+        "north": {
+          "text": "The windows are all boarded."
+        }
+      }
+    },
+    {
+      "id": "r-behind-house",
+      "slug": "behind-house",
+      "title": "Behind House",
+      "seed": "the back of a white house, one small window ajar, a kitchen garden gone wild",
+      "description": "You are behind the white house. A path leads into the forest to the east, and in one corner of the house a small window stands slightly ajar.",
+      "exits": {
+        "north": "r-north-of-house",
+        "south": "r-south-of-house",
+        "southwest": "r-south-of-house",
+        "northwest": "r-north-of-house",
+        "east": "r-clearing",
+        "west": {
+          "to": "r-kitchen",
+          "if": [
+            {
+              "flag": "KITCHEN-WINDOW-OPEN"
+            }
+          ],
+          "blocked_text": "The kitchen window is closed."
+        },
+        "in": {
+          "to": "r-kitchen",
+          "if": [
+            {
+              "flag": "KITCHEN-WINDOW-OPEN"
+            }
+          ],
+          "blocked_text": "The kitchen window is closed."
+        }
+      }
+    },
+    {
+      "id": "r-forest-1",
+      "slug": "forest-west",
+      "title": "Forest",
+      "seed": "deep fir forest, needled floor, low green light, no path",
+      "description": "This is a forest, with trees in all directions. To the east, there appears to be sunlight.",
+      "exits": {
+        "up": {
+          "text": "There is no tree here suitable for climbing."
+        },
+        "north": "r-grating-clearing",
+        "east": "r-forest-path",
+        "south": "r-forest-3",
+        "west": {
+          "text": "You would need a machete to go further west."
+        }
+      }
+    },
+    {
+      "id": "r-forest-2",
+      "slug": "forest-north",
+      "title": "Forest",
+      "seed": "dim northern forest thickening toward mountains, wind high in the crowns",
+      "description": "This is a dimly lit forest, with large trees all around.",
+      "exits": {
+        "up": {
+          "text": "There is no tree here suitable for climbing."
+        },
+        "north": {
+          "text": "The forest becomes impenetrable to the north."
+        },
+        "east": "r-mountains",
+        "south": "r-clearing",
+        "west": "r-forest-path"
+      }
+    },
+    {
+      "id": "r-forest-3",
+      "slug": "forest-south",
+      "title": "Forest",
+      "seed": "southern forest, storm-leaned trunks, undergrowth ranked and rude",
+      "description": "This is a dimly lit forest, with large trees all around. The undergrowth south of here has settled the question of passage in its own favor.",
+      "exits": {
+        "up": {
+          "text": "There is no tree here suitable for climbing."
+        },
+        "north": "r-clearing",
+        "east": {
+          "text": "The rank undergrowth prevents eastward movement."
+        },
+        "south": {
+          "text": "Storm-tossed trees block your way."
+        },
+        "west": "r-forest-1",
+        "northwest": "r-south-of-house"
+      }
+    },
+    {
+      "id": "r-mountains",
+      "slug": "mountains",
+      "title": "Forest",
+      "seed": "forest edge failing against a wall of impassable grey mountains",
+      "description": "The forest thins out here, revealing impassable mountains to the east.",
+      "exits": {
+        "up": {
+          "text": "The mountains are impassable."
+        },
+        "north": "r-forest-2",
+        "east": {
+          "text": "The mountains are impassable."
+        },
+        "south": "r-forest-2",
+        "west": "r-forest-2"
+      }
+    },
+    {
+      "id": "r-forest-path",
+      "slug": "forest-path",
+      "title": "Forest Path",
+      "seed": "a winding north-south path under one very large low-branched tree",
+      "description": "This is a path winding through a dimly lit forest. The path heads north-south here. One particularly large tree with some low branches stands at the edge of the path.",
+      "exits": {
+        "up": "r-up-a-tree",
+        "north": "r-grating-clearing",
+        "east": "r-forest-2",
+        "south": "r-north-of-house",
+        "west": "r-forest-1"
+      }
+    },
+    {
+      "id": "r-up-a-tree",
+      "slug": "up-a-tree",
+      "title": "Up a Tree",
+      "seed": "ten feet up a broad-limbed tree, a bird's nest on the branch, forest floor below",
+      "description": "You are about ten feet up, nestled among the large lower branches. The next branch above is out of reach, and knows it.",
+      "exits": {
+        "down": "r-forest-path",
+        "up": {
+          "text": "You cannot climb any higher."
+        }
+      }
+    },
+    {
+      "id": "r-grating-clearing",
+      "slug": "grating-clearing",
+      "title": "Clearing",
+      "seed": "a small forest clearing carpeted in dead leaves, something metallic beneath",
+      "description": "You are in a clearing, with a forest surrounding you on all sides. A path leads south.",
+      "exits": {
+        "north": {
+          "text": "The forest becomes impenetrable to the north."
+        },
+        "east": "r-forest-2",
+        "west": "r-forest-1",
+        "south": "r-forest-path",
+        "down": {
+          "to": "r-grating-room",
+          "if": [
+            {
+              "flag": "GRATING-OPEN"
+            }
+          ],
+          "blocked_text": "You can't go that way.",
+          "secret": true
+        }
+      },
+      "rules": [
+        {
+          "on": "enter",
+          "if": [
+            {
+              "flag": "LEAVES-MOVED",
+              "eq": false
+            }
+          ],
+          "stop": false,
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "The clearing is carpeted with dead leaves, drifted deep."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "r-clearing",
+      "slug": "canyon-clearing",
+      "title": "Clearing",
+      "seed": "an eastern clearing where the forest gives out toward a canyon rim",
+      "description": "You are in a small clearing in a well marked forest path that extends to the east and west.",
+      "exits": {
+        "up": {
+          "text": "There is no tree here suitable for climbing."
+        },
+        "east": "r-canyon-view",
+        "north": "r-forest-2",
+        "south": "r-forest-3",
+        "west": "r-behind-house"
+      }
+    },
+    {
+      "id": "r-canyon-view",
+      "slug": "canyon-view",
+      "title": "Canyon View",
+      "seed": "the top of the Great Canyon, river glinting far below, Aragain Falls upriver, a climbable rock wall",
+      "description": "You are at the top of the Great Canyon on its west wall, and the view is the reward: the Frigid River silvering below, the White Cliffs shouldering into the Flathead Mountains across the gorge, and upstream to the north, Aragain Falls wearing its rainbow. The wall here looks climbable, for the confident.",
+      "exits": {
+        "east": "r-cliff-middle",
+        "down": "r-cliff-middle",
+        "northwest": "r-clearing",
+        "west": "r-forest-3",
+        "south": {
+          "text": "Storm-tossed trees block your way."
+        }
+      }
+    },
+    {
+      "id": "r-cliff-middle",
+      "slug": "rocky-ledge",
+      "title": "Rocky Ledge",
+      "seed": "a ledge halfway down the canyon wall, wide enough to rest, wall climbable both ways",
+      "description": "You are on a ledge about halfway up the canyon wall, wide enough to stand on and think better of things. The main flow of Aragain Falls twists through a passage no one could enter and survive. The cliff continues up, and down.",
+      "exits": {
+        "up": "r-canyon-view",
+        "down": "r-canyon-bottom"
+      }
+    },
+    {
+      "id": "r-canyon-bottom",
+      "slug": "canyon-bottom",
+      "title": "Canyon Bottom",
+      "seed": "the canyon floor beneath high walls, the river wide and quick, spray drifting",
+      "description": "You are on the canyon floor beneath walls that may be climbable, next to the lesser runoff of Aragain Falls. Spray keeps the stones dark. A narrow path leads north.",
+      "exits": {
+        "up": "r-cliff-middle",
+        "north": "r-end-of-rainbow"
+      }
+    },
+    {
+      "id": "r-end-of-rainbow",
+      "slug": "end-of-rainbow",
+      "title": "End of Rainbow",
+      "seed": "a small rocky beach at the base of Aragain Falls, the rainbow's western foot ending here in spray",
+      "description": "You are on a small rocky beach past the falls, walled on the south by the canyon. The rainbow of Aragain Falls comes down to end here, which is the kind of thing one accepts locally.",
+      "exits": {
+        "southwest": "r-canyon-bottom",
+        "up": {
+          "to": "r-on-rainbow",
+          "if": [
+            {
+              "flag": "RAINBOW-SOLID"
+            }
+          ],
+          "blocked_text": "Rainbows are lovely, but they are not stairs."
+        },
+        "northeast": {
+          "to": "r-on-rainbow",
+          "if": [
+            {
+              "flag": "RAINBOW-SOLID"
+            }
+          ],
+          "blocked_text": "Rainbows are lovely, but they are not stairs."
+        },
+        "east": {
+          "to": "r-on-rainbow",
+          "if": [
+            {
+              "flag": "RAINBOW-SOLID"
+            }
+          ],
+          "blocked_text": "Rainbows are lovely, but they are not stairs."
+        }
+      }
+    },
+    {
+      "id": "r-stone-barrow",
+      "slug": "stone-barrow",
+      "title": "Stone Barrow",
+      "seed": "a massive barrow of rough grey stone, a huge stone door standing open on darkness",
+      "description": "You are standing in front of a massive barrow of stone. In the east face is a huge stone door which is open. You cannot see into the dark of the tomb.",
+      "exits": {
+        "northeast": "r-west-of-house"
+      },
+      "rules": [
+        {
+          "on": "enter",
+          "do": [
+            {
+              "kind": "narrate",
+              "text": "Inside the barrow, the dark is not empty: it is expectant. Somewhere below, the Great Underground Empire keeps a place for the one who gathered all its scattered brightness. Your adventure here is done, and well done."
+            },
+            {
+              "kind": "win",
+              "text": "You have won, with a perfect score. The Great Underground Empire will speak of you in its sleep."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "r-kitchen",
+      "slug": "kitchen",
+      "title": "Kitchen",
+      "seed": "a farmhouse kitchen, table lately used, dark chimney mouth, stairs going up into gloom",
+      "description": "You are in the kitchen of the white house. A table seems to have been used recently for the preparation of food. A passage leads to the west and a dark staircase can be seen leading upward. A dark chimney leads down and to the east is a small window which is open.",
+      "exits": {
+        "east": {
+          "to": "r-behind-house",
+          "if": [
+            {
+              "flag": "KITCHEN-WINDOW-OPEN"
+            }
+          ],
+          "blocked_text": "The kitchen window is closed."
+        },
+        "out": {
+          "to": "r-behind-house",
+          "if": [
+            {
+              "flag": "KITCHEN-WINDOW-OPEN"
+            }
+          ],
+          "blocked_text": "The kitchen window is closed."
+        },
+        "west": "r-living-room",
+        "up": "r-attic",
+        "down": {
+          "text": "Only Santa Claus climbs down chimneys."
+        }
+      },
+      "rules": [
+        {
+          "on": "enter",
+          "stop": false,
+          "do": [
+            {
+              "kind": "adjust_score",
+              "delta": 10,
+              "once": "room:r-kitchen"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "r-living-room",
+      "slug": "living-room",
+      "title": "Living Room",
+      "seed": "a comfortable ruin of a parlor: oriental rug, trophy case, a sword over the mantel, a door nailed shut",
+      "description": "You are in the living room. There is a doorway to the east, a wooden door with strange gothic lettering to the west, which appears to be nailed shut, a trophy case, and a large oriental rug in the center of the room.",
+      "exits": {
+        "east": "r-kitchen",
+        "west": {
+          "to": "r-strange-passage",
+          "if": [
+            {
+              "flag": "MAGIC-FLAG"
+            }
+          ],
+          "blocked_text": "The door is nailed shut."
+        },
+        "down": {
+          "to": "r-cellar",
+          "if": [
+            {
+              "flag": "TRAP-DOOR-OPEN"
+            }
+          ],
+          "blocked_text": "You can't go that way, at present.",
+          "secret": true
+        }
+      }
+    },
+    {
+      "id": "r-attic",
+      "slug": "attic",
+      "title": "Attic",
+      "dark": true,
+      "seed": "a steep-raftered attic, one square of lesser dark for a window, dust in ropes of light when lit",
+      "description": "This is the attic. The only exit is a stairway leading down.",
+      "exits": {
+        "down": "r-kitchen"
+      }
+    },
+    {
+      "id": "r-cellar",
+      "slug": "stub-cellar",
+      "title": "Unfinished Dark",
+      "seed": "unfinished dark",
+      "dark": true,
+      "description": "This part of the empire is still being excavated.",
+      "exits": {},
+      "properties": {
+        "stub": true
+      }
+    },
+    {
+      "id": "r-chasm-room",
+      "slug": "stub-chasm-room",
+      "title": "Unfinished Dark",
+      "seed": "unfinished dark",
+      "dark": true,
+      "description": "This part of the empire is still being excavated.",
+      "exits": {},
+      "properties": {
+        "stub": true
+      }
+    },
+    {
+      "id": "r-cold-passage",
+      "slug": "stub-cold-passage",
+      "title": "Unfinished Dark",
+      "seed": "unfinished dark",
+      "dark": true,
+      "description": "This part of the empire is still being excavated.",
+      "exits": {},
+      "properties": {
+        "stub": true
+      }
+    },
+    {
+      "id": "r-damp-cave",
+      "slug": "stub-damp-cave",
+      "title": "Unfinished Dark",
+      "seed": "unfinished dark",
+      "dark": true,
+      "description": "This part of the empire is still being excavated.",
+      "exits": {},
+      "properties": {
+        "stub": true
+      }
+    },
+    {
+      "id": "r-deep-canyon",
+      "slug": "stub-deep-canyon",
+      "title": "Unfinished Dark",
+      "seed": "unfinished dark",
+      "dark": true,
+      "description": "This part of the empire is still being excavated.",
+      "exits": {},
+      "properties": {
+        "stub": true
+      }
+    },
+    {
+      "id": "r-engravings-cave",
+      "slug": "stub-engravings-cave",
+      "title": "Unfinished Dark",
+      "seed": "unfinished dark",
+      "dark": true,
+      "description": "This part of the empire is still being excavated.",
+      "exits": {},
+      "properties": {
+        "stub": true
+      }
+    },
+    {
+      "id": "r-ew-passage",
+      "slug": "stub-ew-passage",
+      "title": "Unfinished Dark",
+      "seed": "unfinished dark",
+      "dark": true,
+      "description": "This part of the empire is still being excavated.",
+      "exits": {},
+      "properties": {
+        "stub": true
+      }
+    },
+    {
+      "id": "r-gallery",
+      "slug": "stub-gallery",
+      "title": "Unfinished Dark",
+      "seed": "unfinished dark",
+      "dark": true,
+      "description": "This part of the empire is still being excavated.",
+      "exits": {},
+      "properties": {
+        "stub": true
+      }
+    },
+    {
+      "id": "r-grating-room",
+      "slug": "stub-grating-room",
+      "title": "Unfinished Dark",
+      "seed": "unfinished dark",
+      "dark": true,
+      "description": "This part of the empire is still being excavated.",
+      "exits": {},
+      "properties": {
+        "stub": true
+      }
+    },
+    {
+      "id": "r-maze-11",
+      "slug": "stub-maze-11",
+      "title": "Unfinished Dark",
+      "seed": "unfinished dark",
+      "dark": true,
+      "description": "This part of the empire is still being excavated.",
+      "exits": {},
+      "properties": {
+        "stub": true
+      }
+    },
+    {
+      "id": "r-maze-2",
+      "slug": "stub-maze-2",
+      "title": "Unfinished Dark",
+      "seed": "unfinished dark",
+      "dark": true,
+      "description": "This part of the empire is still being excavated.",
+      "exits": {},
+      "properties": {
+        "stub": true
+      }
+    },
+    {
+      "id": "r-maze-5",
+      "slug": "stub-maze-5",
+      "title": "Unfinished Dark",
+      "seed": "unfinished dark",
+      "dark": true,
+      "description": "This part of the empire is still being excavated.",
+      "exits": {},
+      "properties": {
+        "stub": true
+      }
+    },
+    {
+      "id": "r-mine-entrance",
+      "slug": "stub-mine-entrance",
+      "title": "Unfinished Dark",
+      "seed": "unfinished dark",
+      "dark": true,
+      "description": "This part of the empire is still being excavated.",
+      "exits": {},
+      "properties": {
+        "stub": true
+      }
+    },
+    {
+      "id": "r-narrow-passage",
+      "slug": "stub-narrow-passage",
+      "title": "Unfinished Dark",
+      "seed": "unfinished dark",
+      "dark": true,
+      "description": "This part of the empire is still being excavated.",
+      "exits": {},
+      "properties": {
+        "stub": true
+      }
+    },
+    {
+      "id": "r-ns-passage",
+      "slug": "stub-ns-passage",
+      "title": "Unfinished Dark",
+      "seed": "unfinished dark",
+      "dark": true,
+      "description": "This part of the empire is still being excavated.",
+      "exits": {},
+      "properties": {
+        "stub": true
+      }
+    },
+    {
+      "id": "r-on-rainbow",
+      "slug": "stub-on-rainbow",
+      "title": "Unfinished Dark",
+      "seed": "unfinished dark",
+      "dark": true,
+      "description": "This part of the empire is still being excavated.",
+      "exits": {},
+      "properties": {
+        "stub": true
+      }
+    },
+    {
+      "id": "r-river-1",
+      "slug": "stub-river-1",
+      "title": "Unfinished Dark",
+      "seed": "unfinished dark",
+      "dark": true,
+      "description": "This part of the empire is still being excavated.",
+      "exits": {},
+      "properties": {
+        "stub": true
+      }
+    },
+    {
+      "id": "r-river-2",
+      "slug": "stub-river-2",
+      "title": "Unfinished Dark",
+      "seed": "unfinished dark",
+      "dark": true,
+      "description": "This part of the empire is still being excavated.",
+      "exits": {},
+      "properties": {
+        "stub": true
+      }
+    },
+    {
+      "id": "r-river-3",
+      "slug": "stub-river-3",
+      "title": "Unfinished Dark",
+      "seed": "unfinished dark",
+      "dark": true,
+      "description": "This part of the empire is still being excavated.",
+      "exits": {},
+      "properties": {
+        "stub": true
+      }
+    },
+    {
+      "id": "r-river-4",
+      "slug": "stub-river-4",
+      "title": "Unfinished Dark",
+      "seed": "unfinished dark",
+      "dark": true,
+      "description": "This part of the empire is still being excavated.",
+      "exits": {},
+      "properties": {
+        "stub": true
+      }
+    },
+    {
+      "id": "r-river-5",
+      "slug": "stub-river-5",
+      "title": "Unfinished Dark",
+      "seed": "unfinished dark",
+      "dark": true,
+      "description": "This part of the empire is still being excavated.",
+      "exits": {},
+      "properties": {
+        "stub": true
+      }
+    },
+    {
+      "id": "r-round-room",
+      "slug": "stub-round-room",
+      "title": "Unfinished Dark",
+      "seed": "unfinished dark",
+      "dark": true,
+      "description": "This part of the empire is still being excavated.",
+      "exits": {},
+      "properties": {
+        "stub": true
+      }
+    },
+    {
+      "id": "r-strange-passage",
+      "slug": "stub-strange-passage",
+      "title": "Unfinished Dark",
+      "seed": "unfinished dark",
+      "dark": true,
+      "description": "This part of the empire is still being excavated.",
+      "exits": {},
+      "properties": {
+        "stub": true
+      }
+    },
+    {
+      "id": "r-studio",
+      "slug": "stub-studio",
+      "title": "Unfinished Dark",
+      "seed": "unfinished dark",
+      "dark": true,
+      "description": "This part of the empire is still being excavated.",
+      "exits": {},
+      "properties": {
+        "stub": true
+      }
+    },
+    {
+      "id": "r-treasure-room",
+      "slug": "stub-treasure-room",
+      "title": "Unfinished Dark",
+      "seed": "unfinished dark",
+      "dark": true,
+      "description": "This part of the empire is still being excavated.",
+      "exits": {},
+      "properties": {
+        "stub": true
+      }
+    },
+    {
+      "id": "r-winding-passage",
+      "slug": "stub-winding-passage",
+      "title": "Unfinished Dark",
+      "seed": "unfinished dark",
+      "dark": true,
+      "description": "This part of the empire is still being excavated.",
+      "exits": {},
+      "properties": {
+        "stub": true
+      }
+    }
+  ],
+  "toons": [
+    {
+      "id": "t-adventurer",
+      "name": "Adventurer",
+      "slot": 1,
+      "room": "r-west-of-house",
+      "appearance_seed": "a traveler in sensible boots, carrying nothing yet and eyeing the mailbox",
+      "seed": "the nameless adventurer every empire eventually gets",
+      "mood": "resolute",
+      "is_human_controlled": 0
+    },
+    {
+      "id": "t-cyclops",
+      "name": "stub-cyclops",
+      "slot": 120,
+      "room": "r-cellar",
+      "appearance_seed": "a shape not yet drawn",
+      "properties": {
+        "stub": true
+      }
+    },
+    {
+      "id": "t-thief",
+      "name": "stub-thief",
+      "slot": 121,
+      "room": "r-cellar",
+      "appearance_seed": "a shape not yet drawn",
+      "properties": {
+        "stub": true
+      }
+    },
+    {
+      "id": "t-troll",
+      "name": "stub-troll",
+      "slot": 122,
+      "room": "r-cellar",
+      "appearance_seed": "a shape not yet drawn",
+      "properties": {
+        "stub": true
+      }
+    }
+  ],
+  "things": [
+    {
+      "id": "o-mailbox",
+      "name": "small mailbox",
+      "location": {
+        "room": "r-west-of-house"
+      },
+      "aliases": [
+        "mailbox",
+        "box"
+      ],
+      "seed": "a small mailbox on a weathered post",
+      "fixture": true,
+      "verbs": [
+        "open",
+        "close"
+      ],
+      "properties": {
+        "container": true,
+        "state": "closed",
+        "capacity": 10,
+        "open_text": "Opening the small mailbox reveals a leaflet."
+      }
+    },
+    {
+      "id": "o-leaflet",
+      "name": "leaflet",
+      "location": {
+        "in": "o-mailbox"
+      },
+      "aliases": [
+        "mail",
+        "pamphlet"
+      ],
+      "seed": "a single printed leaflet, folded once",
+      "readable": true,
+      "properties": {
+        "size": 2
+      },
+      "text": "WELCOME TO ZORK!\n\nZORK is a game of adventure, danger, and low cunning. In it you will find towers of treasure and a great many ways to stop needing it. No map here is honest, no lock is idle, and the management accepts no liability."
+    },
+    {
+      "id": "o-mat",
+      "name": "welcome mat",
+      "location": {
+        "room": "r-west-of-house"
+      },
+      "aliases": [
+        "mat",
+        "rubber mat"
+      ],
+      "seed": "a rubber mat saying 'Welcome to Zork!', frayed at one corner",
+      "properties": {
+        "size": 12
+      }
+    },
+    {
+      "id": "o-nest",
+      "name": "bird's nest",
+      "location": {
+        "room": "r-up-a-tree"
+      },
+      "aliases": [
+        "nest"
+      ],
+      "seed": "a small bird's nest woven of twigs and horsehair",
+      "properties": {
+        "container": true,
+        "capacity": 20,
+        "size": 8
+      }
+    },
+    {
+      "id": "o-egg",
+      "name": "jewel-encrusted egg",
+      "location": {
+        "in": "o-nest"
+      },
+      "aliases": [
+        "egg",
+        "jeweled egg"
+      ],
+      "seed": "an egg cased in fine gold filigree and set with jewels, its clasp too delicate for field surgery",
+      "verbs": [
+        "open"
+      ],
+      "properties": {
+        "size": 6,
+        "state": "clasped",
+        "state_text": {
+          "clasped": "Its clasp is shut, and the mechanism is beyond you.",
+          "open": "It stands open on its hinge, the golden clockwork canary's cradle within revealed as the masterwork it is."
+        },
+        "locked_text": "You have neither the tools nor the delicacy; forcing it would ruin something irreplaceable.",
+        "container": true,
+        "capacity": 6,
+        "treasure": true,
+        "score_take": 5,
+        "score_case": 5
+      },
+      "rules": [
+        {
+          "on": "open",
+          "if": [
+            {
+              "prop": "state",
+              "of": "@self",
+              "eq": "clasped"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "The clasp is cunning past your skill. Perhaps a specialist — someone with delicate fingers and flexible ethics — could open it without ruin."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "o-leaves",
+      "name": "pile of leaves",
+      "location": {
+        "room": "r-grating-clearing"
+      },
+      "aliases": [
+        "leaves",
+        "pile"
+      ],
+      "seed": "a deep drift of dead leaves, suspiciously tidy at the center of the clearing",
+      "verbs": [
+        "move",
+        "count"
+      ],
+      "properties": {
+        "size": 25
+      },
+      "rules": [
+        {
+          "on": "count",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "There are 69,105 leaves here."
+            }
+          ]
+        },
+        {
+          "on": "move",
+          "if": [
+            {
+              "flag": "LEAVES-MOVED",
+              "eq": false
+            }
+          ],
+          "do": [
+            {
+              "kind": "set_flag",
+              "name": "LEAVES-MOVED",
+              "value": true
+            },
+            {
+              "kind": "narrate",
+              "text": "In disturbing the pile of leaves, a grating is revealed."
+            }
+          ]
+        },
+        {
+          "on": "move",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "You rearrange the leaves. The grating remains revealed."
+            }
+          ]
+        },
+        {
+          "on": "take",
+          "if": [
+            {
+              "flag": "LEAVES-MOVED",
+              "eq": false
+            }
+          ],
+          "do": [
+            {
+              "kind": "set_flag",
+              "name": "LEAVES-MOVED",
+              "value": true
+            },
+            {
+              "kind": "narrate",
+              "text": "You pick up the pile of leaves, which was heavier than it looked; beneath it, a grating is revealed."
+            },
+            {
+              "kind": "move_object",
+              "object_id": "@self",
+              "dest_id": "@actor"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "o-grating",
+      "name": "grating",
+      "location": {
+        "room": "r-grating-clearing"
+      },
+      "aliases": [
+        "grate"
+      ],
+      "seed": "an iron grating set flush in the earth, locked from beneath",
+      "fixture": true,
+      "verbs": [
+        "open",
+        "unlock"
+      ],
+      "rules": [
+        {
+          "on": "open",
+          "if": [
+            {
+              "flag": "LEAVES-MOVED",
+              "eq": false
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "You see nothing here to open."
+            }
+          ]
+        },
+        {
+          "on": "open",
+          "if": [
+            {
+              "flag": "GRATING-UNLOCKED"
+            },
+            {
+              "flag": "GRATING-OPEN",
+              "eq": false
+            }
+          ],
+          "do": [
+            {
+              "kind": "set_flag",
+              "name": "GRATING-OPEN",
+              "value": true
+            },
+            {
+              "kind": "narrate",
+              "text": "The grating opens to reveal darkness below."
+            }
+          ]
+        },
+        {
+          "on": "open",
+          "if": [
+            {
+              "flag": "GRATING-OPEN"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "The grating is already open."
+            }
+          ]
+        },
+        {
+          "on": "open",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "The grating is locked."
+            }
+          ]
+        },
+        {
+          "on": "unlock",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "The lock faces the other side; you can't reach it from up here."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "o-window",
+      "name": "kitchen window",
+      "location": {
+        "room": "r-behind-house"
+      },
+      "aliases": [
+        "window"
+      ],
+      "seed": "a small window at the back of the house, ajar by a finger's width",
+      "fixture": true,
+      "verbs": [
+        "open",
+        "close"
+      ],
+      "rules": [
+        {
+          "on": "open",
+          "if": [
+            {
+              "flag": "KITCHEN-WINDOW-OPEN",
+              "eq": false
+            }
+          ],
+          "do": [
+            {
+              "kind": "set_flag",
+              "name": "KITCHEN-WINDOW-OPEN",
+              "value": true
+            },
+            {
+              "kind": "narrate",
+              "text": "With great effort, you open the window far enough to allow entry."
+            }
+          ]
+        },
+        {
+          "on": "open",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "The window is already open."
+            }
+          ]
+        },
+        {
+          "on": "close",
+          "if": [
+            {
+              "flag": "KITCHEN-WINDOW-OPEN"
+            }
+          ],
+          "do": [
+            {
+              "kind": "set_flag",
+              "name": "KITCHEN-WINDOW-OPEN",
+              "value": false
+            },
+            {
+              "kind": "narrate",
+              "text": "The window closes, not without protest."
+            }
+          ]
+        },
+        {
+          "on": "close",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "The window is already closed as far as it goes."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "o-canary",
+      "name": "golden clockwork canary",
+      "location": {
+        "in": "o-egg"
+      },
+      "aliases": [
+        "canary",
+        "bird"
+      ],
+      "seed": "a golden clockwork canary, feathers of hammered gold leaf, a winding stem under one wing",
+      "verbs": [
+        "wind"
+      ],
+      "properties": {
+        "size": 4,
+        "treasure": true,
+        "score_take": 6,
+        "score_case": 4
+      },
+      "rules": [
+        {
+          "on": "wind",
+          "if": [
+            {
+              "carried": "@self"
+            },
+            {
+              "in": "r-forest-path"
+            },
+            {
+              "flag": "EGG-TREASURED",
+              "eq": false
+            }
+          ],
+          "do": [
+            {
+              "kind": "set_flag",
+              "name": "EGG-TREASURED",
+              "value": true
+            },
+            {
+              "kind": "narrate",
+              "text": "The canary chirps, slightly off-key, an aria from a forgotten opera. From out of the greenery flies a lovely songbird; it perches on a limb just over your head, opens its beak, and a beautiful brass bauble drops from its mouth, bounces off the top of your head, and lands glimmering in the grass. As the canary winds down, the songbird flies away."
+            },
+            {
+              "kind": "spawn_object",
+              "name": "beautiful brass bauble",
+              "location_id": "r-forest-path",
+              "seed": "a small brass bauble, polished by a songbird's fussing",
+              "generated_by": "wind:o-canary",
+              "aliases": [
+                "bauble",
+                "brass bauble"
+              ],
+              "properties": {
+                "treasure": true,
+                "score_take": 1,
+                "score_case": 1,
+                "size": 3
+              }
+            }
+          ]
+        },
+        {
+          "on": "wind",
+          "if": [
+            {
+              "carried": "@self"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "The canary chirps blithely, if somewhat tinnily, for a short time."
+            }
+          ]
+        },
+        {
+          "on": "wind",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "You aren't holding the canary."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "o-table",
+      "name": "kitchen table",
+      "location": {
+        "room": "r-kitchen"
+      },
+      "aliases": [
+        "table"
+      ],
+      "seed": "a sturdy kitchen table, crumbs and knife-marks",
+      "fixture": true,
+      "properties": {
+        "surface": true,
+        "capacity": 50
+      }
+    },
+    {
+      "id": "o-sack",
+      "name": "brown sack",
+      "location": {
+        "in": "o-table"
+      },
+      "aliases": [
+        "sack",
+        "bag"
+      ],
+      "seed": "a brown paper sack smelling faintly of hot peppers",
+      "verbs": [
+        "open",
+        "close"
+      ],
+      "properties": {
+        "container": true,
+        "state": "closed",
+        "capacity": 9,
+        "size": 9,
+        "open_text": "Opening the brown sack reveals a lunch, and a clove of garlic."
+      }
+    },
+    {
+      "id": "o-lunch",
+      "name": "lunch",
+      "location": {
+        "in": "o-sack"
+      },
+      "aliases": [
+        "sandwich",
+        "food"
+      ],
+      "seed": "a hot pepper sandwich past its best hour",
+      "verbs": [
+        "eat"
+      ],
+      "properties": {
+        "size": 4
+      },
+      "rules": [
+        {
+          "on": "eat",
+          "if": [
+            {
+              "carried": "@self"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "Thank you very much. It really hit the spot."
+            },
+            {
+              "kind": "destroy_object",
+              "object_id": "@self"
+            }
+          ]
+        },
+        {
+          "on": "eat",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "You aren't holding it."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "o-garlic",
+      "name": "clove of garlic",
+      "location": {
+        "in": "o-sack"
+      },
+      "aliases": [
+        "garlic",
+        "clove"
+      ],
+      "seed": "a papery clove of garlic, pungent enough to have opinions",
+      "verbs": [
+        "eat"
+      ],
+      "properties": {
+        "size": 2,
+        "garlic": true
+      },
+      "rules": [
+        {
+          "on": "eat",
+          "if": [
+            {
+              "carried": "@self"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "What the heck! You won't make friends this way, but nobody around here is too friendly anyhow. Gulp!"
+            },
+            {
+              "kind": "destroy_object",
+              "object_id": "@self"
+            }
+          ]
+        },
+        {
+          "on": "eat",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "You aren't holding it."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "o-bottle",
+      "name": "glass bottle",
+      "location": {
+        "in": "o-table"
+      },
+      "aliases": [
+        "bottle"
+      ],
+      "seed": "a glass bottle, stoppered, water inside catching the light",
+      "verbs": [
+        "open",
+        "close"
+      ],
+      "properties": {
+        "container": true,
+        "transparent": true,
+        "state": "closed",
+        "capacity": 4,
+        "size": 6,
+        "open_text": "You pull the stopper from the bottle."
+      }
+    },
+    {
+      "id": "o-water",
+      "name": "quantity of water",
+      "location": {
+        "in": "o-bottle"
+      },
+      "aliases": [
+        "water",
+        "liquid"
+      ],
+      "seed": "clear water, cold as a well",
+      "verbs": [
+        "drink"
+      ],
+      "properties": {
+        "size": 4,
+        "water": true
+      },
+      "rules": [
+        {
+          "on": "drink",
+          "if": [
+            {
+              "prop": "state",
+              "of": "o-bottle",
+              "eq": "open"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "Thank you very much. I was rather thirsty (from all this talking, probably)."
+            },
+            {
+              "kind": "destroy_object",
+              "object_id": "@self"
+            }
+          ]
+        },
+        {
+          "on": "drink",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "The bottle is closed; the water, for now, is a rumor."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "o-trophy-case",
+      "name": "trophy case",
+      "location": {
+        "room": "r-living-room"
+      },
+      "aliases": [
+        "case"
+      ],
+      "seed": "a tall trophy case of dark wood and glass, empty and patient",
+      "fixture": true,
+      "verbs": [
+        "open",
+        "close"
+      ],
+      "properties": {
+        "container": true,
+        "transparent": true,
+        "state": "closed",
+        "capacity": 10000,
+        "score_deposits": true,
+        "open_text": "You swing the glass door of the trophy case open."
+      }
+    },
+    {
+      "id": "o-lamp",
+      "name": "brass lantern",
+      "location": {
+        "room": "r-living-room"
+      },
+      "aliases": [
+        "lamp",
+        "lantern",
+        "light"
+      ],
+      "seed": "a battery-powered brass lantern, dented, dependable, finite",
+      "verbs": [
+        "light",
+        "extinguish"
+      ],
+      "properties": {
+        "size": 15,
+        "light": true,
+        "lit": false,
+        "fuel": 200,
+        "fuel_warnings": {
+          "30": "The lamp appears a bit dimmer.",
+          "20": "The lamp is definitely dimmer now.",
+          "10": "The lamp is nearly out."
+        },
+        "burnout_text": "You'd better have more light than from the brass lantern. It has gone out for good."
+      },
+      "rules": [
+        {
+          "on": "light",
+          "if": [
+            {
+              "prop": "burned_out",
+              "of": "@self",
+              "eq": true
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "A burned-out lamp won't light."
+            }
+          ]
+        },
+        {
+          "on": "light",
+          "if": [
+            {
+              "prop": "lit",
+              "of": "@self",
+              "eq": true
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "It is already on."
+            }
+          ]
+        },
+        {
+          "on": "light",
+          "do": [
+            {
+              "kind": "set_property",
+              "target_id": "@self",
+              "key": "lit",
+              "value": true
+            },
+            {
+              "kind": "narrate",
+              "text": "The brass lantern is now on."
+            }
+          ]
+        },
+        {
+          "on": "extinguish",
+          "if": [
+            {
+              "prop": "lit",
+              "of": "@self",
+              "eq": true
+            }
+          ],
+          "do": [
+            {
+              "kind": "set_property",
+              "target_id": "@self",
+              "key": "lit",
+              "value": false
+            },
+            {
+              "kind": "narrate",
+              "text": "The brass lantern is now off."
+            }
+          ]
+        },
+        {
+          "on": "extinguish",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "It is already off."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "o-rug",
+      "name": "oriental rug",
+      "location": {
+        "room": "r-living-room"
+      },
+      "aliases": [
+        "rug",
+        "carpet"
+      ],
+      "seed": "a large oriental rug, extremely heavy, lying suspiciously flat",
+      "fixture": true,
+      "verbs": [
+        "move"
+      ],
+      "rules": [
+        {
+          "on": "move",
+          "if": [
+            {
+              "flag": "TRAP-DOOR-REVEALED",
+              "eq": false
+            }
+          ],
+          "do": [
+            {
+              "kind": "set_flag",
+              "name": "TRAP-DOOR-REVEALED",
+              "value": true
+            },
+            {
+              "kind": "narrate",
+              "text": "With a great effort, the rug is moved to one side of the room, revealing the dusty cover of a closed trap door."
+            }
+          ]
+        },
+        {
+          "on": "move",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "Having moved the rug once, you find it wants to stay moved."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "o-trap-door",
+      "name": "trap door",
+      "location": {
+        "room": "r-living-room"
+      },
+      "aliases": [
+        "trapdoor",
+        "door"
+      ],
+      "seed": "a square trap door set flush with the floorboards, its ring-pull dark with age",
+      "fixture": true,
+      "verbs": [
+        "open",
+        "close"
+      ],
+      "rules": [
+        {
+          "on": "open",
+          "if": [
+            {
+              "flag": "TRAP-DOOR-REVEALED",
+              "eq": false
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "You see nothing here like that to open."
+            }
+          ]
+        },
+        {
+          "on": "open",
+          "if": [
+            {
+              "flag": "TRAP-DOOR-OPEN"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "The trap door is already open."
+            }
+          ]
+        },
+        {
+          "on": "open",
+          "do": [
+            {
+              "kind": "set_flag",
+              "name": "TRAP-DOOR-OPEN",
+              "value": true
+            },
+            {
+              "kind": "narrate",
+              "text": "The door reluctantly opens to reveal a rickety staircase descending into darkness."
+            }
+          ]
+        },
+        {
+          "on": "close",
+          "if": [
+            {
+              "flag": "TRAP-DOOR-OPEN"
+            }
+          ],
+          "do": [
+            {
+              "kind": "set_flag",
+              "name": "TRAP-DOOR-OPEN",
+              "value": false
+            },
+            {
+              "kind": "narrate",
+              "text": "The trap door swings shut."
+            }
+          ]
+        },
+        {
+          "on": "close",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "It is already closed."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "o-sword",
+      "name": "elvish sword",
+      "location": {
+        "room": "r-living-room"
+      },
+      "aliases": [
+        "sword",
+        "blade",
+        "glamdring"
+      ],
+      "seed": "an elvish sword of great antiquity, runes down the blade, a faint readiness about it",
+      "properties": {
+        "size": 30,
+        "weapon": true
+      }
+    },
+    {
+      "id": "o-newspaper",
+      "name": "newspaper",
+      "location": {
+        "room": "r-living-room"
+      },
+      "aliases": [
+        "paper",
+        "report"
+      ],
+      "seed": "a yellowed newspaper: US NEWS & DUNGEON REPORT",
+      "readable": true,
+      "properties": {
+        "size": 2
+      },
+      "text": "US NEWS & DUNGEON REPORT, late edition. The lead story concerns the continued absence of the Lord of the Great Underground Empire, and speculates, at length and without evidence, about the treasure said to remain below. The classifieds seek a fearless adventurer; terms negotiable; survivors preferred."
+    },
+    {
+      "id": "o-knife",
+      "name": "nasty knife",
+      "location": {
+        "room": "r-attic"
+      },
+      "aliases": [
+        "knife"
+      ],
+      "seed": "a nasty-looking knife on a squat table, honest about its intentions",
+      "properties": {
+        "size": 5,
+        "weapon": true
+      }
+    },
+    {
+      "id": "o-rope",
+      "name": "coil of rope",
+      "location": {
+        "room": "r-attic"
+      },
+      "aliases": [
+        "rope",
+        "coil"
+      ],
+      "seed": "a large coil of rope, dusty but sound",
+      "verbs": [
+        "tie",
+        "untie"
+      ],
+      "properties": {
+        "size": 10
+      }
+    },
+    {
+      "id": "o-bell",
+      "name": "stub-bell",
+      "location": "offstage",
+      "seed": "a thing not yet made",
+      "properties": {
+        "stub": true
+      }
+    },
+    {
+      "id": "o-boat",
+      "name": "stub-boat",
+      "location": "offstage",
+      "seed": "a thing not yet made",
+      "properties": {
+        "stub": true
+      }
+    }
+  ]
+}

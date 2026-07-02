@@ -606,6 +606,12 @@ def _write_db2(env: dict, output_path: Path) -> None:
             world.get("rng_seed") if isinstance(world.get("rng_seed"), str)
             else world["slug"]
         )
+        # Daemons authored "active": true start running at load (the roaming
+        # hostile, the glow item, the current, the score watcher).
+        if isinstance(env.get("daemons"), dict):
+            for name, d in env["daemons"].items():
+                if isinstance(d, dict) and d.get("active"):
+                    defs[worldstate.DAEMON_PREFIX + name] = {"active": True}
         worldstate.write_rows(conn, world_id, defs)
     finally:
         conn.close()

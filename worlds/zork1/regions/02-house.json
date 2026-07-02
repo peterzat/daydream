@@ -1,0 +1,655 @@
+{
+  "comment": "Region (a) part 2: inside the white house. The trap door bars once (TRAP-TOUCHED, authored on the cellar's enter rule in region 03); the trophy case is the scoring container; the lamp is the finite light.",
+  "rooms": [
+    {
+      "id": "r-kitchen",
+      "slug": "kitchen",
+      "title": "Kitchen",
+      "zork_name": "Kitchen",
+      "bonus": 10,
+      "seed": "a farmhouse kitchen, table lately used, dark chimney mouth, stairs going up into gloom",
+      "description": "You are in the kitchen of the white house. A table seems to have been used recently for the preparation of food. A passage leads to the west and a dark staircase can be seen leading upward. A dark chimney leads down and to the east is a small window which is open.",
+      "exits": {
+        "east": {
+          "to": "r-behind-house",
+          "if": [
+            {
+              "flag": "KITCHEN-WINDOW-OPEN"
+            }
+          ],
+          "blocked_text": "The kitchen window is closed."
+        },
+        "out": {
+          "to": "r-behind-house",
+          "if": [
+            {
+              "flag": "KITCHEN-WINDOW-OPEN"
+            }
+          ],
+          "blocked_text": "The kitchen window is closed."
+        },
+        "west": "r-living-room",
+        "up": "r-attic",
+        "down": {
+          "text": "Only Santa Claus climbs down chimneys."
+        }
+      }
+    },
+    {
+      "id": "r-living-room",
+      "slug": "living-room",
+      "title": "Living Room",
+      "zork_name": "Living Room",
+      "seed": "a comfortable ruin of a parlor: oriental rug, trophy case, a sword over the mantel, a door nailed shut",
+      "description": "You are in the living room. There is a doorway to the east, a wooden door with strange gothic lettering to the west, which appears to be nailed shut, a trophy case, and a large oriental rug in the center of the room.",
+      "exits": {
+        "east": "r-kitchen",
+        "west": {
+          "to": "r-strange-passage",
+          "if": [
+            {
+              "flag": "MAGIC-FLAG"
+            }
+          ],
+          "blocked_text": "The door is nailed shut."
+        },
+        "down": {
+          "to": "r-cellar",
+          "if": [
+            {
+              "flag": "TRAP-DOOR-OPEN"
+            }
+          ],
+          "blocked_text": "You can't go that way, at present.",
+          "secret": true
+        }
+      }
+    },
+    {
+      "id": "r-attic",
+      "slug": "attic",
+      "title": "Attic",
+      "zork_name": "Attic",
+      "dark": true,
+      "seed": "a steep-raftered attic, one square of lesser dark for a window, dust in ropes of light when lit",
+      "description": "This is the attic. The only exit is a stairway leading down.",
+      "exits": {
+        "down": "r-kitchen"
+      }
+    }
+  ],
+  "things": [
+    {
+      "id": "o-table",
+      "name": "kitchen table",
+      "zork_name": "kitchen table",
+      "location": {
+        "room": "r-kitchen"
+      },
+      "aliases": [
+        "table"
+      ],
+      "seed": "a sturdy kitchen table, crumbs and knife-marks",
+      "fixture": true,
+      "properties": {
+        "surface": true,
+        "capacity": 50
+      }
+    },
+    {
+      "id": "o-sack",
+      "name": "brown sack",
+      "zork_name": "brown sack",
+      "location": {
+        "in": "o-table"
+      },
+      "aliases": [
+        "sack",
+        "bag"
+      ],
+      "seed": "a brown paper sack smelling faintly of hot peppers",
+      "verbs": [
+        "open",
+        "close"
+      ],
+      "properties": {
+        "container": true,
+        "state": "closed",
+        "capacity": 9,
+        "size": 9,
+        "open_text": "Opening the brown sack reveals a lunch, and a clove of garlic."
+      }
+    },
+    {
+      "id": "o-lunch",
+      "name": "lunch",
+      "zork_name": "lunch",
+      "location": {
+        "in": "o-sack"
+      },
+      "aliases": [
+        "sandwich",
+        "food"
+      ],
+      "seed": "a hot pepper sandwich past its best hour",
+      "verbs": [
+        "eat"
+      ],
+      "properties": {
+        "size": 4
+      },
+      "rules": [
+        {
+          "on": "eat",
+          "if": [
+            {
+              "carried": "@self"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "Thank you very much. It really hit the spot."
+            },
+            {
+              "kind": "destroy_object",
+              "object_id": "@self"
+            }
+          ]
+        },
+        {
+          "on": "eat",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "You aren't holding it."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "o-garlic",
+      "name": "clove of garlic",
+      "zork_name": "clove of garlic",
+      "location": {
+        "in": "o-sack"
+      },
+      "aliases": [
+        "garlic",
+        "clove"
+      ],
+      "seed": "a papery clove of garlic, pungent enough to have opinions",
+      "verbs": [
+        "eat"
+      ],
+      "properties": {
+        "size": 2,
+        "garlic": true
+      },
+      "rules": [
+        {
+          "on": "eat",
+          "if": [
+            {
+              "carried": "@self"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "What the heck! You won't make friends this way, but nobody around here is too friendly anyhow. Gulp!"
+            },
+            {
+              "kind": "destroy_object",
+              "object_id": "@self"
+            }
+          ]
+        },
+        {
+          "on": "eat",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "You aren't holding it."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "o-bottle",
+      "name": "glass bottle",
+      "zork_name": "glass bottle",
+      "location": {
+        "in": "o-table"
+      },
+      "aliases": [
+        "bottle"
+      ],
+      "seed": "a glass bottle, stoppered, water inside catching the light",
+      "verbs": [
+        "open",
+        "close"
+      ],
+      "properties": {
+        "container": true,
+        "transparent": true,
+        "state": "closed",
+        "capacity": 4,
+        "size": 6,
+        "open_text": "You pull the stopper from the bottle."
+      }
+    },
+    {
+      "id": "o-water",
+      "name": "quantity of water",
+      "zork_name": "quantity of water",
+      "location": {
+        "in": "o-bottle"
+      },
+      "aliases": [
+        "water",
+        "liquid"
+      ],
+      "seed": "clear water, cold as a well",
+      "verbs": [
+        "drink"
+      ],
+      "properties": {
+        "size": 4,
+        "water": true
+      },
+      "rules": [
+        {
+          "on": "drink",
+          "if": [
+            {
+              "prop": "state",
+              "of": "o-bottle",
+              "eq": "open"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "Thank you very much. I was rather thirsty (from all this talking, probably)."
+            },
+            {
+              "kind": "destroy_object",
+              "object_id": "@self"
+            }
+          ]
+        },
+        {
+          "on": "drink",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "The bottle is closed; the water, for now, is a rumor."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "o-trophy-case",
+      "name": "trophy case",
+      "zork_name": "trophy case",
+      "location": {
+        "room": "r-living-room"
+      },
+      "aliases": [
+        "case"
+      ],
+      "seed": "a tall trophy case of dark wood and glass, empty and patient",
+      "fixture": true,
+      "verbs": [
+        "open",
+        "close"
+      ],
+      "properties": {
+        "container": true,
+        "transparent": true,
+        "state": "closed",
+        "capacity": 10000,
+        "score_deposits": true,
+        "open_text": "You swing the glass door of the trophy case open."
+      }
+    },
+    {
+      "id": "o-lamp",
+      "name": "brass lantern",
+      "zork_name": "brass lantern",
+      "location": {
+        "room": "r-living-room"
+      },
+      "aliases": [
+        "lamp",
+        "lantern",
+        "light"
+      ],
+      "seed": "a battery-powered brass lantern, dented, dependable, finite",
+      "verbs": [
+        "light",
+        "extinguish"
+      ],
+      "properties": {
+        "size": 15,
+        "light": true,
+        "lit": false,
+        "fuel": 200,
+        "fuel_warnings": {
+          "30": "The lamp appears a bit dimmer.",
+          "20": "The lamp is definitely dimmer now.",
+          "10": "The lamp is nearly out."
+        },
+        "burnout_text": "You'd better have more light than from the brass lantern. It has gone out for good."
+      },
+      "rules": [
+        {
+          "on": "light",
+          "if": [
+            {
+              "prop": "burned_out",
+              "of": "@self",
+              "eq": true
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "A burned-out lamp won't light."
+            }
+          ]
+        },
+        {
+          "on": "light",
+          "if": [
+            {
+              "prop": "lit",
+              "of": "@self",
+              "eq": true
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "It is already on."
+            }
+          ]
+        },
+        {
+          "on": "light",
+          "do": [
+            {
+              "kind": "set_property",
+              "target_id": "@self",
+              "key": "lit",
+              "value": true
+            },
+            {
+              "kind": "narrate",
+              "text": "The brass lantern is now on."
+            }
+          ]
+        },
+        {
+          "on": "extinguish",
+          "if": [
+            {
+              "prop": "lit",
+              "of": "@self",
+              "eq": true
+            }
+          ],
+          "do": [
+            {
+              "kind": "set_property",
+              "target_id": "@self",
+              "key": "lit",
+              "value": false
+            },
+            {
+              "kind": "narrate",
+              "text": "The brass lantern is now off."
+            }
+          ]
+        },
+        {
+          "on": "extinguish",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "It is already off."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "o-rug",
+      "name": "oriental rug",
+      "zork_name": "carpet",
+      "location": {
+        "room": "r-living-room"
+      },
+      "aliases": [
+        "rug",
+        "carpet"
+      ],
+      "seed": "a large oriental rug, extremely heavy, lying suspiciously flat",
+      "fixture": true,
+      "verbs": [
+        "move"
+      ],
+      "rules": [
+        {
+          "on": "move",
+          "if": [
+            {
+              "flag": "TRAP-DOOR-REVEALED",
+              "eq": false
+            }
+          ],
+          "do": [
+            {
+              "kind": "set_flag",
+              "name": "TRAP-DOOR-REVEALED",
+              "value": true
+            },
+            {
+              "kind": "narrate",
+              "text": "With a great effort, the rug is moved to one side of the room, revealing the dusty cover of a closed trap door."
+            }
+          ]
+        },
+        {
+          "on": "move",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "Having moved the rug once, you find it wants to stay moved."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "o-trap-door",
+      "name": "trap door",
+      "zork_name": "trap door",
+      "location": {
+        "room": "r-living-room"
+      },
+      "aliases": [
+        "trapdoor",
+        "door"
+      ],
+      "seed": "a square trap door set flush with the floorboards, its ring-pull dark with age",
+      "fixture": true,
+      "verbs": [
+        "open",
+        "close"
+      ],
+      "rules": [
+        {
+          "on": "open",
+          "if": [
+            {
+              "flag": "TRAP-DOOR-REVEALED",
+              "eq": false
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "You see nothing here like that to open."
+            }
+          ]
+        },
+        {
+          "on": "open",
+          "if": [
+            {
+              "flag": "TRAP-DOOR-OPEN"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "The trap door is already open."
+            }
+          ]
+        },
+        {
+          "on": "open",
+          "do": [
+            {
+              "kind": "set_flag",
+              "name": "TRAP-DOOR-OPEN",
+              "value": true
+            },
+            {
+              "kind": "narrate",
+              "text": "The door reluctantly opens to reveal a rickety staircase descending into darkness."
+            }
+          ]
+        },
+        {
+          "on": "close",
+          "if": [
+            {
+              "flag": "TRAP-DOOR-OPEN"
+            }
+          ],
+          "do": [
+            {
+              "kind": "set_flag",
+              "name": "TRAP-DOOR-OPEN",
+              "value": false
+            },
+            {
+              "kind": "narrate",
+              "text": "The trap door swings shut."
+            }
+          ]
+        },
+        {
+          "on": "close",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "It is already closed."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "o-sword",
+      "name": "elvish sword",
+      "zork_name": "sword",
+      "location": {
+        "room": "r-living-room"
+      },
+      "aliases": [
+        "sword",
+        "blade",
+        "glamdring"
+      ],
+      "seed": "an elvish sword of great antiquity, runes down the blade, a faint readiness about it",
+      "properties": {
+        "size": 30,
+        "weapon": true
+      }
+    },
+    {
+      "id": "o-newspaper",
+      "name": "newspaper",
+      "zork_name": "newspaper",
+      "location": {
+        "room": "r-living-room"
+      },
+      "aliases": [
+        "paper",
+        "report"
+      ],
+      "seed": "a yellowed newspaper: US NEWS & DUNGEON REPORT",
+      "readable": true,
+      "properties": {
+        "size": 2
+      },
+      "text": "US NEWS & DUNGEON REPORT, late edition. The lead story concerns the continued absence of the Lord of the Great Underground Empire, and speculates, at length and without evidence, about the treasure said to remain below. The classifieds seek a fearless adventurer; terms negotiable; survivors preferred."
+    },
+    {
+      "id": "o-knife",
+      "name": "nasty knife",
+      "zork_name": "nasty knife",
+      "location": {
+        "room": "r-attic"
+      },
+      "aliases": [
+        "knife"
+      ],
+      "seed": "a nasty-looking knife on a squat table, honest about its intentions",
+      "properties": {
+        "size": 5,
+        "weapon": true
+      }
+    },
+    {
+      "id": "o-rope",
+      "name": "coil of rope",
+      "zork_name": "rope",
+      "location": {
+        "room": "r-attic"
+      },
+      "aliases": [
+        "rope",
+        "coil"
+      ],
+      "seed": "a large coil of rope, dusty but sound",
+      "verbs": [
+        "tie",
+        "untie"
+      ],
+      "properties": {
+        "size": 10
+      }
+    }
+  ]
+}

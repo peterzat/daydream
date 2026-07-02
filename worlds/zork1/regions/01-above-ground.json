@@ -1,0 +1,875 @@
+{
+  "comment": "Region (a) part 1: the white house grounds, forest, canyon, and the barrow front. Structure transcribed from the MIT-licensed ZIL source (1dungeon.zil); all prose freshly authored in the dry register (R10).",
+  "rooms": [
+    {
+      "id": "r-west-of-house",
+      "slug": "west-of-house",
+      "title": "West of House",
+      "zork_name": "West of House",
+      "seed": "a white clapboard house at the edge of a field, boarded front door, long grass, late watercolor light",
+      "description": "You are standing in an open field west of a white house, with a boarded front door. The grass has grown long and gone to seed, and nobody has minded in years.",
+      "exits": {
+        "north": "r-north-of-house",
+        "south": "r-south-of-house",
+        "northeast": "r-north-of-house",
+        "southeast": "r-south-of-house",
+        "west": "r-forest-1",
+        "east": {
+          "text": "The door is boarded and you can't remove the boards."
+        },
+        "southwest": {
+          "to": "r-stone-barrow",
+          "if": [
+            {
+              "flag": "WON-ENABLED"
+            }
+          ],
+          "secret": true
+        },
+        "in": {
+          "to": "r-stone-barrow",
+          "if": [
+            {
+              "flag": "WON-ENABLED"
+            }
+          ],
+          "secret": true
+        }
+      }
+    },
+    {
+      "id": "r-north-of-house",
+      "slug": "north-of-house",
+      "title": "North of House",
+      "zork_name": "North of House",
+      "seed": "the shaded north face of a white house, boarded windows, a path into dark firs",
+      "description": "You are facing the north side of a white house. There is no door here, and all the windows are boarded up. To the north a narrow path winds through the trees.",
+      "exits": {
+        "southwest": "r-west-of-house",
+        "southeast": "r-behind-house",
+        "west": "r-west-of-house",
+        "east": "r-behind-house",
+        "north": "r-forest-path",
+        "south": {
+          "text": "The windows are all boarded."
+        }
+      }
+    },
+    {
+      "id": "r-south-of-house",
+      "slug": "south-of-house",
+      "title": "South of House",
+      "zork_name": "South of House",
+      "seed": "the south face of a white house, boarded windows, brambles at the sill",
+      "description": "You are facing the south side of a white house. There is no door here, and all the windows are boarded.",
+      "exits": {
+        "west": "r-west-of-house",
+        "east": "r-behind-house",
+        "northeast": "r-behind-house",
+        "northwest": "r-west-of-house",
+        "south": "r-forest-3",
+        "north": {
+          "text": "The windows are all boarded."
+        }
+      }
+    },
+    {
+      "id": "r-behind-house",
+      "slug": "behind-house",
+      "title": "Behind House",
+      "zork_name": "East of House",
+      "seed": "the back of a white house, one small window ajar, a kitchen garden gone wild",
+      "description": "You are behind the white house. A path leads into the forest to the east, and in one corner of the house a small window stands slightly ajar.",
+      "exits": {
+        "north": "r-north-of-house",
+        "south": "r-south-of-house",
+        "southwest": "r-south-of-house",
+        "northwest": "r-north-of-house",
+        "east": "r-clearing",
+        "west": {
+          "to": "r-kitchen",
+          "if": [
+            {
+              "flag": "KITCHEN-WINDOW-OPEN"
+            }
+          ],
+          "blocked_text": "The kitchen window is closed."
+        },
+        "in": {
+          "to": "r-kitchen",
+          "if": [
+            {
+              "flag": "KITCHEN-WINDOW-OPEN"
+            }
+          ],
+          "blocked_text": "The kitchen window is closed."
+        }
+      }
+    },
+    {
+      "id": "r-forest-1",
+      "slug": "forest-west",
+      "title": "Forest",
+      "zork_name": "Forest",
+      "seed": "deep fir forest, needled floor, low green light, no path",
+      "description": "This is a forest, with trees in all directions. To the east, there appears to be sunlight.",
+      "exits": {
+        "up": {
+          "text": "There is no tree here suitable for climbing."
+        },
+        "north": "r-grating-clearing",
+        "east": "r-forest-path",
+        "south": "r-forest-3",
+        "west": {
+          "text": "You would need a machete to go further west."
+        }
+      }
+    },
+    {
+      "id": "r-forest-2",
+      "slug": "forest-north",
+      "title": "Forest",
+      "zork_name": "Forest",
+      "seed": "dim northern forest thickening toward mountains, wind high in the crowns",
+      "description": "This is a dimly lit forest, with large trees all around.",
+      "exits": {
+        "up": {
+          "text": "There is no tree here suitable for climbing."
+        },
+        "north": {
+          "text": "The forest becomes impenetrable to the north."
+        },
+        "east": "r-mountains",
+        "south": "r-clearing",
+        "west": "r-forest-path"
+      }
+    },
+    {
+      "id": "r-forest-3",
+      "slug": "forest-south",
+      "title": "Forest",
+      "zork_name": "Forest",
+      "seed": "southern forest, storm-leaned trunks, undergrowth ranked and rude",
+      "description": "This is a dimly lit forest, with large trees all around. The undergrowth south of here has settled the question of passage in its own favor.",
+      "exits": {
+        "up": {
+          "text": "There is no tree here suitable for climbing."
+        },
+        "north": "r-clearing",
+        "east": {
+          "text": "The rank undergrowth prevents eastward movement."
+        },
+        "south": {
+          "text": "Storm-tossed trees block your way."
+        },
+        "west": "r-forest-1",
+        "northwest": "r-south-of-house"
+      }
+    },
+    {
+      "id": "r-mountains",
+      "slug": "mountains",
+      "title": "Forest",
+      "zork_name": "Forest",
+      "seed": "forest edge failing against a wall of impassable grey mountains",
+      "description": "The forest thins out here, revealing impassable mountains to the east.",
+      "exits": {
+        "up": {
+          "text": "The mountains are impassable."
+        },
+        "north": "r-forest-2",
+        "east": {
+          "text": "The mountains are impassable."
+        },
+        "south": "r-forest-2",
+        "west": "r-forest-2"
+      }
+    },
+    {
+      "id": "r-forest-path",
+      "slug": "forest-path",
+      "title": "Forest Path",
+      "zork_name": "Forest Path",
+      "seed": "a winding north-south path under one very large low-branched tree",
+      "description": "This is a path winding through a dimly lit forest. The path heads north-south here. One particularly large tree with some low branches stands at the edge of the path.",
+      "exits": {
+        "up": "r-up-a-tree",
+        "north": "r-grating-clearing",
+        "east": "r-forest-2",
+        "south": "r-north-of-house",
+        "west": "r-forest-1"
+      }
+    },
+    {
+      "id": "r-up-a-tree",
+      "slug": "up-a-tree",
+      "title": "Up a Tree",
+      "zork_name": "Up a Tree",
+      "seed": "ten feet up a broad-limbed tree, a bird's nest on the branch, forest floor below",
+      "description": "You are about ten feet up, nestled among the large lower branches. The next branch above is out of reach, and knows it.",
+      "exits": {
+        "down": "r-forest-path",
+        "up": {
+          "text": "You cannot climb any higher."
+        }
+      }
+    },
+    {
+      "id": "r-grating-clearing",
+      "slug": "grating-clearing",
+      "title": "Clearing",
+      "zork_name": "Clearing",
+      "seed": "a small forest clearing carpeted in dead leaves, something metallic beneath",
+      "description": "You are in a clearing, with a forest surrounding you on all sides. A path leads south.",
+      "exits": {
+        "north": {
+          "text": "The forest becomes impenetrable to the north."
+        },
+        "east": "r-forest-2",
+        "west": "r-forest-1",
+        "south": "r-forest-path",
+        "down": {
+          "to": "r-grating-room",
+          "if": [
+            {
+              "flag": "GRATING-OPEN"
+            }
+          ],
+          "blocked_text": "You can't go that way.",
+          "secret": true
+        }
+      },
+      "rules": [
+        {
+          "on": "enter",
+          "if": [
+            {
+              "flag": "LEAVES-MOVED",
+              "eq": false
+            }
+          ],
+          "stop": false,
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "The clearing is carpeted with dead leaves, drifted deep."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "r-clearing",
+      "slug": "canyon-clearing",
+      "title": "Clearing",
+      "zork_name": "Clearing",
+      "seed": "an eastern clearing where the forest gives out toward a canyon rim",
+      "description": "You are in a small clearing in a well marked forest path that extends to the east and west.",
+      "exits": {
+        "up": {
+          "text": "There is no tree here suitable for climbing."
+        },
+        "east": "r-canyon-view",
+        "north": "r-forest-2",
+        "south": "r-forest-3",
+        "west": "r-behind-house"
+      }
+    },
+    {
+      "id": "r-canyon-view",
+      "slug": "canyon-view",
+      "title": "Canyon View",
+      "zork_name": "Canyon View",
+      "seed": "the top of the Great Canyon, river glinting far below, Aragain Falls upriver, a climbable rock wall",
+      "description": "You are at the top of the Great Canyon on its west wall, and the view is the reward: the Frigid River silvering below, the White Cliffs shouldering into the Flathead Mountains across the gorge, and upstream to the north, Aragain Falls wearing its rainbow. The wall here looks climbable, for the confident.",
+      "exits": {
+        "east": "r-cliff-middle",
+        "down": "r-cliff-middle",
+        "northwest": "r-clearing",
+        "west": "r-forest-3",
+        "south": {
+          "text": "Storm-tossed trees block your way."
+        }
+      }
+    },
+    {
+      "id": "r-cliff-middle",
+      "slug": "rocky-ledge",
+      "title": "Rocky Ledge",
+      "zork_name": "Rocky Ledge",
+      "seed": "a ledge halfway down the canyon wall, wide enough to rest, wall climbable both ways",
+      "description": "You are on a ledge about halfway up the canyon wall, wide enough to stand on and think better of things. The main flow of Aragain Falls twists through a passage no one could enter and survive. The cliff continues up, and down.",
+      "exits": {
+        "up": "r-canyon-view",
+        "down": "r-canyon-bottom"
+      }
+    },
+    {
+      "id": "r-canyon-bottom",
+      "slug": "canyon-bottom",
+      "title": "Canyon Bottom",
+      "zork_name": "Canyon Bottom",
+      "seed": "the canyon floor beneath high walls, the river wide and quick, spray drifting",
+      "description": "You are on the canyon floor beneath walls that may be climbable, next to the lesser runoff of Aragain Falls. Spray keeps the stones dark. A narrow path leads north.",
+      "exits": {
+        "up": "r-cliff-middle",
+        "north": "r-end-of-rainbow"
+      }
+    },
+    {
+      "id": "r-end-of-rainbow",
+      "slug": "end-of-rainbow",
+      "title": "End of Rainbow",
+      "zork_name": "End of Rainbow",
+      "seed": "a small rocky beach at the base of Aragain Falls, the rainbow's western foot ending here in spray",
+      "description": "You are on a small rocky beach past the falls, walled on the south by the canyon. The rainbow of Aragain Falls comes down to end here, which is the kind of thing one accepts locally.",
+      "exits": {
+        "southwest": "r-canyon-bottom",
+        "up": {
+          "to": "r-on-rainbow",
+          "if": [
+            {
+              "flag": "RAINBOW-SOLID"
+            }
+          ],
+          "blocked_text": "Rainbows are lovely, but they are not stairs."
+        },
+        "northeast": {
+          "to": "r-on-rainbow",
+          "if": [
+            {
+              "flag": "RAINBOW-SOLID"
+            }
+          ],
+          "blocked_text": "Rainbows are lovely, but they are not stairs."
+        },
+        "east": {
+          "to": "r-on-rainbow",
+          "if": [
+            {
+              "flag": "RAINBOW-SOLID"
+            }
+          ],
+          "blocked_text": "Rainbows are lovely, but they are not stairs."
+        }
+      }
+    },
+    {
+      "id": "r-stone-barrow",
+      "slug": "stone-barrow",
+      "title": "Stone Barrow",
+      "zork_name": "Stone Barrow",
+      "seed": "a massive barrow of rough grey stone, a huge stone door standing open on darkness",
+      "description": "You are standing in front of a massive barrow of stone. In the east face is a huge stone door which is open. You cannot see into the dark of the tomb.",
+      "exits": {
+        "northeast": "r-west-of-house"
+      },
+      "rules": [
+        {
+          "on": "enter",
+          "do": [
+            {
+              "kind": "narrate",
+              "text": "Inside the barrow, the dark is not empty: it is expectant. Somewhere below, the Great Underground Empire keeps a place for the one who gathered all its scattered brightness. Your adventure here is done, and well done."
+            },
+            {
+              "kind": "win",
+              "text": "You have won, with a perfect score. The Great Underground Empire will speak of you in its sleep."
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "things": [
+    {
+      "id": "o-mailbox",
+      "name": "small mailbox",
+      "zork_name": "small mailbox",
+      "location": {
+        "room": "r-west-of-house"
+      },
+      "aliases": [
+        "mailbox",
+        "box"
+      ],
+      "seed": "a small mailbox on a weathered post",
+      "fixture": true,
+      "verbs": [
+        "open",
+        "close"
+      ],
+      "properties": {
+        "container": true,
+        "state": "closed",
+        "capacity": 10,
+        "open_text": "Opening the small mailbox reveals a leaflet."
+      }
+    },
+    {
+      "id": "o-leaflet",
+      "name": "leaflet",
+      "zork_name": "leaflet",
+      "location": {
+        "in": "o-mailbox"
+      },
+      "aliases": [
+        "mail",
+        "pamphlet"
+      ],
+      "seed": "a single printed leaflet, folded once",
+      "readable": true,
+      "properties": {
+        "size": 2
+      },
+      "text": "WELCOME TO ZORK!\n\nZORK is a game of adventure, danger, and low cunning. In it you will find towers of treasure and a great many ways to stop needing it. No map here is honest, no lock is idle, and the management accepts no liability."
+    },
+    {
+      "id": "o-mat",
+      "name": "welcome mat",
+      "zork_name": "welcome mat",
+      "location": {
+        "room": "r-west-of-house"
+      },
+      "aliases": [
+        "mat",
+        "rubber mat"
+      ],
+      "seed": "a rubber mat saying 'Welcome to Zork!', frayed at one corner",
+      "properties": {
+        "size": 12
+      }
+    },
+    {
+      "id": "o-nest",
+      "name": "bird's nest",
+      "zork_name": "bird's nest",
+      "location": {
+        "room": "r-up-a-tree"
+      },
+      "aliases": [
+        "nest"
+      ],
+      "seed": "a small bird's nest woven of twigs and horsehair",
+      "properties": {
+        "container": true,
+        "capacity": 20,
+        "size": 8
+      }
+    },
+    {
+      "id": "o-egg",
+      "name": "jewel-encrusted egg",
+      "zork_name": "jewel-encrusted egg",
+      "location": {
+        "in": "o-nest"
+      },
+      "aliases": [
+        "egg",
+        "jeweled egg"
+      ],
+      "seed": "an egg cased in fine gold filigree and set with jewels, its clasp too delicate for field surgery",
+      "treasure": {
+        "take": 5,
+        "case": 5
+      },
+      "verbs": [
+        "open"
+      ],
+      "properties": {
+        "size": 6,
+        "state": "clasped",
+        "state_text": {
+          "clasped": "Its clasp is shut, and the mechanism is beyond you.",
+          "open": "It stands open on its hinge, the golden clockwork canary's cradle within revealed as the masterwork it is."
+        },
+        "locked_text": "You have neither the tools nor the delicacy; forcing it would ruin something irreplaceable.",
+        "container": true,
+        "capacity": 6
+      },
+      "rules": [
+        {
+          "on": "open",
+          "if": [
+            {
+              "prop": "state",
+              "of": "@self",
+              "eq": "clasped"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "The clasp is cunning past your skill. Perhaps a specialist — someone with delicate fingers and flexible ethics — could open it without ruin."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "o-leaves",
+      "name": "pile of leaves",
+      "zork_name": "pile of leaves",
+      "location": {
+        "room": "r-grating-clearing"
+      },
+      "aliases": [
+        "leaves",
+        "pile"
+      ],
+      "seed": "a deep drift of dead leaves, suspiciously tidy at the center of the clearing",
+      "verbs": [
+        "move",
+        "count"
+      ],
+      "properties": {
+        "size": 25
+      },
+      "rules": [
+        {
+          "on": "count",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "There are 69,105 leaves here."
+            }
+          ]
+        },
+        {
+          "on": "move",
+          "if": [
+            {
+              "flag": "LEAVES-MOVED",
+              "eq": false
+            }
+          ],
+          "do": [
+            {
+              "kind": "set_flag",
+              "name": "LEAVES-MOVED",
+              "value": true
+            },
+            {
+              "kind": "narrate",
+              "text": "In disturbing the pile of leaves, a grating is revealed."
+            }
+          ]
+        },
+        {
+          "on": "move",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "You rearrange the leaves. The grating remains revealed."
+            }
+          ]
+        },
+        {
+          "on": "take",
+          "if": [
+            {
+              "flag": "LEAVES-MOVED",
+              "eq": false
+            }
+          ],
+          "do": [
+            {
+              "kind": "set_flag",
+              "name": "LEAVES-MOVED",
+              "value": true
+            },
+            {
+              "kind": "narrate",
+              "text": "You pick up the pile of leaves, which was heavier than it looked; beneath it, a grating is revealed."
+            },
+            {
+              "kind": "move_object",
+              "object_id": "@self",
+              "dest_id": "@actor"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "o-grating",
+      "name": "grating",
+      "zork_name": "grating",
+      "location": {
+        "room": "r-grating-clearing"
+      },
+      "aliases": [
+        "grate"
+      ],
+      "seed": "an iron grating set flush in the earth, locked from beneath",
+      "fixture": true,
+      "verbs": [
+        "open",
+        "unlock"
+      ],
+      "rules": [
+        {
+          "on": "open",
+          "if": [
+            {
+              "flag": "LEAVES-MOVED",
+              "eq": false
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "You see nothing here to open."
+            }
+          ]
+        },
+        {
+          "on": "open",
+          "if": [
+            {
+              "flag": "GRATING-UNLOCKED"
+            },
+            {
+              "flag": "GRATING-OPEN",
+              "eq": false
+            }
+          ],
+          "do": [
+            {
+              "kind": "set_flag",
+              "name": "GRATING-OPEN",
+              "value": true
+            },
+            {
+              "kind": "narrate",
+              "text": "The grating opens to reveal darkness below."
+            }
+          ]
+        },
+        {
+          "on": "open",
+          "if": [
+            {
+              "flag": "GRATING-OPEN"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "The grating is already open."
+            }
+          ]
+        },
+        {
+          "on": "open",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "The grating is locked."
+            }
+          ]
+        },
+        {
+          "on": "unlock",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "The lock faces the other side; you can't reach it from up here."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "o-window",
+      "name": "kitchen window",
+      "zork_name": "kitchen window",
+      "location": {
+        "room": "r-behind-house"
+      },
+      "aliases": [
+        "window"
+      ],
+      "seed": "a small window at the back of the house, ajar by a finger's width",
+      "fixture": true,
+      "verbs": [
+        "open",
+        "close"
+      ],
+      "rules": [
+        {
+          "on": "open",
+          "if": [
+            {
+              "flag": "KITCHEN-WINDOW-OPEN",
+              "eq": false
+            }
+          ],
+          "do": [
+            {
+              "kind": "set_flag",
+              "name": "KITCHEN-WINDOW-OPEN",
+              "value": true
+            },
+            {
+              "kind": "narrate",
+              "text": "With great effort, you open the window far enough to allow entry."
+            }
+          ]
+        },
+        {
+          "on": "open",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "The window is already open."
+            }
+          ]
+        },
+        {
+          "on": "close",
+          "if": [
+            {
+              "flag": "KITCHEN-WINDOW-OPEN"
+            }
+          ],
+          "do": [
+            {
+              "kind": "set_flag",
+              "name": "KITCHEN-WINDOW-OPEN",
+              "value": false
+            },
+            {
+              "kind": "narrate",
+              "text": "The window closes, not without protest."
+            }
+          ]
+        },
+        {
+          "on": "close",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "The window is already closed as far as it goes."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "o-canary",
+      "name": "golden clockwork canary",
+      "zork_name": "golden clockwork canary",
+      "location": {
+        "in": "o-egg"
+      },
+      "aliases": [
+        "canary",
+        "bird"
+      ],
+      "seed": "a golden clockwork canary, feathers of hammered gold leaf, a winding stem under one wing",
+      "treasure": {
+        "take": 6,
+        "case": 4
+      },
+      "verbs": [
+        "wind"
+      ],
+      "properties": {
+        "size": 4
+      },
+      "rules": [
+        {
+          "on": "wind",
+          "if": [
+            {
+              "carried": "@self"
+            },
+            {
+              "in": "r-forest-path"
+            },
+            {
+              "flag": "EGG-TREASURED",
+              "eq": false
+            }
+          ],
+          "do": [
+            {
+              "kind": "set_flag",
+              "name": "EGG-TREASURED",
+              "value": true
+            },
+            {
+              "kind": "narrate",
+              "text": "The canary chirps, slightly off-key, an aria from a forgotten opera. From out of the greenery flies a lovely songbird; it perches on a limb just over your head, opens its beak, and a beautiful brass bauble drops from its mouth, bounces off the top of your head, and lands glimmering in the grass. As the canary winds down, the songbird flies away."
+            },
+            {
+              "kind": "spawn_object",
+              "name": "beautiful brass bauble",
+              "location_id": "r-forest-path",
+              "seed": "a small brass bauble, polished by a songbird's fussing",
+              "generated_by": "wind:o-canary",
+              "aliases": [
+                "bauble",
+                "brass bauble"
+              ],
+              "properties": {
+                "treasure": true,
+                "score_take": 1,
+                "score_case": 1,
+                "size": 3
+              }
+            }
+          ]
+        },
+        {
+          "on": "wind",
+          "if": [
+            {
+              "carried": "@self"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "The canary chirps blithely, if somewhat tinnily, for a short time."
+            }
+          ]
+        },
+        {
+          "on": "wind",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "You aren't holding the canary."
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "toons": [
+    {
+      "id": "t-adventurer",
+      "name": "Adventurer",
+      "slot": 1,
+      "room": "r-west-of-house",
+      "appearance_seed": "a traveler in sensible boots, carrying nothing yet and eyeing the mailbox",
+      "seed": "the nameless adventurer every empire eventually gets",
+      "mood": "resolute",
+      "is_human_controlled": 0
+    }
+  ]
+}

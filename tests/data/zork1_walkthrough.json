@@ -1,0 +1,49 @@
+{
+  "comment": "The canonical walkthrough (criterion 1), segmented. Grows region by region; 'complete' flips true when the endgame segment lands, which arms the final 350/win assertions in tests/test_zork_walkthrough.py. Every command must parse deterministically (the runner's LLM spy fails the suite otherwise).",
+  "complete": false,
+  "segments": [
+    {
+      "name": "opening-egg",
+      "commands": [
+        {"cmd": "north", "expect": {"room": "r-north-of-house"}},
+        {"cmd": "north", "expect": {"room": "r-forest-path"}},
+        {"cmd": "up", "expect": {"room": "r-up-a-tree"}},
+        {"cmd": "take egg", "expect": {"carrying": ["jewel-encrusted egg"], "score": 5}},
+        {"cmd": "down", "expect": {"room": "r-forest-path"}},
+        {"cmd": "south", "expect": {"room": "r-north-of-house"}}
+      ]
+    },
+    {
+      "name": "into-the-house",
+      "commands": [
+        {"cmd": "east", "expect": {"room": "r-behind-house"}},
+        {"cmd": "open window", "expect": {"flag": {"KITCHEN-WINDOW-OPEN": true}}},
+        {"cmd": "in", "expect": {"room": "r-kitchen", "score": 15}},
+        {"cmd": "west", "expect": {"room": "r-living-room"}},
+        {"cmd": "take lamp", "expect": {"carrying": ["brass lantern"]}},
+        {"cmd": "move rug", "expect": {"flag": {"TRAP-DOOR-REVEALED": true}}},
+        {"cmd": "open trap door", "expect": {"flag": {"TRAP-DOOR-OPEN": true}}},
+        {"cmd": "open case"},
+        {"cmd": "put egg in case", "expect": {"score": 20, "in_case": ["jewel-encrusted egg"]}}
+      ]
+    },
+    {
+      "name": "lamp-and-parser-surface",
+      "commands": [
+        {"cmd": "turn on lamp", "expect": {"narrate_contains": "brass lantern is now on"}},
+        {"cmd": "i", "expect": {"narrate_contains": "brass lantern"}},
+        {"cmd": "east then east", "expect": {"room": "r-behind-house"}},
+        {"cmd": "west", "expect": {"room": "r-kitchen"}},
+        {"cmd": "take all", "expect": {"carrying": ["brown sack", "glass bottle"]}},
+        {"cmd": "open sack", "expect": {"narrate_contains": "clove of garlic"}},
+        {"cmd": "drop bottle"},
+        {"cmd": "take garlic", "expect": {"carrying": ["clove of garlic"]}},
+        {"cmd": "drop sack"},
+        {"cmd": "west", "expect": {"room": "r-living-room"}},
+        {"cmd": "take sword", "expect": {"carrying": ["elvish sword"]}},
+        {"cmd": "blow out lamp", "expect": {"narrate_contains": "now off"}},
+        {"cmd": "light lamp", "expect": {"narrate_contains": "now on"}}
+      ]
+    }
+  ]
+}

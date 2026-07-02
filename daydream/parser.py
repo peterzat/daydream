@@ -513,8 +513,15 @@ def _all_candidates(
         room_id = actor.location_id
         if room_id is None:
             return []
-        return [o for o in objects.contents(room_id, kind="thing")
-                if "take" in objects.verbs_for(o)]
+        pool: list[objects.Object] = []
+        for o in objects.contents(room_id, kind="thing"):
+            pool.append(o)
+            # ALL reaches one level into see-through room containers and
+            # surfaces (the sack on the kitchen table), matching the
+            # original's behavior; it never empties a container it is
+            # about to take.
+            pool.extend(objects.visible_contents(o))
+        return [o for o in pool if "take" in objects.verbs_for(o)]
     carried = objects.contents(actor_id, kind="thing")
     if verb == "put" and iobj_id is not None:
         carried = [o for o in carried if o.id != iobj_id]
