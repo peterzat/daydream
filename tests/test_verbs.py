@@ -293,7 +293,22 @@ async def test_use_on_a_toon_is_refused_by_kind_gate():
     key = _spawn_carried_key()
     objects.move("t-wren", "r-forge")  # co-locate with Rook
     await verbs.execute_command("t-wren", "use", dobj_id=key, iobj_id="t-rook")
-    assert "can't use" in _last_narrate().lower()
+    line = _last_narrate()
+    assert "can't use" in line.lower()
+    # Articles read naturally: things take 'the', named toons take none
+    # (playtest 2026-07-02: 'You can't use the case key on the Tace.').
+    assert line == "You can't use the case key on Rook."
+
+
+@pytest.mark.asyncio
+async def test_refusal_articles_for_things_and_toons():
+    # A thing without the verb: 'the' before the thing's name.
+    await verbs.execute_command("t-wren", "open", dobj_id="i-lantern")
+    assert _last_narrate() == "You can't open the lantern."
+    # A toon target: bare name, never 'the Rook'.
+    objects.move("t-wren", "r-forge")
+    await verbs.execute_command("t-wren", "take", dobj_id="t-rook")
+    assert _last_narrate() == "You can't take Rook."
 
 
 @pytest.mark.asyncio

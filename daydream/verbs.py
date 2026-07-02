@@ -205,7 +205,7 @@ async def execute_command(
             _narrate(room_id, "You don't see that here.")
             return
         if spec.name not in objects.verbs_for(dobj):
-            _narrate(room_id, f"You can't {spec.name} {dobj.name}.")
+            _narrate(room_id, f"You can't {spec.name} {_the(dobj)}.")
             return
 
     iobj = _resolve_in_scope(actor_id, iobj_id) if iobj_id else None
@@ -218,9 +218,9 @@ async def execute_command(
             whom = "whom" if prep == "to" else "what"
             _narrate(room_id, f"{spec.ui_hint} it {prep} {whom}?")
             return
-        dn = dobj.name if dobj is not None else "that"
+        dn = _the(dobj) if dobj is not None else "that"
         if spec.valid_iobj_kinds and iobj.kind not in spec.valid_iobj_kinds:
-            _narrate(room_id, f"You can't {spec.name} the {dn} {prep} the {iobj.name}.")
+            _narrate(room_id, f"You can't {spec.name} {dn} {prep} {_the(iobj)}.")
             return
 
     # MOO dispatch priority: the handler is resolved by searching player ->
@@ -282,6 +282,13 @@ def _iobj_prep(spec: VerbSpec) -> str:
     valid iobj kinds: a toon target reads 'give X to Y'; a thing target reads
     'use X on Y'. Drives the missing/wrong-kind narration."""
     return "to" if spec.valid_iobj_kinds == frozenset({"toon"}) else "on"
+
+
+def _the(obj: objects.Object) -> str:
+    """Display reference with the natural article: things take 'the' ('the
+    lantern'); named toons take none ('Tace', never 'the Tace' — playtest
+    2026-07-02)."""
+    return obj.name if obj.kind == "toon" else f"the {obj.name}"
 
 
 # ---- engine handlers (deterministic unless noted) ----------------------
