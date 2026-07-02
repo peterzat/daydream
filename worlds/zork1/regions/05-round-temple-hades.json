@@ -251,10 +251,10 @@
       "id": "o-candles", "name": "pair of candles", "zork_name": "pair of candles",
       "location": {"room": "r-south-temple"},
       "aliases": ["candles", "candle", "pair"],
-      "seed": "a pair of altar candles, wax pooled at their feet",
+      "seed": "a pair of altar candles, out cold, wax pooled at their feet",
       "verbs": ["light", "extinguish"],
       "properties": {
-        "size": 10, "light": true, "lit": true, "flame": true, "fuel": 40,
+        "size": 10, "light": true, "lit": false, "flame": false, "fuel": 40,
         "fuel_warnings": {
           "10": "The candles grow shorter.",
           "5": "The candles are becoming quite short."
@@ -271,6 +271,7 @@
                  {"prop": "burned_out", "of": "@self", "ne": true}],
          "do": [
            {"kind": "set_property", "target_id": "@self", "key": "lit", "value": true},
+           {"kind": "set_property", "target_id": "@self", "key": "flame", "value": true},
            {"kind": "set_flag", "name": "CANDLES-RITUAL", "value": true},
            {"kind": "start_fuse", "name": "candle-window"},
            {"kind": "narrate",
@@ -286,6 +287,7 @@
                  {"prop": "burned_out", "of": "@self", "ne": true}],
          "do": [
            {"kind": "set_property", "target_id": "@self", "key": "lit", "value": true},
+           {"kind": "set_property", "target_id": "@self", "key": "flame", "value": true},
            {"kind": "narrate", "text": "The candles are lit."}
          ]},
         {"on": "light", "if": [{"prop": "burned_out", "of": "@self", "eq": true}],
@@ -297,6 +299,7 @@
         {"on": "extinguish", "if": [{"prop": "lit", "of": "@self", "eq": true}],
          "do": [
            {"kind": "set_property", "target_id": "@self", "key": "lit", "value": false},
+           {"kind": "set_property", "target_id": "@self", "key": "flame", "value": false},
            {"kind": "narrate", "text": "The flames are extinguished."}
          ]},
         {"on": "extinguish",

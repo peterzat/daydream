@@ -1,5 +1,5 @@
 {
-  "comment": "Region (b) part 1: the cellar descent, the troll gate, and the art wing. The trap door bars ONCE (TRAP-TOUCHED) on first entry; the troll's death opens both his exits (TROLL-DEAD).",
+  "comment": "Region (b) part 1: the cellar descent, the troll gate, and the art wing. The trap door bars on EVERY open descent until the cyclops opens his wall (MAGIC-FLAG), exactly as the original has it; TRAP-TOUCHED still records the first slam. The troll's death opens both his exits (TROLL-DEAD).",
   "rooms": [
     {
       "id": "r-cellar", "slug": "cellar", "title": "Cellar",
@@ -17,7 +17,7 @@
       },
       "rules": [
         {"on": "enter",
-         "if": [{"flag": "TRAP-TOUCHED", "eq": false},
+         "if": [{"flag": "MAGIC-FLAG", "eq": false},
                  {"flag": "TRAP-DOOR-OPEN"}],
          "stop": false,
          "do": [

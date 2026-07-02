@@ -129,6 +129,8 @@
     "GRATING-OPEN",
     "LEAVES-MOVED",
     "GATES-OPEN",
+    "GATE-UNLOCKED",
+    "MAINT-LEAKING",
     "LOW-TIDE",
     "LOUD-QUIET",
     "MAGIC-FLAG",
@@ -184,9 +186,29 @@
           "value": true
         },
         {
+          "kind": "move_object",
+          "object_id": "o-trunk",
+          "dest_id": "r-reservoir"
+        },
+        {
           "kind": "narrate",
           "room": "r-reservoir-south",
           "text": "The water level behind the dam falls away with a long, diminishing sigh; the reservoir gives up its bed."
+        }
+      ]
+    },
+    "reservoir-fill": {
+      "turns": 8,
+      "do": [
+        {
+          "kind": "set_flag",
+          "name": "LOW-TIDE",
+          "value": false
+        },
+        {
+          "kind": "narrate",
+          "room": "r-reservoir-south",
+          "text": "The water climbs back up its old marks behind the dam; the reservoir remembers itself."
         }
       ]
     },

@@ -77,7 +77,7 @@
       "id": "r-behind-house",
       "slug": "behind-house",
       "title": "Behind House",
-      "zork_name": "East of House",
+      "zork_name": "Behind House",
       "seed": "the back of a white house, one small window ajar, a kitchen garden gone wild",
       "description": "You are behind the white house. A path leads into the forest to the east, and in one corner of the house a small window stands slightly ajar.",
       "exits": {

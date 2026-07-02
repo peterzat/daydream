@@ -14,68 +14,8 @@
       }
     },
     {
-      "id": "r-chasm-room",
-      "slug": "stub-chasm-room",
-      "title": "Unfinished Dark",
-      "seed": "unfinished dark",
-      "dark": true,
-      "description": "This part of the empire is still being excavated.",
-      "exits": {},
-      "properties": {
-        "stub": true
-      }
-    },
-    {
-      "id": "r-cold-passage",
-      "slug": "stub-cold-passage",
-      "title": "Unfinished Dark",
-      "seed": "unfinished dark",
-      "dark": true,
-      "description": "This part of the empire is still being excavated.",
-      "exits": {},
-      "properties": {
-        "stub": true
-      }
-    },
-    {
-      "id": "r-damp-cave",
-      "slug": "stub-damp-cave",
-      "title": "Unfinished Dark",
-      "seed": "unfinished dark",
-      "dark": true,
-      "description": "This part of the empire is still being excavated.",
-      "exits": {},
-      "properties": {
-        "stub": true
-      }
-    },
-    {
-      "id": "r-deep-canyon",
-      "slug": "stub-deep-canyon",
-      "title": "Unfinished Dark",
-      "seed": "unfinished dark",
-      "dark": true,
-      "description": "This part of the empire is still being excavated.",
-      "exits": {},
-      "properties": {
-        "stub": true
-      }
-    },
-    {
       "id": "r-grating-room",
       "slug": "stub-grating-room",
-      "title": "Unfinished Dark",
-      "seed": "unfinished dark",
-      "dark": true,
-      "description": "This part of the empire is still being excavated.",
-      "exits": {},
-      "properties": {
-        "stub": true
-      }
-    },
-    {
-      "id": "r-loud-room",
-      "slug": "stub-loud-room",
       "title": "Unfinished Dark",
       "seed": "unfinished dark",
       "dark": true,
@@ -136,18 +76,6 @@
     {
       "id": "r-mine-entrance",
       "slug": "stub-mine-entrance",
-      "title": "Unfinished Dark",
-      "seed": "unfinished dark",
-      "dark": true,
-      "description": "This part of the empire is still being excavated.",
-      "exits": {},
-      "properties": {
-        "stub": true
-      }
-    },
-    {
-      "id": "r-ns-passage",
-      "slug": "stub-ns-passage",
       "title": "Unfinished Dark",
       "seed": "unfinished dark",
       "dark": true,
@@ -252,6 +180,18 @@
       "properties": {
         "stub": true
       }
+    },
+    {
+      "id": "r-white-cliffs-north",
+      "slug": "stub-white-cliffs-north",
+      "title": "Unfinished Dark",
+      "seed": "unfinished dark",
+      "dark": true,
+      "description": "This part of the empire is still being excavated.",
+      "exits": {},
+      "properties": {
+        "stub": true
+      }
     }
   ],
   "toons": [
@@ -280,15 +220,6 @@
     {
       "id": "o-boat",
       "name": "stub-boat",
-      "location": "offstage",
-      "seed": "a thing not yet made",
-      "properties": {
-        "stub": true
-      }
-    },
-    {
-      "id": "o-matchbook",
-      "name": "stub-matchbook",
       "location": "offstage",
       "seed": "a thing not yet made",
       "properties": {

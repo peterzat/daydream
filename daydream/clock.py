@@ -112,6 +112,11 @@ def _burn_fuel(world_id: str) -> None:
         if fuel <= 0:
             objects.set_property(thing.id, "lit", False)
             objects.set_property(thing.id, "burned_out", True)
+            # A burned-out source is no longer an open flame: worlds that
+            # track a dynamic `flame` property (hazard rules key on it)
+            # would otherwise see a dead source still reading as burning.
+            if "flame" in thing.properties:
+                objects.set_property(thing.id, "flame", False)
             out_text = thing.properties.get("burnout_text")
             if not (isinstance(out_text, str) and out_text.strip()):
                 out_text = f"The {thing.name} flickers and goes out."

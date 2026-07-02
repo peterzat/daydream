@@ -377,6 +377,731 @@
           }
         }
       ]
+    },
+    {
+      "name": "dam-and-matchbook",
+      "commands": [
+        {
+          "cmd": "drop sword"
+        },
+        {
+          "cmd": "up",
+          "expect": {
+            "room": "r-tiny-cave"
+          }
+        },
+        {
+          "cmd": "north",
+          "expect": {
+            "room": "r-mirror-room-south"
+          }
+        },
+        {
+          "cmd": "north",
+          "expect": {
+            "room": "r-narrow-passage"
+          }
+        },
+        {
+          "cmd": "north",
+          "expect": {
+            "room": "r-round-room"
+          }
+        },
+        {
+          "cmd": "north",
+          "expect": {
+            "room": "r-ns-passage"
+          }
+        },
+        {
+          "cmd": "northeast",
+          "expect": {
+            "room": "r-deep-canyon"
+          }
+        },
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-dam"
+          }
+        },
+        {
+          "cmd": "north",
+          "expect": {
+            "room": "r-dam-lobby"
+          }
+        },
+        {
+          "cmd": "take matchbook",
+          "expect": {
+            "carrying": [
+              "matchbook"
+            ]
+          }
+        },
+        {
+          "cmd": "north",
+          "expect": {
+            "room": "r-maintenance-room"
+          }
+        },
+        {
+          "cmd": "take wrench",
+          "expect": {
+            "carrying": [
+              "wrench"
+            ]
+          }
+        },
+        {
+          "cmd": "push yellow button",
+          "expect": {
+            "flag": {
+              "GATE-UNLOCKED": true
+            },
+            "narrate_contains": "Click"
+          }
+        },
+        {
+          "cmd": "south",
+          "expect": {
+            "room": "r-dam-lobby"
+          }
+        },
+        {
+          "cmd": "south",
+          "expect": {
+            "room": "r-dam"
+          }
+        },
+        {
+          "cmd": "turn bolt with wrench",
+          "expect": {
+            "flag": {
+              "GATES-OPEN": true
+            },
+            "narrate_contains": "sluice gates open"
+          }
+        },
+        {
+          "cmd": "drop wrench"
+        }
+      ]
+    },
+    {
+      "name": "exorcism-of-hades",
+      "commands": [
+        {
+          "cmd": "south",
+          "expect": {
+            "room": "r-deep-canyon"
+          }
+        },
+        {
+          "cmd": "southwest",
+          "expect": {
+            "room": "r-ns-passage"
+          }
+        },
+        {
+          "cmd": "south",
+          "expect": {
+            "room": "r-round-room"
+          }
+        },
+        {
+          "cmd": "south",
+          "expect": {
+            "room": "r-narrow-passage"
+          }
+        },
+        {
+          "cmd": "south",
+          "expect": {
+            "room": "r-mirror-room-south"
+          }
+        },
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-tiny-cave"
+          }
+        },
+        {
+          "cmd": "down",
+          "expect": {
+            "room": "r-entrance-to-hades",
+            "flag": {
+              "LOW-TIDE": true
+            }
+          }
+        },
+        {
+          "cmd": "ring bell",
+          "expect": {
+            "flag": {
+              "BELL-RUNG": true
+            },
+            "narrate_contains": "red hot"
+          }
+        },
+        {
+          "cmd": "light match",
+          "expect": {
+            "narrate_contains": "scratches to life"
+          }
+        },
+        {
+          "cmd": "light candles with match",
+          "expect": {
+            "flag": {
+              "CANDLES-RITUAL": true
+            },
+            "narrate_contains": "candles catch"
+          }
+        },
+        {
+          "cmd": "read book",
+          "expect": {
+            "flag": {
+              "SPIRITS-BANISHED": true
+            },
+            "narrate_contains": "Begone"
+          }
+        },
+        {
+          "cmd": "drop book"
+        },
+        {
+          "cmd": "blow out candles"
+        },
+        {
+          "cmd": "drop candles"
+        },
+        {
+          "cmd": "drop matchbook"
+        },
+        {
+          "cmd": "south",
+          "expect": {
+            "room": "r-land-of-living-dead"
+          }
+        },
+        {
+          "cmd": "take skull",
+          "expect": {
+            "score": 74,
+            "carrying": [
+              "crystal skull"
+            ]
+          }
+        },
+        {
+          "cmd": "north",
+          "expect": {
+            "room": "r-entrance-to-hades"
+          }
+        }
+      ]
+    },
+    {
+      "name": "loud-room-echo",
+      "commands": [
+        {
+          "cmd": "up",
+          "expect": {
+            "room": "r-tiny-cave"
+          }
+        },
+        {
+          "cmd": "north",
+          "expect": {
+            "room": "r-mirror-room-south"
+          }
+        },
+        {
+          "cmd": "north",
+          "expect": {
+            "room": "r-narrow-passage"
+          }
+        },
+        {
+          "cmd": "north",
+          "expect": {
+            "room": "r-round-room"
+          }
+        },
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-loud-room",
+            "narrate_contains": "deafeningly loud"
+          }
+        },
+        {
+          "cmd": "echo",
+          "expect": {
+            "flag": {
+              "LOUD-QUIET": true
+            },
+            "narrate_contains": "acoustics of the room change subtly"
+          }
+        },
+        {
+          "cmd": "take bar",
+          "expect": {
+            "score": 84,
+            "carrying": [
+              "platinum bar"
+            ]
+          }
+        },
+        {
+          "cmd": "west",
+          "expect": {
+            "room": "r-round-room"
+          }
+        }
+      ]
+    },
+    {
+      "name": "first-tribute",
+      "commands": [
+        {
+          "cmd": "southeast",
+          "expect": {
+            "room": "r-engravings-cave"
+          }
+        },
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-dome-room"
+          }
+        },
+        {
+          "cmd": "down",
+          "expect": {
+            "room": "r-torch-room"
+          }
+        },
+        {
+          "cmd": "south",
+          "expect": {
+            "room": "r-north-temple"
+          }
+        },
+        {
+          "cmd": "south",
+          "expect": {
+            "room": "r-south-temple"
+          }
+        },
+        {
+          "cmd": "pray",
+          "expect": {
+            "room": "r-forest-1"
+          }
+        },
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-forest-path"
+          }
+        },
+        {
+          "cmd": "south",
+          "expect": {
+            "room": "r-north-of-house"
+          }
+        },
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-behind-house"
+          }
+        },
+        {
+          "cmd": "in",
+          "expect": {
+            "room": "r-kitchen"
+          }
+        },
+        {
+          "cmd": "west",
+          "expect": {
+            "room": "r-living-room"
+          }
+        },
+        {
+          "cmd": "put skull and bar in case",
+          "expect": {
+            "score": 99,
+            "in_case": [
+              "crystal skull",
+              "platinum bar"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "the-coffin-run",
+      "commands": [
+        {
+          "cmd": "open trap door"
+        },
+        {
+          "cmd": "down",
+          "expect": {
+            "room": "r-cellar",
+            "flag": {
+              "TRAP-DOOR-OPEN": false
+            },
+            "narrate_contains": "crashes shut"
+          }
+        },
+        {
+          "cmd": "north",
+          "expect": {
+            "room": "r-troll-room"
+          }
+        },
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-ew-passage"
+          }
+        },
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-round-room"
+          }
+        },
+        {
+          "cmd": "southeast",
+          "expect": {
+            "room": "r-engravings-cave"
+          }
+        },
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-dome-room"
+          }
+        },
+        {
+          "cmd": "down",
+          "expect": {
+            "room": "r-torch-room"
+          }
+        },
+        {
+          "cmd": "south",
+          "expect": {
+            "room": "r-north-temple"
+          }
+        },
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-egypt-room"
+          }
+        },
+        {
+          "cmd": "take coffin",
+          "expect": {
+            "score": 109,
+            "carrying": [
+              "gold coffin"
+            ]
+          }
+        },
+        {
+          "cmd": "west",
+          "expect": {
+            "room": "r-north-temple"
+          }
+        },
+        {
+          "cmd": "south",
+          "expect": {
+            "room": "r-south-temple"
+          }
+        },
+        {
+          "cmd": "pray",
+          "expect": {
+            "room": "r-forest-1"
+          }
+        },
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-forest-path"
+          }
+        },
+        {
+          "cmd": "south",
+          "expect": {
+            "room": "r-north-of-house"
+          }
+        },
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-behind-house"
+          }
+        },
+        {
+          "cmd": "in",
+          "expect": {
+            "room": "r-kitchen"
+          }
+        },
+        {
+          "cmd": "west",
+          "expect": {
+            "room": "r-living-room"
+          }
+        },
+        {
+          "cmd": "open coffin",
+          "expect": {
+            "narrate_contains": "sceptre"
+          }
+        },
+        {
+          "cmd": "take sceptre",
+          "expect": {
+            "score": 113,
+            "carrying": [
+              "sceptre"
+            ]
+          }
+        },
+        {
+          "cmd": "put coffin in case",
+          "expect": {
+            "score": 128,
+            "in_case": [
+              "gold coffin"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "reservoir-treasures",
+      "commands": [
+        {
+          "cmd": "open trap door"
+        },
+        {
+          "cmd": "down",
+          "expect": {
+            "room": "r-cellar",
+            "flag": {
+              "TRAP-DOOR-OPEN": false
+            }
+          }
+        },
+        {
+          "cmd": "north",
+          "expect": {
+            "room": "r-troll-room"
+          }
+        },
+        {
+          "cmd": "drop knife"
+        },
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-ew-passage"
+          }
+        },
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-round-room"
+          }
+        },
+        {
+          "cmd": "north",
+          "expect": {
+            "room": "r-ns-passage"
+          }
+        },
+        {
+          "cmd": "north",
+          "expect": {
+            "room": "r-chasm-room"
+          }
+        },
+        {
+          "cmd": "northeast",
+          "expect": {
+            "room": "r-reservoir-south"
+          }
+        },
+        {
+          "cmd": "north",
+          "expect": {
+            "room": "r-reservoir",
+            "flag": {
+              "LOW-TIDE": true
+            }
+          }
+        },
+        {
+          "cmd": "take trunk",
+          "expect": {
+            "score": 143,
+            "carrying": [
+              "trunk of jewels"
+            ]
+          }
+        },
+        {
+          "cmd": "north",
+          "expect": {
+            "room": "r-reservoir-north"
+          }
+        },
+        {
+          "cmd": "take pump",
+          "expect": {
+            "carrying": [
+              "hand-held air pump"
+            ]
+          }
+        },
+        {
+          "cmd": "north",
+          "expect": {
+            "room": "r-atlantis-room"
+          }
+        },
+        {
+          "cmd": "take trident",
+          "expect": {
+            "score": 147,
+            "carrying": [
+              "crystal trident"
+            ]
+          }
+        },
+        {
+          "cmd": "up",
+          "expect": {
+            "room": "r-small-cave"
+          }
+        },
+        {
+          "cmd": "north",
+          "expect": {
+            "room": "r-mirror-room-north"
+          }
+        },
+        {
+          "cmd": "rub mirror",
+          "expect": {
+            "room": "r-mirror-room-south",
+            "narrate_contains": "rumble from deep within the earth"
+          }
+        },
+        {
+          "cmd": "north",
+          "expect": {
+            "room": "r-narrow-passage"
+          }
+        },
+        {
+          "cmd": "north",
+          "expect": {
+            "room": "r-round-room"
+          }
+        },
+        {
+          "cmd": "southeast",
+          "expect": {
+            "room": "r-engravings-cave"
+          }
+        },
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-dome-room"
+          }
+        },
+        {
+          "cmd": "down",
+          "expect": {
+            "room": "r-torch-room"
+          }
+        },
+        {
+          "cmd": "south",
+          "expect": {
+            "room": "r-north-temple"
+          }
+        },
+        {
+          "cmd": "south",
+          "expect": {
+            "room": "r-south-temple"
+          }
+        },
+        {
+          "cmd": "pray",
+          "expect": {
+            "room": "r-forest-1"
+          }
+        },
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-forest-path"
+          }
+        },
+        {
+          "cmd": "south",
+          "expect": {
+            "room": "r-north-of-house"
+          }
+        },
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-behind-house"
+          }
+        },
+        {
+          "cmd": "in",
+          "expect": {
+            "room": "r-kitchen"
+          }
+        },
+        {
+          "cmd": "west",
+          "expect": {
+            "room": "r-living-room"
+          }
+        },
+        {
+          "cmd": "put trunk and trident in case",
+          "expect": {
+            "score": 163,
+            "in_case": [
+              "trunk of jewels",
+              "crystal trident"
+            ]
+          }
+        }
+      ]
     }
   ]
 }

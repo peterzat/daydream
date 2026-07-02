@@ -104,6 +104,20 @@ def test_burnout_is_permanent_and_narrated():
     assert narrates().count("The lamp has gone out.") == 1
 
 
+def test_burnout_clears_a_dynamic_flame_property():
+    """A world tracking open flames (hazard rules key on `flame`) must not
+    see a burned-out source still reading as burning; a source with no such
+    property is untouched."""
+    match = spawn_lamp(fuel=1, lit=True, flame=True)
+    clock.tick(ACTOR)
+    assert objects.get(match.id).properties["flame"] is False
+    plain = objects.spawn(WORLD, "thing", "stub-lamp", ACTOR,
+                          properties={"light": True, "lit": True, "fuel": 1},
+                          object_id="o-plain")
+    clock.tick(ACTOR)
+    assert "flame" not in objects.get(plain.id).properties
+
+
 def test_permanent_source_never_burns():
     torch = objects.spawn(WORLD, "thing", "torch", ACTOR,
                           properties={"light": True, "lit": True},
