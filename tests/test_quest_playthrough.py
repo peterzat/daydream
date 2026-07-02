@@ -127,6 +127,119 @@ async def test_golden_quest_playthrough_zero_llm(loft, monkeypatch):
     spy.assert_not_called()  # the whole quest was deterministic
 
 
+async def _drive_quest_to_open_case(actor: str) -> None:
+    """Replay the quest beats (deterministic, zero LLM): fetch the gear, earn
+    the key, unlock and open the case. Leaves the actor in the clocktower with
+    the case open and its payload revealed."""
+    gear = _id("thing", "escapement gear")
+    tace = _id("toon", "Tace")
+    case = _id("thing", "clock case")
+    await verbs.execute_command(actor, "go", args="east")   # clocktower -> square
+    await verbs.execute_command(actor, "go", args="south")  # square -> well
+    await verbs.execute_command(actor, "take", dobj_id=gear)
+    await verbs.execute_command(actor, "go", args="north")  # well -> square
+    await verbs.execute_command(actor, "go", args="west")   # square -> clocktower
+    await verbs.execute_command(actor, "go", args="up")     # clocktower -> loft
+    await verbs.execute_command(actor, "give", dobj_id=gear, iobj_id=tace)
+    key = next(o for o in objects.contents(actor, "thing") if o.name == "case key")
+    await verbs.execute_command(actor, "go", args="down")   # loft -> clocktower
+    await verbs.execute_command(actor, "use", dobj_id=key.id, iobj_id=case)
+    await verbs.execute_command(actor, "open", dobj_id=case)
+
+
+_PLANT_COMPOSITION = {
+    "title": "The Quiet Orchard",
+    "room_seed": "a small orchard of clock-fruit trees at dusk, each fruit "
+                 "ticking softly under the leaves",
+    "description": "Rows of low trees hold small brass fruit, and each one "
+                   "ticks softly to itself under the leaves. The grass is "
+                   "cool and blue with evening. Somewhere at the orchard's "
+                   "edge, one tree keeps a different, older time.",
+    "objects": [
+        {"name": "clock-fruit", "seed": "a small brass fruit, warm and "
+                                        "faintly ticking in the palm"},
+    ],
+}
+
+
+@pytest.mark.asyncio
+async def test_golden_dreamseed_plant_extension(loft, monkeypatch):
+    """SPEC 2026-07-02 criterion 1 golden extension: the opened case reveals
+    the dreamseed; bare plant asks the seed's authored question (zero LLM);
+    the mocked-LLM plant grows exactly one room with exits both ways,
+    provenance, the spent husk resting inside; a replant refuses; and the
+    growth cap refuses in character. Deterministic, zero real GPU."""
+    spy = AsyncMock(side_effect=AssertionError("unexpected LLM call"))
+    monkeypatch.setattr("daydream.llm.client.acompletion_json", spy)
+
+    actor = _id("toon", "Wick")
+    clocktower = objects.get(actor).location_id
+    await _drive_quest_to_open_case(actor)
+
+    # The case revealed BOTH payloads (quest golden above asserts the cog).
+    assert _count_in_room(clocktower, "warm brass cog") == 1
+    assert _count_in_room(clocktower, "dreamseed") == 1
+    seed = next(o for o in objects.contents(clocktower, "thing")
+                if o.name == "dreamseed")
+    assert "plant" in objects.verbs_for(seed)
+    assert isinstance(seed.properties.get("growth"), dict)
+
+    # Take it; bare plant asks the seed's authored question — zero LLM.
+    await verbs.execute_command(actor, "take", dobj_id=seed.id)
+    await verbs.execute_command(actor, "plant", dobj_id=seed.id)
+    assert _last_narrate() == "Where does the new way lead?"
+    spy.assert_not_called()
+
+    # Plant with a vision: ONE LLM call, the full atomic batch.
+    grow_spy = AsyncMock(return_value=dict(_PLANT_COMPOSITION))
+    monkeypatch.setattr("daydream.llm.client.acompletion_json", grow_spy)
+    phrase = "an orchard where the fruit keeps time"
+    await verbs.execute_command(actor, "plant", dobj_id=seed.id, args=phrase)
+    assert grow_spy.call_count == 1
+
+    from daydream import rooms as rooms_mod
+    grown = rooms_mod.get_room_by_slug("w-bunny", "the-quiet-orchard")
+    assert grown is not None
+    assert grown.description_cached == _PLANT_COMPOSITION["description"]
+    # Clocktower exits were up + east; first free is north, reverse south.
+    assert rooms_mod.get_room(clocktower).exits["north"] == grown.id
+    assert grown.exits["south"] == clocktower
+    props = objects.get(grown.id).properties
+    assert props["generated_by"] == f"plant:{seed.id}"
+    assert props["grown"]["planter_id"] == actor
+    assert props["grown"]["phrase"] == phrase
+    # The composed object + the spent husk rest in the grown room.
+    names = {o.name for o in objects.contents(grown.id, "thing")}
+    assert {"clock-fruit", "dreamseed"} <= names
+    husk = objects.get(seed.id)
+    assert husk.location_id == grown.id
+    assert husk.properties["state"] == "spent"
+    assert "plant" not in objects.verbs_for(husk)
+    payoff = _last_narrate()
+    assert "north" in payoff and "The Quiet Orchard" in payoff
+
+    # Replant the husk: refused in character, no second call, no second room.
+    await verbs.execute_command(actor, "go", args="north")
+    await verbs.execute_command(actor, "take", dobj_id=seed.id)
+    await verbs.execute_command(actor, "plant", dobj_id=seed.id, args=phrase)
+    assert grow_spy.call_count == 1
+    assert rooms_mod.grown_room_count("w-bunny") == 1
+
+    # The growth cap refuses in character before any LLM call.
+    monkeypatch.setenv("DAYDREAM_GROWTH_MAX_ROOMS", "1")
+    second = objects.spawn(
+        "w-bunny", "thing", "second dreamseed", actor,
+        prototype_id=objects.PROTO_THING,
+        properties={"seed": "another seed", "verbs": ["plant"],
+                    "growth": seed.properties["growth"]},
+    )
+    await verbs.execute_command(actor, "plant", dobj_id=second.id,
+                                args="a second orchard")
+    assert grow_spy.call_count == 1
+    assert rooms_mod.grown_room_count("w-bunny") == 1
+    assert objects.get(second.id).properties.get("state") != "spent"
+
+
 @pytest.mark.asyncio
 async def test_use_wrong_state_and_open_locked_are_soft_noops(loft, monkeypatch):
     """Integrity invariants: opening the still-locked case refuses (no payoff),

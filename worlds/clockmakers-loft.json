@@ -1,5 +1,5 @@
 {
-  "_comment": "Opus-authored, keyless world envelope for the playable quest loop (SPEC 2026-07-01). The Clockmaker's Loft. Load with `bin/game world load worlds/clockmakers-loft.json` (or `bin/game world reset --yes`). No LLM call, no API key. The quest: read the repair-ledger -> take the escapement gear by the well -> give it to Tace in the loft (earns the case-key) -> use the case-key on the clock-case -> open the case (the great clock ticks again). All quest beats are pre-baked authored strings; the local LLM only voices ambient talk/drift. Cross-references (Tace.wants, clock-case use.with) are BY NAME. Internal world_id stays w-bunny (loader hardcodes it).",
+  "_comment": "Opus-authored, keyless world envelope for the playable quest loop (SPEC 2026-07-01) + the quest-earned dreamseed (SPEC 2026-07-02). The Clockmaker's Loft. Load with `bin/game world load worlds/clockmakers-loft.json` (or `bin/game world reset --yes`). No LLM call, no API key. The quest: read the repair-ledger -> take the escapement gear by the well -> give it to Tace in the loft (earns the case-key) -> use the case-key on the clock-case -> open the case (the great clock ticks again, and the case reveals BOTH the warm brass cog AND a dreamseed). The dreamseed is the growth permission: carry it anywhere, `plant` it, answer its question with a short vision, and the local LLM composes ONE new persistent room inside this file's authored growth boundaries (theme/palette/motifs/exemplars below are the design-time pre-bake). All quest beats are pre-baked authored strings; the local LLM voices ambient talk/drift and composes grown rooms. Cross-references (Tace.wants, clock-case use.with) are BY NAME. Internal world_id stays w-bunny (loader hardcodes it).",
   "world": {
     "name": "The Clockmaker's Loft",
     "aesthetic_seed": "a small clockmaker's village at dusk, warm lantern-light on brass and old oak, watercolor edges, the gentle mystery of a great clock stopped and waiting to be mended"
@@ -92,9 +92,47 @@
        "open_text": "The little lock gives, the case door swings wide, and behind the glass the pendulum stirs, swings, and catches the light -- and high overhead the great clock takes its first slow tick in a long, long while.",
        "use": {"with": "case key", "from_state": "locked", "to_state": "unlocked",
                "text": "The case-key turns with a soft, satisfying click, and the little brass lock springs open under your thumb."},
-       "contains": {"name": "warm brass cog",
-                    "seed": "a small spare brass cog, warm as if just held, its fine teeth catching the last of the light",
-                    "aliases": ["cog", "brass cog"]}
+       "contains": [
+         {"name": "warm brass cog",
+          "seed": "a small spare brass cog, warm as if just held, its fine teeth catching the last of the light",
+          "aliases": ["cog", "brass cog"]},
+         {"name": "dreamseed",
+          "seed": "a seed like a tiny folded paper lantern, warm in the palm, with a light inside that beats as slow as a resting clock",
+          "aliases": ["seed", "dream seed"],
+          "verbs": ["plant"],
+          "properties": {
+            "growth": {
+              "question": "Where does the new way lead?",
+              "theme": [
+                "a clockmaker's village at dusk",
+                "kept time and patient mending",
+                "small rooms that hold one gentle purpose",
+                "quiet places where time can rest"
+              ],
+              "palette": "warm lantern amber over deepening dusk blue; brass, old oak, moss-green; soft watercolor edges",
+              "motifs": [
+                "small resting clocks",
+                "paper lanterns coming alight",
+                "worn brass, gently polished",
+                "moss in the seams of old stone",
+                "the hush between one tick and the next",
+                "things folded, kept, and labeled in a careful hand"
+              ],
+              "exemplars": [
+                {"title": "The Pendulum Garden",
+                 "seed": "a narrow walled garden where spare pendulums hang from trellises like wind-chimes, swaying each to its own slow count above soft moss",
+                 "description": "Pendulums hang from every trellis, brass bob and silver, each swinging to its own patient count. The moss underfoot has learned its stillness from them. When a breeze comes through, the whole garden ticks once, all together, like a great clock remembering itself."},
+                {"title": "The Hour Cellar",
+                 "seed": "a low brick cellar lit by one patient lantern, its shelves lined with little glass jars, each holding a folded paper hour",
+                 "description": "Shelves run along the walls, and on them sit rows of small glass jars, each one holding a folded slip of paper: an hour somebody saved and never spent. The lantern by the stair burns low and steady. It is quiet here, the way the inside of a pocket is quiet."},
+                {"title": "The Winding Balcony",
+                 "seed": "a small oak balcony above the dusk, ringed by a brass rail, where a gear-ribbed telescope leans watching for the first star",
+                 "description": "The balcony holds its place above the rooftops with a friendly creak. A telescope ribbed with clock-gears leans at the rail like an old friend paused mid-thought. Below, the village lanterns come on one by one, keeping an hour of their own."}
+              ],
+              "husk_text": "the spent, papery shell of a dreamseed, cool in the hand now, its slow light gone quiet; its dreaming is done, and the place around it is what the dreaming became"
+            }
+          }}
+       ]
      }},
     {"room_slug": "well", "name": "escapement gear",
      "seed": "a small brass gear resting in the moss at the well's foot, its fine teeth flecked with green, cool from the shadow but sound and whole",

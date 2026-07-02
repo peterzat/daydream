@@ -34,8 +34,10 @@ logger = logging.getLogger(__name__)
 
 # Bump MAJOR when an existing world DB can no longer be loaded by this code;
 # bump MINOR for authored content/behaviour changes an old world won't reflect.
-# See the module docstring for the boot-gate semantics.
-WORLD_VERSION = "1.1"
+# See the module docstring for the boot-gate semantics. (1.2: the quest-earned
+# dreamseed in the clock case + the `plant` verb, SPEC 2026-07-02 — a 1.1
+# world lacks the seed, so it warns-not-refuses per MINOR rules.)
+WORLD_VERSION = "1.2"
 
 
 @lru_cache(maxsize=1)

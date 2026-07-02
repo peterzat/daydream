@@ -101,7 +101,33 @@ def test_clock_case_is_a_stateful_fixture(loft_db):
     assert case.properties.get("state") == "locked"
     use = case.properties.get("use")
     assert use["with"] == "case key" and use["from_state"] == "locked"
-    assert case.properties.get("contains", {}).get("name") == "warm brass cog"
+    # The case reveals BOTH the quest payoff and the dreamseed (SPEC 2026-07-02).
+    contains = case.properties.get("contains")
+    assert isinstance(contains, list)
+    assert [e["name"] for e in contains] == ["warm brass cog", "dreamseed"]
+
+
+def test_dreamseed_declares_plant_and_carries_growth(loft_db):
+    """The authored dreamseed (inside the clock case's payload): declares
+    `plant` per-object, and its growth block carries the full authored
+    boundary set — question, theme, palette, motifs, 3 exemplars in windows
+    the runtime validator enforces on LLM output, and a husk line."""
+    case = _thing("clock case")
+    seed = next(e for e in case.properties["contains"] if e["name"] == "dreamseed")
+    assert seed["verbs"] == ["plant"]
+    growth = seed["properties"]["growth"]
+    assert growth["question"] == "Where does the new way lead?"
+    assert 1 <= len(growth["theme"]) <= 8
+    assert growth["palette"].strip()
+    assert len(growth["motifs"]) <= 8
+    assert 1 <= len(growth["exemplars"]) <= 3
+    for ex in growth["exemplars"]:
+        # Exemplars model the same windows the runtime demands of the LLM, so
+        # the scaffold never teaches an out-of-schema shape.
+        assert 3 <= len(ex["title"]) <= 40 and 1 <= len(ex["title"].split()) <= 5
+        assert 30 <= len(ex["seed"]) <= 300
+        assert 60 <= len(ex["description"]) <= 500
+    assert growth["husk_text"].strip()
 
 
 def test_repair_ledger_is_readable_with_a_clue(loft_db):

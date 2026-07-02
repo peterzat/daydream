@@ -187,6 +187,34 @@ async def test_two_target_miss_defers_to_llm(monkeypatch):
     assert p.verb == "give" and p.dobj_id == "i-lantern" and p.iobj_id == "t-rook"
 
 
+# ---- plant: bare fast-path + free-text vision via the LLM ---------------
+
+
+@pytest.mark.asyncio
+async def test_bare_plant_is_fast_path(monkeypatch):
+    # Bare "plant" -> Parse("plant") deterministically; execute_command then
+    # narrates "Plant what?". Zero LLM calls (SPEC 2026-07-02 criterion 5).
+    spy = _mock_llm(monkeypatch, {"verb": "none"})
+    p = await parser.parse("t-wren", "plant")
+    assert p.verb == "plant" and p.dobj_id is None and p.args == ""
+    spy.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_plant_with_vision_defers_to_llm_grounding(monkeypatch):
+    # "plant the dreamseed ..." is free_text: the fast-path defers so the LLM
+    # can ground the seed AND carry the vision phrase into args.
+    seed = objects.spawn("w-bunny", "thing", "dreamseed", "t-wren",
+                         prototype_id=objects.PROTO_THING,
+                         properties={"verbs": ["plant"]})
+    spy = _mock_llm(monkeypatch, {"verb": "plant", "dobj_id": seed.id,
+                                  "iobj_id": None, "args": "a moonlit orchard"})
+    p = await parser.parse("t-wren", "plant the dreamseed to a moonlit orchard")
+    spy.assert_called_once()
+    assert p.verb == "plant" and p.dobj_id == seed.id
+    assert p.args == "a moonlit orchard"
+
+
 # ---- fail safe: malformed / unresolvable -------------------------------
 
 
