@@ -182,11 +182,11 @@ _BANNED_FALLBACK_TEXT = "The dream won't hold that thought."
 _FOGGY_FALLBACK_TEXT = "The dream is foggy right now; that thought slips away."
 _RENDER_FAILURE_TEXT = "The dream loses the thread of that skill."
 
-# System message for the data-skill dispatcher LLM call. Instructs SECOND
-# PERSON for player-action narration so the player is always addressed as
-# "you", never "the visitor" / third person (SPEC 2026-06-30). Built once at
+# System message for PLAYER-ACTION affordance skills (wind, listen, forge...):
+# the player is the actor, so narration is SECOND PERSON — address the player
+# as "you", never "the visitor" / third person (SPEC 2026-06-30). Built once at
 # import; DEFAULT_KINDS is stable. (DEFAULT_KINDS, not ALLOWED_KINDS: the
-# world-shaping kinds are per-verb opt-in and unreachable from a data skill's
+# restricted kinds are per-verb opt-in and unreachable from a data skill's
 # allowed=None dispatch, so advertising them here would only teach the model
 # to emit effects the dispatcher then rejects.)
 _DISPATCHER_SYSTEM = (
@@ -200,6 +200,34 @@ _DISPATCHER_SYSTEM = (
     '{"refused": true, "reason": "<in-fiction gentle refusal>"}. '
     "Keep all narrative text tone-matched: cozy, soft, painterly."
 )
+
+
+def _dialogue_system(npc_name: str, allowed: "frozenset[str] | None") -> str:
+    """System message for NPC DIALOGUE skills, where the actor being narrated
+    is the NPC, not the player. The affordance dispatcher's second-person rule
+    is exactly wrong for dialogue: the authored templates open "You are
+    Mott...", so a second-person narration instruction makes the model
+    describe the NPC's actions as "you" — which reads as the PLAYER's own body
+    ("A soft smile plays on your lips as you wave back", playtest 2026-07-02).
+    Dialogue narration is THIRD person by name; the player is addressed as
+    'you' only inside the NPC's quoted spoken words. Advertises the caller's
+    per-verb allowed kinds (talk's subset) rather than the data-skill
+    default."""
+    kinds = ", ".join(sorted(allowed if allowed is not None else effects.DEFAULT_KINDS))
+    return (
+        f"You are voicing {npc_name}, a character in a cozy watercolor "
+        "text-adventure, replying to what a player just said to them. "
+        "Narrate the reply in the THIRD PERSON, naming the character "
+        f"('{npc_name} looks up...'). Never narrate actions as 'you': in this "
+        f"game 'you' is the player, so describing {npc_name}'s actions in the "
+        f"second person reads as the player's own body. {npc_name} may address "
+        "the player as 'you' only inside their quoted spoken line. "
+        "Return strict JSON with an 'effects' list; each effect has a 'kind' "
+        f"plus the fields that kind requires. Allowed kinds: {kinds}. "
+        'If the request is off-tone or out of character, return '
+        '{"refused": true, "reason": "<one gentle in-character sentence>"}. '
+        "Keep all narrative text tone-matched: cozy, soft, painterly."
+    )
 
 
 def _resolve_npc_and_world(spec: SkillSpec, room_id: str) -> tuple[str | None, str | None]:
@@ -278,6 +306,7 @@ async def execute(
     room_id: str,
     args: str,
     allowed: "frozenset[str] | None" = None,
+    npc: "objects.Object | None" = None,
 ) -> None:
     """Run the full data-skill pipeline and emit events. No return
     value — the side effect is events in the log, matching the core
@@ -286,14 +315,32 @@ async def execute(
     `allowed`, when given, is the per-verb effect allowlist forwarded to the
     effect dispatcher (e.g. the `talk` verb constrains an NPC's dialogue to
     narrate/set_property/set_mood/spawn_object). None = DEFAULT_KINDS, the
-    standalone data-skill default (world-shaping kinds excluded)."""
+    standalone data-skill default (restricted kinds excluded).
+
+    `npc`, when given, is the toon this skill is speaking AS (the `talk`
+    verb's dobj): it selects the third-person dialogue system message and
+    binds memory capture/retrieve to that toon directly. Without it, the
+    legacy `t-<skill-name>` convention still resolves the binding (the bunny
+    world's rook/iris and the voice-samples harness), so both producers get
+    the dialogue voice; a skill with no binding at all is a player-action
+    affordance and keeps the second-person dispatcher message."""
     # (0) Bind the skill to its backing NPC (if any) and pull recent
-    # memories. Both retrieval and capture are no-ops for skills that
-    # don't have a matching NPC row (e.g., room-anchored skills like
-    # ``forge``). The retrieve call itself is fail-closed: a missing
-    # embedder, an uninitialized DB, or DAYDREAM_MEMORY_ENABLED=0 all
-    # produce an empty list rather than raising.
-    npc_id, world_id_for_mem = _resolve_npc_and_world(spec, room_id)
+    # memories. Explicit binding (the talk verb's dobj) wins; the legacy
+    # `t-<skill-name>` convention covers bare dispatch. This binding also
+    # fixes memory for envelope-installed dialogue skills (`dlg-tace` etc.),
+    # whose names never matched the convention — the reason the live
+    # `memories` table sat at zero dialogue rows (playtest 2026-07-02).
+    # Both retrieval and capture are no-ops for skills that resolve no NPC
+    # (room-anchored affordances like ``forge``). The retrieve call itself is
+    # fail-closed: a missing embedder, an uninitialized DB, or
+    # DAYDREAM_MEMORY_ENABLED=0 all produce an empty list rather than raising.
+    if npc is not None and npc.kind == "toon":
+        npc_obj: objects.Object | None = npc
+    else:
+        legacy_id, _ = _resolve_npc_and_world(spec, room_id)
+        npc_obj = objects.get(legacy_id) if legacy_id is not None else None
+    npc_id = npc_obj.id if npc_obj is not None else None
+    world_id_for_mem = npc_obj.world_id if npc_obj is not None else None
     retrieved_memories: list[memories.Memory] = []
     if npc_id is not None and world_id_for_mem is not None:
         retrieved_memories = memories.retrieve(npc_id, world_id_for_mem, args)
@@ -323,14 +370,22 @@ async def execute(
         return
 
     # (3) LLM call. Arbiter + error handling is inside acompletion_json.
+    # NPC-bound skills speak in the dialogue voice (third person, by name);
+    # unbound skills are player-action affordances (second person).
+    system = (
+        _dialogue_system(npc_obj.name, allowed)
+        if npc_obj is not None
+        else _DISPATCHER_SYSTEM
+    )
+    logger.debug("skill %r prompt (system=%s...):\n%s",
+                 spec.name, system[:60], prompt)
     try:
-        response = await llm_client.acompletion_json(
-            system=_DISPATCHER_SYSTEM, user=prompt
-        )
+        response = await llm_client.acompletion_json(system=system, user=prompt)
     except llm_client.LLMUnavailable as e:
         logger.warning("skill %r LLM unavailable: %s", spec.name, e)
         _emit_narrate(_FOGGY_FALLBACK_TEXT, room_id)
         return
+    logger.debug("skill %r response: %s", spec.name, response)
 
     # (4) Refusal takes precedence over any effects in the same payload.
     refusal = safety.parse_refusal(response)
@@ -377,7 +432,9 @@ async def execute(
             memories.capture(
                 npc_id, world_id_for_mem, f"the visitor said: {args}"
             )
-            speaker = spec.ui_hint or spec.name
+            # The NPC's own name, not the skill's ui_hint: envelope dialogue
+            # skills all carry ui_hint "Talk", which stored "Talk said: ...".
+            speaker = npc_obj.name if npc_obj is not None else (spec.ui_hint or spec.name)
             memories.capture(
                 npc_id, world_id_for_mem, f"{speaker} said: {narration}"
             )

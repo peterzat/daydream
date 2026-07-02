@@ -707,7 +707,9 @@ def _bound_dialogue_skill(dobj: objects.Object) -> str | None:
 async def _handle_talk(actor, room_id, dobj, args, spec) -> None:
     """Run the NPC's bound dialogue (the existing safety + LLM + memory + effect
     pipeline), constrained to `talk`'s effect allowlist. Falls back to a gentle
-    stub when the NPC has no bound dialogue."""
+    stub when the NPC has no bound dialogue. The NPC object rides along so the
+    pipeline speaks in the dialogue voice (third person, by name) and binds
+    memory to this toon directly (playtest fix 2026-07-02)."""
     from daydream.skills import data as data_skills
 
     skill_name = _bound_dialogue_skill(dobj)
@@ -717,5 +719,6 @@ async def _handle_talk(actor, room_id, dobj, args, spec) -> None:
         return
     sspec, body = pair
     await data_skills.execute(
-        sspec, body, actor.id, room_id, args, allowed=spec.allowed_effects
+        sspec, body, actor.id, room_id, args, allowed=spec.allowed_effects,
+        npc=dobj,
     )
