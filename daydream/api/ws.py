@@ -406,24 +406,28 @@ def _emit_npc_presence_narrates(controlled_toon_id: str, room_id: str) -> None:
         )
 
 
-async def _handle_input(text: str, toon_id: str) -> None:
+async def _handle_input(text: str, toon_id: str, conn: dict) -> dict | None:
     """Route free-text player input through the grounded command parser.
 
-    The parser's deterministic fast-path (exit directions, bare verbs, "verb
-    <name>", legacy data-skill names) resolves without an LLM call; natural
-    phrasings ("say hi to rook") are grounded by one local-LLM call. A grounded
-    closed verb dispatches through the verb command bus; a room-affordance data
-    skill runs the data pipeline; `none` / LLM-outage degrade gracefully.
+    The parser's deterministic fast-path (exit directions incl. abbreviations,
+    bare and multi-word verbs, verb-preposition-object forms, ALL/AND/EXCEPT
+    expansion, IT, AGAIN, THEN chaining, legacy data-skill names) resolves
+    without an LLM call; natural phrasings ("say hi to rook") are grounded by
+    one local-LLM call. Each parsed command dispatches through the verb
+    command bus in order; a room-affordance data skill runs the data
+    pipeline; `none` / LLM-outage degrade gracefully.
 
-    Each invocation re-reads the toon's current room (via the parser/scope) so
-    routing applies to where the player is NOW. `toon_id` is resolved once at
-    connect time and threaded through."""
+    `conn` is this connection's mutable state (the pending clarify question).
+    Returns an optional frame to send directly to THIS client (a `clarify`
+    with its option buttons — transient per-connection UI, not world state)."""
     text = text.strip()
     if not text:
-        return
+        return None
     room_id = _current_room_id(toon_id)
-    p = await parser.parse(toon_id, text)
-    if p.error:
+    pending = conn.get("clarify")
+    conn["clarify"] = None
+    lp = await parser.parse_line(toon_id, text, pending=pending)
+    if lp.error:
         # LLM unavailable: natural-language free text can't be parsed. The
         # deterministic click/exit verbs still work (the command frame + the
         # parser fast-path), but this open-text input degrades to "foggy".
@@ -432,14 +436,51 @@ async def _handle_input(text: str, toon_id: str) -> None:
             {"text": "The dream is foggy right now; that thought slips away."},
             room_id=room_id,
         )
-        return
-    if p.verb == "none":
+        return None
+    executed = False
+    for p in lp.commands:
+        if p.verb == "none":
+            continue
+        executed = True
+        await _dispatch_parsed(p, toon_id)
+    if lp.clarify is not None:
+        conn["clarify"] = lp.clarify
+        # The question lands in the chat log (private), and a clarify frame
+        # carries the clickable options.
+        events.append(
+            "system", None, "narrate", {"text": lp.clarify.prompt},
+            room_id=_current_room_id(toon_id), recipient_id=toon_id,
+        )
+        return {
+            "kind": "clarify",
+            "prompt": lp.clarify.prompt,
+            "verb": lp.clarify.verb,
+            "slot": lp.clarify.slot,
+            "dobj_id": lp.clarify.dobj_id,
+            "iobj_id": lp.clarify.iobj_id,
+            "options": [
+                {"id": oid, "name": name} for oid, name in lp.clarify.options
+            ],
+        }
+    if lp.message:
+        events.append(
+            "system", None, "narrate", {"text": lp.message},
+            room_id=_current_room_id(toon_id), recipient_id=toon_id,
+        )
+        return None
+    if not executed:
         events.append(
             "system", None, "narrate",
             {"text": f"You think to yourself: \"{text}\". The daydream answers softly."},
             room_id=room_id,
         )
-        return
+    return None
+
+
+async def _dispatch_parsed(p: "parser.Parse", toon_id: str) -> None:
+    """One parsed command → the executor (closed/world verb) or the
+    data-skill pipeline; unresolvable verbs narrate the gentle fallback."""
+    room_id = _current_room_id(toon_id)
     actor = objects.get(toon_id)
     world_id = actor.world_id if actor is not None else None
     if verbs.resolve(world_id, p.verb) is not None:
@@ -455,8 +496,8 @@ async def _handle_input(text: str, toon_id: str) -> None:
         return
     events.append(
         "system", None, "narrate",
-        {"text": f"You think to yourself: \"{text}\". The daydream answers softly."},
-        room_id=room_id,
+        {"text": "The dream isn't sure what you mean by that."},
+        room_id=room_id, recipient_id=toon_id,
     )
 
 
@@ -581,13 +622,19 @@ async def _handle_command(msg: dict, toon_id: str) -> None:
 
 
 async def _receive_loop(ws: WebSocket, toon_id: str) -> None:
+    # Per-connection parser state: the pending clarify question, if any. A
+    # click (command frame) resolves or abandons it just like a typed reply.
+    conn: dict = {"clarify": None}
     try:
         while True:
             msg = await ws.receive_json()
             kind = msg.get("kind")
             if kind == "input":
-                await _handle_input(str(msg.get("text", "")), toon_id)
+                frame = await _handle_input(str(msg.get("text", "")), toon_id, conn)
+                if frame is not None:
+                    await ws.send_json(frame)
             elif kind == "command":
+                conn["clarify"] = None
                 await _handle_command(msg, toon_id)
     except WebSocketDisconnect:
         pass

@@ -121,7 +121,7 @@ VERBS: dict[str, VerbSpec] = {
         needs_dobj=True, needs_iobj=True,
         valid_dobj_kinds=frozenset({"thing"}), valid_iobj_kinds=frozenset({"toon"}),
         allowed_effects=frozenset({"move_object", "set_mood", "spawn_object", "narrate"}),
-        on_bar=True,
+        on_bar=True, preps=("to",),
     ),
     "use": VerbSpec(
         name="use", ui_hint="Use",
@@ -129,7 +129,7 @@ VERBS: dict[str, VerbSpec] = {
         needs_dobj=True, needs_iobj=True,
         valid_dobj_kinds=frozenset({"thing"}), valid_iobj_kinds=frozenset({"thing"}),
         allowed_effects=frozenset({"set_property", "spawn_object", "move_object", "narrate"}),
-        on_bar=True,
+        on_bar=True, preps=("on", "with"),
     ),
     "open": VerbSpec(
         name="open", ui_hint="Open",
@@ -869,6 +869,26 @@ async def _handle_say(actor, room_id, dobj, iobj, args, spec) -> None:
     )
 
 
+# Compass + movement vocabulary (Zork turn, criterion 9). Exits are authored
+# with canonical names; the parser and `go` accept the abbreviations.
+DIRECTION_ALIASES: dict[str, str] = {
+    "n": "north", "s": "south", "e": "east", "w": "west",
+    "ne": "northeast", "nw": "northwest", "se": "southeast", "sw": "southwest",
+    "u": "up", "d": "down",
+}
+CANONICAL_DIRECTIONS: frozenset[str] = frozenset({
+    "north", "south", "east", "west", "northeast", "northwest", "southeast",
+    "southwest", "up", "down", "in", "out", "land", "launch", "cross",
+    "climb", "enter", "exit",
+})
+DIRECTION_WORDS: frozenset[str] = CANONICAL_DIRECTIONS | frozenset(DIRECTION_ALIASES)
+
+
+def canonical_direction(word: str) -> str:
+    w = word.strip().lower()
+    return DIRECTION_ALIASES.get(w, w)
+
+
 # ---- exits (Zork turn, SPEC 2026-07-02 criterion 7) ---------------------
 #
 # An exits-map value is one of:
@@ -988,7 +1008,7 @@ async def _handle_go(actor, room_id, dobj, iobj, args, spec) -> None:
     if room is None:
         _narrate(room_id, "You are nowhere recognizable.", recipient_id=actor.id)
         return
-    direction = raw.lower()
+    direction = canonical_direction(raw)
     exit_value = room.exits.get(direction)
     if exit_value is None:
         # Not a literal direction: try "go to <place>" / "go <place>" by
