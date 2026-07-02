@@ -649,7 +649,125 @@
       ],
       "properties": {
         "size": 10
-      }
+      },
+      "rules": [
+        {
+          "on": "tie",
+          "if": [
+            {
+              "iobj": "o-railing"
+            },
+            {
+              "in": "r-dome-room"
+            },
+            {
+              "flag": "DOME-ROPE-TIED",
+              "eq": false
+            }
+          ],
+          "do": [
+            {
+              "kind": "set_flag",
+              "name": "DOME-ROPE-TIED",
+              "value": true
+            },
+            {
+              "kind": "move_object",
+              "object_id": "@self",
+              "dest_id": "r-dome-room"
+            },
+            {
+              "kind": "set_property",
+              "target_id": "@self",
+              "key": "tied",
+              "value": true
+            },
+            {
+              "kind": "narrate",
+              "text": "The rope drops over the side and comes within ten feet of the floor below."
+            }
+          ]
+        },
+        {
+          "on": "tie",
+          "if": [
+            {
+              "flag": "DOME-ROPE-TIED"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "The rope is already tied to the railing."
+            }
+          ]
+        },
+        {
+          "on": "tie",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "You can't tie the rope to that."
+            }
+          ]
+        },
+        {
+          "on": "take",
+          "if": [
+            {
+              "prop": "tied",
+              "of": "@self",
+              "eq": true
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "The rope is tied fast to the railing; it declines to come along."
+            }
+          ]
+        },
+        {
+          "on": "untie",
+          "if": [
+            {
+              "prop": "tied",
+              "of": "@self",
+              "eq": true
+            }
+          ],
+          "do": [
+            {
+              "kind": "set_flag",
+              "name": "DOME-ROPE-TIED",
+              "value": false
+            },
+            {
+              "kind": "set_property",
+              "target_id": "@self",
+              "key": "tied",
+              "value": false
+            },
+            {
+              "kind": "narrate",
+              "text": "The rope is now untied."
+            }
+          ]
+        },
+        {
+          "on": "untie",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "It isn't tied to anything."
+            }
+          ]
+        }
+      ]
     }
   ]
 }

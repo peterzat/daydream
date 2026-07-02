@@ -36,6 +36,9 @@ refused):
     {"contains": ID, "of": REF?}                container directly holds it
     {"in_vehicle": true | ID}                   actor is aboard (any/that one)
 
+Any condition may add `"not": true` to invert itself ("passable only while
+NOT carrying the coffin").
+
 `<op>` is exactly one of eq / ne / lt / lte / gt / gte / in; a prop condition
 with no op is a truthy check. REF and ID values accept the sigils `@self`
 (the rule's holder), `@actor`, `@dobj`, `@iobj`, `@room`. Sigils in effect
@@ -168,6 +171,11 @@ def vehicle_of(actor: objects.Object) -> objects.Object | None:
 
 
 def _eval_condition(cond: dict, ctx: dict) -> bool:
+    # Generic negation: any condition may carry "not": true to invert
+    # ("passable only while NOT carrying the coffin").
+    if cond.get("not"):
+        inner = {k: v for k, v in cond.items() if k != "not"}
+        return not _eval_condition(inner, ctx)
     actor: objects.Object = ctx["actor"]
     world_id: str = ctx["world_id"]
 
@@ -409,7 +417,8 @@ def validate_condition_list(
             )
             continue
         disc = discs[0]
-        allowed_keys = {disc} | _CONDITION_AUX[disc]
+        # "not" inverts any condition form.
+        allowed_keys = {disc, "not"} | _CONDITION_AUX[disc]
         unknown = set(cond) - allowed_keys
         if unknown:
             errors.append(

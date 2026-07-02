@@ -5,44 +5,377 @@
     {
       "name": "opening-egg",
       "commands": [
-        {"cmd": "north", "expect": {"room": "r-north-of-house"}},
-        {"cmd": "north", "expect": {"room": "r-forest-path"}},
-        {"cmd": "up", "expect": {"room": "r-up-a-tree"}},
-        {"cmd": "take egg", "expect": {"carrying": ["jewel-encrusted egg"], "score": 5}},
-        {"cmd": "down", "expect": {"room": "r-forest-path"}},
-        {"cmd": "south", "expect": {"room": "r-north-of-house"}}
+        {
+          "cmd": "north",
+          "expect": {
+            "room": "r-north-of-house"
+          }
+        },
+        {
+          "cmd": "north",
+          "expect": {
+            "room": "r-forest-path"
+          }
+        },
+        {
+          "cmd": "up",
+          "expect": {
+            "room": "r-up-a-tree"
+          }
+        },
+        {
+          "cmd": "take egg",
+          "expect": {
+            "carrying": [
+              "jewel-encrusted egg"
+            ],
+            "score": 5
+          }
+        },
+        {
+          "cmd": "down",
+          "expect": {
+            "room": "r-forest-path"
+          }
+        },
+        {
+          "cmd": "south",
+          "expect": {
+            "room": "r-north-of-house"
+          }
+        }
       ]
     },
     {
       "name": "into-the-house",
       "commands": [
-        {"cmd": "east", "expect": {"room": "r-behind-house"}},
-        {"cmd": "open window", "expect": {"flag": {"KITCHEN-WINDOW-OPEN": true}}},
-        {"cmd": "in", "expect": {"room": "r-kitchen", "score": 15}},
-        {"cmd": "west", "expect": {"room": "r-living-room"}},
-        {"cmd": "take lamp", "expect": {"carrying": ["brass lantern"]}},
-        {"cmd": "move rug", "expect": {"flag": {"TRAP-DOOR-REVEALED": true}}},
-        {"cmd": "open trap door", "expect": {"flag": {"TRAP-DOOR-OPEN": true}}},
-        {"cmd": "open case"},
-        {"cmd": "put egg in case", "expect": {"score": 20, "in_case": ["jewel-encrusted egg"]}}
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-behind-house"
+          }
+        },
+        {
+          "cmd": "open window",
+          "expect": {
+            "flag": {
+              "KITCHEN-WINDOW-OPEN": true
+            }
+          }
+        },
+        {
+          "cmd": "in",
+          "expect": {
+            "room": "r-kitchen",
+            "score": 15
+          }
+        },
+        {
+          "cmd": "west",
+          "expect": {
+            "room": "r-living-room"
+          }
+        },
+        {
+          "cmd": "take lamp",
+          "expect": {
+            "carrying": [
+              "brass lantern"
+            ]
+          }
+        },
+        {
+          "cmd": "move rug",
+          "expect": {
+            "flag": {
+              "TRAP-DOOR-REVEALED": true
+            }
+          }
+        },
+        {
+          "cmd": "open trap door",
+          "expect": {
+            "flag": {
+              "TRAP-DOOR-OPEN": true
+            }
+          }
+        },
+        {
+          "cmd": "open case"
+        },
+        {
+          "cmd": "put egg in case",
+          "expect": {
+            "score": 20,
+            "in_case": [
+              "jewel-encrusted egg"
+            ]
+          }
+        }
       ]
     },
     {
       "name": "lamp-and-parser-surface",
       "commands": [
-        {"cmd": "turn on lamp", "expect": {"narrate_contains": "brass lantern is now on"}},
-        {"cmd": "i", "expect": {"narrate_contains": "brass lantern"}},
-        {"cmd": "east then east", "expect": {"room": "r-behind-house"}},
-        {"cmd": "west", "expect": {"room": "r-kitchen"}},
-        {"cmd": "take all", "expect": {"carrying": ["brown sack", "glass bottle"]}},
-        {"cmd": "open sack", "expect": {"narrate_contains": "clove of garlic"}},
-        {"cmd": "drop bottle"},
-        {"cmd": "take garlic", "expect": {"carrying": ["clove of garlic"]}},
-        {"cmd": "drop sack"},
-        {"cmd": "west", "expect": {"room": "r-living-room"}},
-        {"cmd": "take sword", "expect": {"carrying": ["elvish sword"]}},
-        {"cmd": "blow out lamp", "expect": {"narrate_contains": "now off"}},
-        {"cmd": "light lamp", "expect": {"narrate_contains": "now on"}}
+        {
+          "cmd": "turn on lamp",
+          "expect": {
+            "narrate_contains": "brass lantern is now on"
+          }
+        },
+        {
+          "cmd": "i",
+          "expect": {
+            "narrate_contains": "brass lantern"
+          }
+        },
+        {
+          "cmd": "east then east",
+          "expect": {
+            "room": "r-behind-house"
+          }
+        },
+        {
+          "cmd": "west",
+          "expect": {
+            "room": "r-kitchen"
+          }
+        },
+        {
+          "cmd": "take all",
+          "expect": {
+            "carrying": [
+              "brown sack",
+              "glass bottle"
+            ]
+          }
+        },
+        {
+          "cmd": "open sack",
+          "expect": {
+            "narrate_contains": "clove of garlic"
+          }
+        },
+        {
+          "cmd": "drop bottle"
+        },
+        {
+          "cmd": "take garlic",
+          "expect": {
+            "carrying": [
+              "clove of garlic"
+            ]
+          }
+        },
+        {
+          "cmd": "drop sack"
+        },
+        {
+          "cmd": "west",
+          "expect": {
+            "room": "r-living-room"
+          }
+        },
+        {
+          "cmd": "take sword",
+          "expect": {
+            "carrying": [
+              "elvish sword"
+            ]
+          }
+        },
+        {
+          "cmd": "blow out lamp",
+          "expect": {
+            "narrate_contains": "now off"
+          }
+        },
+        {
+          "cmd": "light lamp",
+          "expect": {
+            "narrate_contains": "now on"
+          }
+        }
+      ]
+    },
+    {
+      "name": "attic-and-descent",
+      "commands": [
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-kitchen"
+          }
+        },
+        {
+          "cmd": "up",
+          "expect": {
+            "room": "r-attic"
+          }
+        },
+        {
+          "cmd": "take rope and knife",
+          "expect": {
+            "carrying": [
+              "coil of rope",
+              "nasty knife"
+            ]
+          }
+        },
+        {
+          "cmd": "down",
+          "expect": {
+            "room": "r-kitchen"
+          }
+        },
+        {
+          "cmd": "west",
+          "expect": {
+            "room": "r-living-room"
+          }
+        },
+        {
+          "cmd": "down",
+          "expect": {
+            "room": "r-cellar",
+            "score": 45,
+            "flag": {
+              "TRAP-DOOR-OPEN": false,
+              "TRAP-TOUCHED": true
+            },
+            "narrate_contains": "crashes shut"
+          }
+        }
+      ]
+    },
+    {
+      "name": "troll-fight",
+      "commands": [
+        {
+          "cmd": "north",
+          "expect": {
+            "room": "r-troll-room"
+          }
+        },
+        {
+          "cmd": "kill troll with sword"
+        },
+        {
+          "cmd": "again",
+          "expect": {
+            "flag": {
+              "TROLL-DEAD": true
+            },
+            "narrate_contains": "black fog"
+          }
+        }
+      ]
+    },
+    {
+      "name": "dome-torch-temple",
+      "commands": [
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-ew-passage",
+            "score": 50
+          }
+        },
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-round-room"
+          }
+        },
+        {
+          "cmd": "southeast",
+          "expect": {
+            "room": "r-engravings-cave"
+          }
+        },
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-dome-room"
+          }
+        },
+        {
+          "cmd": "tie rope to railing",
+          "expect": {
+            "flag": {
+              "DOME-ROPE-TIED": true
+            }
+          }
+        },
+        {
+          "cmd": "down",
+          "expect": {
+            "room": "r-torch-room"
+          }
+        },
+        {
+          "cmd": "take torch",
+          "expect": {
+            "score": 64,
+            "carrying": [
+              "ivory torch"
+            ]
+          }
+        },
+        {
+          "cmd": "turn off lamp"
+        },
+        {
+          "cmd": "south",
+          "expect": {
+            "room": "r-north-temple"
+          }
+        },
+        {
+          "cmd": "take bell",
+          "expect": {
+            "carrying": [
+              "brass bell"
+            ]
+          }
+        },
+        {
+          "cmd": "south",
+          "expect": {
+            "room": "r-south-temple"
+          }
+        },
+        {
+          "cmd": "blow out candles"
+        },
+        {
+          "cmd": "take candles and book",
+          "expect": {
+            "carrying": [
+              "pair of candles",
+              "black book"
+            ]
+          }
+        },
+        {
+          "cmd": "down",
+          "expect": {
+            "room": "r-tiny-cave"
+          }
+        },
+        {
+          "cmd": "down",
+          "expect": {
+            "room": "r-entrance-to-hades"
+          }
+        },
+        {
+          "cmd": "south",
+          "expect": {
+            "room": "r-entrance-to-hades",
+            "narrate_contains": "invisible force"
+          }
+        }
       ]
     }
   ]

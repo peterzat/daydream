@@ -19,9 +19,30 @@
     "r-stone-barrow": "Stone Barrow",
     "r-kitchen": "Kitchen",
     "r-living-room": "Living Room",
-    "r-attic": "Attic"
+    "r-attic": "Attic",
+    "r-cellar": "Cellar",
+    "r-troll-room": "The Troll Room",
+    "r-east-of-chasm": "East of Chasm",
+    "r-gallery": "Gallery",
+    "r-studio": "Studio",
+    "r-ew-passage": "East-West Passage",
+    "r-round-room": "Round Room",
+    "r-narrow-passage": "Narrow Passage",
+    "r-mirror-room-south": "Mirror Room",
+    "r-winding-passage": "Winding Passage",
+    "r-tiny-cave": "Cave",
+    "r-entrance-to-hades": "Entrance to Hades",
+    "r-land-of-living-dead": "Land of the Dead",
+    "r-engravings-cave": "Engravings Cave",
+    "r-dome-room": "Dome Room",
+    "r-torch-room": "Torch Room",
+    "r-north-temple": "Temple",
+    "r-south-temple": "Altar",
+    "r-egypt-room": "Egyptian Room"
   },
-  "toons": {},
+  "toons": {
+    "t-troll": "troll"
+  },
   "things": {
     "o-mailbox": "small mailbox",
     "o-leaflet": "leaflet",
@@ -45,6 +66,17 @@
     "o-sword": "sword",
     "o-newspaper": "newspaper",
     "o-knife": "nasty knife",
-    "o-rope": "rope"
+    "o-rope": "rope",
+    "o-axe": "bloody axe",
+    "o-painting": "painting",
+    "o-railing": "railing",
+    "o-torch": "torch",
+    "o-pedestal": "pedestal",
+    "o-bell": "brass bell",
+    "o-candles": "pair of candles",
+    "o-black-book": "black book",
+    "o-coffin": "gold coffin",
+    "o-sceptre": "sceptre",
+    "o-skull": "crystal skull"
   }
 }

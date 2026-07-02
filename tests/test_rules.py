@@ -350,6 +350,19 @@ def test_chance_condition_is_seeded_deterministic():
     assert not rules.conditions_hold([{"chance": roll - 0.001}], ctx)
 
 
+def test_not_modifier_inverts_any_condition():
+    ctx = ctx_for()
+    worldstate.set_flag(WORLD, "A", True)
+    assert not rules.conditions_hold([{"flag": "A", "not": True}], ctx)
+    assert rules.conditions_hold([{"flag": "B", "not": True}], ctx)
+    objects.spawn(WORLD, "thing", "coffin", ACTOR, object_id="o-coffin2")
+    assert not rules.conditions_hold([{"carried": "o-coffin2", "not": True}], ctx)
+    assert rules.validate_rules(
+        [{"on": "turn", "if": [{"carried": "o-wrench", "not": True}],
+          "do": [{"kind": "narrate", "text": "x"}]}],
+        source="t", **KNOWN) == []
+
+
 def test_unknown_condition_key_is_false():
     ctx = ctx_for()
     assert not rules.conditions_hold([{"falg": "TYPO"}], ctx)

@@ -140,7 +140,8 @@
     "DOME-ROPE-TIED",
     "MAINT-FLOODED",
     "WON-ENABLED",
-    "EGG-TREASURED"
+    "EGG-TREASURED",
+    "TROLL-DEAD"
   ],
   "fuses": {
     "bell-window": {

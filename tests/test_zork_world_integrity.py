@@ -126,6 +126,8 @@ def test_walkthrough_verbs_are_click_reachable():
                 two = " ".join(part.strip().lower().split()[:2])
                 if word in engine_verbs.DIRECTION_WORDS:
                     continue  # exit button
+                if word in ("again", "g", "it"):
+                    continue  # parser meta-words, not verbs (a click IS a repeat)
                 spec = engine_verbs.get(two) or engine_verbs.get(word)
                 if spec is not None:
                     continue  # engine verb (bar or object verbs)
