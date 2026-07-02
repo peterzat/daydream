@@ -29,12 +29,15 @@ pytestmark = [
 
 
 # A fixed in-scope set the model grounds against (mirrors the canonical world:
-# Rook the forge-keeper + a lantern on the ground).
+# Rook the forge-keeper + a lantern on the ground + a carried dreamseed).
 _SCOPE = [
     {"id": "t-rook", "name": "Rook", "kind": "toon",
      "verbs": ["examine", "talk"], "aliases": []},
     {"id": "i-lantern", "name": "lantern", "kind": "thing",
      "verbs": ["examine", "take", "drop"], "aliases": ["lamp"]},
+    {"id": "o-dreamseed", "name": "dreamseed", "kind": "thing",
+     "verbs": ["examine", "take", "drop", "give", "plant"],
+     "aliases": ["seed"]},
 ]
 _VOCAB = [{"name": v.name, "description": v.description} for v in verbs.VERBS.values()]
 
@@ -47,6 +50,9 @@ _CASES = [
     ("take the lantern", "take", "i-lantern"),
     ("pick up the lamp", "take", "i-lantern"),
     ("look closely at the lantern", "examine", "i-lantern"),
+    # The typed plant path (SPEC 2026-07-02): free_text defers to the LLM,
+    # which must ground the seed id and keep plant (not say/use/drop).
+    ("plant the dreamseed to a moonlit orchard", "plant", "o-dreamseed"),
 ]
 
 
