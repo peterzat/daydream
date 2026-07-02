@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+# One-time setup for the differential oracle (SPEC 2026-07-02 criterion 14).
+# Idempotent: every step skips if already done. Nothing here touches the
+# repo — all artifacts land under ~/data/zork/ (gitignored territory), per
+# the oracle-materials policy (no story file, dump, or original prose in git).
+#
+#   1. dfrotz: built from the frotz "dumb" target (stock frotz is curses).
+#      Source is cloned to ~/data/zork/frotz-src; the binary lands at
+#      ~/data/zork/bin/dfrotz. (Alternative: `sudo apt-get install frotz`
+#      also ships /usr/bin/dfrotz on Debian/Ubuntu; either works.)
+#   2. Story file: a Zork I story file must be placed MANUALLY at
+#      ~/data/zork/zork1.z3 (pin one release; Release 88 / serial 840726 is
+#      the reference). This script never downloads it.
+#   3. Export DAYDREAM_ZORK_ORACLE_STORY=~/data/zork/zork1.z3 (e.g. in
+#      ~/.config/daydream/secrets.env) so tests/drift/test_zork_oracle.py
+#      arms; without it (or without dfrotz) the test skips with a named
+#      reason (fidelity relaxation R8: the harness is optional).
+
+set -euo pipefail
+
+ZORK_DIR="$HOME/data/zork"
+SRC_DIR="$ZORK_DIR/frotz-src"
+BIN_DIR="$ZORK_DIR/bin"
+STORY="$ZORK_DIR/zork1.z3"
+
+mkdir -p "$ZORK_DIR" "$BIN_DIR"
+
+if [[ -x "$BIN_DIR/dfrotz" ]]; then
+    echo "ok: $BIN_DIR/dfrotz already built"
+elif command -v dfrotz >/dev/null 2>&1; then
+    echo "ok: system dfrotz found at $(command -v dfrotz)"
+else
+    if [[ ! -d "$SRC_DIR" ]]; then
+        echo "==> cloning frotz (DavidGriffith/frotz, dumb target)"
+        git clone --depth 1 https://github.com/DavidGriffith/frotz.git "$SRC_DIR"
+    fi
+    echo "==> building dumb frotz"
+    make -C "$SRC_DIR" dumb
+    cp "$SRC_DIR/dfrotz" "$BIN_DIR/dfrotz"
+    echo "ok: built $BIN_DIR/dfrotz"
+fi
+
+if [[ -f "$STORY" ]]; then
+    echo "ok: story file present at $STORY"
+else
+    cat <<EOF
+MISSING: $STORY
+  Place a Zork I story file there (personal copy; Release 88/840726 is the
+  pinned reference). It is never committed. Then export:
+    DAYDREAM_ZORK_ORACLE_STORY=$STORY
+EOF
+fi

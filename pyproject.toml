@@ -26,6 +26,9 @@ dev = [
     # from generated PNGs. Pillow was already transitively present in the
     # venv; pinning here makes it explicit and durable.
     "Pillow>=10.0",
+    # pexpect: tools/zork_oracle.py drives dfrotz over a PTY for the
+    # differential oracle (tier_long, skip-if-absent).
+    "pexpect>=4.9",
 ]
 # NPC memory retrieval. Pulled in via `bin/memory-bootstrap`, NOT via
 # `pip install -e '.[dev]'`, so the bootstrap's CPU-only torch wheel
