@@ -102,7 +102,11 @@ body::before {
   /* melt the watercolor edges softly into the mat */
   -webkit-mask-image: radial-gradient(128% 132% at 50% 46%, #000 74%, transparent 100%);
           mask-image: radial-gradient(128% 132% at 50% 46%, #000 74%, transparent 100%);
+  transition: opacity .35s ease;
 }
+/* Room-change veil: the old room's art hides instantly and the plate reveals
+ * only when the next bitmap has decoded (main.js:setRoomBackground). */
+#room-bg.bg-loading { opacity: 0; }
 .glow { position: absolute; inset: 11px; border-radius: 8px; pointer-events: none;
   box-shadow: inset 0 0 46px -8px rgba(200,160,110,.28), inset 0 0 0 1px rgba(90,122,106,.14); }
 
@@ -205,8 +209,10 @@ body::before {
   border-bottom-right-radius: 9px; box-shadow: -2px -2px 4px -2px rgba(120,96,52,.4) inset;
 }
 /* Repeat examine/read of the same thing resurfaces its card with a warm glow
- * instead of stacking a duplicate (main.js:renderDetailInset). */
+ * instead of stacking a duplicate (main.js:renderDetailInset); a verbatim
+ * repeat of the last prose line glows it the same way (main.js:renderEvent). */
 .detail-inset.detail-glow { animation: detail-glow 1.3s ease-out 1; }
+.evt-narrate.detail-glow { animation: detail-glow 1.3s ease-out 1; border-radius: 8px; }
 @keyframes detail-glow {
   0%   { box-shadow: 0 0 0 0 rgba(200,160,110,0), 0 16px 30px -18px rgba(120,96,52,.55); }
   30%  { box-shadow: 0 0 0 4px rgba(200,160,110,.6), 0 16px 34px -16px rgba(120,96,52,.55); }

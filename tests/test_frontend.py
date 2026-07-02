@@ -321,6 +321,37 @@ def test_main_js_plant_prompts_for_vision_and_sends_command():
     assert "showPending()" in plant_branch
 
 
+def test_main_js_room_change_veils_stale_art():
+    """Playtest 2026-07-02: entering an unrendered room briefly showed the
+    PREVIOUS room's painting. On a room change the plate veils immediately
+    (bg-loading) and reveals only when the next bitmap has decoded."""
+    with TestClient(app) as client:
+        _login(client)
+        r = client.get("/assets/main.js")
+    assert "bgShownFor" in r.text
+    assert "bg-loading" in r.text
+    assert 'addEventListener("load"' in r.text
+
+
+def test_main_js_repeated_narrate_glows_not_duplicates():
+    """A verbatim repeat of the last prose line (an affordance clicked twice)
+    glows the existing line instead of stacking a duplicate — the detail-inset
+    de-dup's sibling for plain narrate."""
+    with TestClient(app) as client:
+        _login(client)
+        r = client.get("/assets/main.js")
+    assert "prior.dataset.text === text" in r.text
+    assert "glowElement(prior)" in r.text
+
+
+def test_style_css_has_bg_veil_and_narrate_glow():
+    with TestClient(app) as client:
+        _login(client)
+        r = client.get("/assets/style.css")
+    assert "#room-bg.bg-loading" in r.text
+    assert ".evt-narrate.detail-glow" in r.text
+
+
 def test_main_js_no_generic_go_control_only_data_affordances():
     """No generic "go" button: the per-direction exit buttons are the only nav
     affordance, and the affordance bar renders DATA skills only (so core verbs,

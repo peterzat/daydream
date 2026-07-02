@@ -19,6 +19,7 @@ let loadedWorldVersion = null;
 let lastCmd = null; // {key, t} -- debounce an accidental double-fire of one command
 let pendingDetail = null; // {verb, name, t} -- a targeted examine/read whose next narrate renders as a detail inset (the ledger reveal)
 let lastInventory = []; // the latest snapshot's carried things, for the keepsakes backpack foldout
+let bgShownFor = null; // room id whose art the plate currently shows (stale-art veil)
 
 // Reconnect backoff: a dropped socket retries on a gentle, capped exponential
 // delay behind a single calm "the dream is sleeping" overlay (not a growing
@@ -332,6 +333,7 @@ function clearSceneAndLog() {
   document.getElementById("painting-overlay").classList.add("hidden");
   clearStagedVerb();
   lastArrivalRoomId = null;
+  bgShownFor = null;
 }
 
 function applyVerbGating() {
@@ -449,7 +451,21 @@ function renderEvent(e) {
       e.payload.text || ""
     )}&rdquo;`;
   } else if (e.kind === "narrate") {
-    div.innerHTML = linkifyEntities(e.payload.text || "", entities);
+    const text = e.payload.text || "";
+    // The line just shown repeating verbatim (an affordance clicked twice, a
+    // temp-0 skill echoing itself) glows the existing line instead of
+    // stacking a duplicate — the detail-inset de-dup's sibling for plain
+    // prose (playtest 2026-07-02).
+    const prior = chat.lastElementChild;
+    if (prior && prior.classList.contains("evt-narrate") &&
+        prior.dataset.text === text) {
+      clearPending();
+      glowElement(prior);
+      chat.scrollTop = chat.scrollHeight;
+      return;
+    }
+    div.dataset.text = text;
+    div.innerHTML = linkifyEntities(text, entities);
     div.querySelectorAll(".entity-link").forEach((span) => {
       span.onclick = () => onObjectClick(span.dataset.objectId);
     });
@@ -520,16 +536,31 @@ function glowElement(el) {
 }
 
 function setRoomBackground(room) {
+  // On a ROOM CHANGE the old art is veiled immediately (bg-loading -> opacity
+  // 0) and the plate reveals only once the next bitmap decodes (the img load
+  // listener below), so the previous room's painting never lingers under the
+  // new room's header (playtest 2026-07-02). Same-room re-snapshots and the
+  // room_image_ready paint-in keep showing the current bitmap while the new
+  // one loads — that cross-fade IS the painting reveal.
   const bg = document.getElementById("room-bg");
   const overlay = document.getElementById("painting-overlay");
-  if (room && room.image_url) {
-    bg.src = room.image_url;
-    overlay.classList.add("hidden");
+  const target = room && room.image_url ? room.image_url : PLACEHOLDER_BG;
+  const changedRoom = !room || room.id !== bgShownFor;
+  bgShownFor = room ? room.id : null;
+  if (changedRoom) bg.classList.add("bg-loading");
+  if (bg.src && bg.src.endsWith(target)) {
+    bg.classList.remove("bg-loading"); // same bitmap: nothing to wait for
   } else {
-    bg.src = PLACEHOLDER_BG;
-    overlay.classList.remove("hidden");
+    bg.src = target;
   }
+  overlay.classList.toggle("hidden", !!(room && room.image_url));
 }
+
+// Reveal the plate when its bitmap has actually decoded (pairs with the
+// bg-loading veil in setRoomBackground).
+document.getElementById("room-bg").addEventListener("load", () => {
+  document.getElementById("room-bg").classList.remove("bg-loading");
+});
 
 function handleRoomImageReady(event) {
   const bg = document.getElementById("room-bg");
