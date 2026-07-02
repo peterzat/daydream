@@ -191,9 +191,14 @@ through it rather than being absorbed by scaffolding; the companion essay is
 Two experiment records live alongside the code:
 
 - [`FIRST-FABLE.md`](FIRST-FABLE.md) — the project's first Claude Fable 5 session
-  (2026-07-02), run as a pre-registered experiment on whether a model-generation step
-  function expresses itself through the unchanged thin harness: predictions written down
-  at the session break, results appended after the implementation turn.
+  (2026-07-02, `/effort max`), run as a pre-registered experiment on whether a
+  model-generation step function expresses itself through the unchanged thin harness:
+  predictions written down at the session break (Part 1), implementation results graded
+  against them (Part 2: Dreamseeds, 8/8, one review WARN, zero operator corrections),
+  and a same-day playtest addendum (Part 3) where the operator's real playthrough found
+  what every green verifier missed — closing with his candid on-the-record verdict that
+  he was not convinced it was truly a magical step function. A second, deliberately more
+  ambitious turn is planned; its results will be appended as Part 4.
 - [`docs/history/GOAL.md`](docs/history/GOAL.md) — an earlier experiment driving whole
   increments unattended with Claude Code's `/goal` (two runs, pre-registered predictions,
   candid retrospective). `/goal` is not in active use.

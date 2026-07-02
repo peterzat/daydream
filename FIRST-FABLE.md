@@ -442,3 +442,171 @@ function did NOT show, exactly as predicted: the game's live text is the same mo
 charming 7B, wall-clock was dominated by things that are not the model, and the one WARN
 proves review pressure still earns its keep. The harness was thin; the capability passed
 through it. That was the design, and this time it is also the observation.
+
+## Part 3 — the playtest round (same day, post-turn)
+
+Appended 2026-07-02, later the same day, after the operator's first real in-browser
+playthrough and the fix round it produced. Parts 1 and 2 are untouched. Like everything
+in this document, the driving model for this round was **Claude Fable 5 at `/effort
+max`** — same session, same harness, no configuration changed.
+
+### The glance becomes a playtest
+
+Part 2 closed at 7/8 with one clause waiting: the operator's in-browser playthrough.
+Peter played the whole loop — the quest, the key, the case — then stood in the mossy
+well-court and planted the dreamseed with *"Down the well to an underground dormitory."*
+The dream grew **The Subterranean Rest** ("Moss clings to the stone walls... Small
+resting clocks tick softly... Paper lanterns hang from the ceiling"), behind a real exit,
+with a watercolor he rated as decent. Criterion 8 closed; the spec finished 8/8.
+
+But the reason a playtest is the irreducible verifier is what it finds, and this one
+found things. Six observations, close to verbatim:
+
+1. **Talking to Mott:** *"You lift your head from the broom... A soft smile plays on your
+   lips as you wave back."* — "Why is there a smile on my lips?... Not sure what I'd
+   expect talk to do here, but this wasn't it. Examine and fix at a deeper level,
+   including tests." Bell produced the same inversion ("You wave back... as you light
+   another lantern").
+2. **Stale art on room change:** entering a room with no rendered painting showed the
+   *previous* room's art for a visible beat before the "painting..." state.
+3. **`listen` at the well** returned the identical line on every click; he expected the
+   same glow-instead-of-duplicate behavior the examine cards have.
+4. **The dreamseed appeared from the case with no text at all** — "we can fix this as a
+   one-off, but I wonder if it doesn't expose something deeper."
+5. **The plant picked east** for a phrase that plainly said *down* — "Huh, it picked
+   'east' (you'd expect 'down')."
+6. **"Huh, another dreamseed is here"** — the spent husk, resting in the grown room under
+   its original name — plus two smaller notes: a Title-Case "Paper Lantern" sitting
+   uneasily beside the authored "paper lantern", and "what is 'the collection' for anyway
+   in my satchel?"
+
+He added one sentence that shaped the round: *"Feel free to examine all data needed to
+figure out what happened. We can add logs if that's helpful."*
+
+### The forensics
+
+The session took the invitation literally and read the live database — his actual played
+world, event by event. The log held the smoking gun verbatim at seq 58 (Bell's actions
+narrated as "you"), held corroborating evidence he hadn't mentioned (he had literally
+typed "go down well" before planting — the game refused — so the direction expectation
+was already on the record), and held one number that solved a pre-registered mystery.
+Part 1's operator checks had flagged the live `memories` table at zero rows. After his
+whole playthrough it contained exactly **one** row: Tace's memory of being given the
+gear. That row comes from the `give` verb, which binds memory to the NPC's object id
+directly. The `talk` path binds by a naming convention — skill `rook` → toon `t-rook` —
+that the current world's envelope-installed dialogue skills (`dlg-tace`, `dlg-bell`,
+`dlg-mott`) never match. Dialogue memory had silently never fired in this world: wired,
+tested, and disconnected at the last join.
+
+The voice bug root-caused to a **person collision** between two prompt layers: the shared
+LLM dispatcher's system message says *"narrate the player's own actions in the SECOND
+PERSON"* (correct for affordances like `wind` and `listen`, where the player acts), while
+every NPC dialogue template opens *"You are Mott..."*. Told that "you" narrates the actor
+and that it *is* Mott, the 7B did the only consistent thing: it described Mott's body as
+"you", which reads as the player's. Worth stating plainly: both of these deep defects
+predate the model under test — the dispatcher prompt and the `dlg-*` binding shipped in
+earlier, Opus 4.8-era turns, passed every automated tier, and survived two adversarial
+reviews. What was new this turn is that someone finally *played*.
+
+### The fixes (seven commits, `ecddb21..f406c3c`)
+
+- **Dialogue voice, fixed at the layer the operator asked for.** NPC dialogue now gets
+  its own system message — third person, by name, the player addressed as "you" only
+  inside the NPC's quoted line — selected by threading the talk target into the skill
+  pipeline. The same explicit binding fixes memory (capture/retrieve now key on the
+  actual toon, with the old convention kept as fallback), and memory entries now name the
+  NPC as speaker instead of the skill's ui_hint ("Talk said:"). DEBUG-level logs of the
+  rendered prompt and raw LLM payload were added for exactly this kind of debugging.
+  Verified live against real vLLM: *"Mott looks up from the broom, its bristles catching
+  slanting light as he speaks. 'Good evening, there's a curl of brass from an old ship's
+  bell...'"*
+- **The silent reveal, fixed architecturally** rather than by editing one string: the
+  engine now narrates every `open` reveal by name ("Inside, you find: warm brass cog,
+  dreamseed."), so a payload can never materialize wordlessly no matter what an author
+  remembers to put in `open_text`.
+- **Direction now listens to the phrase**: a deterministic keyword scan (down/under/
+  cellar..., up/attic/stars..., literal compass words) prefers the hinted direction when
+  that exit is free, falling back to the old first-free order. The LLM still never sees
+  directions. "Down the well" now opens down.
+- **The husk stops impersonating a seed**: on consumption it renames to "spent dreamseed"
+  via a new `rename_object` effect, restricted like the world-shaping kinds (a data skill
+  or NPC dialogue can never rename anything). Composed object names also normalize to the
+  authored lowercase convention.
+- **The Reading Room polish**: a room change now veils the old painting instantly and
+  reveals the next one only when its bitmap has decoded; a verbatim repeat of the last
+  prose line glows the existing line instead of stacking a duplicate; and refusal lines
+  learned natural articles ("You can't use the case key on Tace", not "on the Tace" —
+  another wart the event log surfaced unprompted). "The collection", for the record, is
+  decorative anticipation from the Reading Room design pass, not a mechanic; it stands
+  for now.
+
+The round closed the same way the main turn did: `/codereview` (0 BLOCK / 1 WARN — a
+misnamed direction-hint test plus an untested up-hint branch, fixed in one `/codefix`
+cycle / 1 NOTE), a chained `/security` pass over the fifteen changed code files (clean),
+528 short / 807 medium green, deployed live.
+
+### The operator's verdict, and a reassessment
+
+On the record: **Peter was not convinced this was truly a magical step-function.** The
+document should hold that verdict with the same discipline it holds the predictions,
+because the playtest round is the strongest evidence in either direction and it cuts both
+ways.
+
+What the round adds to the experiment, honestly weighed:
+
+- **Green is not good.** Every mechanical verifier passed — ~530 tests, real-GPU probes,
+  two adversarial reviews, a live end-to-end WS playthrough — while the shipped game
+  narrated an NPC's smile onto the player's lips. Thick verification catches structure;
+  it did not catch felt experience. The one verifier that did was a human playing for
+  pleasure, and no amount of model quality substituted for it. Part 2 claimed the
+  operator was no longer needed for *process*; Part 3 shows he is still where *taste*
+  enters the loop.
+- **Scoring the six findings fairly:** the two deep ones (voice, memory binding) were
+  latent defects from earlier Opus-era turns that this turn exposed by finally producing
+  a playable-enough game to playtest. The four shallow ones (silent reveal, first-free
+  direction, husk naming, casing) belong to this turn's own first pass: the machine was
+  built correctly and the *moment* was under-imagined. One-pass correctness turned out
+  not to be one-pass delight. That is a real limit of the step function as experienced,
+  and it is probably the honest content of the operator's skepticism.
+- **The counterweight:** the fix round itself ran the same near-zero-friction loop as the
+  build. Six observations went in; what came back was live-data forensics that solved a
+  pre-registered mystery, fixes placed at the right depth (a prompt-architecture split,
+  an engine-level guarantee, a new restricted effect — not six patches), paired tests,
+  one review WARN, and zero follow-up corrections from the operator. If Part 2's claim
+  was "absence of friction at the judgment layer," Part 3's evidence is that the absence
+  held when the input was criticism instead of a spec.
+
+So the position this document can actually support, after one build turn and one playtest
+round: a measurable, large reduction in steering and in design friction; no reduction in
+the need for human play; and no basis yet for the word "magical." The model moved the
+bottleneck — from "will the implementation be right" to "will the experience feel right"
+— and the second bottleneck still belongs to a person walking around inside the dream.
+
+### What comes next
+
+The experiment gets one more data point. Peter will open a second turn — plan → `/spec` →
+implement, the same loop, Fable 5 at `/effort max` — and will deliberately aim it *more
+ambitious* than Dreamseeds, on the theory that the previous turn's target, chosen by the
+model from the project's own documents, may have been comfortably inside its reach. The
+sharper test is a target that isn't. Results will be appended below.
+
+## Part 4 — the second turn (APPEND HERE, after the next turn)
+
+*Instructions to the session (or human) that continues this document, in the same
+append-only discipline: add results BELOW this section; never edit Parts 1–3. When the
+second turn closes, record here:*
+
+1. *The opening prompt, verbatim, and what made this turn's target more ambitious than
+   Dreamseeds.*
+2. *The plan and spec the model produced, and the operator's interventions during
+   plan/spec (count and nature, per M1).*
+3. *Implementation actuals in the spirit of M1–M7: spec survival, increments and
+   first-try rate, review outcome, suite health, sessions.*
+4. *Runtime-quality gates and their outcomes (the analogue of the rung decision), with
+   verbatim samples where the local models compose anything.*
+5. *The playtest: what the operator found, what the findings say about the
+   correctness-vs-delight gap Part 3 identified, and whether the fix round held the same
+   near-zero-friction property.*
+6. *Grades against expectations set in Part 3, honestly; a partial is a partial.*
+7. *The felt comparison, one candid paragraph — including whether the operator's
+   "not convinced it was magical" verdict moved, in either direction.*
