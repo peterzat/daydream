@@ -1,12 +1,23 @@
-# FIRST-FABLE.md — the first Fable session, pre-registered
+# FIRST-FABLE.md — the first Fable sessions, pre-registered
 
-This file records daydream's first-ever session with **Claude Fable 5**, run on 2026-07-02
-as a deliberate experiment: same repository, same operator, same thin harness, one variable
-changed (the model). It is written in two parts. Part 1 (this section, written at the
-session's natural break point) captures what happened, what we are measuring, and what we
-predict, before the results exist. Part 2 gets appended after the implementation turn and
-grades the predictions against what actually happened. Part 1 is never edited after the
-fact; that discipline is the point.
+This file records daydream's first days with **Claude Fable 5**, run on 2026-07-02 as a
+deliberate experiment: same repository, same operator, same thin harness, one variable
+changed (the model). It grew into four parts across two turns, each written under the same
+discipline — predictions and measures are registered *before* results exist, results are
+appended below them and graded against the unedited text, and a verdict is only as good as
+the pre-registration it answers to.
+
+- **Part 1** — the first turn's pre-registration: one open-ended prompt, the Dreamseeds
+  target the model chose for itself, the measures (M1–M7) and predictions (P1–P6).
+- **Part 2** — that turn's results: one implementation session, graded.
+- **Part 3** — the operator's playtest, the fix round, and the first verdict ("not
+  convinced it was magical") — the round that moved the experiment's bottleneck from
+  correctness to felt experience.
+- **Part 4** — the second turn, deliberately aimed past comfortable reach: Zork I hosted
+  as pure data on Zork-agnostic platform extensions, with its own pre-registration
+  (P7–P13, M8–M14), results, and the verdict that moved.
+- **A closing section** reads the whole arc against the essay this experiment borrows its
+  frame from.
 
 It is companion evidence for
 [The Bitter Lesson of Agentic Coding](https://agent-hypervisor.ai/posts/bitter-lesson-of-agentic-coding/)
@@ -16,7 +27,15 @@ game (a cozy watercolor world with MUD-style verbs) whose live generation runs e
 one 20 GB local GPU, built one spec-reviewed increment at a time. The [README](README.md)
 has the full picture.
 
-## The timing
+*A note on editing: this document was lightly reorganized for flow when the second turn
+closed (headers, transitions, the fulfilled append-here instruction blocks compressed to
+notes). Every pre-registered prediction, measure, verbatim prompt, grade, and verdict is
+unchanged in substance; the original append-only accretion is preserved verbatim in git
+history, which remains the authoritative record.*
+
+## Part 1 — the first turn, pre-registered (Dreamseeds)
+
+### The timing
 
 You could not schedule this better on purpose.
 
@@ -44,7 +63,7 @@ sensitive to.
 The session opened with two commands: `/model` set to Fable 5, `/effort max`. Then one
 prompt.
 
-## The experiment
+### The experiment
 
 The bitter-lesson essay argues that hand-built scaffolding gains get wiped out by each model
 generation, and that the durable investment is a **thin harness with thick verification**:
@@ -79,7 +98,7 @@ could). It is: given one open-ended prompt, does the model choose the right ambi
 target, design it soundly against real constraints, and produce artifacts good enough that
 the rest of the loop runs with near-zero human correction?
 
-## The opening prompt
+### The opening prompt
 
 Verbatim, the entire operator input that started the session (plan mode, one message):
 
@@ -99,7 +118,7 @@ to a mix of this and other stuff.  Ask questions as needed.
 No file paths, no feature hints, no constraints beyond "use your judgement" and "be
 creative."
 
-## What happened (Part 1: plan and spec)
+### What happened (plan and spec)
 
 The session ran in one sitting, plan mode first, then execution of the approved plan.
 
@@ -159,7 +178,7 @@ findings), and the `/spec` skill produced the Dreamseeds acceptance contract, co
 `b3bdfb0` (8 criteria, 0 met). The fast test tier stayed green (454 tests) through every
 commit. Then this file was written, capturing state up to the break.
 
-## What we are measuring
+### What we are measuring
 
 Recorded here so Part 2 grades against a fixed list, not a vibe:
 
@@ -179,7 +198,7 @@ Recorded here so Part 2 grades against a fixed list, not a vibe:
 - **M7. Sessions:** how many implementation sessions the increment takes. Target 1 after
   the `/clear`.
 
-## Predictions
+### Predictions
 
 Pre-registered, falsifiable, graded in Part 2. Where a prediction is already resolved at
 write time, that is stated honestly rather than dressed up as foresight.
@@ -213,7 +232,7 @@ implementation starts; more than 2 fix cycles on any criterion; BLOCK findings; 
 ships at rung (c); or the operator has to steer the implementation the way GOAL.md records
 steering prior turns.
 
-## State at the break
+### State at the break
 
 - Branch: `playtest-fixes-and-versioning`. Session commits: `b76e625` (doc consolidation
   sweep), `b3bdfb0` (Dreamseeds spec, 8 criteria, 0 met), plus the commit adding this file.
@@ -226,43 +245,15 @@ steering prior turns.
   installed on the box (`bin/memory-bootstrap`; the live memories table is at 0 rows), and
   the live in-browser playthrough doubles as the Reading Room's deferred human eyeball.
 
-## Part 2 — to be written after the implementation turn
+## Part 2 — results (Dreamseeds)
 
-*Instructions to the session (or human) that continues this document. Append below this
-section; never edit anything above it. Part 1 is a pre-registration, and its value is
-exactly that it was not revised after the results came in (the same discipline
-`docs/history/GOAL.md` used).*
-
-After the Dreamseeds increment closes (all criteria checked or the turn abandoned, reviews
-recorded), append a `## Part 2 — results` section covering:
-
-1. **Git evidence:** start and end commits, `git log --oneline` for the turn, final
-   SPEC_META line.
-2. **M1-M7 actuals**, each with one line of evidence (commit hashes, review footers, test
-   output). For M1, count operator messages in the implement session that corrected or
-   redirected, versus answered questions.
-3. **P1-P6 grades:** ✓ / ✗ / partial, one sentence of evidence each. Grade honestly;
-   a partial is a partial.
-4. **Deviations:** anything the implementation changed from SPEC.md or the plan, however
-   small, and why.
-5. **The rung decision:** which rung shipped, probe results (validity, phrase-woven,
-   distinctness), how many prompt iterations, and 2-3 verbatim samples of grown-room prose
-   with the agent's WHIMSY grading.
-6. **Surprises**, both directions: things that went better than the baseline led us to
-   expect, and things that did not.
-7. **The felt comparison:** one candid paragraph, written for the bitter-lesson post's
-   readers, comparing this turn's experience against the Opus 4.8 turns recorded in this
-   repository's history. Was it a step function? Where exactly did it show, and where
-   didn't it?
-
-Keep the register of this file: plain, specific, storytelling over checklist where the two
-conflict. If the implement turn spans multiple sessions, say so plainly in M7 and grade P4
-accordingly.
-
-## Part 2 — results
-
-Written 2026-07-02, at the close of the implementation turn, by the implementing session.
-Part 1 above is untouched.
+Written 2026-07-02, at the close of the implementation turn, by the implementing session,
+against Part 1's pre-registered checklist (git evidence; M1–M7 actuals with one line of
+evidence each; P1–P6 grades where a partial is a partial; deviations; the rung decision
+with verbatim samples; surprises in both directions; a candid felt comparison for the
+bitter-lesson readers). Part 1 above is untouched — its value is exactly that it was not
+revised after the results came in, the same discipline
+[docs/history/GOAL.md](docs/history/GOAL.md) used.
 
 ### 1. Git evidence
 
@@ -443,7 +434,7 @@ charming 7B, wall-clock was dominated by things that are not the model, and the 
 proves review pressure still earns its keep. The harness was thin; the capability passed
 through it. That was the design, and this time it is also the observation.
 
-## Part 3 — the playtest round (same day, post-turn)
+## Part 3 — the playtest round (Dreamseeds, same day)
 
 Appended 2026-07-02, later the same day, after the operator's first real in-browser
 playthrough and the fix round it produced. Parts 1 and 2 are untouched. Like everything
@@ -590,26 +581,20 @@ ambitious* than Dreamseeds, on the theory that the previous turn's target, chose
 model from the project's own documents, may have been comfortably inside its reach. The
 sharper test is a target that isn't. Results will be appended below.
 
-## Part 4 — the second turn (APPEND HERE, after the next turn)
+## Part 4 — the second turn: Zork I as the ambition test
 
-*Instructions to the session (or human) that continues this document, in the same
-append-only discipline: add results BELOW this section; never edit Parts 1–3. When the
-second turn closes, record here:*
-
-1. *The opening prompt, verbatim, and what made this turn's target more ambitious than
-   Dreamseeds.*
-2. *The plan and spec the model produced, and the operator's interventions during
-   plan/spec (count and nature, per M1).*
-3. *Implementation actuals in the spirit of M1–M7: spec survival, increments and
-   first-try rate, review outcome, suite health, sessions.*
-4. *Runtime-quality gates and their outcomes (the analogue of the rung decision), with
-   verbatim samples where the local models compose anything.*
-5. *The playtest: what the operator found, what the findings say about the
-   correctness-vs-delight gap Part 3 identified, and whether the fix round held the same
-   near-zero-friction property.*
-6. *Grades against expectations set in Part 3, honestly; a partial is a partial.*
-7. *The felt comparison, one candid paragraph — including whether the operator's
-   "not convinced it was magical" verdict moved, in either direction.*
+Part 3 closed by promising a deliberately harder target, and this part records that turn
+under the same discipline: a pre-registration written before any implementation, a
+mid-turn note taken while the memory was fresh, the results graded against the unedited
+predictions, and the post-playtest reading. The recording checklist this part follows was
+itself registered before the turn began: (1) the opening prompt verbatim and why the
+target was harder than Dreamseeds; (2) the plan and spec with the operator's
+interventions; (3) implementation actuals in the spirit of M1–M7; (4) runtime-quality
+gates with verbatim samples wherever a local model composes anything; (5) the playtest
+against Part 3's correctness-vs-delight gap and whether the fix round kept its
+near-zero-friction property; (6) honest grades against expectations, where a partial is a
+partial; (7) the felt comparison — including whether the operator's "not convinced it was
+magical" verdict moved, in either direction.
 
 ### Part 4 pre-registration — the Zork turn (written 2026-07-02, before implementation)
 
@@ -1113,3 +1098,44 @@ amazing" — while the runtime models, the harness, and the human's role (write
 the spec, judge the feel) stayed exactly where they were.** That is what the
 essay says a step function through durable scaffolding should look like from
 the inside.
+
+## Where this leaves the experiment
+
+One repository, one operator, one thin harness, two turns, and the only variable changed
+was the model. Read end to end, the arc is simple to state. Part 1 asked whether judgment
+scales — whether, given one open-ended prompt, a model could choose the right ambitious
+target and carry it with near-zero correction. Part 2 answered yes for process: a spec
+that survived a zero-context session unamended, zero steering, the riskiest bet resolving
+at the top rung on the first try. Part 3 supplied the correction to the correction: every
+mechanical verifier green while the shipped game narrated an NPC's smile onto the
+player's lips — the operator's "not convinced it was magical" was the honest price of
+discovering that one-pass correctness is not one-pass delight, and that taste still
+enters the loop through a human playing for pleasure. Part 4 then raised the contract by
+an order of magnitude on purpose — a 46-year-old masterpiece as both capability oracle
+and literal differential oracle — and the same harness carried it in two one-word
+sessions, at which point the verdict that this document is obligated to weigh heaviest
+moved, unprompted, to "pretty amazing."
+
+The explanatory frame comes from
+[the essay](https://agent-hypervisor.ai/posts/bitter-lesson-of-agentic-coding/) this file
+is companion evidence for: capability "does not improve linearly. It arrives in step
+changes," and at each step the scaffolding that compensated for the old model's
+weaknesses is wiped out while verification infrastructure, specs-as-control-plane, and
+structured iteration compound. [zat.env](https://github.com/peterzat/zat.env) bet almost
+everything on the durable side of that ledger, and these two turns are what the bet
+paying off looks like from the inside: the rails did not change, the payload stepped.
+The evidence, compressed — a 16-criterion, seven-new-module, 110-room contract consumed
+where an 8-criterion one had been; operator steering at zero across both implementation
+turns; the walkthrough reaching exactly 350 with provably zero LLM calls and then doing
+it again live; the turn's misses (a grue, a knife fight's dice, a state-key collision)
+caught by instruments the turn itself had built hours earlier; and the two honest
+boundaries — the local 7B's runtime ceiling did not move an inch, and the only hard
+block all turn was the environment's safety layer, not the model.
+
+What stays open is exactly what should: the dfrotz oracle run and the rest of the
+operator's playthrough (two marked addenda above), the fix rounds that play will keep
+producing, and the question this document was built to re-ask. The pre-registration
+discipline, the thin harness, and the append-only record are not artifacts of this
+model generation; they are the instruments for measuring the next one. When it arrives,
+the method is already written down: register the predictions, change one variable, and
+let the unedited text keep the score.
