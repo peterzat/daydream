@@ -273,3 +273,42 @@ def test_session_isolation_for_claimed_by_me():
             entry = slots[1]
             assert entry["toon"]["name"] == "Mira"
             assert entry["toon"]["claimed_by_me"] is False
+
+
+def test_toon_creation_follows_the_live_world(tmp_path):
+    """The swap-rehearsal regression (criterion 15): in a DB whose single
+    world is NOT the legacy default, slot listing, creation, and claiming
+    must all resolve THAT world — a hardcoded world id turns every picker
+    action into a foreign-key 500 the moment `world swap` installs a new
+    world."""
+    from daydream import db as ddb
+    from daydream import objects, toons
+
+    ddb.close_db()
+    ddb.init_live(path=tmp_path / "other-world.db")
+    conn = ddb.get_conn()
+    # A `world load`ed DB holds exactly ONE world: the loader removes the
+    # migration-seeded default (keeping the prototype rows). Mirror that.
+    conn.execute(
+        "INSERT INTO worlds (id, name, slug, aesthetic_seed, starting_room_id) "
+        "VALUES ('w-elsewhere', 'Elsewhere', 'elsewhere', 'seed', 'r-first')"
+    )
+    conn.execute(
+        "UPDATE objects SET world_id = 'w-elsewhere' WHERE kind = 'prototype'"
+    )
+    for child in ("events", "memories", "generated_assets", "world_state"):
+        conn.execute(f"DELETE FROM {child}")
+    conn.execute("DELETE FROM objects WHERE kind != 'prototype'")
+    conn.execute("DELETE FROM worlds WHERE id != 'w-elsewhere'")
+    objects.spawn("w-elsewhere", "room", "First Room", None,
+                  properties={"slug": "first", "seed": "s", "exits": {}},
+                  object_id="r-first")
+    assert toons.live_world_id() == "w-elsewhere"
+
+    created = toons.create_toon_in_slot(2, "Visitor", "a traveler", "sess-x")
+    assert created is not None
+    assert created.world_id == "w-elsewhere"
+    assert created.current_room_id == "r-first"
+    slots = toons.get_human_slots("sess-x")
+    assert slots[1]["toon"]["name"] == "Visitor"
+    ddb.close_db()

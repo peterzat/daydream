@@ -115,6 +115,18 @@ DEFAULT_HUMAN_WORLD_ID = "w-bunny"
 DEFAULT_HUMAN_ROOM_ID = "r-meadow"
 
 
+def live_world_id() -> str:
+    """The id of THE world in the live DB (one world per DB file is the
+    invariant; `world swap` changes which file is live). Falls back to the
+    legacy default when the worlds table is empty or unreadable, so nothing
+    that worked before a swap can break for want of a row."""
+    try:
+        row = db.get_conn().execute("SELECT id FROM worlds LIMIT 1").fetchone()
+    except Exception:
+        return DEFAULT_HUMAN_WORLD_ID
+    return row["id"] if row else DEFAULT_HUMAN_WORLD_ID
+
+
 def get_toon_by_session(session_id: str) -> Toon | None:
     """The toon currently controlled by `session_id` (controller match AND not
     kicked AND human-controlled), or None. Empty session returns None."""
@@ -134,7 +146,7 @@ def get_human_slots(session_id: str | None = None) -> list[dict]:
     against `session_id`. Slot 100+ NPCs are excluded."""
     found = _query(
         "slot BETWEEN 1 AND 5 AND world_id = ? ORDER BY slot, id",
-        (DEFAULT_HUMAN_WORLD_ID,),
+        (live_world_id(),),
     )
     by_slot: dict[int, Toon] = {}
     for t in found:
@@ -170,7 +182,7 @@ def _slot_occupied(slot: int) -> Toon | None:
     """The toon (if any) currently in `slot` for the default world."""
     rows = _query(
         "slot = ? AND world_id = ? ORDER BY id LIMIT 1",
-        (slot, DEFAULT_HUMAN_WORLD_ID),
+        (slot, live_world_id()),
     )
     return rows[0] if rows else None
 
@@ -185,7 +197,8 @@ def create_toon_in_slot(
         return None
     from daydream import rooms
 
-    spawn = rooms.starting_room_id(DEFAULT_HUMAN_WORLD_ID) or DEFAULT_HUMAN_ROOM_ID
+    world_id = live_world_id()
+    spawn = rooms.starting_room_id(world_id) or DEFAULT_HUMAN_ROOM_ID
     toon_id = f"t-slot{slot}-{uuid.uuid4().hex[:8]}"
     db.get_conn().execute(
         "INSERT INTO objects (id, world_id, kind, name, aliases_json, "
@@ -194,7 +207,7 @@ def create_toon_in_slot(
         "VALUES (?, ?, 'toon', ?, '[]', ?, ?, ?, ?, ?, 1, NULL)",
         (
             toon_id,
-            DEFAULT_HUMAN_WORLD_ID,
+            world_id,
             name,
             spawn,
             objects.PROTO_NPC,
