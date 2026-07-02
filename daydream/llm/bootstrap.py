@@ -258,6 +258,97 @@ def _validate_optional_verbs(verbs: object, where: str) -> None:
         raise BootstrapValidationError(f"{where} must be a list of non-empty strings")
 
 
+def _validate_contains(contains: object, where: str) -> None:
+    """Optional `contains` on a stateful thing: the payload `open` reveals.
+    A single object or a list of them (SPEC 2026-07-02). Each entry requires
+    non-empty `name` + `seed`; optional `aliases` / `verbs` / `readable` /
+    `properties` (whose nested growth-relevant keys validate recursively, so a
+    dreamseed inside a clock case fails loudly at load, not at plant time)."""
+    if contains is None:
+        return
+    if not isinstance(contains, (dict, list)):
+        raise BootstrapValidationError(
+            f"{where} must be an object or a list of objects"
+        )
+    entries = contains if isinstance(contains, list) else [contains]
+    for j, entry in enumerate(entries):
+        w = f"{where}[{j}]" if isinstance(contains, list) else where
+        if not isinstance(entry, dict):
+            raise BootstrapValidationError(f"{w} must be an object")
+        for k in ("name", "seed"):
+            if not isinstance(entry.get(k), str) or not entry[k].strip():
+                raise BootstrapValidationError(f"{w}.{k} must be a non-empty string")
+        _validate_aliases(entry.get("aliases"), f"{w}.aliases")
+        _validate_optional_verbs(entry.get("verbs"), f"{w}.verbs")
+        if "readable" in entry and not isinstance(entry["readable"], bool):
+            raise BootstrapValidationError(f"{w}.readable must be a boolean")
+        if "properties" in entry:
+            if not isinstance(entry["properties"], dict):
+                raise BootstrapValidationError(f"{w}.properties must be an object")
+            _validate_growth_keys(entry["properties"], w)
+
+
+def _validate_exemplar_rooms(value: object, where: str, lo: int, hi: int) -> None:
+    """A list of `lo`-`hi` exemplar/skeleton rooms, each with non-empty
+    title / seed / description strings."""
+    if not isinstance(value, list) or not (lo <= len(value) <= hi):
+        raise BootstrapValidationError(
+            f"{where} must be a list of {lo}-{hi} rooms"
+        )
+    for j, ex in enumerate(value):
+        if not isinstance(ex, dict):
+            raise BootstrapValidationError(f"{where}[{j}] must be an object")
+        for k in ("title", "seed", "description"):
+            if not isinstance(ex.get(k), str) or not ex[k].strip():
+                raise BootstrapValidationError(
+                    f"{where}[{j}].{k} must be a non-empty string"
+                )
+
+
+def _validate_growth(growth: object, where: str) -> None:
+    """A dreamseed's authored growth boundaries (SPEC 2026-07-02), fail-loudly
+    validated at load so a malformed seed never reaches the runtime. Required:
+    `question` (str), `theme` (1-8 strings), `palette` (str), `exemplars` (1-3
+    rooms of title/seed/description). Optional: `motifs` (0-8 strings),
+    `skeletons` (0-3 rooms — the rung-(b) select-and-fill templates, validated
+    from day one so flipping rungs never touches the loader). Unknown keys are
+    tolerated (a future `depth`)."""
+    if not isinstance(growth, dict):
+        raise BootstrapValidationError(f"{where} must be an object")
+    if not isinstance(growth.get("question"), str) or not growth["question"].strip():
+        raise BootstrapValidationError(f"{where}.question must be a non-empty string")
+    theme = growth.get("theme")
+    if not isinstance(theme, list) or not (1 <= len(theme) <= 8) or not all(
+        isinstance(t, str) and t.strip() for t in theme
+    ):
+        raise BootstrapValidationError(
+            f"{where}.theme must be a list of 1-8 non-empty strings"
+        )
+    if not isinstance(growth.get("palette"), str) or not growth["palette"].strip():
+        raise BootstrapValidationError(f"{where}.palette must be a non-empty string")
+    motifs = growth.get("motifs")
+    if motifs is not None and (
+        not isinstance(motifs, list) or len(motifs) > 8
+        or not all(isinstance(m, str) and m.strip() for m in motifs)
+    ):
+        raise BootstrapValidationError(
+            f"{where}.motifs must be a list of 0-8 non-empty strings"
+        )
+    _validate_exemplar_rooms(growth.get("exemplars"), f"{where}.exemplars", 1, 3)
+    if growth.get("skeletons") is not None:
+        _validate_exemplar_rooms(growth["skeletons"], f"{where}.skeletons", 0, 3)
+
+
+def _validate_growth_keys(props: dict, where: str) -> None:
+    """Validate the growth-relevant keys of an authored `properties` dict:
+    `contains` (a reveal payload, recursively) and `growth` (a dreamseed's
+    boundaries). Other property keys stay free-form."""
+    if "contains" in props:
+        _validate_contains(props["contains"], f"{where}.properties.contains")
+    if "growth" in props:
+        _validate_growth(props["growth"], f"{where}.properties.growth")
+
+
 def _validate_envelope(env: dict) -> WorldSpec:
     """Strict validation of the LLM's JSON envelope. Raises
     BootstrapValidationError with a one-line operator-facing message
@@ -384,6 +475,10 @@ def _validate_envelope(env: dict) -> WorldSpec:
         # `fixture` / `readable` prototype flags. A malformed field fails loudly.
         if "properties" in it and not isinstance(it["properties"], dict):
             raise BootstrapValidationError(f"items[{i}].properties must be an object")
+        if isinstance(it.get("properties"), dict):
+            # Growth-relevant property keys (`contains` payloads, a dreamseed's
+            # `growth` block) fail loudly at load (SPEC 2026-07-02).
+            _validate_growth_keys(it["properties"], f"items[{i}]")
         _validate_optional_verbs(it.get("verbs"), f"items[{i}].verbs")
         if "text" in it and not isinstance(it["text"], str):
             raise BootstrapValidationError(f"items[{i}].text must be a string")

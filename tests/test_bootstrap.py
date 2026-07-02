@@ -274,6 +274,106 @@ def test_bootstrap_rejects_unknown_room_in_toon(tmp_path: Path):
             )
 
 
+# ---- contains / growth validation (SPEC 2026-07-02) ---------------------
+
+
+def _growth_block() -> dict:
+    return {
+        "question": "Where does the new way lead?",
+        "theme": ["clockwork", "dusk"],
+        "palette": "warm brass and amber watercolor",
+        "motifs": ["small resting clocks", "lantern light"],
+        "exemplars": [
+            {"title": "The Winding Stair", "seed": "a narrow brass stair",
+             "description": "A stair coils up into amber dusk, each step worn soft."},
+        ],
+    }
+
+
+def _envelope_with_seed_case(growth=None, contains=None) -> dict:
+    """The valid envelope plus a clock-case item whose `contains` list holds a
+    cog and a dreamseed carrying a growth block (the canonical shape)."""
+    env = _valid_envelope()
+    if contains is None:
+        contains = [
+            {"name": "warm brass cog", "seed": "a small warm cog"},
+            {"name": "dreamseed", "seed": "a seed like a folded lantern",
+             "verbs": ["plant"],
+             "properties": {"growth": growth if growth is not None else _growth_block()}},
+        ]
+    env["items"].append({
+        "room_slug": "shed", "name": "clock case", "fixture": True,
+        "seed": "a tall case", "verbs": ["open"],
+        "properties": {"state": "locked", "contains": contains},
+    })
+    return env
+
+
+def test_validate_accepts_contains_list_with_growth():
+    spec = boot._validate_envelope(_envelope_with_seed_case())
+    assert any(it["name"] == "clock case" for it in spec.items)
+
+
+def test_validate_accepts_single_object_contains_backcompat():
+    env = _envelope_with_seed_case(
+        contains={"name": "warm brass cog", "seed": "a small warm cog"})
+    boot._validate_envelope(env)  # must not raise
+
+
+def test_validate_accepts_growth_with_skeletons_and_unknown_keys():
+    growth = _growth_block()
+    growth["skeletons"] = [
+        {"title": "A Skeleton Room", "seed": "a template seed",
+         "description": "A room shaped like {phrase}, waiting to be filled."}]
+    growth["depth"] = 1  # unknown keys tolerated (future growth)
+    boot._validate_envelope(_envelope_with_seed_case(growth=growth))
+
+
+@pytest.mark.parametrize("mutate,match", [
+    (lambda g: g.pop("question"), "question"),
+    (lambda g: g.update(theme=[]), "theme"),
+    (lambda g: g.update(theme=["t"] * 9), "theme"),
+    (lambda g: g.pop("palette"), "palette"),
+    (lambda g: g.update(motifs=["m"] * 9), "motifs"),
+    (lambda g: g.update(exemplars=[]), "exemplars"),
+    (lambda g: g.update(exemplars=[{"title": "T", "seed": "s",
+                                    "description": "d"}] * 4), "exemplars"),
+    (lambda g: g["exemplars"][0].pop("description"), "description"),
+    (lambda g: g.update(skeletons=[{"title": "T", "seed": "s",
+                                    "description": "d"}] * 4), "skeletons"),
+    (lambda g: g.update(skeletons=[{"title": "T"}]), "skeletons"),
+])
+def test_validate_rejects_malformed_growth(mutate, match):
+    growth = _growth_block()
+    mutate(growth)
+    with pytest.raises(boot.BootstrapValidationError, match=match):
+        boot._validate_envelope(_envelope_with_seed_case(growth=growth))
+
+
+@pytest.mark.parametrize("contains,match", [
+    ("not-an-object", "object or a list"),
+    ([{"seed": "no name"}], "name"),
+    ([{"name": "no seed"}], "seed"),
+    ([{"name": "x", "seed": "s", "properties": "not-a-dict"}], "properties"),
+    ([{"name": "x", "seed": "s", "verbs": [""]}], "verbs"),
+])
+def test_validate_rejects_malformed_contains(contains, match):
+    with pytest.raises(boot.BootstrapValidationError, match=match):
+        boot._validate_envelope(_envelope_with_seed_case(contains=contains))
+
+
+def test_validate_rejects_growth_directly_on_item_properties():
+    """A growth block on a plain item's properties (not just inside contains)
+    is validated too — the dreamseed need not live in a case to fail loudly."""
+    env = _valid_envelope()
+    env["items"].append({
+        "room_slug": "shed", "name": "loose dreamseed", "seed": "a seed",
+        "properties": {"growth": {"question": "?"}},  # missing theme/palette/...
+    })
+    with pytest.raises(boot.BootstrapValidationError, match="theme"):
+        boot._validate_envelope(env)
+
+
 # ---- output-path handling ----------------------------------------------
 
 
