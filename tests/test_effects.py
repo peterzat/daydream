@@ -316,10 +316,13 @@ def _spawn_room(room_id="r-test-grove", slug="test-grove", *, properties=None,
 
 
 def test_default_kinds_exclude_world_shaping():
-    """allowed=None (the data-skill default) must never grant world-shaping:
-    spawn_room / link_exit are in ALLOWED_KINDS but NOT in DEFAULT_KINDS."""
-    assert effects.WORLD_SHAPING_KINDS <= effects.ALLOWED_KINDS
-    assert not (effects.WORLD_SHAPING_KINDS & effects.DEFAULT_KINDS)
+    """allowed=None (the data-skill default) must never grant a restricted
+    kind: spawn_room / link_exit / rename_object are in ALLOWED_KINDS but NOT
+    in DEFAULT_KINDS."""
+    assert effects.RESTRICTED_KINDS <= effects.ALLOWED_KINDS
+    assert effects.WORLD_SHAPING_KINDS <= effects.RESTRICTED_KINDS
+    assert "rename_object" in effects.RESTRICTED_KINDS
+    assert not (effects.RESTRICTED_KINDS & effects.DEFAULT_KINDS)
     assert "narrate" in effects.DEFAULT_KINDS  # the standard vocabulary remains
 
 
@@ -488,6 +491,48 @@ def test_world_shaping_rejected_for_undeclaring_verb():
     )
     assert applied[0].event is not None and applied[0].event.kind == "narrate"
     assert objects.get("r-sneaky") is None
+
+
+def test_rename_object_renames_and_replaces_aliases():
+    from daydream import objects
+    applied = effects.dispatch_effects(
+        [{"kind": "rename_object", "object_id": "i-lantern",
+          "name": "spent dreamseed", "aliases": ["husk", "seed"]}],
+        actor_id="t-wren", room_id="r-meadow", world_id="w-bunny",
+        allowed=frozenset({"rename_object"}),
+    )
+    assert applied[0].event is not None
+    assert applied[0].event.kind == "object_renamed"
+    renamed = objects.get("i-lantern")
+    assert renamed.name == "spent dreamseed"
+    assert renamed.aliases == ["husk", "seed"]
+
+
+def test_rename_object_rejects_missing_target_or_empty_name():
+    from daydream import objects
+    for bad in (
+        {"object_id": "i-nope", "name": "x"},
+        {"object_id": "i-lantern", "name": "  "},
+        {"object_id": "i-lantern", "name": "ok", "aliases": "not-a-list"},
+    ):
+        applied = effects.dispatch_effects(
+            [{"kind": "rename_object", **bad}],
+            actor_id="t-wren", room_id="r-meadow", world_id="w-bunny",
+            allowed=frozenset({"rename_object"}),
+        )
+        assert applied[0].event is None, f"must reject: {bad}"
+    assert objects.get("i-lantern").name == "lantern"  # untouched
+
+
+def test_rename_object_rejected_for_data_skill_default():
+    from daydream import objects
+    applied = effects.dispatch_effects(
+        [{"kind": "rename_object", "object_id": "i-lantern", "name": "gotcha"}],
+        actor_id="t-wren", room_id="r-meadow", world_id="w-bunny",
+        allowed=None,
+    )
+    assert applied[0].event is not None and applied[0].event.kind == "narrate"
+    assert objects.get("i-lantern").name == "lantern"
 
 
 def test_grown_room_count_counts_only_grown():

@@ -96,7 +96,7 @@ def test_plant_command_grows_room_and_refreshes_snapshot_live():
                 # snapshot's replayed `events`, not as separate frames.
                 sock.send_json({"kind": "command", "verb": "plant",
                                 "dobj_id": seed_id,
-                                "args": "a mossy stair down into green light"})
+                                "args": "a mossy stair into green light"})
                 first = sock.receive_json()
                 assert first["kind"] == "event"
                 assert first["event"]["kind"] == "room_grown"
@@ -131,7 +131,7 @@ def test_plant_command_grows_room_and_refreshes_snapshot_live():
                 assert grown_snap["room"]["title"] == "The Moss Stair"
                 assert grown_snap["room"]["description"] == COMPOSITION["description"]
                 names = {o["name"] for o in grown_snap["items"]}
-                assert {"mossy pebble", "dreamseed"} <= names  # husk rests here
+                assert {"mossy pebble", "spent dreamseed"} <= names  # husk rests here
                 # Lazy image gen fired for the grown room through the existing
                 # persistent path (the conftest mock holds the dedup key).
                 assert any(key[2] == new_room_id for key in ws_module._generating)

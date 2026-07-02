@@ -65,15 +65,16 @@ def test_closed_verb_registry_with_arg_specs():
     assert verbs.VERBS["use"].valid_dobj_kinds == frozenset({"thing"})
     assert verbs.VERBS["use"].valid_iobj_kinds == frozenset({"thing"})
     # plant: single-object, free-text vision args, and the SOLE declarer of
-    # the world-shaping effect kinds (SPEC 2026-07-02).
+    # the restricted effect kinds (SPEC 2026-07-02 + the husk rename).
     assert verbs.VERBS["plant"].needs_dobj and not verbs.VERBS["plant"].needs_iobj
     assert verbs.VERBS["plant"].valid_dobj_kinds == frozenset({"thing"})
     assert verbs.VERBS["plant"].free_text
-    assert {"spawn_room", "link_exit"} <= verbs.VERBS["plant"].allowed_effects
+    restricted = {"spawn_room", "link_exit", "rename_object"}
+    assert restricted <= verbs.VERBS["plant"].allowed_effects
     for name, spec in verbs.VERBS.items():
         if name != "plant":
-            assert not ({"spawn_room", "link_exit"} & spec.allowed_effects), (
-                f"{name} must not declare world-shaping effects"
+            assert not (restricted & spec.allowed_effects), (
+                f"{name} must not declare restricted effects"
             )
     # The verb bar offers the interaction verbs, verb-then-object.
     assert [v.name for v in verbs.bar_verbs()] == [

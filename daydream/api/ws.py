@@ -53,7 +53,7 @@ router = APIRouter()
 # adding it would re-snapshot on every examine.
 _EFFECT_MUTATION_KINDS = frozenset(
     {"item_added", "mood_set", "object_moved", "object_spawned",
-     "room_grown", "exit_linked"}
+     "room_grown", "exit_linked", "object_renamed"}
 )
 # Starting room for the seeded toon; also the fallback used if the toon
 # somehow has a NULL current_room_id. After multi-room-navigation lands

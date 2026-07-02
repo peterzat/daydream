@@ -50,17 +50,22 @@ ALLOWED_KINDS: frozenset[str] = frozenset({
     # World-shaping (SPEC 2026-07-02): explicit per-verb declaration only.
     "spawn_room",
     "link_exit",
+    # Engine housekeeping (explicit per-verb declaration only): rename an
+    # object's display name (the spent dreamseed husk).
+    "rename_object",
     # Retained aliases for existing data-skill author files.
     "add_item",
     "set_mood",
 })
 
 # The kinds a caller gets when it passes no per-verb allowlist (allowed=None,
-# the data-skill default). World-shaping kinds are deliberately absent: growing
-# a room or linking an exit requires a verb that DECLARES the capability, so an
-# NPC dialogue or a standalone data skill can never world-build by omission.
+# the data-skill default). Restricted kinds are deliberately absent: growing a
+# room, linking an exit, or renaming an object requires a verb that DECLARES
+# the capability, so an NPC dialogue or a standalone data skill can never
+# world-build (or vandalize a name) by omission.
 WORLD_SHAPING_KINDS: frozenset[str] = frozenset({"spawn_room", "link_exit"})
-DEFAULT_KINDS: frozenset[str] = ALLOWED_KINDS - WORLD_SHAPING_KINDS
+RESTRICTED_KINDS: frozenset[str] = WORLD_SHAPING_KINDS | {"rename_object"}
+DEFAULT_KINDS: frozenset[str] = ALLOWED_KINDS - RESTRICTED_KINDS
 
 
 @dataclass(frozen=True)
@@ -380,6 +385,30 @@ def _apply_link_exit(
     )
 
 
+def _apply_rename_object(
+    eff: dict, *, actor_id: str, room_id: str, world_id: str
+) -> events.Event | None:
+    """Rename one object's display name (and optionally replace its aliases):
+    engine housekeeping, restricted to verbs that declare it (the plant
+    pipeline renaming the consumed seed to its husk). Rejects (event=None, no
+    mutation) on a missing target or empty name."""
+    object_id = eff.get("object_id")
+    name = eff.get("name")
+    if not isinstance(object_id, str) or not isinstance(name, str) or not name.strip():
+        return None
+    aliases = eff.get("aliases")
+    if aliases is not None and not (
+        isinstance(aliases, list) and all(isinstance(a, str) for a in aliases)
+    ):
+        return None
+    if not objects.rename(object_id, name.strip(), aliases):
+        return None
+    return events.append(
+        "system", None, "object_renamed",
+        {"object_id": object_id, "name": name.strip()}, room_id=room_id,
+    )
+
+
 _HANDLERS: dict[str, Callable[..., events.Event | None]] = {
     "narrate": _apply_narrate,
     "set_property": _apply_set_property,
@@ -387,6 +416,7 @@ _HANDLERS: dict[str, Callable[..., events.Event | None]] = {
     "move_object": _apply_move_object,
     "spawn_room": _apply_spawn_room,
     "link_exit": _apply_link_exit,
+    "rename_object": _apply_rename_object,
     "add_item": _apply_add_item,
     "set_mood": _apply_set_mood,
 }

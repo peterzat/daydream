@@ -284,6 +284,25 @@ def spawn(
     return obj
 
 
+def rename(object_id: str, name: str, aliases: list[str] | None = None) -> bool:
+    """Rename one object, optionally replacing its aliases. The display name
+    is a COLUMN (not a property), so this is its one runtime write path —
+    used by the `rename_object` effect (the spent dreamseed husk). Returns
+    False if the object does not exist."""
+    if get(object_id) is None:
+        return False
+    if aliases is None:
+        db.get_conn().execute(
+            "UPDATE objects SET name = ? WHERE id = ?", (name, object_id)
+        )
+    else:
+        db.get_conn().execute(
+            "UPDATE objects SET name = ?, aliases_json = ? WHERE id = ?",
+            (name, json.dumps(aliases), object_id),
+        )
+    return True
+
+
 def delete(object_id: str) -> None:
     """Remove one object row. Caller is responsible for any dependent rows
     (memories, carried things) per its own integrity needs."""

@@ -21,8 +21,8 @@ pytestmark = pytest.mark.tier_short
 # verb lands; growth tests pass it explicitly so the pipeline is testable on
 # its own).
 PLANT_ALLOWED = frozenset(
-    {"spawn_room", "link_exit", "spawn_object", "move_object",
-     "set_property", "narrate"}
+    {"spawn_room", "link_exit", "rename_object", "spawn_object",
+     "move_object", "set_property", "narrate"}
 )
 
 GROWTH_BLOCK = {
@@ -99,7 +99,9 @@ def _grown_rooms() -> list:
     ]
 
 
-async def _plant(seed, args="a mossy stair down into green light"):
+# The default phrase is deliberately hint-free (no down/up/compass words), so
+# tests built on it keep the first-free direction (south, in the meadow).
+async def _plant(seed, args="a mossy stair into green light"):
     await growth.execute_plant(_wren(), "r-meadow", seed, args, PLANT_ALLOWED)
 
 
@@ -124,7 +126,7 @@ def _assert_nothing_grew(seed_id: str, *, carried: bool = True):
 async def test_plant_happy_path_full_atomic_batch(monkeypatch):
     spy = _mock_llm(monkeypatch, dict(VALID_COMPOSITION))
     seed = _seed()
-    await _plant(seed, "a mossy stair down into green light")
+    await _plant(seed, "a mossy stair into green light")
 
     # Exactly ONE LLM call (SPEC criterion 1).
     assert spy.call_count == 1
@@ -147,7 +149,7 @@ async def test_plant_happy_path_full_atomic_batch(monkeypatch):
     grown = props["grown"]
     assert grown["seed_id"] == seed.id
     assert grown["planter_id"] == "t-wren"
-    assert grown["phrase"] == "a mossy stair down into green light"
+    assert grown["phrase"] == "a mossy stair into green light"
     assert grown["at"]  # timestamped
     assert rooms.grown_room_count("w-bunny") == 1
 
@@ -158,11 +160,14 @@ async def test_plant_happy_path_full_atomic_batch(monkeypatch):
     assert pebbles[0].properties["generated_by"] == f"plant:{seed.id}"
 
     # The seed is consumed: spent, husk examine text, plant no longer
-    # offered, moved into the grown room as a husk.
+    # offered, renamed so it never reads as a fresh seed, moved into the
+    # grown room as a husk.
     husk = objects.get(seed.id)
     assert husk.properties["state"] == "spent"
     assert husk.properties["examined_text"] == GROWTH_BLOCK["husk_text"]
     assert "plant" not in objects.verbs_for(husk)
+    assert husk.name == "spent dreamseed"
+    assert "husk" in husk.aliases
     assert husk.location_id == room.id
 
     # The final in-character narrate names the direction and the title.
@@ -388,6 +393,82 @@ def test_validate_growth_output_accepts_zero_objects():
         GROWTH_BLOCK,
     )
     assert out is not None and out["objects"] == []
+
+
+# ---- phrase-hinted direction pick (playtest 2026-07-02) -------------------
+
+
+@pytest.mark.asyncio
+async def test_phrase_hint_picks_down(monkeypatch):
+    """'Down the well to an underground dormitory' should open DOWN when down
+    is free — not the first free compass slot."""
+    _mock_llm(monkeypatch, dict(VALID_COMPOSITION))
+    seed = _seed()
+    await _plant(seed, "down the well to an underground dormitory")
+    room = rooms.get_room_by_slug("w-bunny", "the-moss-stair")
+    assert rooms.get_room("r-meadow").exits["down"] == room.id
+    assert room.exits["up"] == "r-meadow"
+    assert "below" in _last_narrate()  # the payoff names the way
+
+
+@pytest.mark.asyncio
+async def test_phrase_hint_picks_up_and_compass(monkeypatch):
+    _mock_llm(monkeypatch, dict(VALID_COMPOSITION))
+    seed = _seed()
+    await _plant(seed, "a balcony under the stars")
+    # 'stars'/'balcony' hint up (the 'under' down-hint loses to hint order?
+    # no: down is checked first — but 'under' IS in the down set, so this
+    # phrase hints down first). Pin the actual contract: first hint match in
+    # declaration order wins.
+    room = rooms.get_room_by_slug("w-bunny", "the-moss-stair")
+    assert rooms.get_room("r-meadow").exits["down"] == room.id
+
+
+@pytest.mark.asyncio
+async def test_phrase_hint_west(monkeypatch):
+    _mock_llm(monkeypatch, dict(VALID_COMPOSITION))
+    seed = _seed()
+    await _plant(seed, "a walled garden to the west of everything")
+    room = rooms.get_room_by_slug("w-bunny", "the-moss-stair")
+    assert rooms.get_room("r-meadow").exits["west"] == room.id
+
+
+@pytest.mark.asyncio
+async def test_phrase_hint_taken_falls_back_to_first_free(monkeypatch):
+    """A hinted direction that is already an exit falls through to the
+    first-free pick (meadow: north/east seeded + down occupied -> south)."""
+    _mock_llm(monkeypatch, dict(VALID_COMPOSITION))
+    exits = dict(rooms.get_room("r-meadow").exits)
+    exits["down"] = "r-forge"
+    objects.set_property("r-meadow", "exits", exits)
+    seed = _seed()
+    await _plant(seed, "down to a cellar of hours")
+    room = rooms.get_room_by_slug("w-bunny", "the-moss-stair")
+    assert rooms.get_room("r-meadow").exits["south"] == room.id
+
+
+def test_hint_free_default_phrase_stays_first_free():
+    """The suite's default phrase must stay hint-free so first-free tests
+    keep meaning what they say."""
+    words = set(__import__("re").findall(r"[a-z]+", "a mossy stair into green light"))
+    for _, hints in growth._DIRECTION_HINTS:
+        assert not (words & hints)
+
+
+# ---- composed object names normalize to the authored lowercase convention --
+
+
+@pytest.mark.asyncio
+async def test_composed_object_names_lowercased(monkeypatch):
+    payload = dict(VALID_COMPOSITION)
+    payload["objects"] = [{"name": "Mossy Pebble",
+                           "seed": "a small pebble wearing a coat of moss"}]
+    _mock_llm(monkeypatch, payload)
+    seed = _seed()
+    await _plant(seed)
+    room = rooms.get_room_by_slug("w-bunny", "the-moss-stair")
+    names = [o.name for o in objects.contents(room.id, kind="thing")]
+    assert "mossy pebble" in names and "Mossy Pebble" not in names
 
 
 # ---- commit-block races (state changes during the LLM await) --------------

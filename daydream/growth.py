@@ -47,13 +47,31 @@ from daydream.skills import effects
 logger = logging.getLogger(__name__)
 
 # The engine picks the exit direction; the LLM never sees directions or ids.
-# First free wins, in this fixed order; the reverse is the compass involution.
+# A deterministic keyword scan of the player's own phrase biases the pick
+# ("down the well..." should open DOWN when down is free — playtest
+# 2026-07-02); otherwise first free wins, in this fixed order. The reverse is
+# the compass involution.
 _DIRECTIONS = ("north", "east", "south", "west", "up", "down")
 _REVERSE = {
     "north": "south", "south": "north",
     "east": "west", "west": "east",
     "up": "down", "down": "up",
 }
+# Hint words -> preferred direction, checked in order. Kept to unambiguous
+# spatial words; a hinted direction is used only when that exit is free, else
+# the pick falls through to first-free.
+_DIRECTION_HINTS: tuple[tuple[str, frozenset[str]], ...] = (
+    ("down", frozenset({"down", "downward", "under", "underground", "below",
+                        "beneath", "cellar", "basement", "burrow", "tunnel",
+                        "cave", "deep"})),
+    ("up", frozenset({"up", "upward", "above", "attic", "tower", "sky",
+                      "stars", "roof", "rooftop", "clouds", "climb",
+                      "balcony", "treetop"})),
+    ("north", frozenset({"north"})),
+    ("east", frozenset({"east"})),
+    ("south", frozenset({"south"})),
+    ("west", frozenset({"west"})),
+)
 
 # The player's vision phrase is a short answer, not an essay: length-capped
 # before it ever reaches a prompt (SPEC 2026-07-02, criterion 2).
@@ -94,7 +112,8 @@ GROWTH_SYSTEM = (
     "arriving there, present tense.\n"
     "- objects: 0-2 small resting things found in the place, each "
     '{"name": 3-30 chars, "seed": 15-200 chars}. Things only — no creatures, '
-    "no people.\n"
+    "no people. Names are lowercase noun phrases ('mossy pebble', never "
+    "'Mossy Pebble').\n"
     "Weave the player's vision into the place so they can feel it was heard. "
     "Stay inside the seed's theme and palette; echo its motifs gently. Do NOT "
     "copy the example rooms; grow something new in their spirit.\n"
@@ -213,7 +232,12 @@ def validate_growth_output(result: object, growth: dict) -> dict | None:
         seed = _check_len(entry.get("seed"), 15, 200)
         if name is None or seed is None:
             return None
-        cleaned_objects.append({"name": name, "seed": seed})
+        # Authored-world convention: object names are lowercase bare nouns
+        # ("paper lantern"), so "You take the X" reads naturally and grown
+        # things sit beside authored ones without a casing seam (playtest
+        # 2026-07-02: a Title-Case "Paper Lantern" landed next to the
+        # square's "paper lantern").
+        cleaned_objects.append({"name": name.lower(), "seed": seed})
     # WHIMSY banlist over every text field.
     all_text = " ".join(
         [title, room_seed, description]
@@ -249,6 +273,17 @@ def _free_direction(room: "rooms.Room") -> str | None:
         if d not in room.exits:
             return d
     return None
+
+
+def _pick_direction(room: "rooms.Room", phrase: str) -> str | None:
+    """The direction the new way opens: a free direction the player's phrase
+    hints at ("down the well" -> down), else the first free in fixed order.
+    Deterministic — the LLM still never sees directions."""
+    words = set(re.findall(r"[a-z]+", phrase.lower()))
+    for direction, hints in _DIRECTION_HINTS:
+        if direction not in room.exits and words & hints:
+            return direction
+    return _free_direction(room)
 
 
 def _direction_phrase(direction: str) -> str:
@@ -401,7 +436,8 @@ def _commit_growth(
     if room is None:
         _narrate(current_room_id, _WONT_HOLD_YET)
         return
-    direction = _free_direction(room)  # re-pick: a rival plant may have won ours
+    # Phrase-hinted pick, re-run at commit: a rival plant may have taken it.
+    direction = _pick_direction(room, phrase)
     if direction is None:
         _narrate(current_room_id, _NO_DIRECTION)
         return
@@ -457,6 +493,10 @@ def _commit_growth(
         # verbs (examine / take / drop / give) but is no longer plantable.
         {"kind": "set_property", "target_id": seed_id, "key": "verbs",
          "value": []},
+        # The husk stops answering to a fresh seed's name, so it never reads
+        # as "another dreamseed" on the ground (playtest 2026-07-02).
+        {"kind": "rename_object", "object_id": seed_id,
+         "name": "spent dreamseed", "aliases": ["dreamseed", "seed", "husk"]},
         {"kind": "move_object", "object_id": seed_id, "dest_id": new_room_id},
         {"kind": "narrate", "text": (
             f"The dreamseed takes root, and the dream makes room. A new way "

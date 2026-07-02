@@ -126,10 +126,12 @@ VERBS: dict[str, VerbSpec] = {
         description="Plant a dreamseed you're carrying to grow a new place. "
                     "Target: the seed. Args: your vision of where it leads.",
         needs_dobj=True, valid_dobj_kinds=frozenset({"thing"}),
-        # The first (and sole) consumer of the world-shaping effect kinds —
-        # this allowlist is what makes spawn_room/link_exit reachable at all.
-        allowed_effects=frozenset({"spawn_room", "link_exit", "spawn_object",
-                                   "move_object", "set_property", "narrate"}),
+        # The first (and sole) consumer of the restricted effect kinds —
+        # this allowlist is what makes spawn_room/link_exit/rename_object
+        # reachable at all.
+        allowed_effects=frozenset({"spawn_room", "link_exit", "rename_object",
+                                   "spawn_object", "move_object",
+                                   "set_property", "narrate"}),
         on_bar=True, free_text=True,
     ),
     "say": VerbSpec(

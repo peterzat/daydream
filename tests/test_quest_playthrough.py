@@ -211,9 +211,9 @@ async def test_golden_dreamseed_plant_extension(loft, monkeypatch):
     assert props["generated_by"] == f"plant:{seed.id}"
     assert props["grown"]["planter_id"] == actor
     assert props["grown"]["phrase"] == phrase
-    # The composed object + the spent husk rest in the grown room.
+    # The composed object + the renamed spent husk rest in the grown room.
     names = {o.name for o in objects.contents(grown.id, "thing")}
-    assert {"clock-fruit", "dreamseed"} <= names
+    assert {"clock-fruit", "spent dreamseed"} <= names
     husk = objects.get(seed.id)
     assert husk.location_id == grown.id
     assert husk.properties["state"] == "spent"
