@@ -172,6 +172,7 @@ A drift probe runs the real code path, measures something, and compares to a **g
 | `tests/drift/test_parser_grounding.py`   | Real Qwen grounds free text to the right closed verb + in-scope dobj id.   | 6-case command corpus (in-file)            |
 | `tests/drift/test_image_perceptual.py`   | dHash + resolution + (model, lora, workflow_hash). Hamming tolerance.     | `tests/drift/aesthetics/*.json` (4 probes; +`forge`) |
 | `tests/drift/test_arbiter_smoke.py`      | 5 alternating LLM + image calls; per-call + aggregate budgets.            | reuses prompts/                            |
+| `tests/drift/test_growth_compose.py`     | Shipped-seed growth composition against real vLLM: validity / refusal / phrase-woven / exemplar-distinctness / object count, + latency window. The mitigation-ladder gate — ratifying its golden records the rung decision (SPEC 2026-07-02). | 3-phrase vision corpus (in-file)           |
 | `tests/drift/test_drift_constants.py` (`tier_short`) | WHIMSY_PROMPT_SUFFIX vs WHIMSY.md; vllm version; GPU fraction; model id. | CLAUDE.md + bin/ scripts        |
 | `tests/test_voice_baseline.py` (`tier_short`) | Pairwise-distinct narrate openers; glob-derived params classified by a `baseline-class` marker (tracked / regression-demo / documented-failure). | `docs/pretty/voice-samples/*.md` |
 | `tests/drift/test_memory_ranking.py` (`tier_short`) | Salience-formula ordering + per-item scores for a fixed (sim, age) corpus; pins `cosine * exp(-age/24h)` math + `DECAY_HOURS` constant. | 5-row in-memory corpus + mocked embeddings |
