@@ -31,7 +31,9 @@ EVENT_QUEUE_MAXSIZE = 256
 
 # Process-wide count of events dropped from full subscriber queues, for
 # observability (surfaced by dropped_event_total(); read by the swarm
-# harness). Control signals are never counted here — they're undroppable.
+# harness). Only Event drops are counted here — a control signal is never
+# dropped in favor of an Event (see _put_bounded for the one pathological
+# exception, which is itself uncounted).
 _dropped_total = 0
 
 
@@ -173,12 +175,14 @@ def _put_bounded(q: asyncio.Queue, item: Any) -> None:
     semantics. On overflow the OLDEST Event is evicted so the freshest
     state still lands (a lagged consumer self-heals via the next
     re-snapshot / reconnect replay). Control signals (WORLD_CHANGED) are
-    NEVER dropped: losing one strands a connection on a swapped-out world,
-    which a reconnect can't recover as cheaply as a missed event. The
-    fast path (not full) and the common overflow (oldest is an Event) are
-    O(1); the drain-refill only runs when a rare control signal sits at the
-    head."""
-    global _dropped_total
+    never dropped in favor of an Event — losing one strands a connection on
+    a swapped-out world, which a reconnect can't recover as cheaply as a
+    missed event. The lone exception is the pathological all-control-signals
+    overflow (a full queue of 256 WORLD_CHANGED with nothing draining), which
+    evicts the oldest to stay bounded; unreachable with the live draining
+    consumer, and harmless anyway since WORLD_CHANGED is idempotent. The fast
+    path (not full) and the common overflow (oldest is an Event) are O(1);
+    the drain-refill only runs when a rare control signal sits at the head."""
     try:
         q.put_nowait(item)
         return

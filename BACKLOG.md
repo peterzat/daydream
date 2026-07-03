@@ -206,6 +206,18 @@ Captured from the test-architecture landing (2026-04-23); scaffolding for these 
 
 ## UI & presentation (captured 2026-07-01 Reading Room turn)
 
+### regen-ui-gate
+- **One-line description:** The dev room-image repaint UI (`daydream/api/rooms.py` + the plate-tools/dialog in `web/`) has no switch to disable it; any authed (tailnet) session can repaint shared room art. Add a `DAYDREAM_REGEN_UI` flag (default on in dev) that both the endpoints (404/503 when off) and the SPA (hide the plate-tools) honor, so "turn it off for real players once live" is a config flip rather than a code edit. Today the only off-switch is removing the router registration in `server.py`.
+- **Why deferred:** The 2026-07-02 turn shipped the feature ungated by explicit request ("no need to guard against weird stuff, we'll probably turn this off for users once the game is live"). Fine under the current single-box friend-scope trust model; the gate matters when a shared preview/prod deployment appears.
+- **Revisit criteria:** A shared preview/prod deployment, OR the feature graduates from dev-only, OR real (non-friend) users get access.
+- **Origin:** plan let-s-do-a-small-compiled-umbrella (increment 5); codereview NOTE 2026-07-02.
+
+### delete-slot-grace-window
+- **One-line description:** `delete_slot` (irreversible: drops carried items, wipes memories) is gated only by instantaneous WS liveness (`_require_slot_actionable` → `is_session_live`), so a transient socket drop (laptop sleep, network blip, background-tab throttle) briefly marks a live player's toon "abandoned" and lets another session permanently delete it. Kick has the same gate but is recoverable, so it's fine; delete is not. Options: a short "recently-live" grace window keyed on last-seen, or restrict delete to the controlling session only (never another's, even if currently dead-WS) while leaving kick lenient.
+- **Why deferred:** By-design per the shipped guard (delete of an abandoned toon is allowed, mirroring claim's dead-session takeover), and inside the friend-scope trust model where grief isn't the threat. The sharp edge is only that delete is irreversible.
+- **Revisit criteria:** Any report of a lost toon after a reconnect, OR access widens beyond trusted friends, OR a soft-delete/undo lands (which would neutralize the irreversibility).
+- **Origin:** plan let-s-do-a-small-compiled-umbrella (increment 4); codereview NOTE 2026-07-02.
+
 ### snapshot-enrichments-for-reading-room
 - **One-line description:** Three small server-side snapshot enrichments the client-only Reading Room turn deliberately skipped: item description/provenance in the snapshot's `_object_card` so keepsake specimen cards read richer than name + generic tag; exit destination TITLES so the compass can say "up — the Clockmaker's Loft" without leaking room ids; a server-derived objective string for the "a small errand" marginalia group.
 - **Why deferred:** The Reading Room spec was explicitly client-only (no server/world change, no WORLD_VERSION bump); each of these is a deliberate server change weighed against that stance.

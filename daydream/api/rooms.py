@@ -17,10 +17,13 @@ room background, without any prompt being remembered:
        paint for that room is already in flight, 404 if the room is unknown.
 
 This is a dev tool: per the plan we do minimal input hygiene (a length cap
-to avoid an absurd prompt) and no content filtering — it is expected to be
-turned off for real users once the game is live. Auth mirrors the other
+to avoid an absurd prompt) and no content filtering. Auth mirrors the other
 mutating endpoints (an authenticated session behind the tailnet gate); the
-CSRF-origin middleware already covers POSTs.
+CSRF-origin middleware already covers POSTs. NOTE: there is no gate to
+DISABLE this yet — any authed (tailnet) session can repaint shared room art.
+That is inside the current friend-scope trust model, but "turn it off for
+real players once live" needs an actual switch (BACKLOG: regen-ui-gate);
+today the off-switch is removing this router's registration in server.py.
 """
 
 from __future__ import annotations
