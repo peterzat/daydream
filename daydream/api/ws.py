@@ -23,6 +23,7 @@ arbitrary toon."""
 
 import asyncio
 import logging
+import random
 from collections import Counter
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, status
@@ -184,12 +185,14 @@ def _state_snapshot(
 
     image_url: str | None = None
     if room is not None and lit:
-        target = _room_target(room.world_id, room.id, room.seed)
-        if image_client.is_persistent_cached(target):
-            workflow = image_client.load_workflow()
-            image_url = image_cache.cache_url(
-                room.world_id, "room", room.id, room.seed, workflow
-            )
+        workflow = image_client.load_workflow()
+        path = image_cache.cache_path(
+            room.world_id, "room", room.id, room.seed, workflow
+        )
+        if path.exists():
+            # Versioned (?v=<mtime>) so a repainted room busts the browser +
+            # SPA same-bitmap caches; matches the room_image_ready event's URL.
+            image_url = image_cache.versioned_url_for_path(path)
 
     return {
         "kind": "state_snapshot",
@@ -338,15 +341,27 @@ def _maybe_enqueue_image_gen(world_id: str, room_id: str, room_seed: str) -> Non
 async def _generate_and_emit(
     target: "image_client.PersistentTarget",
     dedup_key: tuple[str, str, str, str],
+    *,
+    force: bool = False,
+    prompt_override: str | None = None,
+    seed: int | None = None,
 ) -> None:
     """Run image gen under the GPU arbiter, then append room_image_ready.
     On ComfyUI failure, emit room_image_ready with image_url=None and the
-    error string so the SPA can fall back to the placeholder."""
+    error string so the SPA can fall back to the placeholder.
+
+    force / prompt_override / seed carry the dev repaint UI's overrides: a
+    forced re-render overwrites the cache file in place (keeping a .prev),
+    an optional prompt override substitutes the positive prompt without
+    moving the cache key, and a fresh random seed makes a same-prompt
+    repaint look different."""
     payload: dict = {}
     try:
         async with arbiter.acquire():
-            path = await image_client.generate_image(target)
-        payload["image_url"] = image_cache.url_for_cache_path(path)
+            path = await image_client.generate_image(
+                target, force=force, prompt_override=prompt_override, seed=seed
+            )
+        payload["image_url"] = image_cache.versioned_url_for_path(path)
     except image_client.ComfyUIError as e:
         logger.warning(
             "room image gen failed for %s/%s: %s",
@@ -375,6 +390,33 @@ async def _generate_and_emit(
 def reset_in_flight() -> None:
     """Test helper: clear the in-flight generation set."""
     _generating.clear()
+
+
+def enqueue_room_regen(room_id: str, prompt_override: str | None = None) -> str:
+    """Force-repaint a room's background (the dev repaint UI). Returns:
+      'started'   — a regen task was scheduled;
+      'in_flight' — a gen for this room is already running (maps to 409);
+      'no_room'   — no such room in the live world (maps to 404).
+
+    Each regen uses a fresh random 32-bit KSampler seed, so a same-prompt
+    repaint still comes out different. The result reaches EVERY client in
+    the room through the room_image_ready event — the same delivery path as
+    a lazy first paint — so a repaint triggered by one dev updates the art
+    for everyone standing there. Dedup shares the lazy-gen `_generating`
+    set, so a repaint while a paint is already in flight is refused."""
+    room = rooms.get_room(room_id)
+    if room is None:
+        return "no_room"
+    target = _room_target(room.world_id, room.id, room.seed)
+    key = image_client.target_dedup_key(target)
+    if key in _generating:
+        return "in_flight"
+    _generating.add(key)
+    asyncio.create_task(_generate_and_emit(
+        target, key, force=True,
+        prompt_override=prompt_override, seed=random.getrandbits(32),
+    ))
+    return "started"
 
 
 def _emit_npc_presence_narrates(controlled_toon_id: str, room_id: str) -> None:

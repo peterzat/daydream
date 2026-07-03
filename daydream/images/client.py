@@ -30,6 +30,8 @@ import asyncio
 import hashlib
 import json
 import logging
+import os
+import shutil
 import time
 import uuid
 from copy import deepcopy
@@ -113,6 +115,31 @@ class EphemeralTarget:
 
 
 # ---- workflow + helpers -------------------------------------------------
+
+
+def canonical_prompt(seed: str, suffix: str) -> str:
+    """The full positive prompt for a persistent target: the seed text and
+    the tone suffix joined with a space, each trimmed, empties dropped. This
+    is the SINGLE definition of 'the prompt' — the render path and the
+    GET .../image-prompt endpoint both call it, so what the repaint dialog
+    shows is exactly what a same-prompt regen sends."""
+    return " ".join(p for p in [seed.strip(), suffix.strip()] if p)
+
+
+def _atomic_write_with_prev(out: Path, data: bytes) -> None:
+    """Write `data` to `out` atomically (temp file in the same directory +
+    os.replace, so a concurrent reader never sees a half-written PNG), first
+    preserving any existing bytes as `{name}.png.prev`. Same-filesystem by
+    construction (temp lives in out.parent)."""
+    out.parent.mkdir(parents=True, exist_ok=True)
+    tmp = out.parent / f".{out.name}.{uuid.uuid4().hex}.tmp"
+    tmp.write_bytes(data)
+    if out.exists():
+        try:
+            shutil.copy2(out, out.with_name(out.name + ".prev"))
+        except OSError:
+            pass  # a missing revert-copy is not worth failing the regen
+    os.replace(tmp, out)
 
 
 def load_workflow(path: Path = DEFAULT_WORKFLOW) -> dict:
@@ -257,22 +284,33 @@ async def generate_image(
     lora: str | None = None,
     seed: int | None = None,
     base_url: str | None = None,
+    force: bool = False,
+    prompt_override: str | None = None,
 ) -> Path:
     """End-to-end image generation. Caller MUST hold the arbiter lock.
 
     Returns the output path on success.
 
-    Persistent: short-circuits on cache hit (no regen, no record). On miss,
-    runs the workflow, writes the file, and records to generated_assets.
-    Recording is REQUIRED on this path — if the DB isn't initialized, the
-    asset module raises (this is a programming bug, not a runtime error).
+    Persistent: short-circuits on cache hit (no regen, no record) UNLESS
+    `force`, which re-renders and overwrites in place (keeping a .prev). On
+    miss/force, runs the workflow, writes the file, and records to
+    generated_assets. Recording is REQUIRED on this path — if the DB isn't
+    initialized, the asset module raises (a programming bug, not a runtime
+    error). `prompt_override` (dev repaint UI) substitutes the positive
+    prompt WITHOUT moving the cache key: the file at target.seed's hash is
+    overwritten, and the recorded prompt_text is a fixed marker, never the
+    user text.
 
     Ephemeral: always runs the workflow, writes to the deterministic
-    ephemeral path (or target.out_path if set). Never recorded."""
+    ephemeral path (or target.out_path if set). Never recorded.
+    force / prompt_override do not apply (it always regenerates anyway)."""
     base_workflow = _apply_overrides(load_workflow(), model, lora)
 
     if isinstance(target, PersistentTarget):
-        return await _generate_persistent(target, base_workflow, seed, base_url)
+        return await _generate_persistent(
+            target, base_workflow, seed, base_url,
+            force=force, prompt_override=prompt_override,
+        )
     if isinstance(target, EphemeralTarget):
         return await _generate_ephemeral(target, base_workflow, seed, base_url)
     raise TypeError(f"unknown target type: {type(target).__name__}")
@@ -283,14 +321,20 @@ async def _generate_persistent(
     base_workflow: dict,
     seed_override: int | None,
     base_url: str | None,
+    *,
+    force: bool = False,
+    prompt_override: str | None = None,
 ) -> Path:
     out = cache.cache_path(
         target.world_id, target.target_kind, target.target_id, target.seed, base_workflow
     )
-    if out.exists():
+    if out.exists() and not force:
         return out
-    full_prompt = " ".join(
-        p for p in [target.seed.strip(), target.prompt_suffix.strip()] if p
+    experimental = prompt_override is not None and prompt_override.strip() != ""
+    full_prompt = (
+        prompt_override.strip()
+        if experimental
+        else canonical_prompt(target.seed, target.prompt_suffix)
     )
     ksampler_seed = (
         seed_override
@@ -299,9 +343,14 @@ async def _generate_persistent(
     )
     wf_to_run = build_prompt_workflow(base_workflow, full_prompt, seed=ksampler_seed)
     image_bytes = await _execute_workflow(wf_to_run, base_url=base_url)
-    out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_bytes(image_bytes)
-    _record_persistent(target, full_prompt, base_workflow, out)
+    _atomic_write_with_prev(out, image_bytes)
+    # Record against the CANONICAL seed (upsert hits the same row); a custom
+    # prompt is logged as a fixed marker, never the user's text (it is not
+    # retained by design).
+    recorded_prompt = (
+        "(experimental prompt, not retained)" if experimental else full_prompt
+    )
+    _record_persistent(target, recorded_prompt, base_workflow, out)
     return out
 
 

@@ -70,13 +70,15 @@ def test_snapshot_image_url_is_set_when_cached(tmp_path: Path):
     p = image_cache.cache_path("w-bunny", "room", "r-meadow", seed, wf)
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_bytes(b"\x89PNG\r\n\x1a\nfake-cached-png")
-    expected_url = image_cache.cache_url("w-bunny", "room", "r-meadow", seed, wf)
+    base_url = image_cache.cache_url("w-bunny", "room", "r-meadow", seed, wf)
 
     with TestClient(app) as client:
         _login(client)
         with client.websocket_connect("/ws") as ws:
             msg = ws.receive_json()
-    assert msg["room"]["image_url"] == expected_url
+    # Snapshot URL is now ?v=<mtime>-versioned; the path half is unchanged.
+    assert msg["room"]["image_url"].split("?")[0] == base_url
+    assert "?v=" in msg["room"]["image_url"]
 
 
 # ---- /cache StaticFiles mount ------------------------------------------
@@ -116,7 +118,8 @@ async def test_generate_and_emit_writes_room_image_ready_with_url(tmp_path: Path
         target.world_id, target.target_kind, target.target_id, target.seed, wf
     )
 
-    async def fake_gen(t, *, model=None, lora=None, seed=None, base_url=None):
+    async def fake_gen(t, *, model=None, lora=None, seed=None, base_url=None,
+                       force=False, prompt_override=None):
         out = image_cache.cache_path(
             t.world_id, t.target_kind, t.target_id, t.seed, wf
         )
@@ -131,7 +134,9 @@ async def test_generate_and_emit_writes_room_image_ready_with_url(tmp_path: Path
     matching = [e for e in out if e.kind == "room_image_ready" and e.room_id == "r-meadow"]
     assert len(matching) == 1
     payload = matching[0].payload
-    assert payload["image_url"] == image_cache.url_for_cache_path(expected_path)
+    # URL is now ?v=<mtime>-versioned; strip the query to compare the path.
+    assert payload["image_url"].split("?")[0] == image_cache.url_for_cache_path(expected_path)
+    assert "?v=" in payload["image_url"]
     assert "error" not in payload
 
 

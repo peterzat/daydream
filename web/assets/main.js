@@ -821,6 +821,104 @@ function closeBackpack() {
   document.getElementById("backpack-panel").classList.add("hidden");
 }
 
+// ---- dev room-image repaint tools --------------------------------------
+// Click the plate for a repaint arrow (same-prompt regen); double-click for
+// the gear (open the prompt editor). Both reveal lower-right and auto-hide.
+// Nothing typed is persisted; a repaint overwrites the cached image in place
+// and the room_image_ready event swaps the art in for everyone in the room.
+// A dev instrument, expected to be gated off for real players.
+let plateClickTimer = null;
+let plateToolsHideTimer = null;
+
+function showPlateTool(which) {
+  const tools = document.getElementById("plate-tools");
+  document.getElementById("plate-regen").classList.toggle("hidden", which !== "regen");
+  document.getElementById("plate-gear").classList.toggle("hidden", which !== "gear");
+  tools.classList.remove("hidden");
+  if (plateToolsHideTimer) clearTimeout(plateToolsHideTimer);
+  plateToolsHideTimer = setTimeout(hidePlateTools, 4000);
+}
+
+function hidePlateTools() {
+  document.getElementById("plate-tools").classList.add("hidden");
+  if (plateToolsHideTimer) { clearTimeout(plateToolsHideTimer); plateToolsHideTimer = null; }
+}
+
+async function postRepaint(prompt) {
+  if (!bgShownFor) { systemLine("(no room to repaint yet)"); return; }
+  // Show the painting overlay immediately; room_image_ready clears it.
+  document.getElementById("painting-overlay").classList.remove("hidden");
+  const body = prompt ? { prompt } : {};
+  const r = await fetch(`/api/rooms/${encodeURIComponent(bgShownFor)}/image`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    credentials: "same-origin",
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) {
+    document.getElementById("painting-overlay").classList.add("hidden");
+    let detail = `${r.status}`;
+    try { const j = await r.json(); if (j.detail) detail = `${r.status} ${j.detail}`; } catch (_) {}
+    systemLine(`(repaint failed: ${detail})`);
+  }
+}
+
+async function openRepaintDialog() {
+  if (!bgShownFor) { systemLine("(no room to repaint yet)"); return; }
+  const current = document.getElementById("repaint-current");
+  const input = document.getElementById("repaint-input");
+  current.textContent = "loading...";
+  input.value = "";
+  document.getElementById("repaint-panel").classList.remove("hidden");
+  try {
+    const r = await fetch(`/api/rooms/${encodeURIComponent(bgShownFor)}/image-prompt`,
+      { credentials: "same-origin" });
+    if (!r.ok) throw new Error(`${r.status}`);
+    const j = await r.json();
+    current.textContent = j.prompt;
+    input.value = j.prompt; // prefill so a dev edits from the real prompt
+  } catch (e) {
+    current.textContent = `(could not load prompt: ${e.message})`;
+  }
+}
+
+function closeRepaintDialog() {
+  document.getElementById("repaint-panel").classList.add("hidden");
+}
+
+// Single vs double click on the plate: a 250 ms timer distinguishes them so
+// a dblclick doesn't also fire the single-click branch.
+document.querySelector(".plate-figure").addEventListener("click", () => {
+  if (plateClickTimer) return; // second half of a dblclick; let dblclick win
+  plateClickTimer = setTimeout(() => {
+    plateClickTimer = null;
+    showPlateTool("regen");
+  }, 250);
+});
+document.querySelector(".plate-figure").addEventListener("dblclick", () => {
+  if (plateClickTimer) { clearTimeout(plateClickTimer); plateClickTimer = null; }
+  showPlateTool("gear");
+});
+document.getElementById("plate-regen").addEventListener("click", (e) => {
+  e.stopPropagation();
+  hidePlateTools();
+  postRepaint(null);
+});
+document.getElementById("plate-gear").addEventListener("click", (e) => {
+  e.stopPropagation();
+  hidePlateTools();
+  openRepaintDialog();
+});
+document.getElementById("repaint-go").addEventListener("click", () => {
+  const prompt = document.getElementById("repaint-input").value.trim();
+  closeRepaintDialog();
+  postRepaint(prompt || null);
+});
+document.getElementById("repaint-close").addEventListener("click", closeRepaintDialog);
+document.getElementById("repaint-panel").addEventListener("click", (e) => {
+  if (e.target.id === "repaint-panel") closeRepaintDialog(); // backdrop closes
+});
+
 function renderKeepsakes(items) {
   const box = document.getElementById("keepsakes");
   box.innerHTML = "";

@@ -275,6 +275,69 @@ async def test_persistent_does_not_record_on_cache_hit(live_db, tmp_path):
 
 
 @pytest.mark.asyncio
+async def test_force_regenerates_and_keeps_prev(live_db):
+    """force=True re-renders over a cache hit, overwrites the file in place,
+    and preserves the outgoing bytes as {hash}.png.prev."""
+    target = image_client.PersistentTarget(
+        world_id="w-bunny", target_kind="room", target_id="r-force",
+        seed="a forced scene", prompt_suffix=image_client.WHIMSY_PROMPT_SUFFIX,
+    )
+    wf = image_client.load_workflow()
+    out = image_cache.cache_path(target.world_id, "room", "r-force", target.seed, wf)
+
+    with patch.object(image_client, "_execute_workflow",
+                      new=AsyncMock(side_effect=[b"first-bytes", b"second-bytes"])):
+        await image_client.generate_image(target)          # miss -> render #1
+        p2 = await image_client.generate_image(target, force=True)  # force -> #2
+    assert p2 == out
+    assert out.read_bytes() == b"second-bytes"
+    prev = out.with_name(out.name + ".prev")
+    assert prev.exists() and prev.read_bytes() == b"first-bytes"
+
+
+@pytest.mark.asyncio
+async def test_prompt_override_overwrites_same_path_and_hides_text(live_db):
+    """A custom prompt renders into the CANONICAL seed's cache file (the key
+    never moves) and the user's text is never persisted — the row records a
+    fixed marker instead."""
+    target = image_client.PersistentTarget(
+        world_id="w-bunny", target_kind="room", target_id="r-custom",
+        seed="canonical seed text", prompt_suffix=image_client.WHIMSY_PROMPT_SUFFIX,
+    )
+    wf = image_client.load_workflow()
+    canonical_path = image_cache.cache_path(
+        target.world_id, "room", "r-custom", target.seed, wf)
+
+    with patch.object(image_client, "_execute_workflow",
+                      new=AsyncMock(return_value=b"custom-bytes")):
+        p = await image_client.generate_image(
+            target, force=True, prompt_override="a wildly different prompt")
+    assert p == canonical_path
+    assert canonical_path.read_bytes() == b"custom-bytes"
+    rows = assets.list_assets()
+    assert len(rows) == 1
+    assert rows[0].prompt_text == "(experimental prompt, not retained)"
+    assert "wildly different" not in rows[0].prompt_text
+    assert rows[0].seed_hash == image_cache.seed_hash(target.seed)
+
+
+@pytest.mark.asyncio
+async def test_force_regen_upserts_single_row(live_db):
+    """Repeated regens update the one row (upsert on kind/id/seed_hash),
+    never pile up."""
+    target = image_client.PersistentTarget(
+        world_id="w-bunny", target_kind="room", target_id="r-upsert",
+        seed="upsert seed", prompt_suffix=image_client.WHIMSY_PROMPT_SUFFIX,
+    )
+    with patch.object(image_client, "_execute_workflow",
+                      new=AsyncMock(return_value=b"bytes")):
+        await image_client.generate_image(target)
+        await image_client.generate_image(target, force=True)
+        await image_client.generate_image(target, force=True)
+    assert len(assets.list_assets()) == 1
+
+
+@pytest.mark.asyncio
 async def test_persistent_requires_db_no_fail_open(tmp_path, monkeypatch):
     """The persistent path REQUIRES recording. If the DB isn't initialized,
     the call must raise — silent fail-open would lose provenance."""

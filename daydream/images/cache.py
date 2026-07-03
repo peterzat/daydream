@@ -16,6 +16,12 @@ Editing the seed OR the workflow JSON produces a different combined_hash,
 misses the cache, and triggers regeneration. Old files stay on disk (no
 destructive deletes) until the operator chooses to clean them; this is
 intentional so admin rollback still has the prior asset to re-serve.
+
+A forced regen (the dev-facing repaint UI) overwrites {combined_hash}.png
+in place — the cache key does NOT move (same seed + workflow), only the
+pixels — and keeps one {combined_hash}.png.prev of the replaced bytes as a
+cheap revert point. The `/cache` route serves only `*.png`, so `.prev` is
+never web-served; `world verify` will list it as an orphan file, harmlessly.
 """
 
 import hashlib
@@ -89,6 +95,26 @@ def url_for_cache_path(path: Path) -> str:
     generate_image and don't want to recompute the hash via cache_url()."""
     rel = path.relative_to(cache_dir())
     return "/cache/" + rel.as_posix()
+
+
+def versioned_url_for_path(path: Path) -> str:
+    """url_for_cache_path plus a ?v=<int(mtime)> cache-buster.
+
+    A forced regen overwrites the cache file in place, so its URL path is
+    unchanged. Without a version the browser would serve the stale bytes
+    from its heuristic cache AND the SPA's `bg.src.endsWith(url)` check
+    would treat it as 'same bitmap, nothing to reload' — the room would keep
+    showing the old art. Folding the file's mtime into the query defeats
+    both. The snapshot builder and the room_image_ready event both call this
+    on the SAME file, so they carry the SAME version and never trigger a
+    redundant refetch of each other. Falls back to the bare URL if the file
+    vanished (a 404 the SPA already tolerates)."""
+    base = url_for_cache_path(path)
+    try:
+        v = int(path.stat().st_mtime)
+    except OSError:
+        return base
+    return f"{base}?v={v}"
 
 
 def ensure_cache_root() -> Path:

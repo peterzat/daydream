@@ -24,6 +24,14 @@
       </figure>
       <span class="glow" aria-hidden="true"></span>
       <div id="painting-overlay" class="hidden" aria-live="polite">painting...</div>
+      <!-- dev repaint tools: click the plate for the repaint arrow, double-
+           click for the prompt-editor gear (revealed lower-right, auto-hide) -->
+      <div id="plate-tools" class="plate-tools hidden">
+        <button id="plate-regen" type="button" class="plate-tool"
+                title="Repaint this room" aria-label="Repaint this room">&#x21bb;</button>
+        <button id="plate-gear" type="button" class="plate-tool hidden"
+                title="Edit the prompt&hellip;" aria-label="Edit the prompt">&#x2699;</button>
+      </div>
     </header>
 
     <div class="titleblock">
@@ -120,6 +128,27 @@
         </div>
         <p class="collection-note">keepsakes gather quietly as you wander &mdash;<br>every dream leaves you carrying a little more.</p>
         <button id="backpack-close" type="button" class="back-link">&larr; close the satchel</button>
+      </section>
+    </div>
+  </div>
+
+  <!-- dev repaint dialog: experiment with the room-image prompt (never stored) -->
+  <div id="repaint-panel" class="backpack-overlay hidden" role="dialog" aria-label="repaint this room">
+    <div class="book">
+      <section class="pg left">
+        <h1 class="spread-title">Repaint</h1>
+        <p class="spread-sub">the prompt behind this room</p>
+        <div class="page-eyebrow">in use now</div>
+        <pre id="repaint-current" class="repaint-current"></pre>
+      </section>
+      <section class="pg right">
+        <div class="page-eyebrow">your version</div>
+        <textarea id="repaint-input" class="repaint-input" rows="8" spellcheck="false"></textarea>
+        <div class="repaint-actions">
+          <button id="repaint-go" type="button" class="satchel-link">repaint</button>
+          <button id="repaint-close" type="button" class="back-link">&larr; never mind</button>
+        </div>
+        <p class="collection-note">nothing typed here is remembered &mdash;<br>the image is cached, the prompt is not.</p>
       </section>
     </div>
   </div>

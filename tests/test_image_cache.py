@@ -180,3 +180,21 @@ def test_world_room_isolation():
     p2 = cache.cache_path("w-1", "room", "r-forge", "same seed", wf)
     assert p1 != p2
     assert p1.parent != p2.parent
+
+
+# ---- versioned_url_for_path (regen cache-busting) ----------------------
+
+
+def test_versioned_url_appends_int_mtime():
+    p = cache.cache_dir() / "w" / "room" / "r" / "abc123.png"
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_bytes(b"x")
+    url = cache.versioned_url_for_path(p)
+    assert url.startswith("/cache/w/room/r/abc123.png?v=")
+    assert int(url.split("?v=")[1]) == int(p.stat().st_mtime)
+
+
+def test_versioned_url_falls_back_to_bare_when_missing():
+    p = cache.cache_dir() / "w" / "room" / "r" / "gone.png"
+    p.parent.mkdir(parents=True, exist_ok=True)  # dir exists, file does not
+    assert cache.versioned_url_for_path(p) == "/cache/w/room/r/gone.png"

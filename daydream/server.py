@@ -13,7 +13,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
 from daydream import config, db, drift, version
-from daydream.api import auth, slots, world, ws
+from daydream.api import auth, rooms as rooms_api, slots, world, ws
 from daydream.api.access import AccessMiddleware
 from daydream.api.csrf import CsrfOriginMiddleware
 from daydream.api.nocache import NoCacheAssetsMiddleware
@@ -73,6 +73,7 @@ app.add_middleware(AccessMiddleware)
 app.include_router(auth.router)
 app.include_router(slots.router)
 app.include_router(world.router)
+app.include_router(rooms_api.router)
 app.include_router(ws.router)
 
 

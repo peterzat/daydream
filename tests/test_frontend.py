@@ -635,3 +635,39 @@ def test_non_assets_paths_unaffected_by_nocache_middleware():
         # stamping here would fight the OS-level file cache on the box
         # for no benefit.
         assert r.headers.get("cache-control") is None
+
+
+# ---- dev room-image repaint UI (plan 2026-07-02) -----------------------
+
+
+def test_index_html_has_repaint_plate_tools_and_dialog():
+    with TestClient(app) as client:
+        _login(client)
+        r = client.get("/")
+    assert 'id="plate-tools"' in r.text
+    assert 'id="plate-regen"' in r.text
+    assert 'id="plate-gear"' in r.text
+    assert 'id="repaint-panel"' in r.text
+    assert 'id="repaint-input"' in r.text
+    assert 'id="repaint-current"' in r.text
+
+
+def test_main_js_wires_repaint_handlers():
+    with TestClient(app) as client:
+        _login(client)
+        r = client.get("/assets/main.js")
+    # Click/dblclick discrimination + the regen/prompt endpoints.
+    assert "plate-figure" in r.text
+    assert "dblclick" in r.text
+    assert "/image-prompt" in r.text
+    assert "/image" in r.text
+    # Same-origin POST, no persisted prompt on the client either.
+    assert "openRepaintDialog" in r.text
+
+
+def test_style_css_has_plate_tools():
+    with TestClient(app) as client:
+        _login(client)
+        r = client.get("/assets/style.css")
+    assert ".plate-tools" in r.text
+    assert ".repaint-input" in r.text
