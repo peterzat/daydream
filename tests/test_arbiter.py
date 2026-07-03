@@ -290,3 +290,4 @@ def test_status_arbiter_endpoint():
         assert r.status_code == 200
         assert r.text.startswith("arbiter: llm 0/")
         assert "image idle" in r.text
+        assert "events dropped 0" in r.text

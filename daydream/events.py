@@ -11,10 +11,28 @@ read events. Snapshots are (db file, max(seq)).
 
 import asyncio
 import json
+import logging
 from dataclasses import dataclass
 from typing import Any
 
 from daydream import db
+
+logger = logging.getLogger("daydream.events")
+
+# Per-subscriber queue bound. A WS connection whose client stops reading
+# (backgrounded tab, dead socket mid-close, a bot that never drains) would
+# otherwise grow its queue without limit as the world mutates. 256 is a
+# generous backlog — far more than a live viewer is ever behind — so a
+# healthy connection never hits it; a wedged one drops its OLDEST events
+# (ring semantics) rather than ballooning memory. Safe because every
+# observable mutation re-snapshots and a reconnect replays via ?since, so a
+# lagged consumer self-heals to current truth on the next snapshot.
+EVENT_QUEUE_MAXSIZE = 256
+
+# Process-wide count of events dropped from full subscriber queues, for
+# observability (surfaced by dropped_event_total(); read by the swarm
+# harness). Control signals are never counted here — they're undroppable.
+_dropped_total = 0
 
 
 @dataclass(frozen=True)
@@ -138,7 +156,9 @@ def max_seq() -> int:
 
 
 def subscribe() -> asyncio.Queue:
-    q: asyncio.Queue = asyncio.Queue()
+    q: asyncio.Queue = asyncio.Queue(maxsize=EVENT_QUEUE_MAXSIZE)
+    # Per-queue drop count; the first drop WARNs once (see _put_bounded).
+    q._dd_dropped = 0  # type: ignore[attr-defined]
     _subscribers.append(q)
     return q
 
@@ -148,26 +168,103 @@ def unsubscribe(q: asyncio.Queue) -> None:
         _subscribers.remove(q)
 
 
+def _put_bounded(q: asyncio.Queue, item: Any) -> None:
+    """Enqueue onto a bounded subscriber queue with drop-oldest ring
+    semantics. On overflow the OLDEST Event is evicted so the freshest
+    state still lands (a lagged consumer self-heals via the next
+    re-snapshot / reconnect replay). Control signals (WORLD_CHANGED) are
+    NEVER dropped: losing one strands a connection on a swapped-out world,
+    which a reconnect can't recover as cheaply as a missed event. The
+    fast path (not full) and the common overflow (oldest is an Event) are
+    O(1); the drain-refill only runs when a rare control signal sits at the
+    head."""
+    global _dropped_total
+    try:
+        q.put_nowait(item)
+        return
+    except asyncio.QueueFull:
+        pass
+    # Full. Evict the oldest item.
+    try:
+        oldest = q.get_nowait()
+    except asyncio.QueueEmpty:
+        # Drained concurrently (shouldn't happen: single-threaded loop).
+        q.put_nowait(item)
+        return
+    if not isinstance(oldest, _ControlSignal):
+        # Common case: the head was an old event; dropping it is exactly
+        # the ring behavior we want, and room now exists. O(1), order kept.
+        q.put_nowait(item)
+        _record_drop(q)
+        return
+    # Rare path: the head is an undroppable control signal. Drain the rest
+    # and rebuild [head] + rest so the signal keeps its position, then drop
+    # the oldest EVENT from that sequence instead.
+    combined: list[Any] = [oldest]
+    try:
+        while True:
+            combined.append(q.get_nowait())
+    except asyncio.QueueEmpty:
+        pass
+    for i, it in enumerate(combined):
+        if not isinstance(it, _ControlSignal):
+            del combined[i]
+            _record_drop(q)
+            break
+    else:
+        # Pathological: queue is all control signals. Drop the oldest to
+        # avoid unbounded growth (does not count as an event drop).
+        if combined:
+            del combined[0]
+    for it in combined:
+        q.put_nowait(it)
+    q.put_nowait(item)
+
+
+def _record_drop(q: asyncio.Queue) -> None:
+    global _dropped_total
+    _dropped_total += 1
+    q._dd_dropped = getattr(q, "_dd_dropped", 0) + 1  # type: ignore[attr-defined]
+    if q._dd_dropped == 1:  # type: ignore[attr-defined]
+        logger.warning(
+            "event subscriber queue full (%d); dropping oldest events for a "
+            "lagged connection. It self-heals on the next re-snapshot / "
+            "reconnect. (further drops on this connection are silent)",
+            EVENT_QUEUE_MAXSIZE,
+        )
+
+
+def dropped_event_total() -> int:
+    """Process-wide count of events dropped from full subscriber queues
+    since boot. Observability for the swarm harness / future stats."""
+    return _dropped_total
+
+
 def _broadcast(event: Event) -> None:
-    """Fan out an event to every live subscriber. Unbounded queues, so
-    put_nowait never blocks; the slow-consumer escape hatch lands in v2
-    once we have real CCU to worry about."""
+    """Fan out an event to every live subscriber via the bounded, drop-oldest
+    ring (see _put_bounded). A wedged consumer can never balloon memory or
+    block the append path."""
     for q in list(_subscribers):
-        q.put_nowait(event)
+        _put_bounded(q, event)
 
 
 def broadcast_world_changed() -> None:
     """Push the WORLD_CHANGED control signal to every live subscriber so each
     WS connection re-snapshots against the now-live world. Called by the
     in-process world hot-swap AFTER the live DB has been swapped and reopened.
-    Sync (put_nowait never blocks); a no-op when there are no subscribers."""
+    Sync; a no-op when there are no subscribers. Routed through the bounded
+    ring like every event, but _put_bounded guarantees the control signal
+    itself is never the item dropped."""
     for q in list(_subscribers):
-        q.put_nowait(WORLD_CHANGED)
+        _put_bounded(q, WORLD_CHANGED)
 
 
 def reset_subscribers() -> None:
-    """Test helper: drop all subscribers. Not for production paths."""
+    """Test helper: drop all subscribers and the drop counter. Not for
+    production paths."""
+    global _dropped_total
     _subscribers.clear()
+    _dropped_total = 0
 
 
 def subscriber_count() -> int:

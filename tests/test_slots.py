@@ -207,6 +207,81 @@ def test_claim_takes_over_when_controller_not_live(monkeypatch):
         assert r.json()["claimed_by_me"] is True
 
 
+def test_kick_own_toon_allowed_even_when_live(monkeypatch):
+    """You can always kick your OWN toon, even while your session is live —
+    the ownership guard only protects OTHER sessions' toons."""
+    from daydream.api import ws as ws_mod
+
+    with TestClient(app) as client:
+        _login(client)
+        client.post(
+            "/api/slots/4/create",
+            json={"name": "Mira", "appearance_seed": "a small fox"},
+        )
+        monkeypatch.setattr(ws_mod, "is_session_live", lambda sid: True)
+        r = client.post("/api/slots/4/kick")
+        assert r.status_code == 200
+
+
+def test_kick_other_live_players_toon_refused(monkeypatch):
+    """A second session cannot kick a toon a DIFFERENT, live session controls
+    (the grief case). 403, and the toon is left untouched."""
+    from daydream.api import ws as ws_mod
+
+    with TestClient(app) as c1, TestClient(app) as c2:
+        _login(c1)
+        _login(c2)
+        c1.post(
+            "/api/slots/3/create",
+            json={"name": "Ivo", "appearance_seed": "a tall heron"},
+        )
+        monkeypatch.setattr(ws_mod, "is_session_live", lambda sid: True)
+        r = c2.post("/api/slots/3/kick")
+        assert r.status_code == 403
+        # Untouched: still human-controlled, not kicked.
+        slot3 = next(s for s in c1.get("/api/slots").json()["slots"] if s["slot"] == 3)
+        assert slot3["toon"] is not None
+        assert slot3["toon"]["is_human_controlled"] is True
+        assert slot3["toon"]["kicked_at"] is None
+
+
+def test_kick_abandoned_toon_allowed(monkeypatch):
+    """A toon whose controlling session has NO live WS (tab closed) is not
+    protected: another session may kick it — mirrors claim's takeover rule."""
+    from daydream.api import ws as ws_mod
+
+    with TestClient(app) as c1, TestClient(app) as c2:
+        _login(c1)
+        _login(c2)
+        c1.post(
+            "/api/slots/3/create",
+            json={"name": "Ivo", "appearance_seed": "a tall heron"},
+        )
+        monkeypatch.setattr(ws_mod, "is_session_live", lambda sid: False)
+        r = c2.post("/api/slots/3/kick")
+        assert r.status_code == 200
+
+
+def test_delete_other_live_players_toon_refused(monkeypatch):
+    """Delete is guarded identically to kick: a different live session's toon
+    is protected (403) and survives the attempt."""
+    from daydream.api import ws as ws_mod
+
+    with TestClient(app) as c1, TestClient(app) as c2:
+        _login(c1)
+        _login(c2)
+        c1.post(
+            "/api/slots/5/create",
+            json={"name": "Ivo", "appearance_seed": "a tall heron"},
+        )
+        monkeypatch.setattr(ws_mod, "is_session_live", lambda sid: True)
+        r = c2.post("/api/slots/5/delete")
+        assert r.status_code == 403
+        # Survives: still listed.
+        slot5 = next(s for s in c1.get("/api/slots").json()["slots"] if s["slot"] == 5)
+        assert slot5["toon"] is not None
+
+
 def test_kicked_toon_keeps_inventory_and_memories():
     """Per the spec: kick preserves current_room_id, inventory_json,
     mood, and any accrued memories. The kicked toon row stays intact

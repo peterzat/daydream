@@ -49,6 +49,39 @@ def _validate_slot(slot: int) -> None:
         raise HTTPException(status_code=404, detail="slot out of range (1-5)")
 
 
+def _require_slot_actionable(slot: int, sid: str) -> "toons.Toon":
+    """Ownership gate shared by kick and delete. Returns the slot's toon if
+    the caller may act on it, else raises. A caller MAY act when the toon is
+    their own, uncontrolled (already kicked), or held by a session with no
+    live WS connection (abandoned) -- the same takeover rule `claim` uses.
+    It refuses (403) only when ANOTHER, currently-LIVE session controls the
+    toon: the one grief case worth stopping now that two friends can be in
+    the world at once (before this, any session could kick/delete an active
+    player's toon out from under them). 404 when the slot is empty.
+
+    Claiming intentionally does NOT route through here -- its takeover of a
+    dead session's toon is unchanged (slots.py:claim_slot)."""
+    t = toons.get_toon_in_slot(slot)
+    if t is None:
+        raise HTTPException(status_code=404, detail="slot is empty")
+    # Import lazily to avoid a module-load cycle (mirrors claim_slot).
+    from daydream.api import ws as ws_mod
+
+    controller = t.controller_session
+    protected = (
+        t.is_human_controlled
+        and t.kicked_at is None
+        and controller is not None
+        and controller != sid
+        and ws_mod.is_session_live(controller)
+    )
+    if protected:
+        raise HTTPException(
+            status_code=403, detail="slot is held by another active player"
+        )
+    return t
+
+
 @router.get("/api/slots")
 async def list_slots(request: Request) -> dict:
     """List the 5 human slots and their current state. Empty slots
@@ -129,10 +162,13 @@ async def kick_slot(slot: int, request: Request) -> dict:
     """Release `slot` to a non-drifting NPC. Sets controller_session
     NULL, is_human_controlled 0, kicked_at <UTC ISO>. The toon stays
     in its current room carrying its inventory + memories.
-    Errors: 404 slot empty or not in 1..5."""
+    Errors: 404 slot empty or not in 1..5; 403 slot held by another
+    active player (kicking your own, an abandoned, or an already-kicked
+    toon is allowed)."""
     _require_authed(request)
     _validate_slot(slot)
     sid = _session_id(request)
+    _require_slot_actionable(slot, sid)
     toon = toons.kick_slot(slot)
     if toon is None:
         raise HTTPException(status_code=404, detail="slot is empty")
@@ -155,10 +191,13 @@ async def leave_session(request: Request) -> dict:
 @router.post("/api/slots/{slot}/delete")
 async def delete_toon(slot: int, request: Request) -> dict:
     """Permanently delete the toon in `slot`, freeing it — distinct from kick,
-    which rests a recoverable toon. Errors: 404 slot empty or out of range.
-    Friend-scope: any authed session may delete any slot (v2 tightens)."""
+    which rests a recoverable toon. Errors: 404 slot empty or out of range;
+    403 slot held by another active player. Deleting your own, an abandoned,
+    or an already-kicked toon is allowed (the same ownership rule as kick)."""
     _require_authed(request)
     _validate_slot(slot)
+    sid = _session_id(request)
+    _require_slot_actionable(slot, sid)
     deleted = toons.delete_slot(slot)
     if deleted is None:
         raise HTTPException(status_code=404, detail="slot is empty")

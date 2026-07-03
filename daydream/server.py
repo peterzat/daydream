@@ -107,6 +107,7 @@ async def status_arbiter():
     still worth a line, unlike drift's silent-until-first-tick counters."""
     from fastapi.responses import PlainTextResponse
 
+    from daydream import events
     from daydream.gpu import arbiter
 
     s = arbiter.stats()
@@ -116,7 +117,8 @@ async def status_arbiter():
         f" / image {'busy' if s['active_exclusive'] else 'idle'}"
         f" +{s['waiting_exclusive']} waiting"
         f" / max wait llm {s['max_wait_ms_llm']}ms"
-        f" image {s['max_wait_ms_exclusive']}ms\n"
+        f" image {s['max_wait_ms_exclusive']}ms"
+        f" / events dropped {events.dropped_event_total()}\n"
     )
 
 

@@ -187,6 +187,13 @@ def _slot_occupied(slot: int) -> Toon | None:
     return rows[0] if rows else None
 
 
+def get_toon_in_slot(slot: int) -> Toon | None:
+    """Public read of the toon currently in `slot` (default world), or None
+    if empty. The slot API's ownership guard reads controller_session /
+    liveness off this before deciding whether a kick/delete is allowed."""
+    return _slot_occupied(slot)
+
+
 def create_toon_in_slot(
     slot: int, name: str, appearance_seed: str, session_id: str
 ) -> Toon | None:

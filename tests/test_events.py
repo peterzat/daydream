@@ -109,3 +109,72 @@ def test_persists_across_reconnect(tmp_path: Path):
     db.init_live(path=path, migrations_dir=config.MIGRATIONS_DIR)
     fetched = events.fetch_since(last_seq=0)
     assert any(e.seq == e1.seq and e.payload == {"text": "hello"} for e in fetched)
+
+
+# ---- bounded subscriber queues (drop-oldest ring, control-safe) -----------
+
+
+def _mk_event(seq: int) -> events.Event:
+    return events.Event(
+        seq=seq, created_at="t", actor_type="toon", actor_id="t-x",
+        kind="say", payload={"n": seq}, room_id="r-x", recipient_id=None,
+    )
+
+
+def test_subscribe_queue_is_bounded():
+    q = events.subscribe()
+    assert q.maxsize == events.EVENT_QUEUE_MAXSIZE
+
+
+def test_full_queue_drops_oldest_event():
+    """Past the cap, the OLDEST event is evicted so the freshest lands;
+    the queue never grows beyond the bound."""
+    q = events.subscribe()
+    n = events.EVENT_QUEUE_MAXSIZE
+    for i in range(n + 5):  # 5 past the cap
+        events._put_bounded(q, _mk_event(i))
+    assert q.qsize() == n
+    drained = [q.get_nowait() for _ in range(q.qsize())]
+    seqs = [e.seq for e in drained]
+    # Oldest 5 dropped; newest present; FIFO order preserved.
+    assert seqs[0] == 5
+    assert seqs[-1] == n + 4
+    assert events.dropped_event_total() == 5
+
+
+def test_control_signal_never_dropped_on_overflow():
+    """A WORLD_CHANGED pushed onto a full queue evicts an EVENT, not itself."""
+    q = events.subscribe()
+    n = events.EVENT_QUEUE_MAXSIZE
+    for i in range(n):  # exactly full
+        events._put_bounded(q, _mk_event(i))
+    events._put_bounded(q, events.WORLD_CHANGED)
+    items = [q.get_nowait() for _ in range(q.qsize())]
+    assert events.WORLD_CHANGED in items
+    assert q.maxsize == n and len(items) == n
+    # Exactly one event was dropped to make room for the control signal.
+    assert events.dropped_event_total() == 1
+
+
+def test_control_signal_at_head_preserved_when_evicting():
+    """When a control signal sits at the head of a full queue, an incoming
+    event drops the oldest EVENT (drain-refill path), not the signal."""
+    q = events.subscribe()
+    n = events.EVENT_QUEUE_MAXSIZE
+    events._put_bounded(q, events.WORLD_CHANGED)  # head is the signal
+    for i in range(n - 1):  # fill to exactly full
+        events._put_bounded(q, _mk_event(i))
+    assert q.qsize() == n
+    events._put_bounded(q, _mk_event(999))  # overflow: must drop an event
+    items = [q.get_nowait() for _ in range(q.qsize())]
+    assert events.WORLD_CHANGED is items[0]  # signal still at head
+    assert items[-1].seq == 999
+    assert 0 not in [getattr(e, "seq", None) for e in items]  # oldest event gone
+
+
+def test_healthy_consumer_never_drops():
+    q = events.subscribe()
+    for i in range(events.EVENT_QUEUE_MAXSIZE):
+        events._put_bounded(q, _mk_event(i))
+    assert events.dropped_event_total() == 0
+    assert q._dd_dropped == 0
