@@ -104,6 +104,10 @@ function connect(isReconnect) {
 }
 
 function renderSnapshot(snap) {
+  // Feature flags the server gates optional surfaces on. regen_ui governs
+  // the dev plate tools; when the server says off, the click handlers
+  // below never reveal them (and the endpoints 404 anyway).
+  featureRegenUi = !!(snap.features && snap.features.regen_ui);
   // Redeploy detection: record the server's build + world version on the first
   // snapshot (when this JS and the server matched); if a later snapshot's build
   // differs (or the world's MAJOR changed), this tab is running stale JS against
@@ -826,11 +830,14 @@ function closeBackpack() {
 // the gear (open the prompt editor). Both reveal lower-right and auto-hide.
 // Nothing typed is persisted; a repaint overwrites the cached image in place
 // and the room_image_ready event swaps the art in for everyone in the room.
-// A dev instrument, expected to be gated off for real players.
+// A dev instrument, gated by the server's features.regen_ui flag
+// (DAYDREAM_REGEN_UI; the endpoints 404 when it is off).
+let featureRegenUi = false;
 let plateClickTimer = null;
 let plateToolsHideTimer = null;
 
 function showPlateTool(which) {
+  if (!featureRegenUi) return;
   const tools = document.getElementById("plate-tools");
   document.getElementById("plate-regen").classList.toggle("hidden", which !== "regen");
   document.getElementById("plate-gear").classList.toggle("hidden", which !== "gear");

@@ -19,22 +19,30 @@ room background, without any prompt being remembered:
 This is a dev tool: per the plan we do minimal input hygiene (a length cap
 to avoid an absurd prompt) and no content filtering. Auth mirrors the other
 mutating endpoints (an authenticated session behind the tailnet gate); the
-CSRF-origin middleware already covers POSTs. NOTE: there is no gate to
-DISABLE this yet — any authed (tailnet) session can repaint shared room art.
-That is inside the current friend-scope trust model, but "turn it off for
-real players once live" needs an actual switch (BACKLOG: regen-ui-gate);
-today the off-switch is removing this router's registration in server.py.
+CSRF-origin middleware already covers POSTs. The off-switch is
+DAYDREAM_REGEN_UI=0 (config.regen_ui_enabled): both endpoints 404 as if
+they were never mounted, and the snapshot's features flag tells the SPA to
+keep the plate tools unbound. Default ON in dev; flip it off on any shared
+deployment where players shouldn't repaint shared art.
 """
 
 from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, Request
 
-from daydream import rooms
+from daydream import config, rooms
 from daydream.api import auth as auth_mod
 from daydream.images import client as image_client
 
 router = APIRouter()
+
+
+def _require_regen_enabled() -> None:
+    """404 (not 403) when the regen UI is switched off: the surface should
+    look unmounted, not forbidden — there is nothing for a player to ask
+    permission for."""
+    if not config.regen_ui_enabled():
+        raise HTTPException(status_code=404, detail="not found")
 
 # Generous cap: a real seed + suffix is a few hundred chars. This only stops
 # a pathological multi-megabyte body, not creativity.
@@ -50,6 +58,7 @@ def _require_authed(request: Request) -> None:
 async def get_image_prompt(room_id: str, request: Request) -> dict:
     """Return the canonical positive prompt for the room's background so the
     repaint dialog can show it (read-only) and pre-fill the edit box."""
+    _require_regen_enabled()
     _require_authed(request)
     room = rooms.get_room(room_id)
     if room is None:
@@ -69,6 +78,7 @@ async def repaint_room(room_id: str, request: Request) -> dict:
     regen. The new art is broadcast to everyone in the room via the
     room_image_ready event; this endpoint returns as soon as the job is
     queued."""
+    _require_regen_enabled()
     _require_authed(request)
     prompt: str | None = None
     # A body is optional; tolerate an empty/absent one (same-prompt regen).

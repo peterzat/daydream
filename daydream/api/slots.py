@@ -49,7 +49,15 @@ def _validate_slot(slot: int) -> None:
         raise HTTPException(status_code=404, detail="slot out of range (1-5)")
 
 
-def _require_slot_actionable(slot: int, sid: str) -> "toons.Toon":
+# How long after a controller's last WS drop its toon stays protected from
+# DELETE by other sessions. A reconnecting tab (the "dream is sleeping"
+# overlay) is back well inside this window; an abandoned toon outlives it.
+DELETE_GRACE_SECONDS = 120.0
+
+
+def _require_slot_actionable(
+    slot: int, sid: str, *, for_delete: bool = False
+) -> "toons.Toon":
     """Ownership gate shared by kick and delete. Returns the slot's toon if
     the caller may act on it, else raises. A caller MAY act when the toon is
     their own, uncontrolled (already kicked), or held by a session with no
@@ -58,6 +66,11 @@ def _require_slot_actionable(slot: int, sid: str) -> "toons.Toon":
     toon: the one grief case worth stopping now that two friends can be in
     the world at once (before this, any session could kick/delete an active
     player's toon out from under them). 404 when the slot is empty.
+
+    DELETE is irreversible, so `for_delete=True` widens "currently live" to
+    "live within DELETE_GRACE_SECONDS": a transient socket drop must not
+    open a window where someone else can permanently delete a live player's
+    toon. Kick stays on plain liveness (it is recoverable by design).
 
     Claiming intentionally does NOT route through here -- its takeover of a
     dead session's toon is unchanged (slots.py:claim_slot)."""
@@ -68,12 +81,18 @@ def _require_slot_actionable(slot: int, sid: str) -> "toons.Toon":
     from daydream.api import ws as ws_mod
 
     controller = t.controller_session
+    if for_delete:
+        controller_present = ws_mod.is_session_recently_live(
+            controller, DELETE_GRACE_SECONDS
+        )
+    else:
+        controller_present = ws_mod.is_session_live(controller)
     protected = (
         t.is_human_controlled
         and t.kicked_at is None
         and controller is not None
         and controller != sid
-        and ws_mod.is_session_live(controller)
+        and controller_present
     )
     if protected:
         raise HTTPException(
@@ -192,12 +211,14 @@ async def leave_session(request: Request) -> dict:
 async def delete_toon(slot: int, request: Request) -> dict:
     """Permanently delete the toon in `slot`, freeing it — distinct from kick,
     which rests a recoverable toon. Errors: 404 slot empty or out of range;
-    403 slot held by another active player. Deleting your own, an abandoned,
-    or an already-kicked toon is allowed (the same ownership rule as kick)."""
+    403 slot held by another active player, including one whose connection
+    dropped less than DELETE_GRACE_SECONDS ago (deletion is irreversible;
+    kick keeps the plain-liveness rule). Deleting your own, an abandoned,
+    or an already-kicked toon is allowed."""
     _require_authed(request)
     _validate_slot(slot)
     sid = _session_id(request)
-    _require_slot_actionable(slot, sid)
+    _require_slot_actionable(slot, sid, for_delete=True)
     deleted = toons.delete_slot(slot)
     if deleted is None:
         raise HTTPException(status_code=404, detail="slot is empty")

@@ -119,6 +119,17 @@ def password() -> str:
     return os.environ.get("DAYDREAM_PASSWORD", "")
 
 
+def regen_ui_enabled() -> bool:
+    """Whether the dev room-repaint surface is live: the two
+    /api/rooms/{id}/image* endpoints and the SPA's plate tools (the
+    snapshot carries the flag). Default ON — dev is where this project
+    lives; flip DAYDREAM_REGEN_UI=0 on a shared deployment so players
+    cannot repaint shared room art (BACKLOG regen-ui-gate)."""
+    return os.environ.get("DAYDREAM_REGEN_UI", "1").strip().lower() not in (
+        "0", "false", "no", "off",
+    )
+
+
 def session_secret() -> str:
     """Source the session-cookie signing secret. Env var wins; otherwise fall
     back to a per-install random secret persisted under ~/.config/daydream/.

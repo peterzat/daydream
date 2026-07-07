@@ -11,10 +11,12 @@ and the drift task (`daydream.drift`) live in this process's memory, so the
 offline admin CLI cannot perform a live swap. `bin/game world swap` is a thin
 HTTP client to this endpoint.
 
-Auth: gated by `auth.is_authed` (the same friend-scope gate as the slot
-endpoints). In the default tailscale access mode that is tailnet membership;
-in public mode it is the shared-password session cookie. There is no separate
-admin role in v0.
+Auth: gated by `auth.is_authed` PLUS a loopback-peer requirement. Swapping
+the whole live world is an operator action whose only real client is
+`bin/game world swap` running on the box, so the endpoint refuses any
+non-loopback caller (403) — tailnet membership alone is not enough. There
+is still no separate admin role; loopback IS the admin boundary
+(documented in SECURITY.md).
 """
 
 import logging
@@ -117,6 +119,14 @@ async def perform_world_swap(target: Path) -> dict:
 async def swap_world(request: Request):
     if not auth.is_authed(request.session):
         return JSONResponse({"error": "not authenticated"}, status_code=401)
+    # Operator surface: only the box itself may swap the live world. The
+    # real client is `bin/game world swap` talking to 127.0.0.1; a tailnet
+    # friend has no business hot-swapping everyone's world.
+    client_host = request.client.host if request.client else ""
+    if not (client_host == "::1" or client_host.startswith("127.")):
+        return JSONResponse(
+            {"error": "world swap is operator-only (loopback)"}, status_code=403
+        )
     try:
         body = await request.json()
     except Exception:

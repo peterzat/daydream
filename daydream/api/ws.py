@@ -24,12 +24,14 @@ arbitrary toon."""
 import asyncio
 import logging
 import random
+import time
 from collections import Counter
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, status
 
 from daydream import (
-    events, lighting, objects, parser, rooms, toons, verbs, version, worldstate,
+    config, events, lighting, objects, parser, rooms, toons, verbs, version,
+    worldstate,
 )
 from daydream.api import auth, csrf
 from daydream.gpu import arbiter
@@ -259,6 +261,9 @@ def _state_snapshot(
         # move / effect / swap, so this rides it; no separate control frame.
         "build": version.build_sha(),
         "world_version": version.WORLD_VERSION,
+        # Feature flags the SPA gates optional surfaces on. regen_ui: the
+        # dev plate tools (click-to-repaint); off on shared deployments.
+        "features": {"regen_ui": config.regen_ui_enabled()},
         # World-shared status (score / rank / moves / deaths / lit) from the
         # world_state KV. Present on every snapshot; a world that authors no
         # scoring simply reports zeros and a null rank, and the SPA decides
@@ -549,6 +554,10 @@ async def _dispatch_parsed(p: "parser.Parse", toon_id: str) -> None:
 # (an abandoned claim) while a toon an ACTIVE player holds stays protected. A
 # count (not a set) so a session with two tabs stays live until BOTH close.
 _live_session_counts: "Counter[str]" = Counter()
+# session id -> monotonic time of its most recent last-connection drop.
+# Bounded in practice by the handful of sessions a friend-scope server
+# ever sees; consulted by is_session_recently_live.
+_last_disconnect: dict[str, float] = {}
 
 
 def _mark_session_live(session_id: str | None) -> None:
@@ -564,6 +573,10 @@ def _unmark_session_live(session_id: str | None) -> None:
         _live_session_counts[session_id] = remaining
     else:
         _live_session_counts.pop(session_id, None)  # drop zero-count keys
+        # Remember WHEN the last connection dropped so irreversible actions
+        # (slot delete) can distinguish "briefly offline, reconnecting" from
+        # "genuinely gone" (BACKLOG delete-slot-grace-window).
+        _last_disconnect[session_id] = time.monotonic()
 
 
 def is_session_live(session_id: str | None) -> bool:
@@ -571,6 +584,21 @@ def is_session_live(session_id: str | None) -> bool:
     controling a toon. Used by the slot-claim takeover logic
     (daydream/api/slots.py)."""
     return bool(session_id) and _live_session_counts.get(session_id, 0) > 0
+
+
+def is_session_recently_live(session_id: str | None, grace_s: float) -> bool:
+    """True if the session is live now OR dropped its last WS connection
+    less than `grace_s` seconds ago. The delete endpoint uses this so a
+    transient socket drop (the reconnect overlay rides those out all the
+    time) does not open a window where another session can permanently
+    delete a live player's toon. Kick stays on plain liveness — it is
+    recoverable by design."""
+    if is_session_live(session_id):
+        return True
+    if not session_id:
+        return False
+    dropped_at = _last_disconnect.get(session_id)
+    return dropped_at is not None and (time.monotonic() - dropped_at) < grace_s
 
 
 @router.websocket("/ws")

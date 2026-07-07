@@ -1,3 +1,29 @@
+## Operator-surface boundaries (v1.0 hardening, 2026-07-07)
+
+Three friend-scope gaps closed ahead of the v1.0 cut. The trust model is
+unchanged (single shared password; tailnet membership is the outer gate;
+no per-user roles), but the boundaries inside it are now explicit:
+
+- **World swap is loopback-only.** `POST /api/world/swap` replaces the
+  entire live world; its only real client is `bin/game world swap` on the
+  box. The endpoint now refuses any non-loopback peer with 403. Loopback
+  IS the admin boundary: an operator with a shell on the box can do
+  anything anyway, and nobody else can swap the world out from under the
+  players. (`daydream/api/world.py`, tests/security/test_swap_loopback.py)
+- **The regen UI has a kill switch.** `DAYDREAM_REGEN_UI=0` makes both
+  repaint endpoints answer 404 (checked before auth, so the switched-off
+  surface leaks nothing) and the snapshot's `features.regen_ui` flag keeps
+  the SPA's plate tools unbound. Default on in dev; flip it off on any
+  shared deployment. (`daydream/api/rooms.py`, `daydream/config.py`,
+  tests/security/test_regen_gate.py)
+- **Slot delete honors a reconnect grace window.** Deleting a toon is
+  irreversible, and the old guard only checked instantaneous WS liveness,
+  so another session could delete a live player's toon during a transient
+  socket drop. Delete now refuses while the controller was live within
+  `DELETE_GRACE_SECONDS` (120 s); kick keeps the plain-liveness rule
+  because it is recoverable by design. (`daydream/api/slots.py`,
+  `daydream/api/ws.py`, tests/security/test_delete_grace.py)
+
 ## Security Review — 2026-07-02 (scope: paths)
 
 **Summary:** Path-scoped audit of the Zork platform turn (v0.6.0) at commit

@@ -17,6 +17,10 @@ from daydream import admin, config, db, drift, events
 from daydream.api import world
 from daydream.server import app
 
+# The swap endpoint is loopback-gated (operator surface); these tests ARE
+# the operator, so every client presents a loopback peer.
+LOOPBACK = ("127.0.0.1", 50000)
+
 pytestmark = pytest.mark.tier_medium
 
 # A distinguishing marker stamped into world B's meadow. World A (the seeded
@@ -96,7 +100,7 @@ def test_hot_swap_open_socket_converges_on_new_world(tmp_path):
     and afterward the live DB equals the swap target and differs from world A."""
     world_b = tmp_path / "snapshots" / "world-b.db"
     _make_world(world_b, meadow_title=MARKER_TITLE)
-    with TestClient(app) as client:
+    with TestClient(app, client=LOOPBACK) as client:
         _login(client)
         _claim_wren(client)
         with client.websocket_connect("/ws") as ws:
@@ -123,7 +127,7 @@ def test_hot_swap_open_socket_converges_on_new_world(tmp_path):
 def test_hot_swap_refuses_missing_target(tmp_path):
     missing = tmp_path / "snapshots" / "nope.db"
     missing.parent.mkdir(parents=True, exist_ok=True)
-    with TestClient(app) as client:
+    with TestClient(app, client=LOOPBACK) as client:
         _login(client)
         before = _meadow_title(config.live_db_path())
         r = client.post("/api/world/swap", json={"target": str(missing)})
@@ -134,7 +138,7 @@ def test_hot_swap_refuses_missing_target(tmp_path):
 def test_hot_swap_refuses_non_db_file(tmp_path):
     junk = tmp_path / "junk.db"
     junk.write_text("this is not a sqlite database")
-    with TestClient(app) as client:
+    with TestClient(app, client=LOOPBACK) as client:
         _login(client)
         r = client.post("/api/world/swap", json={"target": str(junk)})
         assert r.status_code == 400, r.text
@@ -144,7 +148,7 @@ def test_hot_swap_refuses_non_db_file(tmp_path):
 def test_hot_swap_refuses_newer_schema(tmp_path):
     future = tmp_path / "snapshots" / "future.db"
     _make_world(future, extra_migration="999_from_the_future.sql")
-    with TestClient(app) as client:
+    with TestClient(app, client=LOOPBACK) as client:
         _login(client)
         r = client.post("/api/world/swap", json={"target": str(future)})
         assert r.status_code == 409, r.text
@@ -155,7 +159,7 @@ def test_hot_swap_refuses_target_outside_data_dir(tmp_path):
     # tmp_path.parent is above DAYDREAM_DATA_DIR (= tmp_path), so it is
     # outside the confinement boundary.
     outside = tmp_path.parent / "outside.db"
-    with TestClient(app) as client:
+    with TestClient(app, client=LOOPBACK) as client:
         _login(client)
         r = client.post("/api/world/swap", json={"target": str(outside)})
         assert r.status_code == 400, r.text
@@ -165,7 +169,7 @@ def test_hot_swap_refuses_target_outside_data_dir(tmp_path):
 def test_hot_swap_requires_auth(tmp_path):
     world_b = tmp_path / "snapshots" / "world-b.db"
     _make_world(world_b, meadow_title=MARKER_TITLE)
-    with TestClient(app) as client:
+    with TestClient(app, client=LOOPBACK) as client:
         # No _login: the public-mode test client is unauthenticated.
         r = client.post("/api/world/swap", json={"target": str(world_b)})
         assert r.status_code == 401, r.text
@@ -181,7 +185,7 @@ def test_hot_swap_failed_copy_restores_original_world(tmp_path, monkeypatch):
     def boom(src, dst, *a, **k):
         raise OSError("disk full (injected)")
 
-    with TestClient(app) as client:
+    with TestClient(app, client=LOOPBACK) as client:
         _login(client)
         _claim_wren(client)
         original = _meadow_title(config.live_db_path())
@@ -230,7 +234,7 @@ def test_lifespan_shutdown_after_swap_stops_live_drift(tmp_path, monkeypatch):
     monkeypatch.setenv("DAYDREAM_DRIFT_ENABLED", "1")
     world_b = tmp_path / "snapshots" / "world-b.db"
     _make_world(world_b, meadow_title=MARKER_TITLE)
-    with TestClient(app) as client:
+    with TestClient(app, client=LOOPBACK) as client:
         _login(client)
         assert client.post(
             "/api/world/swap", json={"target": str(world_b)}
