@@ -507,7 +507,7 @@
       ]
     },
     {
-      "name": "maze-key-grating",
+      "name": "maze-to-cyclops",
       "commands": [
         {
           "cmd": "south",
@@ -528,76 +528,7 @@
           }
         },
         {
-          "cmd": "take key",
-          "expect": {
-            "carrying": [
-              "skeleton key"
-            ]
-          }
-        },
-        {
           "cmd": "southwest",
-          "expect": {
-            "room": "r-maze-6"
-          }
-        },
-        {
-          "cmd": "up",
-          "expect": {
-            "room": "r-maze-9"
-          }
-        },
-        {
-          "cmd": "down",
-          "expect": {
-            "room": "r-maze-11",
-            "narrate_contains": "won't be able to get back up"
-          }
-        },
-        {
-          "cmd": "northeast",
-          "expect": {
-            "room": "r-grating-room"
-          }
-        },
-        {
-          "cmd": "unlock grating with key",
-          "expect": {
-            "flag": {
-              "GRATING-UNLOCKED": true
-            }
-          }
-        },
-        {
-          "cmd": "open grating",
-          "expect": {
-            "flag": {
-              "GRATING-OPEN": true,
-              "LEAVES-MOVED": true
-            },
-            "narrate_contains": "trees above you"
-          }
-        },
-        {
-          "cmd": "southwest",
-          "expect": {
-            "room": "r-maze-11"
-          }
-        },
-        {
-          "cmd": "northwest",
-          "expect": {
-            "room": "r-maze-13"
-          }
-        },
-        {
-          "cmd": "east",
-          "expect": {
-            "room": "r-maze-9"
-          }
-        },
-        {
-          "cmd": "north",
           "expect": {
             "room": "r-maze-6"
           }
@@ -644,9 +575,6 @@
           }
         },
         {
-          "cmd": "drop key"
-        },
-        {
           "cmd": "examine thief",
           "expect": {
             "narrate_contains": "stiletto"
@@ -657,15 +585,6 @@
           "expect": {
             "narrate_contains": "nimble fingers"
           }
-        },
-        {
-          "cmd": "examine stiletto"
-        },
-        {
-          "cmd": "examine stiletto"
-        },
-        {
-          "cmd": "examine stiletto"
         },
         {
           "cmd": "kill thief with knife"
@@ -799,37 +718,61 @@
           }
         },
         {
-          "cmd": "southwest",
+          "cmd": "north",
           "expect": {
-            "room": "r-maze-6"
+            "room": "r-maze-3"
           }
         },
         {
-          "cmd": "up",
+          "cmd": "west",
           "expect": {
-            "room": "r-maze-9"
-          }
-        },
-        {
-          "cmd": "down",
-          "expect": {
-            "room": "r-maze-11"
-          }
-        },
-        {
-          "cmd": "northeast",
-          "expect": {
-            "room": "r-grating-room"
-          }
-        },
-        {
-          "cmd": "up",
-          "expect": {
-            "room": "r-grating-clearing"
+            "room": "r-maze-2"
           }
         },
         {
           "cmd": "south",
+          "expect": {
+            "room": "r-maze-1"
+          }
+        },
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-troll-room"
+          }
+        },
+        {
+          "cmd": "south",
+          "expect": {
+            "room": "r-cellar"
+          }
+        },
+        {
+          "cmd": "up",
+          "expect": {
+            "room": "r-living-room"
+          }
+        },
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-kitchen"
+          }
+        },
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-behind-house"
+          }
+        },
+        {
+          "cmd": "north",
+          "expect": {
+            "room": "r-north-of-house"
+          }
+        },
+        {
+          "cmd": "north",
           "expect": {
             "room": "r-forest-path"
           }
