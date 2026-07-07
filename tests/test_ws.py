@@ -42,6 +42,19 @@ def _claim_wren(client: TestClient) -> None:
     assert r.json()["id"] == "t-wren"
 
 
+def _grounded_say(text: str):
+    """Patch the parser's one LLM call with the grounded parse the local
+    model returns for a bare `say <text>`: the say/talk decision is
+    deliberately deferred to the model (free_text), so a say-exercising WS
+    test pins the say side per this module's mock-the-LLM convention."""
+    return patch(
+        "daydream.llm.client.acompletion_json",
+        new=AsyncMock(return_value={
+            "verb": "say", "dobj_id": None, "iobj_id": None, "args": text,
+        }),
+    )
+
+
 def _login(client: TestClient) -> None:
     """Log in AND claim the seeded Wren as this session's controlled toon.
 
@@ -289,7 +302,7 @@ def test_ws_initial_connect_to_empty_room_emits_no_presence_narrate():
     prior narrates on reconnect. Verified by sending `say` after the
     snapshot and asserting the FIRST event received is the say event,
     not a stray narrate ahead of it."""
-    with TestClient(app) as client:
+    with _grounded_say("hello"), TestClient(app) as client:
         _login(client)
         with client.websocket_connect("/ws") as ws:
             snap = ws.receive_json()
@@ -335,7 +348,7 @@ def test_ws_canonical_look_emits_narrate_event():
 
 
 def test_ws_canonical_say_emits_say_event():
-    with TestClient(app) as client:
+    with _grounded_say("hello"), TestClient(app) as client:
         _login(client)
         with client.websocket_connect("/ws") as ws:
             ws.receive_json()
@@ -371,7 +384,7 @@ def test_ws_dispatch_uses_claimed_slot_toon_not_legacy_wren():
         assert r.status_code == 200
         claimed_id = r.json()["id"]
         assert claimed_id != "t-wren"
-        with client.websocket_connect("/ws") as ws:
+        with _grounded_say("hello"), client.websocket_connect("/ws") as ws:
             ws.receive_json()  # snapshot
             ws.send_json({"kind": "input", "text": "say hello"})
             evt = ws.receive_json()
@@ -456,7 +469,7 @@ def test_ws_say_attributes_by_name_not_id(tmp_path, monkeypatch):
         )
         assert r.status_code == 200, r.text
         created_id = r.json()["id"]
-        with client.websocket_connect("/ws") as ws:
+        with _grounded_say("hello there"), client.websocket_connect("/ws") as ws:
             ws.receive_json()  # snapshot
             ws.send_json({"kind": "input", "text": "say hello there"})
             evt = ws.receive_json()
@@ -519,7 +532,7 @@ def test_ws_snapshot_includes_prior_events_after_say():
     in the snapshot's recent-events slice."""
     with TestClient(app) as client:
         _login(client)
-        with client.websocket_connect("/ws") as ws:
+        with _grounded_say("hello"), client.websocket_connect("/ws") as ws:
             ws.receive_json()
             ws.send_json({"kind": "input", "text": "say hello"})
             ws.receive_json()  # the say event

@@ -103,6 +103,23 @@ def _no_real_image_gen(request, monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def _no_real_llm(request, monkeypatch):
+    """Point the LLM at an unreachable port for every test that hasn't opted
+    into the real engine (@pytest.mark.requires_vllm), so the GPU-free tiers
+    behave identically with engines up or down.
+
+    The first-ever CI run (2026-07-07, no engines) caught five say-tests that
+    had been silently grounding through the dev box's LIVE vLLM — the
+    documented contract ("mock the LLM client") had no enforcement. Tests
+    that mock daydream.llm.client.acompletion_json never notice this; an
+    unmocked, unmarked call now degrades to LLMUnavailable/foggy in every
+    environment instead of only in CI."""
+    if request.node.get_closest_marker("requires_vllm"):
+        return
+    monkeypatch.setenv("DAYDREAM_LLM_BASE_URL", "http://127.0.0.1:9/v1")
+
+
+@pytest.fixture(autouse=True)
 def _reset_arbiter():
     """The GPU arbiter is a process-wide singleton; reset between tests so
     a leaked acquire in one test cannot block the next."""
