@@ -150,14 +150,14 @@ async def test_walkthrough_state_matches_the_real_game(our_engine):
                 i += 1
 
             where = f"after segment {seg['name']!r} (real seed {seed})"
-            real_room = oracle.room()
+            # Zero-cost probe: save/restore-bracketed, so checkpoints never
+            # advance the real game's clock/fuses/thief (tools/zork_oracle).
+            real_room, real_score, real_inv = oracle.state()
             assert real_room.lower() == _our_room_name().lower(), (
                 f"{where}: real room {real_room!r} != ours {_our_room_name()!r}")
-            real_score = oracle.score()
             ours_score = worldstate.score(WORLD)
             assert real_score == ours_score, (
                 f"{where}: real score {real_score} != ours {ours_score}")
-            real_inv = oracle.inventory()
             ours_inv = _our_inventory()
             assert real_inv == ours_inv, (
                 f"{where}: real inventory {sorted(real_inv)} != ours {sorted(ours_inv)}")

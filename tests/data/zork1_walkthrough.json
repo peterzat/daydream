@@ -104,12 +104,9 @@
           "cmd": "open case"
         },
         {
-          "cmd": "put egg in case",
+          "cmd": "drop egg",
           "expect": {
-            "score": 20,
-            "in_case": [
-              "jewel-encrusted egg"
-            ]
+            "score": 15
           }
         }
       ]
@@ -238,7 +235,7 @@
           "cmd": "down",
           "expect": {
             "room": "r-cellar",
-            "score": 45,
+            "score": 40,
             "flag": {
               "TRAP-DOOR-OPEN": false,
               "TRAP-TOUCHED": true
@@ -278,7 +275,7 @@
           "cmd": "east",
           "expect": {
             "room": "r-ew-passage",
-            "score": 50
+            "score": 45
           }
         },
         {
@@ -316,7 +313,7 @@
         {
           "cmd": "take torch",
           "expect": {
-            "score": 64,
+            "score": 59,
             "carrying": [
               "ivory torch"
             ]
@@ -347,6 +344,9 @@
         },
         {
           "cmd": "blow out candles"
+        },
+        {
+          "cmd": "drop sword"
         },
         {
           "cmd": "take candles and book",
@@ -381,18 +381,6 @@
     {
       "name": "stash-and-the-egg",
       "commands": [
-        {
-          "cmd": "drop sword"
-        },
-        {
-          "cmd": "drop bell"
-        },
-        {
-          "cmd": "drop candles"
-        },
-        {
-          "cmd": "drop book"
-        },
         {
           "cmd": "up",
           "expect": {
@@ -486,7 +474,7 @@
         {
           "cmd": "take egg",
           "expect": {
-            "score": 64,
+            "score": 59,
             "carrying": [
               "jewel-encrusted egg"
             ]
@@ -651,14 +639,8 @@
           "cmd": "up",
           "expect": {
             "room": "r-treasure-room",
-            "score": 89,
+            "score": 84,
             "narrate_contains": "his den"
-          }
-        },
-        {
-          "cmd": "give egg to thief",
-          "expect": {
-            "narrate_contains": "nimble fingers"
           }
         },
         {
@@ -669,6 +651,21 @@
           "expect": {
             "narrate_contains": "stiletto"
           }
+        },
+        {
+          "cmd": "give egg to thief",
+          "expect": {
+            "narrate_contains": "nimble fingers"
+          }
+        },
+        {
+          "cmd": "examine stiletto"
+        },
+        {
+          "cmd": "examine stiletto"
+        },
+        {
+          "cmd": "examine stiletto"
         },
         {
           "cmd": "kill thief with knife"
@@ -685,13 +682,13 @@
         {
           "cmd": "again",
           "expect": {
-            "narrate_contains": "career ending"
+            "narrate_contains": "last of his strength"
           }
         },
         {
           "cmd": "take chalice",
           "expect": {
-            "score": 99,
+            "score": 94,
             "carrying": [
               "silver chalice"
             ]
@@ -708,27 +705,9 @@
         {
           "cmd": "take canary",
           "expect": {
-            "score": 105,
+            "score": 100,
             "carrying": [
               "golden clockwork canary"
-            ]
-          }
-        },
-        {
-          "cmd": "take coins",
-          "expect": {
-            "score": 115,
-            "carrying": [
-              "leather bag of coins"
-            ]
-          }
-        },
-        {
-          "cmd": "take painting",
-          "expect": {
-            "score": 119,
-            "carrying": [
-              "painting"
             ]
           }
         },
@@ -754,14 +733,12 @@
           }
         },
         {
-          "cmd": "put coins and chalice and egg and painting in case",
+          "cmd": "put chalice and egg in case",
           "expect": {
-            "score": 135,
+            "score": 110,
             "in_case": [
-              "leather bag of coins",
               "silver chalice",
-              "jewel-encrusted egg",
-              "painting"
+              "jewel-encrusted egg"
             ]
           }
         }
@@ -771,25 +748,88 @@
       "name": "bauble-and-canary",
       "commands": [
         {
-          "cmd": "east",
-          "expect": {
-            "room": "r-kitchen"
-          }
+          "cmd": "open trap door"
         },
         {
-          "cmd": "east",
+          "cmd": "down",
           "expect": {
-            "room": "r-behind-house"
-          }
-        },
-        {
-          "cmd": "north",
-          "expect": {
-            "room": "r-north-of-house"
+            "room": "r-cellar",
+            "flag": {
+              "TRAP-DOOR-OPEN": true
+            }
           }
         },
         {
           "cmd": "north",
+          "expect": {
+            "room": "r-troll-room"
+          }
+        },
+        {
+          "cmd": "west",
+          "expect": {
+            "room": "r-maze-1"
+          }
+        },
+        {
+          "cmd": "south",
+          "expect": {
+            "room": "r-maze-2"
+          }
+        },
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-maze-3"
+          }
+        },
+        {
+          "cmd": "up",
+          "expect": {
+            "room": "r-maze-5"
+          }
+        },
+        {
+          "cmd": "take coins",
+          "expect": {
+            "score": 120,
+            "carrying": [
+              "leather bag of coins"
+            ]
+          }
+        },
+        {
+          "cmd": "southwest",
+          "expect": {
+            "room": "r-maze-6"
+          }
+        },
+        {
+          "cmd": "up",
+          "expect": {
+            "room": "r-maze-9"
+          }
+        },
+        {
+          "cmd": "down",
+          "expect": {
+            "room": "r-maze-11"
+          }
+        },
+        {
+          "cmd": "northeast",
+          "expect": {
+            "room": "r-grating-room"
+          }
+        },
+        {
+          "cmd": "up",
+          "expect": {
+            "room": "r-grating-clearing"
+          }
+        },
+        {
+          "cmd": "south",
           "expect": {
             "room": "r-forest-path"
           }
@@ -806,7 +846,7 @@
         {
           "cmd": "take bauble",
           "expect": {
-            "score": 136,
+            "score": 121,
             "carrying": [
               "beautiful brass bauble"
             ]
@@ -837,10 +877,11 @@
           }
         },
         {
-          "cmd": "put canary and bauble in case",
+          "cmd": "put coins and canary and bauble in case",
           "expect": {
-            "score": 141,
+            "score": 131,
             "in_case": [
+              "leather bag of coins",
               "golden clockwork canary",
               "beautiful brass bauble"
             ]
@@ -861,6 +902,39 @@
             "flag": {
               "TRAP-DOOR-OPEN": true
             }
+          }
+        },
+        {
+          "cmd": "south",
+          "expect": {
+            "room": "r-east-of-chasm"
+          }
+        },
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-gallery"
+          }
+        },
+        {
+          "cmd": "take painting",
+          "expect": {
+            "score": 135,
+            "carrying": [
+              "painting"
+            ]
+          }
+        },
+        {
+          "cmd": "west",
+          "expect": {
+            "room": "r-east-of-chasm"
+          }
+        },
+        {
+          "cmd": "north",
+          "expect": {
+            "room": "r-cellar"
           }
         },
         {
@@ -1011,14 +1085,6 @@
           }
         },
         {
-          "cmd": "take bell",
-          "expect": {
-            "carrying": [
-              "brass bell"
-            ]
-          }
-        },
-        {
           "cmd": "ring bell",
           "expect": {
             "flag": {
@@ -1026,6 +1092,9 @@
             },
             "narrate_contains": "red hot"
           }
+        },
+        {
+          "cmd": "take candles"
         },
         {
           "cmd": "light match",
@@ -1058,6 +1127,12 @@
           "cmd": "drop matchbook"
         },
         {
+          "cmd": "drop candles"
+        },
+        {
+          "cmd": "drop book"
+        },
+        {
           "cmd": "south",
           "expect": {
             "room": "r-land-of-living-dead"
@@ -1066,7 +1141,7 @@
         {
           "cmd": "take skull",
           "expect": {
-            "score": 151,
+            "score": 145,
             "carrying": [
               "crystal skull"
             ]
@@ -1126,7 +1201,7 @@
         {
           "cmd": "take bar",
           "expect": {
-            "score": 161,
+            "score": 155,
             "carrying": [
               "platinum bar"
             ]
@@ -1210,12 +1285,13 @@
           }
         },
         {
-          "cmd": "put skull and bar in case",
+          "cmd": "put skull and bar and painting in case",
           "expect": {
             "score": 176,
             "in_case": [
               "crystal skull",
-              "platinum bar"
+              "platinum bar",
+              "painting"
             ]
           }
         }

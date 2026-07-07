@@ -1,18 +1,26 @@
 """Drive the real Zork I headless as a differential ground truth (SPEC
 2026-07-02 criterion 14).
 
-`Oracle` wraps `dfrotz -p -m -w 9999 -s <seed> <story>` behind pexpect:
-plain output, no MORE prompts, no wrap, deterministic RNG. `send()` posts
-one command and returns the reply text (everything up to the next `>`
+`Oracle` wraps `dfrotz -p -m -w 200 -s <seed> <story>` behind pexpect:
+plain output, no MORE prompts, wide enough that no game line wraps (dfrotz
+2.44 silently falls back to a tiny width on out-of-range values like 9999,
+so the width is a real 200), deterministic RNG. The pty echo is disabled
+and the status line dfrotz reprints each turn (`<room>  Score: N  Moves: M`)
+is filtered out of every reply, so probes parse game text only. `send()`
+posts one command and returns the reply text (everything up to the next `>`
 prompt). State probes parse the game's own reporting:
 
     room()       the current room name (first line of a `look`)
     score()      the integer score (from `score`)
     inventory()  carried item names, containers flattened (from `i`)
+    state()      all three, bracketed by Z-machine save/restore
 
-The probes cost in-game turns in the real engine (LOOK ticks the clock in
-Zork I exactly as it does on our side), so callers compare state at segment
-checkpoints, not per command.
+The raw probes cost in-game turns in the real engine (LOOK ticks the clock
+in Zork I exactly as it does on our side), which perturbs fuses (the altar
+candles burn down) and the thief's wanderings. `state()` removes the cost
+entirely: it saves the Z-machine, probes, and restores, so the clock,
+fuses, thief, and RNG stream are exactly as if the probe never happened.
+Checkpoint comparisons should always use `state()`.
 
 Combat is compared on OUTCOMES (fidelity relaxation R3): `attack_until_dead`
 repeats the last attack until the original's villain-death marker ("black
@@ -29,10 +37,17 @@ from __future__ import annotations
 import os
 import re
 import shutil
+import tempfile
 from pathlib import Path
 
 DEATH_MARKER = "black fog"
 PROMPT = "\n>"
+
+# The dumb interface reprints the status window whenever it changes — with
+# Zork I's move counter that is every turn. Shaped `<room>  Score: N
+# Moves: M`; dropped from replies so state probes never mistake it for
+# game text (e.g. inventory() reading it as a carried item).
+_STATUS_LINE_RE = re.compile(r"Score:\s*-?\d+\s+Moves:\s*\d+\s*$")
 
 # Real-engine responses that mean "the command did not resolve" and would
 # invalidate a replay if silently accepted (a typo'd dataset command, a
@@ -77,9 +92,15 @@ class Oracle:
         binary = dfrotz or find_dfrotz()
         if binary is None:
             raise FileNotFoundError("dfrotz not found (bin/zork-oracle-bootstrap)")
+        # -R restricts frotz file I/O to a scratch dir AND lets save files
+        # be named with short relative names (dfrotz 2.44 rejects long
+        # absolute paths with "Filename too long").
+        self._save_dir = tempfile.mkdtemp(prefix="zork-oracle-")
+        self._ck = 0
         self.proc = pexpect.spawn(
-            binary, ["-p", "-m", "-w", "9999", "-s", str(seed), story],
-            encoding="utf-8", timeout=timeout,
+            binary,
+            ["-p", "-m", "-w", "200", "-s", str(seed), "-R", self._save_dir, story],
+            encoding="utf-8", timeout=timeout, echo=False,
         )
         self.transcript: list[tuple[str, str]] = []
         self._read_reply()  # banner through the first prompt
@@ -87,10 +108,14 @@ class Oracle:
     def close(self) -> None:
         if self.proc.isalive():
             self.proc.close(force=True)
+        shutil.rmtree(self._save_dir, ignore_errors=True)
 
     def _read_reply(self) -> str:
         self.proc.expect_exact(PROMPT)
-        return self.proc.before.replace("\r", "")
+        raw = self.proc.before.replace("\r", "")
+        return "\n".join(
+            ln for ln in raw.split("\n") if not _STATUS_LINE_RE.search(ln)
+        )
 
     def send(self, cmd: str, *, check: bool = True) -> str:
         self.proc.sendline(cmd)
@@ -103,6 +128,30 @@ class Oracle:
         return reply
 
     # ---- state probes ------------------------------------------------------
+
+    def _file_dialog(self, cmd: str, filename: str) -> str:
+        """Drive a save/restore filename prompt ('Please enter a filename
+        [...]:') and require the interpreter's 'Ok.'"""
+        self.proc.sendline(cmd)
+        self.proc.expect_exact(":")
+        self.proc.sendline(filename)
+        reply = self._read_reply()
+        if "Ok" not in reply:
+            raise AssertionError(f"{cmd} {filename!r} failed: {reply.strip()[:200]}")
+        return reply
+
+    def state(self) -> tuple[str, int, set[str]]:
+        """(room, score, inventory) probed at ZERO real-game cost: the raw
+        probes each tick the Z-machine clock, so they run inside a Z-machine
+        save/restore bracket — afterwards the clock, fuses, the thief, and
+        the RNG stream are exactly as if the probe never happened. Zork I's
+        SAVE itself costs no move (verified against dfrotz 2.44)."""
+        name = f"ck{self._ck}.sav"
+        self._ck += 1
+        self._file_dialog("save", name)
+        room, score, inv = self.room(), self.score(), self.inventory()
+        self._file_dialog("restore", name)
+        return room, score, inv
 
     def room(self) -> str:
         """The room name: the first non-blank line of `look` output. In a
@@ -125,30 +174,59 @@ class Oracle:
     def inventory(self) -> set[str]:
         """Carried item names, lowercased, articles stripped, container
         nesting flattened ('A jewel-encrusted egg' -> 'jewel-encrusted egg').
-        'You are empty-handed.' yields the empty set."""
+        'You are empty-handed.' yields the empty set.
+
+        Only INDENTED lines under the 'You are carrying:' header count as
+        items — the game indents its listing, while interleaved ambient
+        text (the thief wandering through) starts at column 0 and must not
+        be scooped up as a carried item."""
         reply = self.send("i", check=False)
         items: set[str] = set()
+        in_listing = False
         for line in reply.splitlines():
-            line = line.strip()
-            if not line or line.lower().startswith("you are carrying"):
-                continue
             if "empty-handed" in line.lower():
                 return set()
-            line = re.sub(r"^(a|an|the)\s+", "", line.rstrip(".").strip(), flags=re.I)
-            line = re.sub(r"\s*\((?:providing light|being worn)\)$", "", line, flags=re.I)
-            if line and not line.endswith(":"):
-                items.add(line.lower())
+            if line.strip().lower().startswith("you are carrying"):
+                in_listing = True
+                continue
+            if not in_listing or not line.strip():
+                continue
+            if not line[0].isspace():
+                in_listing = False  # ambient text resumes at column 0
+                continue
+            name = line.strip()
+            name = re.sub(r"^(a|an|the)\s+", "", name.rstrip(".").strip(), flags=re.I)
+            name = re.sub(r"\s*\((?:providing light|being worn)\)$", "", name, flags=re.I)
+            if name and not name.endswith(":"):
+                items.add(name.lower())
         return items
 
-    def attack_until_dead(self, attack_cmd: str, *, cap: int = 15) -> str:
-        """Send `attack_cmd`, then repeat `again` until the villain-death
-        marker appears (outcome-faithful combat, R3). Returns the full
-        accumulated reply. Raises if the cap is reached — a fight the
-        original cannot win with this weapon/seed is a real divergence."""
-        acc = self.send(attack_cmd)
+    def attack_until_dead(self, attack_cmd: str, *, cap: int = 20) -> str:
+        """Repeat `attack_cmd` until the villain-death marker appears
+        (outcome-faithful combat, R3). Returns the full accumulated reply.
+
+        Disarms are part of a normal Zork melee: when a blow knocks the
+        weapon from the player's hand, the next attack fails with a
+        'not holding' refusal — the loop re-takes the weapon (as any human
+        player would; the villain gets its free swing while we stoop) and
+        keeps fighting. A villain never disarms on its own death blow, so
+        the weapon is back in hand by the time the fight ends and
+        inventory checkpoints stay faithful.
+
+        Raises on player death (a seed-shopping signal) or if the cap is
+        reached — a fight the original cannot win with this weapon/seed is
+        a real divergence."""
+        weapon = attack_cmd.split(" with ")[-1].strip() if " with " in attack_cmd else None
+        acc = ""
         for _ in range(cap):
+            reply = self.send(attack_cmd, check=False)
+            acc += "\n" + reply
+            if "You have died" in reply:
+                raise AssertionError(
+                    f"player died fighting ({attack_cmd!r}); shop DAYDREAM_ZORK_ORACLE_SEED")
             if DEATH_MARKER in acc:
                 return acc
-            acc += "\n" + self.send("again")
+            if weapon and ("holding" in reply or "don't have" in reply):
+                self.send(f"take {weapon}", check=False)
         raise AssertionError(
             f"villain not dead after {cap} rounds of {attack_cmd!r}")

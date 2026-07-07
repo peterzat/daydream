@@ -244,11 +244,9 @@
         "r-ns-passage",
         "r-chasm-room",
         "r-engravings-cave",
-        "r-gallery",
         "r-studio",
         "r-mine-entrance",
         "r-maze-2",
-        "r-maze-5",
         "r-maze-11"
       ],
       "move_chance": 0.5,
