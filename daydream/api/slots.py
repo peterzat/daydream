@@ -24,8 +24,15 @@ from fastapi import APIRouter, HTTPException, Request
 from daydream import journal, toons
 from daydream.api import auth as auth_mod
 from daydream.images import client as image_client
+from daydream.llm import safety
 
 router = APIRouter()
+
+# appearance_seed is rendered through SDXL into portraits shown to
+# co-located players and every picker viewer, so player input gets the
+# same gates as the growth phrase (length cap + WHIMSY input banlist).
+# Loader-authored NPC seeds are design-time and do not pass through here.
+MAX_APPEARANCE_SEED_CHARS = 300
 
 
 def _session_id(request: Request) -> str:
@@ -132,7 +139,8 @@ async def create_slot(slot: int, request: Request) -> dict:
     Body JSON: `{"name": str, "appearance_seed": str}`. Returns the
     created toon. Errors:
     - 400 missing / non-string / whitespace-only `name` or
-      `appearance_seed`.
+      `appearance_seed`; `appearance_seed` longer than
+      MAX_APPEARANCE_SEED_CHARS or tripping the WHIMSY input banlist.
     - 404 slot not in 1..5.
     - 409 slot already populated by an existing toon (claim or kick
       first if you want a fresh one)."""
@@ -154,8 +162,22 @@ async def create_slot(slot: int, request: Request) -> dict:
         raise HTTPException(
             status_code=400, detail="appearance_seed must be a non-empty string"
         )
+    appearance = appearance.strip()
+    if len(appearance) > MAX_APPEARANCE_SEED_CHARS:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "appearance_seed must be at most "
+                f"{MAX_APPEARANCE_SEED_CHARS} characters"
+            ),
+        )
+    if safety.first_banned(appearance) is not None:
+        raise HTTPException(
+            status_code=400,
+            detail="appearance_seed doesn't fit the dream's tone",
+        )
     sid = _session_id(request)
-    new_toon = toons.create_toon_in_slot(slot, name.strip(), appearance.strip(), sid)
+    new_toon = toons.create_toon_in_slot(slot, name.strip(), appearance, sid)
     if new_toon is None:
         raise HTTPException(status_code=409, detail="slot already populated")
     request.session.pop("left", None)  # picking a toon re-enters the dream

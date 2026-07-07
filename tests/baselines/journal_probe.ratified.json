@@ -1,0 +1,30 @@
+{
+  "captured_at": "2026-07-07T14:02:41+00:00",
+  "sessions": [
+    {
+      "entry": "You went east, to the heart of the square where Bell was up a small ladder, coaxing a lantern alight. You said hello, and she grinned down, welcoming you with a friendly 'Evening! Mind the wick-smoke, it likes new faces.' As you watched, the lanterns came on one by one, each a small warm pool lighting the night.",
+      "session": "greeting-and-lanterns",
+      "written": true
+    },
+    {
+      "entry": "You went south, lifting the escapement gear from the moss at the well's foot, cool and whole. Then you turned north, where Tace turned the little gear in the lamplight, and something long held eased out of their shoulders. Finally, they folded a small brass key into your hand, warm from their pocket.",
+      "session": "the-gear-comes-home",
+      "written": true
+    },
+    {
+      "entry": "Good evening, Mott. You saw Mott pause mid-sweep, lean on the broom, and give you an unhurried, friendly look. You noticed Mott set a stray button on the windowsill, where its owner might think to look. You asked, 'What's in the tin?' Mott rattled the tin gently, saying, 'Small things that lost their people. They keep fine here.'",
+      "session": "a-quiet-sweep",
+      "written": true
+    },
+    {
+      "entry": "You pressed the dreamseed into the earth and held a small vision of a mossy stair. The dreamseed took root, and the dream made room for a new path to the south: The Moss Stair. You followed the stairs of moss that coiled gently downward, feeling the cool air and the scent of rain.",
+      "session": "the-planting",
+      "written": true
+    },
+    {
+      "entry": "You went up, where the great clock stood still overhead, its hands resting at a quarter past some old hour. You then descended, moving eastward until the square greeted you with the scent of wick-smoke and cooling stone.",
+      "session": "a-wander-at-dusk",
+      "written": true
+    }
+  ]
+}
