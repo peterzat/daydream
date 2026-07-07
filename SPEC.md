@@ -1,56 +1,202 @@
-## Spec — 2026-07-02 — Zork I on daydream: the platform turn (v0.6.0)
+## Spec — 2026-07-07 — daydream v1.0: the release turn
 
-**Goal:** Host a full playthrough-capable clone of **Zork I: The Great Underground Empire** as a new, swappable world on daydream — built by extending the platform with Zork-agnostic primitives (declarative rules and world verbs, real containers, a world clock with fuses and daemons, lighting, conditional exits and vehicles, hostiles, a wider deterministic parser) so the game ships entirely as world DATA. Zork is the oracle, twice: a capability oracle for what the platform must express, and a literal ground-truth reference (the real game, driven headless) for differential verification. Same watercolor visuals, same Reading Room UI, current world archived and untouched.
+**Goal:** Complete a credible v1.0 and cut the release. Four flagship features
+close the product's own promises (the world grows from the inside as a loop,
+the cast has painted faces, the book remembers your story, endings are
+visible and newcomers are welcomed); the shipped loft world absorbs the
+authored batch behind one WORLD_VERSION bump; the turn's already-landed
+groundwork (dead-code removal, guest hardening, CI, the oracle ratification)
+is verified under this contract; and the repo's public release identity
+catches up to its code: version constant, license, changelog, refreshed
+docs, backfilled tags, and a v1.0.0 GitHub release.
 
 ### Acceptance Criteria
 
-- [x] **1. The canonical walkthrough completes deterministically at 350.** A committed walkthrough dataset (ordered command segments covering house, troll, temple/coffin/rainbow, dam/reservoir, Hades ritual, Loud Room, coal mine/machine, river/buoy/scarab, maze/grating, cyclops, thief/egg, endgame) drives the parser → executor in `tests/test_zork_walkthrough.py` (tier_medium) under a mocked-LLM spy asserting ZERO LLM calls and a pinned world seed. Every segment's expected checkpoints hold (room reached, score, carried/deposited items, flags), and the run ends with all 19 treasures in the trophy case, score exactly 350, top rank, the map revealed, the barrow entered, and the win recorded.
+- [ ] **1. Dreamseeds propagate (the growing-world loop).** A seed whose
+  authored `growth.propagation` block (`chance` in (0,1], `max_generation`
+  1–4, optional `seed_text`) survives fail-loud loader validation can, on a
+  successful plant, yield a fresh dreamseed inside the newly grown room:
+  spawned in the same commit batch, inheriting the parent's growth
+  boundaries with `generation` incremented and provenance
+  `propagation:<parent-seed-id>`, plantable end-to-end (a WS test grows
+  twice in a row). The roll is seeded-deterministic; it is suppressed at
+  `generation >= max_generation` and when the world is at the grown-room
+  cap; every existing failure path still leaves the parent seed intact and
+  the world unmutated. No new LLM surface: propagation adds zero prompts
+  and zero model calls, and deterministic tests run under a mocked LLM.
 
-- [x] **2. Zork ships as data; the engine stays world-agnostic.** `tests/test_no_world_literals.py` (tier_short) proves engine code (`daydream/**`, `web/assets/**`) contains no Zork-specific literals (case-insensitive: zork, grue, troll, cyclops, frobozz, zorkmid, barrow; `worlds/`, `tests/`, docs exempt). All Zork behavior loads from the format-2 world envelope; engine primitives carry generic names and authored text.
+- [ ] **2. The cast has faces (NPC/toon portraits).** A toon with a
+  non-empty appearance seed lazily gets a watercolor portrait through the
+  existing persistent-image pipeline as `target_kind='toon'`: rendered
+  under the arbiter's exclusive image slot, cached and recorded in
+  `generated_assets`, served from the existing `/cache/...` route.
+  Adding portraits changes no existing room-art cache key (a regression
+  test proves a room target's path and dedup key are byte-identical).
+  Snapshots carry `image_url` on toon cards (self included) when the
+  portrait is cached; a paint completion event triggers the same
+  re-snapshot flow room art uses, so co-located players see faces appear
+  live. `GET /api/slots` exposes cached-only portrait thumbnails (the
+  picker never triggers renders). The SPA shows portraits in the scene
+  margin and the picker, with a quiet placeholder until painted;
+  ComfyUI-down degrades to the placeholder without blocking play.
 
-- [x] **3. World-declared verbs and rules execute deterministically and validate fail-loud.** The envelope can declare verbs (aliases, prepositions, dobj/iobj kinds, GWIM-style slot-default filters, free-text prompting, bar placement) and ordered first-match rules on objects, rooms, and the world (closed condition vocabulary; effects restricted to a rule-kinds allowlist that LLM-facing paths cannot emit). Dispatch order is dobj → iobj → room → world → engine default; legacy `use`/`open`/`read`/`give` behavior is byte-identical for worlds that author no rules. Loading refuses, with a named error and zero writes, on: unknown condition key, unknown effect kind, rule referencing an undeclared verb or flag, or a dangling object/room/fuse/daemon reference. Unit tests cover dispatch order, fallthrough (wrong-tool branches), sigil resolution, allowlist rejection, and each validation failure.
+- [ ] **3. The book remembers (dream journal).** Leaving the dream
+  (`POST /api/session/leave`) triggers a background journal write for the
+  released toon: one local-LLM call over the toon's own recent events
+  produces a 2–3 sentence past-tense second-person entry, validated
+  (refusal parse, length window, banlist) and appended to a FIFO-capped
+  per-toon journal with sequence idempotency (leaving twice with no new
+  events writes nothing). The leave endpoint always succeeds regardless of
+  LLM outcome; LLM-down or validation failure skips the entry silently.
+  Snapshots carry the journal for the controlled toon only — never a
+  co-located player's. Returning to a toon with journal entries shows a
+  "previously in your dream" beat once per connection.
+  `DAYDREAM_JOURNAL_ENABLED` is the kill switch; the test suite forces it
+  off and journal tests mock the LLM.
 
-- [x] **4. Containers are real.** `put X in Y` and taking from containers work with capacity and item-size limits; open/closed/transparent/surface visibility governs scope, `look`, and snapshots (a thing inside a closed opaque container is not in scope and not rendered; opening reveals nested contents live, no reconnect); contents ride along when a container moves between rooms. Unit + WS tests.
+- [ ] **4. Keepsakes are real.** The backpack's collection page renders
+  actual content: journal entries and carried items enriched with their
+  examined/authored detail (a new inventory-card field), replacing the
+  hardcoded decorative-empty slots. Frontend contract tests cover the
+  collection rendering and the inventory detail field.
 
-- [x] **5. The world has a clock: fuses, daemons, and fuel.** Every executed command advances the world turn. Fuses fire once after their authored turn count with captured context; daemons (script / wanderer / conveyor kinds, all parameters authored data) run turn-triggered under seeded RNG — the same world seed reproduces identical outcomes. Light sources burn fuel only while lit, emit authored threshold warnings to the holder, and burn out permanently when authored so; consumable ignition sources and the timed multi-step ritual windows (ring → light → read, each window authored) are enforced by these primitives, verified by unit tests plus the walkthrough's Hades segment.
+- [ ] **5. Winning is visible.** A `win` effect reaches every connected
+  player in the world (not just the firing room) carrying score and rank;
+  the SPA presents a dismissible "The End" storybook page; the world keeps
+  running after dismissal; late joiners and reconnects see a quiet
+  ended-marker derived from snapshot status that can reopen the page. All
+  ending text is world-agnostic (the no-world-literals gate stays green).
 
-- [x] **6. Darkness and death follow the authored policy.** A dark room with no lit source in reach suppresses description, scene panels, and room art behind the authored darkness text, and reduces scope to actor + inventory. Entering darkness warns; each move while dark applies the authored seeded hazard chance. `kill_actor` applies the authored death policy — score penalty, item scatter (including special-case destinations), respawn room, deaths counter, authored flag resets — and play continues cleanly afterward (correct snapshot, no stuck session, no third-death permadeath). Unit tests include a scripted die-and-recover sequence.
+- [ ] **6. Newcomers are welcomed.** A first-visit "how to dream" leaf in
+  the Reading Room idiom explains speaking, clicking verbs and objects,
+  exits, the satchel, and leaving/picking a toon; it shows once per
+  browser, is reachable anytime from a persistent affordance, and never
+  blocks input. Pure client feature; frontend contract tests.
 
-- [x] **7. Conditional movement, vehicles, and teleports work end to end.** Exit values accept condition lists, blocked text, on-traverse effects, secret flags, and message-only non-exits — honored identically by `go`, the parser fast-path, and the UI exit buttons (secret exits hidden until passable; blocked exits refuse with their text and still tick the clock). Vehicles: board/disembark/launch/land, a conveyor daemon carrying the vehicle along its authored path with per-cell delays, and rooms gated on being aboard refuse foot entry. Teleport effects relocate the actor with a correct re-snapshot. Unit + WS tests.
+- [ ] **7. The loft learns the batch (WORLD_VERSION 1.4 + one reset).**
+  `worlds/clockmakers-loft.json` gains: per-NPC authored drift pools for
+  Tace/Bell/Mott (validated by the loader; the drift loop prefers a toon's
+  authored pools over the generic fallback, closing the bunny-keyed-pools
+  gap), the dreamseed's `propagation` config, and an authored one-time
+  first-planting chapter-close beat (narrated in the room and written to
+  the planter's journal; explicitly not a `win`). `WORLD_VERSION` bumps to
+  1.4; one archive-then-reset installs the batch as the live world.
 
-- [x] **8. Hostiles behave per authored data.** The wanderer daemon roams its authored room set, steals qualifying items from rooms and players into its lair per authored chances, accepts the authored gift (opening it intact rather than damaged), and its death reveals the hoard. Seeded combat (`attack X with Y`) honors per-villain strength and weak-weapon data with authored message pools and on-death drops; the unkillable villain refuses combat solutions while the authored magic word routs it and opens its wall; a glow daemon signals hostile presence and adjacency on the authored item. Verified by pinned-seed unit tests plus walkthrough segments (gift given → hostile later killed → intact contents and hoard recovered).
+- [ ] **8. The benign-refusal mystery is resolved.** A repeatable probe
+  runs greeting-class inputs through live loft NPC dialogue at least 20
+  times, attributing every refusal to its layer (input banlist, refusal
+  parse, output banlist, truncation). The root cause is fixed, or the
+  observed rate is ratified with recorded evidence; either way a
+  regression case lands in `tests/security/` and the BACKLOG entry closes.
 
-- [x] **9. The parser covers the command surface deterministically.** The fast-path handles: direction abbreviations including diagonals (n/s/e/w/ne/nw/se/sw/u/d, in/out and world directions), multi-word verbs ("turn on", "blow out"), verb–preposition–object forms (put/tie/attack/unlock/dig/inflate/plug/turn/pour … in/to/with/on), TAKE/DROP/PUT **ALL** (plus AND-lists and EXCEPT) with per-item result lines, **IT**, **AGAIN**/G, and **THEN**/period chaining. Ambiguous names produce a clarify question answerable by typed reply or click. GWIM slot defaults fill a uniquely-matching empty slot ("light match" finds the matchbook). World-verb vocabulary joins the LLM grounding prompt, and ~10 natural phrasings ("douse the lamp", "smash the troll with my sword") are golden-ratified in the parser drift corpus. Criterion 1's spy proves the whole walkthrough needs none of the LLM path.
+- [ ] **9. The v0.6 gate closes (operator playtest).** The prior spec's
+  criterion 15 human half is done: the operator plays the live-swapped
+  Zork world in a browser, findings are recorded and fixed or backlogged,
+  and the v0.6 spec line is checked in the prior-spec record. (The machine
+  half already replays 350/Master Adventurer over WS on the final
+  envelope, `--verify` green.)
 
-- [x] **10. The assembled world passes the static analyzer.** `tests/test_zork_world_integrity.py` (tier_short) verifies: every exit target resolves; all 110 rooms (19-room maze counted) reachable from the start treating conditions as satisfiable; rule/flag/fuse/daemon cross-references fully closed; treasure arithmetic sums to exactly 350 across 19 treasures plus room bonuses; the rank ladder covers 0–350; underground rooms are dark-flagged; every walkthrough command's verb is reachable by click (verb bar, per-object verbs, room verbs, or an exit button); and the committed `worlds/zork1.json` byte-matches a re-assembly from its region sources.
+- [ ] **10. The turn's groundwork stands verified.** In-repo evidence for
+  what landed ahead of this spec: the legacy core-skill/interpreter path
+  is gone and the registry serves data skills only (contract tests); the
+  hardening cluster is covered by `tests/security/` (regen kill switch
+  gating endpoints 404 + snapshot flag + SPA binding, delete grace window
+  vs transient disconnects, loopback-only world swap); the tree is
+  ruff-clean and `.github/workflows/test.yml` runs lint + the GPU-free
+  medium tier on 3.10 and 3.12; the archive→cascade-delete→restore drill
+  diffs the full world fingerprint; the dfrotz differential oracle is
+  GREEN against real Zork I (v0.6 criterion 14 checked, ratification
+  recorded in BACKLOG).
 
-- [x] **11. The existing world is untouched and versioning holds.** The clockmakers quest golden, world integrity, and the full short + medium tiers stay green at every landed increment. Migrations are additive only; `WORLD_VERSION` bumps 1.2 → 1.3 (a live 1.2 world warns and boots per MINOR rules). `world reset` gains an envelope selector defaulting to clockmakers, and the stale `bunny.json` reference in the version-gate message is corrected.
+- [ ] **11. Generation stays local.** Every new runtime generation this
+  turn (journal, portraits, propagation) runs only on the local engines
+  behind the GPU arbiter. No cloud LLM key exists anywhere in runtime,
+  tooling, or CI (grep-verifiable); new prompt surfaces are documented in
+  `docs/prompts.md`; deterministic tests keep their zero-LLM spies.
 
-- [x] **12. The Reading Room grows the Zork affordances.** Status ribbon (score, rank, moves, light indicator) present and updating at puzzle moments; container contents render nested; darkness veils the room art and scene panels behind the authored line while inventory stays usable; a death interstitial plays before the respawn snapshot; clarify options render as clickable buttons; free-text prompting is driven by verb data (no verb-name hardcode remains in `main.js`, grep-provable); self-narrations (look/examine/read/inventory/score/diagnose) reach only the acting player's log. Frontend tests cover each behavior.
+- [ ] **12. The long tier ratifies the generative work (GPU batch, server
+  down).** `bin/game test long` is green: new portrait dHash anchors are
+  golden-ratified, the journal quality probe runs against real vLLM, and
+  existing goldens (growth compose, parser, retell, images, arbiter)
+  hold. `bin/game review` regenerates the contact sheet including
+  portraits; the agent grades renders and journal samples against
+  WHIMSY.md in-session and records verdicts. Honest-default rule: any
+  flagship whose local-model quality misses the bar ships with its flag
+  defaulted off and the finding recorded (flag-local-limits pact).
 
-- [x] **13. The local LLM layers on top, probe-gated, never load-bearing.** The retell layer ships ON in the Zork world config: non-verbatim outcome narrations may be rephrased into the world's authored register under strict validation (proper nouns and digits preserved, length cap, banlist) with authored-text fallback; authored verbatim zones protect iconic and mechanical lines. A tier_long retell probe against real vLLM is golden-ratified, with the agent grading captured samples against the world's voice block and recording the shipped rung (ON / scoped / OFF) in the ratification commit, per the flag-local-limits pact. NPC `talk` works for the authored hostiles. With vLLM down, every deterministic path (clicks, exits, all walkthrough commands) still works.
+- [ ] **13. The app knows its version.** `APP_VERSION = "1.0.0"` lives in
+  `daydream/version.py`, is served by `GET /status/build`, and matches
+  `pyproject.toml` (a drift-guard test fails on mismatch). WORLD_VERSION
+  (1.4) remains the separate world-content stamp and both are documented.
 
-- [x] **14. Real Zork agrees at the checkpoints (when present).** With dfrotz available and `DAYDREAM_ZORK_ORACLE_STORY` pointing at a story file under `~/data/zork/`, `tests/drift/test_zork_oracle.py` (tier_long) replays the walkthrough in both engines and state checkpoints match: room identity (via the committed id↔name mapping), score, inventory multiset; combat is compared on outcomes, not blow-by-blow. Without interpreter or story file the test skips with a named reason. No Zork story file, dump, or original prose is committed to the repo.
+- [ ] **14. Licensed and attributed.** An MIT `LICENSE` sits at the root;
+  README carries a Zork I provenance note (mechanics and identity derive
+  from the MIT-licensed historical ZIL source; all prose freshly authored;
+  no story file, dump, or original prose committed — consistent with the
+  repo's actual contents).
 
-- [ ] **15. The dream swaps to Zork live.** `world load worlds/zork1.json --output` builds a side DB and `world swap` moves the running server onto it with connected clients re-snapshotting; a full solo playthrough is driven over WS against the live server with real engines (room art rendering lazily along the way); the operator's in-browser playtest is the final human gate, with findings recorded for the fix round.
+- [ ] **15. The docs tell the v1.0 truth.** `CHANGELOG.md` records
+  v0.1.0 → v1.0.0 (extracted from README's release notes, which become a
+  pointer plus narrative); README is overhauled (v1.0 status, the four
+  flagships, CI + license badges, current test counts, ROADMAP pointer);
+  TESTING.md's dated header reflects the current suite; WHIMSY.md loses
+  the stale "lands in v1" line and gains the portrait prompt suffix
+  (mirrored with a drift test like the room suffix); CLAUDE.md rolls
+  forward (new features, flags, version story); BACKLOG is groomed
+  (entries shipped this turn annotated closed); `docs/ROADMAP.md` exists
+  and holds the post-1.0 direction (v1.x polish vs v2 shared-world),
+  absorbing this spec's out-of-scope list.
 
-- [x] **16. The turn closes on the record.** README and CLAUDE.md roll forward (v0.6.0: Zork world ops, oracle setup, the new platform primitives); BACKLOG annotated where this turn moved entries (`destroy_object` ships; per-object verb behavior overrides ship via rules) plus new deferrals captured; `/codereview` + `/security` recorded; FIRST-FABLE.md Part 4 receives its results append per the pre-registration's own instructions (M8–M14 actuals with evidence, P7–P13 grades, verbatim runtime samples, the felt comparison) — append-only, Parts 1–3 and the pre-registration untouched.
+- [ ] **16. v1.0.0 ships.** Annotated tags `v0.3.0`–`v0.6.0` exist at
+  their historical release-notes commits and `v1.0.0` at the release
+  commit; the pre-push gate passes (/codereview with /security, marker
+  written); `git push --follow-tags` lands and GitHub Actions is green on
+  the pushed commit; the GitHub repo carries a description and topics;
+  exactly one new GitHub release (`v1.0.0`, marked Latest) summarizes the
+  full v1.0 state; `bin/game deploy` leaves the live server reporting
+  app 1.0.0 at `/status/build`.
 
 ### Context
 
-**Origin.** Adopted from the approved plan `~/.claude/plans/we-ll-take-a-more-vectorized-pearl.md` — read it in full before implementing: it carries the ZIL-verified Zork facts (scoring table, fuse timings, puzzle graph, fidelity traps), the seam map with file:line anchors, the module-level design (worldstate/rules/worldverbs/clock/lighting/combat/retell/pronouns + effects/verbs/objects/parser/ws/main.js/bootstrap extensions), a worked rule-schema example, and the 13-increment sequence with pre-registered fallbacks. Ratified by Peter 2026-07-02.
+Adopted from the user-approved plan
+(`~/.claude/plans/consider-this-whole-repo-unified-knuth.md`): all four
+flagships in, both v0.6 operator gates closed in-turn, MIT license,
+backfill tags + a single v1.0.0 release. Read that plan for the
+increment-ordered design (file-level seams, risk register, release
+runbook).
 
-**Decisions the implementer inherits (do not relitigate):** identity fidelity — proper nouns, map, mechanics, scoring verbatim; long-form prose freshly authored in Zork's dry register (never copied), LLM-varied at runtime; authentic harshness ships (finite lamp, seeded darkness hazard, thief steals, death penalty + scatter). Watercolor visuals and Reading Room UI stay (existing WHIMSY suffix; no per-world image style this turn). Rules shadow legacy verb Python (never replace it this turn); new effect kinds join a rule-kinds allowlist that no LLM-facing path can emit. One world clock ticked by any executed command. Actor-private self-narration via an events recipient column (additive migration). Format-2 envelope validation is a separate path; v1 stays byte-identical for clockmakers. Retell ON for Zork is an operator directive ("use the LLM if at all possible") — the probe decides the rung honestly, and authored text is always the fallback.
+Constraints the implementer must respect:
 
-**Fidelity relaxations (pre-registered, cite in playtest triage):** R1 score/rank/moves are world-shared (co-op; solo is bit-identical Zork). R2 no third-death permadeath (escalating authored messages; deaths counter in `diagnose`). R3 combat outcome-faithful, not blow-by-blow. R4 thief: full roam/steal/deposit/gift/kill; banter beyond authored barks cut. R5 no in-game save verb (the persistent world is the save; operator snapshots are the savescum path). R6 concurrent players share the clock (fuel burns only while lit). R7 self-narration private; others see moves/says/broadcast beats. R8 oracle harness optional, skip-if-absent. R9 LLM additive, never load-bearing. R10 prose fresh, identity verbatim. Skipped entirely: spirit-mode afterlife, OOPS, save/restore verbs.
-
-**Oracle setup (operator/agent step, not repo content):** build dfrotz from the frotz dumb target; place a Zork I story file at `~/data/zork/zork1.z3` (pin one release; the MIT-licensed ZIL source at `historicalsource/zork1` is the design-time mechanics reference); export `DAYDREAM_ZORK_ORACLE_STORY`. Drive via pexpect, read-until-prompt, fixed `-s` seed. Keep story files and any tool dumps out of git.
-
-**Practices (zat.env):** small committable increments, each with paired tests, suite run per change; two failed fix attempts → revert and rethink; `bin/game test long` with the game DOWN; the spec is the contract `/codereview` verifies — check a criterion only when verified. Multi-session implementation is expected for this turn (pre-registered in FIRST-FABLE Part 4); artifacts on disk after every increment make resumption cheap. Commit attribution per project convention; no push unless asked.
-
-**Out of scope (durable items BACKLOG-tracked):** spirit-mode afterlife; melee wound/stagger sub-states; thief conversation; Zork II/III; per-world image-style override; compiling legacy use/open shapes onto the rule engine; player-authored verbs/rules (`user-authored-llm-driven-world-building-verbs`); growth/dreamseeds content inside the Zork world; multiplayer combat balance.
+- **Generation policy (CLAUDE.md) is absolute.** Runtime and tooling call
+  only local engines; design-time heavy authoring (loft drift pools,
+  first-planting beat, ROADMAP, release notes) is done by the agent
+  in-session and baked into data. A feature that seems to want a cloud
+  call gets pre-baked or rethought.
+- **The loft envelope is the pre-bake surface.** Authored content changes
+  batch into criterion 7's single MINOR bump and one reset (resets destroy
+  live toons/grown rooms — archive first).
+- **GPU discipline.** tier_long and `bin/game review` run with the game
+  server down (the arbiter is in-process; two processes can OOM the
+  20 GB card). Batch GPU work; note server cycles in one line.
+- **zat.env practices carried in:** small committable increments with
+  tests in the same increment; the medium tier green at every commit;
+  never modify tests to accommodate a regression; verification quality is
+  the ceiling — prefer ratify-once-then-mechanical proxies (goldens,
+  drift tests, contract greps) over repeated eyeballing, and batch the
+  irreducible human looks into the review sheet and one playtest
+  (minimize-eyeballs).
+- **Walkthrough turn-alignment:** any further Zork dataset edit upstream
+  of the fights re-derives the fight phase (the k-search pattern from the
+  oracle turn); prefer post-fight edits.
+- Prior-spec C15 (criterion 9 here) needs the operator; everything else
+  is agent-executable. The release step (criterion 16) is the one
+  explicitly-authorized push of this turn.
 
 ---
-*Prior spec (2026-07-02): Dreamseeds — quest-earned world growth (v0.5.0); closed 8/8, playtested live, fix round recorded in FIRST-FABLE Part 3.*
+*Prior spec (2026-07-02): Zork I as pure world data on Zork-agnostic
+platform primitives — closed 15/16 in-turn (walkthrough 350 deterministic
++ live over WS; differential oracle GREEN against real Zork I on
+2026-07-07); its criterion 15 browser-playtest half carries forward as
+criterion 9 above.*
 
-<!-- SPEC_META: {"date":"2026-07-02","title":"Zork I on daydream: the platform turn (v0.6.0)","criteria_total":16,"criteria_met":15} -->
+<!-- SPEC_META: {"date":"2026-07-07","title":"daydream v1.0: the release turn","criteria_total":16,"criteria_met":0} -->
