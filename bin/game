@@ -150,9 +150,11 @@ _print_build_staleness() {
     # "I thought we'd already redeployed" trap). Best-effort: every curl / git is
     # guarded so `set -euo pipefail` never aborts off-git or when unreachable.
     command -v curl >/dev/null 2>&1 || return 0
-    local body server_sha server_rev head_sha behind
+    local body app_ver server_sha server_rev head_sha behind
     body="$(curl -s --max-time 1 "http://0.0.0.0:${PORT}/status/build" 2>/dev/null)" || return 0
     [[ -n "$body" ]] || return 0
+    app_ver="$(printf '%s\n' "$body" | awk -F': ' '/^app:/{print $2; exit}')"
+    [[ -n "$app_ver" ]] && echo "app: $app_ver"
     server_sha="$(printf '%s\n' "$body" | awk -F': ' '/^build:/{print $2; exit}')"
     [[ -n "$server_sha" ]] || return 0
     server_rev="${server_sha%-dirty}"

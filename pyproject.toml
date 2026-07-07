@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "daydream"
-version = "0.0.1"
+version = "1.0.0"
 description = "A small atmospheric multiplayer web game running on a single dev box."
 requires-python = ">=3.10"
 dependencies = [

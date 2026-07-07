@@ -1,6 +1,6 @@
 # TESTING.md — daydream
 
-## Test Strategy Review — 2026-04-23
+## Test Strategy Review — 2026-04-23 (tier counts refreshed 2026-07-07 for v1.0.0)
 
 **Summary:** Test architecture just shipped in commits C1-C5 (`4d606e6`..`844884e`). Three-tier dispatcher (`bin/game test short|medium|long|ci|human`) with 156/211/220 tests respectively; short in 2.06s, medium in 2.65s — well under budget. Drift loop is fully implemented with in-tree golden baselines, a perceptual-hash image corpus, a JSON-adherence LLM corpus, and an arbiter-held tripwire for real-GPU tests. The strategy is appropriate and proportionate for a single-contributor project at v1.
 
@@ -55,7 +55,7 @@ Right now, before reading further, run:
 bin/game test short
 ```
 
-Expected: under 10 seconds, exits 0, several hundred tests pass (~454 in ~4 s at HEAD 8c755b0). The marker expression, not the exact count, is the contract — the count grows with features. If not, the venv is broken or the repo is in a weird state — fix that first. The rest of this document assumes you have a green `short` tier as a starting point.
+Expected: under 10 seconds, exits 0, several hundred tests pass (~830 in ~7 s at v1.0.0). The marker expression, not the exact count, is the contract — the count grows with features. If not, the venv is broken or the repo is in a weird state — fix that first. The rest of this document assumes you have a green `short` tier as a starting point.
 
 ## The single entry point
 
@@ -114,7 +114,7 @@ This project tilts deliberately toward **proxy** verification (a measurable numb
 ### `short` — the pre-commit gate
 
 - Marker expression: `tier_short`
-- Test count: ~407 (grows with features; the marker expression, not the count, is the contract). Wall-clock: ~3 s.
+- Test count: ~830 at v1.0.0 (grows with features; the marker expression, not the count, is the contract). Wall-clock: ~7 s.
 - What's in it: every test that doesn't boot `daydream.server.app`, spawn a subprocess, or do heavy filesystem I/O. Includes the object/verb/parser/generative core (`tests/test_objects.py`, `test_verbs.py`, `test_parser.py`, `test_generative.py`, `test_effects.py` — all DB-on-tmp + mocked-LLM), plus the constants-drift probes under `tests/drift/test_drift_constants.py` (cheap; they just read files), the WHIMSY suffix probe, the voice-baseline tic-regression probe (`tests/test_voice_baseline.py`; parses captured markdown, asserts pairwise-distinct openers), and the memory-ranking drift probe (`tests/drift/test_memory_ranking.py`; tmp_path SQLite + mocked embeddings, fingerprints the salience formula's ordering and per-item scores). The 2026-06-30 playtest turn added two authored-prompt static scans here: the second-person player-narration scan (`tests/test_second_person.py`, SPEC C9 — asserts no third-person "the visitor" framing in the affordance prompts) and the per-NPC voice-constraint presence scan (`tests/test_npc_voice.py`, SPEC C11).
 - What it catches: broken imports, wrong migration, object-access / verb-dispatch / parser-grounding regressions, effect-allowlist gaps, cache-key math bug, WHIMSY.md drift, vllm-version doc drift, prompt-template tic regressions on the captured voice corpus, salience-formula drift in NPC memory, third-person leakage into player-action prompts, missing per-NPC voice constraints.
 - When to run: every commit, every save if you've got a file-watcher. `bin/install-hooks` wires this to `.git/hooks/pre-commit` so it fires automatically.
@@ -122,7 +122,7 @@ This project tilts deliberately toward **proxy** verification (a measurable numb
 ### `medium` — the pre-push gate
 
 - Marker expression: `tier_short or tier_medium`
-- Test count: ~648. Wall-clock: ~9 s.
+- Test count: ~1210 at v1.0.0. Wall-clock: ~20 s.
 - What's in it: everything from `short` plus tests that boot `TestClient` (auth, frontend, ws + the command-frame / scene-object snapshot tests, ws_images, ws_rook, ws_iris, ws_swap, the WS cross-origin CSRF guard `test_csrf_middleware.py`), spawn `bin/game` as a subprocess, round-trip archives, or exercise the per-world DB schema (memories included) and the keyless object-schema world authoring (`test_world_load.py`, including the committed `worlds/bunny.json` reset world end to end). The scripted end-to-end gameplay-scenario test (`tests/test_scenario.py`, SPEC 2026-06-30 C14) lives here: one story through connect → picker → claim → look → take → go-to-place → talk → spawn → examine → inventory, mocked-LLM. GPU calls are still mocked; the BGE-small embedder is mocked at `daydream.memories._embed`.
 - What it catches: WebSocket protocol regressions (input + command frames), auth flow breaks, admin CLI breaks, bash dispatcher breaks, NPC dialogue path regressions, world-load / authoring regressions, memory capture/retrieve/scoping breaks, end-to-end playable-flow regressions (the picker-first entry + scene + inventory path the scenario test walks).
 - When to run: before every push, after finishing a feature. `bin/install-hooks` wires this to `.git/hooks/pre-push` so it fires automatically.
@@ -130,7 +130,7 @@ This project tilts deliberately toward **proxy** verification (a measurable numb
 ### `long` — the drift + end-to-end gate
 
 - Marker expression: `tier_short or tier_medium or tier_long`
-- Test count: ~663 (~648 + the real-engine drift probes, including the 6-case parser-grounding probe). Wall-clock: ~30 s with vLLM + ComfyUI up.
+- Test count: ~1249 at v1.0.0 (the medium set + the real-engine drift probes: parser grounding, growth compose, retell, image/portrait dHash anchors, the refusal + journal probes, the archive roundtrip, the optional zork oracle). Wall-clock: ~3 min with vLLM + ComfyUI up.
 - What's in it: everything from `medium` plus the `tests/drift/` probes. Real LLM calls through vLLM. Real image renders through ComfyUI. The arbiter smoke alternates the two under a 90-second budget. The parser-grounding probe (`tests/drift/test_parser_grounding.py`) grounds real Qwen output to in-scope ids across a command corpus.
 - What it catches: fp8-KV-style format-adherence regressions, parser verb/dobj grounding drift, LoRA-swap aesthetic drift, image-gen latency regressions, arbiter serialization bugs.
 - When to run: before a release, after swapping a model / LoRA / workflow, after any arbiter change.
@@ -266,7 +266,7 @@ Liveness gates are orthogonal:
 - `requires_vllm` marker: test skips if `{DAYDREAM_LLM_BASE_URL}/models` is unreachable (2 s timeout, one probe per session).
 - `requires_comfyui` marker: test skips if `{DAYDREAM_COMFYUI_BASE_URL}/system_stats` is unreachable.
 
-So `bin/game test long` with both engines down still runs ~648 tests (short + medium) and skips the ~15 engine-gated probes with a clear "engine unreachable" reason.
+So `bin/game test long` with both engines down still runs ~1210 tests (short + medium) and skips the engine-gated probes with a clear "engine unreachable" reason.
 
 ## Glossary
 

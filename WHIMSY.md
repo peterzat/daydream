@@ -80,8 +80,9 @@ unexplained mystery (the bell, the wildflowers), and no urgency.
 
 ## Banned moods
 
-The LLM safety filter (lands in v1 with `safety-baseline-v1`) treats
-these as immediate refusal triggers in any narration or skill output:
+The LLM safety filter (`daydream/llm/safety.py`, checked on player input
+and on every narrative field before state mutates) treats these as
+immediate refusal triggers in any narration or skill output:
 
 - pixel-art, 8-bit, crunchy, retro-game (visual)
 - grimdark, dystopian, brutalist, horror (mood)

@@ -100,3 +100,43 @@ def test_check_world_compat_missing_column_fails_open():
         version.check_world_compat(conn)  # must not raise: fail open on the unknown
     finally:
         conn.close()
+
+
+# ---- APP_VERSION: the app knows its version (SPEC 2026-07-07 c13) ---------
+
+
+def test_app_version_matches_pyproject():
+    """The one-sided-edit drift guard: version.APP_VERSION and pyproject's
+    `version` move together. Regex-read (not tomllib) so it runs identically
+    on 3.10, which has no tomllib guarantee."""
+    import re
+    from pathlib import Path
+
+    text = (Path(__file__).resolve().parent.parent / "pyproject.toml").read_text()
+    m = re.search(r'^version\s*=\s*"([^"]+)"', text, re.MULTILINE)
+    assert m, "pyproject.toml lost its version line"
+    assert m.group(1) == version.APP_VERSION
+
+
+def test_app_version_is_semver_shaped():
+    import re
+
+    assert re.fullmatch(r"\d+\.\d+\.\d+", version.APP_VERSION)
+
+
+def test_status_build_serves_app_version():
+    """GET /status/build carries the app line (plus the existing build /
+    world_version / migration keys bin/game status parses)."""
+    from fastapi.testclient import TestClient
+
+    from daydream.server import app
+
+    with TestClient(app) as client:
+        r = client.get("/status/build")
+    assert r.status_code == 200
+    lines = dict(
+        ln.split(": ", 1) for ln in r.text.strip().splitlines() if ": " in ln
+    )
+    assert lines["app"] == version.APP_VERSION
+    assert lines["world_version"] == version.WORLD_VERSION
+    assert "build" in lines and "migration" in lines

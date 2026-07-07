@@ -32,6 +32,12 @@ from daydream import config
 
 logger = logging.getLogger(__name__)
 
+# The application's own release version (semver), served by GET /status/build
+# and pinned to pyproject.toml's `version` by a drift-guard test
+# (tests/test_version.py). Distinct from WORLD_VERSION below: APP_VERSION is
+# what the CODE release is called; WORLD_VERSION stamps world CONTENT compat.
+APP_VERSION = "1.0.0"
+
 # Bump MAJOR when an existing world DB can no longer be loaded by this code;
 # bump MINOR for authored content/behaviour changes an old world won't reflect.
 # See the module docstring for the boot-gate semantics. (1.2: the quest-earned

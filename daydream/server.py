@@ -141,6 +141,7 @@ async def status_build():
     from daydream import db, version
 
     return PlainTextResponse(
+        f"app: {version.APP_VERSION}\n"
         f"build: {version.build_sha()}\n"
         f"world_version: {version.WORLD_VERSION}\n"
         f"migration: {db.max_known_migration()}\n"

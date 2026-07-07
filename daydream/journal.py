@@ -158,7 +158,7 @@ def _append(toon_id: str, entry: dict) -> None:
     objects.set_property(toon_id, "journal", entries[-MAX_ENTRIES:])
 
 
-def _event_lines(recent: list["events.Event"], toon_id: str) -> list[str]:
+def _event_lines(recent: list[events.Event], toon_id: str) -> list[str]:
     """Compact text lines for the recap prompt. Only kinds that carry
     player-meaningful text; ids never appear (names/text only)."""
     lines: list[str] = []

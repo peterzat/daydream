@@ -122,17 +122,19 @@ Captured from the comprehensive GPU/ML doc pass; full rationale per item lives i
 
 Captured from the test-architecture landing (2026-04-23); scaffolding for these is in place, the work itself is deferred until the triggering signal arrives. See `TESTING.md` for the full architecture and philosophy.
 
-### archive-restore-roundtrip-test
+### archive-restore-roundtrip-test — CLOSED 2026-07-06 (shipped, v1.0 turn groundwork)
 - **One-line description:** Add a `tier_long` test that archives a world via `bin/game world archive`, deletes it, restores from the archive, then diffs the restored DB + cache against the pre-archive state. Goes deeper than the current `test_admin.py` unit coverage (belt-and-suspenders on the E2E flow).
 - **Why deferred:** `test_admin.py` already covers archive + restore individually with the round-trip construct in `test_restore_round_trip`; a dedicated drift-tier end-to-end would be redundant until we have multi-world state + a non-trivial cache to diff.
 - **Revisit criteria:** First Opus-bootstrapped world worth keeping; OR first operator incident where archive/restore loses state and the existing unit coverage didn't catch it.
 - **Origin:** test architecture plan (2026-04-23)
+- **Closure:** `tests/test_admin_roundtrip.py` (tier_long) archives → cascade-deletes → restores and diffs the full world fingerprint (rows + cache files); ran green in the 2026-07-07 GPU batch.
 
-### security-tests-tier
+### security-tests-tier — CLOSED 2026-07-07 (shipped, v1.0 turn)
 - **One-line description:** Dedicated `tests/security/` directory covering banned-word filter regression, session-cookie tamper detection, AccessMiddleware fuzz (invalid CGNAT edge cases), `daydream/admin.py` path-traversal edge cases beyond the current CVE-2007-4559 coverage. Marker mix: some `tier_short`, some `tier_medium`.
 - **Why deferred:** Couples to `safety-baseline-v1` (no LLM-driven state mutation in v0 means no banned-word surface to regress against). AccessMiddleware fuzz is lower-priority since the middleware is heavily tested already.
 - **Revisit criteria:** `data-skills-cli` + `safety-baseline-v1` land; OR a security-review pass surfaces a class of risk not covered today.
 - **Origin:** test architecture plan (2026-04-23)
+- **Closure:** `tests/security/` exists with the regen kill-switch gate, delete grace window, loopback-only swap (groundwork commits) and the benign-refusal corpus (`test_benign_refusals.py`, criterion 8). AccessMiddleware fuzz + cookie tamper remain covered by their existing suites (`test_access_middleware.py`, `test_auth.py`).
 
 ### load-test-harness
 - **One-line description:** Add a `tier_long` capacity test: 10 simulated bots holding WS connections for 10 minutes, sending a modest input cadence, assert no OOM / no arbiter deadlock / bounded room-image queue depth. Under `tests/load/` to keep it distinct from drift.
@@ -140,11 +142,12 @@ Captured from the test-architecture landing (2026-04-23); scaffolding for these 
 - **Revisit criteria:** `multi-user-shared-world` lands; OR oncall starts seeing WS queue backpressure in real usage.
 - **Origin:** test architecture plan (2026-04-23)
 
-### ci-pipeline
+### ci-pipeline — CLOSED 2026-07-06 (shipped, v1.0 turn groundwork)
 - **One-line description:** Add `.github/workflows/test.yml` that runs `bin/game test ci` on push / PR. Skips `tier_long` unless the runner has a GPU (AWS EC2 G-family or a self-hosted runner).
 - **Why deferred:** Single-dev box today; `bin/game test ci` is run locally. CI earns its keep when a second contributor lands or when we need to enforce green-on-push across branches.
 - **Revisit criteria:** Second contributor joins; OR cross-branch churn makes local-only verification feel unsafe.
 - **Origin:** test architecture plan (2026-04-23)
+- **Closure:** `.github/workflows/test.yml` runs lint + the GPU-free medium tier on Python 3.10 and 3.12 on push/PR (groundwork commit acbee0b).
 
 ### mypy-gate
 - **One-line description:** Add `[tool.mypy]` to `pyproject.toml` with `strict = true` and include a mypy pass in `tier_short`. Probably needs typing backfill across `daydream/` first.
@@ -204,23 +207,26 @@ Captured from the test-architecture landing (2026-04-23); scaffolding for these 
 
 ## UI & presentation (captured 2026-07-01 Reading Room turn)
 
-### regen-ui-gate
+### regen-ui-gate — CLOSED 2026-07-06 (shipped, v1.0 turn groundwork)
 - **One-line description:** The dev room-image repaint UI (`daydream/api/rooms.py` + the plate-tools/dialog in `web/`) has no switch to disable it; any authed (tailnet) session can repaint shared room art. Add a `DAYDREAM_REGEN_UI` flag (default on in dev) that both the endpoints (404/503 when off) and the SPA (hide the plate-tools) honor, so "turn it off for real players once live" is a config flip rather than a code edit. Today the only off-switch is removing the router registration in `server.py`.
 - **Why deferred:** The 2026-07-02 turn shipped the feature ungated by explicit request ("no need to guard against weird stuff, we'll probably turn this off for users once the game is live"). Fine under the current single-box friend-scope trust model; the gate matters when a shared preview/prod deployment appears.
 - **Revisit criteria:** A shared preview/prod deployment, OR the feature graduates from dev-only, OR real (non-friend) users get access.
 - **Origin:** plan let-s-do-a-small-compiled-umbrella (increment 5); codereview NOTE 2026-07-02.
+- **Closure:** `DAYDREAM_REGEN_UI` (default on) gates the endpoints (404 when off), rides the snapshot `features` block, and the SPA registers plate tools only when true (groundwork commit 7708993; tests/security/test_regen_gate.py).
 
-### delete-slot-grace-window
+### delete-slot-grace-window — CLOSED 2026-07-06 (shipped, v1.0 turn groundwork)
 - **One-line description:** `delete_slot` (irreversible: drops carried items, wipes memories) is gated only by instantaneous WS liveness (`_require_slot_actionable` → `is_session_live`), so a transient socket drop (laptop sleep, network blip, background-tab throttle) briefly marks a live player's toon "abandoned" and lets another session permanently delete it. Kick has the same gate but is recoverable, so it's fine; delete is not. Options: a short "recently-live" grace window keyed on last-seen, or restrict delete to the controlling session only (never another's, even if currently dead-WS) while leaving kick lenient.
 - **Why deferred:** By-design per the shipped guard (delete of an abandoned toon is allowed, mirroring claim's dead-session takeover), and inside the friend-scope trust model where grief isn't the threat. The sharp edge is only that delete is irreversible.
 - **Revisit criteria:** Any report of a lost toon after a reconnect, OR access widens beyond trusted friends, OR a soft-delete/undo lands (which would neutralize the irreversibility).
 - **Origin:** plan let-s-do-a-small-compiled-umbrella (increment 4); codereview NOTE 2026-07-02.
+- **Closure:** delete requires the controller to have been offline ≥120 s (`is_session_recently_live`), so a transient drop can't open a delete window; kick stays lenient by design (groundwork commit 7708993; tests/security/test_delete_grace.py).
 
 ### snapshot-enrichments-for-reading-room
 - **One-line description:** Three small server-side snapshot enrichments the client-only Reading Room turn deliberately skipped: item description/provenance in the snapshot's `_object_card` so keepsake specimen cards read richer than name + generic tag; exit destination TITLES so the compass can say "up — the Clockmaker's Loft" without leaking room ids; a server-derived objective string for the "a small errand" marginalia group.
 - **Why deferred:** The Reading Room spec was explicitly client-only (no server/world change, no WORLD_VERSION bump); each of these is a deliberate server change weighed against that stance.
 - **Revisit criteria:** The next server-touching increment lands (cheap to ride along), or playtest feedback that the compass/keepsakes feel thin.
 - **Origin:** SPEC proposal block 2026-07-01 (Reading Room turn), preserved here when the Dreamseeds spec replaced that block.
+- **Partial (2026-07-07, v1.0 turn):** the item-detail slice shipped — `_object_card` carries `detail` (examined/authored text) and the keepsake cards render it. Exit destination titles and the errand string remain open (see docs/ROADMAP.md v1.x).
 
 ## Closed
 
