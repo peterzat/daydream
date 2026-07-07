@@ -54,7 +54,7 @@ _STOPWORDS = frozenset(
 )
 
 
-def _shipped_growth_and_room() -> tuple[dict, "rooms.Room"]:
+def _shipped_growth_and_room() -> tuple[dict, rooms.Room]:
     """The SHIPPED seed's growth block + the clocktower it is found in, read
     straight from the canonical envelope (no DB, no loader)."""
     env = json.loads(_WORLD.read_text())

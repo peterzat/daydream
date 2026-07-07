@@ -36,7 +36,7 @@ def test_workflow_file_exists_and_parses():
 def test_load_workflow_strips_meta():
     wf = client.load_workflow()
     assert "_meta" not in wf
-    for k, v in wf.items():
+    for v in wf.values():
         assert "class_type" in v
 
 

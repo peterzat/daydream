@@ -55,7 +55,7 @@ def test_rook_json_installs_and_registry_sees_it():
     gate, and the registry must see the installed row as a kind='data'
     skill. Regression guard: if the author file drifts out of the
     author-schema contract, this test fails."""
-    with TestClient(app) as client:
+    with TestClient(app):
         rc = admin.main(["skill", "add", str(ROOK_JSON)])
         assert rc == 0
         spec = registry.find("rook")

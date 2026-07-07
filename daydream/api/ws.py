@@ -30,7 +30,15 @@ from collections import Counter
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, status
 
 from daydream import (
-    config, events, lighting, objects, parser, rooms, toons, verbs, version,
+    config,
+    events,
+    lighting,
+    objects,
+    parser,
+    rooms,
+    toons,
+    verbs,
+    version,
     worldstate,
 )
 from daydream.api import auth, csrf

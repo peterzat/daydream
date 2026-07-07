@@ -1,0 +1,36 @@
+# CI: lint + the GPU-free integration tier on every push/PR.
+#
+# `bin/game test medium` is the pre-push tier by design: TestClient boots,
+# subprocesses, heavy FS I/O, with the GPU/LLM/image stack mocked and the
+# engine-liveness drift probes skipping cleanly. The GPU tiers (long/ci
+# aliases) need the RTX 4000 box and stay operator-run — see TESTING.md.
+#
+# 3.10 mirrors the dev box; 3.12 is the forward-compat signal.
+name: test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - name: Install (mirrors the dev venv bin/game expects)
+        run: |
+          python -m venv .venv
+          .venv/bin/pip install --upgrade pip
+          .venv/bin/pip install -e '.[dev]'
+      - name: Lint
+        run: .venv/bin/ruff check .
+      - name: Test (medium tier)
+        run: bin/game test medium

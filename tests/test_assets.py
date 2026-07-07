@@ -3,7 +3,6 @@ record helpers (idempotent on natural key), pin/unpin, list/total filters,
 and the unified generate_image API recording on persistent miss but not on
 hit or ephemeral."""
 
-from copy import deepcopy
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
 

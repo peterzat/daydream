@@ -312,8 +312,8 @@ async def test_entering_darkness_warns_but_does_not_kill():
 async def test_moving_dark_to_dark_applies_hazard_and_death_policy():
     install_death_world()
     spawn_lamp(fuel=10, lit=False)
-    treasure = objects.spawn(WORLD, "thing", "jeweled egg", ACTOR,
-                             properties={"treasure": True}, object_id="o-egg")
+    objects.spawn(WORLD, "thing", "jeweled egg", ACTOR,
+                  properties={"treasure": True}, object_id="o-egg")
     worldstate.set_flag(WORLD, "TRAP-OPEN", True)
     worldstate.adjust_score(WORLD, 50)
     objects.move(ACTOR, "r-cave")

@@ -57,7 +57,7 @@ DELETE_GRACE_SECONDS = 120.0
 
 def _require_slot_actionable(
     slot: int, sid: str, *, for_delete: bool = False
-) -> "toons.Toon":
+) -> toons.Toon:
     """Ownership gate shared by kick and delete. Returns the slot's toon if
     the caller may act on it, else raises. A caller MAY act when the toon is
     their own, uncontrolled (already kicked), or held by a session with no
@@ -128,7 +128,9 @@ async def create_slot(slot: int, request: Request) -> dict:
     try:
         body = await request.json()
     except Exception:
-        raise HTTPException(status_code=400, detail="body must be JSON")
+        raise HTTPException(
+            status_code=400, detail="body must be JSON"
+        ) from None
     if not isinstance(body, dict):
         raise HTTPException(status_code=400, detail="body must be a JSON object")
     name = body.get("name")
@@ -225,7 +227,7 @@ async def delete_toon(slot: int, request: Request) -> dict:
     return {"ok": True, "deleted": deleted.id}
 
 
-def _toon_to_dict(t: "toons.Toon", session_id: str) -> dict:
+def _toon_to_dict(t: toons.Toon, session_id: str) -> dict:
     """Serialize a Toon for the JSON response. Mirrors the shape used by
     `get_human_slots` so a client can stitch list+create responses
     without two parsers."""

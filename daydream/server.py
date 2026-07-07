@@ -18,7 +18,8 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
 from daydream import config, db, drift, version
-from daydream.api import auth, rooms as rooms_api, slots, world, ws
+from daydream.api import auth, slots, world, ws
+from daydream.api import rooms as rooms_api
 from daydream.api.access import AccessMiddleware
 from daydream.api.csrf import CsrfOriginMiddleware
 from daydream.api.nocache import NoCacheAssetsMiddleware

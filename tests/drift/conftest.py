@@ -29,7 +29,6 @@ differences, not 1-2 bit differences."""
 from __future__ import annotations
 
 import json
-import os
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any

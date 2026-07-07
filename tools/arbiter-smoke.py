@@ -23,7 +23,6 @@ import os
 import sys
 import tempfile
 import time
-from pathlib import Path
 
 # Use a temp data dir so the real ~/data/daydream/ cache stays clean.
 TMP = tempfile.mkdtemp(prefix="daydream-arbiter-smoke-")
@@ -32,7 +31,6 @@ os.environ["DAYDREAM_DATA_DIR"] = TMP
 from daydream.gpu import arbiter  # noqa: E402
 from daydream.images import client as image_client  # noqa: E402
 from daydream.llm import client as llm_client  # noqa: E402
-
 
 BUDGET_S = 90.0
 

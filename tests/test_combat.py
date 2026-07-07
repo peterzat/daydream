@@ -89,7 +89,7 @@ async def test_wrong_weapon_is_seeded_probabilistic():
     # happen DURING the command (before its tick), so turn is the pre-tick
     # value each time. Track expected hits over 6 swings.
     hits = 0
-    for i in range(6):
+    for _ in range(6):
         turn = worldstate.turn(WORLD)
         roll = _r.Random(f"pin:{turn}:combat:t-troll").random()
         await verbs.execute_command(ACTOR, "attack", "t-troll", "o-chicken")

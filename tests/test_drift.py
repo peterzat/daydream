@@ -127,7 +127,7 @@ def test_pick_canned_line_substitutes_name_in_generic_pool():
     line = drift._pick_canned_line("t-foo", "curious", rng=rng, name="Foo")
     assert line is not None
     expected = {
-        l.replace("{name}", "Foo") for l in drift._GENERIC_DRIFT_POOL["curious"]
+        ln.replace("{name}", "Foo") for ln in drift._GENERIC_DRIFT_POOL["curious"]
     }
     assert line in expected, f"line {line!r} not a name-substituted curious line"
     assert "{name}" not in line, "the {name} token should be fully substituted"
@@ -164,7 +164,7 @@ def test_generic_drift_pool_shape():
             assert "{name}" in line, (
                 f"generic/{bucket}: line missing {{name}} token: {line!r}"
             )
-    all_lines = [l for lines in pool.values() for l in lines]
+    all_lines = [ln for lines in pool.values() for ln in lines]
     assert len(all_lines) >= 12, f"generic pool has only {len(all_lines)} lines"
     assert len(set(all_lines)) == len(all_lines), "duplicates in generic pool"
 
@@ -980,6 +980,7 @@ def test_status_drift_returns_empty_when_no_ticks():
     """`/status/drift` returns 200 with empty body when drift hasn't
     ticked yet (zero-state silent surface)."""
     from fastapi.testclient import TestClient
+
     from daydream.server import app
 
     drift.reset_tick_counts()
@@ -994,6 +995,7 @@ def test_status_drift_returns_summary_when_counters_nonzero():
     """`/status/drift` returns a one-line summary in plain text when
     any counter is non-zero."""
     from fastapi.testclient import TestClient
+
     from daydream.server import app
 
     drift._TICK_COUNTS["llm_emit"] = 12

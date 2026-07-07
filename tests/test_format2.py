@@ -137,7 +137,7 @@ def test_one_way_exit_is_lint_not_error(tmp_path):
     env = minimal_env()
     env["rooms"][1]["exits"] = {}  # r-one -> r-two now one-way
     lints = format2.validate_envelope2(env)
-    assert any("one-way exit: r-one -> r-two" in l for l in lints)
+    assert any("one-way exit: r-one -> r-two" in ln for ln in lints)
     load(env, tmp_path)  # loads fine
 
 

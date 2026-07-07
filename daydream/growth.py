@@ -157,7 +157,7 @@ def _growth_shape_ok(growth: object) -> bool:
     return True
 
 
-def _user_prompt(growth: dict, room: "rooms.Room", phrase: str) -> str:
+def _user_prompt(growth: dict, room: rooms.Room, phrase: str) -> str:
     """The per-plant user block: the seed's authored boundaries + exemplars,
     the room being grown from (title + seed only — never ids), and the
     player's phrase inside role-separator wrapping."""
@@ -268,14 +268,14 @@ def _narrate(room_id: str, text: str) -> None:
     events.append("system", None, "narrate", {"text": text}, room_id=room_id)
 
 
-def _free_direction(room: "rooms.Room") -> str | None:
+def _free_direction(room: rooms.Room) -> str | None:
     for d in _DIRECTIONS:
         if d not in room.exits:
             return d
     return None
 
 
-def _pick_direction(room: "rooms.Room", phrase: str) -> str | None:
+def _pick_direction(room: rooms.Room, phrase: str) -> str | None:
     """The direction the new way opens: a free direction the player's phrase
     hints at ("down the well" -> down), else the first free in fixed order.
     Deterministic — the LLM still never sees directions."""
@@ -324,9 +324,9 @@ def _husk_text(growth: dict) -> str:
 
 
 async def execute_plant(
-    actor: "objects.Object",
+    actor: objects.Object,
     room_id: str,
-    seed: "objects.Object",
+    seed: objects.Object,
     args: str,
     allowed: frozenset[str],
 ) -> None:

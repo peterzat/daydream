@@ -1038,7 +1038,7 @@ def _exit_dest(value) -> str | None:
     return None
 
 
-def visible_exits(room: "rooms.Room", actor: objects.Object) -> dict:
+def visible_exits(room: rooms.Room, actor: objects.Object) -> dict:
     """The exits map as the snapshot should present it: `{direction:
     dest-or-None}`. Secret exits appear only while currently passable;
     ordinary blocked exits stay visible (clicking narrates the refusal);
@@ -1070,7 +1070,7 @@ def _normalize_place(text: str) -> str:
     return t
 
 
-def _exit_direction_for_place(room: "rooms.Room", place: str) -> str | None:
+def _exit_direction_for_place(room: rooms.Room, place: str) -> str | None:
     """Map a place name / alias / slug to the direction of an ADJACENT exit of
     `room`, or None. One hop only -- no multi-room pathfinding (SPEC 2026-06-30):
     only rooms one exit away from `room` are considered."""

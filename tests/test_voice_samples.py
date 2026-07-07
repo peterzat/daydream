@@ -9,8 +9,7 @@ not by these tests.
 """
 
 import json
-from pathlib import Path
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -235,7 +234,6 @@ def test_main_different_model_writes_distinct_file(tmp_path):
         voice_samples.main(["--out-dir", str(tmp_path)])
     files = sorted(tmp_path.glob("*.md"))
     assert len(files) == 2
-    slugs = {f.name.rsplit("-", 6)[-1].replace(".md", "") for f in files}
     # Both files carry distinct model slugs in their names.
     names = [f.name for f in files]
     assert any("qwen2.5-7b-instruct-awq" in n for n in names)

@@ -9,7 +9,6 @@ mocked-LLM end-to-end smoke. No real vLLM is touched.
 from __future__ import annotations
 
 import json
-from pathlib import Path
 from unittest.mock import AsyncMock
 
 import pytest

@@ -41,7 +41,6 @@ from daydream.gpu import arbiter
 from daydream.images import cache as image_cache
 from daydream.images import client as image_client
 
-
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 AESTHETICS_DIR = PROJECT_ROOT / "tests" / "drift" / "aesthetics"
 QPEEK_DIR = PROJECT_ROOT / "external" / "qpeek"

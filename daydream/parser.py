@@ -34,7 +34,7 @@ from __future__ import annotations
 
 import logging
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from daydream import objects, pronouns, rooms, verbs, worldverbs
 from daydream.llm import client
@@ -266,18 +266,15 @@ def _fast_path(actor_id: str, text: str, room: rooms.Room | None):
     # Longest-prefix verb-word match: two-word heads ("turn on", "blow out")
     # beat one-word heads ("turn"). Engine names/aliases + world vocabulary.
     spec = None
-    head = ""
     rest = ""
     if len(words) >= 2:
         two = " ".join(w.lower() for w in words[:2])
         spec = _verb_by_word(world_id, two)
         if spec is not None:
-            head = two
             rest = " ".join(words[2:]).strip()
     if spec is None:
         spec = _verb_by_word(world_id, words[0].lower())
         if spec is not None:
-            head = words[0].lower()
             rest = " ".join(words[1:]).strip()
 
     # "look at <name>" -> examine the named in-scope object. A bare `look`

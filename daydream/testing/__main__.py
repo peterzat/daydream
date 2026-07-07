@@ -38,7 +38,6 @@ import sys
 
 import pytest
 
-
 _TIERS = ("short", "medium", "long", "ci", "human")
 
 _TIER_MARKERS: dict[str, str] = {
