@@ -2,7 +2,7 @@
 
 Release history for daydream, newest first. Entries here are the condensed
 record; the long-form narrative for each release (what was tried, what was
-rejected, what was learned) lives in [README.md "Release notes"](README.md#release-notes)
+rejected, what was learned) lives in [docs/RELEASES.md](docs/RELEASES.md)
 and, for the GPU/model decisions, [docs/gpu-and-models.md](docs/gpu-and-models.md).
 Versions follow the app's own semver (`daydream/version.py:APP_VERSION`);
 `WORLD_VERSION` is the separate world-content compatibility stamp.
