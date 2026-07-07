@@ -147,7 +147,7 @@ docs, backfilled tags, and a v1.0.0 GitHub release.
   and holds the post-1.0 direction (v1.x polish vs v2 shared-world),
   absorbing this spec's out-of-scope list.
 
-- [ ] **16. v1.0.0 ships.** Annotated tags `v0.3.0`–`v0.6.0` exist at
+- [x] **16. v1.0.0 ships.** Annotated tags `v0.3.0`–`v0.6.0` exist at
   their historical release-notes commits and `v1.0.0` at the release
   commit; the pre-push gate passes (/codereview with /security, marker
   written); `git push --follow-tags` lands and GitHub Actions is green on
@@ -192,20 +192,25 @@ Constraints the implementer must respect:
   is agent-executable. The release step (criterion 16) is the one
   explicitly-authorized push of this turn.
 
-### Status at session close (2026-07-07, pushed ahead of the playtests)
+### Status at release (2026-07-07, v1.0.0 shipped)
 
-13/16 checked above. Implementation, verification, docs, and the review
-gate are done: /codereview + /security covered the full turn (0 BLOCK /
-2 WARN both fixed / 5 NOTE; marker written), medium tier 1213 green,
-tier_long green end-to-end including the dfrotz oracle, portrait +
-journal quality ratified in-session. On the operator's instruction the
-push happened AHEAD of the playtests: `main` and the backfilled annotated
-tags v0.3.0–v0.6.0 are on origin as of this note, which also fired
-GitHub Actions' first-ever run. The final turn closes the three open
-criteria, in this order:
+14/16 checked above. On the operator's instruction v1.0.0 shipped ahead
+of the two playtests. Criterion 16 evidence: the release-bow docs pass
+landed first (README leads with What-works plus the local-GPU framing;
+the long-form release narratives moved to `docs/RELEASES.md`; MOO linked;
+/codereview light pass 0 BLOCK / 0 WARN / 1 NOTE, marker written);
+annotated tag `v1.0.0` sits at the release commit `e2727ca`;
+`git push origin main --follow-tags` landed with the medium tier 1213
+green at the gate; GitHub Actions run 28887834164 concluded success on
+that commit; the repo carries a description and 14 topics; exactly one
+new GitHub release exists (`v1.0.0 — daydream v1.0.0`, marked Latest,
+body from `docs/releases/v1.0.0.md`); `bin/game deploy` left
+`/status/build` reporting app 1.0.0 on build `e2727ca`.
+
+Two criteria remain, both operator playtests on the shipped build:
 
 - **Criterion 9 (Zork playtest).** The live world is Zork on the
-  reviewed build. Play it in a browser; fix or backlog findings; check
+  released build. Play it in a browser; fix or backlog findings; check
   this box and the v0.6 spec's C15 line.
 - **Criterion 7 (the reset).** The 1.4 batch is authored, committed, and
   load-verified, and the live Zork world is archived
@@ -215,15 +220,6 @@ criteria, in this order:
   (plant → propagated child seed → replant; portraits in margin +
   picker; leave → journal → return beat; help leaf; endings via a
   temporary zork swap).
-- **Criterion 16 (v1.0.0 ships).** Still owed after the early push: any
-  playtest fix round (new commits invalidate the marker → refresh
-  /codereview, a cheap 0-BLOCK refresh), `git tag -a v1.0.0 -m "daydream
-  v1.0.0"` at the final release commit, `git push origin main
-  --follow-tags`, GitHub Actions green on that commit, `gh repo edit`
-  description + topics, exactly ONE GitHub release (`gh release create
-  v1.0.0 --title "daydream v1.0.0" --notes-file docs/releases/v1.0.0.md
-  --latest`), and `bin/game deploy` leaving `/status/build` reporting
-  app 1.0.0.
 
 FIRST-FABLE.md still owes its append-only Part-4 addenda (the oracle run
 grade and this turn's playtest/verdict), co-written with the operator at
@@ -236,4 +232,4 @@ platform primitives — closed 15/16 in-turn (walkthrough 350 deterministic
 2026-07-07); its criterion 15 browser-playtest half carries forward as
 criterion 9 above.*
 
-<!-- SPEC_META: {"date":"2026-07-07","title":"daydream v1.0: the release turn","criteria_total":16,"criteria_met":13} -->
+<!-- SPEC_META: {"date":"2026-07-07","title":"daydream v1.0: the release turn","criteria_total":16,"criteria_met":14} -->
