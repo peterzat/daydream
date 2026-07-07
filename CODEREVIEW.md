@@ -1,3 +1,34 @@
+## Review — 2026-07-07b (commit: 8e74665) — refresh
+
+**Summary:** Refresh review of one commit (8e74665) against the freshly-pushed
+origin/main (5ab2c75): the CI-parity fix for the five say-tests that CI's
+first run caught silently grounding through the dev box's live vLLM. Two test
+files, no runtime code. The conftest gains an autouse guard pointing
+DAYDREAM_LLM_BASE_URL at an unreachable port for every test not marked
+requires_vllm (so local runs behave exactly like engine-less CI; the
+session-scoped _vllm_live probe is only ever resolved from exempt tests, so
+tier_long keeps the real URL); the five tests pin the grounded say parse
+through the module's existing acompletion_json mock convention. Verified both
+ways: the five tests fail with a dead engine BEFORE the fix and pass AFTER
+with the guard active (35/35 in test_ws.py), and the full medium tier is 1213
+green with engines up + guard active — proving the GPU-free tier is now
+engine-independent. Test-only diff: no new security surface (the 2026-07-07
+/security pass and its fix-loop coverage stand).
+
+**Review scope:** Refresh review. Focus: 2 files changed since the prior
+review (tests/conftest.py, tests/test_ws.py); no already-reviewed files
+interact beyond the test suite itself.
+
+**External reviewers:** None configured.
+
+### Findings
+
+No issues found.
+
+### Fixes Applied
+
+None (this commit IS the fix for the CI first-run failure, reviewed here).
+
 ## Review — 2026-07-07 (commit: 21fed3f)
 
 **Summary:** Full-depth review of the v1.0 release turn: 18 commits, 100 files,
@@ -111,4 +142,4 @@ FIRST-FABLE.md; clean. Before that (2026-07-03, 7ca0194): full review of the
 GPU headroom + multiplayer hardening + prompt audit + regen-UI turn — 0 BLOCK
 / 0 WARN / 5 NOTE (3 fixed, 2 backlogged).*
 
-<!-- REVIEW_META: {"date":"2026-07-07","commit":"21fed3f","reviewed_up_to":"21fed3f5758dc299f1f4a8508b16609e765bb389","base":"origin/main","tier":"full","block":0,"warn":2,"note":5} -->
+<!-- REVIEW_META: {"date":"2026-07-07","commit":"8e74665","reviewed_up_to":"8e746657cb9042850860692fcbb937746c72e086","base":"origin/main","tier":"refresh","block":0,"warn":0,"note":0} -->
