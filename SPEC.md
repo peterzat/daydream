@@ -192,6 +192,43 @@ Constraints the implementer must respect:
   is agent-executable. The release step (criterion 16) is the one
   explicitly-authorized push of this turn.
 
+### Status at session close (2026-07-07, pushed ahead of the playtests)
+
+13/16 checked above. Implementation, verification, docs, and the review
+gate are done: /codereview + /security covered the full turn (0 BLOCK /
+2 WARN both fixed / 5 NOTE; marker written), medium tier 1213 green,
+tier_long green end-to-end including the dfrotz oracle, portrait +
+journal quality ratified in-session. On the operator's instruction the
+push happened AHEAD of the playtests: `main` and the backfilled annotated
+tags v0.3.0–v0.6.0 are on origin as of this note, which also fired
+GitHub Actions' first-ever run. The final turn closes the three open
+criteria, in this order:
+
+- **Criterion 9 (Zork playtest).** The live world is Zork on the
+  reviewed build. Play it in a browser; fix or backlog findings; check
+  this box and the v0.6 spec's C15 line.
+- **Criterion 7 (the reset).** The 1.4 batch is authored, committed, and
+  load-verified, and the live Zork world is archived
+  (`archives/w-zork1-20260707-140643.tar.gz`). Run `bin/game world reset
+  --yes` (operator-gated destructive step) to install the loft as the
+  live world, then check this box. Follow with the Inc-13 loft playtest
+  (plant → propagated child seed → replant; portraits in margin +
+  picker; leave → journal → return beat; help leaf; endings via a
+  temporary zork swap).
+- **Criterion 16 (v1.0.0 ships).** Still owed after the early push: any
+  playtest fix round (new commits invalidate the marker → refresh
+  /codereview, a cheap 0-BLOCK refresh), `git tag -a v1.0.0 -m "daydream
+  v1.0.0"` at the final release commit, `git push origin main
+  --follow-tags`, GitHub Actions green on that commit, `gh repo edit`
+  description + topics, exactly ONE GitHub release (`gh release create
+  v1.0.0 --title "daydream v1.0.0" --notes-file docs/releases/v1.0.0.md
+  --latest`), and `bin/game deploy` leaving `/status/build` reporting
+  app 1.0.0.
+
+FIRST-FABLE.md still owes its append-only Part-4 addenda (the oracle run
+grade and this turn's playtest/verdict), co-written with the operator at
+close-out.
+
 ---
 *Prior spec (2026-07-02): Zork I as pure world data on Zork-agnostic
 platform primitives — closed 15/16 in-turn (walkthrough 350 deterministic
