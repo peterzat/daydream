@@ -137,6 +137,85 @@ def test_plant_command_grows_room_and_refreshes_snapshot_live():
                 assert any(key[2] == new_room_id for key in ws_module._generating)
 
 
+def test_propagated_seed_grows_twice_over_ws():
+    """The growing-world loop end-to-end (SPEC 2026-07-07 criterion 1): a
+    propagation-carrying seed grows a room that holds a fresh child seed
+    (chance 1.0 forces the hit deterministically); walking in, taking the
+    child, and planting it grows a SECOND room. Two plants, exactly two
+    compose calls — propagation adds zero prompts and zero model calls."""
+    second_comp = {**COMPOSITION, "title": "The Fern Hollow"}
+
+    def _next_snapshot(sock):
+        while True:
+            msg = sock.receive_json()
+            if msg["kind"] == "state_snapshot":
+                return msg
+
+    with TestClient(app) as client:
+        _login(client)
+        growth_block = {
+            **GROWTH_BLOCK,
+            "propagation": {"chance": 1.0, "max_generation": 2},
+        }
+        seed = objects.spawn(
+            "w-bunny", "thing", "dreamseed", "t-wren",
+            prototype_id=objects.PROTO_THING,
+            properties={"seed": "a seed like a folded lantern",
+                        "verbs": ["plant"], "growth": growth_block},
+        )
+        with patch(
+            "daydream.llm.client.acompletion_json",
+            new=AsyncMock(side_effect=[dict(COMPOSITION), dict(second_comp)]),
+        ) as spy:
+            with client.websocket_connect("/ws") as sock:
+                sock.receive_json()  # initial snapshot
+                # First plant: grows The Moss Stair south of the meadow.
+                sock.send_json({"kind": "command", "verb": "plant",
+                                "dobj_id": seed.id,
+                                "args": "a mossy stair into green light"})
+                snap = _next_snapshot(sock)
+                first_room = snap["room"]["exits"]["south"]
+                # Walk in: the child dreamseed rests here beside the husk.
+                sock.send_json({"kind": "input", "text": "go south"})
+                snap = _next_snapshot(sock)
+                assert snap["room"]["id"] == first_room
+                by_name = {o["name"]: o for o in snap["items"]}
+                assert "dreamseed" in by_name, "the propagated child is here"
+                assert "spent dreamseed" in by_name  # the parent's husk
+                child_id = by_name["dreamseed"]["id"]
+                assert "plant" in by_name["dreamseed"]["verbs"]
+                # Take the child and plant it again, in place.
+                sock.send_json({"kind": "command", "verb": "take",
+                                "dobj_id": child_id})
+                snap = _next_snapshot(sock)
+                assert any(o["name"] == "dreamseed" for o in snap["inventory"])
+                sock.send_json({"kind": "command", "verb": "plant",
+                                "dobj_id": child_id,
+                                "args": "a hollow of soft ferns"})
+                snap = _next_snapshot(sock)
+                exits = snap["room"]["exits"]
+                second_room = next(
+                    (rid for d, rid in exits.items()
+                     if rid and rid != "r-meadow" and d != "north"), None,
+                )
+                assert second_room, f"second grown room must open here: {exits}"
+                # Walk in: the second grown room is real and titled.
+                direction = next(d for d, rid in exits.items() if rid == second_room)
+                sock.send_json({"kind": "input", "text": f"go {direction}"})
+                snap = _next_snapshot(sock)
+                assert snap["room"]["id"] == second_room
+                assert snap["room"]["title"] == "The Fern Hollow"
+        assert spy.call_count == 2
+        # The grandchild (generation 2) waits in the second room.
+        grand = [
+            o for o in objects.contents(second_room, kind="thing")
+            if str(o.properties.get("generated_by", "")).startswith("propagation:")
+            and o.properties.get("state") != "spent"
+        ]
+        assert len(grand) == 1
+        assert grand[0].properties["growth"]["generation"] == 2
+
+
 def test_plant_failure_path_over_ws_preserves_seed():
     """A refusal composition narrates in character; the seed stays carried
     and NO exit appears in any later snapshot."""

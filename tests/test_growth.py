@@ -594,3 +594,190 @@ async def test_race_slug_taken_suffixes_unique(monkeypatch):
     assert room is not None and room.id == "r-the-moss-stair-2"
     assert rooms.get_room("r-meadow").exits["south"] == room.id
     assert objects.get(seed.id).location_id == room.id  # husk rests inside
+
+
+# ---- propagation: the growing-world loop (SPEC 2026-07-07 criterion 1) ----
+
+PROPAGATION = {"chance": 1.0, "max_generation": 2,
+               "seed_text": "a smaller seed, still warm from its parent's dreaming"}
+
+
+def _propagating_growth(generation: int | None = None, **prop_overrides) -> dict:
+    g = dict(GROWTH_BLOCK)
+    g["propagation"] = {**PROPAGATION, **prop_overrides}
+    if generation is not None:
+        g["generation"] = generation
+    return g
+
+
+def _child_seeds(room_id: str) -> list:
+    """Live (unspent) propagated seeds resting in `room_id`. A planted child's
+    own husk also carries propagation provenance and moves into the room it
+    grew, so spent seeds are filtered out."""
+    return [
+        o for o in objects.contents(room_id, kind="thing")
+        if str(o.properties.get("generated_by", "")).startswith("propagation:")
+        and o.properties.get("state") != "spent"
+    ]
+
+
+@pytest.mark.asyncio
+async def test_propagation_forced_hit_spawns_plantable_child(monkeypatch):
+    """chance=1.0 makes the roll a guaranteed hit (random() < 1.0 always): the
+    grown room holds a fresh dreamseed inheriting the parent's boundaries with
+    generation incremented, provenance propagation:<parent-id>, the plant
+    verb, and the authored seed_text as its object seed."""
+    _mock_llm(monkeypatch, dict(VALID_COMPOSITION))
+    seed = _seed(growth_block=_propagating_growth())
+    await _plant(seed)
+    children = _child_seeds("r-the-moss-stair")
+    assert len(children) == 1
+    child = children[0]
+    assert child.name == "dreamseed"
+    assert child.properties["generated_by"] == f"propagation:{seed.id}"
+    assert child.properties["seed"] == PROPAGATION["seed_text"]
+    assert "plant" in child.properties["verbs"]
+    g = child.properties["growth"]
+    assert g["generation"] == 1
+    for key in ("question", "theme", "palette", "motifs", "exemplars"):
+        assert g[key] == GROWTH_BLOCK[key]  # boundaries inherited verbatim
+    assert g["propagation"] == PROPAGATION  # the lineage keeps propagating
+
+
+@pytest.mark.asyncio
+async def test_propagation_roll_is_seeded_and_respects_chance(monkeypatch):
+    """The roll draws from the world RNG under the purpose
+    "seed-propagation:<new-room-id>" (seeded-deterministic), and a roll at or
+    above chance spawns nothing — while the plant itself still lands."""
+    _mock_llm(monkeypatch, dict(VALID_COMPOSITION))
+    calls: list = []
+
+    class _FixedRoll:
+        def random(self):
+            return 0.9
+
+    def fake_rng(world_id, purpose):
+        calls.append((world_id, purpose))
+        return _FixedRoll()
+
+    monkeypatch.setattr(growth.worldstate, "rng", fake_rng)
+    seed = _seed(growth_block=_propagating_growth(chance=0.4))
+    await _plant(seed)
+    assert len(_grown_rooms()) == 1
+    assert calls == [("w-bunny", "seed-propagation:r-the-moss-stair")]
+    assert _child_seeds("r-the-moss-stair") == []
+
+
+@pytest.mark.asyncio
+async def test_propagation_suppressed_at_generation_ceiling(monkeypatch):
+    """A parent at generation >= max_generation grows its room but yields no
+    child, even at chance 1.0."""
+    _mock_llm(monkeypatch, dict(VALID_COMPOSITION))
+    seed = _seed(growth_block=_propagating_growth(generation=2))
+    await _plant(seed)
+    assert len(_grown_rooms()) == 1
+    assert _child_seeds("r-the-moss-stair") == []
+
+
+@pytest.mark.asyncio
+async def test_propagation_suppressed_at_grown_room_cap(monkeypatch):
+    """When this plant's own room reaches the grown-room cap, the child is
+    suppressed — a seed that could never be planted is dead weight."""
+    monkeypatch.setenv("DAYDREAM_GROWTH_MAX_ROOMS", "1")
+    _mock_llm(monkeypatch, dict(VALID_COMPOSITION))
+    seed = _seed(growth_block=_propagating_growth())
+    await _plant(seed)
+    assert len(_grown_rooms()) == 1
+    assert _child_seeds("r-the-moss-stair") == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("prop", [
+    "not-a-dict",
+    {"chance": 0, "max_generation": 2},
+    {"chance": 2, "max_generation": 2},
+    {"chance": 0.5},
+    {"chance": 0.5, "max_generation": 9},
+    {"chance": 0.5, "max_generation": 2, "seed_text": 7},
+])
+async def test_propagation_malformed_block_is_ignored(monkeypatch, prop):
+    """A runtime-spawned seed can carry an arbitrary propagation block; a
+    malformed one means no propagation — the plant itself still succeeds and
+    nothing raises."""
+    _mock_llm(monkeypatch, dict(VALID_COMPOSITION))
+    g = dict(GROWTH_BLOCK)
+    g["propagation"] = prop
+    seed = _seed(growth_block=g)
+    await _plant(seed)
+    assert len(_grown_rooms()) == 1
+    assert _child_seeds("r-the-moss-stair") == []
+
+
+@pytest.mark.asyncio
+async def test_propagation_absent_spawns_no_child(monkeypatch):
+    _mock_llm(monkeypatch, dict(VALID_COMPOSITION))
+    seed = _seed()  # plain GROWTH_BLOCK: no propagation key
+    await _plant(seed)
+    assert len(_grown_rooms()) == 1
+    assert _child_seeds("r-the-moss-stair") == []
+
+
+@pytest.mark.asyncio
+async def test_propagation_failed_plant_spawns_nothing(monkeypatch):
+    """Propagation only ever rides a SUCCESSFUL commit: a validation-rejected
+    composition leaves the parent intact and no child anywhere."""
+    _mock_llm(monkeypatch, {"title": "x"})  # fails schema validation
+    seed = _seed(growth_block=_propagating_growth())
+    await _plant(seed)
+    _assert_nothing_grew(seed.id)
+
+
+@pytest.mark.asyncio
+async def test_propagation_child_seed_defaults_to_parents(monkeypatch):
+    """Without an authored seed_text the child wears the parent's object
+    seed, so the lineage stays visually coherent."""
+    _mock_llm(monkeypatch, dict(VALID_COMPOSITION))
+    g = dict(GROWTH_BLOCK)
+    g["propagation"] = {"chance": 1.0, "max_generation": 2}  # no seed_text
+    seed = _seed(growth_block=g)
+    await _plant(seed)
+    child = _child_seeds("r-the-moss-stair")[0]
+    assert child.properties["seed"] == "a dreamseed like a folded lantern"
+
+
+@pytest.mark.asyncio
+async def test_propagation_lineage_grows_twice_then_stops(monkeypatch):
+    """The full loop at max_generation=2: parent (gen 0) yields a gen-1 child;
+    planting the child yields a gen-2 grandchild; planting the grandchild
+    grows a room but ends the lineage. Three plants, three LLM calls, zero
+    propagation prompts."""
+    spy = _mock_llm(monkeypatch, dict(VALID_COMPOSITION))
+    parent = _seed(growth_block=_propagating_growth())
+    await _plant(parent)
+    child = _child_seeds("r-the-moss-stair")[0]
+    assert child.properties["growth"]["generation"] == 1
+
+    # Carry the child onward and plant it from the grown room.
+    objects.move("t-wren", "r-the-moss-stair")
+    objects.move(child.id, "t-wren")
+    await growth.execute_plant(
+        _wren(), "r-the-moss-stair", objects.get(child.id),
+        "a mossy stair into green light", PLANT_ALLOWED,
+    )
+    second_room = rooms.get_room_by_slug("w-bunny", "the-moss-stair-2")
+    assert second_room is not None
+    grandchild = _child_seeds(second_room.id)[0]
+    assert grandchild.properties["growth"]["generation"] == 2
+    assert grandchild.properties["generated_by"] == f"propagation:{child.id}"
+
+    # The grandchild sits at the ceiling: its plant ends the lineage.
+    objects.move("t-wren", second_room.id)
+    objects.move(grandchild.id, "t-wren")
+    await growth.execute_plant(
+        _wren(), second_room.id, objects.get(grandchild.id),
+        "a mossy stair into green light", PLANT_ALLOWED,
+    )
+    third_room = rooms.get_room_by_slug("w-bunny", "the-moss-stair-3")
+    assert third_room is not None
+    assert _child_seeds(third_room.id) == []
+    assert spy.call_count == 3  # one compose per plant; propagation adds none

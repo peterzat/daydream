@@ -350,6 +350,38 @@ def test_validate_rejects_malformed_growth(mutate, match):
         boot._validate_envelope(_envelope_with_seed_case(growth=growth))
 
 
+def test_validate_accepts_growth_with_propagation():
+    """The growing-world loop's authored block (SPEC 2026-07-07 criterion 1):
+    chance in (0, 1] (1 itself is legal), max_generation 1-4, optional
+    seed_text."""
+    growth = _growth_block()
+    growth["propagation"] = {"chance": 0.4, "max_generation": 2,
+                             "seed_text": "a smaller seed, still warm"}
+    boot._validate_envelope(_envelope_with_seed_case(growth=growth))
+    growth["propagation"] = {"chance": 1, "max_generation": 4}
+    boot._validate_envelope(_envelope_with_seed_case(growth=growth))
+
+
+@pytest.mark.parametrize("prop,match", [
+    ("not-an-object", "propagation"),
+    ({"chance": 0, "max_generation": 2}, "chance"),
+    ({"chance": 1.2, "max_generation": 2}, "chance"),
+    ({"chance": True, "max_generation": 2}, "chance"),
+    ({"chance": "0.4", "max_generation": 2}, "chance"),
+    ({"chance": 0.4}, "max_generation"),
+    ({"chance": 0.4, "max_generation": 0}, "max_generation"),
+    ({"chance": 0.4, "max_generation": 5}, "max_generation"),
+    ({"chance": 0.4, "max_generation": 2.5}, "max_generation"),
+    ({"chance": 0.4, "max_generation": True}, "max_generation"),
+    ({"chance": 0.4, "max_generation": 2, "seed_text": "  "}, "seed_text"),
+])
+def test_validate_rejects_malformed_propagation(prop, match):
+    growth = _growth_block()
+    growth["propagation"] = prop
+    with pytest.raises(boot.BootstrapValidationError, match=match):
+        boot._validate_envelope(_envelope_with_seed_case(growth=growth))
+
+
 @pytest.mark.parametrize("contains,match", [
     ("not-an-object", "object or a list"),
     ([{"seed": "no name"}], "name"),

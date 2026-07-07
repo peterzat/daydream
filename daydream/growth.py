@@ -40,7 +40,7 @@ import logging
 import re
 from datetime import datetime, timezone
 
-from daydream import config, events, objects, rooms
+from daydream import config, events, objects, rooms, worldstate
 from daydream.llm import client, safety
 from daydream.skills import effects
 
@@ -89,6 +89,9 @@ _OFF_TONE = "The seed stirs, but the dream won't hold that shape."
 _WONT_HOLD_YET = "The seed stirs, but the dream won't hold that shape yet."
 _FOGGY = client.FOGGY_TEXT
 _HUSK_DEFAULT = "a spent dreamseed, its light gone soft; something of it lives on in this place"
+_CHILD_SEED_DEFAULT = (
+    "a small dreamseed, new and faintly warm, grown in the quiet of this place"
+)
 
 # ---- the growth prompt (rung a: exemplar-scaffolded free composition) ---
 #
@@ -320,6 +323,81 @@ def _husk_text(growth: dict) -> str:
     return _HUSK_DEFAULT
 
 
+# ---- propagation (SPEC 2026-07-07 criterion 1) ----------------------------
+
+
+def _propagation_ok(prop: object) -> bool:
+    """Runtime shape check for a seed's `growth.propagation` block. Loader-
+    authored seeds are validated fail-loudly at load (`bootstrap`), but a
+    runtime-spawned seed can carry anything; a malformed block means no
+    propagation, never an exception. Required: `chance` a number in (0, 1],
+    `max_generation` an int 1-4. Optional: `seed_text` a string."""
+    if not isinstance(prop, dict):
+        return False
+    chance = prop.get("chance")
+    if isinstance(chance, bool) or not isinstance(chance, (int, float)):
+        return False
+    if not (0 < chance <= 1):
+        return False
+    max_gen = prop.get("max_generation")
+    if isinstance(max_gen, bool) or not isinstance(max_gen, int):
+        return False
+    if not (1 <= max_gen <= 4):
+        return False
+    seed_text = prop.get("seed_text")
+    return seed_text is None or isinstance(seed_text, str)
+
+
+def _propagation_effect(
+    seed: objects.Object, growth: dict, world_id: str, new_room_id: str
+) -> dict | None:
+    """The optional child-dreamseed spawn: a seed whose authored
+    `growth.propagation` survives its shape check may, on a hit, yield a
+    fresh plantable dreamseed inside the newly grown room — the growing-world
+    loop. Returns the spawn_object effect for the commit batch, or None.
+
+    Entirely deterministic (no LLM surface): the roll draws from
+    `worldstate.rng(world_id, "seed-propagation:<new-room-id>")`, so a replay
+    of the same world seed through the same plants reproduces every hit.
+    Suppressed at the generation ceiling (`growth.generation`, 0 for an
+    authored seed, vs `max_generation`) and when the world has reached the
+    grown-room cap counting this plant's own room — a child that could never
+    be planted is dead weight. The child inherits the parent's growth
+    boundaries verbatim with generation incremented, and carries provenance
+    `propagation:<parent-seed-id>` (dedup + future GC, like every generative
+    spawn)."""
+    prop = growth.get("propagation")
+    if not _propagation_ok(prop):
+        return None
+    generation = growth.get("generation")
+    if isinstance(generation, bool) or not isinstance(generation, int):
+        generation = 0
+    if generation >= prop["max_generation"]:
+        return None
+    if rooms.grown_room_count(world_id) >= config.growth_max_rooms():
+        return None
+    roll = worldstate.rng(world_id, f"seed-propagation:{new_room_id}").random()
+    if roll >= prop["chance"]:
+        return None
+    child_growth = dict(growth)
+    child_growth["generation"] = generation + 1
+    seed_text = prop.get("seed_text")
+    if not (isinstance(seed_text, str) and seed_text.strip()):
+        parent_seed = seed.properties.get("seed")
+        seed_text = (
+            parent_seed if isinstance(parent_seed, str) and parent_seed.strip()
+            else _CHILD_SEED_DEFAULT
+        )
+    return {
+        "kind": "spawn_object", "name": seed.name, "seed": seed_text.strip(),
+        "location_id": new_room_id,
+        "generated_by": f"propagation:{seed.id}",
+        "verbs": ["plant"],
+        "aliases": list(seed.aliases),
+        "properties": {"growth": child_growth},
+    }
+
+
 # ---- the pipeline ---------------------------------------------------------
 
 
@@ -480,6 +558,12 @@ def _commit_growth(
         return
 
     consume: list[dict] = []
+    # Propagation rides the same commit batch, FIRST among the spawns: the
+    # grown room is empty at this point, so the generative-spawn dedup can
+    # never mistake a composed object named like the seed for the child.
+    child_seed = _propagation_effect(seed, growth, world_id, new_room_id)
+    if child_seed is not None:
+        consume.append(child_seed)
     for obj in composition["objects"]:
         consume.append({
             "kind": "spawn_object", "name": obj["name"], "seed": obj["seed"],

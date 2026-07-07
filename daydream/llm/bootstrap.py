@@ -311,14 +311,46 @@ def _validate_exemplar_rooms(value: object, where: str, lo: int, hi: int) -> Non
                 )
 
 
+def _validate_propagation(prop: object, where: str) -> None:
+    """A dreamseed's optional `growth.propagation` block (SPEC 2026-07-07
+    criterion 1): `chance` a number in (0, 1], `max_generation` an int 1-4,
+    optional `seed_text` a non-empty string (the child seed's object seed;
+    absent inherits the parent's)."""
+    if not isinstance(prop, dict):
+        raise BootstrapValidationError(f"{where} must be an object")
+    chance = prop.get("chance")
+    if (
+        isinstance(chance, bool) or not isinstance(chance, (int, float))
+        or not (0 < chance <= 1)
+    ):
+        raise BootstrapValidationError(
+            f"{where}.chance must be a number in (0, 1]"
+        )
+    max_gen = prop.get("max_generation")
+    if isinstance(max_gen, bool) or not isinstance(max_gen, int) or not (
+        1 <= max_gen <= 4
+    ):
+        raise BootstrapValidationError(
+            f"{where}.max_generation must be an integer 1-4"
+        )
+    seed_text = prop.get("seed_text")
+    if seed_text is not None and (
+        not isinstance(seed_text, str) or not seed_text.strip()
+    ):
+        raise BootstrapValidationError(
+            f"{where}.seed_text must be a non-empty string"
+        )
+
+
 def _validate_growth(growth: object, where: str) -> None:
     """A dreamseed's authored growth boundaries (SPEC 2026-07-02), fail-loudly
     validated at load so a malformed seed never reaches the runtime. Required:
     `question` (str), `theme` (1-8 strings), `palette` (str), `exemplars` (1-3
     rooms of title/seed/description). Optional: `motifs` (0-8 strings),
     `skeletons` (0-3 rooms — the rung-(b) select-and-fill templates, validated
-    from day one so flipping rungs never touches the loader). Unknown keys are
-    tolerated (a future `depth`)."""
+    from day one so flipping rungs never touches the loader), `propagation`
+    (the growing-world loop, SPEC 2026-07-07). Unknown keys are tolerated (a
+    future `depth`)."""
     if not isinstance(growth, dict):
         raise BootstrapValidationError(f"{where} must be an object")
     if not isinstance(growth.get("question"), str) or not growth["question"].strip():
@@ -343,6 +375,8 @@ def _validate_growth(growth: object, where: str) -> None:
     _validate_exemplar_rooms(growth.get("exemplars"), f"{where}.exemplars", 1, 3)
     if growth.get("skeletons") is not None:
         _validate_exemplar_rooms(growth["skeletons"], f"{where}.skeletons", 0, 3)
+    if growth.get("propagation") is not None:
+        _validate_propagation(growth["propagation"], f"{where}.propagation")
 
 
 def _validate_growth_keys(props: dict, where: str) -> None:
