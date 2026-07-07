@@ -7281,6 +7281,29 @@
               "delta": 1
             },
             {
+              "kind": "narrate",
+              "text": "You are surrounded by a wall of sand on all sides."
+            }
+          ]
+        },
+        {
+          "on": "dig",
+          "if": [
+            {
+              "iobj": "o-shovel"
+            },
+            {
+              "counter": "sand-digs",
+              "eq": 3
+            }
+          ],
+          "do": [
+            {
+              "kind": "adjust_counter",
+              "name": "sand-digs",
+              "delta": 1
+            },
+            {
               "kind": "move_object",
               "object_id": "o-scarab",
               "dest_id": "r-sandy-cave"

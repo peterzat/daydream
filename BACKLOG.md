@@ -228,11 +228,26 @@ Captured from the test-architecture landing (2026-04-23); scaffolding for these 
 
 ## Zork turn deferrals (captured 2026-07-02)
 
-### zork-oracle-ratification-run
-- **One-line description:** The differential oracle harness (`tools/zork_oracle.py`, `tests/drift/test_zork_oracle.py`) is built and skip-if-absent; the actual ratification run against real dfrotz + a Zork I story file has not happened (the sandboxed session could not compile the frotz dumb target; `bin/zork-oracle-bootstrap` is the operator's one-command setup, or `sudo apt-get install frotz` which ships dfrotz). Expect seed-shopping `DAYDREAM_ZORK_ORACLE_SEED` for a clean real-thief stream, and possibly small oracle-runner accommodations on first contact with real output.
-- **Why deferred:** Needs artifacts only the operator can place (compiler run + story file, never committed). Pre-registered as fidelity relaxation R8: the harness is optional, never load-bearing.
-- **Revisit criteria:** Operator runs the bootstrap and exports `DAYDREAM_ZORK_ORACLE_STORY`; criterion 14 is checked off after the first green replay.
-- **Origin:** SPEC 2026-07-02 criterion 14; sandbox denial recorded in the oracle commit.
+### zork-oracle-ratification-run — DONE 2026-07-07
+- **Outcome:** GREEN against real Zork I (dfrotz 2.44 built from the on-box
+  frotz source; story R119/880429 compiled from the design-time ZIL tree;
+  `DAYDREAM_ZORK_ORACLE_SEED=4`, one segment needed 2 attempts). The
+  "possibly small accommodations on first contact" prediction understated
+  it: first contact taught the harness zero-cost save/restore-bracketed
+  probes, disarm-recovery combat, status-line filtering, and per-segment
+  bounded retry (a 400-seed sweep proved a single straight-line RNG stream
+  can never thread the wandering thief — retry against interpreter RNG,
+  which restore deliberately does not rewind, asks the honest question:
+  CAN the real game follow this walkthrough and agree at every
+  checkpoint). The walkthrough itself absorbed six real-game lessons:
+  carry-weight limits (sword dropped at the altar; lamp-only coffin and
+  reservoir trips), wound-shrunk capacity (kit shed in the den before the
+  loot takes), the ~8-held-items cap (kit parked at Round Room across the
+  dam trip), dynamic trophy-case scoring (no egg case-parking), the
+  thief's floor-item shell game (key/grating choreography cut; kit carried
+  to the ceremony), and the four-dig scarab (our world was authored one
+  dig short — now fixed to the original's count).
+- **Origin:** SPEC 2026-07-02 criterion 14, checked off 2026-07-07.
 
 ### zork-fidelity-relaxations-second-pass
 - **One-line description:** Small documented divergences from the original, each noted in its region-file comment, revisitable as a batch: the Loud Room garbles no commands (the bar take refuses instead); drop-a-weapon-while-aboard and attack-from-the-boat do not puncture (boarding and stowing do); River 5 refuses the falls instead of killing; the maintenance-room flood blocks entry but never drowns a lingerer; the reservoir refill cannot drown a wader; the bat's drop room is fixed rather than random; the skeleton's curse is a bark without the item banishment; the machine ignores non-coal contents rather than slagging them; the thief stops stealing once confronted in his den.

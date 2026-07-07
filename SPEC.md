@@ -30,7 +30,7 @@
 
 - [x] **13. The local LLM layers on top, probe-gated, never load-bearing.** The retell layer ships ON in the Zork world config: non-verbatim outcome narrations may be rephrased into the world's authored register under strict validation (proper nouns and digits preserved, length cap, banlist) with authored-text fallback; authored verbatim zones protect iconic and mechanical lines. A tier_long retell probe against real vLLM is golden-ratified, with the agent grading captured samples against the world's voice block and recording the shipped rung (ON / scoped / OFF) in the ratification commit, per the flag-local-limits pact. NPC `talk` works for the authored hostiles. With vLLM down, every deterministic path (clicks, exits, all walkthrough commands) still works.
 
-- [ ] **14. Real Zork agrees at the checkpoints (when present).** With dfrotz available and `DAYDREAM_ZORK_ORACLE_STORY` pointing at a story file under `~/data/zork/`, `tests/drift/test_zork_oracle.py` (tier_long) replays the walkthrough in both engines and state checkpoints match: room identity (via the committed id↔name mapping), score, inventory multiset; combat is compared on outcomes, not blow-by-blow. Without interpreter or story file the test skips with a named reason. No Zork story file, dump, or original prose is committed to the repo.
+- [x] **14. Real Zork agrees at the checkpoints (when present).** With dfrotz available and `DAYDREAM_ZORK_ORACLE_STORY` pointing at a story file under `~/data/zork/`, `tests/drift/test_zork_oracle.py` (tier_long) replays the walkthrough in both engines and state checkpoints match: room identity (via the committed id↔name mapping), score, inventory multiset; combat is compared on outcomes, not blow-by-blow. Without interpreter or story file the test skips with a named reason. No Zork story file, dump, or original prose is committed to the repo.
 
 - [ ] **15. The dream swaps to Zork live.** `world load worlds/zork1.json --output` builds a side DB and `world swap` moves the running server onto it with connected clients re-snapshotting; a full solo playthrough is driven over WS against the live server with real engines (room art rendering lazily along the way); the operator's in-browser playtest is the final human gate, with findings recorded for the fix round.
 
@@ -53,4 +53,4 @@
 ---
 *Prior spec (2026-07-02): Dreamseeds — quest-earned world growth (v0.5.0); closed 8/8, playtested live, fix round recorded in FIRST-FABLE Part 3.*
 
-<!-- SPEC_META: {"date":"2026-07-02","title":"Zork I on daydream: the platform turn (v0.6.0)","criteria_total":16,"criteria_met":14} -->
+<!-- SPEC_META: {"date":"2026-07-02","title":"Zork I on daydream: the platform turn (v0.6.0)","criteria_total":16,"criteria_met":15} -->

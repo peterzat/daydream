@@ -605,6 +605,18 @@
           }
         },
         {
+          "cmd": "drop knife"
+        },
+        {
+          "cmd": "drop bell"
+        },
+        {
+          "cmd": "drop candles"
+        },
+        {
+          "cmd": "drop book"
+        },
+        {
           "cmd": "take chalice",
           "expect": {
             "score": 94,
@@ -629,9 +641,6 @@
               "golden clockwork canary"
             ]
           }
-        },
-        {
-          "cmd": "drop knife"
         },
         {
           "cmd": "down",
@@ -659,6 +668,66 @@
               "silver chalice",
               "jewel-encrusted egg"
             ]
+          }
+        },
+        {
+          "cmd": "west",
+          "expect": {
+            "room": "r-strange-passage"
+          }
+        },
+        {
+          "cmd": "west",
+          "expect": {
+            "room": "r-cyclops-room"
+          }
+        },
+        {
+          "cmd": "up",
+          "expect": {
+            "room": "r-treasure-room"
+          }
+        },
+        {
+          "cmd": "take bell",
+          "expect": {
+            "carrying": [
+              "brass bell"
+            ]
+          }
+        },
+        {
+          "cmd": "take candles",
+          "expect": {
+            "carrying": [
+              "pair of candles"
+            ]
+          }
+        },
+        {
+          "cmd": "take book",
+          "expect": {
+            "carrying": [
+              "black book"
+            ]
+          }
+        },
+        {
+          "cmd": "down",
+          "expect": {
+            "room": "r-cyclops-room"
+          }
+        },
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-strange-passage"
+          }
+        },
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-living-room"
           }
         }
       ]
@@ -899,6 +968,15 @@
           }
         },
         {
+          "cmd": "drop bell"
+        },
+        {
+          "cmd": "drop candles"
+        },
+        {
+          "cmd": "drop book"
+        },
+        {
           "cmd": "north",
           "expect": {
             "room": "r-ns-passage"
@@ -998,6 +1076,30 @@
           "cmd": "south",
           "expect": {
             "room": "r-round-room"
+          }
+        },
+        {
+          "cmd": "take bell",
+          "expect": {
+            "carrying": [
+              "brass bell"
+            ]
+          }
+        },
+        {
+          "cmd": "take candles",
+          "expect": {
+            "carrying": [
+              "pair of candles"
+            ]
+          }
+        },
+        {
+          "cmd": "take book",
+          "expect": {
+            "carrying": [
+              "black book"
+            ]
           }
         },
         {
@@ -1244,6 +1346,18 @@
       "name": "the-coffin-run",
       "commands": [
         {
+          "cmd": "drop torch"
+        },
+        {
+          "cmd": "drop garlic"
+        },
+        {
+          "cmd": "turn on lamp",
+          "expect": {
+            "narrate_contains": "on"
+          }
+        },
+        {
           "cmd": "down",
           "expect": {
             "room": "r-cellar"
@@ -1377,12 +1491,43 @@
               "gold coffin"
             ]
           }
+        },
+        {
+          "cmd": "turn off lamp"
+        },
+        {
+          "cmd": "take torch",
+          "expect": {
+            "carrying": [
+              "ivory torch"
+            ]
+          }
+        },
+        {
+          "cmd": "take garlic",
+          "expect": {
+            "carrying": [
+              "clove of garlic"
+            ]
+          }
         }
       ]
     },
     {
       "name": "reservoir-treasures",
       "commands": [
+        {
+          "cmd": "drop torch"
+        },
+        {
+          "cmd": "drop sceptre"
+        },
+        {
+          "cmd": "turn on lamp",
+          "expect": {
+            "narrate_contains": "on"
+          }
+        },
         {
           "cmd": "down",
           "expect": {
@@ -1576,6 +1721,25 @@
             "in_case": [
               "trunk of jewels",
               "crystal trident"
+            ]
+          }
+        },
+        {
+          "cmd": "turn off lamp"
+        },
+        {
+          "cmd": "take torch",
+          "expect": {
+            "carrying": [
+              "ivory torch"
+            ]
+          }
+        },
+        {
+          "cmd": "take sceptre",
+          "expect": {
+            "carrying": [
+              "sceptre"
             ]
           }
         }
@@ -2304,18 +2468,18 @@
           "expect": {
             "room": "r-sandy-beach"
           }
+        },
+        {
+          "cmd": "disembark",
+          "expect": {
+            "narrate_contains": "solid ground"
+          }
         }
       ]
     },
     {
       "name": "scarab-and-emerald",
       "commands": [
-        {
-          "cmd": "disembark",
-          "expect": {
-            "narrate_contains": "solid ground"
-          }
-        },
         {
           "cmd": "take sceptre",
           "expect": {
@@ -2366,6 +2530,12 @@
           "cmd": "dig sand with shovel",
           "expect": {
             "narrate_contains": "getting deeper"
+          }
+        },
+        {
+          "cmd": "dig sand with shovel",
+          "expect": {
+            "narrate_contains": "wall of sand"
           }
         },
         {

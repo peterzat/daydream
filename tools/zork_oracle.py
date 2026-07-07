@@ -140,17 +140,32 @@ class Oracle:
             raise AssertionError(f"{cmd} {filename!r} failed: {reply.strip()[:200]}")
         return reply
 
+    def checkpoint(self) -> str:
+        """Z-machine save to a fresh slot; returns the name for restore().
+        Saving costs no move (verified against dfrotz 2.44)."""
+        name = f"ck{self._ck}.sav"
+        self._ck += 1
+        self._file_dialog("save", name)
+        return name
+
+    def restore(self, name: str) -> None:
+        """Restore a checkpoint() slot. Rewinds the GAME (clock, fuses, the
+        thief, object state) but NOT the interpreter's RNG stream — so a
+        restored-and-replayed stretch samples fresh rolls. Segment-retry
+        replays (the outcome-faithful combat contract, R3, applied at
+        segment scope) depend on exactly that property."""
+        self._file_dialog("restore", name)
+
     def state(self) -> tuple[str, int, set[str]]:
         """(room, score, inventory) probed at ZERO real-game cost: the raw
         probes each tick the Z-machine clock, so they run inside a Z-machine
         save/restore bracket — afterwards the clock, fuses, the thief, and
-        the RNG stream are exactly as if the probe never happened. Zork I's
-        SAVE itself costs no move (verified against dfrotz 2.44)."""
-        name = f"ck{self._ck}.sav"
-        self._ck += 1
-        self._file_dialog("save", name)
+        object state are exactly as if the probe never happened. (The
+        interpreter RNG does advance — see restore() — which is harmless
+        here and load-bearing for segment retries.)"""
+        name = self.checkpoint()
         room, score, inv = self.room(), self.score(), self.inventory()
-        self._file_dialog("restore", name)
+        self.restore(name)
         return room, score, inv
 
     def room(self) -> str:
