@@ -84,8 +84,9 @@ def test_ws_sends_state_snapshot_on_connect():
     assert msg["room"]["slug"] == "meadow"
     assert any(it["name"] == "lantern" for it in msg["items"])
     assert any(t["name"] == "Wren" for t in msg["toons"])
-    skill_names = {s["name"] for s in msg["skills"]}
-    assert {"look", "say", "examine"}.issubset(skill_names)
+    # The snapshot's skills array carries data skills only (the SPA's
+    # verb bar covers the engine verbs); a fresh world ships none.
+    assert all(s["kind"] == "data" for s in msg["skills"])
 
 
 def test_ws_snapshot_carries_build_and_world_version():
@@ -733,14 +734,13 @@ def test_ws_command_examine_makes_no_llm_call():
     spy.assert_not_called()
 
 
-def test_ws_skills_include_go_navigation():
-    """Criterion 2 corollary: the `go` skill is in the registry and
-    therefore appears in the snapshot's skills list so the UI can
-    route clicks (though nav clicks actually go through the exit-bar
-    path, which sends `go <direction>` as input)."""
+def test_ws_skills_carry_no_engine_verbs():
+    """Navigation and the closed verb set ride the verb bar / exit bar,
+    not the skills array — the legacy core-skill injection is gone, so
+    the snapshot never lists engine verbs as skills."""
     with TestClient(app) as client:
         _login(client)
         with client.websocket_connect("/ws") as ws:
             snap = ws.receive_json()
     skill_names = {s["name"] for s in snap["skills"]}
-    assert "go" in skill_names
+    assert skill_names.isdisjoint({"look", "say", "examine", "go"})

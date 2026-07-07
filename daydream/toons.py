@@ -111,8 +111,11 @@ def set_mood(toon_id: str, mood: str) -> None:
 # so they never appear in the UI's slot list nor get claimed/kicked.
 
 HUMAN_SLOT_RANGE = range(1, 6)  # slots 1..5 inclusive
+# The v1 world loader stamps every world it builds with this id (one world
+# per DB file), so it doubles as the safe fallback when the worlds table is
+# empty or unreadable. It is loader-canonical, not a leftover of the old
+# bunny world.
 DEFAULT_HUMAN_WORLD_ID = "w-bunny"
-DEFAULT_HUMAN_ROOM_ID = "r-meadow"
 
 
 def live_world_id() -> str:
@@ -205,7 +208,12 @@ def create_toon_in_slot(
     from daydream import rooms
 
     world_id = live_world_id()
-    spawn = rooms.starting_room_id(world_id) or DEFAULT_HUMAN_ROOM_ID
+    spawn = rooms.starting_room_id(world_id)
+    if spawn is None:
+        # A world with no rooms cannot host a toon; fail loudly rather
+        # than spawn into a phantom room id (the old "r-meadow" fallback
+        # pointed at a room no loaded world even has).
+        raise ValueError(f"world {world_id!r} has no starting room")
     toon_id = f"t-slot{slot}-{uuid.uuid4().hex[:8]}"
     db.get_conn().execute(
         "INSERT INTO objects (id, world_id, kind, name, aliases_json, "

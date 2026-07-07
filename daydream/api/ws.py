@@ -63,11 +63,6 @@ _EFFECT_MUTATION_KINDS = frozenset(
      # state; a destroyed object must leave the scene panel.
      "score_changed", "flag_set", "object_destroyed"}
 )
-# Starting room for the seeded toon; also the fallback used if the toon
-# somehow has a NULL current_room_id. After multi-room-navigation lands
-# the session's room is read dynamically via _current_room_id() per input
-# so a player can walk around.
-DEFAULT_ROOM_ID = "r-meadow"
 SNAPSHOT_HISTORY_DEPTH = 50
 
 # Sentinel for _state_snapshot's resume_since: replay the room's recent history
@@ -98,11 +93,13 @@ def _resolve_controlled_toon_id(session_id: str | None) -> str | None:
 def _current_room_id(toon_id: str) -> str:
     """Authoritative 'where is the controlled toon right now' for the
     given toon. Reads from DB on each call; the room flips as the
-    player moves. Falls back to DEFAULT_ROOM_ID only if the toon has
-    no current_room_id (programming bug, not a normal state)."""
+    player moves. Falls back to the live world's starting room only if
+    the toon has no current_room_id (programming bug, not a normal
+    state — the old hardcoded "r-meadow" fallback pointed at a room
+    that no loaded world even has)."""
     t = toons.get_toon(toon_id)
     if t is None or t.current_room_id is None:
-        return DEFAULT_ROOM_ID
+        return rooms.starting_room_id(toons.live_world_id()) or ""
     return t.current_room_id
 
 # Per-room generation dedup. Keys are returned by image_client.target_dedup_key

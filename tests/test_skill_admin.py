@@ -99,7 +99,7 @@ def test_skill_add_lowercases_name(live_world):
 
 def test_skill_add_stores_authored_description(live_world):
     # The `description` field is REQUIRED by validation and must be
-    # persisted so the interpreter sees the author's one-line summary
+    # persisted so the skill list carries the author's one-line summary
     # (not a generic "A data skill: <name>." fallback). Verified via
     # the registry read path so the DB write + loader + SkillSpec are
     # exercised end to end.

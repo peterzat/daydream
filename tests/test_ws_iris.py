@@ -148,15 +148,15 @@ def test_iris_empty_input_still_dispatches():
 def test_iris_hidden_in_meadow():
     """At r-meadow, `iris hello` must NOT dispatch the iris skill
     (predicate scopes it to r-attic). The input falls through to the
-    LLM interpreter, which with a canned `skill:none` response produces
-    the chat-fallback narrate. Exactly one LLM call fires (the
-    interpreter), NOT a second call for the iris skill itself."""
-    interpreter_response = {"skill": "none", "args": "hello"}
+    parser's LLM grounding call, which with a canned non-grounding
+    response produces the chat-fallback narrate. Exactly one LLM call
+    fires (the grounder), NOT a second call for the iris skill itself."""
+    ungrounded_response = {"skill": "none", "args": "hello"}
     with TestClient(app) as client:
         admin.main(["skill", "add", str(IRIS_JSON)])
         _login(client)
         with patch("daydream.llm.client.acompletion_json",
-                   new=AsyncMock(return_value=interpreter_response)) as mock_llm:
+                   new=AsyncMock(return_value=ungrounded_response)) as mock_llm:
             with client.websocket_connect("/ws") as ws:
                 ws.receive_json()  # meadow snapshot
                 ws.send_json({"kind": "input", "text": "iris hello"})
@@ -165,8 +165,8 @@ def test_iris_hidden_in_meadow():
         # The narrate is the chat fallback, not an iris-voice response.
         assert "iris" not in msg["event"]["payload"]["text"].lower() or \
                "you think to yourself" in msg["event"]["payload"]["text"].lower()
-        # One LLM call = the interpreter. A second would mean the iris
-        # skill dispatched in a room where its predicate hides it.
+        # One LLM call = the parser's grounder. A second would mean the
+        # iris skill dispatched in a room where its predicate hides it.
         assert mock_llm.call_count == 1
 
 

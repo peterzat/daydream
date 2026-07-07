@@ -62,7 +62,7 @@ def test_rook_json_installs_and_registry_sees_it():
         assert spec is not None
         assert spec.kind == "data"
         # ui_hint and description carry the authored intent into the
-        # interpreter candidate list.
+        # skill-bar candidate list.
         assert spec.ui_hint == "Rook"
         assert "forge-keeper" in spec.description.lower()
 
@@ -139,15 +139,15 @@ def test_rook_empty_input_still_dispatches():
 def test_rook_hidden_in_meadow():
     """At r-meadow, `rook hello` must NOT dispatch the rook skill
     (predicate scopes it to r-forge). The input falls through to the
-    LLM interpreter, which with a canned `skill:none` response produces
-    the chat-fallback narrate. Exactly one LLM call fires — the
-    interpreter — NOT a second call for the rook skill itself."""
-    interpreter_response = {"skill": "none", "args": "hello"}
+    parser's LLM grounding call, which with a canned non-grounding
+    response produces the chat-fallback narrate. Exactly one LLM call
+    fires — the grounder — NOT a second call for the rook skill itself."""
+    ungrounded_response = {"skill": "none", "args": "hello"}
     with TestClient(app) as client:
         admin.main(["skill", "add", str(ROOK_JSON)])
         _login(client)
         with patch("daydream.llm.client.acompletion_json",
-                   new=AsyncMock(return_value=interpreter_response)) as mock_llm:
+                   new=AsyncMock(return_value=ungrounded_response)) as mock_llm:
             with client.websocket_connect("/ws") as ws:
                 ws.receive_json()  # meadow snapshot
                 ws.send_json({"kind": "input", "text": "rook hello"})
@@ -158,8 +158,8 @@ def test_rook_hidden_in_meadow():
         # daydream/api/ws._handle_input's chatter path.
         assert "rook" not in msg["event"]["payload"]["text"].lower() or \
                "you think to yourself" in msg["event"]["payload"]["text"].lower()
-        # One LLM call = the interpreter. A second would mean the rook
-        # skill dispatched in a room where its predicate hides it.
+        # One LLM call = the parser's grounder. A second would mean the
+        # rook skill dispatched in a room where its predicate hides it.
         assert mock_llm.call_count == 1
 
 

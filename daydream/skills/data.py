@@ -4,7 +4,7 @@ A data skill's row in the `skills` table carries the fields the v0
 schema already reserved:
 
 - `name`, `kind='data'`, `ui_hint`, `description` — the registry
-  interface fields, also surfaced to the LLM interpreter as candidates.
+  interface fields, surfaced on the SPA's skill bar.
 - `context_predicate_json` — which rooms the skill is available in.
   v1 format: `{}` (always) or `{"room_slug": "<slug>"}`. Unknown
   predicate keys fail closed (skill hidden) so a misauthored
@@ -89,7 +89,7 @@ def _parse_pair(row: dict) -> tuple[SkillSpec, DataSkillBody] | None:
     if not isinstance(effects_schema, dict):
         effects_schema = {}
     # Prefer the authored `description` column (added in migration 005)
-    # so the interpreter sees the author's intent. Fall back to a
+    # so the skill list carries the author's intent. Fall back to a
     # generic string only when the column is NULL / empty (pre-005 row
     # that hasn't been re-installed yet).
     stored_desc = row.get("description") if isinstance(row, dict) else None
@@ -127,9 +127,8 @@ def available_for_room(room_id: str) -> list[tuple[SkillSpec, DataSkillBody]]:
     matcher so each predicate is a pure dict-in-dict-out comparison.
 
     Degrades gracefully when the DB is not initialized (returns empty
-    list), so the registry's contract of "core-only when DB is absent"
-    holds even when list_available_for_room is called out-of-band
-    (e.g., from interpreter unit tests that don't spin up a DB)."""
+    list), so list_available_for_room stays safe when called out-of-band
+    (e.g., from unit tests that don't spin up a DB)."""
     try:
         db.get_conn()
     except RuntimeError:
@@ -448,7 +447,7 @@ async def execute_by_name(
     """Convenience for the WS layer: look up a data skill by name and
     run it. Returns True if a data skill was found and executed (so
     the caller knows the input was handled), False if no data skill
-    matched (so the caller can fall back to the interpreter)."""
+    matched (the parser treats that as ungrounded input)."""
     pair = find(name)
     if pair is None:
         return False

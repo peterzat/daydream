@@ -696,7 +696,7 @@ def cmd_skill_add(path: Path) -> int:
     Author-file schema (validated):
         name              (str, non-empty; lowercased before storage)
         ui_hint           (str, non-empty; button label)
-        description       (str, non-empty; one-line summary for the interpreter)
+        description       (str, non-empty; one-line summary shown in the skill list)
         prompt_template   (str, non-empty; Jinja template)
         context_predicate (object; e.g. {} or {"room_slug": "forge"})
         effects_schema    (object; documentation/provenance in v1)

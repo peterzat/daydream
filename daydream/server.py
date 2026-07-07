@@ -8,7 +8,12 @@ from contextlib import asynccontextmanager
 from urllib.parse import quote
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
+from fastapi.responses import (
+    FileResponse,
+    HTMLResponse,
+    PlainTextResponse,
+    RedirectResponse,
+)
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
@@ -172,7 +177,11 @@ async def root(request: Request):
             .replace("/assets/style.css", f"/assets/style.css?v={sha}")
         )
         return HTMLResponse(html)
-    return HTMLResponse(_PRE_FRONTEND_HTML)
+    # web/index.html ships in the repo; its absence means a broken deploy,
+    # not a pre-frontend install. Fail loudly rather than serve a stub.
+    return PlainTextResponse(
+        "daydream: web/index.html is missing from this deploy", status_code=503
+    )
 
 
 # Serve frontend static assets if a build exists (Inc 7+).
@@ -232,12 +241,3 @@ _LOGIN_HTML = """<!doctype html>
 </html>
 """
 
-_PRE_FRONTEND_HTML = """<!doctype html>
-<html><body style="font-family: Georgia, serif; max-width: 600px; margin: 5em auto; color: #3a4a44; background: #f6f3ec;">
-<h1 style="color: #5a7a6a; font-weight: normal;">daydream</h1>
-<p>You are in the daydream. The frontend lands in Inc 7.</p>
-<form action="/api/logout" method="post" style="margin:0;">
-  <button type="submit" style="background:none;border:none;padding:0;font:inherit;cursor:pointer;color:#5a7a6a;">leave</button>
-</form>
-</body></html>
-"""

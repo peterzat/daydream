@@ -16,7 +16,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from fastapi.testclient import TestClient
 
-from daydream import admin, db, events, items
+from daydream import admin, db, events, objects
 from daydream.server import app
 
 pytestmark = pytest.mark.tier_medium
@@ -71,7 +71,7 @@ def test_forge_absent_from_meadow_snapshot():
 
 
 def test_forge_present_in_forge_snapshot_after_go_north():
-    """After moving to r-forge, forge appears alongside core skills."""
+    """After moving to r-forge, the forge data skill appears."""
     with TestClient(app) as client:
         admin.main(["skill", "add", str(FORGE_JSON)])
         _login(client)
@@ -83,8 +83,9 @@ def test_forge_present_in_forge_snapshot_after_go_north():
     assert forge_snap["room"]["slug"] == "forge"
     skill_names = [s["name"] for s in forge_snap["skills"]]
     assert "forge" in skill_names
-    # Core skills still available too — data skills extend, don't replace.
-    assert {"look", "say", "examine", "go"}.issubset(set(skill_names))
+    # And nothing else: the skills array is data-only (engine verbs
+    # ride the verb bar).
+    assert set(skill_names) == {"forge"}
 
 
 def test_forge_happy_path_end_to_end():
@@ -138,7 +139,7 @@ def test_forge_happy_path_end_to_end():
         snap_names = {it["name"] for it in msg_c["items"]}
         assert "bronze ring" in snap_names
         # And the DB reflects the same truth (belt + suspenders).
-        names = {i.name for i in items.get_items_in_room("r-forge")}
+        names = {i.name for i in objects.contents("r-forge", kind="thing")}
         assert "bronze ring" in names
 
 
@@ -162,7 +163,7 @@ def test_forge_does_not_dispatch_in_wrong_room():
                 msg = ws.receive_json()
         assert msg["event"]["kind"] == "narrate"
         # No item was forged — the forge skill was never dispatched.
-        names = {i.name for i in items.get_items_in_room("r-forge")}
+        names = {i.name for i in objects.contents("r-forge", kind="thing")}
         assert "bronze ring" not in names
         # Exactly one LLM call: the interpreter. A second call would
         # indicate the forge skill ran after the bypass misrouted.
@@ -217,5 +218,5 @@ def test_forge_refusal_short_circuits_effects():
                 msg = ws.receive_json()
         assert msg["event"]["kind"] == "narrate"
         assert "cool" in msg["event"]["payload"]["text"]
-        names = {i.name for i in items.get_items_in_room("r-forge")}
+        names = {i.name for i in objects.contents("r-forge", kind="thing")}
         assert "should-not-appear" not in names

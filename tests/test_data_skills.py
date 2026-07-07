@@ -12,7 +12,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from daydream import config, db, events, items, toons
+from daydream import config, db, events, objects, toons
 from daydream.llm import client as llm_client
 from daydream.skills import data, registry
 
@@ -123,11 +123,14 @@ def test_hot_reload_without_restart():
     assert "greet" in [s.name for s in after]
 
 
-def test_core_skills_always_present_alongside_data():
+def test_registry_lists_data_skills_only():
+    """The engine's own verbs live in daydream.verbs; the registry's
+    room list is purely the author-written data skills (v1.0 cleanup
+    removed the legacy core-skill injection)."""
     _insert_skill(name="forge", predicate='{"room_slug": "forge"}')
     specs = registry.list_available_for_room("r-forge")
     names = [s.name for s in specs]
-    assert "look" in names and "go" in names and "forge" in names
+    assert names == ["forge"]
 
 
 # ---- execute: happy path -------------------------------------------------
@@ -151,7 +154,7 @@ async def test_execute_happy_path_applies_effects():
                new=AsyncMock(return_value=canned)):
         ok = await data.execute_by_name("forge", "t-wren", "r-forge", "a ring")
     assert ok is True
-    names = {i.name for i in items.get_items_in_room("r-forge")}
+    names = {i.name for i in objects.contents("r-forge", kind="thing")}
     assert "bronze ring" in names
 
 
@@ -188,11 +191,11 @@ async def test_banned_output_drops_effects():
             {"kind": "add_item", "name": "harmless cup", "seed": "ok"},
         ]
     }
-    before = {i.name for i in items.get_items_in_room("r-forge")}
+    before = {i.name for i in objects.contents("r-forge", kind="thing")}
     with patch("daydream.llm.client.acompletion_json",
                new=AsyncMock(return_value=canned)):
         await data.execute_by_name("forge", "t-wren", "r-forge", "a cup")
-    after = {i.name for i in items.get_items_in_room("r-forge")}
+    after = {i.name for i in objects.contents("r-forge", kind="thing")}
     # Effects dropped because the narrate text hit the banlist.
     assert after == before
     assert "harmless cup" not in after
@@ -222,12 +225,12 @@ async def test_refused_response_narrates_reason_and_drops_effects():
         "reason": "the forge is cooling",
         "effects": [{"kind": "add_item", "name": "should-not-appear", "seed": "x"}],
     }
-    before = {i.name for i in items.get_items_in_room("r-forge")}
+    before = {i.name for i in objects.contents("r-forge", kind="thing")}
     before_seq = events.max_seq()
     with patch("daydream.llm.client.acompletion_json",
                new=AsyncMock(return_value=canned)):
         await data.execute_by_name("forge", "t-wren", "r-forge", "something")
-    after = {i.name for i in items.get_items_in_room("r-forge")}
+    after = {i.name for i in objects.contents("r-forge", kind="thing")}
     assert after == before  # effects dropped
     narrations = [e for e in events.fetch_since(before_seq) if e.kind == "narrate"]
     assert any("cooling" in e.payload["text"] for e in narrations)

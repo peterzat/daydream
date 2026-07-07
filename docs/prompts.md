@@ -19,7 +19,6 @@ for `llm purpose=` to profile.
 | 6 | `growth` | Dreamseed room composition | `daydream/growth.py` `GROWTH_SYSTEM` + `_user_prompt` | 0.0 (450 tok / 30 s) | one room inside authored boundaries; strict JSON; never sees ids/directions | `tests/drift/test_growth_compose.py` goldens (tier_long) |
 | 7 | `retell` | Narration retell (scoped rung) | `daydream/retell.py` `_system_prompt` (built from world `voice`) | **0.8** | rephrase one line; nouns/digits preserved; JSON `{"text"}` | `tests/drift/test_retell_probe.py` golden (tier_long) + validation gates in code |
 | 8 | `examine` | Lazy examine of spawned objects | `daydream/verbs.py` `_EXAMINE_SYSTEM` | 0.0 | 1–2 soft sentences, JSON `{"text"}`, cached forever after | `tests/test_generative.py` |
-| 9 | `interpreter` | LEGACY skill router | `daydream/llm/prompts.py` `INTERPRETER_SYSTEM` | 0.0 | JSON `{skill, args}` | tests only; the live path is the parser. Removal is a standing review NOTE |
 | 10 | — (offline) | World-bootstrap authoring | `daydream/llm/bootstrap.py` `_SYSTEM_PROMPT` | 0.0 | whole-world envelope authoring; DEPRECATED path (keyless `world load` is canonical) | envelope validator |
 
 ## Image surfaces

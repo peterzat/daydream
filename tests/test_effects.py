@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from daydream import config, db, events, items, toons
+from daydream import config, db, events, objects, toons
 from daydream.skills import effects
 
 pytestmark = pytest.mark.tier_short
@@ -73,7 +73,7 @@ def test_narrate_without_text_is_dropped_silently():
 
 
 def test_add_item_inserts_row_and_emits_event():
-    before = {i.name for i in items.get_items_in_room("r-meadow")}
+    before = {i.name for i in objects.contents("r-meadow", kind="thing")}
     applied = effects.dispatch_effects(
         [{"kind": "add_item", "name": "clay cup",
           "seed": "a small hand-thrown clay cup, warm brown glaze"}],
@@ -81,7 +81,7 @@ def test_add_item_inserts_row_and_emits_event():
     )
     assert applied[0].event is not None
     assert applied[0].event.kind == "item_added"
-    after = {i.name for i in items.get_items_in_room("r-meadow")}
+    after = {i.name for i in objects.contents("r-meadow", kind="thing")}
     assert after - before == {"clay cup"}
 
 
@@ -102,7 +102,7 @@ def test_add_item_with_empty_seed_still_allowed():
         actor_id="t-wren", room_id="r-meadow", world_id="w-bunny",
     )
     assert applied[0].event is not None
-    names = {i.name for i in items.get_items_in_room("r-meadow")}
+    names = {i.name for i in objects.contents("r-meadow", kind="thing")}
     assert "pebble" in names
 
 
@@ -201,8 +201,7 @@ def test_set_property_without_value_is_dropped():
 
 
 def test_spawn_object_creates_clickable_thing():
-    from daydream import items
-    before = {i.name for i in items.get_items_in_room("r-meadow")}
+    before = {i.name for i in objects.contents("r-meadow", kind="thing")}
     applied = effects.dispatch_effects(
         [{"kind": "spawn_object", "name": "a sheaf of papers",
           "seed": "loose pages in a careful hand", "readable": True,
@@ -211,7 +210,7 @@ def test_spawn_object_creates_clickable_thing():
     )
     assert applied[0].event is not None
     assert applied[0].event.kind == "object_spawned"
-    after = {i.name for i in items.get_items_in_room("r-meadow")}
+    after = {i.name for i in objects.contents("r-meadow", kind="thing")}
     assert after - before == {"a sheaf of papers"}
 
 
