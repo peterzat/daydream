@@ -40,6 +40,10 @@
       <!-- Status ribbon (platform turn): score / rank / moves / light. Rendered
            only for worlds that author a rank ladder; hidden otherwise. -->
       <div id="status-ribbon" class="status-ribbon hidden" aria-live="polite"></div>
+      <!-- Quiet ended-marker: shown when the snapshot's status says the world
+           has been won (late joiners / reconnects); reopens The End page. -->
+      <button id="end-marker" type="button" class="end-marker hidden"
+              title="the dream has reached its ending">&#10086; the end &#10086;</button>
     </div>
 
     <!-- body: narration prose (wide) + marginalia (narrow) -->
@@ -128,6 +132,22 @@
         </div>
         <p class="collection-note">keepsakes gather quietly as you wander &mdash;<br>every dream leaves you carrying a little more.</p>
         <button id="backpack-close" type="button" class="back-link">&larr; close the satchel</button>
+      </section>
+    </div>
+  </div>
+
+  <!-- The End: a dismissible storybook ending page. Shown live when the world
+       is won (the game_won event reaches every player); reopenable from the
+       quiet end-marker. The world keeps running after it closes. -->
+  <div id="ending-panel" class="backpack-overlay hidden" role="dialog" aria-label="the end">
+    <div class="book ending-book">
+      <section class="pg ending-pg">
+        <div class="page-eyebrow">the dream concludes</div>
+        <h1 class="spread-title ending-title">The End</h1>
+        <p id="ending-text" class="ending-text"></p>
+        <div id="ending-score" class="ending-score"></div>
+        <p class="collection-note">the dream goes on, if you&rsquo;d like to linger &mdash;<br>every page after this one is yours.</p>
+        <button id="ending-close" type="button" class="back-link">&larr; keep dreaming</button>
       </section>
     </div>
   </div>

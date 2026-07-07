@@ -220,6 +220,7 @@ def test_ws_snapshot_carries_world_status():
     assert msg["kind"] == "state_snapshot"
     assert msg["status"] == {
         "score": 0, "rank": None, "moves": 0, "deaths": 0, "lit": True,
+        "won": None,
     }
 
 

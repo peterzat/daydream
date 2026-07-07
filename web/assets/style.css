@@ -487,6 +487,36 @@ footer .slots-toggle:hover, footer .logout:hover { text-decoration: underline; }
 }
 .back-link:hover { color: var(--sage-deep); }
 
+/* ---------- The End: the ending storybook page ---------- */
+/* A single centered leaf on the .book chassis: one column, no spine. */
+.ending-book { grid-template-columns: 1fr; width: min(640px, 100%); }
+.ending-book::before { display: none; }
+.ending-pg { text-align: center; padding: 44px 48px 60px; }
+.ending-pg .page-eyebrow { justify-content: center; }
+.ending-pg .page-eyebrow::after { flex: none; width: 44px; }
+.ending-pg .page-eyebrow::before { content: ""; width: 44px; height: 1px; background: var(--line); }
+.ending-title { font-size: 3.6rem; margin-top: 6px; }
+.ending-text {
+  font-family: var(--serif); font-style: italic; font-size: 1.02rem; line-height: 1.7;
+  color: var(--ink); margin: 22px auto 0; max-width: 42ch;
+}
+.ending-score { display: flex; justify-content: center; gap: 12px; margin-top: 18px; }
+.ending-stat {
+  font-family: var(--sans); font-size: .62rem; letter-spacing: .18em; text-transform: uppercase;
+  color: var(--quest); background: rgba(200,160,110,.16); border: 1px solid rgba(200,160,110,.4);
+  border-radius: 20px; padding: 4px 12px;
+}
+.ending-pg .collection-note { margin-top: 26px; }
+.ending-pg .back-link { position: static; margin-top: 18px; }
+
+/* The quiet ended-marker under the title (a clickable fleuron). */
+.end-marker {
+  background: none; border: none; cursor: pointer; margin-top: 4px;
+  font-family: var(--hand); font-size: 1.15rem; color: var(--quest); opacity: .85;
+}
+.end-marker:hover { opacity: 1; }
+.end-marker.hidden { display: none; }
+
 /* Repaint dialog: reuses the .book two-page spread. The right page's eyebrow
  * loses the specimen-alignment offset (no left specimen grid to align to
  * here) so "your version" sits at the top beside the prompt. */

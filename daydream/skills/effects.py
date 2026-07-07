@@ -756,17 +756,26 @@ def _apply_win(
     eff: dict, *, actor_id: str, room_id: str, world_id: str
 ) -> events.Event | None:
     """Record the world as won (worldstate `won`) and broadcast the authored
-    moment. Idempotent: a world wins once; later dispatches no-op."""
+    moment to EVERY connected player: room_id=None passes the WS room filter,
+    so a player elsewhere in the world still sees the ending. The payload and
+    the stored `won` block carry the winning score + rank (frozen at the win
+    moment) so the client can present The End page — live or reopened from a
+    later snapshot's status — without a second round-trip. Idempotent: a world
+    wins once; later dispatches no-op. The world keeps running after a win."""
     if worldstate.get(world_id, "won") is not None:
         return None
-    worldstate.set(world_id, "won", {
-        "actor_id": actor_id, "turn": worldstate.turn(world_id),
-    })
+    s = worldstate.score(world_id)
+    won: dict = {
+        "actor_id": actor_id,
+        "turn": worldstate.turn(world_id),
+        "score": s,
+        "rank": worldstate.rank_for(world_id, s),
+    }
     text = eff.get("text")
-    payload: dict = {"actor_id": actor_id}
     if isinstance(text, str) and text.strip():
-        payload["text"] = text.strip()
-    return events.append("system", None, "game_won", payload, room_id=room_id)
+        won["text"] = text.strip()
+    worldstate.set(world_id, "won", won)
+    return events.append("system", None, "game_won", dict(won), room_id=None)
 
 
 _HANDLERS: dict[str, Callable[..., events.Event | None]] = {

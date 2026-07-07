@@ -219,4 +219,9 @@ def status_block(world_id: str) -> dict:
         "moves": turn(world_id),
         "deaths": counter(world_id, "deaths"),
         "lit": True,
+        # The world's won-moment (None until a `win` effect fires): the dict
+        # _apply_win stored ({actor_id, turn, score, rank, text?}). Late
+        # joiners and reconnects derive the quiet ended-marker from this and
+        # can reopen The End page from it; the world keeps running.
+        "won": get(world_id, "won"),
     }

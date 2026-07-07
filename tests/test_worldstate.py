@@ -162,7 +162,10 @@ def test_rank_for_none_without_scoring():
 
 def test_status_block_shape_and_defaults():
     s = worldstate.status_block(WORLD)
-    assert s == {"score": 0, "rank": None, "moves": 0, "deaths": 0, "lit": True}
+    assert s == {
+        "score": 0, "rank": None, "moves": 0, "deaths": 0, "lit": True,
+        "won": None,
+    }
     worldstate.set(WORLD, "def:scoring", RANKS)
     worldstate.adjust_score(WORLD, 100)
     worldstate.advance_turn(WORLD)
@@ -170,3 +173,12 @@ def test_status_block_shape_and_defaults():
     s = worldstate.status_block(WORLD)
     assert s["score"] == 100 and s["rank"] == "Junior Adventurer"
     assert s["moves"] == 1 and s["deaths"] == 1
+
+
+def test_status_block_carries_won_moment():
+    """Once a `win` effect stores the won-moment, every snapshot's status
+    carries it — the late-joiner / reconnect path to The End page."""
+    won = {"actor_id": "t-x", "turn": 9, "score": 100,
+           "rank": "Junior Adventurer", "text": "Done."}
+    worldstate.set(WORLD, "won", won)
+    assert worldstate.status_block(WORLD)["won"] == won

@@ -599,6 +599,49 @@ def test_style_css_has_keepsakes_spread():
     assert ".grid2" in r.text
 
 
+# ---- The End: endings are visible (SPEC 2026-07-07 criterion 5) --------
+
+
+def test_index_html_has_ending_page_and_marker():
+    """The shell exposes The End storybook page (dismissible overlay) and the
+    quiet ended-marker that reopens it for late joiners."""
+    with TestClient(app) as client:
+        _login(client)
+        r = client.get("/")
+    assert 'id="ending-panel"' in r.text
+    assert 'id="ending-text"' in r.text
+    assert 'id="ending-score"' in r.text
+    assert 'id="ending-close"' in r.text
+    assert 'id="end-marker"' in r.text
+    assert ">The End<" in r.text
+
+
+def test_main_js_handles_game_won_and_reopen_marker():
+    """game_won presents The End page live; the marker derives from snapshot
+    status.won (late joiners / reconnects) and reopens it; dismissal leaves
+    the world running (close handlers, no reload/disconnect)."""
+    with TestClient(app) as client:
+        _login(client)
+        r = client.get("/assets/main.js")
+    assert "game_won" in r.text
+    assert "showEndingPage" in r.text
+    assert "closeEndingPage" in r.text
+    assert "snap.status.won" in r.text  # marker derives from snapshot status
+    assert "renderEndMarker" in r.text
+    # Score + rank render on the page; the raw actor id never does.
+    assert "w.score" in r.text and "w.rank" in r.text
+    assert "w.actor_id" not in r.text
+
+
+def test_style_css_has_ending_page():
+    with TestClient(app) as client:
+        _login(client)
+        r = client.get("/assets/style.css")
+    assert ".ending-book" in r.text
+    assert ".ending-stat" in r.text
+    assert ".end-marker" in r.text
+
+
 # ---- no-cache on /assets/ ----------------------------------------------
 
 

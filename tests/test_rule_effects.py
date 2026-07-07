@@ -232,3 +232,23 @@ def test_win_records_once():
     assert worldstate.get(WORLD, "won")["actor_id"] == "t-wren"
     again = dispatch([{"kind": "win"}])
     assert again[0].event is None
+
+
+def test_win_is_world_scoped_with_score_and_rank():
+    """Endings are visible (SPEC 2026-07-07 criterion 5): the game_won event
+    carries room_id=None so the WS room filter passes it to every connected
+    player, and the payload + stored won-block freeze the winning score and
+    rank at the moment of victory."""
+    worldstate.set(WORLD, "def:scoring", {"ranks": [
+        {"min": 0, "name": "Beginner"}, {"min": 5, "name": "Master"},
+    ]})
+    dispatch([{"kind": "adjust_score", "delta": 7}])
+    applied = dispatch([{"kind": "win", "text": "It is done."}])
+    ev = applied[0].event
+    assert ev.room_id is None  # reaches players outside the firing room
+    assert ev.payload["score"] == 7 and ev.payload["rank"] == "Master"
+    won = worldstate.get(WORLD, "won")
+    assert won["score"] == 7 and won["rank"] == "Master"
+    assert won["text"] == "It is done."
+    # The snapshot status carries the same block for late joiners.
+    assert worldstate.status_block(WORLD)["won"] == won

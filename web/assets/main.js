@@ -21,6 +21,7 @@ let lastCmd = null; // {key, t} -- debounce an accidental double-fire of one com
 let pendingDetail = null; // {verb, name, t} -- a targeted examine/read whose next narrate renders as a detail inset (the ledger reveal)
 let lastInventory = []; // the latest snapshot's carried things, for the keepsakes backpack foldout
 let bgShownFor = null; // room id whose art the plate currently shows (stale-art veil)
+let wonState = null; // the world's won-moment ({score, rank, text?}) from snapshot status / game_won
 
 // Reconnect backoff: a dropped socket retries on a gentle, capped exponential
 // delay behind a single calm "the dream is sleeping" overlay (not a growing
@@ -130,6 +131,12 @@ function renderSnapshot(snap) {
   document.getElementById("room-desc").textContent =
     snap.room && snap.room.description ? snap.room.description : "";
   renderStatusRibbon(snap.status);
+  // The ended-marker derives from snapshot status, so late joiners and
+  // reconnects learn of a win they never saw live (the game_won event is
+  // world-scoped but transient). The marker reopens The End page; the
+  // overlay itself only auto-opens on the live event.
+  wonState = (snap.status && snap.status.won) || null;
+  renderEndMarker();
   // Darkness veils the room art (criterion 6/12): the authored darkness
   // line is already the description, the scene panels arrive empty from the
   // server, and the plate goes near-black while inventory stays usable.
@@ -363,6 +370,9 @@ function clearSceneAndLog() {
   clearStagedVerb();
   lastArrivalRoomId = null;
   bgShownFor = null;
+  wonState = null; // the next toon/world's snapshot re-derives the ended-marker
+  renderEndMarker();
+  closeEndingPage();
 }
 
 function applyVerbGating() {
@@ -454,6 +464,16 @@ function renderEvent(e) {
   // room_image_ready does not flow into the chat log; it just updates the bg.
   if (e.kind === "room_image_ready") {
     handleRoomImageReady(e);
+    return;
+  }
+
+  // The world was won (a live, world-scoped moment — it reaches every player,
+  // not just the winner's room): present The End storybook page. Dismissible;
+  // the world keeps running, and the quiet end-marker can reopen it.
+  if (e.kind === "game_won") {
+    wonState = e.payload || {};
+    renderEndMarker();
+    showEndingPage(wonState);
     return;
   }
 
@@ -658,6 +678,48 @@ function renderStatusRibbon(status) {
   light.textContent = status.lit ? "\u2600" : "\u263D";
   el.appendChild(light);
 }
+
+function renderEndMarker() {
+  // The quiet "the end" fleuron under the title: present only once the world
+  // has been won. Clicking it reopens The End page from the stored moment.
+  document.getElementById("end-marker").classList.toggle("hidden", !wonState);
+}
+
+function showEndingPage(w) {
+  // The End: a dismissible storybook page carrying the winning score + rank.
+  // Wording is world-agnostic; the authored flavor arrives in w.text. No
+  // ids are ever rendered (the payload's actor id is deliberately unused).
+  if (!w) return;
+  document.getElementById("ending-text").textContent =
+    w.text || "The dream reaches its final page.";
+  const scoreEl = document.getElementById("ending-score");
+  scoreEl.innerHTML = "";
+  if (typeof w.score === "number") {
+    const s = document.createElement("span");
+    s.className = "ending-stat";
+    s.textContent = "score " + w.score;
+    scoreEl.appendChild(s);
+  }
+  if (w.rank) {
+    const rk = document.createElement("span");
+    rk.className = "ending-stat ending-rank";
+    rk.textContent = String(w.rank);
+    scoreEl.appendChild(rk);
+  }
+  document.getElementById("ending-panel").classList.remove("hidden");
+}
+
+function closeEndingPage() {
+  document.getElementById("ending-panel").classList.add("hidden");
+}
+
+document.getElementById("ending-close").addEventListener("click", closeEndingPage);
+document.getElementById("ending-panel").addEventListener("click", (e) => {
+  if (e.target.id === "ending-panel") closeEndingPage(); // click the backdrop to close
+});
+document.getElementById("end-marker").addEventListener("click", () => {
+  showEndingPage(wonState);
+});
 
 function renderClarify(c) {
   // The ambiguity question's clickable options (the prompt text itself
