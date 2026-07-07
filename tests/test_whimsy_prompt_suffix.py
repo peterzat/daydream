@@ -12,25 +12,42 @@ from pathlib import Path
 
 import pytest
 
-from daydream.images.client import WHIMSY_PROMPT_SUFFIX
+from daydream.images.client import (
+    PORTRAIT_FRAMING_CLAUSE,
+    PORTRAIT_PROMPT_SUFFIX,
+    WHIMSY_PROMPT_SUFFIX,
+)
 
 pytestmark = pytest.mark.tier_short
 
 ROOT = Path(__file__).resolve().parent.parent
 
 
-def _doc_suffix() -> str:
+def _doc_block(section_header: str) -> str:
     text = (ROOT / "WHIMSY.md").read_text()
-    section = text.split("## Prompt suffix", 1)[1]
+    section = text.split(section_header, 1)[1]
     m = re.search(r"```\n(.*?)```", section, re.DOTALL)
-    assert m, "WHIMSY.md '## Prompt suffix' section lost its code block"
+    assert m, f"WHIMSY.md {section_header!r} section lost its code block"
     # The doc wraps the one-line suffix for readability; collapse whitespace.
     return " ".join(m.group(1).split())
 
 
 def test_whimsy_suffix_matches_the_tone_bible():
-    assert " ".join(WHIMSY_PROMPT_SUFFIX.split()) == _doc_suffix(), (
+    assert " ".join(WHIMSY_PROMPT_SUFFIX.split()) == _doc_block("## Prompt suffix"), (
         "WHIMSY_PROMPT_SUFFIX and WHIMSY.md '## Prompt suffix' have drifted; "
         "update both together (cache keys do NOT fold the suffix, but new "
         "renders and the aesthetic goldens follow it)"
     )
+
+
+def test_portrait_framing_clause_matches_the_tone_bible():
+    """The portrait suffix's framing clause mirrors WHIMSY.md '## Portrait
+    prompt suffix' — same one-sided-edit drift model as the room suffix."""
+    assert " ".join(PORTRAIT_FRAMING_CLAUSE.split()) == _doc_block(
+        "## Portrait prompt suffix"
+    ), (
+        "PORTRAIT_FRAMING_CLAUSE and WHIMSY.md '## Portrait prompt suffix' "
+        "have drifted; update both together"
+    )
+    # The full portrait suffix is the clause + the shared WHIMSY suffix.
+    assert PORTRAIT_PROMPT_SUFFIX == f"{PORTRAIT_FRAMING_CLAUSE}, {WHIMSY_PROMPT_SUFFIX}"

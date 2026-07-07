@@ -207,3 +207,89 @@ async def test_fetch_output_image_returns_bytes():
 async def test_fetch_output_image_raises_on_no_images():
     with pytest.raises(client.ComfyUIError, match="no images"):
         await client.fetch_output_image({"outputs": {}})
+
+
+# ---- toon portraits: workflow_name + cache-key safety (SPEC 2026-07-07) --
+
+
+def test_room_target_cache_key_byte_identical_after_workflow_field(tmp_path, monkeypatch):
+    """Criterion 2's regression guard: adding PersistentTarget.workflow_name
+    must not move ANY existing room asset. A room target resolves to exactly
+    the workflow dict the pre-change code loaded (DEFAULT_WORKFLOW), so its
+    cache path and dedup key are byte-identical to the legacy derivation."""
+    from daydream.images import cache
+
+    monkeypatch.setenv("DAYDREAM_DATA_DIR", str(tmp_path))
+    t = client.PersistentTarget(
+        world_id="w-x", target_kind="room", target_id="r-y",
+        seed="a mossy meadow at dusk",
+        prompt_suffix=client.WHIMSY_PROMPT_SUFFIX,
+    )
+    legacy_workflow = client.load_workflow()  # the pre-change default load
+    assert client.load_workflow_for(t) == legacy_workflow
+    legacy_path = cache.cache_path(
+        "w-x", "room", "r-y", "a mossy meadow at dusk", legacy_workflow
+    )
+    legacy_key = (
+        "w-x", "room", "r-y",
+        cache.combined_hash("a mossy meadow at dusk", legacy_workflow),
+    )
+    assert client.target_dedup_key(t) == legacy_key
+    assert str(legacy_path).endswith(f"{legacy_key[3]}.png")
+
+
+def test_portrait_target_key_differs_from_room_with_same_seed(tmp_path, monkeypatch):
+    """A portrait target with an identical seed never collides with a room
+    target: target_kind differs (a distinct cache path segment) AND the
+    portrait workflow hashes differently (a distinct combined hash)."""
+    monkeypatch.setenv("DAYDREAM_DATA_DIR", str(tmp_path))
+    seed = "kind eyes, a dusty cloak"
+    room = client.PersistentTarget(
+        world_id="w-x", target_kind="room", target_id="same-id", seed=seed,
+    )
+    portrait = client.portrait_target("w-x", "same-id", seed)
+    rk, pk = client.target_dedup_key(room), client.target_dedup_key(portrait)
+    assert rk[1] != pk[1]     # kind segment differs
+    assert rk[3] != pk[3]     # combined hash differs (portrait workflow)
+
+
+def test_portrait_target_shape():
+    t = client.portrait_target("w-x", "t-z", "kind eyes")
+    assert t.target_kind == "toon"
+    assert t.workflow_name == client.PORTRAIT_WORKFLOW
+    assert t.prompt_suffix == client.PORTRAIT_PROMPT_SUFFIX
+
+
+def test_portrait_workflow_file_parses_and_is_portrait_aspect():
+    wf = client.load_workflow(client.workflow_path(client.PORTRAIT_WORKFLOW))
+    latent = next(n for n in wf.values() if n["class_type"] == "EmptyLatentImage")
+    assert (latent["inputs"]["width"], latent["inputs"]["height"]) == (640, 768)
+    # Same checkpoint + LoRA as the room workflow (only canvas/negatives differ).
+    room = client.load_workflow()
+    assert wf[client.CHECKPOINT_NODE] == room[client.CHECKPOINT_NODE]
+    assert wf[client.LORA_NODE]["inputs"]["lora_name"] == \
+        room[client.LORA_NODE]["inputs"]["lora_name"]
+
+
+def test_workflow_path_rejects_traversal():
+    for bad in ("../secrets.json", "a/b.json", "", "  "):
+        with pytest.raises(ValueError):
+            client.workflow_path(bad)
+
+
+def test_cached_portrait_url_contract(tmp_path, monkeypatch):
+    """Empty appearance seed -> None; uncached -> None; cached -> the
+    versioned URL. Never renders (pure filesystem reads)."""
+    from daydream.images import cache
+
+    monkeypatch.setenv("DAYDREAM_DATA_DIR", str(tmp_path))
+    assert client.cached_portrait_url("w-x", "t-z", "") is None
+    assert client.cached_portrait_url("w-x", "t-z", "   ") is None
+    assert client.cached_portrait_url("w-x", "t-z", "kind eyes") is None
+    target = client.portrait_target("w-x", "t-z", "kind eyes")
+    wf = client.load_workflow_for(target)
+    p = cache.cache_path("w-x", "toon", "t-z", "kind eyes", wf)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_bytes(b"png")
+    url = client.cached_portrait_url("w-x", "t-z", "kind eyes")
+    assert url is not None and "?v=" in url and "/toon/" in url

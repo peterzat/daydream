@@ -47,10 +47,15 @@ async def test_image_aesthetic_probe(probe_id: str, probe: dict, drift_data_dir)
     distance above probe['phash_tolerance'] is treated as material
     drift; review whether the LoRA / checkpoint / workflow change was
     intended, and if so ratify the new baseline."""
+    # An anchor may pin an alternate workflow (portrait anchors render on
+    # painterly_portrait.json, SPEC 2026-07-07 criterion 2); the default
+    # keeps every pre-existing room anchor byte-identical.
+    workflow_name = probe.get("workflow", "painterly_room.json")
     target = image_client.EphemeralTarget(
         name=probe["name"],
         prompt=probe["prompt"],
         with_whimsy_suffix=True,
+        workflow_name=workflow_name,
     )
     t0 = time.monotonic()
     async with arbiter.acquire():
@@ -76,8 +81,8 @@ async def test_image_aesthetic_probe(probe_id: str, probe: dict, drift_data_dir)
     }
     # Fill model/lora/workflow_hash from the workflow so baselines can
     # key off (model, lora, workflow_hash) and a swap busts the
-    # baseline automatically.
-    wf = image_client.load_workflow()
+    # baseline automatically. Read the anchor's OWN workflow.
+    wf = image_client.load_workflow(image_client.workflow_path(workflow_name))
     observed["model"] = wf.get(image_client.CHECKPOINT_NODE, {}).get("inputs", {}).get("ckpt_name")
     observed["lora"] = wf.get(image_client.LORA_NODE, {}).get("inputs", {}).get("lora_name")
     from daydream.images import cache as image_cache

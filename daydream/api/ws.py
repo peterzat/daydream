@@ -71,7 +71,12 @@ _EFFECT_MUTATION_KINDS = frozenset(
      # platform-turn rule effects (SPEC 2026-07-02): a score change refreshes the
      # status ribbon; a flag flip can reveal a secret exit or change panel
      # state; a destroyed object must leave the scene panel.
-     "score_changed", "flag_set", "object_destroyed"}
+     "score_changed", "flag_set", "object_destroyed",
+     # A toon portrait finished painting (emitted by this module, not by
+     # effects): the re-snapshot puts image_url on the toon cards, so
+     # co-located players see the face appear live — the same delivery flow
+     # room art uses (SPEC 2026-07-07 criterion 2).
+     "toon_image_ready"}
 )
 SNAPSHOT_HISTORY_DEPTH = 50
 
@@ -130,6 +135,12 @@ def _room_target(world_id: str, room_id: str, room_seed: str) -> "image_client.P
         seed=room_seed,
         prompt_suffix=image_client.WHIMSY_PROMPT_SUFFIX,
     )
+
+
+def _toon_target(t: "toons.Toon") -> "image_client.PersistentTarget":
+    """The room-target analog for a toon portrait; the canonical constructor
+    lives in the image client so the picker's cached-only reads share it."""
+    return image_client.portrait_target(t.world_id, t.id, t.appearance_seed.strip())
 
 
 def _room_description(room: "rooms.Room", view: dict | None) -> str:
@@ -311,6 +322,13 @@ def _toon_card(t: "toons.Toon") -> dict:
         "mood": t.mood,
         "kind": "toon",
         "verbs": objects.verbs_for(obj) if obj is not None else [],
+        # The painted face, cached-only (a snapshot never triggers a render;
+        # painting happens through the portrait enqueue). None until painted
+        # or when the toon has no appearance seed; the SPA shows a quiet
+        # placeholder either way.
+        "image_url": image_client.cached_portrait_url(
+            t.world_id, t.id, t.appearance_seed
+        ),
     }
 
 
@@ -348,6 +366,27 @@ def _maybe_enqueue_image_gen(world_id: str, room_id: str, room_seed: str) -> Non
     asyncio.create_task(_generate_and_emit(target, key))
 
 
+def _maybe_enqueue_toon_portraits(room_id: str) -> None:
+    """Lazily paint portraits for every co-located toon with a non-empty
+    appearance seed (SPEC 2026-07-07 criterion 2). Same idempotent shape as
+    the room enqueue: cached targets and in-flight jobs are skipped, so a
+    crowded room settles to at most one render per face. A toon with no
+    appearance seed simply has no portrait (seeded NPCs opt in by authoring
+    one). Renders run one-at-a-time under the arbiter's exclusive image slot
+    like all image gen."""
+    for t in toons.get_toons_in_room(room_id):
+        if not (t.appearance_seed or "").strip():
+            continue
+        target = _toon_target(t)
+        if image_client.is_persistent_cached(target):
+            continue
+        key = image_client.target_dedup_key(target)
+        if key in _generating:
+            continue
+        _generating.add(key)
+        asyncio.create_task(_generate_and_emit(target, key))
+
+
 async def _generate_and_emit(
     target: "image_client.PersistentTarget",
     dedup_key: tuple[str, str, str, str],
@@ -356,9 +395,12 @@ async def _generate_and_emit(
     prompt_override: str | None = None,
     seed: int | None = None,
 ) -> None:
-    """Run image gen under the GPU arbiter, then append room_image_ready.
-    On ComfyUI failure, emit room_image_ready with image_url=None and the
-    error string so the SPA can fall back to the placeholder.
+    """Run image gen under the GPU arbiter, then append the finished event:
+    room_image_ready for a room target (landing in that room),
+    toon_image_ready for a toon portrait (landing in the toon's CURRENT room
+    at completion, so the players standing with them see the face appear).
+    On ComfyUI failure, emit with image_url=None and the error string so the
+    SPA keeps its placeholder — painting failure never blocks play.
 
     force / prompt_override / seed carry the dev repaint UI's overrides: a
     forced re-render overwrites the cache file in place (keeping a .prev),
@@ -374,24 +416,33 @@ async def _generate_and_emit(
         payload["image_url"] = image_cache.versioned_url_for_path(path)
     except image_client.ComfyUIError as e:
         logger.warning(
-            "room image gen failed for %s/%s: %s",
-            target.world_id, target.target_id, e,
+            "%s image gen failed for %s/%s: %s",
+            target.target_kind, target.world_id, target.target_id, e,
         )
         payload["image_url"] = None
         payload["error"] = str(e)
     except Exception as e:  # broad catch: this runs as a fire-and-forget task
         logger.exception(
-            "unexpected error in room image gen for %s/%s",
-            target.world_id, target.target_id,
+            "unexpected error in %s image gen for %s/%s",
+            target.target_kind, target.world_id, target.target_id,
         )
         payload["image_url"] = None
         payload["error"] = f"unexpected error: {e}"
     finally:
         _generating.discard(dedup_key)
     try:
-        events.append(
-            "system", None, "room_image_ready", payload, room_id=target.target_id,
-        )
+        if target.target_kind == "toon":
+            t = toons.get_toon(target.target_id)
+            payload["toon_id"] = target.target_id
+            events.append(
+                "system", None, "toon_image_ready", payload,
+                room_id=t.current_room_id if t is not None else None,
+            )
+        else:
+            events.append(
+                "system", None, "room_image_ready", payload,
+                room_id=target.target_id,
+            )
     except RuntimeError:
         # DB closed (server shutting down). Drop the event silently.
         pass
@@ -661,10 +712,12 @@ async def ws_endpoint(ws: WebSocket):
         await ws.send_json(_state_snapshot(last_seq, toon_id, view, resume_since))
         # Kick off image gen for the current room if the cache is cold.
         # Fire-and-forget; the resulting room_image_ready event reaches the
-        # client through the broadcast loop below.
+        # client through the broadcast loop below. Portraits for everyone
+        # standing here (self included) enqueue the same way.
         room = rooms.get_room(_current_room_id(toon_id))
         if room is not None:
             _maybe_enqueue_image_gen(room.world_id, room.id, room.seed)
+            _maybe_enqueue_toon_portraits(room.id)
         receive_task = asyncio.create_task(_receive_loop(ws, toon_id))
         broadcast_task = asyncio.create_task(
             _broadcast_loop(ws, queue, last_seq, toon_id, view)
@@ -782,12 +835,13 @@ async def _broadcast_loop(
                 if is_controlled_move:
                     # Kick image gen for the new room if the cache is cold;
                     # the room_image_ready event flows back through this
-                    # same loop.
+                    # same loop. Unpainted faces here enqueue too.
                     new_room = rooms.get_room(_current_room_id(toon_id))
                     if new_room is not None:
                         _maybe_enqueue_image_gen(
                             new_room.world_id, new_room.id, new_room.seed
                         )
+                        _maybe_enqueue_toon_portraits(new_room.id)
                     # Greet any co-located NPCs (SPEC 2026-04-24). This
                     # is inside the controlled-move branch only, not
                     # the effect-mutation branch, so dispatching a

@@ -1,0 +1,8 @@
+{
+  "_doc": "Portrait anchor #2 (SPEC 2026-07-07 criterion 2): Bell's authored appearance seed (verbatim from worlds/clockmakers-loft.json) + the A/B-ratified framing clause, on the portrait workflow. Bell's seed implies equipment (the lamplighter's pole), so this anchor guards the graceful full-figure fallback the A/B ratified.",
+  "name": "portrait_bell",
+  "prompt": "a wiry young person with a lamplighter's hooked pole, soot smudged along one cheek, a scarf the color of butter-yellow lamplight, storybook character portrait, head and shoulders, gentle friendly face, soft features, plain warm background",
+  "workflow": "painterly_portrait.json",
+  "expected_resolution": [640, 768],
+  "phash_tolerance": 12
+}

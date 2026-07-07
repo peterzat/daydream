@@ -27,6 +27,7 @@ for `llm purpose=` to profile.
 |---|---------|----------|-------|----------|
 | 11 | Room/ephemeral render prompt | room seed text + `WHIMSY_PROMPT_SUFFIX` (`daydream/images/client.py`) | `"<seed> <suffix>"` into the workflow's positive-prompt node | `tests/test_whimsy_prompt_suffix.py` (suffix ↔ WHIMSY.md); `tests/drift/test_image_perceptual.py` dHash goldens (7 anchors, tier_long) |
 | 12 | Negative prompt + sampler params | `daydream/images/workflows/painterly_room.json` | fixed negative list; SDXL base + watercolor LoRA 0.85; 1024×384, 22 steps, cfg 5.5, dpmpp_2m/karras | the workflow JSON is folded into every cache key AND the dHash goldens |
+| 13 | Toon portrait render prompt | `appearance_seed` + `PORTRAIT_PROMPT_SUFFIX` (framing clause + WHIMSY suffix, `daydream/images/client.py`) | `"<appearance> <clause + suffix>"` into `painterly_portrait.json` (640×768, face/anatomy negatives, same checkpoint + LoRA) | `tests/test_whimsy_prompt_suffix.py` (clause ↔ WHIMSY.md); `portrait_*` dHash anchors (tier_long); framing A/B ratified 2026-07-07 |
 
 ## Duplication map (known, tolerated)
 

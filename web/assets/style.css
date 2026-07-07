@@ -487,6 +487,21 @@ footer .slots-toggle:hover, footer .logout:hover { text-decoration: underline; }
 }
 .back-link:hover { color: var(--sage-deep); }
 
+/* ---------- toon portraits: painted faces (margin chips + picker) ---------- */
+.toon-face {
+  display: inline-flex; width: 34px; height: 34px; border-radius: 50%;
+  overflow: hidden; vertical-align: middle; margin-right: 7px; flex: none;
+  background: radial-gradient(120% 120% at 50% 35%, #fffdf6, #efe6d1);
+  box-shadow: inset 0 0 0 1px rgba(216,210,194,.9);
+}
+.toon-face img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 24%; display: block; }
+/* Unpainted: a quiet pressed-flower placeholder, never a broken image. */
+.toon-face.toon-face-unpainted::after {
+  content: "\2740"; margin: auto; color: var(--sage); opacity: .5; font-size: .85rem;
+}
+#self .toon-face { width: 44px; height: 44px; }
+.slot-row .toon-face { width: 40px; height: 40px; }
+
 /* ---------- how to dream: the first-visit help leaf ---------- */
 #help-panel { z-index: 70; } /* above the slot picker (60): it opens over the arrival beat */
 /* Normal eyebrow rhythm on the right page (no specimen grid to align with). */

@@ -21,6 +21,7 @@ from fastapi import APIRouter, HTTPException, Request
 
 from daydream import toons
 from daydream.api import auth as auth_mod
+from daydream.images import client as image_client
 
 router = APIRouter()
 
@@ -106,11 +107,21 @@ async def list_slots(request: Request) -> dict:
     """List the 5 human slots and their current state. Empty slots
     return `{"slot": N, "toon": null}`. Populated slots return the
     toon's id/name/appearance + a `claimed_by_me` boolean derived
-    against the requester's session id. Hand-authored NPCs in slots
-    100+ are excluded."""
+    against the requester's session id, plus `portrait_url` — the
+    cached painted face or null (cached-only by contract: the picker
+    NEVER triggers a render; portraits fill in as people play). Hand-
+    authored NPCs in slots 100+ are excluded."""
     _require_authed(request)
     sid = _session_id(request)
-    return {"slots": toons.get_human_slots(sid)}
+    slots = toons.get_human_slots(sid)
+    world_id = toons.live_world_id()
+    for entry in slots:
+        t = entry["toon"]
+        if t is not None:
+            t["portrait_url"] = image_client.cached_portrait_url(
+                world_id, t["id"], t.get("appearance_seed", "")
+            )
+    return {"slots": slots}
 
 
 @router.post("/api/slots/{slot}/create")

@@ -599,6 +599,32 @@ def test_style_css_has_keepsakes_spread():
     assert ".grid2" in r.text
 
 
+# ---- toon portraits: the cast has faces (SPEC 2026-07-07 criterion 2) ----
+
+
+def test_main_js_renders_toon_faces_with_placeholder():
+    """Toon chips (margin + self) and picker rows show the painted face from
+    image_url / portrait_url, with a quiet placeholder until painted —
+    ComfyUI-down degrades to the placeholder without blocking play."""
+    with TestClient(app) as client:
+        _login(client)
+        r = client.get("/assets/main.js")
+    assert "function toonFace(" in r.text
+    assert "toon-face-unpainted" in r.text
+    assert "o.image_url" in r.text            # margin chips read the snapshot card
+    assert "snap.self.image_url" in r.text    # your own face renders too
+    assert "t.portrait_url" in r.text         # picker rows read /api/slots
+
+
+def test_style_css_has_toon_face_styles():
+    with TestClient(app) as client:
+        _login(client)
+        r = client.get("/assets/style.css")
+    assert ".toon-face" in r.text
+    assert ".toon-face.toon-face-unpainted" in r.text
+    assert ".slot-row .toon-face" in r.text
+
+
 # ---- how to dream: newcomers are welcomed (SPEC 2026-07-07 criterion 6) --
 
 

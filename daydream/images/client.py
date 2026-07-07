@@ -66,6 +66,20 @@ WHIMSY_PROMPT_SUFFIX = (
     "A Short Hike-adjacent, low-saturation cream and sage palette"
 )
 
+# Verbatim from WHIMSY.md "## Portrait prompt suffix": the framing clause a
+# toon portrait prepends to the shared suffix. A/B-ratified 2026-07-07
+# (head-and-shoulders vs figure-vignette on real loft appearance seeds):
+# the closer framing keeps faces legible at margin-chip size and falls back
+# gracefully to a small full figure when the seed implies equipment or pose.
+# Same drift catcher as the room suffix.
+PORTRAIT_FRAMING_CLAUSE = (
+    "storybook character portrait, head and shoulders, gentle friendly "
+    "face, soft features, plain warm background"
+)
+PORTRAIT_PROMPT_SUFFIX = f"{PORTRAIT_FRAMING_CLAUSE}, {WHIMSY_PROMPT_SUFFIX}"
+
+PORTRAIT_WORKFLOW = "painterly_portrait.json"
+
 
 class ComfyUIError(Exception):
     """Raised when ComfyUI is unreachable, rejects the workflow, or fails
@@ -87,14 +101,20 @@ class PersistentTarget:
     - editing the seed text busts the cache,
     - editing the workflow JSON busts the cache too.
 
+    `workflow_name` selects the workflow file under WORKFLOWS_DIR per target
+    kind (rooms keep the default; portraits use painterly_portrait.json).
+    The default preserves every pre-existing room cache key byte-for-byte —
+    a room target hashes exactly the same workflow JSON it always has.
+
     On generation success, a row lands in generated_assets via
     daydream.assets.record_image_generation."""
 
     world_id: str
-    target_kind: str            # 'room' for v1; 'toon' / 'item' later
+    target_kind: str            # 'room' | 'toon' ('item' later)
     target_id: str
     seed: str                   # the prompt source text
     prompt_suffix: str = ""     # appended to seed; usually WHIMSY_PROMPT_SUFFIX
+    workflow_name: str = "painterly_room.json"
 
 
 @dataclass(frozen=True)
@@ -112,6 +132,7 @@ class EphemeralTarget:
     prompt: str                     # literal user prompt
     with_whimsy_suffix: bool = True
     out_path: Path | None = None    # if set, overrides ephemeral_path()
+    workflow_name: str = "painterly_room.json"  # A/B alternate workflows too
 
 
 # ---- workflow + helpers -------------------------------------------------
@@ -148,6 +169,21 @@ def load_workflow(path: Path = DEFAULT_WORKFLOW) -> dict:
     return {k: v for k, v in raw.items() if not k.startswith("_")}
 
 
+def workflow_path(workflow_name: str) -> Path:
+    """Resolve a target's workflow_name to its file under WORKFLOWS_DIR.
+    Bare names only — a name with path separators raises, so a target can
+    never reach outside the workflows directory."""
+    name = workflow_name.strip()
+    if not name or "/" in name or "\\" in name or name != Path(name).name:
+        raise ValueError(f"invalid workflow name: {workflow_name!r}")
+    return WORKFLOWS_DIR / name
+
+
+def load_workflow_for(target: "PersistentTarget | EphemeralTarget") -> dict:
+    """The workflow dict a target renders (and hashes) with."""
+    return load_workflow(workflow_path(target.workflow_name))
+
+
 def build_prompt_workflow(workflow: dict, prompt_text: str, seed: int = 0) -> dict:
     """Return a deep copy of the workflow with the positive prompt substituted
     and the KSampler seed pinned for reproducibility."""
@@ -176,10 +212,10 @@ def _apply_overrides(workflow: dict, model: str | None, lora: str | None) -> dic
 
 
 def is_persistent_cached(target: PersistentTarget) -> bool:
-    """True if the cache file for this target exists. Uses the default
+    """True if the cache file for this target exists. Uses the target's own
     workflow with no overrides; for callers that have applied overrides,
     use cache.cache_path directly."""
-    workflow = load_workflow()
+    workflow = load_workflow_for(target)
     return cache.is_cached(
         target.world_id, target.target_kind, target.target_id, target.seed, workflow
     )
@@ -189,13 +225,49 @@ def target_dedup_key(target: PersistentTarget) -> tuple[str, str, str, str]:
     """A stable key for in-flight dedup across concurrent connections.
     Combines world / kind / id / combined_hash so two requests for the
     same logical asset collapse to one generation."""
-    workflow = load_workflow()
+    workflow = load_workflow_for(target)
     return (
         target.world_id,
         target.target_kind,
         target.target_id,
         cache.combined_hash(target.seed, workflow),
     )
+
+
+def portrait_target(
+    world_id: str, toon_id: str, appearance_seed: str
+) -> PersistentTarget:
+    """The canonical PersistentTarget for a toon portrait. One constructor so
+    the workflow / suffix / target_kind never drift between the WS enqueue,
+    the cached-only URL reads (snapshot toon cards, the slot picker), and the
+    render itself — the same rationale as the WS layer's room-target helper."""
+    return PersistentTarget(
+        world_id=world_id,
+        target_kind="toon",
+        target_id=toon_id,
+        seed=appearance_seed,
+        prompt_suffix=PORTRAIT_PROMPT_SUFFIX,
+        workflow_name=PORTRAIT_WORKFLOW,
+    )
+
+
+def cached_portrait_url(
+    world_id: str, toon_id: str, appearance_seed: str
+) -> str | None:
+    """The versioned /cache URL for a toon's portrait IF it is already
+    rendered, else None. Read-only by contract: this never triggers a render
+    (the picker and snapshot paths must stay cheap; painting happens only
+    through the WS enqueue). An empty appearance seed means the toon simply
+    has no portrait."""
+    seed = (appearance_seed or "").strip()
+    if not seed:
+        return None
+    target = portrait_target(world_id, toon_id, seed)
+    workflow = load_workflow_for(target)
+    path = cache.cache_path(world_id, "toon", toon_id, seed, workflow)
+    if not path.exists():
+        return None
+    return cache.versioned_url_for_path(path)
 
 
 def ephemeral_path(name: str, prompt: str, root: Path | None = None) -> Path:
@@ -304,16 +376,16 @@ async def generate_image(
     Ephemeral: always runs the workflow, writes to the deterministic
     ephemeral path (or target.out_path if set). Never recorded.
     force / prompt_override do not apply (it always regenerates anyway)."""
-    base_workflow = _apply_overrides(load_workflow(), model, lora)
+    if not isinstance(target, (PersistentTarget, EphemeralTarget)):
+        raise TypeError(f"unknown target type: {type(target).__name__}")
+    base_workflow = _apply_overrides(load_workflow_for(target), model, lora)
 
     if isinstance(target, PersistentTarget):
         return await _generate_persistent(
             target, base_workflow, seed, base_url,
             force=force, prompt_override=prompt_override,
         )
-    if isinstance(target, EphemeralTarget):
-        return await _generate_ephemeral(target, base_workflow, seed, base_url)
-    raise TypeError(f"unknown target type: {type(target).__name__}")
+    return await _generate_ephemeral(target, base_workflow, seed, base_url)
 
 
 async def _generate_persistent(

@@ -132,6 +132,28 @@ It lives in code as the `WHIMSY_PROMPT_SUFFIX` constant in
 fails if this block and that constant ever drift apart, so update
 both together.
 
+## Portrait prompt suffix
+
+Toon portraits (the scene-margin faces and the picker thumbnails)
+prepend this framing clause to the shared prompt suffix above:
+
+```
+storybook character portrait, head and shoulders, gentle friendly
+face, soft features, plain warm background
+```
+
+Chosen by A/B on 2026-07-07 (head-and-shoulders vs figure-vignette,
+real loft appearance seeds, SDXL + the watercolor LoRA): the closer
+framing keeps a face legible at margin-chip size, and when a
+character's appearance seed implies equipment or a pose it falls back
+gracefully to a small full figure rather than forcing a crop. Faces
+held up well under the loose LoRA in both framings; the portrait
+workflow's negative prompt carries the anatomy guards.
+
+It lives in code as `PORTRAIT_FRAMING_CLAUSE` in
+`daydream/images/client.py` (joined to `WHIMSY_PROMPT_SUFFIX` as
+`PORTRAIT_PROMPT_SUFFIX`); the same drift test covers it.
+
 ---
 
 ## Re-grounding

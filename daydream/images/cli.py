@@ -30,6 +30,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("prompt", help="prompt text; the WHIMSY suffix is appended")
     parser.add_argument("--model", help="override checkpoint name in the workflow")
     parser.add_argument("--lora", help="override LoRA name in the workflow")
+    parser.add_argument(
+        "--workflow",
+        default="painterly_room.json",
+        help="workflow file under daydream/images/workflows/ "
+             "(default painterly_room.json; e.g. painterly_portrait.json)",
+    )
     parser.add_argument("--seed", type=int, default=0, help="KSampler seed (default 0)")
     parser.add_argument(
         "--out", type=Path, help="output path (default: derived from prompt)"
@@ -49,6 +55,7 @@ def main(argv: list[str] | None = None) -> int:
         prompt=args.prompt,
         with_whimsy_suffix=not args.no_suffix,
         out_path=args.out,
+        workflow_name=args.workflow,
     )
 
     async def _run() -> Path:

@@ -161,6 +161,7 @@ function renderSnapshot(snap) {
   const selfEl = document.getElementById("self");
   selfEl.innerHTML = "";
   if (snap.self) {
+    selfEl.appendChild(toonFace(snap.self.image_url)); // your own painted face
     const nm = document.createElement("span");
     nm.className = "you-name";
     nm.textContent = snap.self.name;
@@ -274,6 +275,21 @@ function emptyLine(text) {
   return span;
 }
 
+function toonFace(imageUrl) {
+  // A toon's painted watercolor face (portrait pipeline, SPEC 2026-07-07),
+  // or a quiet placeholder circle until it is painted / when the toon has
+  // no appearance seed. ComfyUI-down simply leaves the placeholder.
+  const face = document.createElement("span");
+  face.className = "toon-face" + (imageUrl ? "" : " toon-face-unpainted");
+  if (imageUrl) {
+    const img = document.createElement("img");
+    img.src = imageUrl;
+    img.alt = "";
+    face.appendChild(img);
+  }
+  return face;
+}
+
 function objectChip(o, label) {
   // A distinct, clickable scene element carrying its object id + kind + the
   // verbs that apply to it, so the verb bar / default-Examine can target it
@@ -284,6 +300,7 @@ function objectChip(o, label) {
   span.dataset.kind = o.kind;
   span.dataset.verbs = (o.verbs || []).join(",");
   span.textContent = label;
+  if (o.kind === "toon") span.prepend(toonFace(o.image_url));
   span.onclick = () => onObjectClick(o.id, o.verbs || [], o.kind);
   // A see-through container nests its contents as indented child chips
   // (criterion 4/12); each child is itself clickable (and may nest again).
@@ -1145,6 +1162,9 @@ async function renderSlots() {
       li.appendChild(btn);
     }
     if (t) {
+      // The painted face (or quiet placeholder) leads the row. Cached-only
+      // on the server side: the picker never triggers a render.
+      li.prepend(toonFace(t.portrait_url));
       // A permanent delete sits alongside the slot's primary action.
       const del = document.createElement("button");
       del.type = "button";

@@ -193,3 +193,122 @@ def test_maybe_enqueue_dedups_in_flight():
         ws_module._maybe_enqueue_image_gen("w-1", "r-1", seed)
         ws_module._maybe_enqueue_image_gen("w-1", "r-1", seed)
     assert len(spawned) == 1
+
+
+# ---- toon portraits (SPEC 2026-07-07 criterion 2) ------------------------
+
+WREN_APPEARANCE = "a soft watercolor toon, dusty cloak, freckles, kind eyes"
+
+
+def _write_portrait_cache(world_id: str, toon_id: str, appearance: str) -> str:
+    """Pre-populate the portrait cache the way a finished render would and
+    return the unversioned cache URL."""
+    target = image_client.portrait_target(world_id, toon_id, appearance)
+    wf = image_client.load_workflow_for(target)
+    p = image_cache.cache_path(world_id, "toon", toon_id, appearance, wf)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_bytes(b"\x89PNG\r\n\x1a\nfake-portrait")
+    return image_cache.url_for_cache_path(p)
+
+
+def test_snapshot_toon_cards_carry_portrait_url_cached_only():
+    """image_url on toon cards (self included) is None until the portrait is
+    cached, then the versioned /cache URL — reads never trigger renders."""
+    with TestClient(app) as client:
+        _login(client)
+        with client.websocket_connect("/ws") as ws:
+            msg = ws.receive_json()
+        assert msg["self"]["image_url"] is None
+        base = _write_portrait_cache("w-bunny", "t-wren", WREN_APPEARANCE)
+        with client.websocket_connect("/ws") as ws:
+            msg = ws.receive_json()
+        assert msg["self"]["image_url"].split("?")[0] == base
+        assert "?v=" in msg["self"]["image_url"]
+
+
+def test_connect_enqueues_portraits_for_room_toons():
+    """The initial snapshot enqueues a portrait render for every co-located
+    toon with a non-empty appearance seed (self included here: Wren)."""
+    with TestClient(app) as client:
+        _login(client)
+        with client.websocket_connect("/ws") as ws:
+            ws.receive_json()
+            assert any(k[1] == "toon" and k[2] == "t-wren"
+                       for k in ws_module._generating), ws_module._generating
+
+
+def test_portrait_enqueue_skips_empty_appearance_and_cached(monkeypatch):
+    """No appearance seed -> no render; cached -> no render. The quiet
+    placeholder is the SPA's job, not a render trigger."""
+    from daydream import config as config_mod
+    from daydream import objects
+
+    db.init_live(
+        path=Path(config_mod.data_dir()) / "x.db",
+        migrations_dir=config_mod.MIGRATIONS_DIR,
+    )
+    try:
+        # Wren: cache pre-populated -> skipped. Rook: blank appearance -> skipped.
+        _write_portrait_cache("w-bunny", "t-wren", WREN_APPEARANCE)
+        objects.set_property("t-rook", "appearance_seed", " ")
+        objects.move("t-rook", "r-meadow")
+
+        spawned = []
+
+        def fake_create_task(coro):
+            spawned.append(coro)
+            coro.close()
+
+        with patch.object(asyncio, "create_task", side_effect=fake_create_task):
+            ws_module._maybe_enqueue_toon_portraits("r-meadow")
+        assert spawned == []
+    finally:
+        db.close_db()
+
+
+@pytest.mark.real_image_gen
+async def test_generate_and_emit_toon_target_emits_toon_image_ready(initialized_db):
+    """A toon target's finish lands as toon_image_ready in the toon's current
+    room, carrying toon_id — the re-snapshot trigger co-located players see."""
+    from daydream import toons
+
+    t = toons.get_toon("t-wren")
+    target = ws_module._toon_target(t)
+    wf = image_client.load_workflow_for(target)
+
+    async def fake_gen(tg, *, model=None, lora=None, seed=None, base_url=None,
+                       force=False, prompt_override=None):
+        out = image_cache.cache_path(
+            tg.world_id, tg.target_kind, tg.target_id, tg.seed, wf
+        )
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_bytes(b"\x89PNG\r\n\x1a\nfake")
+        return out
+
+    with patch.object(image_client, "generate_image", new=AsyncMock(side_effect=fake_gen)):
+        await ws_module._generate_and_emit(target, image_client.target_dedup_key(target))
+
+    matching = [e for e in events.fetch_since(0) if e.kind == "toon_image_ready"]
+    assert len(matching) == 1
+    ev = matching[0]
+    assert ev.room_id == "r-meadow"  # wren's current room
+    assert ev.payload["toon_id"] == "t-wren"
+    assert "?v=" in ev.payload["image_url"]
+    # And the broadcast loop treats it as a snapshot-refresh trigger.
+    assert "toon_image_ready" in ws_module._EFFECT_MUTATION_KINDS
+
+
+def test_slots_listing_carries_cached_only_portrait_url():
+    """GET /api/slots exposes portrait_url: None before the portrait exists,
+    the versioned URL after — and listing never triggers a render."""
+    with TestClient(app) as client:
+        _login(client)
+        r = client.get("/api/slots")
+        slot1 = next(s for s in r.json()["slots"] if s["slot"] == 1)
+        assert slot1["toon"]["portrait_url"] is None
+        assert not ws_module._generating  # no render started by the listing
+        base = _write_portrait_cache("w-bunny", "t-wren", WREN_APPEARANCE)
+        r = client.get("/api/slots")
+        slot1 = next(s for s in r.json()["slots"] if s["slot"] == 1)
+        assert slot1["toon"]["portrait_url"].split("?")[0] == base
+        assert not ws_module._generating

@@ -90,6 +90,9 @@ async def _render_anchors(out_dir: Path) -> list[dict]:
             prompt=spec["prompt"],
             with_whimsy_suffix=True,
             out_path=out_dir / f"{name}.png",
+            # Portrait anchors pin the portrait workflow; room anchors
+            # keep the default (same contract as the perceptual probe).
+            workflow_name=spec.get("workflow", "painterly_room.json"),
         )
         async with arbiter.acquire():
             path = await image_client.generate_image(target)
