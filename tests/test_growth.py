@@ -781,3 +781,56 @@ async def test_propagation_lineage_grows_twice_then_stops(monkeypatch):
     assert third_room is not None
     assert _child_seeds(third_room.id) == []
     assert spy.call_count == 3  # one compose per plant; propagation adds none
+
+
+# ---- the first-planting chapter close (SPEC 2026-07-07 criterion 7) ------
+
+
+def _first_planting_growth() -> dict:
+    g = dict(GROWTH_BLOCK)
+    g["first_planting_text"] = (
+        "Far off in the tower, something that has been holding still gives "
+        "one soft, deliberate tick."
+    )
+    return g
+
+
+@pytest.mark.asyncio
+async def test_first_planting_beat_fires_once(monkeypatch):
+    """The world's FIRST grown room narrates the authored chapter close and
+    writes it into the planter's journal (authored, zero LLM beyond the
+    compose call); the belt marker prevents any re-fire; a second plant
+    stays quiet."""
+    from daydream import worldstate
+
+    _mock_llm(monkeypatch, dict(VALID_COMPOSITION))
+    seed = _seed(growth_block=_first_planting_growth())
+    await _plant(seed)
+    narrates = [e.payload["text"] for e in events.fetch_since(0)
+                if e.kind == "narrate"]
+    assert any("deliberate tick" in t for t in narrates)
+    entries = objects.get_property("t-wren", "journal") or []
+    assert len(entries) == 1 and entries[0]["authored"] is True
+    assert "deliberate tick" in entries[0]["text"]
+    bloom = worldstate.get("w-bunny", "first_bloom")
+    assert bloom is not None and bloom["planter_id"] == "t-wren"
+
+    # A second plant (second grown room) does not re-fire the beat.
+    before = events.max_seq()
+    seed2 = _seed(growth_block=_first_planting_growth())
+    await _plant(seed2)
+    later = [e.payload["text"] for e in events.fetch_since(before)
+             if e.kind == "narrate"]
+    assert not any("deliberate tick" in t for t in later)
+    assert len(objects.get_property("t-wren", "journal")) == 1
+
+
+@pytest.mark.asyncio
+async def test_no_first_planting_text_no_beat(monkeypatch):
+    from daydream import worldstate
+
+    _mock_llm(monkeypatch, dict(VALID_COMPOSITION))
+    seed = _seed()  # plain growth block: no authored beat
+    await _plant(seed)
+    assert worldstate.get("w-bunny", "first_bloom") is None
+    assert (objects.get_property("t-wren", "journal") or []) == []

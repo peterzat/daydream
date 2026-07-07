@@ -36,8 +36,10 @@ logger = logging.getLogger(__name__)
 # bump MINOR for authored content/behaviour changes an old world won't reflect.
 # See the module docstring for the boot-gate semantics. (1.2: the quest-earned
 # dreamseed in the clock case + the `plant` verb, SPEC 2026-07-02 — a 1.1
-# world lacks the seed, so it warns-not-refuses per MINOR rules.)
-WORLD_VERSION = "1.3"
+# world lacks the seed, so it warns-not-refuses per MINOR rules. 1.4: the
+# v1.0 loft batch — seed propagation config, the first-planting chapter
+# close, per-NPC drift pools, SPEC 2026-07-07 criterion 7.)
+WORLD_VERSION = "1.4"
 
 
 @lru_cache(maxsize=1)

@@ -101,7 +101,8 @@ def test_load_and_reopen(tmp_path):
     assert objects.get("o-ghostly").location_id is None  # offstage
     row = db.get_conn().execute("SELECT * FROM worlds").fetchone()
     assert row["id"] == "w-testland" and row["starting_room_id"] == "r-one"
-    assert row["world_version"] == "1.3"
+    from daydream import version
+    assert row["world_version"] == version.WORLD_VERSION  # loader stamps the current constant
     # def:* blocks landed in world_state.
     assert worldstate.get("w-testland", "def:verbs")["pray"]["ui_hint"] == "Pray"
     assert worldstate.get("w-testland", "def:flags") == ["DOOR-OPEN"]

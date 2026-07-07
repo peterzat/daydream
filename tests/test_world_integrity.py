@@ -167,3 +167,48 @@ def test_two_ambient_room_skills_present(loft_db):
         "SELECT name FROM skills WHERE author = 'opus-bootstrap'"
     )}
     assert names == {"wind", "listen"}
+
+
+# ---- the v1.0 batch (SPEC 2026-07-07 criterion 7) ------------------------
+
+
+def test_dreamseed_propagates_with_a_chapter_close(loft_db):
+    """The quest-earned seed carries the growing-world loop config and the
+    one-time first-planting beat, inside the validator's windows."""
+    case = _thing("clock case")
+    seed = next(e for e in case.properties["contains"] if e["name"] == "dreamseed")
+    growth = seed["properties"]["growth"]
+    prop = growth["propagation"]
+    assert 0 < prop["chance"] <= 1
+    assert 1 <= prop["max_generation"] <= 4
+    assert prop["seed_text"].strip()
+    first = growth["first_planting_text"]
+    assert first.strip() and "tick" in first  # the tower answers the planting
+
+
+def test_loft_npcs_carry_authored_drift_pools(loft_db):
+    """Tace/Bell/Mott each carry loader-validated drift pools with a bucket
+    for their own authored mood (so the drift loop's exact-mood preference
+    lands), a default bucket, and >=6 distinct lines total — closing the
+    bunny-keyed-pools gap (the loft NPCs no longer fall through to the
+    generic name-templated pool)."""
+    moods = {"Tace": "wistful", "Bell": "cheerful", "Mott": "content"}
+    for name, mood in moods.items():
+        npc = _toon(name)
+        pools = npc.properties.get("drift_pools")
+        assert isinstance(pools, dict), f"{name} missing drift_pools"
+        assert mood in pools and "default" in pools
+        lines = [ln for bucket in pools.values() for ln in bucket]
+        assert len(lines) >= 6 and len(set(lines)) == len(lines)
+        # Tace's post-quest mood has its own bucket (gives_mood: gladdened).
+    assert "gladdened" in _toon("Tace").properties["drift_pools"]
+
+
+def test_wick_has_no_authored_pools_and_falls_to_generic(loft_db):
+    """The claimable visitor authors no pools; the drift loop's generic
+    fallback covers an unclaimed Wick drifting as an NPC."""
+    from daydream import drift
+
+    wick = _toon("Wick")
+    assert "drift_pools" not in wick.properties
+    assert drift._pools_for(wick.id) is drift._GENERIC_DRIFT_POOL

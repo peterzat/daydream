@@ -40,7 +40,23 @@
                  "aliases": ["key", "case-key"], "verbs": ["use"]},
        "gives_text": "Tace turns the little gear over in the lamplight, and something long held eases out of their shoulders. 'You found it. You carried it all the way home.' They fold a small brass key into your hand, warm from their pocket. 'The case is yours to open now, friend.'",
        "gives_mood": "gladdened",
-       "declines_text": "Tace considers what you're holding out, and smiles a small, tired smile. 'That's kind of you. But it isn't the little thing the clock is missing.'"
+       "declines_text": "Tace considers what you're holding out, and smiles a small, tired smile. 'That's kind of you. But it isn't the little thing the clock is missing.'",
+       "drift_pools": {
+         "wistful": [
+           "Tace winds a small clock that doesn't need it, slow and careful, just for the company of the sound.",
+           "Tace looks up at where the great clock's hands would be and lets a long breath go somewhere quieter.",
+           "Tace lines three tiny screws along the bench edge, straightens them once, and lets them be."
+         ],
+         "gladdened": [
+           "Tace polishes an old escapement wheel until it catches the lamplight, humming almost too softly to hear.",
+           "Tace holds a mended pocket-watch to one ear and smiles at the small even tick inside it.",
+           "Tace tidies the bench with light hands, the way weather clears."
+         ],
+         "default": [
+           "Tace pushes their spectacles up into their hair and considers the workbench like a chessboard.",
+           "Tace warms both hands around a cooling cup of tea and lets the loft's hush settle."
+         ]
+       }
      },
      "dialogue": {
        "ui_hint": "Talk",
@@ -54,6 +70,23 @@
      "current_room_slug": "square", "is_human_controlled": 0, "mood": "cheerful",
      "presence_text": "Bell is up a small ladder coaxing a lantern alight, and lifts a sooty hand in greeting.",
      "aliases": ["the lamplighter", "lamplighter"],
+     "properties": {
+       "drift_pools": {
+         "cheerful": [
+           "Bell taps the lamplighter's pole twice against one boot, keeping some private rhythm.",
+           "Bell tilts a fresh wick to the light and grins at nothing in particular.",
+           "Bell winds the butter-yellow scarf one turn snugger and stands a little taller for it."
+         ],
+         "thoughtful": [
+           "Bell watches a moth circle the nearest lantern and escorts it gently away with one hand.",
+           "Bell counts the lanterns along the square under their breath, twice, to be sure of them."
+         ],
+         "default": [
+           "Bell rubs at the smudge of soot on one cheek and only spreads it a little further.",
+           "Bell leans on the hooked pole and watches the dusk come down like it was invited."
+         ]
+       }
+     },
      "dialogue": {
        "ui_hint": "Talk",
        "description": "Talk to Bell, the lamplighter.",
@@ -66,6 +99,23 @@
      "current_room_slug": "workshop", "is_human_controlled": 0, "mood": "content",
      "presence_text": "Mott pauses mid-sweep, leans on the broom, and gives you an unhurried, friendly look.",
      "aliases": ["the sweeper", "sweeper"],
+     "properties": {
+       "drift_pools": {
+         "content": [
+           "Mott sweeps a slow, patient arc, leaving the floor a shade softer than before.",
+           "Mott rattles the tin of oddments gently, taking a small inventory by ear.",
+           "Mott sets a stray button on the windowsill, where its owner might think to look."
+         ],
+         "curious": [
+           "Mott crouches to study something small among the sweepings, then saves it carefully in the tin.",
+           "Mott holds a found key up to the lamplight, wondering which door it used to matter to."
+         ],
+         "default": [
+           "Mott leans the broom in the corner and gives the room a long, kindly look.",
+           "Mott turns the tin of oddments once in both hands, like a thought being settled."
+         ]
+       }
+     },
      "dialogue": {
        "ui_hint": "Talk",
        "description": "Talk to Mott, the sweeper.",
@@ -129,7 +179,13 @@
                  "seed": "a small oak balcony above the dusk, ringed by a brass rail, where a gear-ribbed telescope leans watching for the first star",
                  "description": "The balcony holds its place above the rooftops with a friendly creak. A telescope ribbed with clock-gears leans at the rail like an old friend paused mid-thought. Below, the village lanterns come on one by one, keeping an hour of their own."}
               ],
-              "husk_text": "the spent, papery shell of a dreamseed, cool in the hand now, its slow light gone quiet; its dreaming is done, and the place around it is what the dreaming became"
+              "husk_text": "the spent, papery shell of a dreamseed, cool in the hand now, its slow light gone quiet; its dreaming is done, and the place around it is what the dreaming became",
+              "propagation": {
+                "chance": 0.4,
+                "max_generation": 2,
+                "seed_text": "a new dreamseed, paper-lantern thin and barely warm, its slow light only just learning to beat"
+              },
+              "first_planting_text": "Far off in the tower, something that has been holding still gives one soft, deliberate tick. The dream has more room in it than it did a breath ago, and it was your hands that made the room. Down in the square, a lantern comes alight early, the way a house does when someone dear is coming home."
             }
           }}
        ]

@@ -60,7 +60,7 @@ from typing import Any
 
 from jinja2.sandbox import SandboxedEnvironment
 
-from daydream import events, memories, toons
+from daydream import events, memories, objects, toons
 from daydream.llm import client as llm_client
 from daydream.llm import safety
 
@@ -310,6 +310,25 @@ def _list_npcs() -> list[dict[str, Any]]:
     ]
 
 
+def _pools_for(npc_id: str) -> dict[str, list[str]]:
+    """The mood-bucketed canned pool for one NPC, in preference order
+    (SPEC 2026-07-07 criterion 7): the toon's OWN authored
+    `properties.drift_pools` (world data, loader-validated — the loft's
+    Tace/Bell/Mott carry these) → the legacy hand-authored `_DRIFT_POOLS`
+    entry (the seeded Rook/Iris, keyed by literal id) → the name-templated
+    generic pool. Fail-closed: a DB hiccup or a malformed stored value just
+    falls through — a drift tick never raises over pool lookup."""
+    try:
+        authored = objects.get_property(npc_id, "drift_pools")
+    except Exception:
+        authored = None
+    if isinstance(authored, dict) and any(
+        isinstance(v, list) and v for v in authored.values()
+    ):
+        return authored
+    return _DRIFT_POOLS.get(npc_id) or _GENERIC_DRIFT_POOL
+
+
 def _pick_canned_line(
     npc_id: str,
     mood: str | None,
@@ -318,14 +337,12 @@ def _pick_canned_line(
 ) -> str | None:
     """Pick one canned drift line for `(npc_id, mood)`.
 
-    Uses the NPC's hand-authored `_DRIFT_POOLS` entry when one exists;
-    otherwise falls through to `_GENERIC_DRIFT_POOL` (the safety net for
-    bootstrapped NPCs that have no per-NPC voice). Bucket selection is
-    identical for either pool: prefer the bucket matching `mood` exactly
-    when present and non-empty; otherwise fall back to `default`; if
-    `default` is also empty, walk all buckets and pick from any non-empty
-    one — this lets a future migration add a new mood bucket without
-    `default` and still produce output.
+    Pool resolution is `_pools_for` (authored toon properties → legacy
+    per-NPC → generic). Bucket selection is identical for any pool: prefer
+    the bucket matching `mood` exactly when present and non-empty;
+    otherwise fall back to `default`; if `default` is also empty, walk all
+    buckets and pick from any non-empty one — this lets a future migration
+    add a new mood bucket without `default` and still produce output.
 
     When `name` is provided, the chosen line's literal `{name}` token is
     substituted via `str.replace` (NOT `str.format`, so a generated name
@@ -337,7 +354,7 @@ def _pick_canned_line(
     and the generic pool yield no non-empty bucket — defense in depth,
     not reachable while `_GENERIC_DRIFT_POOL` ships non-empty buckets."""
     rng = rng if rng is not None else random
-    buckets = _DRIFT_POOLS.get(npc_id) or _GENERIC_DRIFT_POOL
+    buckets = _pools_for(npc_id)
     chosen = None
     if mood and buckets.get(mood):
         chosen = buckets[mood]
@@ -379,11 +396,11 @@ def _maybe_transition_mood(
     `DAYDREAM_DRIFT_MOOD_DRIFT_PROB` (default 0.2) and at least one
     target bucket available (a pool key other than `default` and other
     than the current mood), pick a new mood and persist via
-    `toons.set_mood`. The pool is the NPC's `_DRIFT_POOLS` entry when one
-    exists, else `_GENERIC_DRIFT_POOL` — so bootstrapped NPCs draw their
-    transition target from the generic bucket set. Returns the new mood
-    string on transition, or None when no transition fired (toggle off,
-    roll didn't land, no eligible target bucket, or persist failed).
+    `toons.set_mood`. The pool is `_pools_for` (authored toon properties →
+    legacy per-NPC → generic), so an authored NPC's transition targets are
+    its own authored buckets. Returns the new mood string on transition,
+    or None when no transition fired (toggle off, roll didn't land, no
+    eligible target bucket, or persist failed).
 
     Persist failures are caught and logged at warning; the tick has
     already emitted its narrate by the time this runs and the loop
@@ -393,7 +410,7 @@ def _maybe_transition_mood(
     rng = rng if rng is not None else random
     if rng.random() >= _mood_drift_prob():
         return None
-    buckets = _DRIFT_POOLS.get(npc["id"]) or _GENERIC_DRIFT_POOL
+    buckets = _pools_for(npc["id"])
     current_mood = npc.get("mood")
     targets = [
         m for m in buckets.keys() if m != "default" and m != current_mood

@@ -463,3 +463,36 @@ def test_bootstrap_wraps_llm_failure(tmp_path: Path):
             boot.bootstrap_world(
                 name="x", aesthetic="y", output_path=tmp_path / "bad.db",
             )
+
+
+def test_validate_accepts_drift_pools_and_first_planting_text():
+    env = _envelope_with_seed_case()
+    growth = env["items"][-1]["properties"]["contains"][1]["properties"]["growth"]
+    growth["first_planting_text"] = "The tower gives one soft tick."
+    env["toons"][0]["properties"] = {"drift_pools": {
+        "content": ["A line of gentle body language."],
+        "default": ["Another gentle line."],
+    }}
+    boot._validate_envelope(env)  # must not raise
+
+
+@pytest.mark.parametrize("pools,match", [
+    ("not-an-object", "non-empty object"),
+    ({}, "non-empty object"),
+    ({"content": ["x"]}, "default"),
+    ({"default": []}, "non-empty list"),
+    ({"default": ["ok"], "content": ["ok", "  "]}, "content"),
+    ({"default": ["ok"], "": ["x"]}, "bucket names"),
+])
+def test_validate_rejects_malformed_drift_pools(pools, match):
+    env = _valid_envelope()
+    env["toons"][0]["properties"] = {"drift_pools": pools}
+    with pytest.raises(boot.BootstrapValidationError, match=match):
+        boot._validate_envelope(env)
+
+
+def test_validate_rejects_blank_first_planting_text():
+    growth = _growth_block()
+    growth["first_planting_text"] = "   "
+    with pytest.raises(boot.BootstrapValidationError, match="first_planting_text"):
+        boot._validate_envelope(_envelope_with_seed_case(growth=growth))

@@ -40,7 +40,7 @@ import logging
 import re
 from datetime import datetime, timezone
 
-from daydream import config, events, objects, rooms, worldstate
+from daydream import config, events, journal, objects, rooms, worldstate
 from daydream.llm import client, safety
 from daydream.skills import effects
 
@@ -592,3 +592,21 @@ def _commit_growth(
         consume, actor_id=actor_id, room_id=current_room_id,
         world_id=world_id, allowed=allowed,
     )
+
+    # The one-time first-planting chapter close (SPEC 2026-07-07 criterion 7):
+    # when THIS plant grew the world's very first room and the seed authors
+    # the beat, narrate it in the room and write it into the planter's
+    # journal. Explicitly NOT a `win` — the world keeps its quiet header. The
+    # worldstate `first_bloom` marker is the belt: the beat can never re-fire
+    # even if grown-room counting changes shape later.
+    first_text = growth.get("first_planting_text")
+    if (
+        isinstance(first_text, str) and first_text.strip()
+        and rooms.grown_room_count(world_id) == 1
+        and worldstate.get(world_id, "first_bloom") is None
+    ):
+        worldstate.set(world_id, "first_bloom", {
+            "seed_id": seed_id, "room_id": new_room_id, "planter_id": actor_id,
+        })
+        _narrate(current_room_id, first_text.strip())
+        journal.append_authored(actor_id, first_text.strip())

@@ -311,6 +311,29 @@ def _validate_exemplar_rooms(value: object, where: str, lo: int, hi: int) -> Non
                 )
 
 
+def _validate_drift_pools(pools: object, where: str) -> None:
+    """A toon's authored ambient-drift pool (SPEC 2026-07-07 criterion 7):
+    mood buckets → lists of single-sentence canned beats. Requires a
+    `default` bucket so the mood fallback always lands; every bucket is a
+    non-empty list of non-empty strings. The drift loop prefers this over
+    its built-in pools (`drift._pools_for`)."""
+    if not isinstance(pools, dict) or not pools:
+        raise BootstrapValidationError(f"{where} must be a non-empty object")
+    if "default" not in pools:
+        raise BootstrapValidationError(f"{where} must include a 'default' bucket")
+    for bucket, lines in pools.items():
+        if not isinstance(bucket, str) or not bucket.strip():
+            raise BootstrapValidationError(
+                f"{where} bucket names must be non-empty strings"
+            )
+        if not isinstance(lines, list) or not lines or not all(
+            isinstance(ln, str) and ln.strip() for ln in lines
+        ):
+            raise BootstrapValidationError(
+                f"{where}.{bucket} must be a non-empty list of non-empty strings"
+            )
+
+
 def _validate_propagation(prop: object, where: str) -> None:
     """A dreamseed's optional `growth.propagation` block (SPEC 2026-07-07
     criterion 1): `chance` a number in (0, 1], `max_generation` an int 1-4,
@@ -377,6 +400,11 @@ def _validate_growth(growth: object, where: str) -> None:
         _validate_exemplar_rooms(growth["skeletons"], f"{where}.skeletons", 0, 3)
     if growth.get("propagation") is not None:
         _validate_propagation(growth["propagation"], f"{where}.propagation")
+    fpt = growth.get("first_planting_text")
+    if fpt is not None and (not isinstance(fpt, str) or not fpt.strip()):
+        raise BootstrapValidationError(
+            f"{where}.first_planting_text must be a non-empty string"
+        )
 
 
 def _validate_growth_keys(props: dict, where: str) -> None:
@@ -486,6 +514,12 @@ def _validate_envelope(env: dict) -> WorldSpec:
         # Optional NPC quest-state passthrough (wants / gives / gives_text / ...).
         if "properties" in t and not isinstance(t["properties"], dict):
             raise BootstrapValidationError(f"toons[{i}].properties must be an object")
+        if isinstance(t.get("properties"), dict) and "drift_pools" in t["properties"]:
+            # Authored ambient-drift pools fail loudly at load (criterion 7).
+            _validate_drift_pools(
+                t["properties"]["drift_pools"],
+                f"toons[{i}].properties.drift_pools",
+            )
         # Optional per-NPC `talk` dialogue binding: a {prompt_template, ...}
         # the loader installs as a data skill and references from the object.
         dlg = t.get("dialogue")

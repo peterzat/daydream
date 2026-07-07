@@ -218,8 +218,28 @@ async def test_golden_dreamseed_plant_extension(loft, monkeypatch):
     assert husk.location_id == grown.id
     assert husk.properties["state"] == "spent"
     assert "plant" not in objects.verbs_for(husk)
-    payoff = _last_narrate()
+    narrates = [e.payload["text"] for e in events.fetch_since(0)
+                if e.kind == "narrate"]
+    payoff = next(t for t in narrates if "takes root" in t)
     assert "north" in payoff and "The Quiet Orchard" in payoff
+    # The authored propagation roll (chance 0.4) deterministically MISSES for
+    # this world seed + room ("seed-propagation:r-the-quiet-orchard" ->
+    # 0.8148...), so no fresh dreamseed rests here; the loop's hit side is
+    # covered by tests/test_growth.py + test_ws_grow.py with chance 1.0.
+    assert "dreamseed" not in names
+    # The v1.0 batch's one-time chapter close (SPEC 2026-07-07 criterion 7):
+    # this was the loft's FIRST grown room, so the authored beat narrates
+    # after the payoff and lands in the planter's journal (authored, no LLM
+    # beyond the one compose call).
+    assert grow_spy.call_count == 1
+    close = narrates[-1]
+    assert "deliberate tick" in close and close != payoff
+    journal_entries = objects.get_property(actor, "journal") or []
+    assert len(journal_entries) == 1
+    assert journal_entries[0]["authored"] is True
+    assert "deliberate tick" in journal_entries[0]["text"]
+    from daydream import worldstate
+    assert worldstate.get("w-bunny", "first_bloom")["planter_id"] == actor
 
     # Replant the husk: refused in character, no second call, no second room.
     await verbs.execute_command(actor, "go", args="north")

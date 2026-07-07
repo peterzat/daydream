@@ -1040,3 +1040,38 @@ async def test_start_drift_loop_returns_none_when_disabled(monkeypatch):
     handle = drift.start_drift_loop()
     assert handle is None
     await drift.stop_drift_loop(handle)
+
+
+# ---- authored per-toon pools (SPEC 2026-07-07 criterion 7) ---------------
+
+
+@pytest.mark.tier_short
+def test_authored_toon_pools_win_over_legacy_and_generic(tmp_path):
+    """A toon carrying loader-installed `properties.drift_pools` drifts from
+    its OWN authored buckets — even when a legacy `_DRIFT_POOLS` entry
+    exists for the same id — closing the bunny-keyed-pools gap."""
+    from daydream import config, objects
+
+    db.init_live(path=tmp_path / "t.db", migrations_dir=config.MIGRATIONS_DIR)
+    try:
+        authored = {
+            "wistful": ["Tace tests the authored wistful line."],
+            "default": ["Tace tests the authored default line."],
+        }
+        objects.set_property("t-rook", "drift_pools", authored)  # rook HAS a legacy pool
+        assert drift._pools_for("t-rook") == authored
+        line = drift._pick_canned_line("t-rook", "wistful", rng=random.Random(0))
+        assert line == "Tace tests the authored wistful line."
+        # Unknown mood falls to the authored default, not the legacy pool.
+        line = drift._pick_canned_line("t-rook", "weary", rng=random.Random(0))
+        assert line == "Tace tests the authored default line."
+    finally:
+        db.close_db()
+
+
+@pytest.mark.tier_short
+def test_pools_for_malformed_or_no_db_falls_through():
+    """No DB / malformed stored value: _pools_for never raises and falls
+    through to legacy/generic."""
+    assert drift._pools_for("t-rook") == drift._DRIFT_POOLS["t-rook"]
+    assert drift._pools_for("t-unknown") is drift._GENERIC_DRIFT_POOL
