@@ -599,6 +599,56 @@ def test_style_css_has_keepsakes_spread():
     assert ".grid2" in r.text
 
 
+# ---- how to dream: newcomers are welcomed (SPEC 2026-07-07 criterion 6) --
+
+
+def test_index_html_has_help_leaf_covering_the_basics():
+    """The first-visit help leaf exists in the Reading Room idiom and covers
+    speaking, verbs/objects, exits, the satchel, and leaving/picking a toon,
+    plus the persistent footer affordance that reopens it."""
+    with TestClient(app) as client:
+        _login(client)
+        r = client.get("/")
+    assert 'id="help-panel"' in r.text
+    assert 'id="help-close"' in r.text
+    assert 'id="help-toggle"' in r.text
+    assert ">How to Dream<" in r.text
+    # The five explained surfaces, by their in-page names.
+    assert "speak, friend" in r.text          # speaking
+    assert "what you might do" in r.text      # clicking verbs + objects
+    assert "ways from here" in r.text         # exits
+    assert "open the satchel" in r.text       # the satchel
+    assert "leave the dream" in r.text        # leaving / picking a toon
+    assert "switch toon" in r.text
+
+
+def test_main_js_help_shows_once_per_browser_and_never_blocks():
+    """Auto-shown once per browser (localStorage['dd-help-seen']) at the
+    picker's arrival beat; reopenable from the ? affordance; dismissed by one
+    click (close button or backdrop) — it never gates input."""
+    with TestClient(app) as client:
+        _login(client)
+        r = client.get("/assets/main.js")
+    assert "dd-help-seen" in r.text
+    assert "maybeShowFirstVisitHelp" in r.text
+    assert "openHelp" in r.text and "closeHelp" in r.text
+    # The picker's arrival beat triggers the first-visit show.
+    fn = r.text.split("function enterPicker()")[1].split("}")[0]
+    assert "maybeShowFirstVisitHelp()" in fn
+    # Backdrop click closes (the never-blocks half: one click anywhere).
+    assert 'e.target.id === "help-panel"' in r.text
+
+
+def test_style_css_has_help_leaf():
+    with TestClient(app) as client:
+        _login(client)
+        r = client.get("/assets/style.css")
+    assert ".help-note" in r.text
+    assert ".help-toggle" in r.text
+    # Above the slot picker so the arrival beat reads front-of-book.
+    assert "#help-panel { z-index: 70; }" in r.text
+
+
 # ---- The End: endings are visible (SPEC 2026-07-07 criterion 5) --------
 
 

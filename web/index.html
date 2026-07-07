@@ -103,6 +103,8 @@
     <footer>
       <button id="slots-toggle" type="button" class="slots-toggle">switch toon</button>
       <button id="leave-dream" type="button" class="logout">leave the dream</button>
+      <button id="help-toggle" type="button" class="help-toggle"
+              title="how to dream" aria-label="how to dream">?</button>
     </footer>
   </main>
 
@@ -132,6 +134,40 @@
         </div>
         <p class="collection-note">keepsakes gather quietly as you wander &mdash;<br>every dream leaves you carrying a little more.</p>
         <button id="backpack-close" type="button" class="back-link">&larr; close the satchel</button>
+      </section>
+    </div>
+  </div>
+
+  <!-- How to dream: the first-visit help leaf (shown once per browser at the
+       picker; reopenable anytime from the footer's ? affordance). Pure static
+       authored content; dismissing it is one click and it never gates play. -->
+  <div id="help-panel" class="backpack-overlay hidden" role="dialog" aria-label="how to dream">
+    <div class="book">
+      <section class="pg left">
+        <h1 class="spread-title">How to Dream</h1>
+        <p class="spread-sub">a small guide, tucked inside the front cover</p>
+        <div class="page-eyebrow">speaking</div>
+        <p class="help-note">the line at the foot of the page &mdash; <em>speak, friend...</em> &mdash;
+          hears plain words. say hello to whoever is near, ask about what you see,
+          or describe what you&rsquo;d like to try. the dream is good at guessing.</p>
+        <div class="page-eyebrow">doing</div>
+        <p class="help-note">the <em>what you might do</em> ribbon holds your verbs.
+          touch one to stage it, then touch a thing or a friend in the margin to
+          act on it. touching something with nothing staged simply looks closer.</p>
+      </section>
+      <section class="pg right">
+        <div class="page-eyebrow">wandering</div>
+        <p class="help-note">the <em>ways from here</em> compass at the foot of the
+          page lists every path out of a room. touch one to wander.</p>
+        <div class="page-eyebrow">the satchel</div>
+        <p class="help-note"><em>open the satchel</em> lays out your keepsakes &mdash;
+          the things you carry, and in time the story of your dreams.</p>
+        <div class="page-eyebrow">waking</div>
+        <p class="help-note"><em>leave the dream</em> rests your toon safely and returns
+          you to the choosing page; <em>switch toon</em> takes up another. the dream
+          remembers where you left everything.</p>
+        <p class="collection-note">this page keeps &mdash; find it again behind<br>the small <strong>?</strong> at the foot of the book.</p>
+        <button id="help-close" type="button" class="back-link">&larr; begin dreaming</button>
       </section>
     </div>
   </div>

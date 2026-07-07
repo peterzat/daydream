@@ -487,6 +487,23 @@ footer .slots-toggle:hover, footer .logout:hover { text-decoration: underline; }
 }
 .back-link:hover { color: var(--sage-deep); }
 
+/* ---------- how to dream: the first-visit help leaf ---------- */
+#help-panel { z-index: 70; } /* above the slot picker (60): it opens over the arrival beat */
+/* Normal eyebrow rhythm on the right page (no specimen grid to align with). */
+#help-panel .right .page-eyebrow { margin-top: 22px; }
+.help-note {
+  font-family: var(--serif); font-size: .95rem; line-height: 1.65; color: var(--ink);
+  margin: 0 0 6px;
+}
+.help-note em { color: var(--sage-deep); }
+.help-toggle {
+  background: none; cursor: pointer;
+  width: 1.9em; height: 1.9em; border-radius: 50%;
+  border: 1px solid var(--line); color: var(--sage);
+  font-family: var(--serif); font-size: .95rem;
+}
+.help-toggle:hover { border-color: var(--sage); color: var(--sage-deep); }
+
 /* ---------- The End: the ending storybook page ---------- */
 /* A single centered leaf on the .book chassis: one column, no spine. */
 .ending-book { grid-template-columns: 1fr; width: min(640px, 100%); }

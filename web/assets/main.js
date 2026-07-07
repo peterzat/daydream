@@ -1219,6 +1219,38 @@ document.getElementById("slots-close").addEventListener("click", () => {
   document.getElementById("slots-panel").classList.add("hidden");
 });
 
+// ---- how to dream: the first-visit help leaf ----------------------------
+// A static authored book page (index.html) explaining speaking, verbs and
+// objects, exits, the satchel, and leaving/picking a toon. Auto-shown ONCE
+// per browser at the picker (the "you've just arrived" beat), reopenable
+// anytime from the footer's ? affordance. One click dismisses it; it never
+// gates input beyond being an overlay you close.
+
+function openHelp() {
+  document.getElementById("help-panel").classList.remove("hidden");
+}
+
+function closeHelp() {
+  document.getElementById("help-panel").classList.add("hidden");
+}
+
+function maybeShowFirstVisitHelp() {
+  // localStorage carries the once-per-browser memory; a sandboxed context
+  // (storage denied) fails open to showing it each arrival, which is the
+  // gentler failure for a help page.
+  let seen = null;
+  try { seen = localStorage.getItem("dd-help-seen"); } catch (_) {}
+  if (seen) return;
+  try { localStorage.setItem("dd-help-seen", "1"); } catch (_) {}
+  openHelp();
+}
+
+document.getElementById("help-toggle").addEventListener("click", openHelp);
+document.getElementById("help-close").addEventListener("click", closeHelp);
+document.getElementById("help-panel").addEventListener("click", (e) => {
+  if (e.target.id === "help-panel") closeHelp(); // click the backdrop to close
+});
+
 // "Leave the dream": a brief wake beat, release this session's toon, and
 // return to the character picker (rather than the old no-op logout POST).
 function enterPicker() {
@@ -1226,6 +1258,7 @@ function enterPicker() {
   clearSceneAndLog();
   document.getElementById("slots-panel").classList.remove("hidden");
   renderSlots();
+  maybeShowFirstVisitHelp();
 }
 
 document.getElementById("leave-dream").addEventListener("click", async () => {
