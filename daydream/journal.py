@@ -54,6 +54,9 @@ JOURNAL_SYSTEM = (
     "- 2-3 soft sentences, past tense, second person (\"you\").\n"
     "- Ground every sentence in the events given; never invent people, "
     "places, or deeds that are not there.\n"
+    "- \"You\" is ONLY the dreamer. Other characters are named in the "
+    "events; keep their deeds theirs, by name — never fold what a named "
+    "character did into \"you\".\n"
     "- Tone: gentle, warm, a little wistful. Spiritfarer, A Short Hike. No "
     "urgency, no modern tech, no violence, no judgment.\n"
     "- 60-500 characters total.\n"
@@ -169,7 +172,11 @@ def _event_lines(recent: list["events.Event"], toon_id: str) -> list[str]:
         elif e.kind == "narrate":
             text = (p.get("text") or "").strip()
             if text:
-                lines.append(text)
+                # Frame narration as WITNESSED: the room's prose describes
+                # other characters' deeds, and without this frame the 7B
+                # folds a named character's actions into "you" (journal
+                # probe, 2026-07-07 — the a-quiet-sweep misattribution).
+                lines.append(f"you saw: {text}")
         elif e.kind == "move" and e.actor_id == toon_id:
             direction = p.get("direction")
             if isinstance(direction, str) and direction:
