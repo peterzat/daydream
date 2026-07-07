@@ -12,7 +12,7 @@ docs, backfilled tags, and a v1.0.0 GitHub release.
 
 ### Acceptance Criteria
 
-- [ ] **1. Dreamseeds propagate (the growing-world loop).** A seed whose
+- [x] **1. Dreamseeds propagate (the growing-world loop).** A seed whose
   authored `growth.propagation` block (`chance` in (0,1], `max_generation`
   1–4, optional `seed_text`) survives fail-loud loader validation can, on a
   successful plant, yield a fresh dreamseed inside the newly grown room:
@@ -25,7 +25,7 @@ docs, backfilled tags, and a v1.0.0 GitHub release.
   the world unmutated. No new LLM surface: propagation adds zero prompts
   and zero model calls, and deterministic tests run under a mocked LLM.
 
-- [ ] **2. The cast has faces (NPC/toon portraits).** A toon with a
+- [x] **2. The cast has faces (NPC/toon portraits).** A toon with a
   non-empty appearance seed lazily gets a watercolor portrait through the
   existing persistent-image pipeline as `target_kind='toon'`: rendered
   under the arbiter's exclusive image slot, cached and recorded in
@@ -40,7 +40,7 @@ docs, backfilled tags, and a v1.0.0 GitHub release.
   margin and the picker, with a quiet placeholder until painted;
   ComfyUI-down degrades to the placeholder without blocking play.
 
-- [ ] **3. The book remembers (dream journal).** Leaving the dream
+- [x] **3. The book remembers (dream journal).** Leaving the dream
   (`POST /api/session/leave`) triggers a background journal write for the
   released toon: one local-LLM call over the toon's own recent events
   produces a 2–3 sentence past-tense second-person entry, validated
@@ -54,20 +54,20 @@ docs, backfilled tags, and a v1.0.0 GitHub release.
   `DAYDREAM_JOURNAL_ENABLED` is the kill switch; the test suite forces it
   off and journal tests mock the LLM.
 
-- [ ] **4. Keepsakes are real.** The backpack's collection page renders
+- [x] **4. Keepsakes are real.** The backpack's collection page renders
   actual content: journal entries and carried items enriched with their
   examined/authored detail (a new inventory-card field), replacing the
   hardcoded decorative-empty slots. Frontend contract tests cover the
   collection rendering and the inventory detail field.
 
-- [ ] **5. Winning is visible.** A `win` effect reaches every connected
+- [x] **5. Winning is visible.** A `win` effect reaches every connected
   player in the world (not just the firing room) carrying score and rank;
   the SPA presents a dismissible "The End" storybook page; the world keeps
   running after dismissal; late joiners and reconnects see a quiet
   ended-marker derived from snapshot status that can reopen the page. All
   ending text is world-agnostic (the no-world-literals gate stays green).
 
-- [ ] **6. Newcomers are welcomed.** A first-visit "how to dream" leaf in
+- [x] **6. Newcomers are welcomed.** A first-visit "how to dream" leaf in
   the Reading Room idiom explains speaking, clicking verbs and objects,
   exits, the satchel, and leaving/picking a toon; it shows once per
   browser, is reachable anytime from a persistent affordance, and never
@@ -82,7 +82,7 @@ docs, backfilled tags, and a v1.0.0 GitHub release.
   the planter's journal; explicitly not a `win`). `WORLD_VERSION` bumps to
   1.4; one archive-then-reset installs the batch as the live world.
 
-- [ ] **8. The benign-refusal mystery is resolved.** A repeatable probe
+- [x] **8. The benign-refusal mystery is resolved.** A repeatable probe
   runs greeting-class inputs through live loft NPC dialogue at least 20
   times, attributing every refusal to its layer (input banlist, refusal
   parse, output banlist, truncation). The root cause is fixed, or the
@@ -96,7 +96,7 @@ docs, backfilled tags, and a v1.0.0 GitHub release.
   half already replays 350/Master Adventurer over WS on the final
   envelope, `--verify` green.)
 
-- [ ] **10. The turn's groundwork stands verified.** In-repo evidence for
+- [x] **10. The turn's groundwork stands verified.** In-repo evidence for
   what landed ahead of this spec: the legacy core-skill/interpreter path
   is gone and the registry serves data skills only (contract tests); the
   hardening cluster is covered by `tests/security/` (regen kill switch
@@ -108,13 +108,13 @@ docs, backfilled tags, and a v1.0.0 GitHub release.
   GREEN against real Zork I (v0.6 criterion 14 checked, ratification
   recorded in BACKLOG).
 
-- [ ] **11. Generation stays local.** Every new runtime generation this
+- [x] **11. Generation stays local.** Every new runtime generation this
   turn (journal, portraits, propagation) runs only on the local engines
   behind the GPU arbiter. No cloud LLM key exists anywhere in runtime,
   tooling, or CI (grep-verifiable); new prompt surfaces are documented in
   `docs/prompts.md`; deterministic tests keep their zero-LLM spies.
 
-- [ ] **12. The long tier ratifies the generative work (GPU batch, server
+- [x] **12. The long tier ratifies the generative work (GPU batch, server
   down).** `bin/game test long` is green: new portrait dHash anchors are
   golden-ratified, the journal quality probe runs against real vLLM, and
   existing goldens (growth compose, parser, retell, images, arbiter)
@@ -124,18 +124,18 @@ docs, backfilled tags, and a v1.0.0 GitHub release.
   flagship whose local-model quality misses the bar ships with its flag
   defaulted off and the finding recorded (flag-local-limits pact).
 
-- [ ] **13. The app knows its version.** `APP_VERSION = "1.0.0"` lives in
+- [x] **13. The app knows its version.** `APP_VERSION = "1.0.0"` lives in
   `daydream/version.py`, is served by `GET /status/build`, and matches
   `pyproject.toml` (a drift-guard test fails on mismatch). WORLD_VERSION
   (1.4) remains the separate world-content stamp and both are documented.
 
-- [ ] **14. Licensed and attributed.** An MIT `LICENSE` sits at the root;
+- [x] **14. Licensed and attributed.** An MIT `LICENSE` sits at the root;
   README carries a Zork I provenance note (mechanics and identity derive
   from the MIT-licensed historical ZIL source; all prose freshly authored;
   no story file, dump, or original prose committed — consistent with the
   repo's actual contents).
 
-- [ ] **15. The docs tell the v1.0 truth.** `CHANGELOG.md` records
+- [x] **15. The docs tell the v1.0 truth.** `CHANGELOG.md` records
   v0.1.0 → v1.0.0 (extracted from README's release notes, which become a
   pointer plus narrative); README is overhauled (v1.0 status, the four
   flagships, CI + license badges, current test counts, ROADMAP pointer);
@@ -199,4 +199,4 @@ platform primitives — closed 15/16 in-turn (walkthrough 350 deterministic
 2026-07-07); its criterion 15 browser-playtest half carries forward as
 criterion 9 above.*
 
-<!-- SPEC_META: {"date":"2026-07-07","title":"daydream v1.0: the release turn","criteria_total":16,"criteria_met":0} -->
+<!-- SPEC_META: {"date":"2026-07-07","title":"daydream v1.0: the release turn","criteria_total":16,"criteria_met":13} -->
