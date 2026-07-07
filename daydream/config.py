@@ -130,6 +130,18 @@ def regen_ui_enabled() -> bool:
     )
 
 
+def journal_enabled() -> bool:
+    """Whether leaving the dream writes a journal recap (one local-LLM call
+    per leave — SPEC 2026-07-07 criterion 3). Default ON; the test suite
+    forces DAYDREAM_JOURNAL_ENABLED=0 in conftest so deterministic tests
+    stay zero-LLM (journal tests opt in and mock the client). Also the kill
+    switch for a shared deployment, or the honest-default flip if the 7B
+    recap quality misses the bar (flag-local-limits pact)."""
+    return os.environ.get("DAYDREAM_JOURNAL_ENABLED", "1").strip().lower() not in (
+        "0", "false", "no", "off",
+    )
+
+
 def session_secret() -> str:
     """Source the session-cookie signing secret. Env var wins; otherwise fall
     back to a per-install random secret persisted under ~/.config/daydream/.

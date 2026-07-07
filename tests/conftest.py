@@ -76,6 +76,13 @@ os.environ["DAYDREAM_MEMORY_ENABLED"] = "0"
 # monkeypatch.setenv("DAYDREAM_RETELL_ENABLED", "1") and mock the client.
 os.environ["DAYDREAM_RETELL_ENABLED"] = "0"
 
+# The dream journal (leave-triggered recap, SPEC 2026-07-07) defaults ON in
+# production but OFF in tests: the leave endpoint fires a background LLM
+# task, and every session-lifecycle test would otherwise race one. Journal
+# tests opt in via monkeypatch.setenv("DAYDREAM_JOURNAL_ENABLED", "1") AND
+# mock daydream.llm.client.acompletion_json.
+os.environ["DAYDREAM_JOURNAL_ENABLED"] = "0"
+
 # Redirect HOME to a session-scoped temp dir as a belt-and-suspenders measure:
 # any other code that resolves `~/...` during tests writes under this dir,
 # which the OS reaps. Use mkdtemp (not TemporaryDirectory) so the dir lives

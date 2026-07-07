@@ -599,6 +599,56 @@ def test_style_css_has_keepsakes_spread():
     assert ".grid2" in r.text
 
 
+# ---- journal + keepsakes: the book remembers (SPEC 2026-07-07 c3 + c4) ---
+
+
+def test_index_html_collection_page_is_real_not_decorative():
+    """The satchel's right page renders the actual journal (id=collection);
+    the four hardcoded decorative-empty slots are gone."""
+    with TestClient(app) as client:
+        _login(client)
+        r = client.get("/")
+    assert 'id="collection"' in r.text
+    assert ">the story so far<" in r.text
+    assert "for a curio, perhaps" not in r.text   # the old decorative slots
+    assert "not yet gathered" not in r.text
+
+
+def test_main_js_renders_journal_collection_and_item_detail():
+    """renderCollection draws real journal entries (dashed slot when blank);
+    keepsake cards caption with the item's own detail field, generic pool
+    only as fallback."""
+    with TestClient(app) as client:
+        _login(client)
+        r = client.get("/assets/main.js")
+    assert "function renderCollection(" in r.text
+    assert "lastJournal" in r.text
+    assert "journal-entry" in r.text
+    assert "the book waits for your first waking" in r.text
+    assert 'it.detail || keepsakeCaption' in r.text
+
+
+def test_main_js_previously_in_your_dream_beat_once_per_entry():
+    """A returning toon's last journal entry shows as a storybook beat on a
+    fresh, empty log — once per toon entry (flag reset on picker/claim)."""
+    with TestClient(app) as client:
+        _login(client)
+        r = client.get("/assets/main.js")
+    assert "previously, in your dream" in r.text
+    assert "journalBeatShown" in r.text
+    assert "journal-beat" in r.text
+    # Reset on both picker entry (clearSceneAndLog) and re-entry as a toon.
+    assert r.text.count("journalBeatShown = false") >= 2
+
+
+def test_style_css_has_journal_entry_styles():
+    with TestClient(app) as client:
+        _login(client)
+        r = client.get("/assets/style.css")
+    assert ".journal-entry" in r.text
+    assert ".collection" in r.text
+
+
 # ---- toon portraits: the cast has faces (SPEC 2026-07-07 criterion 2) ----
 
 

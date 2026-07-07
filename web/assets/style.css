@@ -487,6 +487,23 @@ footer .slots-toggle:hover, footer .logout:hover { text-decoration: underline; }
 }
 .back-link:hover { color: var(--sage-deep); }
 
+/* ---------- dream journal: the story so far (satchel right page) ---------- */
+.collection { display: flex; flex-direction: column; gap: 12px; }
+.journal-entry {
+  position: relative; padding: 14px 18px 12px;
+  background: linear-gradient(180deg, #f8f2e2, #f4ecd7);
+  border: 1px solid var(--line); border-radius: 10px;
+  box-shadow: 0 8px 18px -14px rgba(74,106,90,.5), inset 0 1px 0 rgba(255,255,255,.6);
+  transform: rotate(-0.35deg);
+}
+.journal-entry:nth-child(even) { transform: rotate(0.3deg); }
+.journal-entry p {
+  margin: 0; font-family: var(--serif); font-style: italic;
+  font-size: .92rem; line-height: 1.6; color: var(--ink);
+}
+/* The "previously, in your dream" arrival beat rides the detail-inset look. */
+.journal-beat { opacity: .96; }
+
 /* ---------- toon portraits: painted faces (margin chips + picker) ---------- */
 .toon-face {
   display: inline-flex; width: 34px; height: 34px; border-radius: 50%;

@@ -151,6 +151,26 @@ def fetch_since(
     return [Event.from_row(r) for r in rows]
 
 
+def fetch_for_toon(toon_id: str, since: int = 0, limit: int = 50) -> list[Event]:
+    """The toon's OWN recent events: rows it acted (actor_id) or was
+    addressed by (recipient_id), newer than `since`, returned oldest-first
+    and capped to the most recent `limit`. Feeds the dream-journal recap
+    (SPEC 2026-07-07 criterion 3).
+
+    Documented limitation: a room-broadcast NPC reply carries the NPC's
+    actor_id and a NULL recipient, so it is not attributed to the player
+    who prompted it and stays out of their recap window."""
+    conn = db.get_conn()
+    rows = conn.execute(
+        "SELECT * FROM ("
+        "  SELECT * FROM events WHERE seq > ? AND (actor_id = ? OR recipient_id = ?)"
+        "  ORDER BY seq DESC LIMIT ?"
+        ") ORDER BY seq",
+        (since, toon_id, toon_id, int(limit)),
+    ).fetchall()
+    return [Event.from_row(r) for r in rows]
+
+
 def max_seq() -> int:
     conn = db.get_conn()
     row = conn.execute("SELECT MAX(seq) FROM events").fetchone()

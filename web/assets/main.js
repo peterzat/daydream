@@ -20,6 +20,8 @@ let loadedWorldVersion = null;
 let lastCmd = null; // {key, t} -- debounce an accidental double-fire of one command
 let pendingDetail = null; // {verb, name, t} -- a targeted examine/read whose next narrate renders as a detail inset (the ledger reveal)
 let lastInventory = []; // the latest snapshot's carried things, for the keepsakes backpack foldout
+let lastJournal = []; // the controlled toon's journal entries from the snapshot (self only)
+let journalBeatShown = false; // "previously in your dream" fires once per toon entry
 let bgShownFor = null; // room id whose art the plate currently shows (stale-art veil)
 let wonState = null; // the world's won-moment ({score, rank, text?}) from snapshot status / game_won
 
@@ -184,6 +186,7 @@ function renderSnapshot(snap) {
   // keepsakes backpack foldout can render the same list as specimen cards.
   lastInventory = snap.inventory || [];
   renderObjects("inventory", lastInventory, "your hands are empty");
+  lastJournal = snap.journal || []; // your own story so far (self only)
   // Re-hydrate the chat from the snapshot's recent events.
   const chat = document.getElementById("chat");
   clearPending();
@@ -191,13 +194,31 @@ function renderSnapshot(snap) {
   lastSeq = 0; // allow snapshot replays to render
   for (const e of snap.events) renderEvent(e);
   lastSeq = snap.last_seq;
+  // "Previously, in your dream...": a returning toon's last journal entry,
+  // shown once per toon entry when the log starts empty (a fresh connect,
+  // not a reconnect with replayed history).
+  const chatEmpty = !chat.children.length;
+  if (chatEmpty && !journalBeatShown && lastJournal.length) {
+    journalBeatShown = true;
+    const beat = document.createElement("aside");
+    beat.className = "evt detail-inset journal-beat";
+    const tab = document.createElement("span");
+    tab.className = "tab";
+    tab.textContent = "previously, in your dream";
+    beat.appendChild(tab);
+    const p = document.createElement("p");
+    p.textContent = lastJournal[lastJournal.length - 1].text || "";
+    beat.appendChild(p);
+    chat.appendChild(beat);
+  }
   // First arrival into a room (fresh connect / claim / a room with no replayed
   // history): the event log would otherwise be empty, so synthesize a look-style
   // arrival line from the snapshot, mirroring the server `look` ("You are in X.
   // You see: ..."). No round-trip and no stored event (look is per-viewer).
   // lastArrivalRoomId guards against re-showing it on same-room re-snapshots.
+  // Uses the pre-beat emptiness so the journal beat doesn't suppress it.
   const arrivalRoomId = snap.room ? snap.room.id : null;
-  if (snap.room && arrivalRoomId !== lastArrivalRoomId && !chat.children.length) {
+  if (snap.room && arrivalRoomId !== lastArrivalRoomId && chatEmpty) {
     let text = "You are in " + snap.room.title + ".";
     const groundItems = snap.items || [];
     if (groundItems.length) {
@@ -390,6 +411,7 @@ function clearSceneAndLog() {
   wonState = null; // the next toon/world's snapshot re-derives the ended-marker
   renderEndMarker();
   closeEndingPage();
+  journalBeatShown = false; // the next toon entry may show its own beat
 }
 
 function applyVerbGating() {
@@ -897,6 +919,7 @@ document.getElementById("backpack-panel").addEventListener("click", (e) => {
 
 function openBackpack() {
   renderKeepsakes(lastInventory);
+  renderCollection(lastJournal);
   document.getElementById("backpack-panel").classList.remove("hidden");
 }
 
@@ -1033,7 +1056,10 @@ function keepsakeCard(it) {
   body.appendChild(name);
   const desc = document.createElement("div");
   desc.className = "s-desc";
-  desc.textContent = keepsakeCaption(it.name || "");
+  // The item's own remembered description (examined/authored detail from
+  // the snapshot card, SPEC 2026-07-07 criterion 4); the generic caption
+  // pool remains only as the fallback for detail-less things.
+  desc.textContent = it.detail || keepsakeCaption(it.name || "");
   body.appendChild(desc);
   const tag = document.createElement("span");
   tag.className = "s-tag";
@@ -1043,10 +1069,34 @@ function keepsakeCard(it) {
   return card;
 }
 
-// Deterministic per-item flourish. The snapshot carries only name/kind (no
-// server-side item lore yet), so the mount glyph + caption are a stable,
-// generic keepsake presentation keyed by the name. They never fabricate
-// item-specific facts; the real content is the item's own name.
+function renderCollection(journal) {
+  // The satchel's right page: your dream journal, oldest first (real
+  // entries written when you leave the dream). A dashed not-yet slot when
+  // the book is still blank.
+  const box = document.getElementById("collection");
+  box.innerHTML = "";
+  if (!journal || !journal.length) {
+    const slot = document.createElement("div");
+    slot.className = "slot";
+    slot.innerHTML =
+      '<div class="slot-label">unwritten</div>' +
+      '<div class="slot-note">the book waits for your first waking</div>';
+    box.appendChild(slot);
+    return;
+  }
+  for (const entry of journal) {
+    const card = document.createElement("div");
+    card.className = "journal-entry";
+    const p = document.createElement("p");
+    p.textContent = entry.text || "";
+    card.appendChild(p);
+    box.appendChild(card);
+  }
+}
+
+// Deterministic per-item flourish when an item carries no detail text: the
+// mount glyph + caption are a stable, generic keepsake presentation keyed
+// by the name. They never fabricate item-specific facts.
 function hashName(s) {
   let h = 0;
   for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
@@ -1220,6 +1270,7 @@ function reconnectAfterSlotChange() {
   // (A transient network drop still auto-resumes via onclose -> connect(true).)
   document.getElementById("slots-panel").classList.add("hidden");
   awaitingPick = false;
+  journalBeatShown = false; // entering as a toon: its beat may show once
   if (ws) {
     const old = ws;
     ws = null;

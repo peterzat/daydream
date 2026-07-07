@@ -32,6 +32,7 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect, status
 from daydream import (
     config,
     events,
+    journal,
     lighting,
     objects,
     parser,
@@ -273,6 +274,11 @@ def _state_snapshot(
         # can wrap object mentions in narration as clickable spans.
         "entities": _entity_sidecar(toon_id),
         "events": [e.to_dict() for e in recent],
+        # The CONTROLLED toon's own dream journal (last few entries), for the
+        # keepsakes book and the "previously in your dream" beat. Self only
+        # by construction — a co-located player's journal never appears in
+        # anyone else's snapshot (SPEC 2026-07-07 criterion 3).
+        "journal": journal.entries_for_snapshot(toon_id),
         "last_seq": last_seq,
         # Build + world version so the client can detect a redeploy (a stale
         # open tab still running the OLD main.js — a WS reconnect never reloads
@@ -299,13 +305,20 @@ def _object_card(o: "objects.Object", depth: int = 0) -> dict:
     """A scene object as the SPA needs it: id + kind + name + verb affordances
     (and aliases, for client-side narration linking). A see-through container
     nests its contents as child cards (criterion 4) — a closed opaque one
-    renders childless, and opening it re-snapshots the reveal live."""
+    renders childless, and opening it re-snapshots the reveal live.
+
+    `detail` is the object's own remembered description — the lazy-cached
+    examine text when one exists, else the authored seed — so the keepsakes
+    book can caption carried things with something real (SPEC 2026-07-07
+    criterion 4). Pre-baked stored text, never a live LLM call."""
+    detail = o.properties.get("examined_text") or o.properties.get("seed") or ""
     card = {
         "id": o.id,
         "name": o.name,
         "kind": o.kind,
         "aliases": o.aliases,
         "verbs": objects.verbs_for(o),
+        "detail": detail if isinstance(detail, str) else "",
     }
     if depth < 3 and o.kind == "thing":
         inner = objects.visible_contents(o)

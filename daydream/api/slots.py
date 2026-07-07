@@ -17,9 +17,11 @@ that pulls the per-session UUID stamped by `daydream.api.auth.login`."""
 
 from __future__ import annotations
 
+import asyncio
+
 from fastapi import APIRouter, HTTPException, Request
 
-from daydream import toons
+from daydream import journal, toons
 from daydream.api import auth as auth_mod
 from daydream.images import client as image_client
 
@@ -212,11 +214,20 @@ async def leave_session(request: Request) -> dict:
     """Leave the dream: rest this session's controlled toon (if any) and mark
     the session 'left' so the next WS connect routes to the character picker
     instead of silently auto-controlling a toon. Idempotent (a session with no
-    toon just gets marked)."""
+    toon just gets marked).
+
+    Leaving also fires the dream-journal recap for the released toon as a
+    fire-and-forget background task (SPEC 2026-07-07 criterion 3):
+    journal.write_entry is fail-closed end-to-end, so this endpoint ALWAYS
+    succeeds regardless of LLM state and never waits on the write. The WS
+    disconnect is deliberately NOT a trigger — the reconnect overlay rides
+    out transient drops all the time and would double-write."""
     _require_authed(request)
     sid = _session_id(request)
     released = toons.release_session_toon(sid)
     request.session["left"] = True
+    if released is not None:
+        asyncio.create_task(journal.write_entry(released.id))
     return {"ok": True, "released": released.id if released else None}
 
 
