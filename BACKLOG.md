@@ -6,10 +6,9 @@ context for every entry below lives in `~/.claude/plans/let-s-design-a-fairly-gi
 
 ## v1: cozy single-player loop
 
-### drift-pools-for-loft-npcs
+### drift-pools-for-loft-npcs — CLOSED 2026-07-07 (shipped, v1.0 turn)
 - **One-line description:** `daydream/drift.py`'s hand-authored canned pools (`_DRIFT_POOLS`) and selection weights (`_NPC_DRIFT_WEIGHT`) are still keyed to the retired bunny-world NPCs (`t-rook`/`t-iris`); the live Clockmaker's Loft NPCs (Tace/Bell/Mott) fall through to the shared generic pool on the offline path, so canned drift is voice-neutral in the canonical world. Author per-NPC pools for the loft, or better, let the world envelope carry pools so `world load` installs them for any future world.
-- **Why deferred:** The LLM drift path (the normal case, vLLM up) already composes per-NPC from seed + mood + memories; only the offline fallback is generic. Surfaced during the 2026-07-02 doc/state audit.
-- **Revisit criteria:** vLLM-down play feels voice-flat, or the next world-authoring pass touches drift anyway (envelope-carried pools would close this for every world at once).
+- **Closure:** The envelope-carried option shipped (the better path): toon `properties.drift_pools` validated by the loader, `drift._pools_for` prefers authored pools over the legacy id-keyed dict, and `worlds/clockmakers-loft.json` authors WHIMSY-voice pools for Tace/Bell/Mott (own-mood + default buckets; Tace covers the post-quest `gladdened` mood). Any future world closes this for itself by authoring pools.
 - **Origin:** state audit 2026-07-02 (first Fable session sweep).
 
 ### drift-variety-richer-beats
@@ -18,10 +17,9 @@ context for every entry below lives in `~/.claude/plans/let-s-design-a-fairly-gi
 - **Revisit criteria:** Playtesters report a room's NPC feeling samey across a session even with de-dup, or when adding NPCs whose seeds are similarly single-image.
 - **Origin:** playtest follow-up (plan note-that-when-the-snuggly-music), drift-voice-samples 2026-06-30
 
-### dialogue-refusal-fallback-on-benign-input
+### dialogue-refusal-fallback-on-benign-input — CLOSED 2026-07-07 (investigated, not reproducible)
 - **One-line description:** Occasionally an in-character dialogue turn degrades to the "the dream won't hold that thought" fallback on a benign input (observed once on "hello" in `voice-samples`): the model's spoken line trips the output banlist / refusal path (`daydream/llm/safety.py`, `daydream/skills/data.py` `_BANNED_FALLBACK_TEXT`) or the narrate truncates. Investigate whether it's flaky (sampling) or systematic (a banlist false-positive / max-tokens), then tighten the trigger or raise the cap.
-- **Why deferred:** Intermittent (1 of 5 samples) and the fallback is graceful, not a crash. Needs a repeatability pass (re-run `voice-samples` N times, log which layer fired) before touching the safety pipeline.
-- **Revisit criteria:** Players hit the fallback on ordinary inputs often enough to feel broken, or a repeatability run shows a systematic banlist false-positive.
+- **Closure (SPEC 2026-07-07 criterion 8):** The repeatability pass ran as a layer-attributing probe — `tests/drift/test_dialogue_refusal_probe.py` (tier_long) drives 21 live greeting turns (Tace/Bell/Mott × 7 greetings, real vLLM, temp 0) with pass-through spies on every layer (input banlist / LLM error / refusal parse / output banlist / empty effects). Result 2026-07-07: **0/21 fallbacks**, all layers quiet (evidence: `tests/baselines/dialogue_refusal_probe.latest.json`). The single 2026-06-30 observation predates the dialogue-voice rework (third-person `_dialogue_system` + per-NPC authored templates, 2026-07-01/02) and does not reproduce on the current pipeline; verdict: sampling flake on the retired prompt shape, no systematic false positive. The probe stays as the tier_long regression (≤15% gate + hard-zero input-banlist), and `tests/security/test_benign_refusals.py` pins the deterministic halves (greetings never trip the input banlist; horological/craft vocabulary never trips the output banlist; each banlist category still blocks its own words).
 - **Origin:** playtest follow-up (plan note-that-when-the-snuggly-music), voice-samples 2026-06-30
 
 ## v2: shared world + skill authoring
