@@ -36,7 +36,9 @@
 
     <div class="titleblock">
       <h1 id="room-title" class="chapter-title">drifting...</h1>
-      <div class="folio">the dream</div>
+      <!-- The folio carries the village's time of day once time runs
+           (day N, dusk), or a quiet line while the clock is stopped. -->
+      <div id="folio" class="folio">the dream</div>
       <!-- Status ribbon (platform turn): score / rank / moves / light. Rendered
            only for worlds that author a rank ladder; hidden otherwise. -->
       <div id="status-ribbon" class="status-ribbon hidden" aria-live="polite"></div>
@@ -61,6 +63,9 @@
         <div class="mgroup" id="here-region">
           <div class="mlabel">here with you</div>
           <div id="toons" class="region-body"></div>
+          <!-- What you could ask each of them about: clickable topic chips
+               (the ask verb), never typed ids. -->
+          <div id="topics" class="topics"></div>
         </div>
         <div class="mgroup" id="ground-region">
           <div class="mlabel">around you</div>
@@ -71,6 +76,8 @@
           <div id="inventory" class="region-body"></div>
           <button id="backpack-toggle" type="button" class="satchel-link"
                   title="open your keepsakes">open the satchel &rarr;</button>
+          <button id="book-toggle" type="button" class="satchel-link hidden"
+                  title="your Book of Stray Minutes">open your book &rarr;</button>
         </div>
       </aside>
     </div>
@@ -136,6 +143,39 @@
     </div>
   </div>
 
+  <!-- The Book of Stray Minutes: each player's own catalogue. Left page:
+       the book's pages; right page: the chosen page's minutes (found ones
+       with their one-line stories, unfound ones as quiet blanks). -->
+  <div id="book-panel" class="backpack-overlay hidden" role="dialog" aria-label="book of stray minutes">
+    <div class="book">
+      <section class="pg left">
+        <h1 id="book-title" class="spread-title">The Book</h1>
+        <p id="book-sub" class="spread-sub"></p>
+        <div class="page-eyebrow">pages</div>
+        <div id="book-pages" class="book-pages"></div>
+      </section>
+      <section class="pg right">
+        <div id="book-page-title" class="page-eyebrow">minutes</div>
+        <div id="book-entries" class="book-entries"></div>
+        <p id="book-reward" class="collection-note hidden"></p>
+        <button id="book-close" type="button" class="back-link">&larr; close the book</button>
+      </section>
+    </div>
+  </div>
+
+  <!-- While you slept: a returning player's once-only leaf after a dream
+       (the snapshot carries it exactly once). Dismissible; never gates play. -->
+  <div id="slept-panel" class="backpack-overlay hidden" role="dialog" aria-label="while you slept">
+    <div class="book ending-book">
+      <section class="pg ending-pg">
+        <div class="page-eyebrow">while you slept</div>
+        <h1 id="slept-title" class="spread-title ending-title slept-title">The dream turned over</h1>
+        <p id="slept-text" class="ending-text slept-text"></p>
+        <button id="slept-close" type="button" class="back-link">&larr; back to the village</button>
+      </section>
+    </div>
+  </div>
+
   <!-- How to dream: the first-visit help leaf (shown once per browser at the
        picker; reopenable anytime from the footer's ? affordance). Pure static
        authored content; dismissing it is one click and it never gates play. -->
@@ -152,6 +192,10 @@
         <p class="help-note">the <em>what you might do</em> ribbon holds your verbs.
           touch one to stage it, then touch a thing or a friend in the margin to
           act on it. touching something with nothing staged simply looks closer.</p>
+        <div class="page-eyebrow">asking</div>
+        <p class="help-note">under <em>here with you</em>, each person lists what you
+          could ask them about. touch a topic to ask. the village remembers what
+          you do, and so do its people.</p>
       </section>
       <section class="pg right">
         <div class="page-eyebrow">wandering</div>
@@ -159,7 +203,9 @@
           page lists every path out of a room. touch one to wander.</p>
         <div class="page-eyebrow">the satchel</div>
         <p class="help-note"><em>open the satchel</em> lays out your keepsakes &mdash;
-          the things you carry, and in time the story of your dreams.</p>
+          the things you carry, and in time the story of your dreams. stray
+          minutes glint about the village, a few each day just for you; pick
+          them up and they settle into <em>your book</em>.</p>
         <div class="page-eyebrow">waking</div>
         <p class="help-note"><em>leave the dream</em> rests your toon safely and returns
           you to the choosing page; <em>switch toon</em> takes up another. the dream

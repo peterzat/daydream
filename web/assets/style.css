@@ -707,3 +707,42 @@ footer .slots-toggle:hover, footer .logout:hover { text-decoration: underline; }
 #self .you-name {
   margin-right: 0.55em;
 }
+
+/* ---------- the story layer (SPEC 2026-09-26) ---------- */
+
+/* Ask-about topics under "here with you": one row per person, each topic a
+ * soft paper chip. A click asks (the deterministic producer for talk beats). */
+.topics { margin-top: 8px; display: flex; flex-direction: column; gap: 7px; }
+.topic-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 5px 6px; }
+.topic-who {
+  font-family: var(--sans); font-size: .6rem; letter-spacing: .16em; text-transform: uppercase;
+  color: var(--sage-deep); opacity: .8; margin-right: 2px;
+}
+.topic-chip {
+  font-family: var(--serif); font-style: italic; font-size: .86rem; line-height: 1.25;
+  color: var(--sage-deep); cursor: pointer;
+  background: rgba(90,122,106,.07); border: 1px solid rgba(90,122,106,.26);
+  border-radius: 20px; padding: 2px 10px;
+  transition: background .15s, border-color .15s;
+}
+.topic-chip:hover { background: rgba(200,160,110,.16); border-color: rgba(169,123,62,.45); color: var(--ink); }
+
+/* The Book of Stray Minutes spread. */
+.book-pages { display: flex; flex-direction: column; gap: 6px; }
+.book-page-link {
+  text-align: left; cursor: pointer; background: none; border: none; padding: 3px 0;
+  font-family: var(--hand); font-size: 1.3rem; color: var(--sage);
+  border-bottom: 1px dotted transparent;
+}
+.book-page-link:hover { color: var(--sage-deep); border-bottom-color: var(--sage); }
+.book-page-link.current { color: var(--sage-deep); font-weight: 600; }
+.book-page-link.complete::after { content: "  \2766"; color: var(--quest); }
+.book-entries { display: flex; flex-direction: column; gap: 10px; max-height: 52vh; overflow-y: auto; padding-right: 6px; }
+.book-entry { font-family: var(--serif); color: var(--sage); opacity: .55; letter-spacing: .3em; }
+.book-entry.found { opacity: 1; letter-spacing: normal; }
+.book-entry-name { font-family: var(--hand); font-size: 1.35rem; color: var(--sage-deep); line-height: 1; }
+.book-entry-text { font-style: italic; font-size: .93rem; color: var(--ink); opacity: .85; line-height: 1.45; margin-top: 2px; }
+
+/* While you slept: the once-only leaf after a dream (shares the ending page). */
+.slept-title { font-size: 2.6rem; }
+.slept-text { white-space: pre-line; }

@@ -133,6 +133,7 @@ function renderSnapshot(snap) {
   document.getElementById("room-desc").textContent =
     snap.room && snap.room.description ? snap.room.description : "";
   renderStatusRibbon(snap.status);
+  renderFolio(snap.time);
   // The ended-marker derives from snapshot status, so late joiners and
   // reconnects learn of a win they never saw live (the game_won event is
   // world-scoped but transient). The marker reopens The End page; the
@@ -180,6 +181,7 @@ function renderSnapshot(snap) {
   // WHO ELSE IS HERE: co-located toons, excluding yourself.
   const others = (snap.toons || []).filter((t) => t.id !== selfId);
   renderObjects("toons", others, "no one else is here", (t) => `${t.name} (${t.mood})`);
+  renderTopics(others);
   // WHAT'S ON THE GROUND: room things (previously sent but never rendered).
   renderObjects("things", snap.items || [], "nothing around you");
   // WHAT YOU'RE CARRYING: inventory (things located on you). Cached so the
@@ -187,6 +189,15 @@ function renderSnapshot(snap) {
   lastInventory = snap.inventory || [];
   renderObjects("inventory", lastInventory, "your hands are empty");
   lastJournal = snap.journal || []; // your own story so far (self only)
+  // Your Book of Stray Minutes (self only); the link shows once it exists.
+  lastBook = snap.book || null;
+  document.getElementById("book-toggle").classList.toggle("hidden", !lastBook);
+  if (!document.getElementById("book-panel").classList.contains("hidden")) {
+    renderBook(lastBook); // keep an open book live as minutes are found
+  }
+  // A dream turned over while you were away: its note rides exactly one
+  // snapshot, so show it now as a dismissible leaf.
+  if (snap.while_you_slept) showSleptPage(snap.while_you_slept);
   // Re-hydrate the chat from the snapshot's recent events.
   const chat = document.getElementById("chat");
   clearPending();
@@ -276,6 +287,45 @@ function renderSnapshot(snap) {
     btn.dataset.direction = dir;
     btn.onclick = () => sendInput("go " + dir);
     exitBar.appendChild(btn);
+  }
+}
+
+function renderFolio(time) {
+  // The village's time of day under the chapter title: "day 3 · dusk" once
+  // time runs, a still line before the clock is mended, and the old quiet
+  // folio for worlds that keep no time.
+  const el = document.getElementById("folio");
+  if (!time) { el.textContent = "the dream"; return; }
+  if (!time.running) { el.textContent = "time stands still"; return; }
+  el.textContent = "day " + time.day + " \u00b7 " + (time.label || time.phase);
+}
+
+function renderTopics(others) {
+  // What you could ask each person here about: one row per person with
+  // topics, each topic a chip that sends the ask verb (a click, no typing,
+  // no LLM). Rows appear only for people with something to say.
+  const box = document.getElementById("topics");
+  box.innerHTML = "";
+  for (const t of others || []) {
+    if (!t.topics || !t.topics.length) continue;
+    const row = document.createElement("div");
+    row.className = "topic-row";
+    const who = document.createElement("span");
+    who.className = "topic-who";
+    who.textContent = "ask " + t.name + " about";
+    row.appendChild(who);
+    for (const label of t.topics) {
+      const chip = document.createElement("button");
+      chip.type = "button";
+      chip.className = "topic-chip";
+      chip.textContent = label;
+      chip.onclick = () => {
+        sendCommand("ask", t.id, label);
+        showPending();
+      };
+      row.appendChild(chip);
+    }
+    box.appendChild(row);
   }
 }
 
@@ -915,6 +965,84 @@ document.getElementById("backpack-toggle").addEventListener("click", openBackpac
 document.getElementById("backpack-close").addEventListener("click", closeBackpack);
 document.getElementById("backpack-panel").addEventListener("click", (e) => {
   if (e.target.id === "backpack-panel") closeBackpack(); // click the backdrop to close
+});
+
+// ---- the Book of Stray Minutes ------------------------------------------
+let lastBook = null;
+let bookPageId = null;
+
+document.getElementById("book-toggle").addEventListener("click", () => {
+  renderBook(lastBook);
+  document.getElementById("book-panel").classList.remove("hidden");
+});
+document.getElementById("book-close").addEventListener("click", closeBook);
+document.getElementById("book-panel").addEventListener("click", (e) => {
+  if (e.target.id === "book-panel") closeBook();
+});
+
+function closeBook() {
+  document.getElementById("book-panel").classList.add("hidden");
+}
+
+function renderBook(book) {
+  if (!book) return;
+  document.getElementById("book-title").textContent = book.title || "The Book";
+  document.getElementById("book-sub").textContent =
+    book.found + " of " + book.total + " stray minutes found";
+  const pagesBox = document.getElementById("book-pages");
+  pagesBox.innerHTML = "";
+  const pages = book.pages || [];
+  if (!bookPageId || !pages.some((p) => p.id === bookPageId)) {
+    const started = pages.find((p) => p.found > 0);
+    bookPageId = (started || pages[0] || {}).id || null;
+  }
+  for (const pg of pages) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "book-page-link" + (pg.id === bookPageId ? " current" : "") +
+      (pg.complete ? " complete" : "");
+    btn.textContent = pg.title + "  " + pg.found + "/" + pg.total;
+    btn.onclick = () => { bookPageId = pg.id; renderBook(lastBook); };
+    pagesBox.appendChild(btn);
+  }
+  const page = pages.find((p) => p.id === bookPageId);
+  const entries = document.getElementById("book-entries");
+  entries.innerHTML = "";
+  document.getElementById("book-page-title").textContent = page ? page.title : "minutes";
+  const reward = document.getElementById("book-reward");
+  reward.classList.toggle("hidden", !(page && page.reward_text));
+  reward.textContent = page && page.reward_text ? page.reward_text : "";
+  if (!page) return;
+  for (const e of page.entries) {
+    const row = document.createElement("div");
+    row.className = "book-entry" + (e.found ? " found" : "");
+    if (e.found) {
+      const nm = document.createElement("div");
+      nm.className = "book-entry-name";
+      nm.textContent = e.name;
+      const tx = document.createElement("div");
+      tx.className = "book-entry-text";
+      tx.textContent = e.text;
+      row.appendChild(nm);
+      row.appendChild(tx);
+    } else {
+      row.textContent = "\u00b7 \u00b7 \u00b7";
+    }
+    entries.appendChild(row);
+  }
+}
+
+// ---- while you slept ------------------------------------------------------
+function showSleptPage(note) {
+  document.getElementById("slept-title").textContent = note.title || "While you slept";
+  document.getElementById("slept-text").textContent = note.text || "";
+  document.getElementById("slept-panel").classList.remove("hidden");
+}
+document.getElementById("slept-close").addEventListener("click", () => {
+  document.getElementById("slept-panel").classList.add("hidden");
+});
+document.getElementById("slept-panel").addEventListener("click", (e) => {
+  if (e.target.id === "slept-panel") document.getElementById("slept-panel").classList.add("hidden");
 });
 
 function openBackpack() {
