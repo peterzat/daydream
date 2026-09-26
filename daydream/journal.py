@@ -35,6 +35,10 @@ from daydream.llm import client, safety
 
 logger = logging.getLogger(__name__)
 
+# Prose surfaces run warm (SPEC 2026-09-26 criterion 11): temperature 0 made
+# every recap open alike. The tier_long probe pins 0 to keep its fingerprint.
+JOURNAL_TEMPERATURE = 0.5
+
 # FIFO cap on stored entries; the snapshot sends the last SNAPSHOT_ENTRIES.
 MAX_ENTRIES = 10
 SNAPSHOT_ENTRIES = 8
@@ -116,6 +120,7 @@ async def _write_entry_inner(toon_id: str) -> None:
         result = await client.acompletion_json(
             system=JOURNAL_SYSTEM,
             user=_user_prompt(toon.name, lines),
+            temperature=JOURNAL_TEMPERATURE,
             max_tokens=220,
             timeout=20.0,
             purpose="journal",

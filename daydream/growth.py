@@ -45,6 +45,10 @@ from daydream.skills import effects
 
 logger = logging.getLogger(__name__)
 
+# Prose surfaces run warm (SPEC 2026-09-26 criterion 11); the tier_long
+# composition probe pins 0 to keep its fingerprint.
+GROWTH_TEMPERATURE = 0.7
+
 # The engine picks the exit direction; the LLM never sees directions or ids.
 # A deterministic keyword scan of the player's own phrase biases the pick
 # ("down the well..." should open DOWN when down is free — playtest
@@ -457,6 +461,7 @@ async def execute_plant(
         result = await client.acompletion_json(
             system=GROWTH_SYSTEM,
             user=_user_prompt(growth, room, phrase),
+            temperature=GROWTH_TEMPERATURE,
             max_tokens=450,
             timeout=30.0,
             purpose="growth",

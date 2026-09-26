@@ -256,28 +256,79 @@ async def test_tick_canned_uses_npc_mood_bucket(monkeypatch):
 
 @pytest.mark.tier_medium
 @pytest.mark.asyncio
-async def test_tick_llm_happy_path_emits_llm_text(monkeypatch):
-    """With LLM enabled and `acompletion_json` mocked, the tick emits
-    the LLM's `narrate` text verbatim, in the chosen NPC's room."""
+async def test_tick_authored_npc_leads_with_its_authored_line(monkeypatch):
+    """Authored-first drift (SPEC 2026-09-26 criterion 11; retires the old
+    LLM-first order for NPCs with authored pools): with the LLM enabled and
+    offering a line, an NPC whose voice is authored (Rook's hand-authored
+    pool) still speaks an AUTHORED line, in its room."""
     from daydream import config
     db.init_live(migrations_dir=config.MIGRATIONS_DIR)
     monkeypatch.setenv("DAYDREAM_DRIFT_LLM_ENABLED", "1")
+    monkeypatch.setenv("DAYDREAM_DRIFT_VARY_PROB", "0")
     # Delete Iris and the now-eligible Wren so choice is deterministic on Rook.
     db.get_conn().execute("DELETE FROM objects WHERE kind = 'toon' AND id IN ('t-iris', 't-wren')")
-    llm_text = "Rook tilts the lamp's wick a quarter-turn brighter and watches the shadows soften."
-    monkeypatch.setattr(
-        "daydream.llm.client.acompletion_json",
-        AsyncMock(return_value={"narrate": llm_text}),
-    )
+    llm = AsyncMock(return_value={"narrate": "Rook does something the model invented."})
+    monkeypatch.setattr("daydream.llm.client.acompletion_json", llm)
     before_seq = events.max_seq()
 
     emitted = await drift._tick(rng=random.Random(0))
     assert emitted is True
     e = events.fetch_since(before_seq)[0]
-    assert e.payload["text"] == llm_text
+    rook_lines = [ln for lines in drift._DRIFT_POOLS["t-rook"].values() for ln in lines]
+    assert e.payload["text"] in rook_lines
+    assert llm.await_count == 0
     from daydream import toons
     rook = toons.get_toon("t-rook")
     assert e.room_id == rook.current_room_id
+
+
+@pytest.mark.tier_medium
+@pytest.mark.asyncio
+async def test_tick_authored_line_may_be_varied_but_never_replaced(monkeypatch):
+    """The model may lightly vary an authored line (validated); a variation
+    that invents a name is refused and the authored line stands."""
+    from daydream import config
+    db.init_live(migrations_dir=config.MIGRATIONS_DIR)
+    monkeypatch.setenv("DAYDREAM_DRIFT_LLM_ENABLED", "1")
+    monkeypatch.setenv("DAYDREAM_DRIFT_VARY_PROB", "1")
+    db.get_conn().execute("DELETE FROM objects WHERE kind = 'toon' AND id IN ('t-iris', 't-wren')")
+    rook_lines = [ln for lines in drift._DRIFT_POOLS["t-rook"].values() for ln in lines]
+
+    async def invents(system, user, **kw):
+        return {"narrate": "Rook waves to Marigold the baker across the way."}
+
+    monkeypatch.setattr("daydream.llm.client.acompletion_json", invents)
+    before_seq = events.max_seq()
+    assert await drift._tick(rng=random.Random(0)) is True
+    assert events.fetch_since(before_seq)[0].payload["text"] in rook_lines
+
+    async def varies(system, user, **kw):
+        line = user.split(": ", 1)[1]
+        return {"narrate": line.replace("Rook", "Rook, unhurried,", 1)}
+
+    monkeypatch.setattr("daydream.llm.client.acompletion_json", varies)
+    before_seq = events.max_seq()
+    assert await drift._tick(rng=random.Random(1)) is True
+    text = events.fetch_since(before_seq)[0].payload["text"]
+    assert text.startswith("Rook, unhurried,")
+    assert drift.validate_variation("Rook hums low.", "Rook hums quietly.", "Rook")
+    assert not drift.validate_variation("Rook hums low.", "Rook hums with Tamsin.", "Rook")
+    assert not drift.validate_variation("Rook hums low.", 'Rook says "hi".', "Rook")
+
+
+@pytest.mark.tier_medium
+@pytest.mark.asyncio
+async def test_tick_authored_lines_never_repeat_within_recent_tellings(monkeypatch):
+    from daydream import config
+    db.init_live(migrations_dir=config.MIGRATIONS_DIR)
+    db.get_conn().execute("DELETE FROM objects WHERE kind = 'toon' AND id IN ('t-iris', 't-wren')")
+    before_seq = events.max_seq()
+    for i in range(8):
+        drift._last_emitted.clear()
+        assert await drift._tick(rng=random.Random(i)) is True
+    told = [e.payload["text"] for e in events.fetch_since(before_seq) if e.kind == "narrate"]
+    for i in range(1, len(told)):
+        assert told[i] not in told[max(0, i - 3):i], told
 
 
 @pytest.mark.tier_short
@@ -302,10 +353,13 @@ async def test_tick_suppresses_consecutive_near_duplicate(monkeypatch):
     from daydream import config
     db.init_live(migrations_dir=config.MIGRATIONS_DIR)
     monkeypatch.setenv("DAYDREAM_DRIFT_LLM_ENABLED", "1")
+    # A voice-less NPC keeps the model-first order (authored NPCs never
+    # repeat by construction); Rook and friends are cleared for determinism.
     db.get_conn().execute(
-        "DELETE FROM objects WHERE kind = 'toon' AND id IN ('t-iris', 't-wren')"
+        "DELETE FROM objects WHERE kind = 'toon' AND id IN ('t-iris', 't-wren', 't-rook')"
     )
-    dup = "Rook hums softly to himself and the coals breathe."
+    _seed_bootstrapped_npc()
+    dup = "Bramble hums softly and the coals breathe."
     monkeypatch.setattr(
         "daydream.llm.client.acompletion_json",
         AsyncMock(return_value={"narrate": dup}),
@@ -446,7 +500,11 @@ async def test_tick_llm_runs_with_empty_memories(monkeypatch):
     from daydream import config
     db.init_live(migrations_dir=config.MIGRATIONS_DIR)
     monkeypatch.setenv("DAYDREAM_DRIFT_LLM_ENABLED", "1")
-    db.get_conn().execute("DELETE FROM objects WHERE kind = 'toon' AND id IN ('t-iris', 't-wren')")
+    # The memory-informed prompt belongs to the model-first path, which only
+    # voice-less NPCs take now (authored NPCs lead with authored lines).
+    db.get_conn().execute(
+        "DELETE FROM objects WHERE kind = 'toon' AND id IN ('t-iris', 't-wren', 't-rook')")
+    _seed_bootstrapped_npc()
     captured_user_prompt = {}
 
     async def fake(system: str, user: str, **kwargs):
@@ -855,10 +913,12 @@ async def test_tick_counter_llm_emit_increments_on_llm_path(monkeypatch):
     from daydream import config
     db.init_live(migrations_dir=config.MIGRATIONS_DIR)
     monkeypatch.setenv("DAYDREAM_DRIFT_LLM_ENABLED", "1")
-    db.get_conn().execute("DELETE FROM objects WHERE kind = 'toon' AND id IN ('t-iris', 't-wren')")
+    db.get_conn().execute(
+        "DELETE FROM objects WHERE kind = 'toon' AND id IN ('t-iris', 't-wren', 't-rook')")
+    _seed_bootstrapped_npc()
     monkeypatch.setattr(
         "daydream.llm.client.acompletion_json",
-        AsyncMock(return_value={"narrate": "Rook hums softly to himself."}),
+        AsyncMock(return_value={"narrate": "Bramble hums softly to themself."}),
     )
 
     emitted = await drift._tick(rng=random.Random(0))

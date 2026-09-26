@@ -56,6 +56,7 @@ import asyncio
 import logging
 import os
 import random
+import re
 from typing import Any
 
 from jinja2.sandbox import SandboxedEnvironment
@@ -476,7 +477,8 @@ async def _llm_narrate(npc: dict[str, Any]) -> str | None:
         return None
     try:
         response = await llm_client.acompletion_json(
-            system=_DRIFT_SYSTEM_PROMPT, user=prompt, purpose="drift"
+            system=_DRIFT_SYSTEM_PROMPT, user=prompt, purpose="drift",
+            temperature=0.8,
         )
     except llm_client.LLMUnavailable as e:
         logger.info("drift LLM: unavailable, falling back to canned: %s", e)
@@ -513,6 +515,92 @@ def _is_near_duplicate(text: str, prev: str | None) -> bool:
     return len(aw) >= n and len(bw) >= n and aw[:n] == bw[:n]
 
 
+# Authored-first drift (SPEC 2026-09-26 criterion 11). An NPC whose voice is
+# authored (its own `properties.drift_pools`, or a legacy hand-authored
+# `_DRIFT_POOLS` entry) speaks its authored lines FIRST, picked so that no line
+# repeats verbatim within the recent tellings in that room; the local model
+# may only lightly VARY an authored line (validated, warm), never replace it.
+# NPCs with no authored voice keep the old order: model first, generic pool
+# as the fallback.
+_DEFAULT_VARY_PROB = 0.3
+
+_VARY_SYSTEM = (
+    "You lightly vary one authored line of ambient narration for a cozy "
+    "watercolor story. Keep its meaning, its people, and its things exactly; "
+    "change only the wording a little, so it does not read the same twice. "
+    "Same length or shorter, one sentence, third person, no quoted speech, "
+    "add no new people, places, or objects. Return strict JSON: "
+    '{"narrate": "<the varied line>"}.'
+)
+
+
+def _vary_prob() -> float:
+    try:
+        return float(os.environ.get("DAYDREAM_DRIFT_VARY_PROB", _DEFAULT_VARY_PROB))
+    except ValueError:
+        return _DEFAULT_VARY_PROB
+
+
+def _authored_pools(npc_id: str) -> dict[str, list[str]] | None:
+    pools = _pools_for(npc_id)
+    return None if pools is _GENERIC_DRIFT_POOL else pools
+
+
+def _pick_authored(npc: dict[str, Any], pools: dict[str, list[str]]) -> str | None:
+    """The next authored line for this NPC in its room: the mood bucket (else
+    default, else any), never repeating a line within the recent tellings
+    there (daydream.variants)."""
+    from daydream import variants
+
+    mood = npc.get("mood")
+    bucket = mood if mood and pools.get(mood) else (
+        "default" if pools.get("default") else next((k for k, v in pools.items() if v), None))
+    if bucket is None:
+        return None
+    lines = [ln.replace("{name}", npc["name"]) for ln in pools[bucket] if isinstance(ln, str)]
+    return variants.pick(npc["world_id"], f"drift:{npc['id']}:{bucket}", lines,
+                         npc.get("current_room_id"))
+
+
+_CAPS = re.compile(r"\b[A-Z][a-z]+\b")
+
+
+def validate_variation(original: str, varied: str, npc_name: str) -> bool:
+    """A variation keeps the authored line's shape: similar length, no
+    quoted speech, no banned tone, and no capitalized name the original
+    didn't have (sentence-initial words aside)."""
+    v = (varied or "").strip()
+    if not v or not original:
+        return False
+    ratio = len(v) / max(1, len(original))
+    if ratio < 0.6 or ratio > 1.4:
+        return False
+    if any(q in v for q in ('"', "“", "”")):
+        return False
+    if safety.first_banned(v) is not None:
+        return False
+    allowed = set(_CAPS.findall(original)) | {npc_name}
+    body = re.sub(r"(^|[.!?]\s+)[A-Z][a-z]+", " ", v)
+    return set(_CAPS.findall(body)) <= allowed
+
+
+async def _llm_vary(npc: dict[str, Any], line: str) -> str | None:
+    try:
+        response = await llm_client.acompletion_json(
+            system=_VARY_SYSTEM, user=f"{npc['name']}'s line: {line}",
+            purpose="drift", temperature=0.8, max_tokens=80,
+        )
+    except llm_client.LLMUnavailable:
+        return None
+    except Exception:
+        logger.warning("drift vary: unexpected failure", exc_info=True)
+        return None
+    text = response.get("narrate") if isinstance(response, dict) else None
+    if isinstance(text, str) and validate_variation(line, text, npc["name"]):
+        return text.strip()
+    return None
+
+
 async def _tick(rng: random.Random | None = None) -> bool:
     """One drift step. Returns True if a narrate was emitted, False
     if the tick was a no-op (no NPCs, all pools empty, all rooms
@@ -541,11 +629,21 @@ async def _tick(rng: random.Random | None = None) -> bool:
         return False
 
     llm_text: str | None = None
-    if _is_llm_enabled():
-        llm_text = await _llm_narrate(chosen)
-    text = llm_text if llm_text is not None else _pick_canned_line(
-        chosen["id"], chosen["mood"], rng=rng, name=chosen["name"]
-    )
+    pools = _authored_pools(chosen["id"])
+    if pools is not None:
+        # Authored first (criterion 11): the author's line leads; the model
+        # may vary it, validated, and the authored line stands on any miss.
+        text = _pick_authored(chosen, pools)
+        if text is not None and _is_llm_enabled() and rng.random() < _vary_prob():
+            llm_text = await _llm_vary(chosen, text)
+            if llm_text is not None:
+                text = llm_text
+    else:
+        if _is_llm_enabled():
+            llm_text = await _llm_narrate(chosen)
+        text = llm_text if llm_text is not None else _pick_canned_line(
+            chosen["id"], chosen["mood"], rng=rng, name=chosen["name"]
+        )
     if text is None:
         _TICK_COUNTS["noop"] += 1
         return False

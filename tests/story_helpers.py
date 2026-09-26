@@ -53,3 +53,11 @@ def narrations(since: int, room: str | None = None) -> list[str]:
 
 def at(iso: str) -> None:
     worldclock.set_fake_now(iso)
+
+
+async def talk(actor: str, npc_id: str, text: str) -> list[str]:
+    """The click path for talk (verb + dobj + text), as the SPA sends it:
+    no parser call, so a mocked LLM sees only the dialogue call."""
+    before = events.max_seq()
+    await verbs.execute_command(actor, "talk", dobj_id=npc_id, args=text)
+    return narrations(before)

@@ -648,6 +648,10 @@ async def _handle_examine(actor, room_id, dobj, iobj, args, spec) -> None:
     ], spec)
 
 
+# Prose surfaces run warm (SPEC 2026-09-26 criterion 11); the result is
+# cached per object, so warmth never makes one thing read two ways.
+EXAMINE_TEMPERATURE = 0.6
+
 _EXAMINE_SYSTEM = (
     "You are the describer for a cozy watercolor text-adventure. Given an "
     "object's name, write ONE or two soft, painterly sentences a player reads "
@@ -664,7 +668,7 @@ async def _generate_examine(dobj: objects.Object) -> str | None:
     try:
         result = await client.acompletion_json(
             system=_EXAMINE_SYSTEM, user=f"Object: {dobj.name}\nDescribe it.",
-            purpose="examine",
+            purpose="examine", temperature=EXAMINE_TEMPERATURE,
         )
     except client.LLMUnavailable:
         return None

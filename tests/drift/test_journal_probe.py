@@ -74,6 +74,9 @@ def journal_on(tmp_path: Path, monkeypatch):
     db.close_db()
     events.reset_subscribers()
     monkeypatch.setenv("DAYDREAM_JOURNAL_ENABLED", "1")
+    # Production recaps run warm (SPEC 2026-09-26 criterion 11); the probe
+    # fingerprints the prompt + model at temperature 0, as it always has.
+    monkeypatch.setattr(journal, "JOURNAL_TEMPERATURE", 0.0)
     db.init_live(path=tmp_path / "probe.db", migrations_dir=config.MIGRATIONS_DIR)
     yield
     db.close_db()

@@ -88,7 +88,25 @@
       "seed": "a quiet mill",
       "exits": {
         "south": "r-green"
-      }
+      },
+      "rules": [
+        {
+          "on": "listen",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "variants": [
+                "The wheel creaks round, slow and patient.",
+                "Water talks to itself under the floorboards.",
+                "A sack settles somewhere with a soft sigh.",
+                "Far off, the mill cat yawns.",
+                "The millstones hum a note too low to sing."
+              ]
+            }
+          ]
+        }
+      ]
     },
     {
       "id": "r-lane",
@@ -239,6 +257,11 @@
         "thing"
       ],
       "fail_text": "It won't light."
+    },
+    "listen": {
+      "ui_hint": "Listen",
+      "needs_dobj": false,
+      "fail_text": "You hear nothing much."
     }
   },
   "rules": [
