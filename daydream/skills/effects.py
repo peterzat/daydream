@@ -129,6 +129,56 @@ def _fallback_narrate(room_id: str, text: str = _FALLBACK_TEXT) -> events.Event:
     return events.append("system", None, "narrate", {"text": text}, room_id=room_id)
 
 
+# Fields an LLM-originated spawn may carry (SPEC 2026-09-26 criterion 19). A
+# model may name a thing and describe it; it may never author what the world
+# author alone decides: `properties` (rules, growth, combat, light, container,
+# scoring, state...) or extra `verbs` (a plantable seed, a use-able key).
+# `readable` stays: it only selects the readable prototype, and with no way to
+# author `text` the thing reads as blank. Everything else is dropped before
+# the handler runs.
+_LLM_SPAWN_FIELDS = frozenset({
+    "kind", "name", "seed", "aliases", "location_id", "generated_by", "readable",
+})
+
+
+def _sanitize_llm_effect(
+    eff: dict, *, actor_id: str, room_id: str
+) -> dict | None:
+    """Narrow one LLM-originated effect to what a model may decide. Returns
+    the (copied) effect to dispatch, or None to reject it with no mutation.
+
+    - spawn_object / add_item: authored-only fields stripped; the location
+      must be the acting room or the actor's own hands (a model never drops a
+      thing into another player's satchel or a distant room).
+    - move_object: both the object and the destination must be in the
+      actor's scope (the room, its contents, the actor's inventory).
+    - set_mood: the actor itself, or a non-player toon standing in the
+      acting room (never another player)."""
+    kind = eff.get("kind")
+    if kind in ("spawn_object", "add_item"):
+        clean = {k: v for k, v in eff.items() if k in _LLM_SPAWN_FIELDS}
+        loc = clean.get("location_id", room_id)
+        if loc not in (room_id, actor_id):
+            return None
+        return clean
+    if kind == "move_object":
+        scope = {o.id for o in objects.in_scope(actor_id)} | {room_id}
+        if eff.get("object_id") not in scope or eff.get("dest_id") not in scope:
+            return None
+        return dict(eff)
+    if kind == "set_mood":
+        tid = eff.get("toon_id", actor_id)
+        target = objects.get(tid) if isinstance(tid, str) else None
+        if target is None or target.kind != "toon":
+            return None
+        if target.id != actor_id and (
+            target.is_human_controlled or target.location_id != room_id
+        ):
+            return None
+        return dict(eff)
+    return dict(eff)
+
+
 def dispatch_effects(
     effects_list: list,
     *,
@@ -136,6 +186,7 @@ def dispatch_effects(
     room_id: str,
     world_id: str,
     allowed: frozenset[str] | None = None,
+    origin: str = "engine",
 ) -> list[AppliedEffect]:
     """Apply each effect in `effects_list` in order.
 
@@ -145,6 +196,12 @@ def dispatch_effects(
     (the data-skill default) — the standard vocabulary WITHOUT the
     restricted kinds (world-shaping, rename_object, set_property, rule-only),
     which are opt-in-only by construction.
+
+    `origin="llm"` marks a model-authored batch (dialogue, data skills):
+    each effect is first narrowed by `_sanitize_llm_effect`, so a model can
+    never carry authored-only properties onto a spawn or reach outside the
+    actor's scope (criterion 19). Engine verbs and authored rules pass the
+    default `origin="engine"` and are unaffected.
 
     Malformed entries (non-dicts) get a narrate fallback and are logged;
     unknown / disallowed kinds likewise get a fallback. Allowed kinds with
@@ -167,6 +224,13 @@ def dispatch_effects(
             logger.warning("dropping unknown/disallowed effect kind: %r", kind)
             applied.append(AppliedEffect(str(kind), _fallback_narrate(room_id)))
             continue
+        if origin == "llm":
+            narrowed = _sanitize_llm_effect(eff, actor_id=actor_id, room_id=room_id)
+            if narrowed is None:
+                logger.warning("dropping out-of-bounds llm effect: %r", kind)
+                applied.append(AppliedEffect(kind, None))
+                continue
+            eff = narrowed
         handler = _HANDLERS[kind]
         try:
             event = handler(eff, actor_id=actor_id, room_id=room_id, world_id=world_id)

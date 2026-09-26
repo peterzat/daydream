@@ -25,6 +25,30 @@ and rules can write them now, so no model output reaches them. Normalizing
 those reads in `Room.from_object` / `Toon.from_object` remains a cheap later
 hardening.
 
+**Pivot side findings (2026-09-26, docs/PIVOT.md section 10; SPEC
+2026-09-26 criterion 19). Both RESOLVED.**
+
+- [WARN, resolved] `spawn_object` passed its `properties` dict straight
+  through (`daydream/skills/effects.py`), and `talk` may emit `spawn_object`.
+  A dialogue model steered by player text could mint a thing carrying
+  `rules` (which then ran under the full `RULE_KINDS` allowlist: set_flag,
+  win, teleport, kill), a `growth` block (a plantable dreamseed), extra
+  `verbs`, combat stats, a light source, a container, or scoring hooks. Fix:
+  model-authored batches dispatch with `origin="llm"`, and
+  `_sanitize_llm_effect` keeps only name / seed / aliases / location /
+  provenance / readable on a spawn, pins its location to the acting room or
+  the actor's hands, scopes `move_object` to the actor's scope, and limits
+  `set_mood` to the actor or a co-located NPC. Engine verbs and authored
+  rules keep full spawns. Regression: `tests/security/test_llm_spawn_gate.py`.
+- [NOTE, resolved] Room data skills ignored their declared
+  `effects_schema.allowed_kinds` (`daydream/skills/data.py`): the loft's
+  `wind` and `listen` declared narrate-only but dispatched under the default
+  set, including an unscoped `move_object`. Fix: `effective_allowed`
+  intersects the caller's allowlist with the declaration (narrow only, never
+  widen). The pivot also retires `wind`/`listen` for world-declared
+  affordances with authored variants. Regression:
+  `tests/security/test_data_skill_allowlist.py`.
+
 ### Findings
 
 [WARN] daydream/verbs.py:116, daydream/toons.py:52 — talk's effect allowlist

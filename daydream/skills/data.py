@@ -13,11 +13,10 @@ schema already reserved:
   `SandboxedEnvironment` so the template itself cannot reach protected
   attributes. Receives `player_input` (already role-separator-wrapped),
   `actor_id`, and `room_id` as context variables.
-- `effects_schema_json` — the shape the LLM is asked to produce.
-  v1 uses this as documentation / provenance only; enforcement is by
-  the effect allowlist in `daydream.skills.effects`. v2's full
-  jsonschema pipeline lives in BACKLOG entry
-  `skills-authoring-and-security`.
+- `effects_schema_json` — the shape the LLM is asked to produce. Its
+  `allowed_kinds` list is ENFORCED: it narrows the caller's allowlist
+  (`effective_allowed`). v2's full jsonschema pipeline lives in BACKLOG
+  entry `skills-authoring-and-security`.
 - `enabled` (0/1) — the operator switch; disabled rows are invisible
   to the registry.
 
@@ -298,6 +297,22 @@ def _emit_narrate(text: str, room_id: str) -> None:
     events.append("system", None, "narrate", {"text": text}, room_id=room_id)
 
 
+def effective_allowed(
+    allowed: "frozenset[str] | None", body: DataSkillBody
+) -> frozenset[str]:
+    """The kinds a data skill's model output may dispatch: the caller's
+    per-verb allowlist (DEFAULT_KINDS when None), intersected with the
+    skill's own declared `effects_schema.allowed_kinds` when it declares one.
+    A declaration can only NARROW, never widen (security finding, SPEC
+    2026-09-26 criterion 19: the loft's `wind`/`listen` declared narrate-only
+    but ran with the unscoped default set)."""
+    base = allowed if allowed is not None else effects.DEFAULT_KINDS
+    declared = body.effects_schema.get("allowed_kinds")
+    if isinstance(declared, list) and all(isinstance(k, str) for k in declared):
+        return frozenset(base) & frozenset(declared)
+    return frozenset(base)
+
+
 async def execute(
     spec: SkillSpec,
     body: DataSkillBody,
@@ -372,7 +387,7 @@ async def execute(
     # NPC-bound skills speak in the dialogue voice (third person, by name);
     # unbound skills are player-action affordances (second person).
     system = (
-        _dialogue_system(npc_obj.name, allowed)
+        _dialogue_system(npc_obj.name, effective_allowed(allowed, body))
         if npc_obj is not None
         else _DISPATCHER_SYSTEM
     )
@@ -405,7 +420,9 @@ async def execute(
         _emit_narrate(_BANNED_FALLBACK_TEXT, room_id)
         return
 
-    # (6) Dispatch effects through the allowlist.
+    # (6) Dispatch effects through the allowlist: the caller's per-verb
+    # allowlist narrowed by the skill's own declared `allowed_kinds`, and
+    # every effect sanitized as model-authored (criterion 19).
     room = rooms.get_room(room_id)
     world_id = room.world_id if room else ""
     applied = effects.dispatch_effects(
@@ -413,7 +430,8 @@ async def execute(
         actor_id=actor_id,
         room_id=room_id,
         world_id=world_id,
-        allowed=allowed,
+        allowed=effective_allowed(allowed, body),
+        origin="llm",
     )
     # UX safety: if the LLM returned an empty / shape-less effects
     # list, the player would otherwise see nothing happen. Emit a soft
