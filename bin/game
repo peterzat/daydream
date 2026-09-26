@@ -737,6 +737,15 @@ cmd_play() {
     "$VENV_PY" -m daydream.play "$@"
 }
 
+cmd_prebake() {
+    # Design-time art pre-bake (SPEC 2026-09-26 criterion 20): render every
+    # room + portrait of the live world through the production pipeline so no
+    # first entry waits on a render. Run with the server DOWN and ComfyUI up,
+    # right after `bin/game world reset`. See daydream/prebake.py.
+    _require_venv
+    "$VENV_PY" -m daydream.prebake "$@"
+}
+
 cmd_review() {
     # Build ONE offline review artifact (an index.html contact sheet) from
     # worlds/bunny.json: every aesthetic anchor render (incl. the forge) plus a
@@ -763,11 +772,12 @@ case "${1:-}" in
     world)         shift; cmd_world "$@" ;;
     dream)         shift; cmd_dream "$@" ;;
     play)          shift; cmd_play "$@" ;;
+    prebake)       shift; cmd_prebake "$@" ;;
     test)          shift; cmd_test "$@" ;;
     voice-samples) shift; cmd_voice_samples "$@" ;;
     drift-samples) shift; cmd_drift_samples "$@" ;;
     review)        shift; cmd_review "$@" ;;
     model-eval)    shift; cmd_model_eval "$@" ;;
-    "")            echo "usage: bin/game {up|up-all|deploy|down|status|logs|image-test|comfyui-up|comfyui-down|vllm-up|vllm-down|world|dream|play|test|voice-samples|drift-samples|review|model-eval}" >&2; exit 2 ;;
-    *)             echo "usage: bin/game {up|up-all|deploy|down|status|logs|image-test|comfyui-up|comfyui-down|vllm-up|vllm-down|world|dream|play|test|voice-samples|drift-samples|review|model-eval} (got: $1)" >&2; exit 2 ;;
+    "")            echo "usage: bin/game {up|up-all|deploy|down|status|logs|image-test|comfyui-up|comfyui-down|vllm-up|vllm-down|world|dream|play|prebake|test|voice-samples|drift-samples|review|model-eval}" >&2; exit 2 ;;
+    *)             echo "usage: bin/game {up|up-all|deploy|down|status|logs|image-test|comfyui-up|comfyui-down|vllm-up|vllm-down|world|dream|play|prebake|test|voice-samples|drift-samples|review|model-eval} (got: $1)" >&2; exit 2 ;;
 esac
