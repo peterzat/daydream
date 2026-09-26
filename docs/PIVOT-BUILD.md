@@ -126,3 +126,15 @@ are dropped. Room data skills dispatch under their declared allowlist.
   JSON 100%, dialogue p50 3.15 s (63b1229, docs/model-eval/before-2026-09-26);
   story primitives (c2f9780); grounded dialogue, authored-first drift, warm
   prose (c88b376). Next: walkthrough replayer + analyzer, then the world.
+- 2026-09-26 (later): walkthroughs + analyzer (b09c5c3); the world's working
+  core (06ecbb0: canon bible docs/canon/LOST-HOURS.md, 17 rooms, 9 residents,
+  prologue, first winding, Pim); authoring guide docs/canon/AUTHORING.md;
+  dreams + play bridge (d5ea14b); SPA story surfaces (35ac88e); the loft
+  retired (d707a4e, WORLD_VERSION 1.5); 172 stray minutes on 12 pages
+  (c314076); soft stakes in WHIMSY + banlist (4005de3); prebake (59a4aa4);
+  dream runbook docs/DREAM-RUNBOOK.md; prompt ledger; session export.
+  In flight: six author subagents in worktrees (arcs: extra-hour+rain-wait,
+  summer+margin, nell-evening+letters, the three keeper arcs; voice sheets;
+  minutes MERGED). Next: merge arcs + voices, critic pass, AFTER model-eval,
+  remove config.under_construction, archive Zork + reset live + prebake +
+  grade art, agent playtest day, first dream, README/CLAUDE.md, operator.
