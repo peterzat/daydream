@@ -313,7 +313,7 @@ async def execute(
 
     `allowed`, when given, is the per-verb effect allowlist forwarded to the
     effect dispatcher (e.g. the `talk` verb constrains an NPC's dialogue to
-    narrate/set_property/set_mood/spawn_object). None = DEFAULT_KINDS, the
+    narrate/set_mood/spawn_object). None = DEFAULT_KINDS, the
     standalone data-skill default (restricted kinds excluded).
 
     `npc`, when given, is the toon this skill is speaking AS (the `talk`

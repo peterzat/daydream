@@ -113,7 +113,9 @@ VERBS: dict[str, VerbSpec] = {
         name="talk", ui_hint="Talk",
         description="Talk to someone. Target: the toon. Args: what you say.",
         needs_dobj=True, valid_dobj_kinds=frozenset({"toon"}),
-        allowed_effects=frozenset({"narrate", "set_property", "set_mood", "spawn_object"}),
+        # No set_property: the dialogue model must not write arbitrary keys or
+        # values on any object (codereview WARN 2026-09-26b); mood uses set_mood.
+        allowed_effects=frozenset({"narrate", "set_mood", "spawn_object"}),
         free_text=True,
         needs_text=True, text_prompt="What do you say?",
     ),
@@ -588,7 +590,7 @@ async def _handle_examine(actor, room_id, dobj, iobj, args, spec) -> None:
         return
     if dobj.kind == "toon":
         appearance = dobj.properties.get("appearance_seed", "")
-        if not isinstance(appearance, str):  # an LLM set_property can store any JSON
+        if not isinstance(appearance, str):  # a raw set_property can store any JSON
             appearance = ""
         parts = [p for p in (appearance, dobj.seed) if p and p.strip()]
         body = " ".join(_terminate(p) for p in parts)

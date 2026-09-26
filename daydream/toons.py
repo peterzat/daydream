@@ -32,7 +32,7 @@ class Toon:
     @classmethod
     def from_object(cls, obj: "objects.Object", inventory: list | None = None) -> "Toon":
         p = obj.properties
-        # An LLM set_property (talk's allowlist) can store any JSON value here;
+        # A raw set_property (e.g. an authored rule) can store any JSON value here;
         # a non-string must read as "no portrait", not crash every picker and
         # snapshot that calls .strip() on it (security NOTE 2026-09-26).
         appearance = p.get("appearance_seed", "")

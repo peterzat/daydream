@@ -79,13 +79,13 @@ def test_at_cap_benign_seed_accepted():
 
 @pytest.mark.parametrize("value", [True, 7, ["a", "list"], {"a": "dict"}, None])
 def test_non_string_seed_from_set_property_does_not_break_the_picker(value):
-    """The create gate covers the HTTP path, but talk's LLM-emitted
-    set_property can still write any JSON value into appearance_seed. A
-    non-string must read as "no portrait": before the fix, GET /api/slots
-    returned 500 for every session (cached_portrait_url called .strip() on
-    it) and examining the toon crashed (security NOTE 2026-09-26)."""
-    from daydream import verbs
-    from daydream.skills import effects
+    """The create gate covers the HTTP path, and talk can no longer emit
+    set_property (codereview WARN 2026-09-26b), but a raw property write (an
+    authored rule's set_property) can still store any JSON value in
+    appearance_seed. A non-string must read as "no portrait": before the fix,
+    GET /api/slots returned 500 for every session (cached_portrait_url called
+    .strip() on it) and examining the toon crashed (security NOTE 2026-09-26)."""
+    from daydream import objects
 
     with TestClient(app) as client:
         _login(client)
@@ -95,12 +95,7 @@ def test_non_string_seed_from_set_property_does_not_break_the_picker(value):
         )
         assert r.status_code == 200
         victim = toons.get_toon_in_slot(2)
-        effects.dispatch_effects(
-            [{"kind": "set_property", "target_id": victim.id,
-              "key": "appearance_seed", "value": value}],
-            actor_id="t-attacker", room_id=victim.current_room_id,
-            world_id=victim.world_id, allowed=verbs.VERBS["talk"].allowed_effects,
-        )
+        assert objects.set_property(victim.id, "appearance_seed", value)
         assert toons.get_toon_in_slot(2).appearance_seed == ""
         r = client.get("/api/slots")
         assert r.status_code == 200

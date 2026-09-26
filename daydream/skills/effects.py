@@ -25,6 +25,12 @@ verb that declares them in its per-verb allowlist: a caller passing
 them, so an NPC dialogue or standalone data skill attempting either is
 rejected exactly like an unknown kind. `plant` is the sole consumer today.
 
+`set_property` (any key, any JSON value, on any object) is likewise per-verb
+opt-in: engine verbs that write authored state and the rule engine declare it,
+while `talk` and the `allowed=None` default do not, so a dialogue model can't
+corrupt a load-bearing property (a room's seed, exits, or title) or sidestep
+the restricted kinds. Dialogue mood changes use the string-validated `set_mood`.
+
 The rule-only kinds (platform turn, SPEC 2026-07-02) — `set_flag`,
 `adjust_counter`, `adjust_score`, `destroy_object`, `teleport_actor`,
 `start_fuse`/`stop_fuse`, `start_daemon`/`stop_daemon`, `win` — are likewise
@@ -76,9 +82,10 @@ ALLOWED_KINDS: frozenset[str] = frozenset({
 
 # The kinds a caller gets when it passes no per-verb allowlist (allowed=None,
 # the data-skill default). Restricted kinds are deliberately absent: growing a
-# room, linking an exit, or renaming an object requires a verb that DECLARES
-# the capability, so an NPC dialogue or a standalone data skill can never
-# world-build (or vandalize a name) by omission.
+# room, linking an exit, renaming an object, or writing an arbitrary property
+# requires a verb that DECLARES the capability, so an NPC dialogue or a
+# standalone data skill can never world-build (or vandalize a name, or corrupt
+# a load-bearing property) by omission.
 WORLD_SHAPING_KINDS: frozenset[str] = frozenset({"spawn_room", "link_exit"})
 # Kinds reachable ONLY through the declarative rule engine's allowlist
 # (RULE_KINDS below). No LLM-emitted effects list can contain them: every
@@ -91,7 +98,7 @@ RULE_ONLY_KINDS: frozenset[str] = frozenset({
     "start_daemon", "stop_daemon", "win",
 })
 RESTRICTED_KINDS: frozenset[str] = (
-    WORLD_SHAPING_KINDS | {"rename_object"} | RULE_ONLY_KINDS
+    WORLD_SHAPING_KINDS | {"rename_object", "set_property"} | RULE_ONLY_KINDS
 )
 DEFAULT_KINDS: frozenset[str] = ALLOWED_KINDS - RESTRICTED_KINDS
 # The rule engine's dispatch allowlist: the basic vocabulary plus the
@@ -136,7 +143,8 @@ def dispatch_effects(
     rejected exactly like an unknown kind (no mutation, narrate fallback), so
     a verb can only emit the effects it declares. None means DEFAULT_KINDS
     (the data-skill default) — the standard vocabulary WITHOUT the
-    world-shaping kinds, which are opt-in-only by construction.
+    restricted kinds (world-shaping, rename_object, set_property, rule-only),
+    which are opt-in-only by construction.
 
     Malformed entries (non-dicts) get a narrate fallback and are logged;
     unknown / disallowed kinds likewise get a fallback. Allowed kinds with

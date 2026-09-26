@@ -183,9 +183,11 @@ def test_dispatch_preserves_input_order():
 
 def test_set_property_updates_object():
     from daydream import objects
+    # set_property is a restricted (per-verb opt-in) kind, so opt in explicitly.
     applied = effects.dispatch_effects(
         [{"kind": "set_property", "target_id": "i-lantern", "key": "lit", "value": False}],
         actor_id="t-wren", room_id="r-meadow", world_id="w-bunny",
+        allowed=frozenset({"set_property"}),
     )
     assert applied[0].event is not None
     assert applied[0].event.kind == "property_set"
@@ -196,6 +198,7 @@ def test_set_property_without_value_is_dropped():
     applied = effects.dispatch_effects(
         [{"kind": "set_property", "target_id": "i-lantern", "key": "lit"}],
         actor_id="t-wren", room_id="r-meadow", world_id="w-bunny",
+        allowed=frozenset({"set_property"}),
     )
     assert applied[0].event is None
 
