@@ -13,6 +13,18 @@ talk-path `set_property` reaches other string-assuming readers, one of which
 locks every player out of the game, and the served 9B follows the injection
 often enough to matter (measured). Net: **0 BLOCK / 1 WARN / 0 NOTE.**
 
+**Status (2026-09-26, after the scan): the WARN is RESOLVED in `6b1af0f`.**
+`set_property` joined `RESTRICTED_KINDS` (so `DEFAULT_KINDS`, every standalone
+data skill's default, drops it) and left `talk`'s allowlist; engine verbs and
+`RULE_KINDS` keep their explicit grants, and dialogue mood still flows through
+the string-validated `set_mood`. `tests/security/test_set_property_gate.py`
+drives the real talk and data-skill paths with a hostile mocked model and
+asserts no mutation. Residual, defense in depth only: the read side still
+trusts that stored `seed` / `presence_text` are strings. Only authored data
+and rules can write them now, so no model output reaches them. Normalizing
+those reads in `Room.from_object` / `Toon.from_object` remains a cheap later
+hardening.
+
 ### Findings
 
 [WARN] daydream/verbs.py:116, daydream/toons.py:52 — talk's effect allowlist
