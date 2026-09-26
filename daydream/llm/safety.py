@@ -52,17 +52,23 @@ _BANLIST: tuple[tuple[str, re.Pattern[str]], ...] = (
     ("pixel-art",
      re.compile(r"\b(?:pixel[- ]?art|8[- ]?bit|crunchy|retro[- ]?game|retrowave)\b", re.IGNORECASE)),
     ("grimdark",
-     re.compile(r"\b(?:grimdark|dystopian|brutalist|horror|nightmare)\b", re.IGNORECASE)),
+     re.compile(r"\b(?:grimdark|dystopian|brutalist|horror|nightmare|"
+                r"gore|gory|corpse|bloodsoaked|blood-soaked|terror)\b", re.IGNORECASE)),
     ("sexual",
      re.compile(r"\b(?:sexual|sensual|erotic)\b", re.IGNORECASE)),
     ("violence",
      re.compile(r"\b(?:stab|slash|slaughter|bludgeon|murder|maim|strangle)\b", re.IGNORECASE)),
+    # Soft stakes (WHIMSY "Stories: soft stakes", SPEC 2026-09-26): a
+    # character may hurry or miss someone; the banned thing is pressure on
+    # the player. "hurry" alone no longer trips; urging the player still does.
     ("urgency",
-     re.compile(r"\b(?:urgent|deadline|hurry|immediately|you must)\b", re.IGNORECASE)),
+     re.compile(r"\b(?:urgent|urgently|deadline|immediately|you must|"
+                r"hurry up|before it'?s too late|no time to lose|countdown)\b",
+                re.IGNORECASE)),
     ("modern-tech",
      re.compile(r"\b(?:computer|laptop|smartphone|motorcycle|rifle|machinery)\b", re.IGNORECASE)),
     ("sarcasm",
-     re.compile(r"\b(?:stupid|idiot|pathetic|moron)\b", re.IGNORECASE)),
+     re.compile(r"\b(?:stupid|idiot|pathetic|moron|loser|worthless)\b", re.IGNORECASE)),
 )
 
 

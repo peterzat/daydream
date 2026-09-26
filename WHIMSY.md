@@ -78,6 +78,49 @@ unexplained mystery (the bell, the wildflowers), and no urgency.
 
 ---
 
+## Stories: soft stakes (SPEC 2026-09-26)
+
+The first five hundred lines of this file taught gentleness, and the world
+learned it too well: every surface banned wanting, and nothing ever changed
+(docs/PIVOT.md section 2.5). Gentle is not wantless. The touchstones have
+stakes: Spiritfarer is about death and letting go; A Short Hike has a goal
+and a climb. Cozy stories carry tension through **soft stakes**:
+
+- **Wants.** Every guest and keeper wants one thing: a lost nap wants the
+  quiet it came from, a lamplighter wants to see a dawn. Say so plainly.
+- **Something lost, missed, or not yet.** A hour that never came home, a
+  letter never sent, a song someone slept through, a goodbye that came too
+  soon. These are the engine of every arc.
+- **Gentle time.** Things take days. A guest can wait, and if no one helps,
+  it is kept, not lost: it falls asleep in a jar, it stays on at the Waiting
+  House. Time moves the story without threatening anyone.
+- **Bittersweet endings.** Some endings are sad in the way autumn is sad.
+  An hour that goes home is also an hour that leaves. A keeper who opens an
+  old grief a little is braver, not broken.
+- **Strained, mending things.** A friendship gone quiet, a keeper who
+  won't talk about one night, a festival that needs getting ready for.
+
+What stays out, always: **cruelty** (no one is mean on purpose; no
+mockery), **horror** (no dread, no gore, no nightmares, nothing hunting
+anyone), **grimdark** (no hopelessness, no bleak worlds, no one beyond
+comfort), **danger** (no one is ever in peril, including the player), and
+**urgency** (no deadlines, no "you must", no countdowns: gentle time is
+the opposite of a timer). Death may be mentioned the way Spiritfarer does,
+softly and past tense (Wend, the old clockmaker), never shown or
+threatened.
+
+A soft-stakes line, for calibration:
+
+> The nap yawns so wide it tips over, then sits back up. It misses Pim,
+> though it could not tell you how. If no one sings it home, it will fall
+> asleep in a jar in the cellar, kept, and a little sad, and safe.
+
+The safety banlist (`daydream/llm/safety.py`) matches this section: a corpus
+of soft-stakes lines passes it, and each still-banned category still blocks
+(`tests/test_soft_stakes.py`).
+
+---
+
 ## Banned moods
 
 The LLM safety filter (`daydream/llm/safety.py`, checked on player input
@@ -88,7 +131,8 @@ immediate refusal triggers in any narration or skill output:
 - grimdark, dystopian, brutalist, horror (mood)
 - sexual, sensual, romantic-explicit (content)
 - violence directed at any toon (NPCs included)
-- urgency, deadlines, pressure, "you must" framing
+- urgency, deadlines, pressure, "you must" framing (a character may
+  still hurry across a square; the banned thing is pressure on the player)
 - modern-tech, machinery, vehicles, computers (breaks the dream)
 - sarcasm, cynicism, irony at the player's expense
 
@@ -113,8 +157,8 @@ both obey this tone bible and the Banned moods above:
 - **Generative objects (spawn).** A dialogue's `spawn_object` effect names a
   real thing (Rook's "a sheaf of papers"). Author such names + their seeds as
   cozy, specific-sensory nouns ("loose pages, soft at the edges, covered in
-  small careful drawings"), never grand or systemy. The canonical world's dialogue
-  prompts (`worlds/clockmakers-loft.json`) carry this voice; copy their register.
+  small careful drawings"), never grand or systemy. The canonical world's voice
+  sheets (`worlds/lost-hours/cast/`) carry this voice; copy their register.
 
 ## Prompt suffix
 
