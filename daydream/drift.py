@@ -553,8 +553,21 @@ def _pick_authored(npc: dict[str, Any], pools: dict[str, list[str]]) -> str | No
     from daydream import variants
 
     mood = npc.get("mood")
-    bucket = mood if mood and pools.get(mood) else (
-        "default" if pools.get("default") else next((k for k, v in pools.items() if v), None))
+    # Time of day wins over mood (a keeper asleep at night does not "watch
+    # the dusk come down"): a bucket named for the village's current phase
+    # (dawn / day / dusk / night) is used when the NPC authors one.
+    phase = None
+    try:
+        from daydream import village
+
+        phase = village.phase(npc["world_id"])
+    except Exception:
+        phase = None
+    if phase and pools.get(phase):
+        bucket = phase
+    else:
+        bucket = mood if mood and pools.get(mood) else (
+            "default" if pools.get("default") else next((k for k, v in pools.items() if v), None))
     if bucket is None:
         return None
     lines = [ln.replace("{name}", npc["name"]) for ln in pools[bucket] if isinstance(ln, str)]

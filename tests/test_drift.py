@@ -1135,3 +1135,17 @@ def test_pools_for_malformed_or_no_db_falls_through():
     through to legacy/generic."""
     assert drift._pools_for("t-rook") == drift._DRIFT_POOLS["t-rook"]
     assert drift._pools_for("t-unknown") is drift._GENERIC_DRIFT_POOL
+
+
+@pytest.mark.tier_medium
+@pytest.mark.asyncio
+async def test_a_phase_bucket_wins_over_mood(monkeypatch):
+    """Time of day beats mood: an NPC with a `night` bucket drifts from it
+    at night (a sleeping keeper stays asleep in the prose)."""
+    from daydream import config
+    db.init_live(migrations_dir=config.MIGRATIONS_DIR)
+    monkeypatch.setattr("daydream.village.phase", lambda world_id, at=None: "night")
+    npc = {"id": "t-x", "name": "Bell", "world_id": "w-bunny", "mood": "cheerful",
+           "current_room_id": "r-meadow"}
+    pools = {"cheerful": ["Bell grins at a lantern."], "night": ["Bell sleeps soundly."]}
+    assert drift._pick_authored(npc, pools) == "Bell sleeps soundly."

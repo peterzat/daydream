@@ -6855,6 +6855,16 @@
             "Bell leans on the hooked pole and watches the sky change color like it was invited.",
             "Bell glances east, just once, then gets back to the lanterns.",
             "Bell folds a paper lantern-skin along its old creases, neat as a letter."
+          ],
+          "night": [
+            "Bell sleeps under the slanted roof, one hand still curled as if it were holding the hooked pole.",
+            "Bell turns over in the narrow bed and murmurs a lantern's name, then settles again.",
+            "Bell's butter-yellow scarf slips from its hook to the floor, and Bell sleeps on through it."
+          ],
+          "dawn": [
+            "Bell sleeps with their face to the west window, missing the dawn again by a whole house.",
+            "Somewhere a bird starts up, and Bell pulls the blanket over one ear without waking.",
+            "Bell sighs in their sleep, the soot still on one cheek from last night's lanterns."
           ]
         }
       }
