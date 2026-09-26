@@ -5699,7 +5699,7 @@
       "id": "r-clocktower",
       "slug": "clocktower",
       "title": "The Clocktower",
-      "seed": "the base of a great clock tower in amber gloom, a tall glass-fronted oak clock case against one wall, the clock's brass face high above, dust turning slow in a shaft of late gold, an old ledger open on a lectern",
+      "seed": "the inside of an old clock tower at dusk, looking up a tall stone stairwell toward a great brass clock face, a tall oak clock case against the wall, a worn ledger open on a wooden lectern, warm amber light and slow floating dust",
       "description": "The great clock's brass face looks down from high in the tower, patient as a moon. A tall oak clock case stands against the wall with its pendulum behind glass, and a worn repair ledger lies open on a lectern. Beside it rests a newer book, its spine stamped THE LEDGER OF RETURNED HOURS. Stairs climb up to the loft, a low door leads down to the cellar, and the square is east.",
       "exits": {
         "up": "r-loft",
@@ -5755,7 +5755,7 @@
       "id": "r-balcony",
       "slug": "balcony",
       "title": "The Winding Balcony",
-      "seed": "a small oak balcony high above the great clock's face, ringed by a brass rail, a gear-ribbed telescope leaning at the rail, looking east over dark rooftops toward where a dawn would come",
+      "seed": "the view from a high clock-tower balcony at dusk: a curved brass railing across the foreground, a small brass telescope resting on it, and below it the rooftops and warm lanterns of a little village under a soft blue evening sky",
       "description": "The balcony holds its place above the rooftops with a friendly creak. A telescope ribbed with clock-gears leans at the brass rail, pointed east, where the sky is always about to decide something. Below, the village lanterns keep an hour of their own. The loft is down the stairs.",
       "exits": {
         "down": "r-loft"
@@ -5805,7 +5805,7 @@
       "id": "r-workshop",
       "slug": "workshop",
       "title": "The Old Workshop",
-      "seed": "a dim old workshop just off a village square, curls of brass and cedar shavings soft underfoot, a broom leaned patient in the corner, one long blade of slant light through a shutter",
+      "seed": "inside a dim old wooden workshop, curls of brass and cedar shavings on the floorboards, a long workbench, a soft broom leaning in the corner, a single beam of slanting light through a shutter, dust in the air",
       "description": "Curls of brass and cedar shavings lie soft underfoot, and one long blade of slant light falls through a shutter. A broom leans patient in the corner. On a shelf by the door sits a battered tin that rattles, now and then, with small found things. The square is south.",
       "exits": {
         "south": "r-square"
@@ -5898,7 +5898,7 @@
       "id": "r-lamphouse",
       "slug": "lamphouse",
       "title": "The Lamp House",
-      "seed": "a small slant-roofed attic room full of spare wicks, oil tins, and folded paper lantern-skins, one narrow bed facing a west window, a butter-yellow scarf on a hook",
+      "seed": "a cozy slant-roofed attic bedroom at dusk, bundles of lamp wicks hanging from wooden rafters, folded paper lanterns stacked on shelves, a narrow bed with a patchwork quilt under a small west window, a butter-yellow scarf on a hook",
       "description": "Spare wicks hang in bundles from the rafters, and folded paper lantern-skins lean in stacks like sleeping moths. A narrow bed faces the west window, where the sun goes down; nothing in the room faces east. The stair goes down to the Waiting House.",
       "exits": {
         "down": "r-waiting"
