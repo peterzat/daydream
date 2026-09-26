@@ -32,6 +32,7 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect, status
 from daydream import (
     config,
     events,
+    inputs,
     journal,
     lighting,
     objects,
@@ -542,10 +543,20 @@ async def _handle_input(text: str, toon_id: str, conn: dict) -> dict | None:
     text = text.strip()
     if not text:
         return None
+    # Every word a player types is kept (criterion 16): recorded verbatim
+    # BEFORE parsing, so an ungroundable line or one typed during an LLM
+    # outage is still in the log; the resolution is attached after.
+    input_seq = inputs.record(toon_id, "text", text=text)
     room_id = _current_room_id(toon_id)
     pending = conn.get("clarify")
     conn["clarify"] = None
     lp = await parser.parse_line(toon_id, text, pending=pending)
+    inputs.set_resolved(input_seq, [
+        {"verb": p.verb, "dobj_id": p.dobj_id, "iobj_id": p.iobj_id,
+         "args": p.args}
+        for p in lp.commands
+    ] + ([{"clarify": lp.clarify.prompt}] if lp.clarify is not None else [])
+      + ([{"error": lp.error}] if lp.error else []))
     if lp.error:
         # LLM unavailable: natural-language free text can't be parsed. The
         # deterministic click/exit verbs still work (the command frame + the
@@ -756,12 +767,17 @@ async def _handle_command(msg: dict, toon_id: str) -> None:
         return
     dobj_id = msg.get("dobj_id")
     iobj_id = msg.get("iobj_id")
+    dobj_id = dobj_id if isinstance(dobj_id, str) else None
+    iobj_id = iobj_id if isinstance(iobj_id, str) else None
+    args = str(msg.get("args", ""))
+    inputs.record(
+        toon_id, "command", verb=verb, dobj_id=dobj_id, iobj_id=iobj_id,
+        args=args or None,
+        resolved=[{"verb": verb, "dobj_id": dobj_id, "iobj_id": iobj_id,
+                   "args": args}],
+    )
     await verbs.execute_command(
-        toon_id,
-        verb,
-        dobj_id=dobj_id if isinstance(dobj_id, str) else None,
-        iobj_id=iobj_id if isinstance(iobj_id, str) else None,
-        args=str(msg.get("args", "")),
+        toon_id, verb, dobj_id=dobj_id, iobj_id=iobj_id, args=args,
     )
 
 
