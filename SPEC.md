@@ -113,8 +113,10 @@ after its first dream.
   player-created objects or per-player state, rejects id collisions, and is
   idempotent. A rehearsal step snapshots the live world, applies the patch to a
   side copy, and replays every walkthrough against it; only if all pass is the
-  patch installed live, and no player action taken during the rehearsal is
-  lost. A failed rehearsal installs nothing, and the pre-dream snapshot restores
+  patch installed on the live world, and installing never discards a player
+  action taken meanwhile (a brief restart that applies the proven patch to the
+  current live database is enough; no hot-patch mechanism is required). A
+  failed rehearsal installs nothing, and the pre-dream snapshot restores
   cleanly (tested). A runbook lets the operator trigger a dream by name in any
   Claude Code session. Dreams run in-session only; no headless or scheduled
   runs.
@@ -226,10 +228,12 @@ Constraints:
 - **Determinism.** The Zork walkthrough taught that turn-keyed rolls make
   datasets brittle; key story rolls on date plus entity, as dreamseed
   propagation already does.
-- **Dream installs must not lose live play.** Swapping in a side copy
-  discards actions taken after the snapshot, so the install path must account
-  for them (for example, rehearse on the copy, then apply the proven additive
-  patch to live).
+- **Dream installs never discard play, cheaply.** Do not install by swapping
+  in the rehearsal copy (it would drop actions taken after the snapshot). The
+  simple path: rehearse on the copy while the game runs, then `bin/game down`,
+  apply the proven patch to the current live database, `bin/game up`. Players
+  see a few seconds of the calm "the dream is sleeping" overlay, which fits a
+  dream turning over. Do not build a live hot-patch endpoint for this.
 - **GPU discipline.** tier_long runs and the art pre-bake happen with the game
   server down (the arbiter is in-process). Dev-mode policy allows cycling the
   server; leave a one-line note when you do.

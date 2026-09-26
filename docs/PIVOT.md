@@ -416,11 +416,12 @@ more than Zork ever did. Each gets a named job.
   touches the live world first. It snapshots live, applies the patch to a
   side copy, replays the patch's own walkthroughs plus the existing ones on
   that copy, runs an agent playtest against it, and only then installs it
-  live. A failed rehearsal installs nothing. Install must not lose play that
-  happened during the rehearsal: swapping in the side copy would discard
-  actions taken after the snapshot, so the proven additive patch is applied
-  to live (or play is quiesced first); connected players re-snapshot either
-  way.
+  live. A failed rehearsal installs nothing. Install never discards play,
+  and it stays cheap: a few seconds of downtime (down, apply the proven patch
+  to the current live database, up), which players see as the calm "the
+  dream is sleeping" overlay. Swapping in the side copy is avoided because it
+  would drop actions taken after the snapshot; no hot-patch endpoint is
+  needed.
 - **Snapshots as a time machine.** Every dream is preceded by a snapshot,
   so a bad night is one `snapshot-restore` (offline) or `swap` (live) away
   from undone. The snapshot series is also the world's history, which the
