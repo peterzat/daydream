@@ -93,3 +93,31 @@ async def test_locked_case_and_wrong_item_are_soft_noops(village):
     await verbs.execute_command(actor, "use", dobj_id="o-paper-lantern", iobj_id="o-clock-case")
     assert objects.get("o-clock-case").properties["state"] == "locked"
     assert "nothing happens" in _last_narrate().lower()
+
+
+async def test_bell_hears_of_the_gear_after_the_gossip_interval(village):
+    """SPEC 2026-09-26 criterion 7, on the canonical world: after a player
+    gives the escapement gear to Tace, Bell's dialogue context names the
+    player's deed after the authored gossip interval (20 minutes) and not
+    before; Tace knows at once."""
+    from daydream import dialogue
+
+    steps = [s for seg in PROLOGUE["segments"] for s in seg["commands"]]
+    upto = next(i for i, s in enumerate(steps) if s.get("cmd") == "give gear to tace")
+    run = walkthrough.Run(name="gossip")
+    worldclock.set_fake_now(PROLOGUE["clock"])
+    walkthrough.join(run, "A", "Wren")
+    for s in steps[:upto + 1]:
+        await walkthrough.run_step(run, {k: v for k, v in s.items() if k != "expect"})
+    wren = objects.get(run.actors["A"])
+    deed = "Wren carried the escapement gear home to Tace."
+    _, tace_ctx, _ = dialogue.build_prompt(wren, objects.get("t-tace"), "hi", "r-loft", [])
+    assert deed in tace_ctx
+    _, bell_ctx, _ = dialogue.build_prompt(wren, objects.get("t-bell"), "hi", "r-square", [])
+    assert deed not in bell_ctx
+    worldclock.advance(minutes=19)
+    _, bell_ctx, _ = dialogue.build_prompt(wren, objects.get("t-bell"), "hi", "r-square", [])
+    assert deed not in bell_ctx
+    worldclock.advance(minutes=2)
+    _, bell_ctx, _ = dialogue.build_prompt(wren, objects.get("t-bell"), "hi", "r-square", [])
+    assert deed in bell_ctx
