@@ -24,7 +24,7 @@
         "gives_mood": "drowsy",
         "declines_text": "The nap looks at what you're offering, yawns politely, and shakes its rumpled head. It wants something quieter than that.",
         "voice": {
-          "pronouns": "they/them",
+          "pronouns": "it/its",
           "role": "a guest: Pim's missing nap",
           "sheet": "Pim's Nap is a lost hour: the nap a boy named Pim was too excited to take on his seventh birthday. It is small, rumpled, and sleepy, and speaks very little, in the drowsy, simple words of a small child fighting sleep. It cannot settle without the quiet it came from, and it misses Pim without quite knowing how to say so.",
           "habits": [

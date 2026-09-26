@@ -1342,6 +1342,44 @@
       "cooldown_days": 2
     },
     {
+      "id": "extra-hour-leaves",
+      "at": [
+        "day",
+        "dusk"
+      ],
+      "room": "r-square",
+      "if": [
+        {
+          "arc": "extra-hour"
+        }
+      ],
+      "cooldown_days": 1,
+      "summary": "the Extra Hour's second shadow lags behind it in the square",
+      "variants": [
+        "In the square, the small figure in the autumn coat steps from one lantern's light to the next, and its second shadow follows a moment late, as if it had to be reminded.",
+        "A few fallen leaves blow across the cobbles from nowhere in particular. The Extra Hour gathers them up, one by one, and puts them back in its pockets."
+      ]
+    },
+    {
+      "id": "rain-wait-shower",
+      "at": [
+        "day",
+        "dusk"
+      ],
+      "room": "r-square",
+      "if": [
+        {
+          "arc": "rain-wait"
+        }
+      ],
+      "cooldown_days": 1,
+      "summary": "the little rain over the Rain-Wait freshens for a moment",
+      "variants": [
+        "Under one lantern in the square, the little rain over the Rain-Wait freshens for a moment, pattering on its striped awning like fingers on a table, and then settles again.",
+        "A moth takes shelter under the Rain-Wait's scrap of awning. The two of them stand together in the one-cobble rain, listening to nothing in particular."
+      ]
+    },
+    {
       "id": "summer-salt-breeze",
       "at": [
         "day",
@@ -1562,6 +1600,155 @@
     "no-shops": {
       "text": "The village has no shops, and nobody here bakes bread, keeps bees, or runs a mill.",
       "known_by": "all"
+    },
+    "extra-hour-here": {
+      "text": "A lost hour is staying in the Lantern Square: the Extra Hour, the hour that comes back when the clocks go back in autumn. It came to everyone at once, so nobody ever spent it. It casts two shadows, one for each time it happened, and it would like to be spent on purpose, by someone, just once.",
+      "known_by": [
+        "t-bell",
+        "t-tace",
+        "t-linden",
+        "t-sorrel",
+        "t-mott",
+        "t-umber",
+        "t-fen",
+        "t-quill"
+      ],
+      "if": [
+        {
+          "arc": "extra-hour"
+        }
+      ]
+    },
+    "extra-hour-turning-back": {
+      "text": "Tace can turn a small resting clock back one hour, so that an extra hour has a clock to happen in, but will not touch the great clock's hands for it.",
+      "known_by": [
+        "t-tace",
+        "t-bell"
+      ],
+      "if": [
+        {
+          "arc": "extra-hour"
+        }
+      ]
+    },
+    "extra-hour-linden": {
+      "text": "Linden has not sat down in years. She says that if there were ever an hour that wasn't anybody's, she might.",
+      "known_by": [
+        "t-linden",
+        "t-tace",
+        "t-bell"
+      ],
+      "if": [
+        {
+          "arc": "extra-hour"
+        }
+      ]
+    },
+    "extra-hour-caught-twice": {
+      "text": "Sorrel caught the Extra Hour twice on the Dusk Road: it came down, drifted back up, and came down again, once for each time it happened.",
+      "known_by": [
+        "t-sorrel",
+        "t-bell"
+      ],
+      "if": [
+        {
+          "arc": "extra-hour"
+        }
+      ]
+    },
+    "extra-hour-bell-sums": {
+      "text": "Bell has worked out, cheerfully, that one extra hour will not stretch from dusk to dawn.",
+      "known_by": [
+        "t-bell"
+      ],
+      "if": [
+        {
+          "arc": "extra-hour"
+        }
+      ]
+    },
+    "extra-hour-kept": {
+      "text": "The Extra Hour is kept in a jar on the lowest shelf of the Hour Cellar, labeled EVERYONE'S: HELP YOURSELF, so that anyone can reach it.",
+      "known_by": [
+        "t-umber",
+        "t-tace",
+        "t-bell",
+        "t-linden"
+      ],
+      "if": [
+        {
+          "ending": "extra-hour/everyones"
+        }
+      ]
+    },
+    "rain-wait-here": {
+      "text": "A lost hour is staying in the Lantern Square: the Rain-Wait, someone's long wait under an awning while the rain would not stop. A stranger sheltering beside it began a story, and the rain stopped before the end. It wants the end of the story, and wherever it stands it rains softly on one cobble.",
+      "known_by": [
+        "t-bell",
+        "t-tace",
+        "t-linden",
+        "t-sorrel",
+        "t-mott",
+        "t-umber",
+        "t-fen",
+        "t-quill"
+      ],
+      "if": [
+        {
+          "arc": "rain-wait"
+        }
+      ]
+    },
+    "rain-wait-fen": {
+      "text": "Fen keeps every kind of letter that was written and never sent; if the stranger ever wrote down the end of the Rain-Wait's story, it would have drifted into her pigeonholes.",
+      "known_by": [
+        "t-fen",
+        "t-bell"
+      ],
+      "if": [
+        {
+          "arc": "rain-wait"
+        }
+      ]
+    },
+    "rain-wait-sorrel": {
+      "text": "Sorrel caught the Rain-Wait on the Dusk Road, coming down in its own small shower. Sorrel says every rain ends one way or another, and is good at finishing things slowly.",
+      "known_by": [
+        "t-sorrel",
+        "t-bell"
+      ],
+      "if": [
+        {
+          "arc": "rain-wait"
+        }
+      ]
+    },
+    "rain-wait-window-seat": {
+      "text": "The Rain-Wait lives in the window seat at the Waiting House now, and on rainy evenings it tells the lighthouse story to new guests, all the way to the end, Sorrel's way.",
+      "known_by": [
+        "t-linden",
+        "t-sorrel",
+        "t-bell",
+        "t-fen"
+      ],
+      "if": [
+        {
+          "ending": "rain-wait/stays"
+        }
+      ]
+    },
+    "rain-wait-reeds": {
+      "text": "The Rain-Wait sits among the reeds at the Slow River's edge, listening to the river's long word, and does not mind that it never ends.",
+      "known_by": [
+        "t-sorrel",
+        "t-bell",
+        "t-umber"
+      ],
+      "if": [
+        {
+          "ending": "rain-wait/river"
+        }
+      ]
     },
     "summer-arrived": {
       "text": "A small sun-bleached guest has come down with the dusk. It smells of salt, has sand in its cuffs, and has kept only one word of its name: Marram. It waits in the Lantern Square.",
@@ -2048,6 +2235,528 @@
               "target_id": "t-pims-nap",
               "key": "mood",
               "value": "asleep in a jar"
+            }
+          ]
+        }
+      }
+    },
+    "extra-hour": {
+      "title": "The Extra Hour",
+      "kind": "guest",
+      "guest": "t-extra-hour",
+      "opens": "arrival",
+      "summary": "A small figure with two shadows: the hour that comes back when the clocks go back in autumn. It came to everyone at once, so no one ever spent it; it would like, just once, to be spent on purpose, by someone.",
+      "arrival": {
+        "room": "r-square",
+        "earliest_day": 2,
+        "weight": 1,
+        "text": "Something drifts down through the dusk and seems to arrive twice: once, and then, a breath later, again. It settles on the cobbles as a small figure in an autumn coat, smelling of woodsmoke and fallen leaves, and under the lanterns it casts two shadows, one a little behind the other."
+      },
+      "beats": {
+        "bell-shadows": {
+          "npc": "t-bell",
+          "topic": "the hour with two shadows",
+          "topic_aliases": [
+            "two shadows",
+            "the two shadows",
+            "the one with two shadows",
+            "the extra hour",
+            "extra hour",
+            "the autumn hour",
+            "the figure in the autumn coat",
+            "the hour that came back"
+          ],
+          "hint": "the player asks Bell about the small figure with two shadows",
+          "text": "Bell crouches to look at the cobbles and gives a soft whistle. 'Two shadows! That's the hour that comes back when the clocks go back in autumn. It comes to everybody at once, so nobody ever really spends it.' They grin, a little crooked. 'I'd stay up for a dawn with it, only one hour won't stretch from dusk to morning; I did the sums. Ask Tace about turning the clocks back.'"
+        },
+        "hear-autumn": {
+          "npc": "t-extra-hour",
+          "topic": "the night the clocks went back",
+          "per_player": true,
+          "topic_aliases": [
+            "the night",
+            "that night",
+            "autumn",
+            "the clocks going back",
+            "the clocks",
+            "everyone",
+            "home"
+          ],
+          "hint": "the player asks the Extra Hour about the night the clocks went back",
+          "text": "The Extra Hour turns up its coat collar. 'The clocks went back, and there I was,' it says. 'For everyone. Everyone, all at once.' A leaf slips from its pocket, and it watches the leaf fall. 'Most of them slept right through. Just once, I'd like someone to spend me on purpose.'"
+        },
+        "tace-turnback": {
+          "npc": "t-tace",
+          "topic": "turning the clocks back",
+          "topic_aliases": [
+            "turning clocks back",
+            "turning back the clocks",
+            "setting the clocks back",
+            "the clocks going back",
+            "the extra hour",
+            "extra hour",
+            "the hour with two shadows",
+            "two shadows"
+          ],
+          "after": [
+            "bell-shadows"
+          ],
+          "hint": "the player asks Tace about turning the clocks back, for the Extra Hour",
+          "text": "Tace glances toward the tower, and for a moment their hands go still. 'Not the great clock,' they say quietly. 'That one has been held back enough.' Instead they lift a small resting clock from the shelf, open its glass with a thumbnail, and turn the hands back one hour. 'An hour needs a clock to happen in. Wind it where you mean to spend it, friend, or give it to someone who never has an hour to spare.'",
+          "do": [
+            {
+              "kind": "move_object",
+              "object_id": "o-extra-hour-clock",
+              "dest_id": "@actor"
+            },
+            {
+              "kind": "add_fact",
+              "id": "extra-hour-clock",
+              "text": "Tace turned a small resting clock back one hour and gave it to {actor}, so the Extra Hour would have a clock to be spent in.",
+              "known_by": [
+                "t-tace"
+              ],
+              "spread": [
+                {
+                  "to": [
+                    "t-bell",
+                    "t-linden"
+                  ],
+                  "after_minutes": 30
+                }
+              ]
+            }
+          ]
+        },
+        "linden-sit": {
+          "npc": "t-linden",
+          "topic": "sitting down",
+          "topic_aliases": [
+            "sit down",
+            "a sit-down",
+            "sitting",
+            "an hour to yourself",
+            "time to yourself",
+            "a spare hour",
+            "the extra hour",
+            "extra hour",
+            "the hour with two shadows"
+          ],
+          "after": [
+            "bell-shadows"
+          ],
+          "hint": "the player asks Linden about sitting down, or about an hour to herself",
+          "text": "Linden laughs so suddenly she nearly drops the tea towel. 'Sit down? Oh, lamb, I haven't sat down since the kettle was new.' She glances at the softest armchair the way you'd glance at an old friend across a crowded room. 'If there were ever an hour that wasn't anybody's, I suppose I might.'"
+        }
+      },
+      "endings": {
+        "sat-down": {
+          "summary": "given to Linden, who sits down for the whole of it, on purpose",
+          "text": "Linden turns the little clock over in her hands, then sits down in the softest armchair, slowly, as if remembering how, and winds it. For one whole hour she does nothing at all, on purpose. The kettle mutters on without her, her tea goes cold in her hands, and out in the square the Extra Hour is spent at last, and goes home. When the clock catches up with itself, Linden presses her cup into your hands. 'Stone cold,' she says, delighted. 'First one ever in this house. You keep it, pet.'",
+          "ledger": "{helpers} gave the Extra Hour to Linden, who sat down for the whole of it, on purpose.",
+          "do": [
+            {
+              "kind": "move_object",
+              "object_id": "o-extra-hour-clock",
+              "dest_id": "t-linden"
+            },
+            {
+              "kind": "move_toon",
+              "toon_id": "t-extra-hour",
+              "room_id": null
+            },
+            {
+              "kind": "narrate",
+              "room": "r-square",
+              "text": "Under the lanterns in the square, the small figure in the autumn coat looks up as if someone has called its name. Its two shadows slip together into one, and then it is simply gone, the way an extra hour is gone by morning."
+            },
+            {
+              "kind": "spawn_object",
+              "name": "cold teacup",
+              "location_id": "@actor",
+              "seed": "a plain white teacup of bergamot tea gone perfectly cold, the first cup ever to go cold in the Waiting House; it smells of one long, unhurried hour",
+              "aliases": [
+                "teacup",
+                "cold tea",
+                "cup of cold tea",
+                "linden's cup"
+              ],
+              "generated_by": "extra-hour:sat-down"
+            },
+            {
+              "kind": "grant_collectible"
+            },
+            {
+              "kind": "adjust_rel",
+              "npc": "t-linden",
+              "delta": 2
+            },
+            {
+              "kind": "add_fact",
+              "id": "extra-hour-sat-down",
+              "text": "{actor} gave the Extra Hour to Linden, and Linden sat down in the softest armchair for one whole hour, on purpose, and let her tea go cold.",
+              "known_by": [
+                "t-linden"
+              ],
+              "spread": [
+                {
+                  "to": [
+                    "t-bell",
+                    "t-tace"
+                  ],
+                  "after_minutes": 30
+                },
+                {
+                  "to": "all",
+                  "after_minutes": 120
+                }
+              ]
+            }
+          ]
+        },
+        "hilltop": {
+          "summary": "spent on purpose by the dreamer, on the bench at the top of the Hill of Long Shadows",
+          "text": "You sit on the weathered bench, facing east, and wind the turned-back clock. The Extra Hour arrives the way someone sits down beside you: you feel it more than see it, two soft shadows settling in the grass. For one whole hour, on purpose, you watch the village keep its time below you, the lanterns and the river's slow shine and the patient face of the tower, and nobody needs anything from you at all. When the clock catches up with itself, the bench beside you is empty and warm, and a dreamseed lies in the grass where the two shadows were.",
+          "ledger": "{helpers} spent the Extra Hour on purpose, on the bench at the top of the Hill of Long Shadows.",
+          "do": [
+            {
+              "kind": "move_toon",
+              "toon_id": "t-extra-hour",
+              "room_id": null
+            },
+            {
+              "kind": "narrate",
+              "room": "r-square",
+              "text": "Under the lanterns in the square, the small figure in the autumn coat looks up as if someone far off has called its name. Its two shadows slip together into one, and then it is simply gone, the way an extra hour is gone by morning."
+            },
+            {
+              "kind": "spawn_template",
+              "template": "dreamseed",
+              "location_id": "@room",
+              "generated_by": "extra-hour:hilltop"
+            },
+            {
+              "kind": "add_fact",
+              "id": "extra-hour-hilltop",
+              "text": "{actor} spent the Extra Hour on purpose, sitting on the bench on the Hill of Long Shadows, facing east.",
+              "known_by": [
+                "t-sorrel"
+              ],
+              "spread": [
+                {
+                  "to": [
+                    "t-bell",
+                    "t-tace"
+                  ],
+                  "after_minutes": 30
+                },
+                {
+                  "to": "all",
+                  "after_minutes": 120
+                }
+              ]
+            }
+          ]
+        },
+        "everyones": {
+          "summary": "unspent for three days, the Extra Hour is kept in a jar on the lowest shelf of the Hour Cellar, labeled for everyone",
+          "after_days": 3,
+          "room": "r-cellar",
+          "text": "In the Hour Cellar, Umber finds a jar on the lowest shelf that wasn't there yesterday. Inside, curled in its autumn coat with two shadows folded beneath it, the Extra Hour is still waiting: kept, if not spent. Umber considers it a long while, then writes the label in her square hand and turns it where anyone can read it: THE EXTRA HOUR. AUTUMN. EVERYONE'S: HELP YOURSELF.",
+          "ledger": "The Extra Hour was not spent. Umber keeps it in a jar on the lowest shelf of the Hour Cellar, labeled for everyone.",
+          "do": [
+            {
+              "kind": "move_toon",
+              "toon_id": "t-extra-hour",
+              "room_id": "r-cellar"
+            },
+            {
+              "kind": "set_property",
+              "target_id": "t-extra-hour",
+              "key": "presence_text",
+              "value": "On the lowest shelf, where anyone can reach, a jar labeled EVERYONE'S: HELP YOURSELF holds the Extra Hour, curled in its autumn coat above two folded shadows."
+            },
+            {
+              "kind": "set_property",
+              "target_id": "t-extra-hour",
+              "key": "mood",
+              "value": "kept in a jar"
+            }
+          ]
+        }
+      }
+    },
+    "rain-wait": {
+      "title": "The Rain-Wait",
+      "kind": "guest",
+      "guest": "t-rain-wait",
+      "opens": "arrival",
+      "summary": "A small damp figure under a scrap of striped awning, with rain falling on one cobble only: the long wait out of a downpour, when a stranger began a story and the rain stopped before the end. It wants the end of the story.",
+      "arrival": {
+        "room": "r-square",
+        "earliest_day": 3,
+        "weight": 1,
+        "text": "A soft patter comes down with the dusk, and under the nearest lantern it begins to rain on one cobble only. In the middle of the little shower stands a small damp figure holding a scrap of striped awning over its head, listening hard, as if someone beside it has only just stopped talking."
+      },
+      "beats": {
+        "bell-rain": {
+          "npc": "t-bell",
+          "topic": "the rain on one cobble",
+          "topic_aliases": [
+            "the little rain",
+            "the rain",
+            "one cobble",
+            "the rain-wait",
+            "rain-wait",
+            "the damp figure",
+            "the one under the awning",
+            "the puddle"
+          ],
+          "hint": "the player asks Bell about the little rain falling on one cobble, or the damp figure under it",
+          "text": "Bell holds a hand under the little shower and laughs. 'Raining on exactly one cobble! Forty-one lanterns, and I've never seen that.' They lower their voice. 'It's a rain-wait: someone's long wait under an awning, left in the middle of a story. Fen keeps everything that never got finished, and Sorrel could finish anything, given enough sky.'"
+        },
+        "hear-beginning": {
+          "npc": "t-rain-wait",
+          "topic": "the story",
+          "per_player": true,
+          "topic_aliases": [
+            "story",
+            "your story",
+            "the stranger's story",
+            "the stranger",
+            "the awning",
+            "the rain",
+            "what happened",
+            "and then",
+            "the lighthouse"
+          ],
+          "hint": "the player asks the Rain-Wait about its story, the stranger, or the rain",
+          "text": "The Rain-Wait tilts its scrap of awning back and tells it in someone else's voice, low and slow: 'Once there was a lighthouse on a hill, miles and miles from any sea. Every night its keeper climbed the stair and lit the lamp anyway, and every night, nothing came.' A drop falls from the awning's edge. 'Then the rain stopped,' it says in its own small voice, 'and they had to go. They said they'd write me the end. And then? And then what?'"
+        },
+        "fen-letter": {
+          "npc": "t-fen",
+          "topic": "the end of a story",
+          "topic_aliases": [
+            "the end of the story",
+            "the ending",
+            "an ending",
+            "a story's end",
+            "the stranger's letter",
+            "a letter for the rain-wait",
+            "the rain-wait",
+            "rain-wait",
+            "the lighthouse",
+            "the one under the awning"
+          ],
+          "after": [
+            "hear-beginning"
+          ],
+          "hint": "the player asks Fen about the end of the Rain-Wait's story, which the stranger promised to write down",
+          "text": "Fen stops with a letter halfway into its pigeonhole. 'The end of a story, promised to someone under an awning?' She is already up the little ladder, running one finger along the top row. 'Here. Rain-spotted, sealed, and never posted: it drifted in the night after a downpour, and I've kept it dry ever since.' She sets a soft envelope in your hands. 'First-class delivery, if you please. Read it to them, not to me.'",
+          "do": [
+            {
+              "kind": "move_object",
+              "object_id": "o-rain-wait-letter",
+              "dest_id": "@actor"
+            },
+            {
+              "kind": "add_fact",
+              "id": "rain-wait-letter",
+              "text": "{actor} collected the Rain-Wait's letter from Fen's pigeonholes: the end of its story, written long ago by the stranger under the awning and never posted.",
+              "known_by": [
+                "t-fen"
+              ],
+              "spread": [
+                {
+                  "to": [
+                    "t-bell",
+                    "t-linden"
+                  ],
+                  "after_minutes": 30
+                }
+              ]
+            }
+          ]
+        },
+        "sorrel-finishes": {
+          "npc": "t-sorrel",
+          "topic": "the lighthouse",
+          "per_player": true,
+          "topic_aliases": [
+            "the lighthouse story",
+            "the lighthouse on the hill",
+            "the rain-wait's story",
+            "the story",
+            "a story",
+            "the rain-wait",
+            "rain-wait",
+            "an ending",
+            "the ending",
+            "the end of the story"
+          ],
+          "after": [
+            "hear-beginning"
+          ],
+          "hint": "the player tells Sorrel the beginning of the Rain-Wait's lighthouse story, and Sorrel finishes it",
+          "text": "Sorrel hears the whole beginning without a word, then studies the sky for a long, comfortable while. 'Clearing by morning, I'd say,' they offer at last. 'One wet night the keeper stops climbing the stair to look, and stands still in the doorway instead, and the thing she's waited for all those years comes up the hill and finds her there.' They lean on the net pole. 'That's how it goes, mostly. You could tell the Rain-Wait that one, if the real end never turns up.'"
+        },
+        "told-sorrels-end": {
+          "npc": "t-rain-wait",
+          "topic": "Sorrel's ending",
+          "topic_aliases": [
+            "sorrel's end",
+            "sorrel's story",
+            "sorrel's version",
+            "the end sorrel told",
+            "a new ending",
+            "the new ending",
+            "another ending",
+            "the doorway"
+          ],
+          "after": [
+            "sorrel-finishes"
+          ],
+          "hint": "the player tells the Rain-Wait the ending Sorrel made up for its story",
+          "text": "You tell it Sorrel's way: the keeper standing still in the doorway, and the long-awaited thing coming up the hill to find her. The Rain-Wait listens with its whole damp self. 'That might not be the stranger's ending,' it says slowly. Then its face lights like a lantern. 'But I like it. I like it so much I'd like to tell it to somebody.'",
+          "do": [
+            {
+              "kind": "close_arc",
+              "arc": "rain-wait",
+              "ending": "stays"
+            }
+          ]
+        }
+      },
+      "endings": {
+        "the-end": {
+          "summary": "the stranger's own ending, found in Fen's pigeonholes and read aloud; the Rain-Wait goes home",
+          "text": "The Rain-Wait lets out a long, slow breath. All around it the little rain stops, properly this time, the way rain stops when it has finished rather than when it has been interrupted. It folds its scrap of awning, tucks it under one arm, smiles at you, and is gone, home at last. Somewhere in the waking world, someone who once waited out a downpour under an awning suddenly knows how the story ends. On the dry cobble where it stood, a dreamseed glows.",
+          "ledger": "{helpers} read the Rain-Wait the end of its story, from a letter that was never posted, and it went home dry.",
+          "do": [
+            {
+              "kind": "move_toon",
+              "toon_id": "t-rain-wait",
+              "room_id": null
+            },
+            {
+              "kind": "spawn_template",
+              "template": "dreamseed",
+              "location_id": "@room",
+              "generated_by": "rain-wait:the-end"
+            },
+            {
+              "kind": "adjust_rel",
+              "npc": "t-fen",
+              "delta": 2
+            },
+            {
+              "kind": "add_fact",
+              "id": "rain-wait-the-end",
+              "text": "{actor} read the Rain-Wait the end of its story, from the stranger's letter that was never posted, and the Rain-Wait went home dry.",
+              "known_by": [
+                "t-bell"
+              ],
+              "spread": [
+                {
+                  "to": [
+                    "t-fen",
+                    "t-sorrel",
+                    "t-linden"
+                  ],
+                  "after_minutes": 30
+                },
+                {
+                  "to": "all",
+                  "after_minutes": 120
+                }
+              ]
+            }
+          ]
+        },
+        "stays": {
+          "summary": "given Sorrel's made-up ending instead, the Rain-Wait chooses to stay at the Waiting House and tell it on rainy evenings",
+          "text": "The Rain-Wait folds its scrap of awning and decides, then and there, not to go home just yet. It will take the window seat at the Waiting House, where the rain sounds best on the glass, and on wet evenings it will tell the lighthouse story to every new guest, all the way to the end, Sorrel's way. Before it goes, it tips one raindrop from the awning's edge into your palm, where it hangs, not quite falling.",
+          "ledger": "The Rain-Wait heard Sorrel's ending from {helpers}, and chose to stay at the Waiting House to tell it on rainy evenings.",
+          "do": [
+            {
+              "kind": "move_toon",
+              "toon_id": "t-rain-wait",
+              "room_id": "r-waiting",
+              "arrive_text": "Someone small and damp comes in out of its own little shower, shakes a striped awning on the step, and settles into the window seat as if it has always belonged there."
+            },
+            {
+              "kind": "set_property",
+              "target_id": "t-rain-wait",
+              "key": "presence_text",
+              "value": "In the window seat, the Rain-Wait sits with its striped awning folded on its knees, ready to tell the lighthouse story to anyone who'll listen, all the way to the end."
+            },
+            {
+              "kind": "set_property",
+              "target_id": "t-rain-wait",
+              "key": "mood",
+              "value": "content"
+            },
+            {
+              "kind": "spawn_object",
+              "name": "kept raindrop",
+              "location_id": "@actor",
+              "seed": "a single raindrop that never quite falls, hanging a finger's width above your palm; hold it to your ear and you can hear, very faintly, a story being told all the way to the end",
+              "aliases": [
+                "raindrop",
+                "drop"
+              ],
+              "generated_by": "rain-wait:stays"
+            },
+            {
+              "kind": "grant_collectible",
+              "id": "m-porch-rain"
+            },
+            {
+              "kind": "add_fact",
+              "id": "rain-wait-stays",
+              "text": "{actor} told the Rain-Wait Sorrel's ending to its lighthouse story, and the Rain-Wait chose to stay at the Waiting House to tell it to new guests on rainy evenings.",
+              "known_by": [
+                "t-sorrel"
+              ],
+              "spread": [
+                {
+                  "to": [
+                    "t-linden",
+                    "t-bell"
+                  ],
+                  "after_minutes": 30
+                },
+                {
+                  "to": "all",
+                  "after_minutes": 120
+                }
+              ]
+            }
+          ]
+        },
+        "river": {
+          "summary": "unhelped for four days, the Rain-Wait settles among the reeds by the Slow River, listening to a story that never ends",
+          "after_days": 4,
+          "room": "r-river",
+          "text": "Down at the Slow River's edge, the Rain-Wait has found a place among the reeds. The river says its one long word over and over and never reaches the end of it, and the Rain-Wait, it turns out, does not mind at all. It sits with its awning folded on its knees and listens, the way you listen to a story you hope will never end: kept, if not home.",
+          "ledger": "The Rain-Wait was not sent home. It sits among the reeds at the Slow River's edge, listening to a story that never ends, and does not mind.",
+          "do": [
+            {
+              "kind": "move_toon",
+              "toon_id": "t-rain-wait",
+              "room_id": "r-river"
+            },
+            {
+              "kind": "set_property",
+              "target_id": "t-rain-wait",
+              "key": "presence_text",
+              "value": "Among the reeds at the water's edge sits the Rain-Wait, its striped awning folded on its knees, listening to the river as if it were a story that never ends."
+            },
+            {
+              "kind": "set_property",
+              "target_id": "t-rain-wait",
+              "key": "mood",
+              "value": "listening to the river"
             }
           ]
         }
@@ -5047,7 +5756,7 @@
         "gives_mood": "drowsy",
         "declines_text": "The nap looks at what you're offering, yawns politely, and shakes its rumpled head. It wants something quieter than that.",
         "voice": {
-          "pronouns": "they/them",
+          "pronouns": "it/its",
           "role": "a guest: Pim's missing nap",
           "sheet": "Pim's Nap is a lost hour: the nap a boy named Pim was too excited to take on his seventh birthday. It is small, rumpled, and sleepy, and speaks very little, in the drowsy, simple words of a small child fighting sleep. It cannot settle without the quiet it came from, and it misses Pim without quite knowing how to say so.",
           "habits": [
@@ -5067,6 +5776,213 @@
           ],
           "never": [
             "never uses long words",
+            "never names anyone in the village who is not a resident or a guest"
+          ]
+        }
+      }
+    },
+    {
+      "id": "t-extra-hour",
+      "name": "Extra Hour",
+      "slot": 121,
+      "room": "offstage",
+      "mood": "patient",
+      "seed": "a lost hour: the one that comes back when the clocks go back in autumn; it arrived for everyone at once, so nobody ever quite spent it, and it would like, just once, to be spent on purpose",
+      "appearance_seed": "a small quiet figure in a too-big autumn coat the color of one o'clock in the morning, pockets stuffed with fallen leaves, a little clock-face brooch with its hands turned back, and two faint shadows falling behind it in the lamplight, one a little behind the other",
+      "presence_text": "A small figure in an autumn coat stands very still under the lanterns, smelling of woodsmoke and fallen leaves. It casts two shadows, one a little behind the other.",
+      "aliases": [
+        "extra hour",
+        "hour",
+        "autumn hour",
+        "figure in the autumn coat",
+        "figure with two shadows"
+      ],
+      "properties": {
+        "declines_text": "The Extra Hour looks at what you're offering and shakes its head, gently, twice. It doesn't want to be given anything. It wants to be spent.",
+        "topics": [
+          {
+            "label": "the two shadows",
+            "aliases": [
+              "two shadows",
+              "shadows",
+              "your shadows",
+              "your two shadows"
+            ],
+            "variants": [
+              "Glancing back at its two shadows, one a little behind the other, the Extra Hour says, 'One for each time. Each time.'",
+              "Two shadows follow the Extra Hour as it steps sideways, the second a moment late. 'It happened twice,' it says, as if apologizing. 'I happened twice.'"
+            ]
+          },
+          {
+            "label": "the night the clocks went back",
+            "aliases": [
+              "the night",
+              "that night",
+              "autumn",
+              "the clocks going back",
+              "home"
+            ],
+            "if": [
+              {
+                "arc": "extra-hour"
+              }
+            ],
+            "text": "A fallen leaf turns over and over in the Extra Hour's fingers. 'Everyone had me,' it says softly. 'Nobody spent me. Not on purpose. Not on purpose.'"
+          },
+          {
+            "label": "the jar",
+            "aliases": [
+              "jar",
+              "your jar",
+              "the label",
+              "label"
+            ],
+            "if": [
+              {
+                "ending": "extra-hour/everyones"
+              }
+            ],
+            "text": "The Extra Hour taps the glass from the inside, very gently, and reads its own label upside down. 'Everyone's,' it says. 'Anyone can reach me here. Anyone.'"
+          }
+        ],
+        "voice": {
+          "pronouns": "it/its",
+          "role": "a guest: the Extra Hour, the hour that comes back when the clocks go back in autumn",
+          "sheet": "The Extra Hour is a lost hour: the one that comes back when the clocks go back in autumn, one o'clock in the morning happening twice. It arrived for everyone at once, so nobody ever quite spent it; most people slept straight through. It is small, quiet, and patient, smells of woodsmoke and fallen leaves, and casts two shadows, one for each time it happened. It speaks rarely and softly, in the hushed voice of the small hours, and often says a thing twice, the second time a little surer. It never says 'mine': it belonged to everyone. It would like, just once, to be spent on purpose, by someone.",
+          "habits": [
+            "says a word or a phrase twice, the second time a little surer",
+            "glances back at its two shadows",
+            "turns a fallen leaf over in its fingers while it thinks"
+          ],
+          "samples": [
+            "'Everyone had me,' it says. 'Everyone. All at once.'",
+            "The Extra Hour glances back at its two shadows. 'One for each time. Each time.'",
+            "'They slept right through me. It's all right. It's all right.'",
+            "It turns a leaf over in its fingers. 'On purpose. Just once, on purpose.'",
+            "'It was very dark, and very quiet, and then it was the same dark again.'"
+          ],
+          "wants": [
+            "to be spent on purpose, by someone, just once",
+            "not to be put by for later"
+          ],
+          "never": [
+            "never says 'mine'",
+            "never uses long words",
+            "never names anyone in the village who is not a resident or a guest"
+          ]
+        }
+      }
+    },
+    {
+      "id": "t-rain-wait",
+      "name": "Rain-Wait",
+      "slot": 122,
+      "room": "offstage",
+      "mood": "listening",
+      "seed": "a lost hour: the long wait under an awning while the rain would not stop, when a stranger began a story and the rain stopped before the end; it wants the end of the story",
+      "appearance_seed": "a small damp figure holding a scrap of striped canvas awning over its head like an umbrella, rain dripping softly from the scalloped edge, coat collar turned up, eyes wide and listening, a little puddle always at its feet",
+      "presence_text": "Under the nearest lantern it is raining on one cobble only. A small damp figure stands in the patter, holding a scrap of striped awning over its head, listening hard to a voice that has stopped.",
+      "aliases": [
+        "rain-wait",
+        "rain wait",
+        "rainwait",
+        "damp figure",
+        "figure under the awning"
+      ],
+      "properties": {
+        "declines_text": "The Rain-Wait looks at what you're holding, politely, the way you listen to the wrong story. It shakes its head, and a few drops fly from the awning. 'That's not the end,' it says.",
+        "topics": [
+          {
+            "label": "the story",
+            "aliases": [
+              "story",
+              "your story",
+              "the lighthouse",
+              "the stranger's story",
+              "the stranger"
+            ],
+            "if": [
+              {
+                "arc": "rain-wait"
+              }
+            ],
+            "variants": [
+              "'...and every night, nothing came,' the Rain-Wait says again, word for word, and waits under its dripping awning. 'And then?'",
+              "Very quietly, the Rain-Wait tells the beginning again, the lighthouse and the lamp and the empty nights, and stops at exactly the same place. 'That's where the rain stopped,' it says."
+            ]
+          },
+          {
+            "label": "the story",
+            "aliases": [
+              "story",
+              "your story",
+              "the lighthouse",
+              "sorrel's ending"
+            ],
+            "if": [
+              {
+                "ending": "rain-wait/stays"
+              }
+            ],
+            "text": "The Rain-Wait brightens and tells you the whole of it: the lighthouse and the lamp and the empty nights, and then the keeper standing still in the doorway while the long-awaited thing comes up the hill to find her. 'Sorrel's way,' it says proudly. 'The end.'"
+          },
+          {
+            "label": "the rain",
+            "aliases": [
+              "rain",
+              "the awning",
+              "awning",
+              "your awning",
+              "the little rain"
+            ],
+            "if": [
+              {
+                "arc": "rain-wait"
+              }
+            ],
+            "variants": [
+              "A small hand comes out past the awning's edge to test the drops. 'Still raining,' the Rain-Wait says, pleased. 'Good. Stories go better in rain.'",
+              "Water runs off the back of the striped awning as the Rain-Wait tips it. 'It rained so hard, everybody squeezed in together,' it says. 'That's how stories start.'"
+            ]
+          },
+          {
+            "label": "the river",
+            "aliases": [
+              "river",
+              "the reeds",
+              "the long word"
+            ],
+            "if": [
+              {
+                "ending": "rain-wait/river"
+              }
+            ],
+            "text": "Among the reeds, the Rain-Wait tilts its head toward the water. 'It never gets to the end,' it says, perfectly content. 'Never. I could listen all night.'"
+          }
+        ],
+        "voice": {
+          "pronouns": "it/its",
+          "role": "a guest: the Rain-Wait, a long wait under an awning that never heard the end of its story",
+          "sheet": "The Rain-Wait is a lost hour: the long wait under an awning somewhere in the waking world, while the rain would not stop. A stranger sheltering beside it began to tell a story about a lighthouse, and the rain stopped before the end, and the stranger went on their way. It is small and damp and holds a scrap of striped awning over its head; wherever it stands, it rains softly on one cobble. It speaks in the attentive voice of someone listening to a story, remembers every word it heard up to the stopping, and asks 'and then?' It wants the end of the story.",
+          "habits": [
+            "asks 'and then?' whenever anyone pauses",
+            "holds out a hand to check whether it is still raining",
+            "repeats the last line of the story it heard, word for word"
+          ],
+          "samples": [
+            "'And then?' the Rain-Wait asks. 'And then what?'",
+            "The Rain-Wait holds a hand out past the awning's edge. 'Still raining. Good. Stories go better in rain.'",
+            "'Every night, nothing came,' it says softly. 'That's where it stopped. Right there.'",
+            "It tips the awning so the drops run off the back. 'The stranger had a nice voice. Like a kettle nearly boiling.'",
+            "'I don't mind waiting,' the Rain-Wait says. 'I'm made of it.'"
+          ],
+          "wants": [
+            "the end of the lighthouse story",
+            "to hear a story told all the way through, in the rain"
+          ],
+          "never": [
+            "never makes up the ending itself",
+            "never names the stranger",
             "never names anyone in the village who is not a resident or a guest"
           ]
         }
@@ -5617,6 +6533,294 @@
       "seed": "a weathered wooden bench facing east, its slats worn smooth; someone has carved a tiny sun into one arm, and a lantern into the other",
       "aliases": [
         "bench"
+      ]
+    },
+    {
+      "id": "o-extra-hour-clock",
+      "name": "turned-back clock",
+      "location": "offstage",
+      "seed": "a small resting clock of dark brass, no bigger than a teacup, its hands turned back exactly one hour; it ticks as if it has all the time in the world, which, just now, it does",
+      "aliases": [
+        "turned back clock",
+        "back-turned clock",
+        "autumn clock"
+      ],
+      "verbs": [
+        "wind"
+      ],
+      "properties": {
+        "windable": true
+      },
+      "rules": [
+        {
+          "on": "wind",
+          "if": [
+            {
+              "arc": "extra-hour"
+            },
+            {
+              "in": "r-hill"
+            }
+          ],
+          "do": [
+            {
+              "kind": "close_arc",
+              "arc": "extra-hour",
+              "ending": "hilltop"
+            }
+          ]
+        },
+        {
+          "on": "wind",
+          "if": [
+            {
+              "arc": "extra-hour"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "variants": [
+                "You turn the little key. The turned-back clock gives one tick, then waits, politely, the way an hour waits to be chosen. Not here, it seems, and not by accident: somewhere on purpose, or for someone who never has an hour to spare.",
+                "You wind the turned-back clock. It ticks once, considers the room, and holds its breath. It would rather be spent somewhere on purpose, or given to someone who never sits down."
+              ]
+            }
+          ]
+        },
+        {
+          "on": "wind",
+          "if": [
+            {
+              "ending": "extra-hour/everyones"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "You wind the turned-back clock. It ticks, and far below, in the Hour Cellar, a jar on the lowest shelf ticks softly back."
+            }
+          ]
+        },
+        {
+          "on": "wind",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "variants": [
+                "The turned-back clock ticks on, an ordinary small clock now. Its hour has been spent, and it seems glad of it.",
+                "You wind the turned-back clock. It keeps a plain, contented time now, like a clock whose one hour was well spent."
+              ]
+            }
+          ]
+        },
+        {
+          "on": "give",
+          "if": [
+            {
+              "iobj": "t-linden"
+            },
+            {
+              "arc": "extra-hour"
+            },
+            {
+              "beat": "extra-hour/linden-sit"
+            }
+          ],
+          "do": [
+            {
+              "kind": "close_arc",
+              "arc": "extra-hour",
+              "ending": "sat-down"
+            }
+          ]
+        },
+        {
+          "on": "give",
+          "if": [
+            {
+              "iobj": "t-linden"
+            },
+            {
+              "arc": "extra-hour"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "text": "'A whole hour?' Linden weighs the little clock in her palm, laughing. 'Whatever would I do with it, lamb? I'd only put the kettle on.' She presses it back into your hands. 'Ask me another time, when I'm sitting down. Which is never.'"
+            }
+          ]
+        },
+        {
+          "on": "give",
+          "if": [
+            {
+              "iobj": "t-extra-hour"
+            },
+            {
+              "arc": "extra-hour"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "text": "The Extra Hour looks at the clock, then up at you, and folds your fingers gently back around it. 'Not to keep,' it says. 'To spend. To spend.'"
+            }
+          ]
+        },
+        {
+          "on": "give",
+          "if": [
+            {
+              "iobj": "t-bell"
+            },
+            {
+              "arc": "extra-hour"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "text": "Bell laughs and holds up both sooty hands. 'Not me! One hour won't get me from dusk to dawn; I did the sums twice.' They tip their head down the lane. 'Give it to someone who never sits down. You know who I mean.'"
+            }
+          ]
+        },
+        {
+          "on": "give",
+          "if": [
+            {
+              "iobj": "t-tace"
+            },
+            {
+              "arc": "extra-hour"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "text": "Tace closes your fingers back over the little clock. 'I only turned it back, friend,' they say. 'The spending is yours to choose.'"
+            }
+          ]
+        },
+        {
+          "on": "give",
+          "if": [
+            {
+              "iobj": "t-umber"
+            },
+            {
+              "arc": "extra-hour"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "text": "Umber's hand drifts toward an empty jar and a fresh label, then stops. 'No,' she says, and hands the clock back. 'Wants spending, that one. Not keeping. Take it back up into the light.'"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "o-rain-wait-letter",
+      "name": "rain-spotted letter",
+      "location": "offstage",
+      "readable": true,
+      "seed": "a soft envelope spotted with old rain, addressed in a hurried hand: To the one under the awning",
+      "aliases": [
+        "letter",
+        "envelope",
+        "rain-spotted envelope",
+        "stranger's letter"
+      ],
+      "text": "To the one under the awning. I'm sorry: the rain stopped, and I had somewhere to be, and I have thought about you and the lighthouse ever since. Here is the end. One wet night, something did come up the hill, following the light: not a ship at all, but someone small and soaked who had lost their way. The keeper let them in and put the kettle on, and after that she never minded the empty nights, because now she knew what the light was for. The end. (It's a better ending with rain in it. I hope you had some.)",
+      "properties": {
+        "state": "sealed",
+        "state_text": {
+          "opened": "The seal is broken now. It has been read aloud, once, to the one it was meant for."
+        }
+      },
+      "rules": [
+        {
+          "on": "read",
+          "if": [
+            {
+              "arc": "rain-wait"
+            },
+            {
+              "present": "t-rain-wait"
+            }
+          ],
+          "do": [
+            {
+              "kind": "set_property",
+              "target_id": "o-rain-wait-letter",
+              "key": "state",
+              "value": "opened"
+            },
+            {
+              "kind": "narrate",
+              "text": "You break the old seal and read it aloud, while the Rain-Wait holds its scrap of awning over you both. 'To the one under the awning. I'm sorry: the rain stopped, and I had somewhere to be. Here is the end. One wet night, something did come up the hill, following the light: not a ship at all, but someone small and soaked who had lost their way. The keeper let them in and put the kettle on, and after that she never minded the empty nights, because now she knew what the light was for. The end.'"
+            },
+            {
+              "kind": "close_arc",
+              "arc": "rain-wait",
+              "ending": "the-end"
+            }
+          ]
+        },
+        {
+          "on": "read",
+          "if": [
+            {
+              "arc": "rain-wait"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "You turn the envelope over. To the one under the awning, it says, in a hurried hand, and the seal has never been broken. It isn't yours to open alone: it wants reading aloud, to the one it was meant for."
+            }
+          ]
+        },
+        {
+          "on": "give",
+          "if": [
+            {
+              "iobj": "t-rain-wait"
+            },
+            {
+              "arc": "rain-wait"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "text": "The Rain-Wait takes the envelope in both damp hands, turns it over once, and holds it back out to you, the way a child hands you a book at bedtime. 'Read it?' it asks. 'Out loud?'"
+            }
+          ]
+        },
+        {
+          "on": "give",
+          "if": [
+            {
+              "iobj": "t-fen"
+            },
+            {
+              "arc": "rain-wait"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "text": "Fen slides the envelope gently back across the counter. 'Oh no, that one's out for delivery, that is. Read it to the one it's for.'"
+            }
+          ]
+        }
       ]
     },
     {

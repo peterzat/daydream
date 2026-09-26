@@ -1,0 +1,639 @@
+{
+  "comment": "Guest arc 2 (canon section 7): The Extra Hour, the hour that comes back when the clocks go back in autumn; everyone's and no one's; it wants to be spent on purpose, by someone, just once. Crosses Bell's dawn as flavor only (Bell never sees one here). Endings: sat-down (given to Linden, who sits down for the whole of it; keepsake), hilltop (spent by the dreamer on the hill bench; dreamseed), everyones (unspent for three days, Umber jars it on the lowest shelf, for anyone).",
+  "toons": [
+    {
+      "id": "t-extra-hour",
+      "name": "Extra Hour",
+      "slot": 121,
+      "room": "offstage",
+      "mood": "patient",
+      "seed": "a lost hour: the one that comes back when the clocks go back in autumn; it arrived for everyone at once, so nobody ever quite spent it, and it would like, just once, to be spent on purpose",
+      "appearance_seed": "a small quiet figure in a too-big autumn coat the color of one o'clock in the morning, pockets stuffed with fallen leaves, a little clock-face brooch with its hands turned back, and two faint shadows falling behind it in the lamplight, one a little behind the other",
+      "presence_text": "A small figure in an autumn coat stands very still under the lanterns, smelling of woodsmoke and fallen leaves. It casts two shadows, one a little behind the other.",
+      "aliases": [
+        "extra hour",
+        "hour",
+        "autumn hour",
+        "figure in the autumn coat",
+        "figure with two shadows"
+      ],
+      "properties": {
+        "declines_text": "The Extra Hour looks at what you're offering and shakes its head, gently, twice. It doesn't want to be given anything. It wants to be spent.",
+        "topics": [
+          {
+            "label": "the two shadows",
+            "aliases": [
+              "two shadows",
+              "shadows",
+              "your shadows",
+              "your two shadows"
+            ],
+            "variants": [
+              "Glancing back at its two shadows, one a little behind the other, the Extra Hour says, 'One for each time. Each time.'",
+              "Two shadows follow the Extra Hour as it steps sideways, the second a moment late. 'It happened twice,' it says, as if apologizing. 'I happened twice.'"
+            ]
+          },
+          {
+            "label": "the night the clocks went back",
+            "aliases": [
+              "the night",
+              "that night",
+              "autumn",
+              "the clocks going back",
+              "home"
+            ],
+            "if": [
+              {
+                "arc": "extra-hour"
+              }
+            ],
+            "text": "A fallen leaf turns over and over in the Extra Hour's fingers. 'Everyone had me,' it says softly. 'Nobody spent me. Not on purpose. Not on purpose.'"
+          },
+          {
+            "label": "the jar",
+            "aliases": [
+              "jar",
+              "your jar",
+              "the label",
+              "label"
+            ],
+            "if": [
+              {
+                "ending": "extra-hour/everyones"
+              }
+            ],
+            "text": "The Extra Hour taps the glass from the inside, very gently, and reads its own label upside down. 'Everyone's,' it says. 'Anyone can reach me here. Anyone.'"
+          }
+        ],
+        "voice": {
+          "pronouns": "it/its",
+          "role": "a guest: the Extra Hour, the hour that comes back when the clocks go back in autumn",
+          "sheet": "The Extra Hour is a lost hour: the one that comes back when the clocks go back in autumn, one o'clock in the morning happening twice. It arrived for everyone at once, so nobody ever quite spent it; most people slept straight through. It is small, quiet, and patient, smells of woodsmoke and fallen leaves, and casts two shadows, one for each time it happened. It speaks rarely and softly, in the hushed voice of the small hours, and often says a thing twice, the second time a little surer. It never says 'mine': it belonged to everyone. It would like, just once, to be spent on purpose, by someone.",
+          "habits": [
+            "says a word or a phrase twice, the second time a little surer",
+            "glances back at its two shadows",
+            "turns a fallen leaf over in its fingers while it thinks"
+          ],
+          "samples": [
+            "'Everyone had me,' it says. 'Everyone. All at once.'",
+            "The Extra Hour glances back at its two shadows. 'One for each time. Each time.'",
+            "'They slept right through me. It's all right. It's all right.'",
+            "It turns a leaf over in its fingers. 'On purpose. Just once, on purpose.'",
+            "'It was very dark, and very quiet, and then it was the same dark again.'"
+          ],
+          "wants": [
+            "to be spent on purpose, by someone, just once",
+            "not to be put by for later"
+          ],
+          "never": [
+            "never says 'mine'",
+            "never uses long words",
+            "never names anyone in the village who is not a resident or a guest"
+          ]
+        }
+      }
+    }
+  ],
+  "things": [
+    {
+      "id": "o-extra-hour-clock",
+      "name": "turned-back clock",
+      "location": "offstage",
+      "seed": "a small resting clock of dark brass, no bigger than a teacup, its hands turned back exactly one hour; it ticks as if it has all the time in the world, which, just now, it does",
+      "aliases": [
+        "turned back clock",
+        "back-turned clock",
+        "autumn clock"
+      ],
+      "verbs": [
+        "wind"
+      ],
+      "properties": {
+        "windable": true
+      },
+      "rules": [
+        {
+          "on": "wind",
+          "if": [
+            {
+              "arc": "extra-hour"
+            },
+            {
+              "in": "r-hill"
+            }
+          ],
+          "do": [
+            {
+              "kind": "close_arc",
+              "arc": "extra-hour",
+              "ending": "hilltop"
+            }
+          ]
+        },
+        {
+          "on": "wind",
+          "if": [
+            {
+              "arc": "extra-hour"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "variants": [
+                "You turn the little key. The turned-back clock gives one tick, then waits, politely, the way an hour waits to be chosen. Not here, it seems, and not by accident: somewhere on purpose, or for someone who never has an hour to spare.",
+                "You wind the turned-back clock. It ticks once, considers the room, and holds its breath. It would rather be spent somewhere on purpose, or given to someone who never sits down."
+              ]
+            }
+          ]
+        },
+        {
+          "on": "wind",
+          "if": [
+            {
+              "ending": "extra-hour/everyones"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "You wind the turned-back clock. It ticks, and far below, in the Hour Cellar, a jar on the lowest shelf ticks softly back."
+            }
+          ]
+        },
+        {
+          "on": "wind",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "variants": [
+                "The turned-back clock ticks on, an ordinary small clock now. Its hour has been spent, and it seems glad of it.",
+                "You wind the turned-back clock. It keeps a plain, contented time now, like a clock whose one hour was well spent."
+              ]
+            }
+          ]
+        },
+        {
+          "on": "give",
+          "if": [
+            {
+              "iobj": "t-linden"
+            },
+            {
+              "arc": "extra-hour"
+            },
+            {
+              "beat": "extra-hour/linden-sit"
+            }
+          ],
+          "do": [
+            {
+              "kind": "close_arc",
+              "arc": "extra-hour",
+              "ending": "sat-down"
+            }
+          ]
+        },
+        {
+          "on": "give",
+          "if": [
+            {
+              "iobj": "t-linden"
+            },
+            {
+              "arc": "extra-hour"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "text": "'A whole hour?' Linden weighs the little clock in her palm, laughing. 'Whatever would I do with it, lamb? I'd only put the kettle on.' She presses it back into your hands. 'Ask me another time, when I'm sitting down. Which is never.'"
+            }
+          ]
+        },
+        {
+          "on": "give",
+          "if": [
+            {
+              "iobj": "t-extra-hour"
+            },
+            {
+              "arc": "extra-hour"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "text": "The Extra Hour looks at the clock, then up at you, and folds your fingers gently back around it. 'Not to keep,' it says. 'To spend. To spend.'"
+            }
+          ]
+        },
+        {
+          "on": "give",
+          "if": [
+            {
+              "iobj": "t-bell"
+            },
+            {
+              "arc": "extra-hour"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "text": "Bell laughs and holds up both sooty hands. 'Not me! One hour won't get me from dusk to dawn; I did the sums twice.' They tip their head down the lane. 'Give it to someone who never sits down. You know who I mean.'"
+            }
+          ]
+        },
+        {
+          "on": "give",
+          "if": [
+            {
+              "iobj": "t-tace"
+            },
+            {
+              "arc": "extra-hour"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "text": "Tace closes your fingers back over the little clock. 'I only turned it back, friend,' they say. 'The spending is yours to choose.'"
+            }
+          ]
+        },
+        {
+          "on": "give",
+          "if": [
+            {
+              "iobj": "t-umber"
+            },
+            {
+              "arc": "extra-hour"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "text": "Umber's hand drifts toward an empty jar and a fresh label, then stops. 'No,' she says, and hands the clock back. 'Wants spending, that one. Not keeping. Take it back up into the light.'"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "arcs": {
+    "extra-hour": {
+      "title": "The Extra Hour",
+      "kind": "guest",
+      "guest": "t-extra-hour",
+      "opens": "arrival",
+      "summary": "A small figure with two shadows: the hour that comes back when the clocks go back in autumn. It came to everyone at once, so no one ever spent it; it would like, just once, to be spent on purpose, by someone.",
+      "arrival": {
+        "room": "r-square",
+        "earliest_day": 2,
+        "weight": 1,
+        "text": "Something drifts down through the dusk and seems to arrive twice: once, and then, a breath later, again. It settles on the cobbles as a small figure in an autumn coat, smelling of woodsmoke and fallen leaves, and under the lanterns it casts two shadows, one a little behind the other."
+      },
+      "beats": {
+        "bell-shadows": {
+          "npc": "t-bell",
+          "topic": "the hour with two shadows",
+          "topic_aliases": [
+            "two shadows",
+            "the two shadows",
+            "the one with two shadows",
+            "the extra hour",
+            "extra hour",
+            "the autumn hour",
+            "the figure in the autumn coat",
+            "the hour that came back"
+          ],
+          "hint": "the player asks Bell about the small figure with two shadows",
+          "text": "Bell crouches to look at the cobbles and gives a soft whistle. 'Two shadows! That's the hour that comes back when the clocks go back in autumn. It comes to everybody at once, so nobody ever really spends it.' They grin, a little crooked. 'I'd stay up for a dawn with it, only one hour won't stretch from dusk to morning; I did the sums. Ask Tace about turning the clocks back.'"
+        },
+        "hear-autumn": {
+          "npc": "t-extra-hour",
+          "topic": "the night the clocks went back",
+          "per_player": true,
+          "topic_aliases": [
+            "the night",
+            "that night",
+            "autumn",
+            "the clocks going back",
+            "the clocks",
+            "everyone",
+            "home"
+          ],
+          "hint": "the player asks the Extra Hour about the night the clocks went back",
+          "text": "The Extra Hour turns up its coat collar. 'The clocks went back, and there I was,' it says. 'For everyone. Everyone, all at once.' A leaf slips from its pocket, and it watches the leaf fall. 'Most of them slept right through. Just once, I'd like someone to spend me on purpose.'"
+        },
+        "tace-turnback": {
+          "npc": "t-tace",
+          "topic": "turning the clocks back",
+          "topic_aliases": [
+            "turning clocks back",
+            "turning back the clocks",
+            "setting the clocks back",
+            "the clocks going back",
+            "the extra hour",
+            "extra hour",
+            "the hour with two shadows",
+            "two shadows"
+          ],
+          "after": [
+            "bell-shadows"
+          ],
+          "hint": "the player asks Tace about turning the clocks back, for the Extra Hour",
+          "text": "Tace glances toward the tower, and for a moment their hands go still. 'Not the great clock,' they say quietly. 'That one has been held back enough.' Instead they lift a small resting clock from the shelf, open its glass with a thumbnail, and turn the hands back one hour. 'An hour needs a clock to happen in. Wind it where you mean to spend it, friend, or give it to someone who never has an hour to spare.'",
+          "do": [
+            {
+              "kind": "move_object",
+              "object_id": "o-extra-hour-clock",
+              "dest_id": "@actor"
+            },
+            {
+              "kind": "add_fact",
+              "id": "extra-hour-clock",
+              "text": "Tace turned a small resting clock back one hour and gave it to {actor}, so the Extra Hour would have a clock to be spent in.",
+              "known_by": [
+                "t-tace"
+              ],
+              "spread": [
+                {
+                  "to": [
+                    "t-bell",
+                    "t-linden"
+                  ],
+                  "after_minutes": 30
+                }
+              ]
+            }
+          ]
+        },
+        "linden-sit": {
+          "npc": "t-linden",
+          "topic": "sitting down",
+          "topic_aliases": [
+            "sit down",
+            "a sit-down",
+            "sitting",
+            "an hour to yourself",
+            "time to yourself",
+            "a spare hour",
+            "the extra hour",
+            "extra hour",
+            "the hour with two shadows"
+          ],
+          "after": [
+            "bell-shadows"
+          ],
+          "hint": "the player asks Linden about sitting down, or about an hour to herself",
+          "text": "Linden laughs so suddenly she nearly drops the tea towel. 'Sit down? Oh, lamb, I haven't sat down since the kettle was new.' She glances at the softest armchair the way you'd glance at an old friend across a crowded room. 'If there were ever an hour that wasn't anybody's, I suppose I might.'"
+        }
+      },
+      "endings": {
+        "sat-down": {
+          "summary": "given to Linden, who sits down for the whole of it, on purpose",
+          "text": "Linden turns the little clock over in her hands, then sits down in the softest armchair, slowly, as if remembering how, and winds it. For one whole hour she does nothing at all, on purpose. The kettle mutters on without her, her tea goes cold in her hands, and out in the square the Extra Hour is spent at last, and goes home. When the clock catches up with itself, Linden presses her cup into your hands. 'Stone cold,' she says, delighted. 'First one ever in this house. You keep it, pet.'",
+          "ledger": "{helpers} gave the Extra Hour to Linden, who sat down for the whole of it, on purpose.",
+          "do": [
+            {
+              "kind": "move_object",
+              "object_id": "o-extra-hour-clock",
+              "dest_id": "t-linden"
+            },
+            {
+              "kind": "move_toon",
+              "toon_id": "t-extra-hour",
+              "room_id": null
+            },
+            {
+              "kind": "narrate",
+              "room": "r-square",
+              "text": "Under the lanterns in the square, the small figure in the autumn coat looks up as if someone has called its name. Its two shadows slip together into one, and then it is simply gone, the way an extra hour is gone by morning."
+            },
+            {
+              "kind": "spawn_object",
+              "name": "cold teacup",
+              "location_id": "@actor",
+              "seed": "a plain white teacup of bergamot tea gone perfectly cold, the first cup ever to go cold in the Waiting House; it smells of one long, unhurried hour",
+              "aliases": [
+                "teacup",
+                "cold tea",
+                "cup of cold tea",
+                "linden's cup"
+              ],
+              "generated_by": "extra-hour:sat-down"
+            },
+            {
+              "kind": "grant_collectible"
+            },
+            {
+              "kind": "adjust_rel",
+              "npc": "t-linden",
+              "delta": 2
+            },
+            {
+              "kind": "add_fact",
+              "id": "extra-hour-sat-down",
+              "text": "{actor} gave the Extra Hour to Linden, and Linden sat down in the softest armchair for one whole hour, on purpose, and let her tea go cold.",
+              "known_by": [
+                "t-linden"
+              ],
+              "spread": [
+                {
+                  "to": [
+                    "t-bell",
+                    "t-tace"
+                  ],
+                  "after_minutes": 30
+                },
+                {
+                  "to": "all",
+                  "after_minutes": 120
+                }
+              ]
+            }
+          ]
+        },
+        "hilltop": {
+          "summary": "spent on purpose by the dreamer, on the bench at the top of the Hill of Long Shadows",
+          "text": "You sit on the weathered bench, facing east, and wind the turned-back clock. The Extra Hour arrives the way someone sits down beside you: you feel it more than see it, two soft shadows settling in the grass. For one whole hour, on purpose, you watch the village keep its time below you, the lanterns and the river's slow shine and the patient face of the tower, and nobody needs anything from you at all. When the clock catches up with itself, the bench beside you is empty and warm, and a dreamseed lies in the grass where the two shadows were.",
+          "ledger": "{helpers} spent the Extra Hour on purpose, on the bench at the top of the Hill of Long Shadows.",
+          "do": [
+            {
+              "kind": "move_toon",
+              "toon_id": "t-extra-hour",
+              "room_id": null
+            },
+            {
+              "kind": "narrate",
+              "room": "r-square",
+              "text": "Under the lanterns in the square, the small figure in the autumn coat looks up as if someone far off has called its name. Its two shadows slip together into one, and then it is simply gone, the way an extra hour is gone by morning."
+            },
+            {
+              "kind": "spawn_template",
+              "template": "dreamseed",
+              "location_id": "@room",
+              "generated_by": "extra-hour:hilltop"
+            },
+            {
+              "kind": "add_fact",
+              "id": "extra-hour-hilltop",
+              "text": "{actor} spent the Extra Hour on purpose, sitting on the bench on the Hill of Long Shadows, facing east.",
+              "known_by": [
+                "t-sorrel"
+              ],
+              "spread": [
+                {
+                  "to": [
+                    "t-bell",
+                    "t-tace"
+                  ],
+                  "after_minutes": 30
+                },
+                {
+                  "to": "all",
+                  "after_minutes": 120
+                }
+              ]
+            }
+          ]
+        },
+        "everyones": {
+          "summary": "unspent for three days, the Extra Hour is kept in a jar on the lowest shelf of the Hour Cellar, labeled for everyone",
+          "after_days": 3,
+          "room": "r-cellar",
+          "text": "In the Hour Cellar, Umber finds a jar on the lowest shelf that wasn't there yesterday. Inside, curled in its autumn coat with two shadows folded beneath it, the Extra Hour is still waiting: kept, if not spent. Umber considers it a long while, then writes the label in her square hand and turns it where anyone can read it: THE EXTRA HOUR. AUTUMN. EVERYONE'S: HELP YOURSELF.",
+          "ledger": "The Extra Hour was not spent. Umber keeps it in a jar on the lowest shelf of the Hour Cellar, labeled for everyone.",
+          "do": [
+            {
+              "kind": "move_toon",
+              "toon_id": "t-extra-hour",
+              "room_id": "r-cellar"
+            },
+            {
+              "kind": "set_property",
+              "target_id": "t-extra-hour",
+              "key": "presence_text",
+              "value": "On the lowest shelf, where anyone can reach, a jar labeled EVERYONE'S: HELP YOURSELF holds the Extra Hour, curled in its autumn coat above two folded shadows."
+            },
+            {
+              "kind": "set_property",
+              "target_id": "t-extra-hour",
+              "key": "mood",
+              "value": "kept in a jar"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "facts": {
+    "extra-hour-here": {
+      "text": "A lost hour is staying in the Lantern Square: the Extra Hour, the hour that comes back when the clocks go back in autumn. It came to everyone at once, so nobody ever spent it. It casts two shadows, one for each time it happened, and it would like to be spent on purpose, by someone, just once.",
+      "known_by": [
+        "t-bell",
+        "t-tace",
+        "t-linden",
+        "t-sorrel",
+        "t-mott",
+        "t-umber",
+        "t-fen",
+        "t-quill"
+      ],
+      "if": [
+        {
+          "arc": "extra-hour"
+        }
+      ]
+    },
+    "extra-hour-turning-back": {
+      "text": "Tace can turn a small resting clock back one hour, so that an extra hour has a clock to happen in, but will not touch the great clock's hands for it.",
+      "known_by": [
+        "t-tace",
+        "t-bell"
+      ],
+      "if": [
+        {
+          "arc": "extra-hour"
+        }
+      ]
+    },
+    "extra-hour-linden": {
+      "text": "Linden has not sat down in years. She says that if there were ever an hour that wasn't anybody's, she might.",
+      "known_by": [
+        "t-linden",
+        "t-tace",
+        "t-bell"
+      ],
+      "if": [
+        {
+          "arc": "extra-hour"
+        }
+      ]
+    },
+    "extra-hour-caught-twice": {
+      "text": "Sorrel caught the Extra Hour twice on the Dusk Road: it came down, drifted back up, and came down again, once for each time it happened.",
+      "known_by": [
+        "t-sorrel",
+        "t-bell"
+      ],
+      "if": [
+        {
+          "arc": "extra-hour"
+        }
+      ]
+    },
+    "extra-hour-bell-sums": {
+      "text": "Bell has worked out, cheerfully, that one extra hour will not stretch from dusk to dawn.",
+      "known_by": [
+        "t-bell"
+      ],
+      "if": [
+        {
+          "arc": "extra-hour"
+        }
+      ]
+    },
+    "extra-hour-kept": {
+      "text": "The Extra Hour is kept in a jar on the lowest shelf of the Hour Cellar, labeled EVERYONE'S: HELP YOURSELF, so that anyone can reach it.",
+      "known_by": [
+        "t-umber",
+        "t-tace",
+        "t-bell",
+        "t-linden"
+      ],
+      "if": [
+        {
+          "ending": "extra-hour/everyones"
+        }
+      ]
+    }
+  },
+  "storylets": [
+    {
+      "id": "extra-hour-leaves",
+      "at": [
+        "day",
+        "dusk"
+      ],
+      "room": "r-square",
+      "if": [
+        {
+          "arc": "extra-hour"
+        }
+      ],
+      "cooldown_days": 1,
+      "summary": "the Extra Hour's second shadow lags behind it in the square",
+      "variants": [
+        "In the square, the small figure in the autumn coat steps from one lantern's light to the next, and its second shadow follows a moment late, as if it had to be reminded.",
+        "A few fallen leaves blow across the cobbles from nowhere in particular. The Extra Hour gathers them up, one by one, and puts them back in its pockets."
+      ]
+    }
+  ]
+}

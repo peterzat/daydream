@@ -1,0 +1,275 @@
+{
+  "name": "extra-hour-hilltop",
+  "comment": "The Extra Hour, ending hilltop: the dreamer carries the turned-back clock to the bench on the Hill of Long Shadows and spends the hour on purpose, earning a dreamseed. Also checks the wind-it-anywhere hint and Bell's refusal (the dawn cross).",
+  "clock": "2026-10-01T17:00:00+00:00",
+  "players": [
+    {
+      "as": "A",
+      "name": "Wren"
+    }
+  ],
+  "segments": [
+    {
+      "name": "prologue",
+      "commands": [
+        {
+          "cmd": "read ledger",
+          "expect": {
+            "narrate_contains": "escapement gear",
+            "beats": [
+              "prologue/read-ledger"
+            ],
+            "phase": "stopped"
+          }
+        },
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-square"
+          }
+        },
+        {
+          "cmd": "south",
+          "expect": {
+            "room": "r-well"
+          }
+        },
+        {
+          "cmd": "take gear",
+          "expect": {
+            "carrying": [
+              "escapement gear"
+            ],
+            "beats": [
+              "prologue/found-gear"
+            ]
+          }
+        },
+        {
+          "cmd": "north"
+        },
+        {
+          "cmd": "west"
+        },
+        {
+          "cmd": "up",
+          "expect": {
+            "room": "r-loft"
+          }
+        },
+        {
+          "cmd": "give gear to tace",
+          "expect": {
+            "carrying": [
+              "case key"
+            ],
+            "beats": [
+              "prologue/gave-gear"
+            ],
+            "narrate_contains": "You carried it all the way home."
+          }
+        },
+        {
+          "cmd": "down",
+          "expect": {
+            "room": "r-clocktower"
+          }
+        },
+        {
+          "cmd": "use key on case",
+          "expect": {
+            "beats": [
+              "prologue/unlocked"
+            ]
+          }
+        },
+        {
+          "cmd": "open case",
+          "expect": {
+            "ending": {
+              "prologue": "mended"
+            },
+            "flag": {
+              "CLOCK-STARTED": true
+            },
+            "narrate_contains": "first slow tick",
+            "day": {
+              "eq": 1
+            }
+          }
+        },
+        {
+          "cmd": "take dreamseed",
+          "expect": {
+            "carrying": [
+              "dreamseed"
+            ]
+          }
+        },
+        {
+          "cmd": "take cog",
+          "expect": {
+            "carrying": [
+              "warm brass cog"
+            ],
+            "arc": {
+              "pim": "open"
+            },
+            "phase": "dusk",
+            "located": {
+              "t-pims-nap": "r-square"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "the hour with two shadows",
+      "commands": [
+        {
+          "cmd": "drop dreamseed",
+          "expect": {
+            "not_carrying": [
+              "dreamseed"
+            ]
+          }
+        },
+        {
+          "summon": "extra-hour",
+          "expect": {
+            "arc": {
+              "extra-hour": "open"
+            }
+          }
+        },
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-square"
+          }
+        },
+        {
+          "cmd": "ask bell about the two shadows",
+          "expect": {
+            "beats": [
+              "extra-hour/bell-shadows"
+            ],
+            "narrate_contains": "I did the sums"
+          }
+        },
+        {
+          "cmd": "west"
+        },
+        {
+          "cmd": "up",
+          "expect": {
+            "room": "r-loft"
+          }
+        },
+        {
+          "cmd": "ask tace about turning the clocks back",
+          "expect": {
+            "carrying": [
+              "turned-back clock"
+            ]
+          }
+        },
+        {
+          "cmd": "down"
+        },
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-square"
+          }
+        },
+        {
+          "cmd": "wind turned-back clock",
+          "expect": {
+            "narrate_contains": "on purpose",
+            "arc": {
+              "extra-hour": "open"
+            }
+          }
+        },
+        {
+          "cmd": "give turned-back clock to bell",
+          "expect": {
+            "narrate_contains": "did the sums twice",
+            "carrying": [
+              "turned-back clock"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "the bench facing east",
+      "commands": [
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-lane"
+          }
+        },
+        {
+          "cmd": "south",
+          "expect": {
+            "room": "r-bridge"
+          }
+        },
+        {
+          "cmd": "south",
+          "expect": {
+            "room": "r-duskroad"
+          }
+        },
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-hill"
+          }
+        },
+        {
+          "cmd": "wind turned-back clock",
+          "expect": {
+            "ending": {
+              "extra-hour": "hilltop"
+            },
+            "located": {
+              "t-extra-hour": null
+            },
+            "narrate_contains": "nobody needs anything from you at all",
+            "knows": {
+              "t-sorrel": "extra-hour-hilltop"
+            }
+          }
+        },
+        {
+          "cmd": "take dreamseed",
+          "expect": {
+            "carrying": [
+              "dreamseed",
+              "turned-back clock"
+            ]
+          }
+        },
+        {
+          "cmd": "wind turned-back clock",
+          "expect": {
+            "narrate_contains": "spent"
+          }
+        },
+        {
+          "clock": "+1h",
+          "expect": {
+            "knows": {
+              "t-bell": "extra-hour-hilltop"
+            },
+            "chronicle_contains": "Wren spent the Extra Hour on purpose, on the bench at the top of the Hill of Long Shadows."
+          }
+        }
+      ]
+    }
+  ]
+}
