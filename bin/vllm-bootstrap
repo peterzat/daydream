@@ -19,6 +19,17 @@ set -euo pipefail
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 VLLM_DIR="$PROJECT_ROOT/external/vLLM"
 MODEL="${DAYDREAM_VLLM_MODEL:-cyankiwi/Qwen3.5-9B-AWQ-4bit}"
+# Pinned commit of the default (community-uploaded) model: the revision the
+# 2026-09-26 bake-off measured. Same rule as bin/game: the pin applies only to
+# the default model; DAYDREAM_VLLM_REVISION overrides.
+DEFAULT_REVISION="156edc4bbeb8d1910ee7be9196bafaf1bc052156"
+if [[ -n "${DAYDREAM_VLLM_REVISION:-}" ]]; then
+    REVISION="$DAYDREAM_VLLM_REVISION"
+elif [[ "$MODEL" == "cyankiwi/Qwen3.5-9B-AWQ-4bit" ]]; then
+    REVISION="$DEFAULT_REVISION"
+else
+    REVISION=""
+fi
 
 # Pinned to the version the 2026-09-26 model bake-off validated
 # (docs/gpu-and-models.md "September 2026 re-evaluation"). 0.20+ is required
@@ -94,14 +105,14 @@ else
     echo "    patched __version__ = $GGUF_VER into $GGUF_INIT"
 fi
 
-echo "==> Model: $MODEL"
+echo "==> Model: $MODEL${REVISION:+ @ $REVISION}"
 # Pre-cache via huggingface_hub so vllm serve starts fast (else it blocks
 # while downloading on first launch). Stored in ~/.cache/huggingface/hub.
 "$VLLM_DIR/.venv/bin/python" - <<PY
 from huggingface_hub import snapshot_download
 import os, sys
 try:
-    p = snapshot_download("$MODEL")
+    p = snapshot_download("$MODEL", revision="$REVISION" or None)
     sz = sum(os.path.getsize(os.path.join(d, f))
              for d, _, fs in os.walk(p) for f in fs)
     print(f"    cached at {p} ({sz/1_000_000_000:.1f} GB)")

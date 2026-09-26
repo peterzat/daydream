@@ -52,6 +52,19 @@ VLLM_PORT="${DAYDREAM_VLLM_PORT:-8000}"
 VLLM_HOST="${DAYDREAM_VLLM_HOST:-127.0.0.1}"
 VLLM_URL="${DAYDREAM_LLM_BASE_URL:-http://localhost:$VLLM_PORT/v1}"
 VLLM_MODEL="${DAYDREAM_VLLM_MODEL:-cyankiwi/Qwen3.5-9B-AWQ-4bit}"
+# The default model is a community upload, so it is pinned to the commit the
+# 2026-09-26 bake-off measured: a later push to that repo can't change what
+# vllm-up serves. The pin applies only to the default model (an overridden
+# DAYDREAM_VLLM_MODEL serves its own main unless DAYDREAM_VLLM_REVISION is
+# set). Keep in sync with bin/vllm-bootstrap (tests/drift/test_drift_constants).
+VLLM_DEFAULT_REVISION="156edc4bbeb8d1910ee7be9196bafaf1bc052156"
+if [[ -n "${DAYDREAM_VLLM_REVISION:-}" ]]; then
+    VLLM_REVISION="$DAYDREAM_VLLM_REVISION"
+elif [[ "$VLLM_MODEL" == "cyankiwi/Qwen3.5-9B-AWQ-4bit" ]]; then
+    VLLM_REVISION="$VLLM_DEFAULT_REVISION"
+else
+    VLLM_REVISION=""
+fi
 # 0.45 = ~9 GB on a 20 GB card; leaves room for SDXL during inference.
 VLLM_GPU_FRACTION="${DAYDREAM_VLLM_GPU_FRACTION:-0.45}"
 VLLM_MAX_LEN="${DAYDREAM_VLLM_MAX_LEN:-8192}"
@@ -530,14 +543,40 @@ cmd_vllm_up() {
         --max-num-seqs "$VLLM_MAX_NUM_SEQS" \
         --language-model-only \
         --default-chat-template-kwargs '{"enable_thinking": false}' \
+        ${VLLM_REVISION:+--revision "$VLLM_REVISION"} \
         ${DAYDREAM_VLLM_EXTRA_ARGS:-} \
         > "$logf" 2>&1 < /dev/null &
     echo $! > "$(_pid_file vllm)"
-    echo "vllm: started (pid $!, $VLLM_HOST:$VLLM_PORT, model $VLLM_MODEL, log $logf)"
+    echo "vllm: started (pid $!, $VLLM_HOST:$VLLM_PORT, model $VLLM_MODEL${VLLM_REVISION:+@${VLLM_REVISION:0:8}}, log $logf)"
 }
 
 cmd_vllm_down() {
+    # vLLM runs its engine in a child process (retitled VLLM::EngineCore)
+    # that holds the GPU memory and exits a moment AFTER the API server PID
+    # _stop_one waits on. A vllm-up inside that window sizes its KV pool
+    # against memory that is about to be freed; at the 0.45 slice the 9B's
+    # KV budget is only ~0.9 GiB, so the new engine fails with "No available
+    # memory for the cache blocks" (2026-09-26). Record the children first,
+    # then wait for them (bounded), SIGKILLing any that outlive the wait.
+    local children=""
+    if _is_running "vllm"; then
+        children="$(pgrep -P "$(cat "$(_pid_file vllm)")" | tr '\n' ' ' || true)"
+    fi
     _stop_one vllm
+    local i c alive
+    for i in $(seq 1 40); do
+        alive=0
+        for c in $children; do
+            kill -0 "$c" 2>/dev/null && alive=1
+        done
+        (( alive )) || return 0
+        sleep 0.5
+    done
+    for c in $children; do
+        kill -9 "$c" 2>/dev/null || true
+    done
+    sleep 1
+    echo "vllm: engine process(es) outlived the 20 s wait and were killed ($children)" >&2
 }
 
 cmd_world() {

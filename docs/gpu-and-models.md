@@ -98,6 +98,7 @@ Full method, per-model tables and negative results: [`docs/model-evals/2026-09-2
 - **Rejected, measured:**
   - FP8 KV cache on the 9B: no gain, and it can't boot beside SDXL.
   - `json_schema`-constrained parsing: 47/48 either way. The misses are semantic.
+- **Pinned and restart-safe.** The default model is pinned to commit `156edc4b` of its community repo (launcher + bootstrap), and `vllm-down` now waits for the engine child process: with only ~0.9 GiB of KV budget at 0.45, a restart that raced the old engine's memory release failed to boot.
 - **Model-fit prompt change:** the retell rules now say an unchanged line is not a retelling. The 9B otherwise echoed most lines verbatim.
 - **Why the 2026 Qwens are big for their size:** a 248K-token vocabulary whose embeddings stay BF16 under AWQ and GPTQ. The "4-bit" 9B weighs 7.55 GiB text-only. That, not parameter count, is the fit constraint on this card (localreview found the same for the 27B).
 

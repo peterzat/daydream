@@ -181,3 +181,20 @@ def test_vllm_gpu_fraction_default_matches_claude_md():
         "'vLLM (v1 LLM)' section (the '~9 GB on 20 GB card' narrative) "
         "so future sessions see the current number."
     )
+
+
+def test_vllm_default_revision_pin_matches_bootstrap():
+    """The default model is a community upload pinned to the commit the
+    2026-09-26 bake-off measured. bin/game (what vllm-up serves) and
+    bin/vllm-bootstrap (what gets downloaded) must pin the SAME revision,
+    or vllm-up would ask for a snapshot the bootstrap never fetched."""
+    game = BIN_GAME.read_text()
+    boot = (BIN_GAME.parent / "vllm-bootstrap").read_text()
+    g = re.search(r'VLLM_DEFAULT_REVISION="([0-9a-f]{40})"', game)
+    b = re.search(r'DEFAULT_REVISION="([0-9a-f]{40})"', boot)
+    assert g and b, "a default revision pin is missing from bin/game or bin/vllm-bootstrap"
+    assert g.group(1) == b.group(1)
+    # Both apply the pin only to the same default model.
+    model = re.search(r'VLLM_MODEL="\$\{DAYDREAM_VLLM_MODEL:-([^}]+)\}"', game).group(1)
+    assert f'"$VLLM_MODEL" == "{model}"' in game
+    assert f'"$MODEL" == "{model}"' in boot
