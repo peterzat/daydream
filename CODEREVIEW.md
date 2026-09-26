@@ -1,44 +1,55 @@
-## Review — 2026-07-07c (commit: 6c73a8f) — light
+## Review — 2026-09-26 (commit: e765561) — refresh
 
-**Summary:** Light (docs-only) review of the v1.0 release-bow commit against
-origin/main (352375e): README restructured to lead with What-works-today plus
-the local-GPU framing, the long-form per-release narratives moved to a new
-docs/RELEASES.md (newest first, pre-semver milestones grouped at the end) with
-a short Release-history pointer section left behind, CHANGELOG's narrative
-pointer updated, MOO linked to Wikipedia, release badge pointed at GitHub
-releases. Verified: all relative links in README/CHANGELOG/docs/RELEASES.md/
-docs/ROADMAP.md resolve on disk; the three intra-README anchors
-(#the-local-gpu-is-a-deliberate-limit, #two-dreamers, #tests) match live
-headings; zero repo-wide references remain to the removed #release-notes or
-renamed #status anchors; content conservation of the move checked line-by-line
-(40 body lines; 3 diffs are the deliberately rewritten preamble and two
-relative-link adjustments, nothing lost); no secrets in the diff (pattern hits
-are game prose). Short and medium test tiers were green at commit (829/1213),
-though a docs-only diff does not require them.
+**Summary:** Refresh review of the LLM re-evaluation turn against origin/main:
+the model bake-off harness (`daydream/model_eval.py`, `bin/game model-eval`,
+corpus + tier_short tests, refusal-probe talk-path fix) and the model/engine
+switch (Qwen3.5 9B AWQ on vLLM 0.30.0: bootstrap, launcher flags, config
+default, retell rule, docs, re-ratified LLM goldens).
 
-**Review scope:** 3 files, +147/−131, all Markdown. No code or configuration
-touched; Steps 3/5/5.5/6.5/7 skipped per light-review tier.
+**Review scope:** Refresh review. Focus: every code file changed since the
+prior review (6c73a8f), read in full; /security over the 14 changed paths
+(0 BLOCK / 0 WARN / 3 NOTE, SECURITY.md updated). Tests: short 840 -> 841,
+medium 1224 -> 1225 after the fix (the new regression test); tier_long 1262
+green on the shipped config earlier this turn.
 
-**External reviewers:** Skipped (light review).
+**External reviewers:** None configured.
 
 ### Findings
 
 ```
-[NOTE] README.md (Release history) / docs/RELEASES.md:7 — "tagged releases
-       carry their notes on GitHub" slightly overstates today
-  Evidence: the releases page currently holds only v0.1.0; the v1.0.0 release
-  is created later this same turn (SPEC c16 prescribes exactly one new
-  release), and v0.2.0–v0.6.0 are annotated tags without GitHub release
-  entries. The badge's releases/latest link resolves to v0.1.0 until the
-  v1.0.0 release lands.
-  Suggested fix: none required once the v1.0.0 release exists (it becomes
-  Latest and the sentence reads true for the releases shown); optionally
-  soften to "releases are tagged on GitHub" in a future docs pass.
+[WARN] daydream/model_eval.py:706 — a subset re-run merges into an existing
+       label's results without checking the model is the same
+  Evidence: `if args.suites and prior.exists():` updates old["suites"] with the
+  new run's suites and prepends the old calls, but never compares
+  old["model"] to results["model"]; the merged file keeps the NEW model name.
+  Reusing a label for a different model (`run --label x --model B --suites
+  dialogue` after a full run of model A under `x`) silently produces a
+  results.json whose parser/growth/... scores are model A's while its header
+  and dialogue are model B's, and `compare` then reports a model that never
+  ran those suites. This is the harness whose output decides model swaps.
+  Suggested fix: when merging, refuse (exit non-zero with a message naming
+  both models) if old.get("model") != results["model"]; keep the merge for
+  the same-model case.
+
+[NOTE] daydream/model_eval.py:824 — compare supports at most 8 runs
+  Evidence: letters = "ABCDEFGH"; a 9th run raises IndexError in the blind
+  sheet. Suggested fix: none needed today (6 was the max used); extend or
+  validate len(dirs) if bigger fields are compared.
+
+[NOTE] bin/vllm-bootstrap:104, bin/game:526 — new default model is an
+       unpinned community HF repo (from /security)
+  Evidence: cyankiwi/Qwen3.5-9B-AWQ-4bit, no revision pin; the measured
+  revision is 156edc4bbeb8d1910ee7be9196bafaf1bc052156. No trust_remote_code,
+  weights-only, output still validated. Suggested fix: pin the revision in
+  both places, or run vllm with HF_HUB_OFFLINE=1 after bootstrap.
 ```
 
 ### Fixes Applied
 
-None.
+- [WARN] daydream/model_eval.py:659 — a `--suites` re-run now exits 2 naming
+  both models when the label's results.json belongs to a different model,
+  before any endpoint or GPU work; same-model merges unchanged. Test:
+  `test_subset_rerun_refuses_to_merge_a_different_model`. (commit e765561)
 
 ### Accepted Risks
 
@@ -54,23 +65,8 @@ in SECURITY.md):
   cmd_logs path component, qpeek clone, world-reset rm -rf operator trust,
   slot-create body size unbounded (FastAPI default caps apply).
 
-### Carried-forward open NOTEs (pre-existing)
-
-Growth refusal `reason` narrated without an output banlist pass; parser raw
-input not role-separated; parser per-line command-expansion uncapped; toon-view
-N+1 inventory query; admin.py/bootstrap.py `_write_db` non-transactional; no
-CSP/`X-Content-Type-Options` on the SPA shell; `main.js:setRoomBackground` has
-no `onerror` unveil; arbiter `stats()` observability skew; journal write task
-held by no reference (fail-open by contract); cached_portrait_url re-parses the
-workflow JSON per card (ROADMAP snapshot-perf umbrella); CI actions pinned by
-mutable tag, no permissions: block.
-
 ---
-*Prior review (2026-07-07b, commit 8e74665): refresh review of the CI-parity
-test fix (conftest guard pointing non-vllm tests at a dead LLM port), clean.
-Before that (2026-07-07, 21fed3f): full-depth review of the whole v1.0 release
-turn — 18 commits, 100 files — 0 BLOCK / 2 WARN (both fixed: appearance_seed
-gate + tracked ratification evidence) / 5 NOTE, /security over the 42-path
-surface, medium tier 1213 green.*
+*Prior review (2026-07-07c, 6c73a8f): light docs-only review of the v1.0
+release-bow commit, 0 BLOCK / 0 WARN / 1 NOTE (release-notes wording).*
 
-<!-- REVIEW_META: {"date":"2026-07-07","commit":"6c73a8f","reviewed_up_to":"6c73a8ff8a4b6925ca6fbda8f2231aad5d4735d2","base":"origin/main","tier":"light","block":0,"warn":0,"note":1} -->
+<!-- REVIEW_META: {"date":"2026-09-26","commit":"e765561","reviewed_up_to":"e76556134b98fd010909929cdc8757569a799141","base":"origin/main","tier":"refresh","block":0,"warn":0,"note":2} -->

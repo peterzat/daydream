@@ -1,127 +1,127 @@
 # SECURITY.md
 
-## Security Review — 2026-07-07 (scope: paths)
+## Security Review — 2026-09-26 (scope: paths)
 
-**Summary:** Path-scoped audit of the v1.0 release turn at commit `3fc761a`,
-42 files (~15K lines): the new journal (`journal.py`), seed propagation
-(`growth.py`), portraits (`images/client.py`, `api/slots.py`, `api/ws.py`),
-endings/onboarding SPA surfaces (`web/`), the repaint API (`api/rooms.py`),
-the hardening trio shipped ahead of this cut (loopback-only swap, regen kill
-switch, delete grace window), CI, release files, and the previously-audited
-core modules' deltas. The turn's security posture holds: every new LLM
-surface (journal, propagation-free growth, drift pools) validates output
-against length windows and the WHIMSY banlist before any mutation, every new
-SPA render sink uses `textContent` or the `escape()`-routed linkify path, all
-SQL is parameterized, and the three hardening boundaries verify under trace
-(the swap gate reads the real TCP peer because uvicorn runs without proxy
-headers; the regen flag 404s before auth; delete honors the 120 s grace).
-Git history of the credential-adjacent files (.env.example, conftest, CI,
-bin/game) is clean of secret values. Net: **0 BLOCK / 1 WARN / 3 NOTE.**
+**Summary:** Path-scoped audit of the 14 files changed since the last review
+(`3fc761a`..`a1522eb`): the `appearance_seed` gate that closed the prior
+WARN, the CI-parity test fixture, the model bake-off harness
+(`model_eval.py`, its corpus and tests), and the Qwen3.5 9B / vLLM 0.30 swap
+(`bin/game`, `bin/vllm-bootstrap`, `config.py`, the retell prompt line, the
+sample-capture config snapshots). The prior WARN is resolved at the create
+endpoint and the turn adds no new network-facing surface; the harness is an
+operator CLI on hermetic temp DBs. Two new NOTEs: the default model now
+resolves from a third-party uploader's Hugging Face repo at an unpinned ref,
+and the new gate has a second writer through the accepted talk-path
+`set_property` risk, where a non-string value takes down `GET /api/slots`
+(reproduced). Net: **0 BLOCK / 0 WARN / 3 NOTE.**
 
 ### Findings
 
-[WARN] daydream/api/slots.py:153 (with daydream/images/client.py:237,
-daydream/api/ws.py:382) — `appearance_seed` is an unmoderated, unbounded,
-player-supplied image-generation prompt rendered into shared-visible
-portraits, with no kill switch. Slot create accepts any non-empty string
-(no length cap, no `safety.first_banned` pass, unlike the growth phrase's
-120-char cap + banlist); on room entry `_maybe_enqueue_toon_portraits`
-renders it through SDXL and the result is displayed to every co-located
-player (toon cards) and to every session (`GET /api/slots` thumbnails).
-Unlike room repaint, which got the `DAYDREAM_REGEN_UI=0` kill switch so
-"players cannot repaint each other's rooms" on a shared deployment, the
-portrait surface cannot be switched off.
-  Attack vector: an authenticated session (tailnet member in the default
-  mode, or password holder in `public`) creates a toon whose appearance
-  seed requests hostile or off-tone imagery; other players see the
-  rendered portrait without opting in, and each such seed also spends an
-  exclusive GPU render. Inside the friend-scope trust boundary, so no
-  privilege gain; flagged because the just-hardened shared-deployment
-  posture gates the parallel repaint surface but not this one.
-  Evidence: `slots.py:153-156` validates only "non-empty string";
-  `toons.create_toon_in_slot` stores it verbatim; `portrait_target`
-  passes it as the prompt seed; no banlist or cap anywhere on the path.
-  Remediation: at create, cap the seed length (the growth phrase uses
-  120 chars) and reject on `safety.first_banned`; optionally add a
-  portraits kill switch mirroring `DAYDREAM_REGEN_UI` for shared
-  deployments. Existing portraits can be cleared from the image cache.
+[NOTE] bin/vllm-bootstrap:104, bin/game:526 (defaults at bin/game:54,
+bin/vllm-bootstrap:21, daydream/config.py:78) — the runtime model now
+resolves from a single community uploader's Hugging Face repo
+(`cyankiwi/Qwen3.5-9B-AWQ-4bit`) at its moving `main` ref, with no revision
+pin on either the pre-cache or `vllm serve`.
+  Attack vector: whoever controls that account (or compromises it) pushes a
+  new revision; the next networked `bin/game vllm-up` or `bin/vllm-bootstrap`
+  resolves `main` again and serves it with no review and no bake-off re-run.
+  A replaced `chat_template.jinja` or replaced weights then shape every
+  runtime generation. The unpinned-ref pattern predates this turn, but the
+  previous default came from the model publisher's own org (`Qwen/...`), so
+  this change widens who can alter runtime behavior. The blast radius is
+  bounded: no `trust_remote_code` anywhere (bin/, daydream/, tools/, the
+  operator env files), the cached snapshot is safetensors-only with no Python
+  files, and output still passes the JSON, allowlist, and banlist gates,
+  except the accepted talk-path `set_property` (next finding).
+  Evidence: `snapshot_download("$MODEL")` with no `revision=`;
+  `vllm serve "$VLLM_MODEL"` with no `--revision`. The local HF cache holds
+  exactly one revision, `156edc4bbeb8d1910ee7be9196bafaf1bc052156`, which is
+  what the 2026-09-26 bake-off measured.
+  Remediation: pin that revision (a `DAYDREAM_VLLM_MODEL_REVISION` default
+  passed to `snapshot_download(..., revision=...)` and to `vllm serve
+  --revision ... --tokenizer-revision ...`), and/or launch `vllm serve` with
+  `HF_HUB_OFFLINE=1`, since the bootstrap already pre-caches. Record the
+  revision in the bake-off doc so a bump becomes a reviewed change.
 
-[NOTE] daydream/config.py:160-162 — the per-install session secret is
-written with default permissions, then chmod'd to 0600, leaving a brief
-first-boot window where the file is world-readable (umask-dependent), and
-the parent `~/.config/daydream/` is created with default mode.
-  Attack vector: a co-resident local user reads the cookie-signing secret
-  during the sub-second window at first boot; single-user dev box, so
-  practical exposure is near nil.
-  Evidence: `secret_path.write_text(new_secret + "\n")` precedes
-  `secret_path.chmod(0o600)`.
-  Remediation: create the file with 0600 atomically
-  (`os.open(..., O_CREAT | O_WRONLY | O_EXCL, 0o600)`), or
-  `secret_path.touch(mode=0o600)` before writing.
+[NOTE] daydream/images/client.py:262 via daydream/api/slots.py:130 and
+daydream/api/ws.py:342 (writer: daydream/skills/effects.py:261) — the new
+`appearance_seed` gate covers the create endpoint only. The accepted
+talk-path `set_property` (LLM-chosen target, key, and value) can still write
+`appearance_seed` on any toon, including another player's, with no length
+cap, no banlist pass on `value` (`skills/data.py:290` scans only
+text/seed/name/mood), and no type check. A truthy non-string value makes
+`cached_portrait_url` raise on `.strip()`, so `GET /api/slots` returns 500
+for every session (blocking picker-first entry) and state snapshots fail for
+anyone sharing a room with that toon, until the property is repaired in the
+DB.
+  Attack vector: an authenticated player talks to an NPC with text that
+  instructs the model to append `{"kind": "set_property", "target_id":
+  "<toon id from GET /api/slots>", "key": "appearance_seed", "value": true}`.
+  That text passes the input banlist, and talk's allowlist (`verbs.py:116`)
+  admits `set_property`. With a string value, the same path swaps a player's
+  portrait prompt for arbitrary unfiltered text. Whether the live 9B model
+  follows such an injection was not tested; everything from the dispatched
+  effect onward was reproduced deterministically in a temp data dir
+  (create 200, `GET /api/slots` 200 before, 500 after).
+  Evidence: `_apply_set_property` writes any key and value on any existing
+  object; `Toon.from_object` (`toons.py:41`) and `cached_portrait_url` accept
+  whatever is stored; `list_slots` and `_toon_card` call it with no guard.
+  Remediation: treat a non-string `appearance_seed` as empty at read
+  (`Toon.from_object` or `cached_portrait_url`), which removes the
+  availability half in one line. For the content half, refuse player-facing
+  keys such as `appearance_seed` in LLM-dispatched `set_property`, or include
+  string `value`s in the output banlist scan. Both are small installments on
+  the v2 `skills-authoring-and-security` item.
 
-[NOTE] .github/workflows/test.yml:23-26 — supply-chain hardening on the
-new CI workflow: `actions/checkout@v4` and `actions/setup-python@v5` are
-pinned to mutable major tags rather than commit SHAs, and the workflow
-declares no `permissions:` block, so the job token gets the repo default.
-  Attack vector: a compromised or retagged upstream action executes with
-  the default GITHUB_TOKEN scope on push/PR builds. No secrets are used
-  in the workflow, which bounds the impact.
-  Remediation: add `permissions: contents: read` at the workflow root and
-  pin both actions by full commit SHA.
+[NOTE] daydream/config.py:161-162 — carried forward, re-verified unchanged:
+the per-install session secret is written with default permissions and then
+chmod'd to 0600, and `~/.config/daydream/` is created with the default mode.
+Sub-second first-boot window on a single-user box; practical exposure is
+near nil. Remediation unchanged: create the file with
+`os.open(..., O_CREAT | O_WRONLY | O_EXCL, 0o600)`, or
+`secret_path.touch(mode=0o600)` before writing.
 
-[NOTE] daydream/parser.py:175,491 (with daydream/api/ws.py:560) — carried
-forward from the 2026-07-02 review, unchanged: one WS `input` frame still
-expands without a per-line cap (`_THEN_SPLIT` / `_AND_SPLIT` / ALL
-expansion), so a crafted line amplifies into arbitrarily many synchronous
-clock ticks and event-log rows. Authenticated-only, self-inflicted lag,
-recoverable; defense in depth. Remediation unchanged: cap typed-input
-length and the expanded command count per line.
+Open items outside this scope (carried forward from the 2026-07-07 review,
+not re-verified this run): the CI workflow's mutable action tags and missing
+`permissions:` block (`.github/workflows/test.yml`), and the uncapped
+per-line command expansion of a WS `input` frame (`daydream/parser.py`).
 
 Traced and cleared this run (not findings):
 
-- **Journal is self-scoped and injection-contained.** The snapshot carries
-  `journal.entries_for_snapshot(<controlled toon id>)` only (`ws.py:281`);
-  entries never ride toon cards, so another player's journal is
-  unreadable. The recap prompt ingests only the toon's own events
-  (`fetch_for_toon`: actor or recipient match), so another player's `say`
-  (room-broadcast, NULL recipient) never enters it; LLM output is
-  refusal-parsed, length-windowed (60-500), banlist-checked, and rendered
-  via `textContent`. The leave endpoint never blocks on the write.
-- **Propagation adds zero LLM surface.** The child-seed roll is
-  deterministic (`worldstate.rng`), shape-checked at load (fail-loud) and
-  again at runtime (fail-closed), suppressed at the generation ceiling
-  and the grown-room cap, and rides the existing allowlisted commit batch.
-- **The three hardening boundaries hold.** Swap: 401 before the loopback
-  check, 403 for any non-loopback peer, target confined to the data dir,
-  read-only immutable probe, newer-schema refusal; `request.client.host`
-  is the real TCP peer (bin/game starts uvicorn without `--proxy-headers`).
-  Regen: both endpoints 404 before auth when `DAYDREAM_REGEN_UI=0`, the
-  snapshot flag keeps the SPA tools unbound, prompt override is
-  length-capped, never persisted, and cannot move the cache key. Delete:
-  refuses while the controller was live within 120 s; kick keeps plain
-  liveness. All three are pinned by tests/security/.
-- **No new client-side XSS.** Every new sink (journal beat + collection,
-  keepsake cards, The End page, status ribbon, clarify options, slot rows,
-  repaint dialog, help leaf) uses `textContent`, `escape()`, or fixed SVG
-  pools; `review.py` composes its contact sheet through `html.escape` on
-  every interpolation. `image_url` values are server-derived cache paths
-  assigned to `img.src`.
-- **No SQL injection.** New queries (`fetch_for_toon`, world_state upserts,
-  journal property writes) bind every value; the one interpolation is an
-  int-cast LIMIT.
-- **Path handling.** `/cache/{...}` rejects `/` and `..` per segment and
-  serves only `*.png` (`.prev` unreachable); `workflow_path` rejects any
-  separator; growth slugs are `[a-z0-9-]`; created toon ids are
-  server-generated.
-- **The accepted talk-path `set_property` risk gains new consumers, all
-  contained.** An LLM-emitted `set_property` can in principle write
-  `drift_pools` (drift emits pool lines without a banlist, but through
-  escaped sinks), `journal` (self-scoped, escaped), or `growth` (the plant
-  pipeline re-validates shape, caps rooms, and banlists output), so no
-  privilege escalation; recorded under the standing accepted risk below.
-- **Secrets and PII.** No keys or tokens in scope files or their history;
-  conftest values are labeled test constants; the LICENSE copyright line
-  carries the author's name by design (MIT convention, intentional).
+- **The prior WARN is resolved at its source.** `create_slot` strips the
+  seed, caps it at 300 chars, and rejects `safety.first_banned` hits with a
+  400 before any toon is created (`slots.py:165-178`);
+  `tests/security/test_appearance_seed_gate.py` pins the over-cap,
+  banned-word, and at-cap cases. The seed reaches ComfyUI by dict assignment
+  into a deep-copied workflow (`images/client.py:196`), so it cannot alter
+  workflow structure. Residual: the banlist is a small tone filter, and the
+  optional portraits kill switch was not added.
+- **The model-eval harness adds no runtime surface.** Nothing in the server
+  imports `daydream.model_eval`; its global `litellm.acompletion` wrapper is
+  installed only inside its own CLI process. Suites run on temp DBs with
+  explicit paths and restore `DAYDREAM_DATA_DIR`; results land under
+  `~/data/daydream/model-eval/`, outside git. Every input (label, out dir,
+  base URL, override JSON) is an operator CLI argument, and the one
+  interpolated SQL literal is a constant world id. The dialogue suite also
+  adds a prompt-leak probe.
+- **The vLLM launch stays local.** The host default remains `127.0.0.1`; the
+  new flags (`--language-model-only`, server-side `enable_thinking=false`)
+  add no endpoint exposure, and a stray thinking trace would fail JSON
+  parsing closed. `DAYDREAM_VLLM_EXTRA_ARGS` and the venv `PATH` prefix are
+  operator-controlled (standing operator-trust risk), and neither env file
+  sets extra args. The bootstrap pins `vllm==0.30.0` exactly and moves a
+  stale venv aside rather than upgrading in place.
+- **Test fixtures tighten isolation.** `_no_real_llm` points unmarked tests
+  at a dead loopback port, so the GPU-free tiers can no longer reach a live
+  engine; `test_ws.py` pins the grounded parse with a mock. Test credentials
+  remain labeled constants.
+- **Prompt and snapshot deltas are inert.** The retell rule addition changes
+  wording only (validator and authored fallback unchanged); the
+  `_vllm_config_snapshot` edits are static strings; the refusal probe now
+  exercises the production talk path.
+- **Secrets and PII.** No keys or tokens in the scope files, their diffs, or
+  the recent history of `bin/game`, `bin/vllm-bootstrap`, `config.py`, and
+  `conftest.py`. The parser corpus holds only world ids and names.
 
 ### Accepted Risks
 
@@ -131,10 +131,11 @@ admin boundary):
 
 - **LLM-emitted effects take an unscoped, LLM-chosen target id and
   key/value** on the `talk` dialogue path (bound to talk's non-restricted
-  allowlist: narrate/set_property/set_mood/spawn_object). Now includes the
-  durable-property nuance traced this run (drift_pools/journal/growth
-  writes, each contained by downstream gates). Rule/growth/clock paths do
-  not share this shape. v2 `skills-authoring-and-security`.
+  allowlist: narrate/set_property/set_mood/spawn_object). Consumers traced
+  so far and contained downstream: drift_pools, journal, growth.
+  `appearance_seed` is the uncontained consumer, recorded as a NOTE above.
+  Rule/growth/clock paths do not share this shape. v2
+  `skills-authoring-and-security`.
 - **Shared-world mutation: any authed session may drive verbs on any
   in-scope shared object** and repaint rooms while the regen UI is on
   (dev default). Intended single-shared-world co-op design; per-session
@@ -157,17 +158,19 @@ admin boundary):
   `reset`'s `rm -rf`, `.env`/`secrets.env` sourcing, the `0.0.0.0` bind,
   the deprecated `bootstrap_world` LLM path reading `ANTHROPIC_API_KEY`
   (design-time only). None take network input.
-- Unbounded slot-create body (size; the prompt-content half is this
-  review's WARN) + liveness-gated claim takeover; missing CSP /
-  `X-Content-Type-Options` on the SPA shell (XSS sinks are escaped);
-  event queues bounded (256, drop-oldest).
+- Unbounded slot-create body (size; the prompt-content half was the
+  2026-07-07 WARN, gated in `21fed3f`) + liveness-gated claim takeover; missing CSP /
+  `X-Content-Type-Options` on the SPA shell (XSS sinks are escaped); event
+  queues bounded (256, drop-oldest).
 
 ---
-*Prior review (2026-07-02, paths, commit `3fdd91f`): audit of the Zork
-platform turn (28 files, ~11K lines): rule/effect engine keeps a closed
-condition vocabulary and allowlisted effects with restricted kinds
-unreachable from any LLM-facing dispatch; parameterized SQL, validated and
-escaped LLM output, tarfile traversal guards; 0 BLOCK / 0 WARN / 1 NOTE
-(the WS input amplification cap, carried forward above).*
+*Prior review (2026-07-07, paths, commit `3fc761a`): audit of the v1.0
+release turn (42 files, ~15K lines): journal, seed propagation, portraits,
+endings and onboarding, the repaint API, and the hardening trio (loopback-only
+swap, regen kill switch, delete grace window). Every new LLM surface was
+validated before mutation, every new SPA sink escaped, all SQL
+parameterized. 0 BLOCK / 1 WARN (the unmoderated `appearance_seed`, since
+resolved in `21fed3f`) / 3 NOTE (session-secret write window, CI action
+pinning, WS input expansion cap).*
 
-<!-- SECURITY_META: {"date":"2026-07-07","commit":"3fc761aafbb67fa5fcf2b1afa86a0b81a54abcfe","scope":"paths","scanned_files":[".env.example",".github/workflows/test.yml","LICENSE","bin/game","daydream/admin.py","daydream/api/rooms.py","daydream/api/slots.py","daydream/api/world.py","daydream/api/ws.py","daydream/config.py","daydream/drift.py","daydream/drift_samples.py","daydream/events.py","daydream/gpu/arbiter.py","daydream/growth.py","daydream/images/cache.py","daydream/images/cli.py","daydream/images/client.py","daydream/images/workflows/painterly_portrait.json","daydream/journal.py","daydream/llm/bootstrap.py","daydream/llm/client.py","daydream/llm/prompts.py","daydream/parser.py","daydream/retell.py","daydream/review.py","daydream/server.py","daydream/skills/data.py","daydream/skills/effects.py","daydream/skills/registry.py","daydream/testing/__main__.py","daydream/toons.py","daydream/verbs.py","daydream/version.py","daydream/worldstate.py","pyproject.toml","tests/conftest.py","tools/assemble_world.py","tools/zork_oracle.py","web/assets/main.js","web/assets/style.css","web/index.html","worlds/clockmakers-loft.json"],"block":0,"warn":1,"note":3} -->
+<!-- SECURITY_META: {"date":"2026-09-26","commit":"a1522eba2a846cce6c4fdfb69844ceace7ba90c5","scope":"paths","scanned_files":["bin/game","bin/vllm-bootstrap","daydream/api/slots.py","daydream/config.py","daydream/drift_samples.py","daydream/model_eval.py","daydream/retell.py","daydream/voice_samples.py","tests/conftest.py","tests/drift/test_dialogue_refusal_probe.py","tests/model_eval/corpus.json","tests/security/test_appearance_seed_gate.py","tests/test_model_eval.py","tests/test_ws.py"],"block":0,"warn":0,"note":3} -->
