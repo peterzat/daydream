@@ -25,7 +25,7 @@ from pathlib import Path
 
 import pytest
 
-from daydream import admin, config, db, events, objects
+from daydream import admin, config, db, events, objects, verbs
 from daydream.llm import client as llm_client
 from daydream.llm import safety
 from daydream.skills import data as data_skills
@@ -117,8 +117,14 @@ async def _probe_once(npc: objects.Object, text: str, monkeypatch) -> dict:
     monkeypatch.setattr("daydream.llm.client.acompletion_json", spy_call)
 
     before = events.max_seq()
-    skill = npc.properties["dialogue"]
-    await data_skills.execute_by_name(skill, "t-probe", npc.location_id, text)
+    # The production `talk` path (verbs._handle_talk): the NPC rides along so
+    # the third-person dialogue system message applies, under talk's effect
+    # allowlist. execute_by_name would resolve no NPC for envelope skills
+    # (dlg-*) and probe the second-person dispatcher prompt instead.
+    sspec, body = data_skills.find(npc.properties["dialogue"])
+    await data_skills.execute(
+        sspec, body, "t-probe", npc.location_id, text,
+        allowed=verbs.VERBS["talk"].allowed_effects, npc=npc)
 
     # Attribute banlist calls by order: the first is always the input scan;
     # a second (post-LLM) is the output scan.

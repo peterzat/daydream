@@ -1,0 +1,653 @@
+{
+ "_doc": "Parser corpus + world pointers for daydream/model_eval.py (the model bake-off harness). Kept out of daydream/ so engine code stays world-agnostic (tests/test_no_world_literals.py). Each case: [input, expected verb ('a|b' accepts either; 'SAFE' = no action on any in-scope object is correct), expected dobj id, expected iobj id (null = not checked), scope name].",
+ "wide_world": "worlds/zork1.json",
+ "scopes": {
+  "bunny": [
+   {
+    "id": "t-rook",
+    "name": "Rook",
+    "kind": "toon",
+    "verbs": [
+     "examine",
+     "talk"
+    ],
+    "aliases": []
+   },
+   {
+    "id": "i-lantern",
+    "name": "lantern",
+    "kind": "thing",
+    "verbs": [
+     "examine",
+     "take",
+     "drop"
+    ],
+    "aliases": [
+     "lamp"
+    ]
+   },
+   {
+    "id": "o-dreamseed",
+    "name": "dreamseed",
+    "kind": "thing",
+    "verbs": [
+     "examine",
+     "take",
+     "drop",
+     "give",
+     "plant"
+    ],
+    "aliases": [
+     "seed"
+    ]
+   }
+  ],
+  "loft": [
+   {
+    "id": "t-tace",
+    "name": "Tace",
+    "kind": "toon",
+    "verbs": [
+     "examine",
+     "talk"
+    ],
+    "aliases": [
+     "clockmaker"
+    ]
+   },
+   {
+    "id": "o-gear",
+    "name": "escapement gear",
+    "kind": "thing",
+    "verbs": [
+     "examine",
+     "take",
+     "drop",
+     "give",
+     "put"
+    ],
+    "aliases": [
+     "gear",
+     "escapement",
+     "brass gear"
+    ]
+   },
+   {
+    "id": "o-ledger",
+    "name": "repair ledger",
+    "kind": "thing",
+    "verbs": [
+     "examine",
+     "take",
+     "drop",
+     "read"
+    ],
+    "aliases": [
+     "ledger",
+     "book"
+    ]
+   },
+   {
+    "id": "o-case",
+    "name": "clock case",
+    "kind": "thing",
+    "verbs": [
+     "examine",
+     "open",
+     "close"
+    ],
+    "aliases": [
+     "case",
+     "glass case"
+    ]
+   },
+   {
+    "id": "o-key",
+    "name": "small brass key",
+    "kind": "thing",
+    "verbs": [
+     "examine",
+     "take",
+     "drop",
+     "use",
+     "give"
+    ],
+    "aliases": [
+     "key"
+    ]
+   },
+   {
+    "id": "o-lantern",
+    "name": "paper lantern",
+    "kind": "thing",
+    "verbs": [
+     "examine",
+     "take",
+     "drop"
+    ],
+    "aliases": [
+     "lantern"
+    ]
+   },
+   {
+    "id": "o-seed",
+    "name": "dreamseed",
+    "kind": "thing",
+    "verbs": [
+     "examine",
+     "take",
+     "drop",
+     "plant"
+    ],
+    "aliases": [
+     "seed"
+    ]
+   }
+  ],
+  "wide": [
+   {
+    "id": "t-troll",
+    "name": "troll",
+    "kind": "toon",
+    "verbs": [
+     "examine",
+     "attack"
+    ],
+    "aliases": [
+     "nasty troll"
+    ]
+   },
+   {
+    "id": "t-thief",
+    "name": "thief",
+    "kind": "toon",
+    "verbs": [
+     "examine",
+     "attack",
+     "give"
+    ],
+    "aliases": [
+     "robber"
+    ]
+   },
+   {
+    "id": "o-lamp",
+    "name": "brass lantern",
+    "kind": "thing",
+    "verbs": [
+     "examine",
+     "take",
+     "drop",
+     "light",
+     "extinguish"
+    ],
+    "aliases": [
+     "lamp",
+     "lantern"
+    ]
+   },
+   {
+    "id": "o-sword",
+    "name": "elvish sword",
+    "kind": "thing",
+    "verbs": [
+     "examine",
+     "take",
+     "drop"
+    ],
+    "aliases": [
+     "sword",
+     "blade"
+    ]
+   },
+   {
+    "id": "o-bar",
+    "name": "platinum bar",
+    "kind": "thing",
+    "verbs": [
+     "examine",
+     "take",
+     "drop"
+    ],
+    "aliases": [
+     "bar"
+    ]
+   },
+   {
+    "id": "o-trap-door",
+    "name": "trap door",
+    "kind": "thing",
+    "verbs": [
+     "examine",
+     "open",
+     "close"
+    ],
+    "aliases": [
+     "trapdoor",
+     "door"
+    ]
+   },
+   {
+    "id": "o-candles",
+    "name": "pair of candles",
+    "kind": "thing",
+    "verbs": [
+     "examine",
+     "take",
+     "light",
+     "extinguish"
+    ],
+    "aliases": [
+     "candles"
+    ]
+   },
+   {
+    "id": "o-bell",
+    "name": "brass bell",
+    "kind": "thing",
+    "verbs": [
+     "examine",
+     "take",
+     "ring"
+    ],
+    "aliases": [
+     "bell"
+    ]
+   },
+   {
+    "id": "o-rug",
+    "name": "oriental rug",
+    "kind": "thing",
+    "verbs": [
+     "examine",
+     "move"
+    ],
+    "aliases": [
+     "rug",
+     "carpet"
+    ]
+   },
+   {
+    "id": "o-boat",
+    "name": "magic boat",
+    "kind": "thing",
+    "verbs": [
+     "examine",
+     "board",
+     "inflate"
+    ],
+    "aliases": [
+     "boat",
+     "raft"
+    ]
+   },
+   {
+    "id": "o-egg",
+    "name": "jewel-encrusted egg",
+    "kind": "thing",
+    "verbs": [
+     "examine",
+     "take",
+     "drop",
+     "give",
+     "open"
+    ],
+    "aliases": [
+     "egg"
+    ]
+   }
+  ]
+ },
+ "cases": [
+  [
+   "say hi to rook",
+   "talk",
+   "t-rook",
+   null,
+   "bunny"
+  ],
+  [
+   "talk to rook",
+   "talk",
+   "t-rook",
+   null,
+   "bunny"
+  ],
+  [
+   "greet rook",
+   "talk",
+   "t-rook",
+   null,
+   "bunny"
+  ],
+  [
+   "take the lantern",
+   "take",
+   "i-lantern",
+   null,
+   "bunny"
+  ],
+  [
+   "pick up the lamp",
+   "take",
+   "i-lantern",
+   null,
+   "bunny"
+  ],
+  [
+   "look closely at the lantern",
+   "examine",
+   "i-lantern",
+   null,
+   "bunny"
+  ],
+  [
+   "plant the dreamseed to a moonlit orchard",
+   "plant",
+   "o-dreamseed",
+   null,
+   "bunny"
+  ],
+  [
+   "extinguish the lantern",
+   "extinguish",
+   "o-lamp",
+   null,
+   "wide"
+  ],
+  [
+   "smash the troll with my sword",
+   "attack",
+   "t-troll",
+   "o-sword",
+   "wide"
+  ],
+  [
+   "get the lantern",
+   "take",
+   "o-lamp",
+   null,
+   "wide"
+  ],
+  [
+   "pick up the platinum bar",
+   "take",
+   "o-bar",
+   null,
+   "wide"
+  ],
+  [
+   "shut the trap door",
+   "close",
+   "o-trap-door",
+   null,
+   "wide"
+  ],
+  [
+   "kindle the candles",
+   "light",
+   "o-candles",
+   null,
+   "wide"
+  ],
+  [
+   "strike the bell",
+   "ring",
+   "o-bell",
+   null,
+   "wide"
+  ],
+  [
+   "shove the rug aside",
+   "move",
+   "o-rug",
+   null,
+   "wide"
+  ],
+  [
+   "climb into the boat",
+   "board",
+   "o-boat",
+   null,
+   "wide"
+  ],
+  [
+   "hand the egg to the thief",
+   "give",
+   "o-egg",
+   "t-thief",
+   "wide"
+  ],
+  [
+   "give the gear to tace",
+   "give",
+   "o-gear",
+   "t-tace",
+   "loft"
+  ],
+  [
+   "hand tace the escapement",
+   "give",
+   "o-gear",
+   "t-tace",
+   "loft"
+  ],
+  [
+   "unlock the case with the key",
+   "use",
+   "o-key",
+   "o-case",
+   "loft"
+  ],
+  [
+   "put the gear in the case",
+   "put",
+   "o-gear",
+   "o-case",
+   "loft"
+  ],
+  [
+   "flip through the ledger",
+   "read|examine",
+   "o-ledger",
+   null,
+   "loft"
+  ],
+  [
+   "peer at the clock case",
+   "examine",
+   "o-case",
+   null,
+   "loft"
+  ],
+  [
+   "ask tace why the clock stopped",
+   "talk",
+   "t-tace",
+   null,
+   "loft"
+  ],
+  [
+   "tell the clockmaker i found something",
+   "talk",
+   "t-tace",
+   null,
+   "loft"
+  ],
+  [
+   "say good evening, everyone",
+   "say",
+   null,
+   null,
+   "loft"
+  ],
+  [
+   "set the lantern down",
+   "drop",
+   "o-lantern",
+   null,
+   "loft"
+  ],
+  [
+   "shut the case",
+   "close",
+   "o-case",
+   null,
+   "loft"
+  ],
+  [
+   "bury the seed and dream of a lighthouse",
+   "plant",
+   "o-seed",
+   null,
+   "loft"
+  ],
+  [
+   "what am i carrying",
+   "inventory",
+   null,
+   null,
+   "loft"
+  ],
+  [
+   "where am i",
+   "look",
+   null,
+   null,
+   "loft"
+  ],
+  [
+   "could you pass the gear over to tace",
+   "give",
+   "o-gear",
+   "t-tace",
+   "loft"
+  ],
+  [
+   "try the key in the case",
+   "use",
+   "o-key",
+   "o-case",
+   "loft"
+  ],
+  [
+   "slip the escapement into the clock case",
+   "put",
+   "o-gear",
+   "o-case",
+   "loft"
+  ],
+  [
+   "open the glass case",
+   "open",
+   "o-case",
+   null,
+   "loft"
+  ],
+  [
+   "have a look around",
+   "look",
+   null,
+   null,
+   "loft"
+  ],
+  [
+   "check my pockets",
+   "inventory",
+   null,
+   null,
+   "loft"
+  ],
+  [
+   "tell everyone it's getting late",
+   "say",
+   null,
+   null,
+   "loft"
+  ],
+  [
+   "read the book",
+   "read",
+   "o-ledger",
+   null,
+   "loft"
+  ],
+  [
+   "leave the seed here",
+   "drop",
+   "o-seed",
+   null,
+   "loft"
+  ],
+  [
+   "light the lamp",
+   "light",
+   "o-lamp",
+   null,
+   "wide"
+  ],
+  [
+   "douse the candles",
+   "extinguish",
+   "o-candles",
+   null,
+   "wide"
+  ],
+  [
+   "fight the thief with the blade",
+   "attack",
+   "t-thief",
+   "o-sword",
+   "wide"
+  ],
+  [
+   "give the platinum bar to the robber",
+   "give",
+   "o-bar",
+   "t-thief",
+   "wide"
+  ],
+  [
+   "inflate the raft",
+   "inflate",
+   "o-boat",
+   null,
+   "wide"
+  ],
+  [
+   "take the moon",
+   "SAFE",
+   null,
+   null,
+   "loft"
+  ],
+  [
+   "fly to the moon",
+   "SAFE",
+   null,
+   null,
+   "wide"
+  ],
+  [
+   "take the elephant",
+   "SAFE",
+   null,
+   null,
+   "wide"
+  ],
+  [
+   "hmm",
+   "SAFE",
+   null,
+   null,
+   "loft"
+  ],
+  [
+   "eat the teapot",
+   "SAFE",
+   null,
+   null,
+   "loft"
+  ]
+ ]
+}

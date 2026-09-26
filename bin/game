@@ -608,6 +608,16 @@ cmd_drift_samples() {
     "$VENV_PY" -m daydream.drift_samples "$@"
 }
 
+cmd_model_eval() {
+    # Model bake-off harness: every runtime LLM surface (parser, dialogue,
+    # growth, journal, retell, examine, drift, JSON) through the production
+    # prompts + validators against the configured endpoint, plus `compare`
+    # for a metrics table and a blinded prose sheet. Hermetic (temp DBs).
+    # See daydream/model_eval.py and docs/gpu-and-models.md.
+    _require_venv
+    "$VENV_PY" -m daydream.model_eval "$@"
+}
+
 cmd_review() {
     # Build ONE offline review artifact (an index.html contact sheet) from
     # worlds/bunny.json: every aesthetic anchor render (incl. the forge) plus a
@@ -636,6 +646,7 @@ case "${1:-}" in
     voice-samples) shift; cmd_voice_samples "$@" ;;
     drift-samples) shift; cmd_drift_samples "$@" ;;
     review)        shift; cmd_review "$@" ;;
-    "")            echo "usage: bin/game {up|up-all|deploy|down|status|logs|image-test|comfyui-up|comfyui-down|vllm-up|vllm-down|world|test|voice-samples|drift-samples|review}" >&2; exit 2 ;;
-    *)             echo "usage: bin/game {up|up-all|deploy|down|status|logs|image-test|comfyui-up|comfyui-down|vllm-up|vllm-down|world|test|voice-samples|drift-samples|review} (got: $1)" >&2; exit 2 ;;
+    model-eval)    shift; cmd_model_eval "$@" ;;
+    "")            echo "usage: bin/game {up|up-all|deploy|down|status|logs|image-test|comfyui-up|comfyui-down|vllm-up|vllm-down|world|test|voice-samples|drift-samples|review|model-eval}" >&2; exit 2 ;;
+    *)             echo "usage: bin/game {up|up-all|deploy|down|status|logs|image-test|comfyui-up|comfyui-down|vllm-up|vllm-down|world|test|voice-samples|drift-samples|review|model-eval} (got: $1)" >&2; exit 2 ;;
 esac
