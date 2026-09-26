@@ -590,8 +590,63 @@ cmd_world() {
         cmd_world_reset "$@"
         return
     fi
+    if [[ "${1:-}" == "patch" ]]; then
+        # Dream patches (SPEC 2026-09-26 criterion 14): validate fail-loud
+        # (--check, no writes) or apply additively to a DB (default: live).
+        # A live install goes through `bin/game dream install`, which proves
+        # the patch by rehearsal first; this is the lower-level verb.
+        shift
+        _require_venv
+        local mode="apply"
+        local args=()
+        while [[ $# -gt 0 ]]; do
+            case "$1" in
+                --check) mode="check"; shift ;;
+                *) args+=("$1"); shift ;;
+            esac
+        done
+        "$VENV_PY" -m daydream.dream "$mode" "${args[@]}"
+        return
+    fi
     _require_venv
     "$VENV_PY" -m daydream.admin "$@"
+}
+
+cmd_dream() {
+    # The in-session dream loop (SPEC 2026-09-26 criterion 14; runbook:
+    # docs/DREAM-RUNBOOK.md). digest / check / rehearse / mark forward to
+    # daydream.dream; `install` is intercepted here because it cycles the
+    # server: it refuses unless a passing rehearsal of exactly this patch
+    # exists, snapshots the live world, stops the server, applies the proven
+    # patch to the CURRENT live DB (never the rehearsal copy, so no action
+    # taken meanwhile is lost), records the digest mark, and starts back up.
+    _require_venv
+    if [[ "${1:-}" != "install" ]]; then
+        "$VENV_PY" -m daydream.dream "$@"
+        return
+    fi
+    shift
+    local patch="${1:-}"
+    if [[ -z "$patch" || ! -f "$patch" ]]; then
+        echo "usage: bin/game dream install <patch.json>" >&2
+        return 2
+    fi
+    "$VENV_PY" -m daydream.dream install-check "$patch" || return 1
+    local world_id
+    world_id="$("$VENV_PY" -c "import json,sys; print(json.load(open(sys.argv[1]))['world'])" "$patch")"
+    echo "==> dream install: pre-dream snapshot"
+    "$VENV_PY" -m daydream.admin snapshot "$world_id" || return 1
+    echo "==> dream install: the dream is turning over (stopping the server)"
+    cmd_down
+    echo "==> dream install: applying the proven patch to the live world"
+    if ! "$VENV_PY" -m daydream.dream apply "$patch" --db "$LIVE_DB"; then
+        echo "error: apply refused; the live world is unchanged. Starting back up." >&2
+        cmd_up
+        return 1
+    fi
+    "$VENV_PY" -m daydream.dream mark --db "$LIVE_DB"
+    echo "==> dream install: waking the village"
+    cmd_up
 }
 
 cmd_world_reset() {
@@ -673,6 +728,14 @@ cmd_model_eval() {
     "$VENV_PY" -m daydream.model_eval "$@"
 }
 
+cmd_play() {
+    # The agent play bridge (SPEC 2026-09-26 criterion 17): drive a LIVE
+    # session through the browser's WebSocket path, one invocation at a time.
+    # See daydream/play.py.
+    _require_venv
+    "$VENV_PY" -m daydream.play "$@"
+}
+
 cmd_review() {
     # Build ONE offline review artifact (an index.html contact sheet) from
     # worlds/bunny.json: every aesthetic anchor render (incl. the forge) plus a
@@ -697,11 +760,13 @@ case "${1:-}" in
     vllm-up)       shift; cmd_vllm_up "$@" ;;
     vllm-down)     shift; cmd_vllm_down "$@" ;;
     world)         shift; cmd_world "$@" ;;
+    dream)         shift; cmd_dream "$@" ;;
+    play)          shift; cmd_play "$@" ;;
     test)          shift; cmd_test "$@" ;;
     voice-samples) shift; cmd_voice_samples "$@" ;;
     drift-samples) shift; cmd_drift_samples "$@" ;;
     review)        shift; cmd_review "$@" ;;
     model-eval)    shift; cmd_model_eval "$@" ;;
-    "")            echo "usage: bin/game {up|up-all|deploy|down|status|logs|image-test|comfyui-up|comfyui-down|vllm-up|vllm-down|world|test|voice-samples|drift-samples|review|model-eval}" >&2; exit 2 ;;
-    *)             echo "usage: bin/game {up|up-all|deploy|down|status|logs|image-test|comfyui-up|comfyui-down|vllm-up|vllm-down|world|test|voice-samples|drift-samples|review|model-eval} (got: $1)" >&2; exit 2 ;;
+    "")            echo "usage: bin/game {up|up-all|deploy|down|status|logs|image-test|comfyui-up|comfyui-down|vllm-up|vllm-down|world|dream|play|test|voice-samples|drift-samples|review|model-eval}" >&2; exit 2 ;;
+    *)             echo "usage: bin/game {up|up-all|deploy|down|status|logs|image-test|comfyui-up|comfyui-down|vllm-up|vllm-down|world|dream|play|test|voice-samples|drift-samples|review|model-eval} (got: $1)" >&2; exit 2 ;;
 esac

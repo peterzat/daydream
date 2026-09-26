@@ -30,7 +30,9 @@ from collections import Counter
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, status
 
 from daydream import (
+    collect,
     config,
+    dream,
     events,
     inputs,
     journal,
@@ -38,9 +40,11 @@ from daydream import (
     objects,
     parser,
     rooms,
+    story,
     toons,
     verbs,
     version,
+    village,
     worldstate,
 )
 from daydream.api import auth, csrf
@@ -175,6 +179,9 @@ def _state_snapshot(
     Room is resolved dynamically from the controlled toon's
     current_room_id so that post-move snapshots reflect the new room
     without the caller having to pass the id in."""
+    # A player's daily finds are placed before the room is read, so today's
+    # glints are already on the ground (SPEC 2026-09-26 criterion 12).
+    collect.ensure_daily(toon_id)
     room_id = _current_room_id(toon_id)
     room = rooms.get_room(room_id)
     # Darkness veils the room (SPEC 2026-07-02 criterion 6): description and
@@ -246,7 +253,7 @@ def _state_snapshot(
         # (room things) were previously sent but never rendered; `inventory`
         # is the actor's carried things.
         "items": [_object_card(o) for o in things_in],
-        "toons": [_toon_card(t) for t in toons_in],
+        "toons": [_toon_card(t, viewer_id=toon_id) for t in toons_in],
         # WHO YOU ARE: the controlled toon, named explicitly so the SPA never
         # has to guess which co-located toon is the player.
         "self": _toon_card(self_toon) if self_toon is not None else None,
@@ -280,6 +287,14 @@ def _state_snapshot(
         # by construction — a co-located player's journal never appears in
         # anyone else's snapshot (SPEC 2026-07-07 criterion 3).
         "journal": journal.entries_for_snapshot(toon_id),
+        # The story layer (SPEC 2026-09-26): the village's time of day (null
+        # for worlds that author no time), the CONTROLLED player's Book of
+        # Stray Minutes, and the latest dream's "while you slept" note, which
+        # rides exactly one snapshot per player (dream.note_for marks it seen).
+        "time": (village.status(room.world_id)
+                 if room is not None and village.time_def(room.world_id) else None),
+        "book": collect.book(room.world_id, toon_id) if room is not None else None,
+        "while_you_slept": dream.note_for(toon_id),
         "last_seq": last_seq,
         # Build + world version so the client can detect a redeploy (a stale
         # open tab still running the OLD main.js — a WS reconnect never reloads
@@ -328,13 +343,21 @@ def _object_card(o: "objects.Object", depth: int = 0) -> dict:
     return card
 
 
-def _toon_card(t: "toons.Toon") -> dict:
+def _toon_card(t: "toons.Toon", viewer_id: str | None = None) -> dict:
     obj = objects.get(t.id)
+    # What the viewer could ask this NPC about right now (open talk beats
+    # first, then authored topics): the clickable ask-about chips, the
+    # deterministic producer for every talk beat (SPEC 2026-09-26 crit. 6).
+    topics: list[str] = []
+    if viewer_id and obj is not None and obj.id != viewer_id \
+            and not obj.is_human_controlled:
+        topics = [tp["label"] for tp in story.available_topics(obj, viewer_id)]
     return {
         "id": t.id,
         "name": t.name,
         "mood": t.mood,
         "kind": "toon",
+        "topics": topics,
         "verbs": objects.verbs_for(obj) if obj is not None else [],
         # The painted face, cached-only (a snapshot never triggers a render;
         # painting happens through the portrait enqueue). None until painted

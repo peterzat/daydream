@@ -454,6 +454,122 @@ def _slugify(text: str) -> str:
     return re.sub(r"[^a-z0-9-]+", "-", text.lower()).strip("-")
 
 
+def insert_entities(cur, world_id: str, env: dict) -> None:
+    """Insert an envelope's rooms, toons (and their dialogue skills), and
+    things (two-pass locations) on an explicit cursor. Shared by the world
+    loader and the dream patcher (daydream/dream.py), so a patch writes rows
+    exactly as a load would."""
+    env = dict(env)
+    env.setdefault("rooms", [])
+    for r in env["rooms"]:
+        props: dict = {}
+        extra = r.get("properties")
+        if isinstance(extra, dict):
+            props.update(extra)
+        props.update({
+            "slug": r["slug"],
+            "title": r["title"],
+            "seed": r["seed"],
+            "description_cached": (
+                r["description"].strip()
+                if isinstance(r.get("description"), str) and r["description"].strip()
+                else None
+            ),
+            "exits": r.get("exits", {}),
+            "parent_id": None,
+        })
+        if r.get("dark"):
+            props["dark"] = True
+        for k in ("enter_if", "enter_blocked_text", "rules"):
+            if k in r:
+                props[k] = r[k]
+        cur.execute(
+            "INSERT INTO objects (id, world_id, kind, name, location_id, "
+            "prototype_id, properties_json) VALUES (?, ?, 'room', ?, NULL, ?, ?)",
+            (r["id"], world_id, r["title"], "proto-room", json.dumps(props)),
+        )
+
+    for t in env.get("toons", []):
+        props = {}
+        extra = t.get("properties")
+        if isinstance(extra, dict):
+            props.update(extra)
+        props.setdefault("seed", t.get("seed") or t.get("appearance_seed") or "")
+        props.setdefault("appearance_seed", t.get("appearance_seed") or "")
+        props.setdefault("mood", t.get("mood") or "calm")
+        props.setdefault("presence_text", t.get("presence_text"))
+        if "rules" in t:
+            props["rules"] = t["rules"]
+        dlg = t.get("dialogue") if isinstance(t.get("dialogue"), dict) else None
+        dlg_skill = None
+        if dlg is not None:
+            dlg_skill = f"dlg-{_slugify(t['name']) or 'npc'}"
+            props["dialogue"] = dlg_skill
+        aliases = t.get("aliases") if isinstance(t.get("aliases"), list) else []
+        cur.execute(
+            "INSERT INTO objects (id, world_id, kind, name, aliases_json, "
+            "location_id, prototype_id, properties_json, slot, "
+            "controller_session, is_human_controlled, kicked_at) "
+            "VALUES (?, ?, 'toon', ?, ?, ?, ?, ?, ?, NULL, ?, NULL)",
+            (t["id"], world_id, t["name"], json.dumps(aliases),
+             None if t["room"] == "offstage" else t["room"],
+             "proto-npc", json.dumps(props), t["slot"],
+             int(t.get("is_human_controlled") or 0)),
+        )
+        if dlg is not None:
+            cur.execute(
+                "INSERT INTO skills (id, name, kind, context_predicate_json, "
+                "prompt_template, ui_hint, description, effects_schema_json, "
+                "author, enabled) "
+                "VALUES (?, ?, 'data', '{\"room_slug\": \"__npc_dialogue__\"}', "
+                "?, ?, ?, ?, 'opus-load', 1)",
+                (f"skill-{dlg_skill}", dlg_skill, dlg["prompt_template"],
+                 dlg.get("ui_hint") or "Talk",
+                 dlg.get("description") or f"Talk to {t['name']}.",
+                 json.dumps(dlg.get("effects_schema") or {})),
+            )
+
+    # Things: two-pass so containment order never fights the FK — insert
+    # every row locationless, then point locations at the now-existing
+    # rows ("offstage" stays NULL).
+    for th in env.get("things", []):
+        proto = "thing"
+        if th.get("fixture"):
+            proto = "fixture"
+        elif th.get("readable"):
+            proto = "readable"
+        props = {}
+        extra = th.get("properties")
+        if isinstance(extra, dict):
+            props.update(extra)
+        props["seed"] = th.get("seed") or ""
+        props["is_unique"] = 1
+        if isinstance(th.get("text"), str) and th["text"].strip():
+            props["text"] = th["text"].strip()
+        if isinstance(th.get("verbs"), list):
+            cleaned = [v for v in th["verbs"] if isinstance(v, str) and v.strip()]
+            if cleaned:
+                props["verbs"] = cleaned
+        if "rules" in th:
+            props["rules"] = th["rules"]
+        aliases = th.get("aliases") if isinstance(th.get("aliases"), list) else []
+        cur.execute(
+            "INSERT INTO objects (id, world_id, kind, name, aliases_json, "
+            "location_id, prototype_id, properties_json) "
+            "VALUES (?, ?, 'thing', ?, ?, NULL, ?, ?)",
+            (th["id"], world_id, th["name"], json.dumps(aliases),
+             f"proto-{proto}", json.dumps(props)),
+        )
+    for th in env.get("things", []):
+        loc = th.get("location")
+        if loc == "offstage" or not isinstance(loc, dict):
+            continue
+        (_, ref), = loc.items()
+        cur.execute(
+            "UPDATE objects SET location_id = ? WHERE id = ?", (ref, th["id"]),
+        )
+
+
 def _write_db2(env: dict, output_path: Path) -> None:
     world = env["world"]
     world_id = f"w-{_slugify(world['slug'])}"
@@ -484,113 +600,7 @@ def _write_db2(env: dict, output_path: Path) -> None:
                  json.dumps({"verbs": verb_list})),
             )
 
-        for r in env["rooms"]:
-            props: dict = {}
-            extra = r.get("properties")
-            if isinstance(extra, dict):
-                props.update(extra)
-            props.update({
-                "slug": r["slug"],
-                "title": r["title"],
-                "seed": r["seed"],
-                "description_cached": (
-                    r["description"].strip()
-                    if isinstance(r.get("description"), str) and r["description"].strip()
-                    else None
-                ),
-                "exits": r.get("exits", {}),
-                "parent_id": None,
-            })
-            if r.get("dark"):
-                props["dark"] = True
-            for k in ("enter_if", "enter_blocked_text", "rules"):
-                if k in r:
-                    props[k] = r[k]
-            cur.execute(
-                "INSERT INTO objects (id, world_id, kind, name, location_id, "
-                "prototype_id, properties_json) VALUES (?, ?, 'room', ?, NULL, ?, ?)",
-                (r["id"], world_id, r["title"], "proto-room", json.dumps(props)),
-            )
-
-        for t in env.get("toons", []):
-            props = {}
-            extra = t.get("properties")
-            if isinstance(extra, dict):
-                props.update(extra)
-            props.setdefault("seed", t.get("seed") or t.get("appearance_seed") or "")
-            props.setdefault("appearance_seed", t.get("appearance_seed") or "")
-            props.setdefault("mood", t.get("mood") or "calm")
-            props.setdefault("presence_text", t.get("presence_text"))
-            if "rules" in t:
-                props["rules"] = t["rules"]
-            dlg = t.get("dialogue") if isinstance(t.get("dialogue"), dict) else None
-            dlg_skill = None
-            if dlg is not None:
-                dlg_skill = f"dlg-{_slugify(t['name']) or 'npc'}"
-                props["dialogue"] = dlg_skill
-            aliases = t.get("aliases") if isinstance(t.get("aliases"), list) else []
-            cur.execute(
-                "INSERT INTO objects (id, world_id, kind, name, aliases_json, "
-                "location_id, prototype_id, properties_json, slot, "
-                "controller_session, is_human_controlled, kicked_at) "
-                "VALUES (?, ?, 'toon', ?, ?, ?, ?, ?, ?, NULL, ?, NULL)",
-                (t["id"], world_id, t["name"], json.dumps(aliases),
-                 None if t["room"] == "offstage" else t["room"],
-                 "proto-npc", json.dumps(props), t["slot"],
-                 int(t.get("is_human_controlled") or 0)),
-            )
-            if dlg is not None:
-                cur.execute(
-                    "INSERT INTO skills (id, name, kind, context_predicate_json, "
-                    "prompt_template, ui_hint, description, effects_schema_json, "
-                    "author, enabled) "
-                    "VALUES (?, ?, 'data', '{\"room_slug\": \"__npc_dialogue__\"}', "
-                    "?, ?, ?, ?, 'opus-load', 1)",
-                    (f"skill-{dlg_skill}", dlg_skill, dlg["prompt_template"],
-                     dlg.get("ui_hint") or "Talk",
-                     dlg.get("description") or f"Talk to {t['name']}.",
-                     json.dumps(dlg.get("effects_schema") or {})),
-                )
-
-        # Things: two-pass so containment order never fights the FK — insert
-        # every row locationless, then point locations at the now-existing
-        # rows ("offstage" stays NULL).
-        for th in env.get("things", []):
-            proto = "thing"
-            if th.get("fixture"):
-                proto = "fixture"
-            elif th.get("readable"):
-                proto = "readable"
-            props = {}
-            extra = th.get("properties")
-            if isinstance(extra, dict):
-                props.update(extra)
-            props["seed"] = th.get("seed") or ""
-            props["is_unique"] = 1
-            if isinstance(th.get("text"), str) and th["text"].strip():
-                props["text"] = th["text"].strip()
-            if isinstance(th.get("verbs"), list):
-                cleaned = [v for v in th["verbs"] if isinstance(v, str) and v.strip()]
-                if cleaned:
-                    props["verbs"] = cleaned
-            if "rules" in th:
-                props["rules"] = th["rules"]
-            aliases = th.get("aliases") if isinstance(th.get("aliases"), list) else []
-            cur.execute(
-                "INSERT INTO objects (id, world_id, kind, name, aliases_json, "
-                "location_id, prototype_id, properties_json) "
-                "VALUES (?, ?, 'thing', ?, ?, NULL, ?, ?)",
-                (th["id"], world_id, th["name"], json.dumps(aliases),
-                 f"proto-{proto}", json.dumps(props)),
-            )
-        for th in env.get("things", []):
-            loc = th.get("location")
-            if loc == "offstage" or not isinstance(loc, dict):
-                continue
-            (_, ref), = loc.items()
-            cur.execute(
-                "UPDATE objects SET location_id = ? WHERE id = ?", (ref, th["id"]),
-            )
+        insert_entities(cur, world_id, env)
 
         # Authored definition blocks -> world_state (the runtime reads them
         # through daydream.worldstate).
