@@ -138,3 +138,21 @@ are dropped. Room data skills dispatch under their declared allowlist.
   minutes MERGED). Next: merge arcs + voices, critic pass, AFTER model-eval,
   remove config.under_construction, archive Zork + reset live + prebake +
   grade art, agent playtest day, first dream, README/CLAUDE.md, operator.
+- 2026-09-26 (evening): arcs + voices merged (f59d9bc: the world complete,
+  criterion 1 scale test armed); art pre-graded on a scratch copy (efc57bd:
+  four room seeds rewritten, reseeds r-clocktower=5, t-quill=11). Two blind
+  critic passes over all eleven arcs, the cast, and the minutes; two fixer
+  passes in flight (arcs 00-05 + cast/regions; arcs 06-10). The critic's
+  twelve weakest minutes rewritten and six relationship-only pages given a
+  keepsake. Engine: drift buckets keyed `<phase>@<room>` (a keeper asleep in
+  bed, awake on a hill); phase buckets never borrowed as a talk gesture.
+- 2026-09-26: the operator adopted **"the local GPU is the game's reflexes,
+  not its voice"** as the framing for runtime generation (docs/REFLEXES.md,
+  README top). Two obligations follow: (a) the playtest report tags each line
+  players read as authored or local and shows where defects and best moments
+  cluster; (b) **before calling the turn ready to push, a significant review
+  of README and the design docs** (PIVOT, CLAUDE.md, WHIMSY, DESIGN, ROADMAP,
+  canon bible, REFLEXES) through this framing and the pivot, then the full
+  test run. Operator's words: "Use this addition, and our pivot, to
+  significantly review our README and design docs when you're done building
+  all of it (before you think we're ready to push, and then test)."

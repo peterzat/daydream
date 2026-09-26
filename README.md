@@ -10,6 +10,8 @@
 
 The image above is the image-gen pipeline's first real output (SDXL base + a watercolor LoRA via local ComfyUI, ~6 s on the dev box's RTX 4000 SFF Ada), kept at the project root as a historical artifact. The aesthetic anchor is [`WHIMSY.md`](WHIMSY.md): Spiritfarer / A Short Hike, soft and painterly, with soft stakes.
 
+> **The local GPU is the game's reflexes, not its voice.** Opus writes the story: ahead of time (every beat, ending, fact, and room of the village, with each painting rendered and graded before anyone arrives) and in *dreams* between sessions that read what players did. The small models on one local 20 GB GPU handle only what cannot be prepared in advance: understanding what you type, answering in character when you go off-script, and painting and describing what players make (their own portraits, rooms grown from their words). The whole world stays completable with the local models switched off. The full reasoning, ranked by what each runtime generation is worth: [`docs/REFLEXES.md`](docs/REFLEXES.md).
+
 ## What it is now
 
 The pivot of 2026-09-26 ([`docs/PIVOT.md`](docs/PIVOT.md), contract in [`SPEC.md`](SPEC.md)) turned a platform carrying one fifteen-minute quest into a story world:
@@ -46,7 +48,7 @@ The first version of daydream described itself as a game players could expand wi
 
 ### The local GPU is a deliberate limit
 
-Every bit of live generation runs on one modest GPU (a 20 GB RTX 4000), and that ceiling is a design choice. The small local models carry what they are good at, with the real game state in front of them; where they cannot reach, the quality is pre-baked by Opus at design time or in a dream (see [Two dreamers](#two-dreamers)), never by calling a bigger model at runtime.
+Every bit of live generation runs on one modest GPU (a 20 GB RTX 4000), and that ceiling is a design choice. The small local models carry what they are good at, with the real game state in front of them; where they cannot reach, the quality is pre-baked by Opus at design time or in a dream (see [Two dreamers](#two-dreamers)), never by calling a bigger model at runtime. What that leaves for the GPU, and what it is worth, is in [`docs/REFLEXES.md`](docs/REFLEXES.md).
 
 ### Objects, verbs, and free-form input
 
