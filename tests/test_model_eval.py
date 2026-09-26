@@ -45,7 +45,7 @@ def test_parser_corpus_expectations_are_in_scope():
     can never pass and silently lowers every model's score."""
     scopes = {"bunny": model_eval.SCOPES["bunny"], "loft": model_eval.SCOPES["loft"],
               "wide": model_eval.SCOPES["wide"]}
-    for text, verb, dobj, iobj, scope in model_eval.PARSER_CASES:
+    for text, _verb, dobj, iobj, scope in model_eval.PARSER_CASES:
         ids = {e["id"] for e in scopes[scope]}
         for want in (dobj, iobj):
             assert want is None or want in ids, (text, want)
