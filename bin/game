@@ -655,8 +655,9 @@ cmd_world_reset() {
     # start back up on current code. The one-command runbook the
     # version-gate's "run 'bin/game world reset'" message points at. Gated
     # behind --yes; `--world <envelope.json>` selects the world (default
-    # worlds/clockmakers-loft.json — the Zork turn adds worlds/zork1.json).
-    local envelope="$PROJECT_ROOT/worlds/clockmakers-loft.json"
+    # worlds/lost-hours.json, The Village of Lost Hours; worlds/zork1.json is
+    # the frozen engine regression fixture).
+    local envelope="$PROJECT_ROOT/worlds/lost-hours.json"
     local confirmed=""
     while [[ $# -gt 0 ]]; do
         case "$1" in

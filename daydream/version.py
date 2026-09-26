@@ -45,7 +45,7 @@ APP_VERSION = "1.0.0"
 # world lacks the seed, so it warns-not-refuses per MINOR rules. 1.4: the
 # v1.0 loft batch — seed propagation config, the first-planting chapter
 # close, per-NPC drift pools, SPEC 2026-07-07 criterion 7.)
-WORLD_VERSION = "1.4"
+WORLD_VERSION = "1.5"
 
 
 @lru_cache(maxsize=1)
@@ -105,7 +105,7 @@ def check_world_compat(conn: sqlite3.Connection) -> None:
       MAJOR mismatch         raise SystemExit (refuse to boot) -- the world
                              cannot be carried forward; the operator must
                              `bin/game world reset` to rebuild from the canonical
-                             envelope (worlds/clockmakers-loft.json by default;
+                             envelope (worlds/lost-hours.json by default;
                              `--world` selects another).
       MINOR mismatch / NULL  log a WARNING -- the world still loads but may not
                              reflect current authored content.
@@ -138,7 +138,7 @@ def check_world_compat(conn: sqlite3.Connection) -> None:
                 f"major {code_major} (WORLD_VERSION={WORLD_VERSION}). The live "
                 f"world is incompatible with this code -- run 'bin/game world "
                 f"reset' to rebuild it from the canonical envelope "
-                f"(worlds/clockmakers-loft.json by default)."
+                f"(worlds/lost-hours.json by default)."
             )
             logger.error(msg)
             raise SystemExit(msg)

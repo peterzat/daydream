@@ -344,6 +344,17 @@ def validate_story(env: dict, *, known: dict, ks: dict, room_ids: set[str],
         for name, tpl in tpls.items():
             if not isinstance(tpl, dict) or not isinstance(tpl.get("name"), str):
                 errors.append(f"config.templates.{name}: needs a 'name'")
+                continue
+            g = (tpl.get("properties") or {}).get("growth")
+            if g is not None:
+                # A template dreamseed's growth block is held to the same
+                # fail-loud bar the format-1 loader applied to authored seeds.
+                from daydream.llm import bootstrap
+
+                try:
+                    bootstrap._validate_growth(g, f"config.templates.{name}.properties.growth")
+                except Exception as e:  # noqa: BLE001 - reported as a named error
+                    errors.append(str(e))
     col = cfg.get("collect")
     if col is not None:
         if not isinstance(col, dict):

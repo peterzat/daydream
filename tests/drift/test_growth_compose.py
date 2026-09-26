@@ -1,6 +1,7 @@
 """Growth-composition drift probe (real GPU; SPEC 2026-07-02 criterion 7).
 
-Renders the SHIPPED dreamseed's growth block (worlds/clockmakers-loft.json)
+Renders the SHIPPED dreamseed's growth block (worlds/lost-hours.json's
+dreamseed template)
 through the real growth prompt against real vLLM for a fixed corpus of vision
 phrases, and fingerprints per phrase: schema validity, refusal, whether the
 player's phrase was woven into the composition, distinctness from the seed's
@@ -38,7 +39,7 @@ pytestmark = [
 ]
 
 _REPO = Path(__file__).resolve().parent.parent.parent
-_WORLD = _REPO / "worlds" / "clockmakers-loft.json"
+_WORLD = _REPO / "worlds" / "lost-hours.json"
 
 # The fixed vision corpus (>=3 phrases, in-tone, varied register). Expanding
 # it is a positive act; the probe scales automatically.
@@ -58,10 +59,7 @@ def _shipped_growth_and_room() -> tuple[dict, rooms.Room]:
     """The SHIPPED seed's growth block + the clocktower it is found in, read
     straight from the canonical envelope (no DB, no loader)."""
     env = json.loads(_WORLD.read_text())
-    case = next(it for it in env["items"] if it["name"] == "clock case")
-    seed = next(e for e in case["properties"]["contains"]
-                if e["name"] == "dreamseed")
-    g = seed["properties"]["growth"]
+    g = env["config"]["templates"]["dreamseed"]["properties"]["growth"]
     tower = next(r for r in env["rooms"] if r["slug"] == "clocktower")
     room = rooms.Room(
         id="r-clocktower", world_id="w-bunny", slug="clocktower",

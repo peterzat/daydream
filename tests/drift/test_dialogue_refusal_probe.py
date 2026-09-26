@@ -1,15 +1,16 @@
 """The benign-refusal probe (SPEC 2026-07-07 criterion 8; BACKLOG
 dialogue-refusal-fallback-on-benign-input).
 
-Runs a fixed corpus of greeting-class inputs through the LIVE loft NPC
-dialogue pipeline (real vLLM, real prompts, the real safety layers) and
+Runs a fixed corpus of greeting-class inputs through the LIVE canonical
+world's talk path (The Village of Lost Hours' voice-sheet dialogue since
+the 2026-09-26 pivot: real vLLM, real prompts, the real safety layers) and
 attributes every non-conversational outcome to the exact layer that fired:
 
   input_banlist   safety.first_banned over the player's text (pre-LLM)
   llm_error       LLMUnavailable (vLLM down / JSON parse fail / timeout)
   refusal_parse   the model returned {"refused": true}
-  output_banlist  safety.first_banned over the effects' narrative text
-  empty_effects   a well-formed reply with no dispatchable effects
+  output_banlist  safety.first_banned over the reply text
+  empty_effects   no reply at all (a fallback line instead)
 
 The full attribution table lands in
 tests/baselines/dialogue_refusal_probe.latest.json so a ratification run
@@ -28,7 +29,6 @@ import pytest
 from daydream import admin, config, db, events, objects, verbs
 from daydream.llm import client as llm_client
 from daydream.llm import safety
-from daydream.skills import data as data_skills
 
 from .conftest import write_latest
 
@@ -38,7 +38,7 @@ pytestmark = [
 ]
 
 REPO = Path(__file__).resolve().parent.parent.parent
-WORLD = REPO / "worlds" / "clockmakers-loft.json"
+WORLD = REPO / "worlds" / "lost-hours.json"
 
 # Greeting-class inputs: unambiguously benign, the class the BACKLOG entry
 # observed degrading. 7 greetings x 3 NPCs = 21 probe runs (>= 20 per the
@@ -117,14 +117,16 @@ async def _probe_once(npc: objects.Object, text: str, monkeypatch) -> dict:
     monkeypatch.setattr("daydream.llm.client.acompletion_json", spy_call)
 
     before = events.max_seq()
-    # The production `talk` path (verbs._handle_talk): the NPC rides along so
-    # the third-person dialogue system message applies, under talk's effect
-    # allowlist. execute_by_name would resolve no NPC for envelope skills
-    # (dlg-*) and probe the second-person dispatcher prompt instead.
-    sspec, body = data_skills.find(npc.properties["dialogue"])
-    await data_skills.execute(
-        sspec, body, "t-probe", npc.location_id, text,
-        allowed=verbs.VERBS["talk"].allowed_effects, npc=npc)
+    # The production talk path, spoken by a probe PLAYER standing beside the
+    # NPC (verbs.execute_command -> the world's own dialogue mechanism).
+    from daydream import toons
+
+    probe = next((t for t in toons.get_toons_in_room(npc.location_id)
+                  if t.name == "Juniper"), None)
+    if probe is None:
+        probe = toons.create_toon_in_slot(8, "Juniper", "a traveler", "probe")
+        objects.move(probe.id, npc.location_id)
+    await verbs.execute_command(probe.id, "talk", dobj_id=npc.id, args=text)
 
     # Attribute banlist calls by order: the first is always the input scan;
     # a second (post-LLM) is the output scan.
@@ -136,9 +138,8 @@ async def _probe_once(npc: objects.Object, text: str, monkeypatch) -> dict:
     narrates = [e.payload.get("text", "") for e in events.fetch_since(before)
                 if e.kind == "narrate"]
     record["narrate"] = narrates[-1] if narrates else None
-    record["empty_effects"] = record["narrate"] == (
-        "The dream is quiet; nothing stirs just yet."
-    )
+    record["empty_effects"] = record["narrate"] in (
+        "The dream is quiet; nothing stirs just yet.", None)
     record["ok"] = (
         record["input_banlist"] is None and record["llm_error"] is None
         and record["refused"] is None and record["output_banlist"] is None

@@ -101,3 +101,40 @@ def test_world_scale_meets_criterion_1():
     assert any(a.get("cumulative") for a in arcs.values()), \
         "no cumulative multiplayer arc (authored `cumulative: true`)"
     assert len(ENV.get("collectibles", [])) >= 150
+
+
+# ---- invariants carried over from the retired loft world tests -------------
+
+
+def test_quest_cross_references_resolve_by_name():
+    toons = {t["id"]: t for t in ENV["toons"]}
+    things = {t["id"]: t for t in ENV["things"]}
+    tace = toons["t-tace"]["properties"]
+    gear = things["o-escapement-gear"]
+    assert tace["wants"] in [gear["name"], *gear.get("aliases", [])]
+    case = things["o-clock-case"]["properties"]
+    assert case["use"]["with"] == tace["gives"]["name"]
+    assert "use" in tace["gives"]["verbs"]
+
+
+def test_the_dreamseed_template_is_plantable_and_its_growth_validates():
+    from daydream import growth
+    from daydream.llm import bootstrap
+
+    tpl = ENV["config"]["templates"]["dreamseed"]
+    assert "plant" in tpl["verbs"]
+    g = tpl["properties"]["growth"]
+    bootstrap._validate_growth(g, "config.templates.dreamseed.properties.growth")
+    assert growth._growth_shape_ok(g)
+    assert g.get("first_planting_text") and g.get("propagation")
+
+
+def test_every_resident_carries_a_voice_sheet_and_authored_drift():
+    guests = {a["guest"] for a in ENV["arcs"].values() if a.get("guest")}
+    for t in ENV["toons"]:
+        if t["id"] in guests:
+            continue
+        props = t.get("properties") or {}
+        assert isinstance(props.get("voice"), dict), t["id"]
+        if t["id"] != "t-tock":
+            assert props.get("topics"), f"{t['id']} has nothing to be asked about"

@@ -64,12 +64,13 @@ import time
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-LOFT = PROJECT_ROOT / "worlds" / "clockmakers-loft.json"
+CANONICAL = PROJECT_ROOT / "worlds" / "lost-hours.json"
 # The world the dialogue/canon suites talk to (`--world`). Dialogue runs
 # through the production `talk` path, so the world's own dialogue mechanism
 # (a persona data skill, or a voice sheet with injected state) is what gets
-# measured.
-WORLD = LOFT
+# measured. The BEFORE run (docs/model-eval/before-2026-09-26) was taken on
+# the retired loft envelope, recoverable from the `pre-pivot` tag.
+WORLD = CANONICAL
 JSON_PROMPTS = PROJECT_ROOT / "tests" / "drift" / "prompts"
 
 SUITES = ("parser", "dialogue", "canon", "growth", "journal", "retell", "examine",
@@ -580,14 +581,13 @@ def _rescore(args) -> int:
 def _shipped_growth():
     from daydream import rooms
 
-    env = json.loads(LOFT.read_text())
-    case = next(it for it in env["items"] if it["name"] == "clock case")
-    seed = next(e for e in case["properties"]["contains"] if e["name"] == "dreamseed")
+    env = json.loads(CANONICAL.read_text())
+    g = env["config"]["templates"]["dreamseed"]["properties"]["growth"]
     tower = next(r for r in env["rooms"] if r["slug"] == "clocktower")
     room = rooms.Room(id="r-clocktower", world_id="w", slug="clocktower",
                       title=tower["title"], seed=tower["seed"],
                       description_cached=None, exits={}, parent_id=None)
-    return seed["properties"]["growth"], room
+    return g, room
 
 
 async def suite_growth(tmp: Path) -> dict:
@@ -743,10 +743,10 @@ async def suite_drift(tmp: Path) -> dict:
 
     _current_purpose.set("drift")
     os.environ["DAYDREAM_MEMORY_ENABLED"] = "0"
-    env = json.loads(LOFT.read_text())
+    env = json.loads(CANONICAL.read_text())
     out = []
     for t in env["toons"]:
-        if t["name"] == "Wick":
+        if t["name"] not in DIALOGUE_NPCS:
             continue
         for mood in DRIFT_MOODS:
             npc = {"id": "t-" + t["name"].lower(), "world_id": "w", "name": t["name"],
@@ -1053,7 +1053,7 @@ def main(argv: list[str] | None = None) -> int:
                      help="retell tellings per line (production temp 0.8)")
     run.add_argument("--out", default="~/data/daydream/model-eval")
     run.add_argument("--world", help="envelope the dialogue/canon suites talk to "
-                     "(default: the loft)")
+                     "(default: worlds/lost-hours.json)")
     run.add_argument("--parser-schema", action="store_true",
                      help="constrain parser calls with a json_schema (enum verbs/ids)")
     rs = sub.add_parser("rescore", help="re-apply current canon/opener rules to a run")
