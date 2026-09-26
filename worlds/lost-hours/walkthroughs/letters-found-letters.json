@@ -1,0 +1,710 @@
+{
+  "name": "letters-found-letters",
+  "comment": "The Unsent Letters, ending found-letters, with two dreamers: the arc opens at the first dawn after the mending, one stray letter drifts in each dawn, Wren and Tamsin deliver five between them (Tamsin the fifth), and the Night of Found Letters follows at dusk. Also walks the wrong-door hint and sleeping Bell.",
+  "clock": "2026-10-01T17:00:00+00:00",
+  "players": [
+    {
+      "as": "A",
+      "name": "Wren"
+    }
+  ],
+  "segments": [
+    {
+      "name": "prologue",
+      "commands": [
+        {
+          "cmd": "read ledger",
+          "expect": {
+            "narrate_contains": "escapement gear",
+            "beats": [
+              "prologue/read-ledger"
+            ],
+            "phase": "stopped"
+          }
+        },
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-square"
+          }
+        },
+        {
+          "cmd": "south",
+          "expect": {
+            "room": "r-well"
+          }
+        },
+        {
+          "cmd": "take gear",
+          "expect": {
+            "carrying": [
+              "escapement gear"
+            ],
+            "beats": [
+              "prologue/found-gear"
+            ]
+          }
+        },
+        {
+          "cmd": "north"
+        },
+        {
+          "cmd": "west"
+        },
+        {
+          "cmd": "up",
+          "expect": {
+            "room": "r-loft"
+          }
+        },
+        {
+          "cmd": "give gear to tace",
+          "expect": {
+            "carrying": [
+              "case key"
+            ],
+            "beats": [
+              "prologue/gave-gear"
+            ],
+            "narrate_contains": "You carried it all the way home."
+          }
+        },
+        {
+          "cmd": "down",
+          "expect": {
+            "room": "r-clocktower"
+          }
+        },
+        {
+          "cmd": "use key on case",
+          "expect": {
+            "beats": [
+              "prologue/unlocked"
+            ]
+          }
+        },
+        {
+          "cmd": "open case",
+          "expect": {
+            "ending": {
+              "prologue": "mended"
+            },
+            "flag": {
+              "CLOCK-STARTED": true
+            },
+            "narrate_contains": "first slow tick",
+            "day": {
+              "eq": 1
+            }
+          }
+        },
+        {
+          "cmd": "take dreamseed",
+          "expect": {
+            "carrying": [
+              "dreamseed"
+            ]
+          }
+        },
+        {
+          "cmd": "take cog",
+          "expect": {
+            "carrying": [
+              "warm brass cog"
+            ],
+            "arc": {
+              "pim": "open"
+            },
+            "phase": "dusk",
+            "located": {
+              "t-pims-nap": "r-square"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "the first stray",
+      "commands": [
+        {
+          "clock": "@dawn",
+          "expect": {
+            "arc": {
+              "letters": "open"
+            },
+            "day": {
+              "eq": 2
+            },
+            "located": {
+              "o-letters-crayon": "o-letters-drawer"
+            }
+          }
+        },
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-square"
+          }
+        },
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-lane"
+          }
+        },
+        {
+          "cmd": "north",
+          "expect": {
+            "room": "r-post"
+          }
+        },
+        {
+          "cmd": "ask fen about the stray letters",
+          "expect": {
+            "beats": [
+              "letters/fen-strays"
+            ],
+            "narrate_contains": "Night of Found Letters"
+          }
+        },
+        {
+          "cmd": "take crayon letter",
+          "expect": {
+            "carrying": [
+              "crayon letter"
+            ]
+          }
+        },
+        {
+          "cmd": "read crayon letter",
+          "expect": {
+            "narrate_contains": "TO THE ONE WHO LIGHTS THE LAMP OUTSIDE MY WINDOW"
+          }
+        },
+        {
+          "cmd": "give crayon letter to fen",
+          "expect": {
+            "carrying": [
+              "crayon letter"
+            ],
+            "narrate_contains": "hooked pole"
+          }
+        },
+        {
+          "cmd": "south",
+          "expect": {
+            "room": "r-lane"
+          }
+        },
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-waiting"
+          }
+        },
+        {
+          "cmd": "up",
+          "expect": {
+            "room": "r-lamphouse"
+          }
+        },
+        {
+          "cmd": "give crayon letter to bell",
+          "expect": {
+            "carrying": [
+              "crayon letter"
+            ],
+            "narrate_contains": "fast asleep"
+          }
+        },
+        {
+          "clock": "@day",
+          "expect": {
+            "located": {
+              "t-bell": "r-square"
+            }
+          }
+        },
+        {
+          "cmd": "down",
+          "expect": {
+            "room": "r-waiting"
+          }
+        },
+        {
+          "cmd": "west",
+          "expect": {
+            "room": "r-lane"
+          }
+        },
+        {
+          "cmd": "west",
+          "expect": {
+            "room": "r-square"
+          }
+        },
+        {
+          "cmd": "give crayon letter to bell",
+          "expect": {
+            "beats": [
+              "letters/bell-letter"
+            ],
+            "not_carrying": [
+              "crayon letter"
+            ],
+            "located": {
+              "o-letters-crayon": "t-bell"
+            },
+            "narrate_contains": "I never did give it back.",
+            "knows": {
+              "t-bell": "letters-delivered-crayon"
+            },
+            "rel": {
+              "t-bell": {
+                "gte": 2
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "a second dreamer",
+      "commands": [
+        {
+          "clock": "@dawn",
+          "expect": {
+            "day": {
+              "eq": 3
+            },
+            "located": {
+              "o-letters-marble": "o-letters-drawer"
+            }
+          }
+        },
+        {
+          "join": {
+            "as": "B",
+            "name": "Tamsin"
+          }
+        },
+        {
+          "as": "B",
+          "cmd": "east",
+          "expect": {
+            "room": "r-square"
+          }
+        },
+        {
+          "as": "B",
+          "cmd": "east",
+          "expect": {
+            "room": "r-lane"
+          }
+        },
+        {
+          "as": "B",
+          "cmd": "north",
+          "expect": {
+            "room": "r-post"
+          }
+        },
+        {
+          "as": "B",
+          "cmd": "take marble letter",
+          "expect": {
+            "carrying": [
+              "marble letter"
+            ]
+          }
+        },
+        {
+          "as": "B",
+          "cmd": "south"
+        },
+        {
+          "as": "B",
+          "cmd": "west"
+        },
+        {
+          "as": "B",
+          "cmd": "west",
+          "expect": {
+            "room": "r-clocktower"
+          }
+        },
+        {
+          "as": "B",
+          "cmd": "up",
+          "expect": {
+            "room": "r-loft"
+          }
+        },
+        {
+          "as": "B",
+          "cmd": "give marble letter to tace",
+          "expect": {
+            "beats": [
+              "letters/tace-letter"
+            ],
+            "not_carrying": [
+              "marble letter"
+            ],
+            "narrate_contains": "I never went back down."
+          }
+        }
+      ]
+    },
+    {
+      "name": "the button and the string",
+      "commands": [
+        {
+          "clock": "@dawn",
+          "expect": {
+            "day": {
+              "eq": 4
+            },
+            "located": {
+              "o-letters-button": "o-letters-drawer"
+            }
+          }
+        },
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-lane"
+          }
+        },
+        {
+          "cmd": "north",
+          "expect": {
+            "room": "r-post"
+          }
+        },
+        {
+          "cmd": "take button letter",
+          "expect": {
+            "carrying": [
+              "button letter"
+            ]
+          }
+        },
+        {
+          "cmd": "south"
+        },
+        {
+          "cmd": "west",
+          "expect": {
+            "room": "r-square"
+          }
+        },
+        {
+          "cmd": "north",
+          "expect": {
+            "room": "r-workshop"
+          }
+        },
+        {
+          "cmd": "give button letter to mott",
+          "expect": {
+            "beats": [
+              "letters/mott-letter"
+            ],
+            "narrate_contains": "thread and all"
+          }
+        },
+        {
+          "clock": "@dawn",
+          "expect": {
+            "day": {
+              "eq": 5
+            },
+            "located": {
+              "o-letters-string": "o-letters-drawer"
+            }
+          }
+        },
+        {
+          "cmd": "south",
+          "expect": {
+            "room": "r-square"
+          }
+        },
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-lane"
+          }
+        },
+        {
+          "cmd": "north",
+          "expect": {
+            "room": "r-post"
+          }
+        },
+        {
+          "cmd": "take string-tied letter",
+          "expect": {
+            "carrying": [
+              "string-tied letter"
+            ]
+          }
+        },
+        {
+          "cmd": "south"
+        },
+        {
+          "cmd": "west"
+        },
+        {
+          "cmd": "west",
+          "expect": {
+            "room": "r-clocktower"
+          }
+        },
+        {
+          "cmd": "down",
+          "expect": {
+            "room": "r-cellar"
+          }
+        },
+        {
+          "cmd": "give string-tied letter to umber",
+          "expect": {
+            "beats": [
+              "letters/umber-letter"
+            ],
+            "arc": {
+              "letters": "open"
+            },
+            "narrate_contains": "Nor can I, it seems."
+          }
+        }
+      ]
+    },
+    {
+      "name": "the fifth letter",
+      "commands": [
+        {
+          "clock": "@dawn",
+          "expect": {
+            "day": {
+              "eq": 6
+            },
+            "located": {
+              "o-letters-tea": "o-letters-drawer"
+            }
+          }
+        },
+        {
+          "as": "B",
+          "cmd": "down",
+          "expect": {
+            "room": "r-clocktower"
+          }
+        },
+        {
+          "as": "B",
+          "cmd": "east",
+          "expect": {
+            "room": "r-square"
+          }
+        },
+        {
+          "as": "B",
+          "cmd": "east",
+          "expect": {
+            "room": "r-lane"
+          }
+        },
+        {
+          "as": "B",
+          "cmd": "north",
+          "expect": {
+            "room": "r-post"
+          }
+        },
+        {
+          "as": "B",
+          "cmd": "take tea-stained letter",
+          "expect": {
+            "carrying": [
+              "tea-stained letter"
+            ]
+          }
+        },
+        {
+          "as": "B",
+          "cmd": "south",
+          "expect": {
+            "room": "r-lane"
+          }
+        },
+        {
+          "as": "B",
+          "cmd": "east",
+          "expect": {
+            "room": "r-waiting"
+          }
+        },
+        {
+          "as": "B",
+          "cmd": "give tea-stained letter to linden",
+          "expect": {
+            "beats": [
+              "letters/linden-letter"
+            ],
+            "ending": {
+              "letters": "found-letters"
+            },
+            "carrying": [
+              "dreamseed"
+            ],
+            "narrate_contains": [
+              "the house sort of grew up round me",
+              "Five home!"
+            ],
+            "chronicle_contains": "Wren and Tamsin carried the unsent letters to their doors"
+          }
+        }
+      ]
+    },
+    {
+      "name": "the night of found letters",
+      "commands": [
+        {
+          "clock": "@dusk",
+          "expect": {
+            "located": {
+              "o-letters-stars": "r-square"
+            },
+            "knows": {
+              "t-bell": "letters-night"
+            }
+          }
+        },
+        {
+          "as": "B",
+          "cmd": "west",
+          "expect": {
+            "room": "r-lane"
+          }
+        },
+        {
+          "as": "B",
+          "cmd": "west",
+          "expect": {
+            "room": "r-square"
+          }
+        },
+        {
+          "as": "B",
+          "cmd": "examine paper stars",
+          "expect": {
+            "narrate_contains": "folded from the envelopes of found letters"
+          }
+        },
+        {
+          "as": "B",
+          "cmd": "west",
+          "expect": {
+            "room": "r-clocktower"
+          }
+        },
+        {
+          "as": "B",
+          "cmd": "read ledger of returned hours",
+          "expect": {
+            "narrate_contains": "Wren and Tamsin carried the unsent letters to their doors, and the village held the Night of Found Letters."
+          }
+        }
+      ]
+    },
+    {
+      "name": "after the night",
+      "commands": [
+        {
+          "clock": "@dawn",
+          "expect": {
+            "day": {
+              "eq": 7
+            },
+            "ending": {
+              "letters": "found-letters"
+            },
+            "located": {
+              "o-letters-grass": "o-letters-drawer",
+              "t-sorrel": "r-bridge"
+            }
+          }
+        },
+        {
+          "as": "B",
+          "cmd": "east",
+          "expect": {
+            "room": "r-square"
+          }
+        },
+        {
+          "as": "B",
+          "cmd": "east",
+          "expect": {
+            "room": "r-lane"
+          }
+        },
+        {
+          "as": "B",
+          "cmd": "north",
+          "expect": {
+            "room": "r-post"
+          }
+        },
+        {
+          "as": "B",
+          "cmd": "take grass-stained letter",
+          "expect": {
+            "carrying": [
+              "grass-stained letter"
+            ]
+          }
+        },
+        {
+          "as": "B",
+          "cmd": "south",
+          "expect": {
+            "room": "r-lane"
+          }
+        },
+        {
+          "as": "B",
+          "cmd": "south",
+          "expect": {
+            "room": "r-bridge"
+          }
+        },
+        {
+          "as": "B",
+          "cmd": "give grass-stained letter to sorrel",
+          "expect": {
+            "not_carrying": [
+              "grass-stained letter"
+            ],
+            "located": {
+              "o-letters-grass": "t-sorrel"
+            },
+            "ending": {
+              "letters": "found-letters"
+            },
+            "narrate_contains": [
+              "Still watching.",
+              "Fen"
+            ],
+            "knows": {
+              "t-sorrel": "letters-origin-grass"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

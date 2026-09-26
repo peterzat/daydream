@@ -1,0 +1,2076 @@
+{
+  "comment": "The village arc (canon section 7, arc 10): The Unsent Letters. Multiplayer and cumulative. Opens at the first dawn after the clock is mended (day 2+); one stray letter drifts into Fen's dead-letter drawer each dawn after (sequenced by the world counter letters-arrived, seven in all). Any dreamer carries a letter to the keeper it nearly means and hears how that keeper came to the village; each delivery while the arc is open counts toward the world counter letters-delivered. Endings: found-letters (the fifth delivery, by anyone, closes it; the Night of Found Letters follows at the next dusk), dead-letter (fourteen days pass first: Fen ties the rest with ribbon and shuts the drawer). Letters carried or arriving after the Night can still be delivered for their reveals.",
+  "things": [
+    {
+      "id": "o-letters-drawer",
+      "name": "dead-letter drawer",
+      "location": {
+        "room": "r-post"
+      },
+      "fixture": true,
+      "seed": "a deep oak drawer under Fen's counter, lined with blue paper and left open a hand's width; Fen keeps the stray letters in it, the ones addressed nearly to somebody here, until someone carries them",
+      "aliases": [
+        "drawer",
+        "letter drawer",
+        "dead letter drawer"
+      ],
+      "properties": {
+        "container": true,
+        "state_text": {
+          "locked": "It is shut now and tied round with blue ribbon, and Fen has chalked on the front: ANOTHER WINTER."
+        }
+      }
+    },
+    {
+      "id": "o-letters-crayon",
+      "name": "crayon letter",
+      "location": "offstage",
+      "readable": true,
+      "seed": "a letter folded small and addressed in big wobbly crayon; where the stamp should go, someone has drawn a sun, crossed it out, and drawn a lantern instead",
+      "text": "The front is addressed in big wobbly crayon: TO THE ONE WHO LIGHTS THE LAMP OUTSIDE MY WINDOW. A lantern is drawn where the stamp should be, and through the thin paper you can just make out two crayon words inside: I WAVE.",
+      "aliases": [
+        "letter",
+        "unsent letter",
+        "crayon envelope"
+      ],
+      "properties": {
+        "letter_for": "t-bell"
+      },
+      "rules": [
+        {
+          "on": "give",
+          "if": [
+            {
+              "iobj": "t-bell"
+            },
+            {
+              "carried": "o-letters-crayon"
+            },
+            {
+              "phase": [
+                "night",
+                "dawn"
+              ]
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "Bell is fast asleep, one arm flung over their eyes and the butter-yellow scarf wound twice round their chin. You tuck the letter away again. It can wait until the lamps want lighting."
+            }
+          ]
+        },
+        {
+          "on": "give",
+          "stop": false,
+          "if": [
+            {
+              "iobj": "t-bell"
+            },
+            {
+              "carried": "o-letters-crayon"
+            }
+          ],
+          "do": [
+            {
+              "kind": "move_object",
+              "object_id": "o-letters-crayon",
+              "dest_id": "t-bell"
+            },
+            {
+              "kind": "narrate",
+              "text": "Bell reads the crayon letter twice, and the soot on their cheek creases into a grin. 'I waved back, you know. Every window.' They fold it into the butter-yellow scarf. 'First dusk I ever came down here, Wend was lighting this square alone, slow as moss, and held out the pole and said the lanterns liked company. I never did give it back.'"
+            },
+            {
+              "kind": "adjust_rel",
+              "npc": "t-bell",
+              "delta": 2
+            },
+            {
+              "kind": "adjust_rel",
+              "npc": "t-fen",
+              "delta": 1
+            },
+            {
+              "kind": "add_fact",
+              "id": "letters-delivered-crayon",
+              "text": "{actor} carried a stray crayon letter to Bell, and Bell told how they first came to the village.",
+              "known_by": [
+                "t-bell"
+              ],
+              "spread": [
+                {
+                  "to": [
+                    "t-fen"
+                  ],
+                  "after_minutes": 20
+                },
+                {
+                  "to": "all",
+                  "after_minutes": 120
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "on": "give",
+          "if": [
+            {
+              "iobj": "t-bell"
+            },
+            {
+              "contains": "o-letters-crayon",
+              "of": "t-bell"
+            },
+            {
+              "arc": "letters"
+            },
+            {
+              "counter": "letters-delivered",
+              "gte": 4
+            }
+          ],
+          "do": [
+            {
+              "kind": "adjust_counter",
+              "name": "letters-delivered",
+              "delta": 1
+            },
+            {
+              "kind": "advance_beat",
+              "arc": "letters",
+              "beat": "bell-letter"
+            },
+            {
+              "kind": "narrate",
+              "room": "r-post",
+              "variants": [
+                "The brass bell on the counter gives one bright ring all by itself. Fen looks up from her sorting, pleased as anything. 'Delivered,' she says.",
+                "All by itself, the counter bell chimes once, small and clear, the way it does when a letter finds its door. Fen taps it back with her pencil.",
+                "Somewhere a letter has just been read: the brass bell on the counter rings, and Fen smiles at the dead-letter drawer as if it had done well."
+              ]
+            },
+            {
+              "kind": "close_arc",
+              "arc": "letters",
+              "ending": "found-letters"
+            }
+          ]
+        },
+        {
+          "on": "give",
+          "if": [
+            {
+              "iobj": "t-bell"
+            },
+            {
+              "contains": "o-letters-crayon",
+              "of": "t-bell"
+            },
+            {
+              "arc": "letters"
+            }
+          ],
+          "do": [
+            {
+              "kind": "adjust_counter",
+              "name": "letters-delivered",
+              "delta": 1
+            },
+            {
+              "kind": "advance_beat",
+              "arc": "letters",
+              "beat": "bell-letter"
+            },
+            {
+              "kind": "narrate",
+              "room": "r-post",
+              "variants": [
+                "The brass bell on the counter gives one bright ring all by itself. Fen looks up from her sorting, pleased as anything. 'Delivered,' she says.",
+                "All by itself, the counter bell chimes once, small and clear, the way it does when a letter finds its door. Fen taps it back with her pencil.",
+                "Somewhere a letter has just been read: the brass bell on the counter rings, and Fen smiles at the dead-letter drawer as if it had done well."
+              ]
+            }
+          ]
+        },
+        {
+          "on": "give",
+          "if": [
+            {
+              "iobj": "t-bell"
+            },
+            {
+              "contains": "o-letters-crayon",
+              "of": "t-bell"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "room": "r-post",
+              "variants": [
+                "The brass bell on the counter gives one bright ring all by itself. Fen looks up from her sorting, pleased as anything. 'Delivered,' she says.",
+                "All by itself, the counter bell chimes once, small and clear, the way it does when a letter finds its door. Fen taps it back with her pencil.",
+                "Somewhere a letter has just been read: the brass bell on the counter rings, and Fen smiles at the dead-letter drawer as if it had done well."
+              ]
+            }
+          ]
+        },
+        {
+          "on": "give",
+          "if": [
+            {
+              "carried": "o-letters-crayon"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "The crayon on the front is very sure of itself: TO THE ONE WHO LIGHTS THE LAMP OUTSIDE MY WINDOW. You tuck the letter away again. Someone with a hooked pole and a ladder, more likely."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "o-letters-marble",
+      "name": "marble letter",
+      "location": "offstage",
+      "readable": true,
+      "seed": "an envelope addressed in careful, pressed-hard pencil, with a glass marble rolling in one corner; it clicks softly whenever it is tipped",
+      "text": "In careful, pressed-hard pencil: TO WHOEVER MENDS THINGS (PLEASE). A glass marble rolls in the corner of the envelope, as if it has been sent along to say sorry.",
+      "aliases": [
+        "letter",
+        "unsent letter",
+        "marble envelope"
+      ],
+      "properties": {
+        "letter_for": "t-tace"
+      },
+      "rules": [
+        {
+          "on": "give",
+          "stop": false,
+          "if": [
+            {
+              "iobj": "t-tace"
+            },
+            {
+              "carried": "o-letters-marble"
+            }
+          ],
+          "do": [
+            {
+              "kind": "move_object",
+              "object_id": "o-letters-marble",
+              "dest_id": "t-tace"
+            },
+            {
+              "kind": "narrate",
+              "text": "Tace tips the marble into their palm and holds it to the lamp, where it throws a small green light across the bench. 'I broke a clock once, when I was about as big as this handwriting. Carried the pieces up those stairs in my apron.' Their hands go still, then carry on. 'Wend didn't want paying. Wend handed me a loupe, and I never went back down.'"
+            },
+            {
+              "kind": "adjust_rel",
+              "npc": "t-tace",
+              "delta": 2
+            },
+            {
+              "kind": "adjust_rel",
+              "npc": "t-fen",
+              "delta": 1
+            },
+            {
+              "kind": "add_fact",
+              "id": "letters-delivered-marble",
+              "text": "{actor} carried a stray letter with a marble in it to Tace, and Tace told how they came up to the loft as a child.",
+              "known_by": [
+                "t-tace"
+              ],
+              "spread": [
+                {
+                  "to": [
+                    "t-fen"
+                  ],
+                  "after_minutes": 20
+                },
+                {
+                  "to": "all",
+                  "after_minutes": 120
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "on": "give",
+          "if": [
+            {
+              "iobj": "t-tace"
+            },
+            {
+              "contains": "o-letters-marble",
+              "of": "t-tace"
+            },
+            {
+              "arc": "letters"
+            },
+            {
+              "counter": "letters-delivered",
+              "gte": 4
+            }
+          ],
+          "do": [
+            {
+              "kind": "adjust_counter",
+              "name": "letters-delivered",
+              "delta": 1
+            },
+            {
+              "kind": "advance_beat",
+              "arc": "letters",
+              "beat": "tace-letter"
+            },
+            {
+              "kind": "narrate",
+              "room": "r-post",
+              "variants": [
+                "The brass bell on the counter gives one bright ring all by itself. Fen looks up from her sorting, pleased as anything. 'Delivered,' she says.",
+                "All by itself, the counter bell chimes once, small and clear, the way it does when a letter finds its door. Fen taps it back with her pencil.",
+                "Somewhere a letter has just been read: the brass bell on the counter rings, and Fen smiles at the dead-letter drawer as if it had done well."
+              ]
+            },
+            {
+              "kind": "close_arc",
+              "arc": "letters",
+              "ending": "found-letters"
+            }
+          ]
+        },
+        {
+          "on": "give",
+          "if": [
+            {
+              "iobj": "t-tace"
+            },
+            {
+              "contains": "o-letters-marble",
+              "of": "t-tace"
+            },
+            {
+              "arc": "letters"
+            }
+          ],
+          "do": [
+            {
+              "kind": "adjust_counter",
+              "name": "letters-delivered",
+              "delta": 1
+            },
+            {
+              "kind": "advance_beat",
+              "arc": "letters",
+              "beat": "tace-letter"
+            },
+            {
+              "kind": "narrate",
+              "room": "r-post",
+              "variants": [
+                "The brass bell on the counter gives one bright ring all by itself. Fen looks up from her sorting, pleased as anything. 'Delivered,' she says.",
+                "All by itself, the counter bell chimes once, small and clear, the way it does when a letter finds its door. Fen taps it back with her pencil.",
+                "Somewhere a letter has just been read: the brass bell on the counter rings, and Fen smiles at the dead-letter drawer as if it had done well."
+              ]
+            }
+          ]
+        },
+        {
+          "on": "give",
+          "if": [
+            {
+              "iobj": "t-tace"
+            },
+            {
+              "contains": "o-letters-marble",
+              "of": "t-tace"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "room": "r-post",
+              "variants": [
+                "The brass bell on the counter gives one bright ring all by itself. Fen looks up from her sorting, pleased as anything. 'Delivered,' she says.",
+                "All by itself, the counter bell chimes once, small and clear, the way it does when a letter finds its door. Fen taps it back with her pencil.",
+                "Somewhere a letter has just been read: the brass bell on the counter rings, and Fen smiles at the dead-letter drawer as if it had done well."
+              ]
+            }
+          ]
+        },
+        {
+          "on": "give",
+          "if": [
+            {
+              "carried": "o-letters-marble"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "You check the pencil on the front again: TO WHOEVER MENDS THINGS (PLEASE). The marble rolls to one corner, as if pointing. Someone with fine tools and a workbench would be the one."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "o-letters-button",
+      "name": "button letter",
+      "location": "offstage",
+      "readable": true,
+      "seed": "an envelope with a brown coat button stitched to one corner in thick grey thread, so it would not blow away",
+      "text": "A brown coat button is stitched to the corner with thick grey thread. In a round, patient hand: TO WHOEVER FINDS MY BUTTON. IT MATCHES THIS ONE.",
+      "aliases": [
+        "letter",
+        "unsent letter",
+        "buttoned letter"
+      ],
+      "properties": {
+        "letter_for": "t-mott"
+      },
+      "rules": [
+        {
+          "on": "give",
+          "stop": false,
+          "if": [
+            {
+              "iobj": "t-mott"
+            },
+            {
+              "carried": "o-letters-button"
+            }
+          ],
+          "do": [
+            {
+              "kind": "move_object",
+              "object_id": "o-letters-button",
+              "dest_id": "t-mott"
+            },
+            {
+              "kind": "narrate",
+              "text": "Mott opens the tin, finds the brown button that has lived there for years, and holds it to the letter's corner: a match, thread and all. He tucks the letter in beside it. 'Don't remember coming here myself,' he says after a while. 'First thing I remember is this broom, and the floor.' His thumb settles over the small folded thing in the tin, and stays."
+            },
+            {
+              "kind": "adjust_rel",
+              "npc": "t-mott",
+              "delta": 2
+            },
+            {
+              "kind": "adjust_rel",
+              "npc": "t-fen",
+              "delta": 1
+            },
+            {
+              "kind": "add_fact",
+              "id": "letters-delivered-button",
+              "text": "{actor} carried a stray letter with a button on it to Mott, and the button in Mott's tin matched it, thread and all.",
+              "known_by": [
+                "t-mott"
+              ],
+              "spread": [
+                {
+                  "to": [
+                    "t-fen"
+                  ],
+                  "after_minutes": 20
+                },
+                {
+                  "to": "all",
+                  "after_minutes": 120
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "on": "give",
+          "if": [
+            {
+              "iobj": "t-mott"
+            },
+            {
+              "contains": "o-letters-button",
+              "of": "t-mott"
+            },
+            {
+              "arc": "letters"
+            },
+            {
+              "counter": "letters-delivered",
+              "gte": 4
+            }
+          ],
+          "do": [
+            {
+              "kind": "adjust_counter",
+              "name": "letters-delivered",
+              "delta": 1
+            },
+            {
+              "kind": "advance_beat",
+              "arc": "letters",
+              "beat": "mott-letter"
+            },
+            {
+              "kind": "narrate",
+              "room": "r-post",
+              "variants": [
+                "The brass bell on the counter gives one bright ring all by itself. Fen looks up from her sorting, pleased as anything. 'Delivered,' she says.",
+                "All by itself, the counter bell chimes once, small and clear, the way it does when a letter finds its door. Fen taps it back with her pencil.",
+                "Somewhere a letter has just been read: the brass bell on the counter rings, and Fen smiles at the dead-letter drawer as if it had done well."
+              ]
+            },
+            {
+              "kind": "close_arc",
+              "arc": "letters",
+              "ending": "found-letters"
+            }
+          ]
+        },
+        {
+          "on": "give",
+          "if": [
+            {
+              "iobj": "t-mott"
+            },
+            {
+              "contains": "o-letters-button",
+              "of": "t-mott"
+            },
+            {
+              "arc": "letters"
+            }
+          ],
+          "do": [
+            {
+              "kind": "adjust_counter",
+              "name": "letters-delivered",
+              "delta": 1
+            },
+            {
+              "kind": "advance_beat",
+              "arc": "letters",
+              "beat": "mott-letter"
+            },
+            {
+              "kind": "narrate",
+              "room": "r-post",
+              "variants": [
+                "The brass bell on the counter gives one bright ring all by itself. Fen looks up from her sorting, pleased as anything. 'Delivered,' she says.",
+                "All by itself, the counter bell chimes once, small and clear, the way it does when a letter finds its door. Fen taps it back with her pencil.",
+                "Somewhere a letter has just been read: the brass bell on the counter rings, and Fen smiles at the dead-letter drawer as if it had done well."
+              ]
+            }
+          ]
+        },
+        {
+          "on": "give",
+          "if": [
+            {
+              "iobj": "t-mott"
+            },
+            {
+              "contains": "o-letters-button",
+              "of": "t-mott"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "room": "r-post",
+              "variants": [
+                "The brass bell on the counter gives one bright ring all by itself. Fen looks up from her sorting, pleased as anything. 'Delivered,' she says.",
+                "All by itself, the counter bell chimes once, small and clear, the way it does when a letter finds its door. Fen taps it back with her pencil.",
+                "Somewhere a letter has just been read: the brass bell on the counter rings, and Fen smiles at the dead-letter drawer as if it had done well."
+              ]
+            }
+          ]
+        },
+        {
+          "on": "give",
+          "if": [
+            {
+              "carried": "o-letters-button"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "TO WHOEVER FINDS MY BUTTON, says the front, and the button on the corner turns a little in the light. Someone who keeps small found things would know what to do with this."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "o-letters-string",
+      "name": "string-tied letter",
+      "location": "offstage",
+      "readable": true,
+      "seed": "a fat envelope tied up in kitchen string with a careful bow, labeled on the back the way a jar would be",
+      "text": "Tied up in kitchen string, the envelope reads: TO THE ONE WHO KEEPS THINGS FOR LATER. On the back, as if it were a jar: OPEN WHEN THERE IS TIME.",
+      "aliases": [
+        "letter",
+        "unsent letter",
+        "string letter"
+      ],
+      "properties": {
+        "letter_for": "t-umber"
+      },
+      "rules": [
+        {
+          "on": "give",
+          "stop": false,
+          "if": [
+            {
+              "iobj": "t-umber"
+            },
+            {
+              "carried": "o-letters-string"
+            }
+          ],
+          "do": [
+            {
+              "kind": "move_object",
+              "object_id": "o-letters-string",
+              "dest_id": "t-umber"
+            },
+            {
+              "kind": "narrate",
+              "text": "Umber unties the string, reads, and writes a label for the envelope before she says a word: KEPT FOR LATER. ARRIVED. She shelves it among the jars. 'When I came, this cellar held three jars and one lantern, and Wend knew every hour in it by name.' She turns a jar a quarter-turn. 'Wend couldn't bear to throw a thing away. Nor can I, it seems.'"
+            },
+            {
+              "kind": "adjust_rel",
+              "npc": "t-umber",
+              "delta": 2
+            },
+            {
+              "kind": "adjust_rel",
+              "npc": "t-fen",
+              "delta": 1
+            },
+            {
+              "kind": "add_fact",
+              "id": "letters-delivered-string",
+              "text": "{actor} carried a stray string-tied letter to Umber, and Umber told what the cellar was like when she first came.",
+              "known_by": [
+                "t-umber"
+              ],
+              "spread": [
+                {
+                  "to": [
+                    "t-fen"
+                  ],
+                  "after_minutes": 20
+                },
+                {
+                  "to": "all",
+                  "after_minutes": 120
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "on": "give",
+          "if": [
+            {
+              "iobj": "t-umber"
+            },
+            {
+              "contains": "o-letters-string",
+              "of": "t-umber"
+            },
+            {
+              "arc": "letters"
+            },
+            {
+              "counter": "letters-delivered",
+              "gte": 4
+            }
+          ],
+          "do": [
+            {
+              "kind": "adjust_counter",
+              "name": "letters-delivered",
+              "delta": 1
+            },
+            {
+              "kind": "advance_beat",
+              "arc": "letters",
+              "beat": "umber-letter"
+            },
+            {
+              "kind": "narrate",
+              "room": "r-post",
+              "variants": [
+                "The brass bell on the counter gives one bright ring all by itself. Fen looks up from her sorting, pleased as anything. 'Delivered,' she says.",
+                "All by itself, the counter bell chimes once, small and clear, the way it does when a letter finds its door. Fen taps it back with her pencil.",
+                "Somewhere a letter has just been read: the brass bell on the counter rings, and Fen smiles at the dead-letter drawer as if it had done well."
+              ]
+            },
+            {
+              "kind": "close_arc",
+              "arc": "letters",
+              "ending": "found-letters"
+            }
+          ]
+        },
+        {
+          "on": "give",
+          "if": [
+            {
+              "iobj": "t-umber"
+            },
+            {
+              "contains": "o-letters-string",
+              "of": "t-umber"
+            },
+            {
+              "arc": "letters"
+            }
+          ],
+          "do": [
+            {
+              "kind": "adjust_counter",
+              "name": "letters-delivered",
+              "delta": 1
+            },
+            {
+              "kind": "advance_beat",
+              "arc": "letters",
+              "beat": "umber-letter"
+            },
+            {
+              "kind": "narrate",
+              "room": "r-post",
+              "variants": [
+                "The brass bell on the counter gives one bright ring all by itself. Fen looks up from her sorting, pleased as anything. 'Delivered,' she says.",
+                "All by itself, the counter bell chimes once, small and clear, the way it does when a letter finds its door. Fen taps it back with her pencil.",
+                "Somewhere a letter has just been read: the brass bell on the counter rings, and Fen smiles at the dead-letter drawer as if it had done well."
+              ]
+            }
+          ]
+        },
+        {
+          "on": "give",
+          "if": [
+            {
+              "iobj": "t-umber"
+            },
+            {
+              "contains": "o-letters-string",
+              "of": "t-umber"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "room": "r-post",
+              "variants": [
+                "The brass bell on the counter gives one bright ring all by itself. Fen looks up from her sorting, pleased as anything. 'Delivered,' she says.",
+                "All by itself, the counter bell chimes once, small and clear, the way it does when a letter finds its door. Fen taps it back with her pencil.",
+                "Somewhere a letter has just been read: the brass bell on the counter rings, and Fen smiles at the dead-letter drawer as if it had done well."
+              ]
+            }
+          ]
+        },
+        {
+          "on": "give",
+          "if": [
+            {
+              "carried": "o-letters-string"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "You glance at the string-tied envelope: TO THE ONE WHO KEEPS THINGS FOR LATER. It wants somebody with a great many jars, and a great deal of patience."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "o-letters-tea",
+      "name": "tea-stained letter",
+      "location": "offstage",
+      "readable": true,
+      "seed": "a soft envelope with a pale ring on it where a teacup once stood, the pencil address smudged a little by a warm thumb",
+      "text": "There is a pale ring on the envelope where a cup once stood. In quick soft pencil: TO WHOEVER WAITED UP FOR ME.",
+      "aliases": [
+        "letter",
+        "unsent letter",
+        "tea letter"
+      ],
+      "properties": {
+        "letter_for": "t-linden"
+      },
+      "rules": [
+        {
+          "on": "give",
+          "stop": false,
+          "if": [
+            {
+              "iobj": "t-linden"
+            },
+            {
+              "carried": "o-letters-tea"
+            }
+          ],
+          "do": [
+            {
+              "kind": "move_object",
+              "object_id": "o-letters-tea",
+              "dest_id": "t-linden"
+            },
+            {
+              "kind": "narrate",
+              "text": "Linden presses the tea towel to her mouth before she has even finished reading. 'Oh, lamb,' she says. 'Oh, bless.' She props the letter behind the kettle, where it will keep warm. 'I came here waiting up for someone, pet, a long while ago. Can't think who, now. I waited so long I got good at it, and the house sort of grew up round me.'"
+            },
+            {
+              "kind": "adjust_rel",
+              "npc": "t-linden",
+              "delta": 2
+            },
+            {
+              "kind": "adjust_rel",
+              "npc": "t-fen",
+              "delta": 1
+            },
+            {
+              "kind": "add_fact",
+              "id": "letters-delivered-tea",
+              "text": "{actor} carried a stray tea-stained letter to Linden, and Linden told how she came to the village waiting up for someone.",
+              "known_by": [
+                "t-linden"
+              ],
+              "spread": [
+                {
+                  "to": [
+                    "t-fen"
+                  ],
+                  "after_minutes": 20
+                },
+                {
+                  "to": "all",
+                  "after_minutes": 120
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "on": "give",
+          "if": [
+            {
+              "iobj": "t-linden"
+            },
+            {
+              "contains": "o-letters-tea",
+              "of": "t-linden"
+            },
+            {
+              "arc": "letters"
+            },
+            {
+              "counter": "letters-delivered",
+              "gte": 4
+            }
+          ],
+          "do": [
+            {
+              "kind": "adjust_counter",
+              "name": "letters-delivered",
+              "delta": 1
+            },
+            {
+              "kind": "advance_beat",
+              "arc": "letters",
+              "beat": "linden-letter"
+            },
+            {
+              "kind": "narrate",
+              "room": "r-post",
+              "variants": [
+                "The brass bell on the counter gives one bright ring all by itself. Fen looks up from her sorting, pleased as anything. 'Delivered,' she says.",
+                "All by itself, the counter bell chimes once, small and clear, the way it does when a letter finds its door. Fen taps it back with her pencil.",
+                "Somewhere a letter has just been read: the brass bell on the counter rings, and Fen smiles at the dead-letter drawer as if it had done well."
+              ]
+            },
+            {
+              "kind": "close_arc",
+              "arc": "letters",
+              "ending": "found-letters"
+            }
+          ]
+        },
+        {
+          "on": "give",
+          "if": [
+            {
+              "iobj": "t-linden"
+            },
+            {
+              "contains": "o-letters-tea",
+              "of": "t-linden"
+            },
+            {
+              "arc": "letters"
+            }
+          ],
+          "do": [
+            {
+              "kind": "adjust_counter",
+              "name": "letters-delivered",
+              "delta": 1
+            },
+            {
+              "kind": "advance_beat",
+              "arc": "letters",
+              "beat": "linden-letter"
+            },
+            {
+              "kind": "narrate",
+              "room": "r-post",
+              "variants": [
+                "The brass bell on the counter gives one bright ring all by itself. Fen looks up from her sorting, pleased as anything. 'Delivered,' she says.",
+                "All by itself, the counter bell chimes once, small and clear, the way it does when a letter finds its door. Fen taps it back with her pencil.",
+                "Somewhere a letter has just been read: the brass bell on the counter rings, and Fen smiles at the dead-letter drawer as if it had done well."
+              ]
+            }
+          ]
+        },
+        {
+          "on": "give",
+          "if": [
+            {
+              "iobj": "t-linden"
+            },
+            {
+              "contains": "o-letters-tea",
+              "of": "t-linden"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "room": "r-post",
+              "variants": [
+                "The brass bell on the counter gives one bright ring all by itself. Fen looks up from her sorting, pleased as anything. 'Delivered,' she says.",
+                "All by itself, the counter bell chimes once, small and clear, the way it does when a letter finds its door. Fen taps it back with her pencil.",
+                "Somewhere a letter has just been read: the brass bell on the counter rings, and Fen smiles at the dead-letter drawer as if it had done well."
+              ]
+            }
+          ]
+        },
+        {
+          "on": "give",
+          "if": [
+            {
+              "carried": "o-letters-tea"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "The pencil address reads TO WHOEVER WAITED UP FOR ME, and the tea ring on the paper seems to agree. A house where the kettle is always on would be the place."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "o-letters-grass",
+      "name": "grass-stained letter",
+      "location": "offstage",
+      "readable": true,
+      "seed": "a green-smudged envelope that smells of cut grass, with a clover pressed flat inside",
+      "text": "The envelope is green-smudged and smells of cut grass. In a hand that seems to have walked while it wrote: TO THE ONE WHO WALKED ME HOME.",
+      "aliases": [
+        "letter",
+        "unsent letter",
+        "grass letter"
+      ],
+      "properties": {
+        "letter_for": "t-sorrel"
+      },
+      "rules": [
+        {
+          "on": "give",
+          "stop": false,
+          "if": [
+            {
+              "iobj": "t-sorrel"
+            },
+            {
+              "carried": "o-letters-grass"
+            }
+          ],
+          "do": [
+            {
+              "kind": "move_object",
+              "object_id": "o-letters-grass",
+              "dest_id": "t-sorrel"
+            },
+            {
+              "kind": "narrate",
+              "text": "Sorrel holds the letter a long time, standing very still, the way they wait for an hour to land. 'Walked someone home once, I think,' they say at last. 'Came along the Dusk Road myself one evening, with nowhere in particular to be, and the sky was so kind I stayed to watch it.' They tuck the pressed clover into their hatband, beside the sorrel. 'Still watching.'"
+            },
+            {
+              "kind": "adjust_rel",
+              "npc": "t-sorrel",
+              "delta": 2
+            },
+            {
+              "kind": "adjust_rel",
+              "npc": "t-fen",
+              "delta": 1
+            },
+            {
+              "kind": "add_fact",
+              "id": "letters-delivered-grass",
+              "text": "{actor} carried a stray grass-stained letter to Sorrel, and Sorrel told how they came along the Dusk Road and stayed.",
+              "known_by": [
+                "t-sorrel"
+              ],
+              "spread": [
+                {
+                  "to": [
+                    "t-fen"
+                  ],
+                  "after_minutes": 20
+                },
+                {
+                  "to": "all",
+                  "after_minutes": 120
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "on": "give",
+          "if": [
+            {
+              "iobj": "t-sorrel"
+            },
+            {
+              "contains": "o-letters-grass",
+              "of": "t-sorrel"
+            },
+            {
+              "arc": "letters"
+            },
+            {
+              "counter": "letters-delivered",
+              "gte": 4
+            }
+          ],
+          "do": [
+            {
+              "kind": "adjust_counter",
+              "name": "letters-delivered",
+              "delta": 1
+            },
+            {
+              "kind": "advance_beat",
+              "arc": "letters",
+              "beat": "sorrel-letter"
+            },
+            {
+              "kind": "narrate",
+              "room": "r-post",
+              "variants": [
+                "The brass bell on the counter gives one bright ring all by itself. Fen looks up from her sorting, pleased as anything. 'Delivered,' she says.",
+                "All by itself, the counter bell chimes once, small and clear, the way it does when a letter finds its door. Fen taps it back with her pencil.",
+                "Somewhere a letter has just been read: the brass bell on the counter rings, and Fen smiles at the dead-letter drawer as if it had done well."
+              ]
+            },
+            {
+              "kind": "close_arc",
+              "arc": "letters",
+              "ending": "found-letters"
+            }
+          ]
+        },
+        {
+          "on": "give",
+          "if": [
+            {
+              "iobj": "t-sorrel"
+            },
+            {
+              "contains": "o-letters-grass",
+              "of": "t-sorrel"
+            },
+            {
+              "arc": "letters"
+            }
+          ],
+          "do": [
+            {
+              "kind": "adjust_counter",
+              "name": "letters-delivered",
+              "delta": 1
+            },
+            {
+              "kind": "advance_beat",
+              "arc": "letters",
+              "beat": "sorrel-letter"
+            },
+            {
+              "kind": "narrate",
+              "room": "r-post",
+              "variants": [
+                "The brass bell on the counter gives one bright ring all by itself. Fen looks up from her sorting, pleased as anything. 'Delivered,' she says.",
+                "All by itself, the counter bell chimes once, small and clear, the way it does when a letter finds its door. Fen taps it back with her pencil.",
+                "Somewhere a letter has just been read: the brass bell on the counter rings, and Fen smiles at the dead-letter drawer as if it had done well."
+              ]
+            }
+          ]
+        },
+        {
+          "on": "give",
+          "if": [
+            {
+              "iobj": "t-sorrel"
+            },
+            {
+              "contains": "o-letters-grass",
+              "of": "t-sorrel"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "room": "r-post",
+              "variants": [
+                "The brass bell on the counter gives one bright ring all by itself. Fen looks up from her sorting, pleased as anything. 'Delivered,' she says.",
+                "All by itself, the counter bell chimes once, small and clear, the way it does when a letter finds its door. Fen taps it back with her pencil.",
+                "Somewhere a letter has just been read: the brass bell on the counter rings, and Fen smiles at the dead-letter drawer as if it had done well."
+              ]
+            }
+          ]
+        },
+        {
+          "on": "give",
+          "if": [
+            {
+              "carried": "o-letters-grass"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "It says TO THE ONE WHO WALKED ME HOME, and it smells of long grass after rain. Whoever walks the hours in off the Dusk Road, perhaps."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "o-letters-seed",
+      "name": "seed-packet letter",
+      "location": "offstage",
+      "readable": true,
+      "seed": "a letter written on the back of an old paper seed packet, its picture faded past reading; a few seeds still rattle in one corner",
+      "text": "It is written on the back of an old seed packet, and a few seeds still rattle in one corner. In a slow, round hand: TO WHOEVER IS MINDING MY GARDEN.",
+      "aliases": [
+        "letter",
+        "unsent letter",
+        "seed packet"
+      ],
+      "properties": {
+        "letter_for": "t-quill"
+      },
+      "rules": [
+        {
+          "on": "give",
+          "stop": false,
+          "if": [
+            {
+              "iobj": "t-quill"
+            },
+            {
+              "carried": "o-letters-seed"
+            }
+          ],
+          "do": [
+            {
+              "kind": "move_object",
+              "object_id": "o-letters-seed",
+              "dest_id": "t-quill"
+            },
+            {
+              "kind": "narrate",
+              "text": "Quill turns the seed packet front and back and goes pink to the ears. He tips the seeds into his palm as if they might wake. 'I came here to see whether a pendulum would grow, if you planted it. It didn't, not really.' He looks round at the swaying trellises. 'But I stayed to find out, and I've been finding out ever since.'"
+            },
+            {
+              "kind": "adjust_rel",
+              "npc": "t-quill",
+              "delta": 2
+            },
+            {
+              "kind": "adjust_rel",
+              "npc": "t-fen",
+              "delta": 1
+            },
+            {
+              "kind": "add_fact",
+              "id": "letters-delivered-seed",
+              "text": "{actor} carried a stray letter written on a seed packet to Quill, and Quill told how he came to the garden.",
+              "known_by": [
+                "t-quill"
+              ],
+              "spread": [
+                {
+                  "to": [
+                    "t-fen"
+                  ],
+                  "after_minutes": 20
+                },
+                {
+                  "to": "all",
+                  "after_minutes": 120
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "on": "give",
+          "if": [
+            {
+              "iobj": "t-quill"
+            },
+            {
+              "contains": "o-letters-seed",
+              "of": "t-quill"
+            },
+            {
+              "arc": "letters"
+            },
+            {
+              "counter": "letters-delivered",
+              "gte": 4
+            }
+          ],
+          "do": [
+            {
+              "kind": "adjust_counter",
+              "name": "letters-delivered",
+              "delta": 1
+            },
+            {
+              "kind": "advance_beat",
+              "arc": "letters",
+              "beat": "quill-letter"
+            },
+            {
+              "kind": "narrate",
+              "room": "r-post",
+              "variants": [
+                "The brass bell on the counter gives one bright ring all by itself. Fen looks up from her sorting, pleased as anything. 'Delivered,' she says.",
+                "All by itself, the counter bell chimes once, small and clear, the way it does when a letter finds its door. Fen taps it back with her pencil.",
+                "Somewhere a letter has just been read: the brass bell on the counter rings, and Fen smiles at the dead-letter drawer as if it had done well."
+              ]
+            },
+            {
+              "kind": "close_arc",
+              "arc": "letters",
+              "ending": "found-letters"
+            }
+          ]
+        },
+        {
+          "on": "give",
+          "if": [
+            {
+              "iobj": "t-quill"
+            },
+            {
+              "contains": "o-letters-seed",
+              "of": "t-quill"
+            },
+            {
+              "arc": "letters"
+            }
+          ],
+          "do": [
+            {
+              "kind": "adjust_counter",
+              "name": "letters-delivered",
+              "delta": 1
+            },
+            {
+              "kind": "advance_beat",
+              "arc": "letters",
+              "beat": "quill-letter"
+            },
+            {
+              "kind": "narrate",
+              "room": "r-post",
+              "variants": [
+                "The brass bell on the counter gives one bright ring all by itself. Fen looks up from her sorting, pleased as anything. 'Delivered,' she says.",
+                "All by itself, the counter bell chimes once, small and clear, the way it does when a letter finds its door. Fen taps it back with her pencil.",
+                "Somewhere a letter has just been read: the brass bell on the counter rings, and Fen smiles at the dead-letter drawer as if it had done well."
+              ]
+            }
+          ]
+        },
+        {
+          "on": "give",
+          "if": [
+            {
+              "iobj": "t-quill"
+            },
+            {
+              "contains": "o-letters-seed",
+              "of": "t-quill"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "room": "r-post",
+              "variants": [
+                "The brass bell on the counter gives one bright ring all by itself. Fen looks up from her sorting, pleased as anything. 'Delivered,' she says.",
+                "All by itself, the counter bell chimes once, small and clear, the way it does when a letter finds its door. Fen taps it back with her pencil.",
+                "Somewhere a letter has just been read: the brass bell on the counter rings, and Fen smiles at the dead-letter drawer as if it had done well."
+              ]
+            }
+          ]
+        },
+        {
+          "on": "give",
+          "if": [
+            {
+              "carried": "o-letters-seed"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "TO WHOEVER IS MINDING MY GARDEN, the seed packet says, and rattles. A garden-minder, then: someone with muddy knees and a very long watering can."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "o-letters-stars",
+      "name": "paper stars",
+      "location": "offstage",
+      "fixture": true,
+      "seed": "paper stars folded from the envelopes of found letters, one hung beneath every lantern in the square; each still shows a scrap of address in a stranger's hand, and they turn slowly in the warm air as if reading themselves",
+      "aliases": [
+        "envelope stars",
+        "stars",
+        "paper star"
+      ]
+    }
+  ],
+  "arcs": {
+    "letters": {
+      "title": "The Unsent Letters",
+      "kind": "village",
+      "cumulative": true,
+      "opens": "rule",
+      "summary": "Letters that were written and never sent drift into Fen's Little Post Office, one each dawn, each addressed nearly to somebody in the village. Any dreamer can carry one to its door, and hear how that keeper came here; five deliveries, across everyone, bring the Night of Found Letters.",
+      "beats": {
+        "fen-strays": {
+          "npc": "t-fen",
+          "topic": "the stray letters",
+          "topic_aliases": [
+            "stray letters",
+            "stray letter",
+            "the new letter",
+            "new letters",
+            "deliveries",
+            "delivering",
+            "the dead-letter drawer",
+            "the drawer",
+            "dead letters",
+            "found letters",
+            "the night of found letters"
+          ],
+          "per_player": true,
+          "hint": "the player asks Fen about the stray letters in her dead-letter drawer",
+          "text": "Fen taps the open drawer with her pencil. 'Strays. Written, sealed, never sent, and addressed near enough to somebody here that I can't in conscience file them.' She peers at you over her glasses. 'Read the front, and take each one to whoever it nearly means. Get five of them home and we'll hold a Night of Found Letters.'"
+        },
+        "bell-letter": {
+          "hint": "a dreamer carries the crayon letter to Bell"
+        },
+        "tace-letter": {
+          "hint": "a dreamer carries the marble letter to Tace"
+        },
+        "mott-letter": {
+          "hint": "a dreamer carries the button letter to Mott"
+        },
+        "umber-letter": {
+          "hint": "a dreamer carries the string-tied letter to Umber"
+        },
+        "linden-letter": {
+          "hint": "a dreamer carries the tea-stained letter to Linden"
+        },
+        "sorrel-letter": {
+          "hint": "a dreamer carries the grass-stained letter to Sorrel"
+        },
+        "quill-letter": {
+          "hint": "a dreamer carries the seed-packet letter to Quill"
+        }
+      },
+      "endings": {
+        "found-letters": {
+          "summary": "five stray letters found their doors; the village holds the Night of Found Letters",
+          "text": "Down the lane, the post office bell rings and rings, and Fen comes out onto her step waving her pencil like a baton. 'Five home! That's first-class,' she calls to anyone at all. 'When Bell next lights the lamps, we'll hold the Night of Found Letters.' As this last letter changes hands, something small and warm drops out of the envelope into yours: a dreamseed, folded like a tiny letter.",
+          "ledger": "{helpers} carried the unsent letters to their doors, and the village held the Night of Found Letters.",
+          "do": [
+            {
+              "kind": "spawn_template",
+              "template": "dreamseed",
+              "location_id": "@actor",
+              "generated_by": "letters:found-letters"
+            },
+            {
+              "kind": "add_fact",
+              "id": "letters-fifth",
+              "text": "{actor} carried the fifth stray letter to its door, and so the village holds the Night of Found Letters.",
+              "known_by": [
+                "t-fen"
+              ],
+              "spread": [
+                {
+                  "to": "all",
+                  "after_minutes": 30
+                }
+              ]
+            }
+          ]
+        },
+        "dead-letter": {
+          "summary": "the letters waited too long; Fen ties them with ribbon for another winter",
+          "after_days": 14,
+          "room": "r-post",
+          "text": "Fen gathers the stray letters still waiting in the drawer, ties them in a bundle with blue ribbon, and slides the dead-letter drawer shut. 'Another winter,' she says, patting it. 'They'll keep. Letters are patient; it's the one thing they're good at.'",
+          "ledger": "The unsent letters waited too long for their doors. Fen tied the last of them with blue ribbon, and keeps them in the dead-letter drawer, to be read another winter.",
+          "do": [
+            {
+              "kind": "set_property",
+              "target_id": "o-letters-drawer",
+              "key": "state",
+              "value": "locked"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "facts": {
+    "letters-strays": {
+      "text": "Since the great clock started, one stray letter drifts into the Little Post Office each dawn: written, sealed, never sent, and addressed near enough to someone in the village. Fen keeps them in the dead-letter drawer until a dreamer carries each one to whoever it nearly means.",
+      "known_by": "all",
+      "if": [
+        {
+          "arc": "letters",
+          "ne": "dormant"
+        },
+        {
+          "ending": "letters/dead-letter",
+          "not": true
+        }
+      ]
+    },
+    "letters-night-promised": {
+      "text": "Fen has promised that when five stray letters have found their doors, the village will hold a Night of Found Letters.",
+      "known_by": [
+        "t-fen",
+        "t-bell",
+        "t-linden",
+        "t-mott"
+      ],
+      "if": [
+        {
+          "arc": "letters"
+        }
+      ]
+    },
+    "letters-for-crayon": {
+      "text": "The crayon letter, addressed TO THE ONE WHO LIGHTS THE LAMP OUTSIDE MY WINDOW, is nearly for Bell the lamplighter.",
+      "known_by": [
+        "t-fen"
+      ],
+      "if": [
+        {
+          "arc": "letters",
+          "ne": "dormant"
+        },
+        {
+          "ending": "letters/dead-letter",
+          "not": true
+        },
+        {
+          "counter": "letters-arrived",
+          "gte": 1
+        },
+        {
+          "contains": "o-letters-crayon",
+          "of": "t-bell",
+          "not": true
+        }
+      ]
+    },
+    "letters-for-marble": {
+      "text": "The marble letter, addressed TO WHOEVER MENDS THINGS (PLEASE), is nearly for Tace the clockmaker.",
+      "known_by": [
+        "t-fen"
+      ],
+      "if": [
+        {
+          "arc": "letters",
+          "ne": "dormant"
+        },
+        {
+          "ending": "letters/dead-letter",
+          "not": true
+        },
+        {
+          "counter": "letters-arrived",
+          "gte": 2
+        },
+        {
+          "contains": "o-letters-marble",
+          "of": "t-tace",
+          "not": true
+        }
+      ]
+    },
+    "letters-for-button": {
+      "text": "The button letter, addressed TO WHOEVER FINDS MY BUTTON, is nearly for Mott, who keeps found things in his tin.",
+      "known_by": [
+        "t-fen"
+      ],
+      "if": [
+        {
+          "arc": "letters",
+          "ne": "dormant"
+        },
+        {
+          "ending": "letters/dead-letter",
+          "not": true
+        },
+        {
+          "counter": "letters-arrived",
+          "gte": 3
+        },
+        {
+          "contains": "o-letters-button",
+          "of": "t-mott",
+          "not": true
+        }
+      ]
+    },
+    "letters-for-string": {
+      "text": "The string-tied letter, addressed TO THE ONE WHO KEEPS THINGS FOR LATER, is nearly for Umber in the Hour Cellar.",
+      "known_by": [
+        "t-fen"
+      ],
+      "if": [
+        {
+          "arc": "letters",
+          "ne": "dormant"
+        },
+        {
+          "ending": "letters/dead-letter",
+          "not": true
+        },
+        {
+          "counter": "letters-arrived",
+          "gte": 4
+        },
+        {
+          "contains": "o-letters-string",
+          "of": "t-umber",
+          "not": true
+        }
+      ]
+    },
+    "letters-for-tea": {
+      "text": "The tea-stained letter, addressed TO WHOEVER WAITED UP FOR ME, is nearly for Linden at the Waiting House.",
+      "known_by": [
+        "t-fen"
+      ],
+      "if": [
+        {
+          "arc": "letters",
+          "ne": "dormant"
+        },
+        {
+          "ending": "letters/dead-letter",
+          "not": true
+        },
+        {
+          "counter": "letters-arrived",
+          "gte": 5
+        },
+        {
+          "contains": "o-letters-tea",
+          "of": "t-linden",
+          "not": true
+        }
+      ]
+    },
+    "letters-for-grass": {
+      "text": "The grass-stained letter, addressed TO THE ONE WHO WALKED ME HOME, is nearly for Sorrel, who walks the hours in off the Dusk Road.",
+      "known_by": [
+        "t-fen"
+      ],
+      "if": [
+        {
+          "arc": "letters",
+          "ne": "dormant"
+        },
+        {
+          "ending": "letters/dead-letter",
+          "not": true
+        },
+        {
+          "counter": "letters-arrived",
+          "gte": 6
+        },
+        {
+          "contains": "o-letters-grass",
+          "of": "t-sorrel",
+          "not": true
+        }
+      ]
+    },
+    "letters-for-seed": {
+      "text": "The seed-packet letter, addressed TO WHOEVER IS MINDING MY GARDEN, is nearly for Quill in the Pendulum Garden.",
+      "known_by": [
+        "t-fen"
+      ],
+      "if": [
+        {
+          "arc": "letters",
+          "ne": "dormant"
+        },
+        {
+          "ending": "letters/dead-letter",
+          "not": true
+        },
+        {
+          "counter": "letters-arrived",
+          "gte": 7
+        },
+        {
+          "contains": "o-letters-seed",
+          "of": "t-quill",
+          "not": true
+        }
+      ]
+    },
+    "letters-origin-crayon": {
+      "text": "Bell first came to the village one dusk, when Wend was lighting the square alone; Wend held out the lamplighter's pole and said the lanterns liked company, and Bell never gave it back.",
+      "known_by": [
+        "t-bell"
+      ],
+      "if": [
+        {
+          "contains": "o-letters-crayon",
+          "of": "t-bell"
+        }
+      ]
+    },
+    "letters-origin-marble": {
+      "text": "Tace came to the loft as a small child, carrying the pieces of a broken clock in an apron; Wend asked for no payment, handed Tace a loupe, and Tace never went back down.",
+      "known_by": [
+        "t-tace"
+      ],
+      "if": [
+        {
+          "contains": "o-letters-marble",
+          "of": "t-tace"
+        }
+      ]
+    },
+    "letters-origin-button": {
+      "text": "Mott does not remember arriving in the village; the first thing he remembers is the broom in his hands and the workshop floor.",
+      "known_by": [
+        "t-mott"
+      ],
+      "if": [
+        {
+          "contains": "o-letters-button",
+          "of": "t-mott"
+        }
+      ]
+    },
+    "letters-origin-string": {
+      "text": "When Umber first came to the village, the Hour Cellar held three jars and one lantern, and Wend knew every hour in it by name; Wend could never bear to throw a thing away.",
+      "known_by": [
+        "t-umber"
+      ],
+      "if": [
+        {
+          "contains": "o-letters-string",
+          "of": "t-umber"
+        }
+      ]
+    },
+    "letters-origin-tea": {
+      "text": "Linden first came to the village waiting up for someone, long ago; she no longer remembers who, and the Waiting House grew up around her while she waited.",
+      "known_by": [
+        "t-linden"
+      ],
+      "if": [
+        {
+          "contains": "o-letters-tea",
+          "of": "t-linden"
+        }
+      ]
+    },
+    "letters-origin-grass": {
+      "text": "Sorrel came along the Dusk Road one evening with nowhere in particular to be, found the sky so kind that they stayed to watch it, and never left.",
+      "known_by": [
+        "t-sorrel"
+      ],
+      "if": [
+        {
+          "contains": "o-letters-grass",
+          "of": "t-sorrel"
+        }
+      ]
+    },
+    "letters-origin-seed": {
+      "text": "Quill came to the village to see whether a pendulum would grow if he planted it; it did not, not really, but he stayed to find out, and has tended the Pendulum Garden ever since.",
+      "known_by": [
+        "t-quill"
+      ],
+      "if": [
+        {
+          "contains": "o-letters-seed",
+          "of": "t-quill"
+        }
+      ]
+    },
+    "letters-night": {
+      "text": "Five stray letters found their doors, so the village holds a Night of Found Letters, with paper stars folded from the envelopes hung under the square's lanterns.",
+      "known_by": "all",
+      "if": [
+        {
+          "ending": "letters/found-letters"
+        }
+      ]
+    },
+    "letters-drawer-shut": {
+      "text": "The stray letters waited too long; Fen tied the last of them with blue ribbon and keeps them shut in the dead-letter drawer, to be read another winter.",
+      "known_by": "all",
+      "if": [
+        {
+          "ending": "letters/dead-letter"
+        }
+      ]
+    }
+  },
+  "storylets": [
+    {
+      "id": "letters-begin",
+      "at": "dawn",
+      "always": true,
+      "once": true,
+      "room": "r-post",
+      "summary": "the first stray letter drifts into the post office",
+      "if": [
+        {
+          "flag": "CLOCK-STARTED"
+        },
+        {
+          "day": {
+            "gte": 2
+          }
+        },
+        {
+          "arc": "letters",
+          "eq": "dormant"
+        }
+      ],
+      "text": "Overnight a letter has come in under the post office door, folded small and addressed in crayon. Fen reads the front, clicks her tongue, and sets it in the dead-letter drawer instead of a pigeonhole. 'Nearly for somebody here, you are,' she tells it. 'Nearly counts, in this office.'",
+      "do": [
+        {
+          "kind": "open_arc",
+          "arc": "letters"
+        },
+        {
+          "kind": "move_object",
+          "object_id": "o-letters-crayon",
+          "dest_id": "o-letters-drawer"
+        },
+        {
+          "kind": "adjust_counter",
+          "name": "letters-arrived",
+          "delta": 1
+        },
+        {
+          "kind": "narrate",
+          "room": "r-square",
+          "text": "Down Lamplight Lane, the brass bell on the post office counter rings twice, brisk as a knock: there is post."
+        }
+      ]
+    },
+    {
+      "id": "letters-arrive-marble",
+      "at": "dawn",
+      "always": true,
+      "once": true,
+      "room": "r-post",
+      "summary": "a stray letter drifts into the post office",
+      "if": [
+        {
+          "arc": "letters",
+          "ne": "dormant"
+        },
+        {
+          "ending": "letters/dead-letter",
+          "not": true
+        },
+        {
+          "counter": "letters-arrived",
+          "eq": 1
+        }
+      ],
+      "text": "A letter came in with the dawn, and something inside it rolls with a small glassy click when Fen lifts it. 'A marble,' she says, reading the front. 'Somebody is paying in marbles.' She files it in the dead-letter drawer.",
+      "do": [
+        {
+          "kind": "move_object",
+          "object_id": "o-letters-marble",
+          "dest_id": "o-letters-drawer"
+        },
+        {
+          "kind": "adjust_counter",
+          "name": "letters-arrived",
+          "delta": 1
+        }
+      ]
+    },
+    {
+      "id": "letters-arrive-button",
+      "at": "dawn",
+      "always": true,
+      "once": true,
+      "room": "r-post",
+      "summary": "a stray letter drifts into the post office",
+      "if": [
+        {
+          "arc": "letters",
+          "ne": "dormant"
+        },
+        {
+          "ending": "letters/dead-letter",
+          "not": true
+        },
+        {
+          "counter": "letters-arrived",
+          "eq": 2
+        }
+      ],
+      "text": "Fen finds a letter on the mat this dawn with a coat button stitched to one corner, as if to keep it from blowing away. 'Now that's clever,' she says, and tucks it into the dead-letter drawer.",
+      "do": [
+        {
+          "kind": "move_object",
+          "object_id": "o-letters-button",
+          "dest_id": "o-letters-drawer"
+        },
+        {
+          "kind": "adjust_counter",
+          "name": "letters-arrived",
+          "delta": 1
+        }
+      ]
+    },
+    {
+      "id": "letters-arrive-string",
+      "at": "dawn",
+      "always": true,
+      "once": true,
+      "room": "r-post",
+      "summary": "a stray letter drifts into the post office",
+      "if": [
+        {
+          "arc": "letters",
+          "ne": "dormant"
+        },
+        {
+          "ending": "letters/dead-letter",
+          "not": true
+        },
+        {
+          "counter": "letters-arrived",
+          "eq": 3
+        }
+      ],
+      "text": "At first light Fen lifts a new arrival off the doormat, a fat envelope tied up in kitchen string. She reads the address twice and sets it in the dead-letter drawer, string and all.",
+      "do": [
+        {
+          "kind": "move_object",
+          "object_id": "o-letters-string",
+          "dest_id": "o-letters-drawer"
+        },
+        {
+          "kind": "adjust_counter",
+          "name": "letters-arrived",
+          "delta": 1
+        }
+      ]
+    },
+    {
+      "id": "letters-arrive-tea",
+      "at": "dawn",
+      "always": true,
+      "once": true,
+      "room": "r-post",
+      "summary": "a stray letter drifts into the post office",
+      "if": [
+        {
+          "arc": "letters",
+          "ne": "dormant"
+        },
+        {
+          "ending": "letters/dead-letter",
+          "not": true
+        },
+        {
+          "counter": "letters-arrived",
+          "eq": 4
+        }
+      ],
+      "text": "Something warm-looking came in overnight: a letter with a pale ring on it where a teacup once stood. Fen sniffs it, smiles despite herself, and puts it in the dead-letter drawer.",
+      "do": [
+        {
+          "kind": "move_object",
+          "object_id": "o-letters-tea",
+          "dest_id": "o-letters-drawer"
+        },
+        {
+          "kind": "adjust_counter",
+          "name": "letters-arrived",
+          "delta": 1
+        }
+      ]
+    },
+    {
+      "id": "letters-arrive-grass",
+      "at": "dawn",
+      "always": true,
+      "once": true,
+      "room": "r-post",
+      "summary": "a stray letter drifts into the post office",
+      "if": [
+        {
+          "arc": "letters",
+          "ne": "dormant"
+        },
+        {
+          "ending": "letters/dead-letter",
+          "not": true
+        },
+        {
+          "counter": "letters-arrived",
+          "eq": 5
+        }
+      ],
+      "text": "This dawn's letter comes in smelling of cut grass, with a green smudge across the back and something pressed flat inside. Fen holds it up to the window, hums, and files it in the dead-letter drawer.",
+      "do": [
+        {
+          "kind": "move_object",
+          "object_id": "o-letters-grass",
+          "dest_id": "o-letters-drawer"
+        },
+        {
+          "kind": "adjust_counter",
+          "name": "letters-arrived",
+          "delta": 1
+        }
+      ]
+    },
+    {
+      "id": "letters-arrive-seed",
+      "at": "dawn",
+      "always": true,
+      "once": true,
+      "room": "r-post",
+      "summary": "a stray letter drifts into the post office",
+      "if": [
+        {
+          "arc": "letters",
+          "ne": "dormant"
+        },
+        {
+          "ending": "letters/dead-letter",
+          "not": true
+        },
+        {
+          "counter": "letters-arrived",
+          "eq": 6
+        }
+      ],
+      "text": "The newest stray is written on the back of an old seed packet, and it rattles faintly when Fen picks it up. She reads the front, laughs once, and slips it into the dead-letter drawer.",
+      "do": [
+        {
+          "kind": "move_object",
+          "object_id": "o-letters-seed",
+          "dest_id": "o-letters-drawer"
+        },
+        {
+          "kind": "adjust_counter",
+          "name": "letters-arrived",
+          "delta": 1
+        }
+      ]
+    },
+    {
+      "id": "letters-night",
+      "at": "dusk",
+      "always": true,
+      "once": true,
+      "room": "r-square",
+      "summary": "the Night of Found Letters in the square",
+      "if": [
+        {
+          "ending": "letters/found-letters"
+        }
+      ],
+      "text": "Tonight is the Night of Found Letters. Under every lantern in the square hangs a paper star, folded from an envelope that found its door, and from doorways all over the village comes the low, glad sound of letters being read aloud. The whole square smells of warm paper and wick-smoke.",
+      "do": [
+        {
+          "kind": "move_object",
+          "object_id": "o-letters-stars",
+          "dest_id": "r-square"
+        },
+        {
+          "kind": "narrate",
+          "room": "r-post",
+          "text": "In the Little Post Office, Fen reads nothing aloud tonight. She runs a finger through the pigeonhole labelled TO ME, LATER, looking, as she does every night, for one particular hand. It isn't there. She straightens the little card and gives it a pat. 'Scenic route,' she murmurs."
+        }
+      ]
+    }
+  ]
+}

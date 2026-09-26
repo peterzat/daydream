@@ -1,0 +1,274 @@
+{
+  "name": "nell-evening-orchard",
+  "comment": "Nell's Early Evening, ending orchard: Quill gives the dreamer a windfall from the Orchard of Evenings, and the evening, given it, chooses to rest there, always at six o'clock.",
+  "clock": "2026-10-01T17:00:00+00:00",
+  "players": [
+    {
+      "as": "A",
+      "name": "Wren"
+    }
+  ],
+  "segments": [
+    {
+      "name": "prologue",
+      "commands": [
+        {
+          "cmd": "read ledger",
+          "expect": {
+            "narrate_contains": "escapement gear",
+            "beats": [
+              "prologue/read-ledger"
+            ],
+            "phase": "stopped"
+          }
+        },
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-square"
+          }
+        },
+        {
+          "cmd": "south",
+          "expect": {
+            "room": "r-well"
+          }
+        },
+        {
+          "cmd": "take gear",
+          "expect": {
+            "carrying": [
+              "escapement gear"
+            ],
+            "beats": [
+              "prologue/found-gear"
+            ]
+          }
+        },
+        {
+          "cmd": "north"
+        },
+        {
+          "cmd": "west"
+        },
+        {
+          "cmd": "up",
+          "expect": {
+            "room": "r-loft"
+          }
+        },
+        {
+          "cmd": "give gear to tace",
+          "expect": {
+            "carrying": [
+              "case key"
+            ],
+            "beats": [
+              "prologue/gave-gear"
+            ],
+            "narrate_contains": "You carried it all the way home."
+          }
+        },
+        {
+          "cmd": "down",
+          "expect": {
+            "room": "r-clocktower"
+          }
+        },
+        {
+          "cmd": "use key on case",
+          "expect": {
+            "beats": [
+              "prologue/unlocked"
+            ]
+          }
+        },
+        {
+          "cmd": "open case",
+          "expect": {
+            "ending": {
+              "prologue": "mended"
+            },
+            "flag": {
+              "CLOCK-STARTED": true
+            },
+            "narrate_contains": "first slow tick",
+            "day": {
+              "eq": 1
+            }
+          }
+        },
+        {
+          "cmd": "take dreamseed",
+          "expect": {
+            "carrying": [
+              "dreamseed"
+            ]
+          }
+        },
+        {
+          "cmd": "take cog",
+          "expect": {
+            "carrying": [
+              "warm brass cog"
+            ],
+            "arc": {
+              "pim": "open"
+            },
+            "phase": "dusk",
+            "located": {
+              "t-pims-nap": "r-square"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "a sleepy evening",
+      "commands": [
+        {
+          "summon": "nell-evening",
+          "expect": {
+            "arc": {
+              "nell-evening": "open"
+            },
+            "located": {
+              "t-nells-evening": "r-square"
+            }
+          }
+        },
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-square"
+          }
+        },
+        {
+          "cmd": "ask bell about the sleepy evening",
+          "expect": {
+            "beats": [
+              "nell-evening/bell-notices"
+            ]
+          }
+        },
+        {
+          "cmd": "ask evening about nell",
+          "expect": {
+            "beats": [
+              "nell-evening/hear-nell"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "a windfall",
+      "commands": [
+        {
+          "cmd": "south",
+          "expect": {
+            "room": "r-well"
+          }
+        },
+        {
+          "cmd": "south",
+          "expect": {
+            "room": "r-garden"
+          }
+        },
+        {
+          "cmd": "ask quill about a windfall",
+          "expect": {
+            "beats": [
+              "nell-evening/quill-windfall"
+            ],
+            "carrying": [
+              "windfall"
+            ],
+            "narrate_contains": "It'll know the way."
+          }
+        },
+        {
+          "cmd": "north",
+          "expect": {
+            "room": "r-well"
+          }
+        },
+        {
+          "cmd": "north",
+          "expect": {
+            "room": "r-square"
+          }
+        },
+        {
+          "cmd": "give windfall to evening",
+          "expect": {
+            "ending": {
+              "nell-evening": "orchard"
+            },
+            "not_carrying": [
+              "windfall"
+            ],
+            "located": {
+              "t-nells-evening": "r-orchard"
+            },
+            "collected": {
+              "gte": 1
+            },
+            "narrate_contains": "always just before supper"
+          }
+        }
+      ]
+    },
+    {
+      "name": "six o'clock",
+      "commands": [
+        {
+          "cmd": "south"
+        },
+        {
+          "cmd": "south",
+          "expect": {
+            "room": "r-garden"
+          }
+        },
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-orchard"
+          }
+        },
+        {
+          "cmd": "examine evening",
+          "expect": {
+            "narrate_contains": "chose to rest in the Orchard of Evenings"
+          }
+        },
+        {
+          "cmd": "west"
+        },
+        {
+          "cmd": "north"
+        },
+        {
+          "cmd": "north",
+          "expect": {
+            "room": "r-square"
+          }
+        },
+        {
+          "cmd": "west",
+          "expect": {
+            "room": "r-clocktower"
+          }
+        },
+        {
+          "cmd": "read ledger of returned hours",
+          "expect": {
+            "narrate_contains": "Nell's early evening chose to rest in the Orchard of Evenings, where it is always six o'clock. Wren showed it the way."
+          }
+        }
+      ]
+    }
+  ]
+}

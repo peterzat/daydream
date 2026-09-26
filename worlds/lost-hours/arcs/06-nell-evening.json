@@ -1,0 +1,523 @@
+{
+  "comment": "Guest arc 6 (canon section 7): Nell's Early Evening. The evening a grandmother named Nell dozed through at her own eightieth birthday party; it wants to hear the song they sang while she slept. The song came down in three pieces: Sorrel caught the first line on the Dusk Road, Linden's kettle whistles the second, Mott swept up the last. Endings: home (a dreamer who has gathered all three lines sings it), orchard (given a windfall from Quill, it chooses to rest in the Orchard of Evenings), armchair (unhelped for three days, it dozes off in the Waiting House, kept).",
+  "toons": [
+    {
+      "id": "t-nells-evening",
+      "name": "Nell's Evening",
+      "slot": 125,
+      "room": "offstage",
+      "mood": "drowsy",
+      "seed": "a lost evening: the early evening a grandmother named Nell dozed through at her own eightieth birthday party, asleep in her armchair while her family sang; small, rosy, and drowsy, it wants to hear the song it missed",
+      "appearance_seed": "a small rosy figure wrapped in a crocheted shawl of every color, a paper party hat slipping over one ear, cheeks warm as a lamplit room, a thin curl of candle smoke rising from it like a thought",
+      "presence_text": "A small rosy figure in a crocheted shawl nods by the nearest lantern, dozes, and wakes with a little start, as if it has just missed something.",
+      "aliases": [
+        "evening",
+        "the evening",
+        "nell's evening",
+        "nells evening",
+        "sleepy evening",
+        "the sleepy evening"
+      ],
+      "properties": {
+        "wants": "windfall",
+        "gives_text": "The evening tucks the windfall under its shawl and holds it there, warm, the way you hold a cup of tea you have forgotten to drink.",
+        "gives_mood": "content",
+        "declines_text": "The evening looks at what you are holding out, smiles drowsily, and shakes its head. It isn't missing a thing. It is missing a song.",
+        "voice": {
+          "pronouns": "it/its",
+          "role": "a guest: Nell's early evening",
+          "sheet": "Nell's Evening is a lost hour: the early evening a grandmother named Nell slept through at her own eightieth birthday party, dozing in her armchair while her family sang. It is small, rosy, and drowsy, wrapped in a crocheted shawl, and speaks slowly and fondly, a few words at a time, the way a warm room would talk if it could. It wants to hear the song it missed.",
+          "habits": [
+            "nods off mid-sentence and wakes with a small start",
+            "speaks slowly and fondly, a few words at a time",
+            "remembers the party in warm fragments: candles, a pink cake, a room full of people"
+          ],
+          "samples": [
+            "The evening's head nods, then lifts. 'Were they singing? I think they were singing.'",
+            "'Eighty candles,' the evening murmurs. 'Or near enough. Nobody counted.'",
+            "The evening smooths its shawl over its knees. 'Such a lovely cake. Pink.'",
+            "'I only closed my eyes a moment,' the evening says, and closes them."
+          ],
+          "wants": [
+            "to hear the birthday song it slept through",
+            "a warm chair and a little quiet, if the song cannot be found"
+          ],
+          "never": [
+            "never uses long words",
+            "never names Nell's family",
+            "never names anyone in the village who is not a resident or a guest"
+          ]
+        }
+      }
+    }
+  ],
+  "arcs": {
+    "nell-evening": {
+      "title": "Nell's Early Evening",
+      "kind": "guest",
+      "guest": "t-nells-evening",
+      "summary": "A small rosy evening in a crocheted shawl: the early evening a grandmother named Nell dozed through at her own eightieth birthday party. It wants to hear the song they sang while she slept; three keepers each remember one line.",
+      "arrival": {
+        "room": "r-square",
+        "earliest_day": 5,
+        "weight": 1,
+        "text": "Down through the dusk drifts something warm and slow, trailing a thread of candle smoke. It settles on the cobbles by the lanterns: a small rosy figure in a crocheted shawl, a paper party hat slipping over one ear. It nods, dozes, and wakes with a little start, as if it has just missed something."
+      },
+      "beats": {
+        "bell-notices": {
+          "npc": "t-bell",
+          "topic": "the sleepy evening",
+          "topic_aliases": [
+            "sleepy evening",
+            "the evening",
+            "evening",
+            "nell's evening",
+            "the dozing one",
+            "the sleepy one"
+          ],
+          "per_player": true,
+          "hint": "the player asks Bell about the sleepy evening in the square",
+          "text": "Bell crouches by the rosy little figure and sniffs. 'Candle smoke and icing. That's a birthday evening, that is, and somebody nodded off before the singing, I'd bet my ladder on it.' They tap the pole on one boot. 'Songs come down in pieces, same as everything else. Ask Sorrel and Linden and Mott about the song.'"
+        },
+        "hear-nell": {
+          "npc": "t-nells-evening",
+          "topic": "Nell",
+          "topic_aliases": [
+            "nell",
+            "the party",
+            "her party",
+            "the grandmother",
+            "grandmother",
+            "gran",
+            "the candles",
+            "eighty candles"
+          ],
+          "per_player": true,
+          "hint": "the player asks the evening about Nell or her party",
+          "text": "The evening pulls its shawl close and speaks slowly, fondly. 'Nell was eighty. Such a cake, with all the candles, and she only closed her eyes for a moment.' Its head nods, then lifts. 'They sang, I think. The song went up the chimney in bits: one to the road, one to a kettle, one to a broom.'"
+        },
+        "sorrel-line": {
+          "npc": "t-sorrel",
+          "topic": "Nell's song",
+          "topic_aliases": [
+            "the song",
+            "song",
+            "a song",
+            "the birthday song",
+            "nell's song",
+            "the tune",
+            "a line",
+            "the line",
+            "a line of song",
+            "nell's evening",
+            "the sleepy evening"
+          ],
+          "per_player": true,
+          "hint": "the player asks Sorrel about the song for Nell's evening",
+          "text": "Sorrel studies the sky a long while before answering. 'A line came down just ahead of that evening, like the first drops before rain.' They hum it, low and weathered: 'Here's to Nell, and her candles bright.' Then, with a shrug of the net: 'That's all the sky gave me. The rest went elsewhere.'",
+          "do": [
+            {
+              "kind": "add_fact",
+              "id": "nell-evening-line-sorrel",
+              "text": "{actor} learned the first line of Nell's birthday song from Sorrel on the Dusk Road.",
+              "known_by": [
+                "t-sorrel"
+              ],
+              "spread": [
+                {
+                  "to": "all",
+                  "after_minutes": 60
+                }
+              ]
+            }
+          ]
+        },
+        "linden-line": {
+          "npc": "t-linden",
+          "topic": "Nell's song",
+          "topic_aliases": [
+            "the song",
+            "song",
+            "a song",
+            "the birthday song",
+            "nell's song",
+            "the tune",
+            "a line",
+            "the line",
+            "a line of song",
+            "the whistling kettle",
+            "the whistling",
+            "whistling",
+            "nell's evening",
+            "the sleepy evening"
+          ],
+          "per_player": true,
+          "hint": "the player asks Linden about the song, or the tune her kettle whistles",
+          "text": "Linden stops mid-bustle. 'So that's what it's been!' She lifts the kettle off the hob, and it whistles, sweet and clear, a tune with words in it: 'here's to the kettle and the window light.' Linden laughs. 'Singing about itself, the vain thing. And if the little love can't wait up for the rest, pet, Quill's orchard keeps evenings.'",
+          "do": [
+            {
+              "kind": "add_fact",
+              "id": "nell-evening-line-linden",
+              "text": "{actor} heard the second line of Nell's birthday song whistled by the kettle at the Waiting House.",
+              "known_by": [
+                "t-linden"
+              ],
+              "spread": [
+                {
+                  "to": "all",
+                  "after_minutes": 60
+                }
+              ]
+            }
+          ]
+        },
+        "mott-line": {
+          "npc": "t-mott",
+          "topic": "Nell's song",
+          "topic_aliases": [
+            "the song",
+            "song",
+            "a song",
+            "the birthday song",
+            "nell's song",
+            "the tune",
+            "a tune",
+            "a line",
+            "the line",
+            "a line of song",
+            "the swept-up tune",
+            "nell's evening",
+            "the sleepy evening"
+          ],
+          "per_player": true,
+          "hint": "the player asks Mott about the song or the tune he swept up",
+          "text": "Mott leans on the broom a long moment. 'Swept up a tune the other day, with the dust. Soft thing. Didn't know whose.' He hums it, low and careful, as if it might break: 'doze if you like, love, we'll sing it soft tonight.' Then, gruffly: 'Kept it in my head. Safest place for it.'",
+          "do": [
+            {
+              "kind": "add_fact",
+              "id": "nell-evening-line-mott",
+              "text": "{actor} learned the last line of Nell's birthday song from Mott, who swept it up with the dust.",
+              "known_by": [
+                "t-mott"
+              ],
+              "spread": [
+                {
+                  "to": "all",
+                  "after_minutes": 60
+                }
+              ]
+            }
+          ]
+        },
+        "quill-windfall": {
+          "npc": "t-quill",
+          "topic": "a windfall",
+          "topic_aliases": [
+            "windfall",
+            "windfalls",
+            "fallen fruit",
+            "a fallen evening",
+            "a place to rest",
+            "somewhere to rest",
+            "nell's evening",
+            "the sleepy evening"
+          ],
+          "per_player": true,
+          "hint": "the player asks Quill about a windfall, or a place in the orchard for the sleepy evening",
+          "text": "Quill goes pink to the ears and ducks through the arch into the orchard. He comes back with a small glowing fruit cupped in both hands, warm as a teacup. 'A windfall. The ones that fall are ready,' he says. 'If your sleepy evening would rather rest than wait, give it this. It'll know the way.'",
+          "do": [
+            {
+              "kind": "spawn_object",
+              "name": "windfall",
+              "location_id": "@actor",
+              "seed": "a small round evening fruit fallen in the Orchard of Evenings, glowing a soft six-o'clock gold; hold it close and you can smell cut grass and warm windows and somebody calling everyone in for supper",
+              "aliases": [
+                "windfall evening",
+                "fallen fruit"
+              ],
+              "generated_by": "nell-evening:windfall",
+              "properties": {
+                "nell_windfall": true
+              }
+            },
+            {
+              "kind": "add_fact",
+              "id": "nell-evening-windfall",
+              "text": "{actor} carried a windfall from Quill's orchard for Nell's sleepy evening.",
+              "known_by": [
+                "t-quill"
+              ],
+              "spread": [
+                {
+                  "to": "all",
+                  "after_minutes": 60
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "endings": {
+        "home": {
+          "summary": "a dreamer sings the whole song, and the evening goes home",
+          "text": "The evening listens with its eyes shut, smiling the whole way through, and on the last soft word it lets out one long, happy breath, like the moment after the candles are blown, and is gone. Somewhere in the waking world an old woman wakes in her armchair to the last of the singing, laughs, and asks who is cutting the cake. In your hand is a stub of birthday candle, still warm, and a dreamseed.",
+          "ledger": "{helpers} sang Nell's early evening its birthday song, and it went home.",
+          "do": [
+            {
+              "kind": "move_toon",
+              "toon_id": "t-nells-evening",
+              "room_id": null
+            },
+            {
+              "kind": "spawn_object",
+              "name": "candle stub",
+              "location_id": "@actor",
+              "seed": "a stub of pink birthday candle, its wick still faintly warm; it smells of icing and of a room full of people who love somebody very much",
+              "aliases": [
+                "birthday candle",
+                "stub",
+                "keepsake"
+              ],
+              "generated_by": "nell-evening:home"
+            },
+            {
+              "kind": "spawn_template",
+              "template": "dreamseed",
+              "location_id": "@actor",
+              "generated_by": "nell-evening:home"
+            },
+            {
+              "kind": "add_fact",
+              "id": "nell-evening-home",
+              "text": "{actor} sang Nell's early evening the birthday song it missed, and it went home.",
+              "known_by": [
+                "t-bell",
+                "t-sorrel",
+                "t-linden",
+                "t-mott"
+              ],
+              "spread": [
+                {
+                  "to": "all",
+                  "after_minutes": 60
+                }
+              ]
+            }
+          ]
+        },
+        "orchard": {
+          "summary": "given a windfall, the evening chooses to rest in the Orchard of Evenings",
+          "text": "The evening cups the windfall in both hands and breathes in: cut grass, warm windows, somebody calling everyone in for supper. Its eyes go soft. It toddles off toward the well-court with the little fruit held close, and by the time anyone thinks to follow, there is a new evening on the lowest branch of the orchard, glowing rosier than the rest. Kept, and dozing, and always just before supper.",
+          "ledger": "Nell's early evening chose to rest in the Orchard of Evenings, where it is always six o'clock. {helpers} showed it the way.",
+          "do": [
+            {
+              "kind": "move_toon",
+              "toon_id": "t-nells-evening",
+              "room_id": "r-orchard"
+            },
+            {
+              "kind": "set_property",
+              "target_id": "t-nells-evening",
+              "key": "presence_text",
+              "value": "On the lowest branch of the orchard, one evening glows a little rosier than the rest; now and then it nods off, and wakes, and smiles."
+            },
+            {
+              "kind": "set_property",
+              "target_id": "t-nells-evening",
+              "key": "mood",
+              "value": "resting in the orchard"
+            },
+            {
+              "kind": "set_property",
+              "target_id": "t-nells-evening",
+              "key": "seed",
+              "value": "a lost evening: the early evening a grandmother named Nell dozed through at her own eightieth birthday party; it chose to rest in the Orchard of Evenings, where it is always six o'clock and nearly suppertime"
+            },
+            {
+              "kind": "grant_collectible"
+            },
+            {
+              "kind": "add_fact",
+              "id": "nell-evening-orchard",
+              "text": "{actor} gave Nell's evening a windfall, and it chose to rest in the Orchard of Evenings.",
+              "known_by": [
+                "t-quill",
+                "t-linden"
+              ],
+              "spread": [
+                {
+                  "to": "all",
+                  "after_minutes": 60
+                }
+              ]
+            }
+          ]
+        },
+        "armchair": {
+          "summary": "unhelped, the evening dozes off in the Waiting House, kept",
+          "after_days": 3,
+          "room": "r-waiting",
+          "text": "At the Waiting House, Linden finds the little evening asleep in the best armchair by the kettle, shawl drawn up to its chin, exactly the way Nell dozed off that night. She tucks a cushion under its head and turns the lamp low. It never did hear its song, but it is warm, and kept, and snoring very softly.",
+          "ledger": "Nell's early evening was not sung home. It dozes in the best armchair at the Waiting House, and Linden keeps it.",
+          "do": [
+            {
+              "kind": "move_toon",
+              "toon_id": "t-nells-evening",
+              "room_id": "r-waiting"
+            },
+            {
+              "kind": "set_property",
+              "target_id": "t-nells-evening",
+              "key": "presence_text",
+              "value": "In the best armchair by the kettle, Nell's Evening dozes under its crocheted shawl, snoring very softly."
+            },
+            {
+              "kind": "set_property",
+              "target_id": "t-nells-evening",
+              "key": "mood",
+              "value": "dozing"
+            },
+            {
+              "kind": "set_property",
+              "target_id": "t-nells-evening",
+              "key": "seed",
+              "value": "a lost evening: the early evening a grandmother named Nell dozed through at her own eightieth birthday party; it never heard its song, and it dozes now in the Waiting House's best armchair, kept and warm"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "facts": {
+    "nell-evening-here": {
+      "text": "A lost evening is staying in the Lantern Square: the early evening a grandmother named Nell dozed through at her own eightieth birthday party, while her family sang. It wants to hear the song it missed.",
+      "known_by": "all",
+      "if": [
+        {
+          "arc": "nell-evening"
+        }
+      ]
+    },
+    "nell-evening-pieces": {
+      "text": "Nell's birthday song came down in three pieces: Sorrel caught the first line on the Dusk Road, Linden's kettle has been whistling the second, and Mott swept up the last with the dust. A dreamer who gathers all three can sing it to the evening.",
+      "known_by": [
+        "t-bell",
+        "t-sorrel",
+        "t-linden",
+        "t-mott"
+      ],
+      "if": [
+        {
+          "arc": "nell-evening"
+        }
+      ]
+    },
+    "nell-evening-rest": {
+      "text": "Quill says an evening that would rather rest than wait could have a branch in the Orchard of Evenings, where it is always six o'clock; a windfall from the orchard would show it the way.",
+      "known_by": [
+        "t-quill",
+        "t-linden"
+      ],
+      "if": [
+        {
+          "arc": "nell-evening"
+        }
+      ]
+    },
+    "nell-evening-dozing": {
+      "text": "Nell's early evening was never sung home; it dozes in the best armchair at the Waiting House, and Linden keeps it.",
+      "known_by": "all",
+      "if": [
+        {
+          "ending": "nell-evening/armchair"
+        }
+      ]
+    }
+  },
+  "rules": [
+    {
+      "on": "sing",
+      "if": [
+        {
+          "present": "t-nells-evening"
+        },
+        {
+          "arc": "nell-evening"
+        },
+        {
+          "beat": "nell-evening/sorrel-line",
+          "by": "@actor"
+        },
+        {
+          "beat": "nell-evening/linden-line",
+          "by": "@actor"
+        },
+        {
+          "beat": "nell-evening/mott-line",
+          "by": "@actor"
+        }
+      ],
+      "do": [
+        {
+          "kind": "narrate",
+          "text": "You sing it softly, the whole of it, the way it was sung in a warm room somewhere: here's to Nell, and her candles bright, here's to the kettle and the window light, doze if you like, love, we'll sing it soft tonight."
+        },
+        {
+          "kind": "close_arc",
+          "arc": "nell-evening",
+          "ending": "home"
+        }
+      ]
+    },
+    {
+      "on": "sing",
+      "if": [
+        {
+          "present": "t-nells-evening"
+        },
+        {
+          "arc": "nell-evening"
+        }
+      ],
+      "do": [
+        {
+          "kind": "narrate",
+          "variants": [
+            "You sing what you have of the song. The evening lifts its head at every word it knows, and when you run out it is still listening, patient as a lamp.",
+            "You try the song, but it runs out partway, like a stair with a step missing. The evening waits for the rest with its eyes half closed."
+          ]
+        }
+      ]
+    },
+    {
+      "on": "give",
+      "if": [
+        {
+          "iobj": "t-nells-evening"
+        },
+        {
+          "prop": "nell_windfall",
+          "of": "@dobj"
+        },
+        {
+          "carried": "@dobj"
+        },
+        {
+          "arc": "nell-evening"
+        }
+      ],
+      "do": [
+        {
+          "kind": "move_object",
+          "object_id": "@dobj",
+          "dest_id": "t-nells-evening"
+        },
+        {
+          "kind": "close_arc",
+          "arc": "nell-evening",
+          "ending": "orchard"
+        }
+      ]
+    }
+  ]
+}

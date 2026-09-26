@@ -32,6 +32,7 @@ current phase, with its authored leave/arrive lines.
 from __future__ import annotations
 
 import asyncio
+import contextvars
 import logging
 import os
 from datetime import date, datetime, time, timedelta
@@ -123,9 +124,19 @@ def phase(world_id: str, at: datetime | None = None) -> str:
     return wall_phase(world_id, at)
 
 
+# While `run_phase` processes a boundary (possibly days in the past, during a
+# catch-up), the village day reads as THAT boundary's day, so an arc opened at
+# a past dusk records the day it really opened (the nell/letters author's
+# finding): its timed ending and its ledger day land where they should.
+_as_of_date: contextvars.ContextVar[str | None] = contextvars.ContextVar(
+    "village_as_of_date", default=None)
+
+
 def day(world_id: str, at: datetime | None = None) -> int:
     """The village day: 1 on the local date time started, +1 per local date
     since. 0 before time starts."""
+    if at is None and _as_of_date.get() is not None:
+        return day_for_date(world_id, _as_of_date.get())
     start = worldstate.get(world_id, KEY_START)
     if not isinstance(start, str):
         return 0
@@ -242,9 +253,16 @@ def run_phase(world_id: str, date_str: str, phase_name: str,
     """Process one boundary. `picks` carries the director's LLM-ranked
     choices from the async path ({"arrival": arc id, "event": storylet id});
     anything absent or no longer eligible falls back to the seeded choice."""
+    token = _as_of_date.set(date_str)
+    try:
+        _run_phase(world_id, date_str, phase_name, picks or {})
+    finally:
+        _as_of_date.reset(token)
+
+
+def _run_phase(world_id: str, date_str: str, phase_name: str, picks: dict) -> None:
     from daydream import director, story
 
-    picks = picks or {}
     if phase_name == "dusk":
         if worldstate.get(world_id, DUSK_DONE + date_str):
             return

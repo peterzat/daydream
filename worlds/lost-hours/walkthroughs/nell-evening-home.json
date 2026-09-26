@@ -1,0 +1,306 @@
+{
+  "name": "nell-evening-home",
+  "comment": "Nell's Early Evening, ending home: Bell and the evening point the way, Mott, Linden, and Sorrel each give one line of the song, and the dreamer sings it whole. The prologue's dreamseed is dropped first so the ending's own seed is provable (a carried seed would dedup a second).",
+  "clock": "2026-10-01T17:00:00+00:00",
+  "players": [
+    {
+      "as": "A",
+      "name": "Wren"
+    }
+  ],
+  "segments": [
+    {
+      "name": "prologue",
+      "commands": [
+        {
+          "cmd": "read ledger",
+          "expect": {
+            "narrate_contains": "escapement gear",
+            "beats": [
+              "prologue/read-ledger"
+            ],
+            "phase": "stopped"
+          }
+        },
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-square"
+          }
+        },
+        {
+          "cmd": "south",
+          "expect": {
+            "room": "r-well"
+          }
+        },
+        {
+          "cmd": "take gear",
+          "expect": {
+            "carrying": [
+              "escapement gear"
+            ],
+            "beats": [
+              "prologue/found-gear"
+            ]
+          }
+        },
+        {
+          "cmd": "north"
+        },
+        {
+          "cmd": "west"
+        },
+        {
+          "cmd": "up",
+          "expect": {
+            "room": "r-loft"
+          }
+        },
+        {
+          "cmd": "give gear to tace",
+          "expect": {
+            "carrying": [
+              "case key"
+            ],
+            "beats": [
+              "prologue/gave-gear"
+            ],
+            "narrate_contains": "You carried it all the way home."
+          }
+        },
+        {
+          "cmd": "down",
+          "expect": {
+            "room": "r-clocktower"
+          }
+        },
+        {
+          "cmd": "use key on case",
+          "expect": {
+            "beats": [
+              "prologue/unlocked"
+            ]
+          }
+        },
+        {
+          "cmd": "open case",
+          "expect": {
+            "ending": {
+              "prologue": "mended"
+            },
+            "flag": {
+              "CLOCK-STARTED": true
+            },
+            "narrate_contains": "first slow tick",
+            "day": {
+              "eq": 1
+            }
+          }
+        },
+        {
+          "cmd": "take dreamseed",
+          "expect": {
+            "carrying": [
+              "dreamseed"
+            ]
+          }
+        },
+        {
+          "cmd": "take cog",
+          "expect": {
+            "carrying": [
+              "warm brass cog"
+            ],
+            "arc": {
+              "pim": "open"
+            },
+            "phase": "dusk",
+            "located": {
+              "t-pims-nap": "r-square"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "a sleepy evening",
+      "commands": [
+        {
+          "summon": "nell-evening",
+          "expect": {
+            "arc": {
+              "nell-evening": "open"
+            },
+            "located": {
+              "t-nells-evening": "r-square"
+            }
+          }
+        },
+        {
+          "cmd": "drop dreamseed",
+          "expect": {
+            "not_carrying": [
+              "dreamseed"
+            ]
+          }
+        },
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-square"
+          }
+        },
+        {
+          "cmd": "ask bell about the sleepy evening",
+          "expect": {
+            "beats": [
+              "nell-evening/bell-notices"
+            ],
+            "narrate_contains": "Candle smoke and icing"
+          }
+        },
+        {
+          "cmd": "ask evening about nell",
+          "expect": {
+            "beats": [
+              "nell-evening/hear-nell"
+            ],
+            "narrate_contains": "one to the road, one to a kettle, one to a broom"
+          }
+        },
+        {
+          "cmd": "sing",
+          "expect": {
+            "arc": {
+              "nell-evening": "open"
+            },
+            "narrate_contains": "The evening"
+          }
+        }
+      ]
+    },
+    {
+      "name": "three lines",
+      "commands": [
+        {
+          "cmd": "north",
+          "expect": {
+            "room": "r-workshop"
+          }
+        },
+        {
+          "cmd": "ask mott about the tune",
+          "expect": {
+            "beats": [
+              "nell-evening/mott-line"
+            ],
+            "narrate_contains": "we'll sing it soft tonight",
+            "knows": {
+              "t-mott": "nell-evening-line-mott"
+            }
+          }
+        },
+        {
+          "cmd": "south"
+        },
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-lane"
+          }
+        },
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-waiting"
+          }
+        },
+        {
+          "cmd": "ask linden about the song",
+          "expect": {
+            "beats": [
+              "nell-evening/linden-line"
+            ],
+            "narrate_contains": "here's to the kettle and the window light"
+          }
+        },
+        {
+          "cmd": "west"
+        },
+        {
+          "cmd": "south",
+          "expect": {
+            "room": "r-bridge"
+          }
+        },
+        {
+          "cmd": "south",
+          "expect": {
+            "room": "r-duskroad"
+          }
+        },
+        {
+          "cmd": "ask sorrel about the song",
+          "expect": {
+            "beats": [
+              "nell-evening/sorrel-line"
+            ],
+            "narrate_contains": "and her candles bright"
+          }
+        }
+      ]
+    },
+    {
+      "name": "the whole song",
+      "commands": [
+        {
+          "cmd": "north"
+        },
+        {
+          "cmd": "north",
+          "expect": {
+            "room": "r-lane"
+          }
+        },
+        {
+          "cmd": "west",
+          "expect": {
+            "room": "r-square"
+          }
+        },
+        {
+          "cmd": "sing",
+          "expect": {
+            "ending": {
+              "nell-evening": "home"
+            },
+            "carrying": [
+              "candle stub",
+              "dreamseed"
+            ],
+            "located": {
+              "t-nells-evening": null
+            },
+            "narrate_contains": [
+              "here's to Nell, and her candles bright",
+              "wakes in her armchair"
+            ]
+          }
+        },
+        {
+          "cmd": "west",
+          "expect": {
+            "room": "r-clocktower"
+          }
+        },
+        {
+          "cmd": "read ledger of returned hours",
+          "expect": {
+            "narrate_contains": "Wren sang Nell's early evening its birthday song, and it went home."
+          }
+        }
+      ]
+    }
+  ]
+}

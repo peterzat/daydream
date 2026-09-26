@@ -396,3 +396,17 @@ async def test_a_second_dreamseed_from_another_source_is_never_dropped():
             actor_id=ada, room_id="r-green", world_id=WORLD, allowed=effects.RULE_KINDS)
     seeds = [o for o in objects.contents(ada, kind="thing") if o.name == "seedling"]
     assert len(seeds) == 2   # one per source; the repeat of arc:one is deduped
+
+
+async def test_an_arc_opened_during_a_catch_up_records_its_own_day():
+    """A dusk processed late (the server was down for days) opens its arc on
+    THAT dusk's village day, not the day the catch-up ran."""
+    ada = player(1, "Ada", "r-green")
+    await _start(ada)
+    worldstate.set(WORLD, "director:first_arrival_done", True)  # no `first` shortcut
+    story.close_arc(WORLD, "moth", "kept") if story.arc_status(WORLD, "moth") == "open" else None
+    at("2026-10-04T12:00:00+00:00")   # days 1-3's dusks all processed now
+    village.catch_up(WORLD)
+    days = sorted(story.arc_state(WORLD, a).get("opened_day") for a in ("moth", "reed"))
+    assert days[0] == 1                # the day-1 dusk opened the first guest
+    assert days[1] in (2, 3)           # the second only after the cap freed

@@ -185,3 +185,27 @@ def test_a_repeated_closing_tic_is_penalized():
     recent = ["Tace smiles. 'The clock is patient, friend.'"]
     assert dlg.score("Tace nods. 'All is well, friend.'", "Tace", "they", [], recent) > \
         dlg.score("Tace nods. 'All is well.'", "Tace", "they", [], recent)
+
+
+
+async def test_a_worn_opening_gesture_is_swapped_for_an_authored_one(monkeypatch):
+    ada = player(1, "Ada", "r-green")
+    hob = objects.get("t-hob")
+    objects.set_property("t-hob", "drift_pools", {"default": [
+        "Hob polishes a lamp glass until it squeaks.", "Hob counts the lamps under their breath."]})
+    _mock(monkeypatch, {"gesture": "Hob leans on the ladder and hums.", "say": "Evening.", "advance": "none"})
+    monkeypatch.setenv("DAYDREAM_DIALOGUE_NBEST", "1")
+    first = " ".join(await talk(ada, "t-hob", "hi"))
+    second = " ".join(await talk(ada, "t-hob", "hello again"))
+    assert first.startswith("Hob leans on the ladder")
+    assert not second.startswith("Hob leans on the ladder")
+    assert second.startswith("Hob polishes") or second.startswith("Hob counts")
+    assert hob is not None
+
+
+def test_pet_names_are_dampened_after_recent_use():
+    hob = objects.get("t-hob")
+    recent = ["Hob smiles. 'Evening, little one.'"]
+    assert dlg._dampen_pet_names(hob, "Welcome back, little one.", recent) == "Welcome back."
+    assert dlg._dampen_pet_names(hob, "Little one, the lamps are lit.", recent) == "The lamps are lit."
+    assert dlg._dampen_pet_names(hob, "Welcome back, little one.", []) == "Welcome back, little one."

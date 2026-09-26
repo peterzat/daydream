@@ -295,11 +295,14 @@ def score(line: str, npc_name: str, pkey: str, openers: list[str],
     return penalty
 
 
-def _clean(result, ids: list[str], npc_name: str = "") -> tuple[str, str | None] | None:
+def _clean(result, ids: list[str], npc_name: str = "") -> tuple[str, str | None, str, str] | None:
+    """(composed line, advance, gesture, say) or None when unusable."""
     if not isinstance(result, dict) or safety.parse_refusal(result) is not None:
         return None
-    if isinstance(result.get("gesture"), str) or isinstance(result.get("say"), str):
-        line = compose(npc_name, result.get("gesture") or "", result.get("say") or "")
+    gesture = result.get("gesture") if isinstance(result.get("gesture"), str) else ""
+    say = result.get("say") if isinstance(result.get("say"), str) else ""
+    if gesture or say:
+        line = compose(npc_name, gesture, say)
     else:
         line = result.get("line")
     if not isinstance(line, str) or not line.strip():
@@ -308,7 +311,47 @@ def _clean(result, ids: list[str], npc_name: str = "") -> tuple[str, str | None]
     if safety.first_banned(line) is not None:
         return None
     adv = result.get("advance")
-    return line, (adv if adv in ids else None)
+    return line, (adv if adv in ids else None), gesture, say
+
+
+DEFAULT_PET_NAMES = ("little one", "friend", "pet", "lamb", "dear", "love", "my dear")
+
+
+def _gesture_key(text: str) -> str:
+    return opener_key(text, 4)
+
+
+def _fresh_gesture(npc: objects.Object, gesture: str, recent: list[str]) -> str:
+    """A gesture that opens the way a recent line opened (the model's
+    favourite: the same lean on the same broom) is swapped for one of the NPC's
+    own AUTHORED gestures (its drift pools), never repeated soon (variants)."""
+    from daydream import variants
+
+    key = _gesture_key(compose(npc.name, gesture, ""))
+    if not key or not any(_gesture_key(r) == key for r in recent):
+        return gesture
+    pools = npc.properties.get("drift_pools")
+    lines = [ln for v in (pools.values() if isinstance(pools, dict) else [])
+             if isinstance(v, list) for ln in v if isinstance(ln, str)]
+    lines = [ln for ln in lines if not any(_gesture_key(r) == _gesture_key(ln) for r in recent)]
+    if not lines:
+        return gesture
+    return variants.pick(npc.world_id, f"gesture:{npc.id}", lines, None) or gesture
+
+
+def _dampen_pet_names(npc: objects.Object, say: str, recent: list[str]) -> str:
+    """Drop a pet name for the player ("little one", "friend") when this NPC
+    already used it in either of its last two lines: warmth, not a tic."""
+    voice = npc.properties.get("voice") if isinstance(npc.properties.get("voice"), dict) else {}
+    names = [n for n in voice.get("pet_names") or DEFAULT_PET_NAMES if isinstance(n, str)]
+    last = " ".join(recent[-2:]).lower()
+    out = say
+    for n in names:
+        if re.search(rf"\b{re.escape(n)}\b", last):
+            out = re.sub(rf",\s*{re.escape(n)}\b", "", out, flags=re.I)
+            out = re.sub(rf"^\s*{re.escape(n)},\s*", "", out, flags=re.I)
+    out = out.strip()
+    return out[:1].upper() + out[1:] if out else say
 
 
 # ---- the talk turn -----------------------------------------------------------
@@ -355,7 +398,12 @@ async def talk(actor: objects.Object, npc: objects.Object, text: str, room_id: s
         return False
     said = recent_lines(world_id, npc.id)
     candidates.sort(key=lambda c: score(c[0], npc.name, pkey, openers, said[-3:]))
-    line, advance = candidates[0]
+    line, advance, gesture, say = candidates[0]
+    if gesture or say:
+        g2 = _fresh_gesture(npc, gesture, said[-3:])
+        s2 = _dampen_pet_names(npc, say, said)
+        if (g2, s2) != (gesture, say):
+            line = compose(npc.name, g2, s2)
     story.note_conversation(world_id, npc.id, actor.id)
     spoken = line
     if advance is not None:
