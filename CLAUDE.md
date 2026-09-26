@@ -1,6 +1,6 @@
 # CLAUDE.md — daydream
 
-A small atmospheric multiplayer web game running on a single dev box. Players enter a procedurally generated world that all players share and persistently mutate. See `SPEC.md` for the current acceptance contract, `BACKLOG.md` for the deferred-ideas register, `docs/ROADMAP.md` for the post-1.0 direction, `CHANGELOG.md` for the condensed release history, `README.md` for orientation, and [`docs/gpu-and-models.md`](docs/gpu-and-models.md) for the full GPU/ML decision narrative (model picks, what we tried and rejected, what to try later).
+A small atmospheric multiplayer web game running on a single dev box. Players enter a procedurally generated world that all players share and persistently mutate. See `SPEC.md` for the current acceptance contract, [`docs/PIVOT.md`](docs/PIVOT.md) for the approved 2026-09-26 pivot (platform to story: The Village of Lost Hours; the design record behind the current spec, read it before starting pivot work), `BACKLOG.md` for the deferred-ideas register, `docs/ROADMAP.md` for the post-1.0 direction, `CHANGELOG.md` for the condensed release history, `README.md` for orientation, and [`docs/gpu-and-models.md`](docs/gpu-and-models.md) for the full GPU/ML decision narrative (model picks, what we tried and rejected, what to try later).
 
 ## Generation policy: local at runtime, Opus at design time
 

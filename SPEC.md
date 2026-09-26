@@ -1,235 +1,272 @@
-## Spec — 2026-07-07 — daydream v1.0: the release turn
+## Spec — 2026-09-26 — The Village of Lost Hours: the pivot turn
 
-**Goal:** Complete a credible v1.0 and cut the release. Four flagship features
-close the product's own promises (the world grows from the inside as a loop,
-the cast has painted faces, the book remembers your story, endings are
-visible and newcomers are welcomed); the shipped loft world absorbs the
-authored batch behind one WORLD_VERSION bump; the turn's already-landed
-groundwork (dead-code removal, guest hardening, CI, the oracle ratification)
-is verified under this contract; and the repo's public release identity
-catches up to its code: version constant, license, changelog, refreshed
-docs, backfilled tags, and a v1.0.0 GitHub release.
+**Goal:** Turn daydream from a platform carrying one fifteen-minute quest into
+The Village of Lost Hours: a shared, persistent, coffee-break world whose story
+arcs respond to what players do. Opus authors the story (at design time, and
+in-session "dreams" that read what players did), the local 9B performs it live
+with real game state injected, and the deterministic engine keeps it honest and
+completable. The turn ends with the operator playing the world the morning
+after its first dream.
 
 ### Acceptance Criteria
 
-- [x] **1. Dreamseeds propagate (the growing-world loop).** A seed whose
-  authored `growth.propagation` block (`chance` in (0,1], `max_generation`
-  1–4, optional `seed_text`) survives fail-loud loader validation can, on a
-  successful plant, yield a fresh dreamseed inside the newly grown room:
-  spawned in the same commit batch, inheriting the parent's growth
-  boundaries with `generation` incremented and provenance
-  `propagation:<parent-seed-id>`, plantable end-to-end (a WS test grows
-  twice in a row). The roll is seeded-deterministic; it is suppressed at
-  `generation >= max_generation` and when the world is at the grown-room
-  cap; every existing failure path still leaves the parent seed intact and
-  the world unmutated. No new LLM surface: propagation adds zero prompts
-  and zero model calls, and deterministic tests run under a mocked LLM.
+- [ ] **1. The Village of Lost Hours is the live world.** A format-2 world
+  replaces the Clockmaker's Loft as the default for `bin/game world reset` and
+  is installed as the live world (the live Zork world archived first). It holds
+  at least 15 rooms, at least 8 resident NPCs (guests not counted), at least 10
+  arcs (at least 6 guest arcs, the 3 keeper arcs for Tace, Bell, and Mott, and
+  at least 1 cumulative multiplayer arc), and at least 150 authored stray
+  minutes. A static analyzer, run in tier_short, proves every room reachable
+  and every arc solvable (every beat reachable, every needed item obtainable),
+  and fails on a deliberately broken fixture.
 
-- [x] **2. The cast has faces (NPC/toon portraits).** A toon with a
-  non-empty appearance seed lazily gets a watercolor portrait through the
-  existing persistent-image pipeline as `target_kind='toon'`: rendered
-  under the arbiter's exclusive image slot, cached and recorded in
-  `generated_assets`, served from the existing `/cache/...` route.
-  Adding portraits changes no existing room-art cache key (a regression
-  test proves a room target's path and dedup key are byte-identical).
-  Snapshots carry `image_url` on toon cards (self included) when the
-  portrait is cached; a paint completion event triggers the same
-  re-snapshot flow room art uses, so co-located players see faces appear
-  live. `GET /api/slots` exposes cached-only portrait thumbnails (the
-  picker never triggers renders). The SPA shows portraits in the scene
-  margin and the picker, with a quiet placeholder until painted;
-  ComfyUI-down degrades to the placeholder without blocking play.
+- [ ] **2. Every arc ending is a contract.** Every arc has at least two
+  endings, chosen by what players did or by elapsed real time, and none is a
+  fail state (no death, no lost progress, no player locked out of the world's
+  content). Each ending ships a walkthrough: a command dataset replayed under a
+  zero-LLM spy that ends at an asserted world state, run in tier_medium. The
+  whole world is therefore completable with vLLM and ComfyUI down.
 
-- [x] **3. The book remembers (dream journal).** Leaving the dream
-  (`POST /api/session/leave`) triggers a background journal write for the
-  released toon: one local-LLM call over the toon's own recent events
-  produces a 2–3 sentence past-tense second-person entry, validated
-  (refusal parse, length window, banlist) and appended to a FIFO-capped
-  per-toon journal with sequence idempotency (leaving twice with no new
-  events writes nothing). The leave endpoint always succeeds regardless of
-  LLM outcome; LLM-down or validation failure skips the entry silently.
-  Snapshots carry the journal for the controlled toon only — never a
-  co-located player's. Returning to a toon with journal entries shows a
-  "previously in your dream" beat once per connection.
-  `DAYDREAM_JOURNAL_ENABLED` is the kill switch; the test suite forces it
-  off and journal tests mock the LLM.
+- [ ] **3. The prologue starts time, and latecomers still get a beginning.**
+  The existing clock quest opens the world: before the great clock is mended the
+  village has no day cycle; mending it starts time, and the first dusk brings
+  the first guest. A player who first arrives after someone else has already
+  mended the clock still gets a complete authored first session, proved by a
+  walkthrough for a second player joining a post-prologue world.
 
-- [x] **4. Keepsakes are real.** The backpack's collection page renders
-  actual content: journal entries and carried items enriched with their
-  examined/authored detail (a new inventory-card field), replacing the
-  hardcoded decorative-empty slots. Frontend contract tests cover the
-  collection rendering and the inventory detail field.
+- [ ] **4. Real time moves the village.** Each world keeps a wall-clock day
+  (dusk time configurable). Authored dusk events fire once per real day even
+  with no one connected; a server restart neither skips nor double-fires a day;
+  NPCs follow authored schedules between rooms by time of day. Tests drive all
+  of this with a fake clock. Story randomness keys on stable purposes (date and
+  entity), never on turn index.
 
-- [x] **5. Winning is visible.** A `win` effect reaches every connected
-  player in the world (not just the firing room) carrying score and rank;
-  the SPA presents a dismissible "The End" storybook page; the world keeps
-  running after dismissal; late joiners and reconnects see a quiet
-  ended-marker derived from snapshot status that can reopen the page. All
-  ending text is world-agnostic (the no-world-literals gate stays green).
+- [ ] **5. A background director chooses what happens.** Which eligible
+  arrival comes at dusk, and which small NPC events occur, are chosen among
+  authored storylets. When the local LLM ranks the choices, it runs in a
+  background arbiter class that never delays a player-facing call and never
+  starves a queued render (tested); with vLLM down the director falls back to a
+  seeded deterministic choice, and a choice outside the eligible set changes
+  nothing.
 
-- [x] **6. Newcomers are welcomed.** A first-visit "how to dream" leaf in
-  the Reading Room idiom explains speaking, clicking verbs and objects,
-  exits, the satchel, and leaving/picking a toon; it shows once per
-  browser, is reachable anytime from a persistent affordance, and never
-  blocks input. Pure client feature; frontend contract tests.
+- [ ] **6. Talk moves the story.** Each NPC exposes the open beats it can
+  advance (authored, condition-gated). A talk turn's single LLM call returns the
+  spoken line plus at most one beat id chosen from the enumerated open beats,
+  and the engine applies that beat's authored effects deterministically. An id
+  that was not offered, or a beat whose conditions no longer hold at commit,
+  changes nothing. Every talk-advanceable beat is also reachable through a
+  deterministic producer (a clickable ask-about topic or an exact phrasing), so
+  walkthroughs need no LLM.
 
-- [ ] **7. The loft learns the batch (WORLD_VERSION 1.4 + one reset).**
-  `worlds/clockmakers-loft.json` gains: per-NPC authored drift pools for
-  Tace/Bell/Mott (validated by the loader; the drift loop prefers a toon's
-  authored pools over the generic fallback, closing the bunny-keyed-pools
-  gap), the dreamseed's `propagation` config, and an authored one-time
-  first-planting chapter-close beat (narrated in the room and written to
-  the planter's journal; explicitly not a `win`). `WORLD_VERSION` bumps to
-  1.4; one archive-then-reset installs the batch as the live world.
+- [ ] **7. NPCs know things, and the village talks.** NPC knowledge is data:
+  authored facts plus facts created by player deeds that name the player. A
+  deed fact spreads from NPC to NPC on an authored real-time schedule, and an
+  NPC's dialogue context includes what it knows. Tested: after player A gives
+  something to Tace, Bell's dialogue context names A's deed after the gossip
+  interval and not before.
 
-- [x] **8. The benign-refusal mystery is resolved.** A repeatable probe
-  runs greeting-class inputs through live loft NPC dialogue at least 20
-  times, attributing every refusal to its layer (input banlist, refusal
-  parse, output banlist, truncation). The root cause is fixed, or the
-  observed rate is ratified with recorded evidence; either way a
-  regression case lands in `tests/security/` and the BACKLOG entry closes.
+- [ ] **8. Relationships are per player.** Each (NPC, player toon) pair has
+  relationship state that rules and effects can read and change and that the
+  NPC's dialogue context receives. Two players' relationships with the same NPC
+  are independent; world-scoped flags, counters, and score behave as before.
 
-- [ ] **9. The v0.6 gate closes (operator playtest).** The prior spec's
-  criterion 15 human half is done: the operator plays the live-swapped
-  Zork world in a browser, findings are recorded and fixed or backlogged,
-  and the v0.6 spec line is checked in the prior-spec record. (The machine
-  half already replays 350/Master Adventurer over WS on the final
-  envelope, `--verify` green.)
+- [ ] **9. Rules can follow, not only replace.** A rule can run after a verb's
+  normal handling succeeds without suppressing it. The Zork walkthrough still
+  ends at exactly 350 in tier_medium, and Zork is frozen: no edits under
+  `worlds/zork1*` or `tests/data/zork1_walkthrough.json` this turn.
 
-- [x] **10. The turn's groundwork stands verified.** In-repo evidence for
-  what landed ahead of this spec: the legacy core-skill/interpreter path
-  is gone and the registry serves data skills only (contract tests); the
-  hardening cluster is covered by `tests/security/` (regen kill switch
-  gating endpoints 404 + snapshot flag + SPA binding, delete grace window
-  vs transient disconnects, loopback-only world swap); the tree is
-  ruff-clean and `.github/workflows/test.yml` runs lint + the GPU-free
-  medium tier on 3.10 and 3.12; the archive→cascade-delete→restore drill
-  diffs the full world fingerprint; the dfrotz differential oracle is
-  GREEN against real Zork I (v0.6 criterion 14 checked, ratification
-  recorded in BACKLOG).
+- [ ] **10. Dialogue is grounded (measured).** The dialogue prompt carries the
+  NPC's authored voice sheet (including pronouns), the player's name, what the
+  NPC knows, its relationship with this player, its current wants, and its
+  recent exchanges with this player. `bin/game model-eval` gains a canon suite
+  (questions whose answers are fixed by authored facts, scored mechanically for
+  contradiction) and an opener-distinctness metric. A before run (the current
+  production prompt, recorded this turn before any dialogue change) and an
+  after run are committed. After: zero canon contradictions on the suite; no
+  more than two of any NPC's dialogue-suite replies share their first six
+  words; JSON validity at least 99%; dialogue p50 no worse than 3.5 s.
 
-- [x] **11. Generation stays local.** Every new runtime generation this
-  turn (journal, portraits, propagation) runs only on the local engines
-  behind the GPU arbiter. No cloud LLM key exists anywhere in runtime,
-  tooling, or CI (grep-verifiable); new prompt surfaces are documented in
-  `docs/prompts.md`; deterministic tests keep their zero-LLM spies.
+- [ ] **11. Authored voice leads, and nothing repeats verbatim.** Drift for an
+  NPC with authored pools emits authored lines first (the LLM may vary them);
+  the loft's `wind` and `listen` room skills are replaced by world-declared
+  affordances that narrate authored variants; no NPC beat or affordance repeats
+  the same line verbatim within its last several tellings in a room (tested).
+  Prose surfaces run warm (temperature above 0); the parser stays deterministic.
 
-- [x] **12. The long tier ratifies the generative work (GPU batch, server
-  down).** `bin/game test long` is green: new portrait dHash anchors are
-  golden-ratified, the journal quality probe runs against real vLLM, and
-  existing goldens (growth compose, parser, retell, images, arbiter)
-  hold. `bin/game review` regenerates the contact sheet including
-  portraits; the agent grades renders and journal samples against
-  WHIMSY.md in-session and records verdicts. Honest-default rule: any
-  flagship whose local-model quality misses the bar ships with its flag
-  defaulted off and the finding recorded (flag-local-limits pact).
+- [ ] **12. A daily find for everyone.** Each player can find at least one new
+  stray minute per real day regardless of what other players have collected.
+  Found minutes are catalogued in a per-player book viewable from the satchel,
+  and completing an authored page of the book grants something authored.
 
-- [x] **13. The app knows its version.** `APP_VERSION = "1.0.0"` lives in
-  `daydream/version.py`, is served by `GET /status/build`, and matches
-  `pyproject.toml` (a drift-guard test fails on mismatch). WORLD_VERSION
-  (1.4) remains the separate world-content stamp and both are documented.
+- [ ] **13. Dreamseeds come from arcs, and grown rooms join the story.** Some
+  arc endings grant a dreamseed. Planting still composes one room inside
+  authored boundaries, and the existing growth guarantees (every failure path
+  preserves the seed, direction hints, dedup) stay green. A dream can furnish a
+  grown room (a resident, a hook, or a stray minute) while preserving the
+  planter's phrase verbatim in its provenance.
 
-- [x] **14. Licensed and attributed.** An MIT `LICENSE` sits at the root;
-  README carries a Zork I provenance note (mechanics and identity derive
-  from the MIT-licensed historical ZIL source; all prose freshly authored;
-  no story file, dump, or original prose committed — consistent with the
-  repo's actual contents).
+- [ ] **14. The dream works, in-session.** `bin/game dream digest` writes a
+  deterministic digest of play since the last dream (raw inputs, deeds per
+  player, beats advanced, arcs opened and closed, grown rooms, gossip).
+  `bin/game world patch` validates a dream patch fail-loud with zero writes on
+  error, applies additive content without deleting or overwriting
+  player-created objects or per-player state, rejects id collisions, and is
+  idempotent. A rehearsal step snapshots the live world, applies the patch to a
+  side copy, and replays every walkthrough against it; only if all pass is the
+  patch installed live, and no player action taken during the rehearsal is
+  lost. A failed rehearsal installs nothing, and the pre-dream snapshot restores
+  cleanly (tested). A runbook lets the operator trigger a dream by name in any
+  Claude Code session. Dreams run in-session only; no headless or scheduled
+  runs.
 
-- [x] **15. The docs tell the v1.0 truth.** `CHANGELOG.md` records
-  v0.1.0 → v1.0.0 (extracted from README's release notes, which become a
-  pointer plus narrative); README is overhauled (v1.0 status, the four
-  flagships, CI + license badges, current test counts, ROADMAP pointer);
-  TESTING.md's dated header reflects the current suite; WHIMSY.md loses
-  the stale "lands in v1" line and gains the portrait prompt suffix
-  (mirrored with a drift test like the room suffix); CLAUDE.md rolls
-  forward (new features, flags, version story); BACKLOG is groomed
-  (entries shipped this turn annotated closed); `docs/ROADMAP.md` exists
-  and holds the post-1.0 direction (v1.x polish vs v2 shared-world),
-  absorbing this spec's out-of-scope list.
+- [ ] **15. Returning players see what changed.** A player's first snapshot
+  after a dream carries that dream's "while you slept" note exactly once; the
+  SPA shows it as a dismissible storybook leaf, and it does not repeat on
+  reconnect. The Ledger of Returned Hours is a readable in-world book whose text
+  reflects every closed arc and who helped.
 
-- [x] **16. v1.0.0 ships.** Annotated tags `v0.3.0`–`v0.6.0` exist at
-  their historical release-notes commits and `v1.0.0` at the release
-  commit; the pre-push gate passes (/codereview with /security, marker
-  written); `git push --follow-tags` lands and GitHub Actions is green on
-  the pushed commit; the GitHub repo carries a description and topics;
-  exactly one new GitHub release (`v1.0.0`, marked Latest) summarizes the
-  full v1.0 state; `bin/game deploy` leaves the live server reporting
-  app 1.0.0 at `/status/build`.
+- [ ] **16. Every word a player types is kept.** Raw input for every command
+  (free text and structured) is persisted with actor, time, and the resolved
+  command; it is never broadcast to other players; the dream digest includes
+  it; and a recorded session can be exported as a walkthrough dataset.
+
+- [ ] **17. Agent playtesters.** `bin/game play` lets an agent drive a live
+  session through the same WebSocket path a player uses, across repeated shell
+  invocations (each prints the narration caused since the previous one) and
+  with several concurrent toons. Before the operator gate, at least four
+  persona sessions (explorer, chatterbox, completionist, rule-breaker; at least
+  two concurrent in the same world) play the live stack against the real local
+  models. Each critique is recorded in a playtest log against a rubric
+  (surprise, consequence, being remembered, reason to return), and every
+  experience defect they surface is fixed or backlogged.
+
+- [ ] **18. The first dream happened.** After the agent playtest day, one
+  dream digests that play, is authored in-session, passes rehearsal, and is
+  live. It furnishes every room grown during the playtest day and calls back to
+  at least one specific player deed. Its digest, patch, and rehearsal result are
+  committed, and a later agent session records observing the callback in play.
+
+- [ ] **19. The security side findings are closed.** An LLM-originated
+  `spawn_object` cannot carry authored-only properties (rules, growth, extra
+  verbs, combat, light, container, scoring); room data skills honor their
+  declared effect allowlist or are retired; each has a regression test under
+  `tests/security/`, and SECURITY.md records both.
+
+- [ ] **20. Art is pre-baked and graded.** Every room and NPC portrait in the
+  new world is rendered at design time through the production pipeline, graded
+  by the agent against WHIMSY.md (weak renders re-seeded or reframed, verdicts
+  recorded), and cached so a first entry never waits on a render. Image anchors
+  and goldens that change are re-ratified deliberately.
+
+- [ ] **21. Tone and docs tell the truth.** WHIMSY.md gains a stories section
+  (soft stakes, wants, gentle time, and bittersweet endings allowed; cruelty,
+  horror, and grimdark still banned), and the safety banlist matches it: a
+  corpus of soft-stakes lines passes, and each still-banned category still
+  blocks. A canon bible (characters, secrets, voice sheets, the arc library, the
+  long mystery and its answer) exists for future dreams to stay consistent.
+  README's purpose sections reflect the pivot; CLAUDE.md documents the story
+  layer, the dream runbook, and the in-session-only policy; `docs/prompts.md`
+  lists every new or changed prompt surface; no cloud LLM key exists anywhere
+  (grep-verified).
+
+- [ ] **22. The operator plays.** The morning after the first dream, the
+  operator plays the live world in a browser. Findings and the verdict are
+  recorded, and experience defects are fixed or backlogged. This is the only
+  criterion that needs the operator.
 
 ### Context
 
-Adopted from the user-approved plan
-(`~/.claude/plans/consider-this-whole-repo-unified-knuth.md`): all four
-flagships in, both v0.6 operator gates closed in-turn, MIT license,
-backfill tags + a single v1.0.0 release. Read that plan for the
-increment-ordered design (file-level seams, risk register, release
-runbook).
+**Read `docs/PIVOT.md` first.** It is the approved design record: the evidence
+(about 19 minutes of human play ever; every moment that landed was
+Opus-authored; the local layer was texture at best), the six misalignments,
+the three-tier architecture, the creative direction with worked arc sketches,
+the quality-convergence instruments, and section 9's jobs for the save/load and
+walkthrough machinery. Where this spec and PIVOT.md differ, this spec wins
+(the operator chose the full world over a slice, and in-session-only dreams).
 
-Constraints the implementer must respect:
+**Operator autonomy (2026-09-26).** Make product, design, scope-detail, and
+housekeeping decisions yourself and record them in this file, PIVOT.md, or the
+canon bible; do not stop to ask. Spend subscription tokens freely on creative
+exploration: use subagents for parallel authoring (arcs, voice sheets, stray
+minutes, the mystery) and for independent critique. Builder/verifier
+separation applies to content too: an author subagent never grades its own
+arcs or prose; a fresh subagent does, blind where possible.
 
-- **Generation policy (CLAUDE.md) is absolute.** Runtime and tooling call
-  only local engines; design-time heavy authoring (loft drift pools,
-  first-planting beat, ROADMAP, release notes) is done by the agent
-  in-session and baked into data. A feature that seems to want a cloud
-  call gets pre-baked or rethought.
-- **The loft envelope is the pre-bake surface.** Authored content changes
-  batch into criterion 7's single MINOR bump and one reset (resets destroy
-  live toons/grown rooms — archive first).
-- **GPU discipline.** tier_long and `bin/game review` run with the game
-  server down (the arbiter is in-process; two processes can OOM the
-  20 GB card). Batch GPU work; note server cycles in one line.
-- **zat.env practices carried in:** small committable increments with
-  tests in the same increment; the medium tier green at every commit;
-  never modify tests to accommodate a regression; verification quality is
-  the ceiling — prefer ratify-once-then-mechanical proxies (goldens,
-  drift tests, contract greps) over repeated eyeballing, and batch the
-  irreducible human looks into the review sheet and one playtest
-  (minimize-eyeballs).
-- **Walkthrough turn-alignment:** any further Zork dataset edit upstream
-  of the fights re-derives the fight phase (the k-search pattern from the
-  oracle turn); prefer post-fight edits.
-- Prior-spec C15 (criterion 9 here) needs the operator; everything else
-  is agent-executable. The release step (criterion 16) is the one
-  explicitly-authorized push of this turn.
+Constraints:
 
-### Status at release (2026-07-07, v1.0.0 shipped)
+- **Generation policy is absolute.** The running game calls only the local
+  engines; no API key exists in runtime, tooling, tests, or CI. Opus authors
+  at design time and in dreams, in-session only.
+- **The 9B's job is narrow.** Select, judge, compress, and lightly voice, with
+  game state injected; never invent structure. Measured facts (docs/PIVOT.md
+  section 1, the model-eval runs under `~/data/daydream/model-eval/`): ~40
+  tok/s single-stream, ~100 tok/s aggregate at three concurrent calls, so
+  parallel calls are nearly free and serial chains are not; talk p50 ~2.7 s;
+  JSON 100% even at temperature 0.8; no production call has exceeded ~1.1k
+  prompt tokens of the 8192 window. Its known failure modes: invents facts it
+  is not given, repeats openers at temperature 0 with enumerated template
+  beats, drifts pronouns when none are stated. Author the lines that matter.
+- **SDXL carries mood, not information.** Soft interiors, landscapes, and
+  faces render well; hard objects do not (BACKLOG `forge-render-legibility`).
+  Never make a puzzle depend on reading an object from the art.
+- **Keep the engine world-agnostic.** All Lost Hours content lives in world
+  data; `tests/test_no_world_literals.py` guards engine purity for Zork and
+  sets the standard for any world.
+- **Format facts.** Format 1 is capped at 5 rooms and 4 toons and cannot
+  author rules; format 2 cannot author room data skills. `worlds/bunny.json`
+  stays as the format-1 loader fixture. The region-source pattern
+  (`tools/assemble_world.py`, byte-match `--check`) is available if the world
+  outgrows one file.
+- **Test discipline.** The medium tier is green at every commit. Tests that
+  encode behavior this spec deliberately retires (the format-1 loft, the
+  `wind`/`listen` skills, LLM-first drift) are rewritten to the new contract,
+  with each retirement named in its commit message; never loosen a test to hide
+  a regression. The Zork walkthrough is the engine's regression net for the
+  rule-engine changes.
+- **Determinism.** The Zork walkthrough taught that turn-keyed rolls make
+  datasets brittle; key story rolls on date plus entity, as dreamseed
+  propagation already does.
+- **Dream installs must not lose live play.** Swapping in a side copy
+  discards actions taken after the snapshot, so the install path must account
+  for them (for example, rehearse on the copy, then apply the proven additive
+  patch to live).
+- **GPU discipline.** tier_long runs and the art pre-bake happen with the game
+  server down (the arbiter is in-process). Dev-mode policy allows cycling the
+  server; leave a one-line note when you do.
+- **Live world.** The live Zork world holds only the 68-second automated
+  replay, and `archives/w-zork1-20260707-140643.tar.gz` exists; take a fresh
+  archive before the reset anyway.
+- **Versions and git.** Bump `WORLD_VERSION` per its discipline in CLAUDE.md.
+  No release tag or GitHub release this turn; never move the `pre-pivot` tag.
+  Commit locally in small increments (no Co-Authored-By trailers); push only
+  when the operator asks.
+- **Code pointers from the research pass.** The unrecorded security gap is
+  the `properties` passthrough in `daydream/skills/effects.py` `spawn_object`
+  (around line 309), reachable from `talk`; room data skills ignore their
+  `effects_schema` (`daydream/skills/data.py` around line 17). LLM drift
+  overrides authored pools (`daydream/drift.py`, `_tick` and `_pools_for`).
+  The dialogue prompt sees only `player_input`, `actor_id`, `room_id`, and
+  `memories` (`daydream/skills/data.py` around line 360). Rules replace verbs
+  and never follow them (`daydream/verbs.py` around line 429). Fuses and
+  daemons count commands, not seconds (`daydream/clock.py`). The event log
+  stores effects but not what the player typed. `tools/ws_playthrough.py` is
+  the base for the play bridge.
+- **Suggested order (not binding).** Security fix and input logging; the
+  model-eval canon baseline; performer fixes; story primitives; world
+  authoring (parallel subagents) with walkthroughs as each arc lands; art
+  pre-bake; agent playtest day; first dream; operator gate. Scale the arc
+  library and stray minutes up from a working prologue plus one arc rather
+  than authoring everything before anything plays.
 
-14/16 checked above. On the operator's instruction v1.0.0 shipped ahead
-of the two playtests. Criterion 16 evidence: the release-bow docs pass
-landed first (README leads with What-works plus the local-GPU framing;
-the long-form release narratives moved to `docs/RELEASES.md`; MOO linked;
-/codereview light pass 0 BLOCK / 0 WARN / 1 NOTE, marker written);
-annotated tag `v1.0.0` sits at the release commit `e2727ca`;
-`git push origin main --follow-tags` landed with the medium tier 1213
-green at the gate; GitHub Actions run 28887834164 concluded success on
-that commit; the repo carries a description and 14 topics; exactly one
-new GitHub release exists (`v1.0.0 — daydream v1.0.0`, marked Latest,
-body from `docs/releases/v1.0.0.md`); `bin/game deploy` left
-`/status/build` reporting app 1.0.0 on build `e2727ca`.
-
-Two criteria remain, both operator playtests on the shipped build:
-
-- **Criterion 9 (Zork playtest).** The live world is Zork on the
-  released build. Play it in a browser; fix or backlog findings; check
-  this box and the v0.6 spec's C15 line.
-- **Criterion 7 (the reset).** The 1.4 batch is authored, committed, and
-  load-verified, and the live Zork world is archived
-  (`archives/w-zork1-20260707-140643.tar.gz`). Run `bin/game world reset
-  --yes` (operator-gated destructive step) to install the loft as the
-  live world, then check this box. Follow with the Inc-13 loft playtest
-  (plant → propagated child seed → replant; portraits in margin +
-  picker; leave → journal → return beat; help leaf; endings via a
-  temporary zork swap).
-
-FIRST-FABLE.md still owes its append-only Part-4 addenda (the oracle run
-grade and this turn's playtest/verdict), co-written with the operator at
-close-out.
+BACKLOG entries this turn touches: `drift-variety-richer-beats` (criterion
+11), `snapshot-enrichments-for-reading-room`, `per-npc-event-log-visibility-filtering`
+(facts and gossip replace it), `user-authored-llm-driven-world-building-verbs`
+(dreams furnish grown rooms), and the Zork and retell entries (frozen). Close or
+annotate them at turn end.
 
 ---
-*Prior spec (2026-07-02): Zork I as pure world data on Zork-agnostic
-platform primitives — closed 15/16 in-turn (walkthrough 350 deterministic
-+ live over WS; differential oracle GREEN against real Zork I on
-2026-07-07); its criterion 15 browser-playtest half carries forward as
-criterion 9 above.*
+*Prior spec (2026-07-07): daydream v1.0, the release turn. Closed 14/16;
+criteria 7 (the loft reset) and 9 (the Zork playtest) were superseded by the
+2026-09-26 pivot.*
 
-<!-- SPEC_META: {"date":"2026-07-07","title":"daydream v1.0: the release turn","criteria_total":16,"criteria_met":14} -->
+<!-- SPEC_META: {"date":"2026-09-26","title":"The Village of Lost Hours: the pivot turn","criteria_total":22,"criteria_met":0} -->

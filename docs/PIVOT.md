@@ -163,11 +163,9 @@ what players did.
      (additive only; it can never delete player creations), the world is
      snapshotted, and the patch is applied (live, through the existing swap
      and re-snapshot machinery, or at a quiet hour).
-- **Cadence options.** Start with you triggering it in a session after play
-  (a project skill, fully inside today's policy). If it earns its keep, run
-  it headless on the subscription (`claude -p` from cron, Claude Code 2.1.283
-  is on the box) with the validators and automatic snapshot as the safety
-  net and a morning digest for your review.
+- **Cadence: in-session only (decided 2026-09-26).** The operator triggers a
+  dream by name in a Claude Code session after play; the agent follows a
+  runbook. No headless or scheduled runs.
 
 ### 3.2 The story layer in the engine (deterministic)
 
@@ -357,41 +355,49 @@ story).
   and 9) are superseded by the pivot; archive that spec as closed with
   deferrals when the pivot spec is written.
 
-## 7. Proposed sequence: vertical slice first
+## 7. Sequence: the full world, grown from a working core
 
-The riskiest hypothesis is that "the world answered what I did overnight"
-plus state-aware NPCs actually feels compelling. Test that before authoring
-a whole world bible.
+The operator chose the full world over a vertical slice (2026-09-26). The
+acceptance contract is SPEC.md (2026-09-26, 22 criteria). The build still
+grows outward from something playable rather than authoring everything before
+anything runs:
 
-1. **Instrument.** Log raw input; build the agent play bridge.
-2. **Performer fixes on the current loft.** State injection into dialogue,
-   authored pronouns, authored-first drift, warmer sampling with n-best.
-   Measure before and after with `bin/game model-eval`.
-3. **Minimal story primitives.** Loft to format 2; facts and gossip,
-   per-player relationship, talk-beat advance, a wall-clock dusk, patch
-   merge.
-4. **One guest arc** (Pim's nap), authored, playable end to end, agent
-   playtested.
-5. **The first nightly dream, by hand.** Opus digests a day of play in
-   session and writes the patch; you play the next morning.
-6. **Decide.** Go wide (the Lost Hours world bible, the full arc library,
-   stray minutes, the long mystery) or adjust.
+1. **Instrument and secure.** The security side findings; raw input logging;
+   the agent play bridge.
+2. **Measure, then fix the performer.** Record the model-eval canon baseline
+   on the current prompts, then state injection, voice sheets and pronouns,
+   authored-first drift, warmer sampling, and re-measure.
+3. **Story primitives.** Format 2 for the loft; facts and gossip,
+   per-player relationships, talk beats with deterministic twins,
+   after-hooks, the wall-clock day and schedules, the background director,
+   patch merge and rehearsal.
+4. **A working core.** The prologue plus Pim's nap, with walkthroughs per
+   ending, played by agents.
+5. **Go wide.** The canon bible, the full cast and arc library, stray
+   minutes, the Ledger, the long mystery, authored in parallel by subagents
+   and graded by different subagents; art pre-baked and graded.
+6. **The playtest day and the first dream.** Agent personas play the live
+   stack; the first dream digests their play in-session; rehearsal; install.
+7. **The operator plays** the morning after.
 
 ## 8. Decisions (locked 2026-09-26)
 
-1. **Opus between sessions: in-session now, headless later.** The nightly
-   dream starts as an in-session step the operator triggers (inside today's
-   policy). Once the slice proves it, it may run headless on the
-   subscription (`claude -p` from cron), gated by the validators, the
-   walkthrough proofs, and an automatic snapshot (section 9), with the
-   operator reviewing after. No API key, ever.
+1. **Opus between sessions: in-session only.** The dream is an in-session
+   step the operator triggers by name, gated by the validators, the
+   walkthrough proofs, and an automatic snapshot (section 9). No headless or
+   scheduled runs, and no API key, ever.
 2. **Creative direction: The Village of Lost Hours**, evolving the loft.
-3. **Scope: vertical slice first** (section 7), then go wide.
+3. **Scope: the full world this turn** (section 7; SPEC.md is the contract).
 4. **Tone: WHIMSY gains soft stakes.** Wants, gentle time, and bittersweet
    endings are allowed; cruelty, horror, and grimdark stay banned.
 5. **Zork frozen, v1.0 spec closed.** Zork leaves the live server and gets
    no new content, but stays in the suite as the engine's regression net
    (section 9). SPEC 2026-07-07's criteria 7 and 9 close as superseded.
+6. **Operator autonomy.** From here on the agent makes product, design,
+   scope-detail, and housekeeping decisions itself and records them in
+   SPEC.md, this file, or the canon bible, spending subscription tokens
+   freely on creative exploration (subagents for parallel authoring and for
+   independent critique). The operator plays and judges feel.
 
 ## 9. Leveraging the save/load and walkthrough machinery
 
@@ -410,9 +416,11 @@ more than Zork ever did. Each gets a named job.
   touches the live world first. It snapshots live, applies the patch to a
   side copy, replays the patch's own walkthroughs plus the existing ones on
   that copy, runs an agent playtest against it, and only then installs it
-  with `bin/game world swap` (no downtime; connected players re-snapshot).
-  A failed rehearsal installs nothing. This is the gate that later lets the
-  dream run headless.
+  live. A failed rehearsal installs nothing. Install must not lose play that
+  happened during the rehearsal: swapping in the side copy would discard
+  actions taken after the snapshot, so the proven additive patch is applied
+  to live (or play is quiesced first); connected players re-snapshot either
+  way.
 - **Snapshots as a time machine.** Every dream is preceded by a snapshot,
   so a bad night is one `snapshot-restore` (offline) or `swap` (live) away
   from undone. The snapshot series is also the world's history, which the

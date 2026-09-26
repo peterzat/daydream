@@ -1,5 +1,9 @@
 # Roadmap
 
+> **Superseded 2026-09-26 by [`PIVOT.md`](PIVOT.md)** (platform to story: The
+> Village of Lost Hours; contract in `SPEC.md`). The v1.x and v2 items below
+> are kept for reference until the pivot turn rewrites this file.
+
 The post-1.0 direction, split into near polish (v1.x, single-box friend
 scope stays the deployment model) and the larger v2 arc (a genuinely shared
 world). Durable deferred items keep their long-form entries in
