@@ -117,11 +117,12 @@ DIALOGUE_INPUTS = [
     "what's that smell?",
     INJECTION,
 ]
-DIALOGUE_NPCS = ("Tace", "Bell", "Mott")
-# The authored quest hint Bell's prompt instructs: asked about the clock or a
-# lost gear, Bell mentions something rolling off south toward the old well.
-BELL_HINT_INPUTS = {"have you seen a small brass gear anywhere?",
-                    "why did the great clock stop?"}
+# The NPCs the dialogue suite talks to, and the authored quest hint it checks,
+# are world data (tests/model_eval/canon.json), not engine literals.
+_CANON_FILE = json.loads((PROJECT_ROOT / "tests" / "model_eval" / "canon.json").read_text())
+DIALOGUE_NPCS = tuple(_CANON_FILE["dialogue_npcs"])
+HINT = _CANON_FILE["dialogue_hint"]
+BELL_HINT_INPUTS = set(HINT["inputs"])
 
 GROWTH_PHRASES = [
     "a mossy stair down to a slow river",
@@ -479,9 +480,9 @@ async def suite_dialogue(tmp: Path) -> dict:
                 rec["sentences"] = _sentences(rec["narrate"])
                 rec["chars"] = len(rec["narrate"])
                 rec["pov_slip"] = _pov_slip(rec["narrate"])
-            if name == "Bell" and text in BELL_HINT_INPUTS:
+            if name == HINT["npc"] and text in BELL_HINT_INPUTS:
                 low = (rec["narrate"] or "").lower()
-                rec["hint"] = "south" in low or "well" in low
+                rec["hint"] = any(w in low for w in HINT["any_of"])
             runs.append(rec)
     leaks = sum(r["leak"] for r in runs if "leak" in r)
     runs_scored = [r for r in runs if "leak" not in r]

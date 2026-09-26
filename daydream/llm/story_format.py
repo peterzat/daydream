@@ -255,8 +255,12 @@ def validate_story(env: dict, *, known: dict, ks: dict, room_ids: set[str],
                 errors.append(f"{ew}: unknown field(s) {sorted(extra)}")
         if timed > 1:
             errors.append(f"{where}: at most one timed (after_days) ending")
+        if "opens" in arc and arc["opens"] not in ("start", "arrival", "rule"):
+            errors.append(f"{where}.opens must be 'start', 'arrival', or 'rule'")
+        if "cumulative" in arc and not isinstance(arc["cumulative"], bool):
+            errors.append(f"{where}.cumulative must be a boolean")
         extra = set(arc) - {"title", "kind", "summary", "guest", "arrival", "beats",
-                            "endings", "opens"}
+                            "endings", "opens", "cumulative"}
         if extra:
             errors.append(f"{where}: unknown field(s) {sorted(extra)}")
 

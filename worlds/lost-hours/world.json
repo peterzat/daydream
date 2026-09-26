@@ -1,0 +1,224 @@
+{
+  "comment": "The Village of Lost Hours (SPEC 2026-09-26). Top-level world config; rooms/toons/things live in regions/, voice sheets in cast/, arcs in arcs/, stray minutes in minutes/, walkthroughs in walkthroughs/. Canon: docs/canon/LOST-HOURS.md. Assemble with: tools/assemble_world.py --source worlds/lost-hours",
+  "format": 2,
+  "world": {
+    "name": "The Village of Lost Hours",
+    "slug": "lost-hours",
+    "aesthetic_seed": "a small clockmaker's village at the bottom of a dream, at dusk; warm lantern-light on brass and old oak, moss in the seams of stone, paper lanterns, soft watercolor edges, the gentle mystery of lost hours drifting down like leaves",
+    "rng_seed": "lost-hours-1"
+  },
+  "start_room": "r-clocktower",
+  "flags": [
+    "CLOCK-STARTED"
+  ],
+  "player_flags": [
+    "GIVEN-CLOCK",
+    "WOUND",
+    "MET-BOOK"
+  ],
+  "player_counters": [],
+  "time": {
+    "tz": "America/Los_Angeles",
+    "start_flag": "CLOCK-STARTED",
+    "phases": {
+      "dawn": "06:00",
+      "day": "08:00",
+      "dusk": "18:00",
+      "night": "21:30"
+    },
+    "catch_up_days": 7,
+    "labels": {
+      "dawn": "dawn",
+      "day": "day",
+      "dusk": "dusk",
+      "night": "night"
+    }
+  },
+  "config": {
+    "director": {
+      "max_open_guests": 2,
+      "event_minutes": 40
+    },
+    "relationship_tiers": [
+      {
+        "min": 0,
+        "label": "a newcomer to them"
+      },
+      {
+        "min": 2,
+        "label": "someone they've begun to know"
+      },
+      {
+        "min": 5,
+        "label": "a friend"
+      },
+      {
+        "min": 9,
+        "label": "a dear friend"
+      }
+    ],
+    "collect": {
+      "per_day": 2,
+      "rooms": [
+        "r-clocktower",
+        "r-loft",
+        "r-balcony",
+        "r-cellar",
+        "r-square",
+        "r-workshop",
+        "r-well",
+        "r-garden",
+        "r-orchard",
+        "r-lane",
+        "r-post",
+        "r-waiting",
+        "r-lamphouse",
+        "r-bridge",
+        "r-river",
+        "r-duskroad",
+        "r-hill"
+      ],
+      "name": "stray minute",
+      "aliases": [
+        "minute",
+        "glint",
+        "stray"
+      ],
+      "seed": "a stray minute: a tiny flicker of light no bigger than a moth's wing, turning slowly in the air as if it can't quite remember where it was going",
+      "found_text": "You cup the stray minute in your hands, and it settles: {name}. It was {text}. It slips into your Book of Stray Minutes.",
+      "book_title": "The Book of Stray Minutes",
+      "requires_time": true
+    },
+    "templates": {
+      "dreamseed": {
+        "name": "dreamseed",
+        "seed": "a seed like a tiny folded paper lantern, warm in the palm, with a light inside that beats as slow as a resting clock",
+        "aliases": [
+          "seed",
+          "dream seed"
+        ],
+        "verbs": [
+          "plant"
+        ],
+        "properties": {
+          "growth": {
+            "question": "Where does the new way lead?",
+            "theme": [
+              "a clockmaker's village at the bottom of a dream, at dusk",
+              "lost hours, kept and mended with patience",
+              "small rooms that hold one gentle purpose",
+              "quiet places where time can rest"
+            ],
+            "palette": "warm lantern amber over deepening dusk blue; brass, old oak, moss-green; soft watercolor edges",
+            "motifs": [
+              "small resting clocks",
+              "paper lanterns coming alight",
+              "worn brass, gently polished",
+              "moss in the seams of old stone",
+              "the hush between one tick and the next",
+              "things folded, kept, and labeled in a careful hand"
+            ],
+            "exemplars": [
+              {
+                "title": "The Stair of Small Clocks",
+                "seed": "a narrow wooden stair where a small clock sits on every step, each ticking to its own slow count under a round window of dusk",
+                "description": "A small clock waits on every step, and no two agree on the time. Climbing feels like walking up through a gentle argument. At the top, a round window holds the dusk like a cup holds tea."
+              },
+              {
+                "title": "The Room Where Letters Dry",
+                "seed": "a warm attic room strung with lines of pale ribbon, where rain-softened letters hang drying by a small iron stove",
+                "description": "Letters hang from ribbons like washing, drying slowly by the stove. Their ink has run a little in the rain, so every word looks as if it is still deciding what to say. The room smells of paper and warm iron."
+              },
+              {
+                "title": "The Moth Library",
+                "seed": "a round library lit by one lantern, where soft grey moths rest on the spines of tiny books about the hours they once circled",
+                "description": "The shelves are no taller than a child, and every book is small enough to hold in one hand. Moths rest on the spines like bookmarks. When the lantern flickers they lift all at once, and settle again, each on the book it loves."
+              }
+            ],
+            "husk_text": "the spent, papery shell of a dreamseed, cool in the hand now, its slow light gone quiet; its dreaming is done, and the place around it is what the dreaming became",
+            "propagation": {
+              "chance": 0.35,
+              "max_generation": 2,
+              "seed_text": "a new dreamseed, paper-lantern thin and barely warm, its slow light only just learning to beat"
+            },
+            "first_planting_text": "Far off in the tower, the great clock gives one soft, deliberate tick. The dream has more room in it than it did a breath ago, and it was your hands that made the room. Down in the square, a lantern comes alight early, the way a house does when someone dear is coming home."
+          }
+        }
+      },
+      "small-clock": {
+        "name": "small clock",
+        "seed": "a small resting clock no bigger than a teacup, brass gone soft with handling, its hands stopped at a quiet hour; by custom it is yours alone to wind",
+        "aliases": [
+          "clock",
+          "my clock",
+          "your clock",
+          "own clock",
+          "little clock"
+        ],
+        "verbs": [
+          "wind"
+        ],
+        "properties": {
+          "windable": true,
+          "own_clock": true
+        }
+      }
+    },
+    "under_construction": true
+  },
+  "verbs": {
+    "wind": {
+      "ui_hint": "Wind",
+      "description": "Wind a clock. Target: the clock.",
+      "needs_dobj": true,
+      "valid_dobj_kinds": [
+        "thing"
+      ],
+      "dobj_default": {
+        "key": "windable",
+        "eq": true
+      },
+      "fail_text": "There's nothing here that winds."
+    },
+    "listen": {
+      "ui_hint": "Listen",
+      "description": "Stop and listen to this place.",
+      "needs_dobj": false,
+      "fail_text": "You listen. The dream is quiet here, in a friendly way."
+    },
+    "sing": {
+      "ui_hint": "Sing",
+      "description": "Sing a little, softly.",
+      "needs_dobj": false,
+      "fail_text": "You hum a few notes; the evening seems to lean in to listen."
+    }
+  },
+  "rules": [
+    {
+      "on": "listen",
+      "do": [
+        {
+          "kind": "narrate",
+          "to": "@actor",
+          "variants": [
+            "You stand still and listen. Somewhere a clock ticks, and somewhere else another answers it, not quite in time.",
+            "You listen. Far off, a lantern hisses softly as its wick settles, and a moth taps once against paper.",
+            "You listen to the village breathe: a door, a kettle, the long hush of moss growing in the seams of stone.",
+            "You listen, and for a moment you could swear the air itself is ticking, very slowly, like a sleeping clock."
+          ]
+        }
+      ]
+    }
+  ],
+  "fuses": {
+    "first-dusk": {
+      "turns": 2,
+      "do": [
+        {
+          "kind": "run_phase",
+          "phase": "dusk"
+        }
+      ]
+    }
+  }
+}

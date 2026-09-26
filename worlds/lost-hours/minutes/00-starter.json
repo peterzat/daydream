@@ -1,0 +1,29 @@
+{
+  "comment": "Stray minutes (canon section 2): a starter set; the minutes pass grows the book to 150+.",
+  "pages": {
+    "p-kitchen": {"title": "Kitchen Minutes",
+                  "reward": {"text": "The Kitchen Minutes page is full. It smells faintly of toast and warm tea, and Mott, when he hears, says it's the coziest page in the book.",
+                             "do": [{"kind": "adjust_rel", "npc": "t-mott", "delta": 2}]}},
+    "p-waiting": {"title": "Minutes of Waiting",
+                  "reward": {"text": "The Minutes of Waiting page is full, and all its small impatiences settle into one long, contented sigh. Tucked in the spine is a dreamseed.",
+                             "do": [{"kind": "spawn_template", "template": "dreamseed", "location_id": "@actor", "generated_by": "page:waiting"}]}}
+  },
+  "collectibles": [
+    {"id": "m-kettle", "name": "the kettle minute", "text": "the minute spent watching a kettle that would not boil", "page": "p-kitchen"},
+    {"id": "m-toast", "name": "the toast minute", "text": "the minute between the toaster's tick and the toast popping up", "page": "p-kitchen"},
+    {"id": "m-last-biscuit", "name": "the last-biscuit minute", "text": "the minute two people spent politely not taking the last biscuit", "page": "p-kitchen"},
+    {"id": "m-steam", "name": "the steam minute", "text": "the minute a cup of tea was too hot to drink and too good to leave", "page": "p-kitchen"},
+    {"id": "m-fridge-light", "name": "the fridge-light minute", "text": "the minute spent standing in front of an open cupboard, forgetting what for", "page": "p-kitchen"},
+    {"id": "m-dough", "name": "the dough minute", "text": "the minute a grandmother's hands showed someone how to knead", "page": "p-kitchen"},
+    {"id": "m-recipe", "name": "the recipe minute", "text": "the minute someone found a recipe card in a handwriting they missed", "page": "p-kitchen"},
+    {"id": "m-washing-up", "name": "the washing-up minute", "text": "the minute two people washed and dried in easy silence", "page": "p-kitchen"},
+    {"id": "m-post", "name": "the post minute", "text": "the minute spent listening for the letterbox to clack", "page": "p-waiting"},
+    {"id": "m-rain-stop", "name": "the rain-stop minute", "text": "the minute under an awning waiting for the rain to ease", "page": "p-waiting"},
+    {"id": "m-results", "name": "the results minute", "text": "the minute before a name was read out", "page": "p-waiting"},
+    {"id": "m-platform", "name": "the doorway minute", "text": "the minute in a doorway waiting for someone to turn and wave", "page": "p-waiting"},
+    {"id": "m-oven-door", "name": "the oven-door minute", "text": "the minute of not opening the oven door to look", "page": "p-waiting"},
+    {"id": "m-phone-ring", "name": "the knock minute", "text": "the minute after a knock, before the door opened", "page": "p-waiting"},
+    {"id": "m-snow", "name": "the first-snow minute", "text": "the minute at the window waiting to see if it would really snow", "page": "p-waiting"},
+    {"id": "m-sneeze", "name": "the sneeze minute", "text": "the minute before a sneeze that never came", "page": "p-waiting"}
+  ]
+}

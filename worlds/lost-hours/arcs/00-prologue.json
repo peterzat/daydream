@@ -1,0 +1,83 @@
+{
+  "comment": "The prologue (canon section 7): the Stopped Clock. The existing loft quest, now an arc that starts time. Plus the first winding, every newcomer's own first session (per player, not an arc).",
+  "arcs": {
+    "prologue": {
+      "title": "The Stopped Clock",
+      "kind": "village",
+      "opens": "start",
+      "summary": "The great clock stopped the night of the first hard frost. Find the escapement gear, bring it to Tace, and open the clock case: time begins again.",
+      "beats": {
+        "read-ledger": {"hint": "the dreamer reads the repair ledger"},
+        "found-gear": {"hint": "the dreamer finds the escapement gear by the well"},
+        "gave-gear": {"hint": "the dreamer brings the gear home to Tace"},
+        "unlocked": {"hint": "the dreamer unlocks the clock case"}
+      },
+      "endings": {
+        "mended-together": {
+          "summary": "mended by more than one dreamer",
+          "text": "Somewhere above, the great clock's hands begin to move, and the whole tower seems to breathe out. Everyone who helped feels it in their chest at once, like a held note finally sung.",
+          "ledger": "The great clock was mended by {helpers} together, and time began again in the village.",
+          "do": [
+            {"kind": "start_time"},
+            {"kind": "spawn_template", "template": "dreamseed", "location_id": "@room", "generated_by": "prologue:case"},
+            {"kind": "narrate", "text": "Behind the swinging pendulum something small glows and drops softly to the floor of the case: a dreamseed, warm as a thank-you."},
+            {"kind": "start_fuse", "name": "first-dusk"},
+            {"kind": "add_fact", "id": "mended-clock", "text": "{actor} opened the clock case, and the great clock ticks again.",
+             "known_by": "all"}
+          ]},
+        "mended": {
+          "summary": "mended by one dreamer",
+          "text": "Somewhere above, the great clock's hands begin to move, and the whole tower seems to breathe out.",
+          "ledger": "The great clock was mended by {helpers}, and time began again in the village.",
+          "do": [
+            {"kind": "start_time"},
+            {"kind": "spawn_template", "template": "dreamseed", "location_id": "@room", "generated_by": "prologue:case"},
+            {"kind": "narrate", "text": "Behind the swinging pendulum something small glows and drops softly to the floor of the case: a dreamseed, warm as a thank-you."},
+            {"kind": "start_fuse", "name": "first-dusk"},
+            {"kind": "add_fact", "id": "mended-clock", "text": "{actor} opened the clock case, and the great clock ticks again.",
+             "known_by": "all"}
+          ]}
+      }
+    }
+  },
+  "rules": [
+    {"on": "read", "after": true, "if": [{"dobj": "o-repair-ledger"}, {"arc": "prologue"}],
+     "stop": false,
+     "do": [{"kind": "advance_beat", "arc": "prologue", "beat": "read-ledger"}]},
+    {"on": "take", "after": true, "if": [{"dobj": "o-escapement-gear"}, {"arc": "prologue"}],
+     "do": [{"kind": "advance_beat", "arc": "prologue", "beat": "found-gear"}]},
+    {"on": "give", "after": true, "if": [{"dobj": "o-escapement-gear"}, {"iobj": "t-tace"}],
+     "do": [{"kind": "advance_beat", "arc": "prologue", "beat": "gave-gear"},
+            {"kind": "adjust_rel", "npc": "t-tace", "delta": 3},
+            {"kind": "add_fact", "id": "gave-gear", "text": "{actor} carried the escapement gear home to Tace.",
+             "known_by": ["t-tace"],
+             "spread": [{"to": ["t-bell", "t-mott", "t-umber"], "after_minutes": 20},
+                        {"to": "all", "after_minutes": 120}]}]},
+    {"on": "use", "after": true, "if": [{"iobj": "o-clock-case"}, {"arc": "prologue"}],
+     "do": [{"kind": "advance_beat", "arc": "prologue", "beat": "unlocked"}]},
+    {"on": "open", "after": true, "if": [{"dobj": "o-clock-case"}, {"arc": "prologue"},
+                                         {"helpers": "prologue", "gte": 2}],
+     "do": [{"kind": "close_arc", "arc": "prologue", "ending": "mended-together"}]},
+    {"on": "open", "after": true, "if": [{"dobj": "o-clock-case"}, {"arc": "prologue"}],
+     "do": [{"kind": "close_arc", "arc": "prologue", "ending": "mended"}]},
+
+    {"on": "wind", "if": [{"prop": "own_clock", "of": "@dobj"}, {"pflag": "WOUND", "not": true},
+                          {"present": "t-tace"}],
+     "do": [{"kind": "narrate", "text": "You turn the little key. The small clock hesitates, then begins to tick, soft and sure, a half-beat apart from every other clock on the shelf. Tace watches with their hands folded. 'There,' they say. 'Now there's an hour here that's yours. Bell will want to meet you, down in the square. And Mott keeps something for every new keeper, in the workshop.'"},
+            {"kind": "set_pflag", "name": "WOUND"},
+            {"kind": "adjust_rel", "npc": "t-tace", "delta": 2},
+            {"kind": "add_fact", "id": "first-winding", "text": "{actor} wound their own small clock in the loft, by the old custom.",
+             "known_by": ["t-tace"], "spread": [{"to": "all", "after_minutes": 60}]}]},
+    {"on": "wind", "if": [{"prop": "own_clock", "of": "@dobj"}, {"pflag": "WOUND", "not": true}],
+     "do": [{"kind": "narrate", "text": "You turn the little key. The small clock hesitates, then begins to tick, soft and sure, keeping an hour that is yours alone."},
+            {"kind": "set_pflag", "name": "WOUND"},
+            {"kind": "add_fact", "id": "first-winding", "text": "{actor} wound their own small clock, by the old custom.",
+             "known_by": ["t-tace"], "spread": [{"to": "all", "after_minutes": 60}]}]},
+    {"on": "wind", "if": [{"prop": "own_clock", "of": "@dobj"}],
+     "do": [{"kind": "narrate", "to": "@actor", "variants": [
+       "You give your small clock a quarter turn. It ticks on, pleased to be remembered.",
+       "Your small clock doesn't need winding, but it seems to like the attention.",
+       "You wind your clock and hold it to your ear. Its tick is the only one in the dream that is exactly yours."
+     ]}]}
+  ]
+}

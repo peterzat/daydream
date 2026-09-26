@@ -204,7 +204,7 @@ def _dialogue_system(npc_name: str, allowed: "frozenset[str] | None") -> str:
     """System message for NPC DIALOGUE skills, where the actor being narrated
     is the NPC, not the player. The affordance dispatcher's second-person rule
     is exactly wrong for dialogue: the authored templates open "You are
-    Mott...", so a second-person narration instruction makes the model
+    <name>...", so a second-person narration instruction makes the model
     describe the NPC's actions as "you" — which reads as the PLAYER's own body
     ("A soft smile plays on your lips as you wave back", playtest 2026-07-02).
     Dialogue narration is THIRD person by name; the player is addressed as

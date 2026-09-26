@@ -614,6 +614,12 @@ def _write_db2(env: dict, output_path: Path) -> None:
         for section, key in story_format.STORY_DEF_KEYS.items():
             if section in env:
                 defs[key] = env[section]
+        # Arcs authored `opens: "start"` (the prologue) are open from the
+        # first moment of the world.
+        for arc_id, arc in (env.get("arcs") or {}).items():
+            if isinstance(arc, dict) and arc.get("opens") == "start":
+                defs[f"arc:{arc_id}"] = {"status": "open", "opened_day": 0,
+                                         "beats": {}, "helpers": []}
         defs["rng_seed"] = (
             world.get("rng_seed") if isinstance(world.get("rng_seed"), str)
             else world["slug"]

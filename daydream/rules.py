@@ -45,6 +45,7 @@ Story conditions (SPEC 2026-09-26; read per-player state for the actor):
     {"arc": ARC_ID, <op>: STATUS?}              arc status (no op = open)
     {"ending": "ARC/ENDING"}                    arc closed with that ending
     {"helped": ARC_ID}                          actor helped that arc
+    {"helpers": ARC_ID, <op>: N}                how many players helped it
     {"phase": NAME | [NAME, ...]}               the village's time of day
     {"day": {<op>: N}}                          the village day
     {"knows": FACT_ID, "who": REF, "about": REF?}  an NPC knows a fact
@@ -87,7 +88,7 @@ OPS = ("eq", "ne", "lt", "lte", "gt", "gte", "in")
 # am-I-in-this-room form ({"in": "r-x"}).
 CONDITION_KEYS = (
     "prop", "counter", "score", "carrying_count", "rel", "pcounter", "arc",
-    "flag", "dobj", "iobj",
+    "helpers", "flag", "dobj", "iobj",
     "carried", "carried_filter", "only_carrying", "empty_handed", "chance",
     "present", "contains", "in_vehicle",
     "pflag", "beat", "ending", "helped", "phase", "day", "knows", "collected",
@@ -95,7 +96,7 @@ CONDITION_KEYS = (
 )
 # Discriminators whose aux keys may include the `in` membership operator
 # (so a bare `in` is theirs, not the am-I-in-this-room form).
-_IN_OWNERS = ("prop", "counter", "rel", "pcounter", "arc")
+_IN_OWNERS = ("prop", "counter", "rel", "pcounter", "arc", "helpers")
 
 
 # ---- context + references ------------------------------------------------
@@ -322,6 +323,9 @@ def _eval_story_condition(cond: dict, ctx: dict) -> bool | None:
         if not actor.id:
             return False
         return _op_compare(cond, story.pcounter(world_id, actor.id, cond["pcounter"]))
+    if "helpers" in cond:
+        n = len(story.arc_state(world_id, str(cond["helpers"]))["helpers"])
+        return _op_compare(cond, n)
     if "arc" in cond:
         status = story.arc_status(world_id, str(cond["arc"]))
         if not any(op in cond for op in OPS):
@@ -518,6 +522,7 @@ _CONDITION_AUX: dict[str, frozenset[str]] = {
     "rel": frozenset(OPS),
     "pcounter": frozenset(OPS),
     "arc": frozenset(OPS),
+    "helpers": frozenset(OPS),
     "pflag": frozenset({"eq"}),
     "beat": frozenset({"by"}),
     "ending": frozenset(),
@@ -603,6 +608,8 @@ def _story_ref_errors(disc: str, cond: dict, ks: dict, where: str) -> list[str]:
     errs: list[str] = []
     if disc == "arc" and cond.get("arc") not in ks.get("arcs", set()):
         errs.append(f"{where}: unknown arc {cond.get('arc')!r}")
+    if disc == "helpers" and cond.get("helpers") not in ks.get("arcs", set()):
+        errs.append(f"{where}: unknown arc {cond.get('helpers')!r}")
     if disc == "helped" and cond.get("helped") not in ks.get("arcs", set()):
         errs.append(f"{where}: unknown arc {cond.get('helped')!r}")
     if disc == "beat" and cond.get("beat") not in ks.get("beats", set()):

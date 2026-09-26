@@ -527,7 +527,7 @@ def _iobj_prep(spec: VerbSpec) -> str:
 
 def _the(obj: objects.Object) -> str:
     """Display reference with the natural article: things take 'the' ('the
-    lantern'); named toons take none ('Tace', never 'the Tace' — playtest
+    lantern'); named toons take none (a name, never 'the <name>' — playtest
     2026-07-02)."""
     return obj.name if obj.kind == "toon" else f"the {obj.name}"
 

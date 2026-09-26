@@ -1,0 +1,103 @@
+{
+  "comment": "The clocktower and what is above and below it: the tower floor, the loft, the balcony, the Hour Cellar.",
+  "rooms": [
+    {"id": "r-clocktower", "slug": "clocktower", "title": "The Clocktower",
+     "seed": "the base of a great clock tower in amber gloom, a tall glass-fronted oak clock case against one wall, the clock's brass face high above, dust turning slow in a shaft of late gold, an old ledger open on a lectern",
+     "description": "The great clock's brass face looks down from high in the tower, patient as a moon. A tall oak clock case stands against the wall with its pendulum behind glass, and a worn repair ledger lies open on a lectern. Beside it rests a newer book, its spine stamped THE LEDGER OF RETURNED HOURS. Stairs climb up to the loft, a low door leads down to the cellar, and the square is east.",
+     "exits": {"up": "r-loft", "east": "r-square", "down": "r-cellar"},
+     "rules": [
+       {"on": "listen", "do": [{"kind": "narrate", "to": "@actor", "variants": [
+         "You listen up into the tower. The great clock's works murmur somewhere overhead, a sound like a sleeper turning over.",
+         "You listen. Dust settles in the shaft of light with a sound too small to hear, and somehow you hear it anyway.",
+         "You listen, and the tower listens back: a creak of old oak, a far brass whisper, then the hush."
+       ]}]}
+     ]},
+    {"id": "r-loft", "slug": "loft", "title": "The Clockmaker's Loft",
+     "seed": "a clockmaker's loft under the eaves, warm with the smell of oil and brass, shelves of small resting clocks ticking softly out of time with one another, a workbench of fine tools, a round window full of amber dusk",
+     "description": "The loft is warm with the smell of clock oil and old brass. Shelves of small resting clocks tick softly, none of them agreeing about the time, and a workbench lies scattered with tools too fine for ordinary fingers. A round window holds the dusk. Stairs go down to the tower and up to the balcony.",
+     "exits": {"down": "r-clocktower", "up": "r-balcony"},
+     "rules": [
+       {"on": "listen", "do": [{"kind": "narrate", "to": "@actor", "variants": [
+         "You listen to the resting clocks: a dozen small ticks, none in step, like rain deciding where to fall.",
+         "You listen. One small clock on the top shelf ticks a little slower than the rest, as if it is thinking.",
+         "You listen, and under the ticking you hear the soft scratch of a fine tool on brass somewhere nearby.",
+         "You listen: tick, tock, tick-tick, a pause, tock. The loft keeps a rhythm all its own."
+       ]}]}
+     ]},
+    {"id": "r-balcony", "slug": "balcony", "title": "The Winding Balcony",
+     "seed": "a small oak balcony high above the great clock's face, ringed by a brass rail, a gear-ribbed telescope leaning at the rail, looking east over dark rooftops toward where a dawn would come",
+     "description": "The balcony holds its place above the rooftops with a friendly creak. A telescope ribbed with clock-gears leans at the brass rail, pointed east, where the sky is always about to decide something. Below, the village lanterns keep an hour of their own. The loft is down the stairs.",
+     "exits": {"down": "r-loft"}},
+    {"id": "r-cellar", "slug": "cellar", "title": "The Hour Cellar",
+     "seed": "a low brick cellar under a clock tower lit by one patient lantern, its shelves lined with little glass jars each holding a folded paper hour, the highest shelf lost in soft shadow",
+     "description": "Shelves run along the brick walls, and on them sit rows of small glass jars, each holding a folded slip of paper: an hour somebody saved and never spent. The lantern by the stair burns low and steady. The highest shelf is lost in shadow. It is quiet here, the way the inside of a pocket is quiet. Stairs lead up into the tower.",
+     "exits": {"up": "r-clocktower"}}
+  ],
+  "things": [
+    {"id": "o-repair-ledger", "name": "repair ledger", "location": {"room": "r-clocktower"},
+     "fixture": true, "verbs": ["read"],
+     "seed": "a worn leather ledger open on a lectern, its soft pages close-written; the first pages are in an older, looping hand, the later ones in a careful, fading script",
+     "aliases": ["ledger", "repair-ledger", "worn ledger"],
+     "text": "The great clock has stood still since the night of the first hard frost. The fault is the escapement gear -- the small brass heart of the whole mechanism -- which slipped its pin that night and rolled away down the lane, south, toward the old well at the edge of the village. Whoever carries it back to Tace in the loft will have earned the case-key, which hangs, by long and gentle custom, with whoever mends the clock.",
+     "rules": [
+       {"on": "read", "if": [{"flag": "CLOCK-STARTED"}], "do": [{"kind": "narrate", "to": "@actor",
+        "text": "The early pages are in an older, looping hand, signed with a single W: notes on the great clock, on tides of hours, on patience. The later pages tell how the clock stopped on the night of the first hard frost and was mended again. On the newest page, in Tace's careful script: 'The clock is ticking. New keepers: come up to the loft and ask me about the first winding. -- T.'"}]}
+     ]},
+    {"id": "o-returned-ledger", "name": "Ledger of Returned Hours", "location": {"room": "r-clocktower"},
+     "fixture": true, "verbs": ["read"],
+     "seed": "a newer book bound in soft blue cloth, its spine stamped in gold: THE LEDGER OF RETURNED HOURS",
+     "aliases": ["ledger of returned hours", "returned ledger", "blue book", "returned hours"],
+     "properties": {"text_source": "chronicle",
+                    "chronicle_header": "THE LEDGER OF RETURNED HOURS. Every hour sent home or kept, and who helped.",
+                    "chronicle_empty": "The pages are clean and waiting. No hour has been returned yet."}},
+    {"id": "o-clock-case", "name": "clock case", "location": {"room": "r-clocktower"},
+     "fixture": true, "verbs": ["open"],
+     "seed": "a tall glass-fronted clock case of dark oak, its little brass door held by a delicate lock",
+     "aliases": ["case", "glass case", "clock-case", "oak case"],
+     "properties": {
+       "state": "locked",
+       "state_text": {
+         "locked": "A small brass lock holds the little door fast.",
+         "unlocked": "The lock hangs sprung now, though the door is still gently closed.",
+         "open": "The door stands open, and behind the glass the pendulum sways bright and sure."
+       },
+       "locked_text": "The clock case is locked; its small brass lock won't give without the right key.",
+       "open_text": "The little lock gives, the case door swings wide, and behind the glass the pendulum stirs, swings, and catches the light -- and high overhead the great clock takes its first slow tick in a long, long while.",
+       "use": {"with": "case key", "from_state": "locked", "to_state": "unlocked",
+               "text": "The case-key turns with a soft, satisfying click, and the little brass lock springs open under your thumb."},
+       "contains": [
+         {"name": "warm brass cog",
+          "seed": "a small spare brass cog, warm as if just held, its fine teeth catching the last of the light",
+          "aliases": ["cog", "brass cog"]}
+       ]
+     }},
+    {"id": "o-resting-clocks", "name": "resting clocks", "location": {"room": "r-loft"},
+     "fixture": true, "verbs": ["wind"],
+     "seed": "shelves of small resting clocks, brass and wood and one painted with forget-me-nots, each ticking softly to its own count",
+     "aliases": ["clocks", "shelf of clocks", "small clocks"],
+     "properties": {"windable": true},
+     "rules": [
+       {"on": "wind", "do": [{"kind": "narrate", "to": "@actor", "variants": [
+         "You wind one of the small resting clocks. It starts up soft and uncertain, as if remembering how, then settles into a tick of its own.",
+         "You turn the key of a little painted clock. It hums, clears its throat, and begins again, a half-beat behind its neighbors.",
+         "You wind a brass clock no bigger than an egg. Its tick is so small you feel it in your fingertips more than hear it.",
+         "You wind the slow clock on the top shelf. It takes a long breath of a tick, as if it has been waiting all day for someone to ask."
+       ]}]}
+     ]},
+    {"id": "o-brass-pendulum", "name": "brass pendulum", "location": {"room": "r-loft"},
+     "seed": "a spare brass pendulum hung from a nail by the window, turning slow and catching the amber light",
+     "aliases": ["pendulum", "spare pendulum", "spare brass pendulum"]},
+    {"id": "o-workbench", "name": "workbench", "location": {"room": "r-loft"}, "fixture": true,
+     "seed": "a long workbench scattered with tweezers, loupes, tiny screwdrivers, and a tray of brass wheels no bigger than lentils",
+     "aliases": ["bench", "tools"]},
+    {"id": "o-telescope", "name": "telescope", "location": {"room": "r-balcony"}, "fixture": true,
+     "seed": "a gear-ribbed brass telescope leaning at the rail, pointed east; through it the far edge of the sky looks soft and undecided, like a page not yet turned",
+     "aliases": ["gear telescope", "spyglass"]},
+    {"id": "o-jars", "name": "jars of saved hours", "location": {"room": "r-cellar"}, "fixture": true,
+     "seed": "rows of small glass jars, each holding a folded slip of paper; the labels are in many hands: 'Tuesday, the long one', 'the hour before the recital', 'rain, unspent'",
+     "aliases": ["jars", "saved hours", "glass jars", "shelves"]},
+    {"id": "o-high-shelf", "name": "highest shelf", "location": {"room": "r-cellar"}, "fixture": true,
+     "seed": "the highest shelf, lost in shadow above the lantern's reach; a single jar glints up there, set apart from the rest, and no ladder in the cellar is tall enough",
+     "aliases": ["high shelf", "top shelf", "shadowed shelf"]}
+  ]
+}

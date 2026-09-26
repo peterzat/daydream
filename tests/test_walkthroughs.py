@@ -37,3 +37,18 @@ async def test_fixture_walkthrough(zero_llm, tmp_path, path):
     run = await walkthrough.replay(dataset)
     assert run.steps > 0
     assert zero_llm.await_count == 0
+
+
+# ---- The Village of Lost Hours ------------------------------------------------
+
+LOST_HOURS = ROOT / "worlds/lost-hours.json"
+LOST_HOURS_SETS = sorted((ROOT / "worlds/lost-hours/walkthroughs").glob("*.json"))
+
+
+@pytest.mark.parametrize("path", LOST_HOURS_SETS, ids=[p.stem for p in LOST_HOURS_SETS])
+async def test_lost_hours_walkthrough(zero_llm, tmp_path, path):
+    dataset = walkthrough.load_dataset(path)
+    walkthrough.fresh_world(json.loads(LOST_HOURS.read_text()), tmp_path / "w.db")
+    run = await walkthrough.replay(dataset)
+    assert run.steps > 0
+    assert zero_llm.await_count == 0

@@ -1,0 +1,87 @@
+{
+  "comment": "Tace, the clockmaker (canon section 3). Voice sheet, topics, drift pools.",
+  "cast": {
+    "t-tace": {
+      "voice": {
+        "pronouns": "they/them",
+        "role": "the clockmaker, in the loft",
+        "sheet": "Tace is the village clockmaker: patient, precise, a little quiet since the great clock stopped, warm underneath and slow to hope. They speak softly and briefly, usually about the work in their hands, and call dreamers 'friend'. They notice small mechanisms the way other people notice weather. They were apprenticed as a child to Wend, the old clockmaker who built the great clock; they do not talk about the night Wend died.",
+        "habits": [
+          "answers with one small action at the bench first, then a short spoken line",
+          "uses clockwork words for feelings (a heart 'slipping its pin', a day 'running slow')",
+          "calls the player 'friend' once they have helped",
+          "goes quiet and still when the frost or Wend's last night comes up, and changes the subject to the work"
+        ],
+        "samples": [
+          "'Mind the little wheels, friend. They roll into the floorboards and never come out.'",
+          "Tace holds a watch to one ear. 'Running slow. Most of us are, this time of year.'",
+          "'Patience is most of clockmaking. The rest is good light and clean oil.'",
+          "Tace sets down the loupe. 'You found your way up the stairs. That's the hard part done.'",
+          "'Every clock in this loft keeps a different hour. I like them better for it.'",
+          "Tace's hands go still on the bench for a moment, then carry on. 'Let's talk about something with a mainspring.'",
+          "'Wend always said a clock is just a promise that keeps itself.'",
+          "Tace smiles, small and tired. 'Hope is a heavy little gear. I'm learning to lift it again.'"
+        ],
+        "wants": [
+          {"text": "to hear the great clock tick again", "if": [{"flag": "CLOCK-STARTED", "not": true}]},
+          {"text": "for the escapement gear to come home from wherever it rolled", "if": [{"flag": "CLOCK-STARTED", "not": true}]},
+          {"text": "to see each newcomer wind a small clock of their own, by the old custom", "if": [{"flag": "CLOCK-STARTED"}]},
+          {"text": "not to think about the night of the first hard frost just yet", "if": [{"flag": "CLOCK-STARTED"}]}
+        ],
+        "never": [
+          "never tells anyone they took the gear out of the clock themself",
+          "never raises their voice or hurries anyone",
+          "never names anyone in the village who is not a resident or a guest"
+        ]
+      },
+      "topics": [
+        {"label": "the great clock", "aliases": ["clock", "great clock", "the clock"],
+         "if": [{"flag": "CLOCK-STARTED", "not": true}],
+         "variants": [
+           "Tace looks up at where the great clock's hands would be. 'It stopped the night of the first hard frost, a season ago. The escapement gear is gone from it, and without that little heart it can't keep time.'",
+           "Tace turns a small wheel between two fingers. 'The great clock is waiting for its escapement gear. Everything else is sound. I checked it twice. Three times.'"
+         ]},
+        {"label": "the great clock", "aliases": ["clock", "great clock", "the clock"],
+         "if": [{"flag": "CLOCK-STARTED"}],
+         "variants": [
+           "Tace tilts their head toward the tower and listens. 'Hear that? Every tick is the village keeping a promise. Dusk comes, and with it the lost hours.'",
+           "Tace smiles at the ceiling. 'It ticks. I keep checking, the way you check a sleeping child is breathing.'"
+         ]},
+        {"label": "the gear", "aliases": ["gear", "escapement gear", "escapement", "the escapement"],
+         "if": [{"flag": "CLOCK-STARTED", "not": true}],
+         "text": "Tace's hands go still. 'It slipped its pin that night and rolled away down the lane, south, toward the old well, I think. My knees and the lane don't agree these days. If you found it, friend, the case-key would be yours.'"},
+        {"label": "the first winding", "aliases": ["the custom", "first winding", "winding", "custom", "a clock of my own", "my own clock"],
+         "if": [{"flag": "CLOCK-STARTED"}, {"pflag": "GIVEN-CLOCK", "not": true}],
+         "text": "Tace takes a small resting clock down from the shelf and blows the dust from its face. 'By old custom, every new keeper winds one clock of their own, the first night they come. This one has been waiting for you.' They set it in your hands, warm from the shelf. 'Wind it when you're ready.'",
+         "do": [{"kind": "spawn_template", "template": "small-clock", "location_id": "@actor", "private": true},
+                {"kind": "set_pflag", "name": "GIVEN-CLOCK"}]},
+        {"label": "Wend", "aliases": ["wend", "your teacher", "the old clockmaker"],
+         "variants": [
+           "Tace's fingers pause on a hairspring. 'Wend built the great clock and taught me everything I know about patience. Most of what I know about kindness too.' They go back to the work.",
+           "'Wend,' Tace says, and the word sits in the air a moment. 'Wend used to say a lost hour isn't a failing. It's just an hour someone couldn't carry.'"
+         ]},
+        {"label": "Bell", "aliases": ["bell", "the lamplighter"],
+         "text": "Tace's mouth softens. 'Bell lights every lantern in the square at dusk and talks to each one. Never seen a dawn in their life. I worry about that more than they'd like.'"},
+        {"label": "the loft", "aliases": ["loft", "resting clocks", "these clocks"],
+         "text": "Tace waves a hand at the shelves. 'Resting clocks. They keep their own hours, none of them right, all of them honest. You may wind them, if you like.'"}
+      ],
+      "drift_pools": {
+        "wistful": [
+          "Tace winds a small clock that doesn't need it, slow and careful, just for the company of the sound.",
+          "Tace looks up at where the great clock's hands would be and lets a long breath go somewhere quieter.",
+          "Tace lines three tiny screws along the bench edge, straightens them once, and lets them be."
+        ],
+        "gladdened": [
+          "Tace polishes an old escapement wheel until it catches the lamplight, humming almost too softly to hear.",
+          "Tace holds a mended pocket-watch to one ear and smiles at the small even tick inside it.",
+          "Tace tidies the bench with light hands, the way weather clears."
+        ],
+        "default": [
+          "Tace pushes their spectacles up into their hair and considers the workbench like a chessboard.",
+          "Tace warms both hands around a cooling cup of tea and lets the loft's hush settle.",
+          "Tace oils a hinge no bigger than a fingernail, and tests it twice."
+        ]
+      }
+    }
+  }
+}

@@ -22,6 +22,21 @@ Authoring sugar expanded here (the loader never sees it):
         -> stripped into <name>/oracle_map.json (the differential oracle's
            id <-> original-name mapping; never shipped in the envelope)
 
+Story worlds (SPEC 2026-09-26) split further: part files live under
+`regions/`, `cast/`, `arcs/`, and `minutes/` (merged in that order, files in
+name order) and may carry, beyond rooms/toons/things:
+
+    list sections   rules, storylets, collectibles        appended
+    dict sections   arcs, facts, pages, verbs, fuses,     merged (a key
+                    daemons                               defined twice fails)
+    name lists      flags, player_flags, player_counters  unioned in order
+    cast            {toon id: {voice?, topics?, schedule?, schedule_text?,
+                    drift_pools?}}
+                    merged into that toon's properties (a key the toon
+                    already sets fails), so voice sheets are authored apart
+
+The oracle map is written only for worlds that name original objects.
+
 Usage: tools/assemble_world.py [--source worlds/zork1] [--check]
     --check: assemble to memory and diff against the committed envelope
              (exit 1 on drift) instead of writing.
@@ -78,6 +93,13 @@ def _expand_toon(toon: dict, oracle_toons: dict) -> dict:
     return out
 
 
+PART_DIRS = ("regions", "cast", "arcs", "minutes")
+_LIST_SECTIONS = ("rules", "storylets", "collectibles")
+_DICT_SECTIONS = ("arcs", "facts", "pages", "verbs", "fuses", "daemons")
+_NAME_SECTIONS = ("flags", "player_flags", "player_counters")
+_CAST_KEYS = ("voice", "topics", "schedule", "schedule_text", "drift_pools")
+
+
 def assemble(source: Path) -> tuple[dict, dict]:
     """Returns (envelope, oracle_map)."""
     world_path = source / "world.json"
@@ -91,26 +113,62 @@ def assemble(source: Path) -> tuple[dict, dict]:
     rooms: list = []
     toons: list = []
     things: list = []
+    cast: dict = {}
     oracle = {"rooms": {}, "toons": {}, "things": {}}
-    region_dir = source / "regions"
-    region_files = sorted(region_dir.glob("*.json"))
-    if not region_files:
-        raise SystemExit(f"no region files under {region_dir}")
-    for rf in region_files:
-        region = json.loads(rf.read_text())
-        unknown = set(region) - {"rooms", "toons", "things", "comment"}
+    part_files = [f for d in PART_DIRS for f in sorted((source / d).glob("*.json"))]
+    if not part_files:
+        raise SystemExit(f"no region files under {source / 'regions'}")
+    allowed = {"rooms", "toons", "things", "comment", "cast",
+               *_LIST_SECTIONS, *_DICT_SECTIONS, *_NAME_SECTIONS}
+    for rf in part_files:
+        part = json.loads(rf.read_text())
+        unknown = set(part) - allowed
         if unknown:
             raise SystemExit(f"{rf}: unknown section(s) {sorted(unknown)}")
-        for r in region.get("rooms", []):
+        for r in part.get("rooms", []):
             rooms.append(_expand_room(r, oracle["rooms"]))
-        for t in region.get("toons", []):
+        for t in part.get("toons", []):
             toons.append(_expand_toon(t, oracle["toons"]))
-        for th in region.get("things", []):
+        for th in part.get("things", []):
             things.append(_expand_thing(th, oracle["things"]))
+        for sec in _LIST_SECTIONS:
+            if sec in part:
+                env.setdefault(sec, []).extend(part[sec])
+        for sec in _DICT_SECTIONS:
+            for k, v in (part.get(sec) or {}).items():
+                target = env.setdefault(sec, {})
+                if k in target:
+                    raise SystemExit(f"{rf}: {sec}.{k} is defined twice")
+                target[k] = v
+        for sec in _NAME_SECTIONS:
+            for name in part.get(sec) or []:
+                names = env.setdefault(sec, [])
+                if name not in names:
+                    names.append(name)
+        for tid, spec in (part.get("cast") or {}).items():
+            if tid in cast:
+                raise SystemExit(f"{rf}: cast.{tid} is defined twice")
+            cast[tid] = spec
+    by_id = {t.get("id"): t for t in toons}
+    for tid, spec in cast.items():
+        toon = by_id.get(tid)
+        if toon is None:
+            raise SystemExit(f"cast.{tid}: no such toon in regions/")
+        props = toon.setdefault("properties", {})
+        for k, v in spec.items():
+            if k not in _CAST_KEYS:
+                raise SystemExit(f"cast.{tid}: unknown key {k!r}")
+            if k in props:
+                raise SystemExit(f"cast.{tid}.{k}: the toon already sets it")
+            props[k] = v
     env["rooms"] = rooms
     env["toons"] = toons
     env["things"] = things
     return env, oracle
+
+
+def _has_oracle(oracle: dict) -> bool:
+    return any(oracle.get(k) for k in ("rooms", "toons", "things"))
 
 
 def _dump(data: dict) -> str:
@@ -138,7 +196,9 @@ def main(argv: list[str]) -> int:
         if not output.exists() or output.read_text() != env_text:
             print(f"DRIFT: {output} does not match a re-assembly", file=sys.stderr)
             drift = True
-        if not oracle_path.exists() or oracle_path.read_text() != oracle_text:
+        wants_oracle = _has_oracle(oracle) or oracle_path.exists()
+        if wants_oracle and (not oracle_path.exists()
+                             or oracle_path.read_text() != oracle_text):
             print(f"DRIFT: {oracle_path} does not match a re-assembly", file=sys.stderr)
             drift = True
         if drift:
@@ -149,9 +209,12 @@ def main(argv: list[str]) -> int:
         return 0
 
     output.write_text(env_text)
-    oracle_path.write_text(oracle_text)
+    extra = ""
+    if _has_oracle(oracle) or oracle_path.exists():
+        oracle_path.write_text(oracle_text)
+        extra = f" + {oracle_path}"
     print(f"wrote {output} ({len(env['rooms'])} rooms, {len(env['toons'])} toons, "
-          f"{len(env['things'])} things) + {oracle_path}")
+          f"{len(env['things'])} things){extra}")
     return 0
 
 

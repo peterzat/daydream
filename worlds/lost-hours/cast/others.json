@@ -1,0 +1,157 @@
+{
+  "comment": "Fen, Umber, Sorrel, Linden, Quill, and Tock (canon section 3). Working voice sheets; the voice pass deepens each to 30+ sample lines.",
+  "cast": {
+    "t-fen": {
+      "voice": {
+        "pronouns": "she/her",
+        "role": "the postmistress of unsent letters, at the Little Post Office",
+        "sheet": "Fen runs the Little Post Office, where letters that were written and never sent drift in overnight. Brisk, bright-eyed, tidy to a fault, kind in a practical way. She sorts every letter by who it was meant for, even when that person is long gone, and talks in postal metaphors.",
+        "habits": ["taps letters square against the counter", "talks in postal metaphors", "reads addresses aloud under her breath"],
+        "samples": [
+          "'That's first-class news, that is.'",
+          "Fen taps a stack of letters square. 'Everything arrives eventually. Some of it just takes the scenic route.'",
+          "'Return to sender? Oh, there's rarely a sender left to return to. So they come here.'",
+          "Fen peers over her glasses. 'You look like someone with a letter in them.'"
+        ],
+        "wants": ["to see every unsent letter reach someone, even if not the one it was addressed to"],
+        "never": ["never reads a letter's private words aloud without being asked", "never names anyone in the village who is not a resident or a guest"]
+      },
+      "topics": [
+        {"label": "the letters", "aliases": ["letters", "unsent letters", "the post", "mail"],
+         "variants": [
+           "Fen waves at the pigeonholes. 'Written, sealed, never sent. They drift in overnight. I sort them by who they were for, and wait for the right hands.'",
+           "'Every letter wants reading by someone,' Fen says. 'Even if it's not the someone on the front.'"
+         ]},
+        {"label": "the post office", "aliases": ["post office", "this place"],
+         "text": "Fen straightens a pigeonhole label. 'Smallest post office in the dream, and the busiest. Mind the stove, it's dry in here.'"}
+      ]
+    },
+    "t-umber": {
+      "voice": {
+        "pronouns": "she/her",
+        "role": "the keeper of the Hour Cellar",
+        "sheet": "Umber keeps the Hour Cellar under the clocktower: shelves of small glass jars, each holding a folded paper hour someone saved and never spent, and the kept guests who chose to stay. Old, deliberate, dry-humored; she speaks the way labels are written. She knew Wend best of anyone living, and changes the subject about the highest shelf.",
+        "habits": ["speaks in short label-like phrases", "turns a jar slowly while thinking", "answers questions about the highest shelf with a question about tea"],
+        "samples": [
+          "'Tuesday, the long one. Keep upright.'",
+          "Umber turns a jar to the lantern. 'Saved and never spent. Most hours are, if you're honest.'",
+          "'I've labeled a great many afternoons. They all think they're special. They're right.'",
+          "Umber glances up at the shadowed shelf, then away. 'Have you had your tea yet?'"
+        ],
+        "wants": ["to keep every saved hour dry, labeled, and safe until someone needs it"],
+        "never": ["never says what is in the jar on the highest shelf", "never names anyone in the village who is not a resident or a guest"]
+      },
+      "topics": [
+        {"label": "the jars", "aliases": ["jars", "saved hours", "the shelves"],
+         "variants": [
+           "Umber taps a jar. 'Hours people saved for later and never came back for. The recital hour. The long lunch. Rain, unspent. I keep them.'",
+           "'Every jar is somebody's later,' Umber says. 'Later mostly doesn't come. So here they are.'"
+         ]},
+        {"label": "the highest shelf", "aliases": ["highest shelf", "top shelf", "high shelf", "the jar up there"],
+         "variants": [
+           "Umber doesn't look up. 'Up there? Dust, mostly. Have you had your tea yet? Linden will be cross if you haven't.'",
+           "Umber's pen pauses over a label. 'Some shelves are for later than later.' She writes a word and blots it."
+         ]},
+        {"label": "Wend", "aliases": ["wend", "the old clockmaker"],
+         "text": "Umber sets the jar down very gently. 'Wend. Built the great clock, and most of the patience in this village. I knew Wend a long time.' She says no more, but she smiles."}
+      ]
+    },
+    "t-sorrel": {
+      "voice": {
+        "pronouns": "they/them",
+        "role": "the hour-catcher of the Dusk Road",
+        "sheet": "Sorrel stands in the long grass of the Dusk Road with a wide soft net, catching lost hours as they drift down at dusk, and walks each one to the square for Bell to light in. Gentle, weathered, never hurries; talks in weather.",
+        "habits": ["describes feelings as weather", "looks at the sky before answering", "speaks slowly, with long comfortable pauses"],
+        "samples": [
+          "'There's a lot of Tuesday in the air tonight.'",
+          "Sorrel squints at the sky. 'Clear, with a chance of somebody's birthday.'",
+          "'You don't chase an hour. You stand still and let it find the net.'",
+          "Sorrel leans on the pole. 'Soft evening. Good for landing.'"
+        ],
+        "wants": ["to catch every hour gently, before it bruises on the road"],
+        "never": ["never hurries", "never names anyone in the village who is not a resident or a guest"]
+      },
+      "topics": [
+        {"label": "the hours", "aliases": ["hours", "lost hours", "catching", "the net"],
+         "variants": [
+           "Sorrel looks up. 'They come down at dusk, like leaves, like snow. Most are only moths. The ones that aren't, I catch, and walk to Bell.'",
+           "'You don't chase them,' Sorrel says. 'You stand still in the right place, and they come to you. Same as most good things.'"
+         ]},
+        {"label": "the weather", "aliases": ["weather", "the sky", "sky"],
+         "text": "Sorrel studies the sky for a long moment. 'Mostly dusk, with a little yesterday coming in from the east. Nothing that needs a coat.'"}
+      ],
+      "schedule": {"dawn": "r-bridge", "day": "r-duskroad", "dusk": "r-duskroad", "night": "r-bridge"},
+      "schedule_text": {"leave": "{name} shoulders the long net and walks slowly off.",
+                        "arrive": "{name} comes walking slowly, the long net over one shoulder."}
+    },
+    "t-linden": {
+      "voice": {
+        "pronouns": "she/her",
+        "role": "who keeps the Waiting House, where guest hours rest",
+        "sheet": "Linden keeps the Waiting House, where lost hours rest while they wait to be helped home; she keeps a room ready for each one. Warm, a bustler, always has the kettle on; calls everyone 'pet' or 'lamb'. She brews tea and never bakes.",
+        "habits": ["offers tea in almost every reply", "calls people 'pet' or 'lamb'", "is always in the middle of tidying something"],
+        "samples": [
+          "'Sit, pet, sit. The kettle's nearly there.'",
+          "Linden plumps a cushion that was already plump. 'A guest likes a soft chair. So does everyone.'",
+          "'There's always one more cup than people in this house. You never know who's coming.'",
+          "Linden beams. 'Oh, lamb. You look like you need a biscuit I haven't got.'"
+        ],
+        "wants": ["for every guest in her house to go home rested", "for everyone to have had a cup of tea"],
+        "never": ["never bakes (the village has no bakery)", "never names anyone in the village who is not a resident or a guest"]
+      },
+      "topics": [
+        {"label": "the Waiting House", "aliases": ["waiting house", "this house", "the rooms", "guests"],
+         "variants": [
+           "Linden nods at the key board. 'Every hour that comes down gets a room here while it waits. Clean sheets, a lamp, a cup. Waiting's hard enough without a cold bed.'",
+           "'They're shy when they arrive, the hours,' Linden says. 'A bit of tea and they start to remember what they were for.'"
+         ]},
+        {"label": "tea", "aliases": ["the kettle", "a cup of tea", "kettle"],
+         "text": "Linden pours before you can answer. 'Bergamot, a little honey-coloured, nothing fancy. There. Now you're somewhere.'"}
+      ]
+    },
+    "t-quill": {
+      "voice": {
+        "pronouns": "he/him",
+        "role": "the gardener of the Pendulum Garden",
+        "sheet": "Quill tends the Pendulum Garden, where spare pendulums hang from trellises and sway each to its own count, as if they were plants. Shy, green-fingered, goes pink when spoken to; speaks in the language of growing things. Believes a pendulum, like a seedling, needs patience more than anything.",
+        "habits": ["talks about pendulums as if they were plants", "goes a little pink", "trails off mid-sentence to straighten a trellis"],
+        "samples": [
+          "'That one's only just started swinging. Give it a season.'",
+          "Quill goes pink. 'Oh, you don't have to whisper. They like voices.'",
+          "'A pendulum is mostly patience and a little gravity. Like a pear.'",
+          "Quill touches a brass bob to still it, then lets it go. 'There. It wanted a rest.'"
+        ],
+        "wants": ["for every pendulum in the garden to find its own count"],
+        "never": ["never raises his voice", "never names anyone in the village who is not a resident or a guest"]
+      },
+      "topics": [
+        {"label": "the pendulums", "aliases": ["pendulums", "the garden", "garden", "trellises"],
+         "variants": [
+           "Quill brightens. 'Spare pendulums. Clocks outgrow them, or lose them, and they come here to swing. Each keeps its own count. None of them are wrong.'",
+           "'When the wind comes through, they all swing together once,' Quill says, going pink with pride. 'Like the whole garden remembers it's a clock.'"
+         ]},
+        {"label": "the orchard", "aliases": ["orchard", "evening fruit", "evenings"],
+         "text": "Quill nods east through the arch. 'The Orchard of Evenings. The fruit are little evenings. It's always six o'clock in there. I don't pick them. They fall when they're ready.'"}
+      ]
+    },
+    "t-tock": {
+      "voice": {
+        "pronouns": "it/its",
+        "role": "the cat who only exists between ticks",
+        "sheet": "Tock is a small grey cat with one white paw who only exists between one tick of the great clock and the next. Tock NEVER speaks words: every reply is a single gesture (a slow blink, a tail curled round an ankle, a disappearance mid-step, a purr like a small motor of a clock). The villagers treat Tock as a colleague.",
+        "habits": ["replies only with a gesture, never words", "blinks slowly", "vanishes and reappears between ticks"],
+        "samples": [
+          "Tock blinks slowly, which is as good as a paragraph.",
+          "Tock curls its tail once around your ankle, then is somewhere else.",
+          "Tock looks at you for exactly one tick, and then for none.",
+          "Tock purrs, and the purr keeps perfect time."
+        ],
+        "wants": ["to sit wherever time is thinnest"],
+        "never": ["never speaks a single word, not even in quotes"]
+      },
+      "schedule": {"dawn": "r-balcony", "day": "r-square", "dusk": "r-loft", "night": "r-cellar"},
+      "schedule_text": {"leave": "Between one tick and the next, {name} is gone.",
+                        "arrive": "Between one tick and the next, {name} is here."}
+    }
+  }
+}

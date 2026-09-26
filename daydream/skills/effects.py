@@ -1015,6 +1015,12 @@ def _apply_spawn_template(eff: dict, *, actor_id: str, room_id: str, world_id: s
     spawn["location_id"] = eff.get("location_id", room_id)
     if isinstance(eff.get("generated_by"), str):
         spawn["generated_by"] = eff["generated_by"]
+    if eff.get("private") and actor_id:
+        # A private copy (a newcomer's own small clock): visible and in scope
+        # for the actor only (objects.private_to).
+        props = dict(spawn.get("properties") or {})
+        props["private_to"] = actor_id
+        spawn["properties"] = props
     return _apply_spawn_object(spawn, actor_id=actor_id, room_id=room_id,
                                world_id=world_id)
 

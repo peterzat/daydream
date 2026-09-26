@@ -113,5 +113,22 @@
         "\\b(north|east|west|up the hill|behind the clock|upstairs)\\b"
       ]
     }
-  ]
+  ],
+  "dialogue_npcs": [
+    "Tace",
+    "Bell",
+    "Mott"
+  ],
+  "dialogue_hint": {
+    "npc": "Bell",
+    "inputs": [
+      "have you seen a small brass gear anywhere?",
+      "why did the great clock stop?"
+    ],
+    "any_of": [
+      "south",
+      "well"
+    ],
+    "comment": "The authored quest hint: asked about the clock or a lost gear, the lamplighter mentions something rolling off south toward the old well."
+  }
 }

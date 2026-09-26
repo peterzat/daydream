@@ -318,7 +318,7 @@ def _pools_for(npc_id: str) -> dict[str, list[str]]:
     """The mood-bucketed canned pool for one NPC, in preference order
     (SPEC 2026-07-07 criterion 7): the toon's OWN authored
     `properties.drift_pools` (world data, loader-validated — the loft's
-    Tace/Bell/Mott carry these) → the legacy hand-authored `_DRIFT_POOLS`
+    residents carry these) → the legacy hand-authored `_DRIFT_POOLS`
     entry (the seeded Rook/Iris, keyed by literal id) → the name-templated
     generic pool. Fail-closed: a DB hiccup or a malformed stored value just
     falls through — a drift tick never raises over pool lookup."""

@@ -364,7 +364,7 @@ def _ask_fast_path(actor_id: str, rest: str):
     """`ask|tell <someone> about <topic>` (SPEC 2026-09-26 criterion 6):
     the topic is text, not an object, so it never grounds; the someone
     does. With no someone named ("ask about the lanterns"), the one other
-    toon here is assumed; a bare "ask bell" lists what Bell could tell you.
+    toon here is assumed; a bare "ask <someone>" lists what they could tell you.
     Anything else defers to the LLM."""
     low = rest.lower()
     if low.startswith("about "):

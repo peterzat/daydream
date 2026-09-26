@@ -1,0 +1,64 @@
+{
+  "comment": "The Lantern Square and what opens off it: the Old Workshop, the Mossy Well-Court, the Pendulum Garden, the Orchard of Evenings.",
+  "rooms": [
+    {"id": "r-square", "slug": "square", "title": "The Lantern Square",
+     "seed": "a small village square at dusk, paper lanterns hung on crooked poles coming up one by one in warm pools of light, moths turning slow above the cobbles, the stones still holding the last of the day's heat",
+     "description": "Paper lanterns hang from crooked poles all around the little square, each in its own warm pool of light, and moths turn slow above the cobbles. The stones still hold the last of the day's heat. The clocktower rises to the west; the Old Workshop is north, the well-court south, and Lamplight Lane winds away east.",
+     "exits": {"west": "r-clocktower", "north": "r-workshop", "south": "r-well", "east": "r-lane"},
+     "rules": [
+       {"on": "listen", "do": [{"kind": "narrate", "to": "@actor", "variants": [
+         "You listen. A lantern hisses softly as its wick settles, and a moth taps once against the paper.",
+         "You listen to the square: the creak of a lantern pole, a door somewhere down the lane, the warm stones cooling.",
+         "You listen, and hear the faint papery rustle of all the lanterns breathing together.",
+         "You listen. Somewhere up in the tower the great clock murmurs, and the square seems to hold still to hear it."
+       ]}]}
+     ]},
+    {"id": "r-workshop", "slug": "workshop", "title": "The Old Workshop",
+     "seed": "a dim old workshop just off a village square, curls of brass and cedar shavings soft underfoot, a broom leaned patient in the corner, one long blade of slant light through a shutter",
+     "description": "Curls of brass and cedar shavings lie soft underfoot, and one long blade of slant light falls through a shutter. A broom leans patient in the corner. On a shelf by the door sits a battered tin that rattles, now and then, with small found things. The square is south.",
+     "exits": {"south": "r-square"}},
+    {"id": "r-well", "slug": "well", "title": "The Mossy Well-Court",
+     "seed": "a quiet well-court at the edge of a village, the old stone well cool and green with moss, ferns nodding at its foot, a hush broken now and then by a far, slow drip of water",
+     "description": "The old stone well stands cool and green with moss, ferns nodding at its foot. A hush lies over the court, broken now and then by a far, slow drip of water somewhere down in the dark. The square is north; a gate in the south wall opens onto a garden where something sways.",
+     "exits": {"north": "r-square", "south": "r-garden"},
+     "rules": [
+       {"on": "listen", "do": [{"kind": "narrate", "to": "@actor", "variants": [
+         "You lean and listen at the mouth of the well. Cool stone, moss, and far below a single drop falling, falling, and landing like a word.",
+         "You listen at the well. The echo of your own breath comes back softer, as if the well is being polite.",
+         "You listen. Down in the dark the water keeps its own slow time, one drip to every three of your heartbeats.",
+         "You listen at the well's edge, and for a moment the drip sounds exactly like a clock that has almost remembered how to tick."
+       ]}]}
+     ]},
+    {"id": "r-garden", "slug": "garden", "title": "The Pendulum Garden",
+     "seed": "a narrow walled garden where spare pendulums hang from trellises like wind-chimes, brass and silver, each swaying to its own slow count above soft moss",
+     "description": "Pendulums hang from every trellis, brass bob and silver, each swinging to its own patient count. The moss underfoot has learned its stillness from them. When a breeze comes through, the whole garden ticks once, all together, like a great clock remembering itself. The well-court is north; a low arch leads east into an orchard.",
+     "exits": {"north": "r-well", "east": "r-orchard"}},
+    {"id": "r-orchard", "slug": "orchard", "title": "The Orchard of Evenings",
+     "seed": "a small orchard of crooked old trees whose round fruit glow softly like tiny lamplit evenings, the light there always six o'clock gold, long shadows on the grass",
+     "description": "Crooked old trees stand in a loose ring, and their round fruit glow softly, each one a small lamplit evening. Here it is always six o'clock: the light is gold and low, the shadows long and kind. The garden is back through the arch to the west.",
+     "exits": {"west": "r-garden"}}
+  ],
+  "things": [
+    {"id": "o-paper-lantern", "name": "paper lantern", "location": {"room": "r-square"},
+     "seed": "a paper lantern on a hooked pole, its small flame warm and steady against the deepening blue",
+     "aliases": ["lantern"]},
+    {"id": "o-tin", "name": "Mott's tin", "location": {"room": "r-workshop"}, "fixture": true,
+     "seed": "a battered tea tin, its paint worn to the metal at the corners; inside, when Mott lets you look, a button, a bent key, a thimble, a stub of blue chalk, and something folded very small that he keeps his thumb over",
+     "aliases": ["tin", "oddment tin", "tin of oddments", "battered tin"]},
+    {"id": "o-broom", "name": "broom", "location": {"room": "r-workshop"}, "fixture": true,
+     "seed": "Mott's soft broom, worn to a comfortable angle, its bristles holding a few bright specks that might be dust or might be minutes",
+     "aliases": ["soft broom"]},
+    {"id": "o-escapement-gear", "name": "escapement gear", "location": {"room": "r-well"},
+     "seed": "a small brass gear resting in the moss at the well's foot, its fine teeth flecked with green, cool from the shadow but sound and whole",
+     "aliases": ["gear", "escapement", "brass gear"]},
+    {"id": "o-old-well", "name": "old well", "location": {"room": "r-well"}, "fixture": true,
+     "seed": "a round stone well cool with moss, its rope long gone; far down, the water keeps its own slow time",
+     "aliases": ["well", "stone well"]},
+    {"id": "o-trellis", "name": "trellises", "location": {"room": "r-garden"}, "fixture": true,
+     "seed": "wooden trellises hung with pendulums of every size, from a thimble on a thread to a brass bob as big as a plum, all swinging out of step",
+     "aliases": ["trellis", "pendulums"]},
+    {"id": "o-evening-fruit", "name": "evening fruit", "location": {"room": "r-orchard"}, "fixture": true,
+     "seed": "round fruit hanging low, each glowing like a lit window seen from far away; hold your hand near one and it is warm as a teacup",
+     "aliases": ["fruit", "evenings", "glowing fruit"]}
+  ]
+}

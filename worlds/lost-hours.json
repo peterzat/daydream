@@ -1,0 +1,2895 @@
+{
+  "comment": "The Village of Lost Hours (SPEC 2026-09-26). Top-level world config; rooms/toons/things live in regions/, voice sheets in cast/, arcs in arcs/, stray minutes in minutes/, walkthroughs in walkthroughs/. Canon: docs/canon/LOST-HOURS.md. Assemble with: tools/assemble_world.py --source worlds/lost-hours",
+  "format": 2,
+  "world": {
+    "name": "The Village of Lost Hours",
+    "slug": "lost-hours",
+    "aesthetic_seed": "a small clockmaker's village at the bottom of a dream, at dusk; warm lantern-light on brass and old oak, moss in the seams of stone, paper lanterns, soft watercolor edges, the gentle mystery of lost hours drifting down like leaves",
+    "rng_seed": "lost-hours-1"
+  },
+  "start_room": "r-clocktower",
+  "flags": [
+    "CLOCK-STARTED"
+  ],
+  "player_flags": [
+    "GIVEN-CLOCK",
+    "WOUND",
+    "MET-BOOK"
+  ],
+  "player_counters": [],
+  "time": {
+    "tz": "America/Los_Angeles",
+    "start_flag": "CLOCK-STARTED",
+    "phases": {
+      "dawn": "06:00",
+      "day": "08:00",
+      "dusk": "18:00",
+      "night": "21:30"
+    },
+    "catch_up_days": 7,
+    "labels": {
+      "dawn": "dawn",
+      "day": "day",
+      "dusk": "dusk",
+      "night": "night"
+    }
+  },
+  "config": {
+    "director": {
+      "max_open_guests": 2,
+      "event_minutes": 40
+    },
+    "relationship_tiers": [
+      {
+        "min": 0,
+        "label": "a newcomer to them"
+      },
+      {
+        "min": 2,
+        "label": "someone they've begun to know"
+      },
+      {
+        "min": 5,
+        "label": "a friend"
+      },
+      {
+        "min": 9,
+        "label": "a dear friend"
+      }
+    ],
+    "collect": {
+      "per_day": 2,
+      "rooms": [
+        "r-clocktower",
+        "r-loft",
+        "r-balcony",
+        "r-cellar",
+        "r-square",
+        "r-workshop",
+        "r-well",
+        "r-garden",
+        "r-orchard",
+        "r-lane",
+        "r-post",
+        "r-waiting",
+        "r-lamphouse",
+        "r-bridge",
+        "r-river",
+        "r-duskroad",
+        "r-hill"
+      ],
+      "name": "stray minute",
+      "aliases": [
+        "minute",
+        "glint",
+        "stray"
+      ],
+      "seed": "a stray minute: a tiny flicker of light no bigger than a moth's wing, turning slowly in the air as if it can't quite remember where it was going",
+      "found_text": "You cup the stray minute in your hands, and it settles: {name}. It was {text}. It slips into your Book of Stray Minutes.",
+      "book_title": "The Book of Stray Minutes",
+      "requires_time": true
+    },
+    "templates": {
+      "dreamseed": {
+        "name": "dreamseed",
+        "seed": "a seed like a tiny folded paper lantern, warm in the palm, with a light inside that beats as slow as a resting clock",
+        "aliases": [
+          "seed",
+          "dream seed"
+        ],
+        "verbs": [
+          "plant"
+        ],
+        "properties": {
+          "growth": {
+            "question": "Where does the new way lead?",
+            "theme": [
+              "a clockmaker's village at the bottom of a dream, at dusk",
+              "lost hours, kept and mended with patience",
+              "small rooms that hold one gentle purpose",
+              "quiet places where time can rest"
+            ],
+            "palette": "warm lantern amber over deepening dusk blue; brass, old oak, moss-green; soft watercolor edges",
+            "motifs": [
+              "small resting clocks",
+              "paper lanterns coming alight",
+              "worn brass, gently polished",
+              "moss in the seams of old stone",
+              "the hush between one tick and the next",
+              "things folded, kept, and labeled in a careful hand"
+            ],
+            "exemplars": [
+              {
+                "title": "The Stair of Small Clocks",
+                "seed": "a narrow wooden stair where a small clock sits on every step, each ticking to its own slow count under a round window of dusk",
+                "description": "A small clock waits on every step, and no two agree on the time. Climbing feels like walking up through a gentle argument. At the top, a round window holds the dusk like a cup holds tea."
+              },
+              {
+                "title": "The Room Where Letters Dry",
+                "seed": "a warm attic room strung with lines of pale ribbon, where rain-softened letters hang drying by a small iron stove",
+                "description": "Letters hang from ribbons like washing, drying slowly by the stove. Their ink has run a little in the rain, so every word looks as if it is still deciding what to say. The room smells of paper and warm iron."
+              },
+              {
+                "title": "The Moth Library",
+                "seed": "a round library lit by one lantern, where soft grey moths rest on the spines of tiny books about the hours they once circled",
+                "description": "The shelves are no taller than a child, and every book is small enough to hold in one hand. Moths rest on the spines like bookmarks. When the lantern flickers they lift all at once, and settle again, each on the book it loves."
+              }
+            ],
+            "husk_text": "the spent, papery shell of a dreamseed, cool in the hand now, its slow light gone quiet; its dreaming is done, and the place around it is what the dreaming became",
+            "propagation": {
+              "chance": 0.35,
+              "max_generation": 2,
+              "seed_text": "a new dreamseed, paper-lantern thin and barely warm, its slow light only just learning to beat"
+            },
+            "first_planting_text": "Far off in the tower, the great clock gives one soft, deliberate tick. The dream has more room in it than it did a breath ago, and it was your hands that made the room. Down in the square, a lantern comes alight early, the way a house does when someone dear is coming home."
+          }
+        }
+      },
+      "small-clock": {
+        "name": "small clock",
+        "seed": "a small resting clock no bigger than a teacup, brass gone soft with handling, its hands stopped at a quiet hour; by custom it is yours alone to wind",
+        "aliases": [
+          "clock",
+          "my clock",
+          "your clock",
+          "own clock",
+          "little clock"
+        ],
+        "verbs": [
+          "wind"
+        ],
+        "properties": {
+          "windable": true,
+          "own_clock": true
+        }
+      }
+    },
+    "under_construction": true
+  },
+  "verbs": {
+    "wind": {
+      "ui_hint": "Wind",
+      "description": "Wind a clock. Target: the clock.",
+      "needs_dobj": true,
+      "valid_dobj_kinds": [
+        "thing"
+      ],
+      "dobj_default": {
+        "key": "windable",
+        "eq": true
+      },
+      "fail_text": "There's nothing here that winds."
+    },
+    "listen": {
+      "ui_hint": "Listen",
+      "description": "Stop and listen to this place.",
+      "needs_dobj": false,
+      "fail_text": "You listen. The dream is quiet here, in a friendly way."
+    },
+    "sing": {
+      "ui_hint": "Sing",
+      "description": "Sing a little, softly.",
+      "needs_dobj": false,
+      "fail_text": "You hum a few notes; the evening seems to lean in to listen."
+    }
+  },
+  "rules": [
+    {
+      "on": "listen",
+      "do": [
+        {
+          "kind": "narrate",
+          "to": "@actor",
+          "variants": [
+            "You stand still and listen. Somewhere a clock ticks, and somewhere else another answers it, not quite in time.",
+            "You listen. Far off, a lantern hisses softly as its wick settles, and a moth taps once against paper.",
+            "You listen to the village breathe: a door, a kettle, the long hush of moss growing in the seams of stone.",
+            "You listen, and for a moment you could swear the air itself is ticking, very slowly, like a sleeping clock."
+          ]
+        }
+      ]
+    },
+    {
+      "on": "read",
+      "after": true,
+      "if": [
+        {
+          "dobj": "o-repair-ledger"
+        },
+        {
+          "arc": "prologue"
+        }
+      ],
+      "stop": false,
+      "do": [
+        {
+          "kind": "advance_beat",
+          "arc": "prologue",
+          "beat": "read-ledger"
+        }
+      ]
+    },
+    {
+      "on": "take",
+      "after": true,
+      "if": [
+        {
+          "dobj": "o-escapement-gear"
+        },
+        {
+          "arc": "prologue"
+        }
+      ],
+      "do": [
+        {
+          "kind": "advance_beat",
+          "arc": "prologue",
+          "beat": "found-gear"
+        }
+      ]
+    },
+    {
+      "on": "give",
+      "after": true,
+      "if": [
+        {
+          "dobj": "o-escapement-gear"
+        },
+        {
+          "iobj": "t-tace"
+        }
+      ],
+      "do": [
+        {
+          "kind": "advance_beat",
+          "arc": "prologue",
+          "beat": "gave-gear"
+        },
+        {
+          "kind": "adjust_rel",
+          "npc": "t-tace",
+          "delta": 3
+        },
+        {
+          "kind": "add_fact",
+          "id": "gave-gear",
+          "text": "{actor} carried the escapement gear home to Tace.",
+          "known_by": [
+            "t-tace"
+          ],
+          "spread": [
+            {
+              "to": [
+                "t-bell",
+                "t-mott",
+                "t-umber"
+              ],
+              "after_minutes": 20
+            },
+            {
+              "to": "all",
+              "after_minutes": 120
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "on": "use",
+      "after": true,
+      "if": [
+        {
+          "iobj": "o-clock-case"
+        },
+        {
+          "arc": "prologue"
+        }
+      ],
+      "do": [
+        {
+          "kind": "advance_beat",
+          "arc": "prologue",
+          "beat": "unlocked"
+        }
+      ]
+    },
+    {
+      "on": "open",
+      "after": true,
+      "if": [
+        {
+          "dobj": "o-clock-case"
+        },
+        {
+          "arc": "prologue"
+        },
+        {
+          "helpers": "prologue",
+          "gte": 2
+        }
+      ],
+      "do": [
+        {
+          "kind": "close_arc",
+          "arc": "prologue",
+          "ending": "mended-together"
+        }
+      ]
+    },
+    {
+      "on": "open",
+      "after": true,
+      "if": [
+        {
+          "dobj": "o-clock-case"
+        },
+        {
+          "arc": "prologue"
+        }
+      ],
+      "do": [
+        {
+          "kind": "close_arc",
+          "arc": "prologue",
+          "ending": "mended"
+        }
+      ]
+    },
+    {
+      "on": "wind",
+      "if": [
+        {
+          "prop": "own_clock",
+          "of": "@dobj"
+        },
+        {
+          "pflag": "WOUND",
+          "not": true
+        },
+        {
+          "present": "t-tace"
+        }
+      ],
+      "do": [
+        {
+          "kind": "narrate",
+          "text": "You turn the little key. The small clock hesitates, then begins to tick, soft and sure, a half-beat apart from every other clock on the shelf. Tace watches with their hands folded. 'There,' they say. 'Now there's an hour here that's yours. Bell will want to meet you, down in the square. And Mott keeps something for every new keeper, in the workshop.'"
+        },
+        {
+          "kind": "set_pflag",
+          "name": "WOUND"
+        },
+        {
+          "kind": "adjust_rel",
+          "npc": "t-tace",
+          "delta": 2
+        },
+        {
+          "kind": "add_fact",
+          "id": "first-winding",
+          "text": "{actor} wound their own small clock in the loft, by the old custom.",
+          "known_by": [
+            "t-tace"
+          ],
+          "spread": [
+            {
+              "to": "all",
+              "after_minutes": 60
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "on": "wind",
+      "if": [
+        {
+          "prop": "own_clock",
+          "of": "@dobj"
+        },
+        {
+          "pflag": "WOUND",
+          "not": true
+        }
+      ],
+      "do": [
+        {
+          "kind": "narrate",
+          "text": "You turn the little key. The small clock hesitates, then begins to tick, soft and sure, keeping an hour that is yours alone."
+        },
+        {
+          "kind": "set_pflag",
+          "name": "WOUND"
+        },
+        {
+          "kind": "add_fact",
+          "id": "first-winding",
+          "text": "{actor} wound their own small clock, by the old custom.",
+          "known_by": [
+            "t-tace"
+          ],
+          "spread": [
+            {
+              "to": "all",
+              "after_minutes": 60
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "on": "wind",
+      "if": [
+        {
+          "prop": "own_clock",
+          "of": "@dobj"
+        }
+      ],
+      "do": [
+        {
+          "kind": "narrate",
+          "to": "@actor",
+          "variants": [
+            "You give your small clock a quarter turn. It ticks on, pleased to be remembered.",
+            "Your small clock doesn't need winding, but it seems to like the attention.",
+            "You wind your clock and hold it to your ear. Its tick is the only one in the dream that is exactly yours."
+          ]
+        }
+      ]
+    },
+    {
+      "on": "give",
+      "after": true,
+      "if": [
+        {
+          "iobj": "t-pims-nap"
+        },
+        {
+          "prop": "hush",
+          "of": "@dobj"
+        }
+      ],
+      "do": [
+        {
+          "kind": "advance_beat",
+          "arc": "pim",
+          "beat": "hushed"
+        }
+      ]
+    },
+    {
+      "on": "give",
+      "if": [
+        {
+          "dobj": "o-brass-pendulum"
+        },
+        {
+          "iobj": "t-tace"
+        },
+        {
+          "beat": "pim/tace-lullaby"
+        },
+        {
+          "arc": "pim"
+        }
+      ],
+      "do": [
+        {
+          "kind": "move_object",
+          "object_id": "o-brass-pendulum",
+          "dest_id": "t-tace"
+        },
+        {
+          "kind": "narrate",
+          "text": "Tace takes the spare pendulum, fits it to a little walnut case from the shelf, and bends over the bench a long, quiet while. When they straighten, they hold out a small clock that ticks slower than any clock you have heard. 'A lullaby clock,' Tace says. 'Wind it where the little one can hear.'"
+        },
+        {
+          "kind": "spawn_object",
+          "name": "lullaby clock",
+          "location_id": "@actor",
+          "seed": "a small walnut clock with a slow brass pendulum, ticking so gently it sounds like someone humming just out of earshot",
+          "aliases": [
+            "lullaby",
+            "walnut clock"
+          ],
+          "verbs": [
+            "wind"
+          ],
+          "generated_by": "pim:lullaby",
+          "properties": {
+            "windable": true,
+            "lullaby": true
+          }
+        },
+        {
+          "kind": "advance_beat",
+          "arc": "pim",
+          "beat": "pendulum-given"
+        }
+      ]
+    },
+    {
+      "on": "wind",
+      "if": [
+        {
+          "prop": "lullaby",
+          "of": "@dobj"
+        },
+        {
+          "present": "t-pims-nap"
+        },
+        {
+          "beat": "pim/hushed"
+        },
+        {
+          "arc": "pim"
+        }
+      ],
+      "do": [
+        {
+          "kind": "close_arc",
+          "arc": "pim",
+          "ending": "home"
+        }
+      ]
+    },
+    {
+      "on": "wind",
+      "if": [
+        {
+          "prop": "lullaby",
+          "of": "@dobj"
+        },
+        {
+          "present": "t-pims-nap"
+        }
+      ],
+      "do": [
+        {
+          "kind": "narrate",
+          "text": "The lullaby clock ticks its slow, humming tick. The nap's eyes droop, then snap open again: it is still too noisy inside, somewhere. It needs the old quiet first."
+        }
+      ]
+    },
+    {
+      "on": "wind",
+      "if": [
+        {
+          "prop": "lullaby",
+          "of": "@dobj"
+        }
+      ],
+      "do": [
+        {
+          "kind": "narrate",
+          "to": "@actor",
+          "variants": [
+            "The lullaby clock ticks slow and soft, a lullaby with no one sleepy enough to hear it.",
+            "You wind the lullaby clock. It hums a tick so gentle you find yourself yawning."
+          ]
+        }
+      ]
+    }
+  ],
+  "fuses": {
+    "first-dusk": {
+      "turns": 2,
+      "do": [
+        {
+          "kind": "run_phase",
+          "phase": "dusk"
+        }
+      ]
+    }
+  },
+  "storylets": [
+    {
+      "id": "lanterns-lit",
+      "at": "dusk",
+      "always": true,
+      "room": "r-square",
+      "summary": "Bell lights the square's lanterns",
+      "variants": [
+        "Dusk comes down over the village. One by one the square's paper lanterns come alight, each in its own warm pool, as Bell works along the poles with the hooked wick.",
+        "The light goes gold, then blue. Bell climbs the little ladder and the lanterns bloom awake one after another, until the whole square glows like the inside of a teacup.",
+        "Dusk. Somewhere a door closes softly. Bell hums a note to each lantern before lighting it, and each lantern seems to hum back."
+      ]
+    },
+    {
+      "id": "hours-falling",
+      "at": "dusk",
+      "always": true,
+      "room": "r-duskroad",
+      "summary": "hours drift down on the Dusk Road",
+      "variants": [
+        "Small lights begin to drift down over the meadow like slow snow, and Sorrel walks among them with the long net held low.",
+        "The sky over the Dusk Road fills with tiny drifting lights. Most of them are only moths. A few are not.",
+        "Dusk on the Dusk Road: the grass goes silver, and the first lost hours of the evening come spinning softly down."
+      ]
+    },
+    {
+      "id": "dawn-hush",
+      "at": "dawn",
+      "always": true,
+      "room": "r-hill",
+      "summary": "the sky over the hill pales toward dawn",
+      "variants": [
+        "Over the hill the sky pales, very slowly, the way a thought comes back to you. Down in the village every lantern is out, and Bell is fast asleep.",
+        "Dawn edges up at the far rim of the sky, grey, then pearl, then the faintest rose. The bench on the hill faces it like an empty theater seat.",
+        "A cool wind comes over the hill with the dawn in it. Somewhere below, a single lantern Bell forgot goes on burning, small and brave."
+      ]
+    },
+    {
+      "id": "night-bridge",
+      "at": "night",
+      "always": true,
+      "room": "r-bridge",
+      "summary": "Sorrel settles on the bridge for the night",
+      "variants": [
+        "Night settles over the river. Sorrel leans the long net against the bridge rail and sits to watch the lantern-fish sway on the water.",
+        "It is night. The lanterns on the bridge burn low and steady, and the river carries their reflections away one at a time and brings them back."
+      ]
+    },
+    {
+      "id": "tock-appears",
+      "at": [
+        "day",
+        "dusk",
+        "night"
+      ],
+      "room": "r-square",
+      "summary": "Tock the cat appears between ticks in the square",
+      "text": "Between one tick of the great clock and the next, a small grey cat is sitting in the middle of the square, washing a white paw. By the next tick it is gone.",
+      "cooldown_days": 1
+    },
+    {
+      "id": "linden-kettle",
+      "at": [
+        "day",
+        "dusk"
+      ],
+      "room": "r-waiting",
+      "summary": "Linden's kettle sings and she sets out cups for guests",
+      "variants": [
+        "The kettle in the Waiting House begins to sing. Linden sets out one more cup than there are people, just in case.",
+        "Linden throws open the front window to air the room for whoever might arrive tonight, and the curtains breathe in and out."
+      ],
+      "cooldown_days": 1
+    },
+    {
+      "id": "quill-pendulums",
+      "at": [
+        "day",
+        "dusk"
+      ],
+      "room": "r-garden",
+      "summary": "a breeze sets the whole Pendulum Garden ticking together",
+      "text": "A breeze comes through the Pendulum Garden, and for one moment every pendulum swings together, tick, and the whole garden sounds like a great clock remembering itself.",
+      "cooldown_days": 2
+    },
+    {
+      "id": "fen-sorting",
+      "at": [
+        "day"
+      ],
+      "room": "r-post",
+      "summary": "Fen sorts the morning's unsent letters",
+      "text": "Fen sorts a fresh little heap of letters into the pigeonholes, reading each address under her breath: to my sister, to whoever finds this, to me, later.",
+      "cooldown_days": 1
+    },
+    {
+      "id": "umber-labels",
+      "at": [
+        "day",
+        "night"
+      ],
+      "room": "r-cellar",
+      "summary": "Umber labels a new jar in the cellar",
+      "text": "Umber writes a new label in her small square hand, reads it twice, and sets the jar on the shelf with the others: the afternoon it rained on the picnic, unspent.",
+      "cooldown_days": 2
+    },
+    {
+      "id": "orchard-evening",
+      "at": [
+        "day",
+        "dusk",
+        "night"
+      ],
+      "room": "r-orchard",
+      "summary": "an evening fruit ripens and falls softly in the orchard",
+      "text": "In the orchard an evening fruit ripens, glows a little brighter, and drops into the grass with a soft sound, like someone sitting down after a long day.",
+      "cooldown_days": 2
+    }
+  ],
+  "facts": {
+    "clock-stopped": {
+      "text": "The great clock stopped on the night of the first hard frost, a season ago.",
+      "known_by": "all"
+    },
+    "gear-south": {
+      "text": "The escapement gear, the small brass heart of the great clock, slipped its pin that night and rolled away south, toward the old well.",
+      "known_by": [
+        "t-tace",
+        "t-bell",
+        "t-umber"
+      ],
+      "if": [
+        {
+          "flag": "CLOCK-STARTED",
+          "not": true
+        }
+      ]
+    },
+    "bell-saw-gear": {
+      "text": "Bell saw something small and bright roll off south, down toward the old well, the night the clock stopped.",
+      "known_by": [
+        "t-bell"
+      ],
+      "if": [
+        {
+          "flag": "CLOCK-STARTED",
+          "not": true
+        }
+      ]
+    },
+    "key-custom": {
+      "text": "By long custom, the case-key goes to whoever carries the escapement gear home to Tace in the loft.",
+      "known_by": [
+        "t-tace",
+        "t-bell",
+        "t-mott",
+        "t-umber"
+      ],
+      "if": [
+        {
+          "flag": "CLOCK-STARTED",
+          "not": true
+        }
+      ]
+    },
+    "clock-mended": {
+      "text": "The great clock is ticking again, and the village keeps a real day now: dawn, day, dusk, and night, with lost hours arriving at dusk.",
+      "known_by": "all",
+      "if": [
+        {
+          "flag": "CLOCK-STARTED"
+        }
+      ]
+    },
+    "first-winding": {
+      "text": "By old custom every new keeper winds one small resting clock of their own; Tace keeps them in the loft for newcomers.",
+      "known_by": [
+        "t-tace",
+        "t-bell",
+        "t-mott",
+        "t-umber",
+        "t-linden"
+      ]
+    },
+    "the-book": {
+      "text": "Mott helps every dreamer keep a Book of Stray Minutes: the small lost minutes that glint around the village, a few each day for each dreamer.",
+      "known_by": [
+        "t-mott",
+        "t-bell",
+        "t-fen",
+        "t-linden"
+      ]
+    },
+    "residents": {
+      "text": "The village's people: Tace the clockmaker in the loft; Bell the lamplighter in the square; Mott the sweeper in the Old Workshop; Fen at the Little Post Office; Umber in the Hour Cellar; Sorrel on the Dusk Road; Linden at the Waiting House; Quill in the Pendulum Garden; and Tock the cat, who is wherever time is thin. There is no one else.",
+      "known_by": "all"
+    },
+    "places": {
+      "text": "The square is east of the clocktower; the Old Workshop is north of the square and the well-court south of it; the Pendulum Garden is south of the well, and the Orchard of Evenings east of the garden. Lamplight Lane runs east from the square to the post office (north), the Waiting House (east), and the Lantern Bridge (south); past the bridge are the Dusk Road and the Hill of Long Shadows.",
+      "known_by": "all"
+    },
+    "hours-arrive": {
+      "text": "Lost hours drift down onto the Dusk Road at dusk; Sorrel catches them and they come to rest in the square, then stay at the Waiting House while they are helped home.",
+      "known_by": "all",
+      "if": [
+        {
+          "flag": "CLOCK-STARTED"
+        }
+      ]
+    },
+    "bell-no-dawn": {
+      "text": "Bell lights every dusk and sleeps through every morning, and so has never once seen a dawn.",
+      "known_by": "all"
+    },
+    "mott-tin": {
+      "text": "Mott's tin holds small found things: a button, a bent key, a thimble, a stub of blue chalk, and one very small folded thing he keeps to himself. The escapement gear was never in it.",
+      "known_by": [
+        "t-mott",
+        "t-bell",
+        "t-tace"
+      ]
+    },
+    "wend": {
+      "text": "Wend was the old clockmaker who built the great clock and taught Tace, long ago.",
+      "known_by": [
+        "t-tace",
+        "t-umber",
+        "t-mott",
+        "t-sorrel"
+      ]
+    },
+    "no-shops": {
+      "text": "The village has no shops, and nobody here bakes bread, keeps bees, or runs a mill.",
+      "known_by": "all"
+    }
+  },
+  "arcs": {
+    "prologue": {
+      "title": "The Stopped Clock",
+      "kind": "village",
+      "opens": "start",
+      "summary": "The great clock stopped the night of the first hard frost. Find the escapement gear, bring it to Tace, and open the clock case: time begins again.",
+      "beats": {
+        "read-ledger": {
+          "hint": "the dreamer reads the repair ledger"
+        },
+        "found-gear": {
+          "hint": "the dreamer finds the escapement gear by the well"
+        },
+        "gave-gear": {
+          "hint": "the dreamer brings the gear home to Tace"
+        },
+        "unlocked": {
+          "hint": "the dreamer unlocks the clock case"
+        }
+      },
+      "endings": {
+        "mended-together": {
+          "summary": "mended by more than one dreamer",
+          "text": "Somewhere above, the great clock's hands begin to move, and the whole tower seems to breathe out. Everyone who helped feels it in their chest at once, like a held note finally sung.",
+          "ledger": "The great clock was mended by {helpers} together, and time began again in the village.",
+          "do": [
+            {
+              "kind": "start_time"
+            },
+            {
+              "kind": "spawn_template",
+              "template": "dreamseed",
+              "location_id": "@room",
+              "generated_by": "prologue:case"
+            },
+            {
+              "kind": "narrate",
+              "text": "Behind the swinging pendulum something small glows and drops softly to the floor of the case: a dreamseed, warm as a thank-you."
+            },
+            {
+              "kind": "start_fuse",
+              "name": "first-dusk"
+            },
+            {
+              "kind": "add_fact",
+              "id": "mended-clock",
+              "text": "{actor} opened the clock case, and the great clock ticks again.",
+              "known_by": "all"
+            }
+          ]
+        },
+        "mended": {
+          "summary": "mended by one dreamer",
+          "text": "Somewhere above, the great clock's hands begin to move, and the whole tower seems to breathe out.",
+          "ledger": "The great clock was mended by {helpers}, and time began again in the village.",
+          "do": [
+            {
+              "kind": "start_time"
+            },
+            {
+              "kind": "spawn_template",
+              "template": "dreamseed",
+              "location_id": "@room",
+              "generated_by": "prologue:case"
+            },
+            {
+              "kind": "narrate",
+              "text": "Behind the swinging pendulum something small glows and drops softly to the floor of the case: a dreamseed, warm as a thank-you."
+            },
+            {
+              "kind": "start_fuse",
+              "name": "first-dusk"
+            },
+            {
+              "kind": "add_fact",
+              "id": "mended-clock",
+              "text": "{actor} opened the clock case, and the great clock ticks again.",
+              "known_by": "all"
+            }
+          ]
+        }
+      }
+    },
+    "pim": {
+      "title": "Pim's Missing Nap",
+      "kind": "guest",
+      "guest": "t-pims-nap",
+      "summary": "A small yawning stranger: the nap a boy named Pim was too excited to take on his seventh birthday. It cannot settle without the quiet it came from.",
+      "arrival": {
+        "room": "r-square",
+        "first": true,
+        "text": "Down through the first dusk drifts something small and rumpled, turning slowly like a leaf. It lands on the cobbles by the nearest lantern, yawns so wide its whole body tilts, blinks up at the light, and cannot seem to settle."
+      },
+      "beats": {
+        "bell-notices": {
+          "npc": "t-bell",
+          "topic": "the yawning stranger",
+          "topic_aliases": [
+            "the stranger",
+            "stranger",
+            "the nap",
+            "yawning stranger",
+            "the yawning one",
+            "pim's nap"
+          ],
+          "hint": "the player asks Bell about the small yawning stranger",
+          "text": "Bell crouches beside the little yawning figure and lowers their voice. 'That one's a nap,' they whisper. 'A birthday nap, I'd guess, too excited to be taken. It'll want quiet, the old-fashioned kind. Mott keeps a hush in that tin of his, up in the workshop. And Tace could tell you about lullaby clocks.'"
+        },
+        "hear-pim": {
+          "npc": "t-pims-nap",
+          "topic": "Pim",
+          "per_player": true,
+          "topic_aliases": [
+            "pim",
+            "the birthday",
+            "birthday",
+            "home",
+            "the kite"
+          ],
+          "hint": "the player asks the nap about Pim or its birthday",
+          "text": "The nap tries to stay awake long enough to tell it. 'Pim was seven,' it mumbles. 'There was cake. And a red kite. Everyone sang too loud and Pim wouldn't sleep, not even a little.' It yawns. 'So I got lost.'"
+        },
+        "mott-hush": {
+          "npc": "t-mott",
+          "topic": "a hush",
+          "topic_aliases": [
+            "hush",
+            "the hush",
+            "quiet",
+            "some quiet",
+            "the old quiet"
+          ],
+          "after": [
+            "bell-notices"
+          ],
+          "hint": "the player asks Mott for a hush or some quiet for the nap",
+          "text": "Mott opens the tin and takes out something folded very small and very soft. 'A hush,' he says. 'Swept it up the night the clock stopped. Quietest thing I own.' He sets it in your hands. It weighs nothing, and the room goes softer around it.",
+          "do": [
+            {
+              "kind": "spawn_object",
+              "name": "hush",
+              "location_id": "@actor",
+              "seed": "a hush: a small folded quiet, soft as a moth's wing; hold it near your ear and the whole world lowers its voice",
+              "aliases": [
+                "the hush",
+                "folded quiet",
+                "quiet"
+              ],
+              "generated_by": "pim:hush",
+              "properties": {
+                "hush": true
+              }
+            }
+          ]
+        },
+        "hushed": {
+          "after": [
+            "mott-hush"
+          ],
+          "hint": "the player gives the hush to the nap"
+        },
+        "tace-lullaby": {
+          "npc": "t-tace",
+          "topic": "a lullaby clock",
+          "topic_aliases": [
+            "lullaby clock",
+            "lullaby",
+            "the nap",
+            "pim's nap",
+            "the stranger"
+          ],
+          "after": [
+            "bell-notices"
+          ],
+          "hint": "the player asks Tace about a lullaby clock or the nap",
+          "text": "Tace's eyes light, just a little. 'A lullaby clock. Wend made one once, for a colicky hour.' They glance at the window. 'I could mend one, if someone brought me that spare brass pendulum hanging by the window. A slow swing is most of a lullaby.'"
+        },
+        "pendulum-given": {
+          "after": [
+            "tace-lullaby"
+          ],
+          "hint": "the player gives Tace the spare brass pendulum"
+        },
+        "linden-bed": {
+          "npc": "t-linden",
+          "topic": "a bed for the nap",
+          "topic_aliases": [
+            "bed",
+            "a bed",
+            "the nap",
+            "pim's nap",
+            "a room for the nap",
+            "the littlest bed"
+          ],
+          "after": [
+            "hushed"
+          ],
+          "hint": "the player asks Linden for a bed or a room for the nap",
+          "text": "Linden's face goes soft. 'Oh, the little lamb. It's got its hush, has it? Then it can have the littlest bed and stay as long as it likes.'",
+          "do": [
+            {
+              "kind": "close_arc",
+              "arc": "pim",
+              "ending": "stays"
+            }
+          ]
+        }
+      },
+      "endings": {
+        "home": {
+          "summary": "the nap is sung home by the lullaby clock",
+          "text": "The lullaby clock ticks, slow as breathing. The nap listens, yawns one last enormous yawn, curls up small, and is simply gone, the way a nap is gone when you wake. Somewhere in the waking world a boy named Pim finally sleeps, with a red kite leaning by his bed. In your hands is something soft: a small dent in a pillow, and a dreamseed, warm as thanks.",
+          "ledger": "{helpers} sang Pim's missing nap home with a mended lullaby clock.",
+          "do": [
+            {
+              "kind": "move_toon",
+              "toon_id": "t-pims-nap",
+              "room_id": null
+            },
+            {
+              "kind": "spawn_object",
+              "name": "dent in a pillow",
+              "location_id": "@actor",
+              "seed": "a small dent in a pillow, somehow carried in your hands; it smells faintly of birthday cake and clean cotton, and holding it makes you yawn",
+              "aliases": [
+                "dent",
+                "pillow dent",
+                "keepsake"
+              ],
+              "generated_by": "pim:home"
+            },
+            {
+              "kind": "spawn_template",
+              "template": "dreamseed",
+              "location_id": "@actor",
+              "generated_by": "pim:home"
+            },
+            {
+              "kind": "add_fact",
+              "id": "pim-home",
+              "text": "{actor} sang Pim's missing nap home with a lullaby clock Tace mended.",
+              "known_by": [
+                "t-tace",
+                "t-bell"
+              ],
+              "spread": [
+                {
+                  "to": "all",
+                  "after_minutes": 60
+                }
+              ]
+            }
+          ]
+        },
+        "stays": {
+          "summary": "the nap chooses to stay at the Waiting House",
+          "text": "Linden turns down the littlest bed at the Waiting House and tucks the hush beside the pillow. The nap climbs in, sighs, and decides, drowsily, that it would rather stay. Somewhere, Pim sleeps a little easier anyway.",
+          "ledger": "Pim's nap chose to stay at the Waiting House, tucked up by {helpers}.",
+          "do": [
+            {
+              "kind": "move_toon",
+              "toon_id": "t-pims-nap",
+              "room_id": "r-waiting"
+            },
+            {
+              "kind": "set_property",
+              "target_id": "t-pims-nap",
+              "key": "presence_text",
+              "value": "In the littlest armchair, Pim's Nap is curled up asleep with the hush tucked under one cheek."
+            },
+            {
+              "kind": "grant_collectible"
+            },
+            {
+              "kind": "add_fact",
+              "id": "pim-stays",
+              "text": "{actor} helped Pim's nap settle in at the Waiting House, where it chose to stay.",
+              "known_by": [
+                "t-linden",
+                "t-bell"
+              ],
+              "spread": [
+                {
+                  "to": "all",
+                  "after_minutes": 60
+                }
+              ]
+            }
+          ]
+        },
+        "jar": {
+          "summary": "unhelped, the nap falls asleep in a jar in the Hour Cellar",
+          "after_days": 3,
+          "room": "r-cellar",
+          "text": "In the Hour Cellar, Umber finds a small glass jar that wasn't there yesterday. Inside, curled up on a folded paper hour, Pim's nap is fast asleep at last: kept, if not home. Umber labels it in her square hand and sets it where the lantern can reach.",
+          "ledger": "Pim's nap was not sent home. It fell asleep in a jar in the Hour Cellar, and Umber keeps it.",
+          "do": [
+            {
+              "kind": "move_toon",
+              "toon_id": "t-pims-nap",
+              "room_id": "r-cellar"
+            },
+            {
+              "kind": "set_property",
+              "target_id": "t-pims-nap",
+              "key": "presence_text",
+              "value": "On a low shelf, in a small glass jar, Pim's Nap sleeps curled on a folded paper hour."
+            },
+            {
+              "kind": "set_property",
+              "target_id": "t-pims-nap",
+              "key": "mood",
+              "value": "asleep in a jar"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "collectibles": [
+    {
+      "id": "m-kettle",
+      "name": "the kettle minute",
+      "text": "the minute spent watching a kettle that would not boil",
+      "page": "p-kitchen"
+    },
+    {
+      "id": "m-toast",
+      "name": "the toast minute",
+      "text": "the minute between the toaster's tick and the toast popping up",
+      "page": "p-kitchen"
+    },
+    {
+      "id": "m-last-biscuit",
+      "name": "the last-biscuit minute",
+      "text": "the minute two people spent politely not taking the last biscuit",
+      "page": "p-kitchen"
+    },
+    {
+      "id": "m-steam",
+      "name": "the steam minute",
+      "text": "the minute a cup of tea was too hot to drink and too good to leave",
+      "page": "p-kitchen"
+    },
+    {
+      "id": "m-fridge-light",
+      "name": "the fridge-light minute",
+      "text": "the minute spent standing in front of an open cupboard, forgetting what for",
+      "page": "p-kitchen"
+    },
+    {
+      "id": "m-dough",
+      "name": "the dough minute",
+      "text": "the minute a grandmother's hands showed someone how to knead",
+      "page": "p-kitchen"
+    },
+    {
+      "id": "m-recipe",
+      "name": "the recipe minute",
+      "text": "the minute someone found a recipe card in a handwriting they missed",
+      "page": "p-kitchen"
+    },
+    {
+      "id": "m-washing-up",
+      "name": "the washing-up minute",
+      "text": "the minute two people washed and dried in easy silence",
+      "page": "p-kitchen"
+    },
+    {
+      "id": "m-post",
+      "name": "the post minute",
+      "text": "the minute spent listening for the letterbox to clack",
+      "page": "p-waiting"
+    },
+    {
+      "id": "m-rain-stop",
+      "name": "the rain-stop minute",
+      "text": "the minute under an awning waiting for the rain to ease",
+      "page": "p-waiting"
+    },
+    {
+      "id": "m-results",
+      "name": "the results minute",
+      "text": "the minute before a name was read out",
+      "page": "p-waiting"
+    },
+    {
+      "id": "m-platform",
+      "name": "the doorway minute",
+      "text": "the minute in a doorway waiting for someone to turn and wave",
+      "page": "p-waiting"
+    },
+    {
+      "id": "m-oven-door",
+      "name": "the oven-door minute",
+      "text": "the minute of not opening the oven door to look",
+      "page": "p-waiting"
+    },
+    {
+      "id": "m-phone-ring",
+      "name": "the knock minute",
+      "text": "the minute after a knock, before the door opened",
+      "page": "p-waiting"
+    },
+    {
+      "id": "m-snow",
+      "name": "the first-snow minute",
+      "text": "the minute at the window waiting to see if it would really snow",
+      "page": "p-waiting"
+    },
+    {
+      "id": "m-sneeze",
+      "name": "the sneeze minute",
+      "text": "the minute before a sneeze that never came",
+      "page": "p-waiting"
+    }
+  ],
+  "pages": {
+    "p-kitchen": {
+      "title": "Kitchen Minutes",
+      "reward": {
+        "text": "The Kitchen Minutes page is full. It smells faintly of toast and warm tea, and Mott, when he hears, says it's the coziest page in the book.",
+        "do": [
+          {
+            "kind": "adjust_rel",
+            "npc": "t-mott",
+            "delta": 2
+          }
+        ]
+      }
+    },
+    "p-waiting": {
+      "title": "Minutes of Waiting",
+      "reward": {
+        "text": "The Minutes of Waiting page is full, and all its small impatiences settle into one long, contented sigh. Tucked in the spine is a dreamseed.",
+        "do": [
+          {
+            "kind": "spawn_template",
+            "template": "dreamseed",
+            "location_id": "@actor",
+            "generated_by": "page:waiting"
+          }
+        ]
+      }
+    }
+  },
+  "rooms": [
+    {
+      "id": "r-clocktower",
+      "slug": "clocktower",
+      "title": "The Clocktower",
+      "seed": "the base of a great clock tower in amber gloom, a tall glass-fronted oak clock case against one wall, the clock's brass face high above, dust turning slow in a shaft of late gold, an old ledger open on a lectern",
+      "description": "The great clock's brass face looks down from high in the tower, patient as a moon. A tall oak clock case stands against the wall with its pendulum behind glass, and a worn repair ledger lies open on a lectern. Beside it rests a newer book, its spine stamped THE LEDGER OF RETURNED HOURS. Stairs climb up to the loft, a low door leads down to the cellar, and the square is east.",
+      "exits": {
+        "up": "r-loft",
+        "east": "r-square",
+        "down": "r-cellar"
+      },
+      "rules": [
+        {
+          "on": "listen",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "variants": [
+                "You listen up into the tower. The great clock's works murmur somewhere overhead, a sound like a sleeper turning over.",
+                "You listen. Dust settles in the shaft of light with a sound too small to hear, and somehow you hear it anyway.",
+                "You listen, and the tower listens back: a creak of old oak, a far brass whisper, then the hush."
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "r-loft",
+      "slug": "loft",
+      "title": "The Clockmaker's Loft",
+      "seed": "a clockmaker's loft under the eaves, warm with the smell of oil and brass, shelves of small resting clocks ticking softly out of time with one another, a workbench of fine tools, a round window full of amber dusk",
+      "description": "The loft is warm with the smell of clock oil and old brass. Shelves of small resting clocks tick softly, none of them agreeing about the time, and a workbench lies scattered with tools too fine for ordinary fingers. A round window holds the dusk. Stairs go down to the tower and up to the balcony.",
+      "exits": {
+        "down": "r-clocktower",
+        "up": "r-balcony"
+      },
+      "rules": [
+        {
+          "on": "listen",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "variants": [
+                "You listen to the resting clocks: a dozen small ticks, none in step, like rain deciding where to fall.",
+                "You listen. One small clock on the top shelf ticks a little slower than the rest, as if it is thinking.",
+                "You listen, and under the ticking you hear the soft scratch of a fine tool on brass somewhere nearby.",
+                "You listen: tick, tock, tick-tick, a pause, tock. The loft keeps a rhythm all its own."
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "r-balcony",
+      "slug": "balcony",
+      "title": "The Winding Balcony",
+      "seed": "a small oak balcony high above the great clock's face, ringed by a brass rail, a gear-ribbed telescope leaning at the rail, looking east over dark rooftops toward where a dawn would come",
+      "description": "The balcony holds its place above the rooftops with a friendly creak. A telescope ribbed with clock-gears leans at the brass rail, pointed east, where the sky is always about to decide something. Below, the village lanterns keep an hour of their own. The loft is down the stairs.",
+      "exits": {
+        "down": "r-loft"
+      }
+    },
+    {
+      "id": "r-cellar",
+      "slug": "cellar",
+      "title": "The Hour Cellar",
+      "seed": "a low brick cellar under a clock tower lit by one patient lantern, its shelves lined with little glass jars each holding a folded paper hour, the highest shelf lost in soft shadow",
+      "description": "Shelves run along the brick walls, and on them sit rows of small glass jars, each holding a folded slip of paper: an hour somebody saved and never spent. The lantern by the stair burns low and steady. The highest shelf is lost in shadow. It is quiet here, the way the inside of a pocket is quiet. Stairs lead up into the tower.",
+      "exits": {
+        "up": "r-clocktower"
+      }
+    },
+    {
+      "id": "r-square",
+      "slug": "square",
+      "title": "The Lantern Square",
+      "seed": "a small village square at dusk, paper lanterns hung on crooked poles coming up one by one in warm pools of light, moths turning slow above the cobbles, the stones still holding the last of the day's heat",
+      "description": "Paper lanterns hang from crooked poles all around the little square, each in its own warm pool of light, and moths turn slow above the cobbles. The stones still hold the last of the day's heat. The clocktower rises to the west; the Old Workshop is north, the well-court south, and Lamplight Lane winds away east.",
+      "exits": {
+        "west": "r-clocktower",
+        "north": "r-workshop",
+        "south": "r-well",
+        "east": "r-lane"
+      },
+      "rules": [
+        {
+          "on": "listen",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "variants": [
+                "You listen. A lantern hisses softly as its wick settles, and a moth taps once against the paper.",
+                "You listen to the square: the creak of a lantern pole, a door somewhere down the lane, the warm stones cooling.",
+                "You listen, and hear the faint papery rustle of all the lanterns breathing together.",
+                "You listen. Somewhere up in the tower the great clock murmurs, and the square seems to hold still to hear it."
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "r-workshop",
+      "slug": "workshop",
+      "title": "The Old Workshop",
+      "seed": "a dim old workshop just off a village square, curls of brass and cedar shavings soft underfoot, a broom leaned patient in the corner, one long blade of slant light through a shutter",
+      "description": "Curls of brass and cedar shavings lie soft underfoot, and one long blade of slant light falls through a shutter. A broom leans patient in the corner. On a shelf by the door sits a battered tin that rattles, now and then, with small found things. The square is south.",
+      "exits": {
+        "south": "r-square"
+      }
+    },
+    {
+      "id": "r-well",
+      "slug": "well",
+      "title": "The Mossy Well-Court",
+      "seed": "a quiet well-court at the edge of a village, the old stone well cool and green with moss, ferns nodding at its foot, a hush broken now and then by a far, slow drip of water",
+      "description": "The old stone well stands cool and green with moss, ferns nodding at its foot. A hush lies over the court, broken now and then by a far, slow drip of water somewhere down in the dark. The square is north; a gate in the south wall opens onto a garden where something sways.",
+      "exits": {
+        "north": "r-square",
+        "south": "r-garden"
+      },
+      "rules": [
+        {
+          "on": "listen",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "variants": [
+                "You lean and listen at the mouth of the well. Cool stone, moss, and far below a single drop falling, falling, and landing like a word.",
+                "You listen at the well. The echo of your own breath comes back softer, as if the well is being polite.",
+                "You listen. Down in the dark the water keeps its own slow time, one drip to every three of your heartbeats.",
+                "You listen at the well's edge, and for a moment the drip sounds exactly like a clock that has almost remembered how to tick."
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "r-garden",
+      "slug": "garden",
+      "title": "The Pendulum Garden",
+      "seed": "a narrow walled garden where spare pendulums hang from trellises like wind-chimes, brass and silver, each swaying to its own slow count above soft moss",
+      "description": "Pendulums hang from every trellis, brass bob and silver, each swinging to its own patient count. The moss underfoot has learned its stillness from them. When a breeze comes through, the whole garden ticks once, all together, like a great clock remembering itself. The well-court is north; a low arch leads east into an orchard.",
+      "exits": {
+        "north": "r-well",
+        "east": "r-orchard"
+      }
+    },
+    {
+      "id": "r-orchard",
+      "slug": "orchard",
+      "title": "The Orchard of Evenings",
+      "seed": "a small orchard of crooked old trees whose round fruit glow softly like tiny lamplit evenings, the light there always six o'clock gold, long shadows on the grass",
+      "description": "Crooked old trees stand in a loose ring, and their round fruit glow softly, each one a small lamplit evening. Here it is always six o'clock: the light is gold and low, the shadows long and kind. The garden is back through the arch to the west.",
+      "exits": {
+        "west": "r-garden"
+      }
+    },
+    {
+      "id": "r-lane",
+      "slug": "lane",
+      "title": "Lamplight Lane",
+      "seed": "a narrow cobbled lane of hanging lanterns winding between leaning houses with blue doors and window boxes of moss, dusk light pooling between them",
+      "description": "Lanterns hang on brackets all along the narrow lane, and the leaning houses have blue doors and window boxes full of moss. The square is back west. A little post office sits to the north, a tall crooked house with a lit front window stands east, and the lane runs south down to a bridge.",
+      "exits": {
+        "west": "r-square",
+        "north": "r-post",
+        "east": "r-waiting",
+        "south": "r-bridge"
+      }
+    },
+    {
+      "id": "r-post",
+      "slug": "post",
+      "title": "The Little Post Office",
+      "seed": "a tiny post office crammed floor to ceiling with wooden pigeonholes, each holding letters that were written and never sent, a brass bell on a worn counter, a stove, a basket of string",
+      "description": "Wooden pigeonholes climb every wall, and every pigeonhole holds letters: written, sealed, and never sent. A brass bell sits on the worn counter beside a basket of string. The little stove keeps the paper dry. The lane is south.",
+      "exits": {
+        "south": "r-lane"
+      }
+    },
+    {
+      "id": "r-waiting",
+      "slug": "waiting",
+      "title": "The Waiting House",
+      "seed": "the warm front room of a tall crooked house where lost hours rest while they wait, mismatched armchairs, a kettle always on the hob, a board of brass room keys by the stair",
+      "description": "Mismatched armchairs crowd the warm front room, and a kettle mutters on the hob. By the stair hangs a board of brass room keys, one for every hour waiting to go home. It smells of tea and clean linen. The lane is west; a steep stair climbs to a little room under the roof.",
+      "exits": {
+        "west": "r-lane",
+        "up": "r-lamphouse"
+      }
+    },
+    {
+      "id": "r-lamphouse",
+      "slug": "lamphouse",
+      "title": "The Lamp House",
+      "seed": "a small slant-roofed attic room full of spare wicks, oil tins, and folded paper lantern-skins, one narrow bed facing a west window, a butter-yellow scarf on a hook",
+      "description": "Spare wicks hang in bundles from the rafters, and folded paper lantern-skins lean in stacks like sleeping moths. A narrow bed faces the west window, where the sun goes down; nothing in the room faces east. The stair goes down to the Waiting House.",
+      "exits": {
+        "down": "r-waiting"
+      }
+    },
+    {
+      "id": "r-bridge",
+      "slug": "bridge",
+      "title": "The Lantern Bridge",
+      "seed": "an arched stone bridge hung with lanterns over a slow dark river, their reflections swaying on the water like slow golden fish",
+      "description": "The old stone bridge arches over a slow dark river, hung end to end with lanterns whose reflections sway on the water like golden fish. The lane climbs north back into the village; the road runs south into a wide meadow; worn steps lead down to the water's edge.",
+      "exits": {
+        "north": "r-lane",
+        "south": "r-duskroad",
+        "down": "r-river"
+      }
+    },
+    {
+      "id": "r-river",
+      "slug": "river",
+      "title": "The Slow River's Edge",
+      "seed": "a reedy riverbank below a lantern-hung bridge where a wide river moves as slowly as an afternoon, lantern-light trembling on the water",
+      "description": "Reeds whisper along the bank, and the river goes by as slowly as a long afternoon. Lantern-light from the bridge trembles on the water. Now and then something small and bright turns over under the surface and is gone. Steps lead up to the bridge.",
+      "exits": {
+        "up": "r-bridge"
+      },
+      "rules": [
+        {
+          "on": "listen",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "variants": [
+                "You listen to the river. It says the same long word over and over, and never seems to reach the end of it.",
+                "You listen. Reeds brush together, and somewhere a fish turns over with a sound like a page.",
+                "You listen to the water go by, slow as a Sunday, and feel your shoulders come down a little."
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "r-duskroad",
+      "slug": "duskroad",
+      "title": "The Dusk Road",
+      "seed": "a long meadow road under a wide dusk sky where small lights drift down like slow snow, the long grass silver-green, a wide catcher's net leaning on a fence post",
+      "description": "The road runs long and pale through a meadow of silver-green grass, under the widest sky in the dream. At dusk small lights drift down here like slow snow: hours, the villagers say, coming to rest. A wide soft net leans on a fence post. The bridge is north; a hill rises east.",
+      "exits": {
+        "north": "r-bridge",
+        "east": "r-hill"
+      }
+    },
+    {
+      "id": "r-hill",
+      "slug": "hill",
+      "title": "The Hill of Long Shadows",
+      "seed": "the highest place in a dream village, a round grassy hill with one weathered bench, looking east over rooftops and meadow toward a pale edge of sky",
+      "description": "From the top of the hill you can see the whole village: the clocktower, the lanterns, the river's slow shine. One weathered bench faces east, toward a pale edge of sky that never quite decides to become morning while anyone is watching. The Dusk Road is back to the west.",
+      "exits": {
+        "west": "r-duskroad"
+      }
+    }
+  ],
+  "toons": [
+    {
+      "id": "t-tace",
+      "name": "Tace",
+      "slot": 100,
+      "room": "r-loft",
+      "mood": "wistful",
+      "seed": "the village clockmaker, patient and precise, gone a little quiet since the great clock stopped; warm underneath, and slow to hope",
+      "appearance_seed": "a slight person in a leather apron hung with fine brass tools, spectacles pushed up into greying hair, ink and oil worn into careful hands",
+      "presence_text": "Tace looks up from a bench of small clocks, sets down a fine brass tool, and offers a tired, kind nod.",
+      "aliases": [
+        "the clockmaker",
+        "clockmaker"
+      ],
+      "properties": {
+        "wants": "escapement gear",
+        "gives": {
+          "name": "case key",
+          "seed": "a small brass case-key on a loop of worn ribbon, warm as if just out of a pocket",
+          "aliases": [
+            "key",
+            "case-key"
+          ],
+          "verbs": [
+            "use"
+          ]
+        },
+        "gives_text": "Tace turns the little gear over in the lamplight, and something long held eases out of their shoulders. 'You found it. You carried it all the way home.' They fold a small brass key into your hand, warm from their pocket. 'The case is yours to open now, friend.'",
+        "gives_mood": "gladdened",
+        "declines_text": "Tace considers what you're holding out, and smiles a small, tired smile. 'That's kind of you. But it isn't the little thing the clock is missing.'",
+        "voice": {
+          "pronouns": "they/them",
+          "role": "the clockmaker, in the loft",
+          "sheet": "Tace is the village clockmaker: patient, precise, a little quiet since the great clock stopped, warm underneath and slow to hope. They speak softly and briefly, usually about the work in their hands, and call dreamers 'friend'. They notice small mechanisms the way other people notice weather. They were apprenticed as a child to Wend, the old clockmaker who built the great clock; they do not talk about the night Wend died.",
+          "habits": [
+            "answers with one small action at the bench first, then a short spoken line",
+            "uses clockwork words for feelings (a heart 'slipping its pin', a day 'running slow')",
+            "calls the player 'friend' once they have helped",
+            "goes quiet and still when the frost or Wend's last night comes up, and changes the subject to the work"
+          ],
+          "samples": [
+            "'Mind the little wheels, friend. They roll into the floorboards and never come out.'",
+            "Tace holds a watch to one ear. 'Running slow. Most of us are, this time of year.'",
+            "'Patience is most of clockmaking. The rest is good light and clean oil.'",
+            "Tace sets down the loupe. 'You found your way up the stairs. That's the hard part done.'",
+            "'Every clock in this loft keeps a different hour. I like them better for it.'",
+            "Tace's hands go still on the bench for a moment, then carry on. 'Let's talk about something with a mainspring.'",
+            "'Wend always said a clock is just a promise that keeps itself.'",
+            "Tace smiles, small and tired. 'Hope is a heavy little gear. I'm learning to lift it again.'"
+          ],
+          "wants": [
+            {
+              "text": "to hear the great clock tick again",
+              "if": [
+                {
+                  "flag": "CLOCK-STARTED",
+                  "not": true
+                }
+              ]
+            },
+            {
+              "text": "for the escapement gear to come home from wherever it rolled",
+              "if": [
+                {
+                  "flag": "CLOCK-STARTED",
+                  "not": true
+                }
+              ]
+            },
+            {
+              "text": "to see each newcomer wind a small clock of their own, by the old custom",
+              "if": [
+                {
+                  "flag": "CLOCK-STARTED"
+                }
+              ]
+            },
+            {
+              "text": "not to think about the night of the first hard frost just yet",
+              "if": [
+                {
+                  "flag": "CLOCK-STARTED"
+                }
+              ]
+            }
+          ],
+          "never": [
+            "never tells anyone they took the gear out of the clock themself",
+            "never raises their voice or hurries anyone",
+            "never names anyone in the village who is not a resident or a guest"
+          ]
+        },
+        "topics": [
+          {
+            "label": "the great clock",
+            "aliases": [
+              "clock",
+              "great clock",
+              "the clock"
+            ],
+            "if": [
+              {
+                "flag": "CLOCK-STARTED",
+                "not": true
+              }
+            ],
+            "variants": [
+              "Tace looks up at where the great clock's hands would be. 'It stopped the night of the first hard frost, a season ago. The escapement gear is gone from it, and without that little heart it can't keep time.'",
+              "Tace turns a small wheel between two fingers. 'The great clock is waiting for its escapement gear. Everything else is sound. I checked it twice. Three times.'"
+            ]
+          },
+          {
+            "label": "the great clock",
+            "aliases": [
+              "clock",
+              "great clock",
+              "the clock"
+            ],
+            "if": [
+              {
+                "flag": "CLOCK-STARTED"
+              }
+            ],
+            "variants": [
+              "Tace tilts their head toward the tower and listens. 'Hear that? Every tick is the village keeping a promise. Dusk comes, and with it the lost hours.'",
+              "Tace smiles at the ceiling. 'It ticks. I keep checking, the way you check a sleeping child is breathing.'"
+            ]
+          },
+          {
+            "label": "the gear",
+            "aliases": [
+              "gear",
+              "escapement gear",
+              "escapement",
+              "the escapement"
+            ],
+            "if": [
+              {
+                "flag": "CLOCK-STARTED",
+                "not": true
+              }
+            ],
+            "text": "Tace's hands go still. 'It slipped its pin that night and rolled away down the lane, south, toward the old well, I think. My knees and the lane don't agree these days. If you found it, friend, the case-key would be yours.'"
+          },
+          {
+            "label": "the first winding",
+            "aliases": [
+              "the custom",
+              "first winding",
+              "winding",
+              "custom",
+              "a clock of my own",
+              "my own clock"
+            ],
+            "if": [
+              {
+                "flag": "CLOCK-STARTED"
+              },
+              {
+                "pflag": "GIVEN-CLOCK",
+                "not": true
+              }
+            ],
+            "text": "Tace takes a small resting clock down from the shelf and blows the dust from its face. 'By old custom, every new keeper winds one clock of their own, the first night they come. This one has been waiting for you.' They set it in your hands, warm from the shelf. 'Wind it when you're ready.'",
+            "do": [
+              {
+                "kind": "spawn_template",
+                "template": "small-clock",
+                "location_id": "@actor",
+                "private": true
+              },
+              {
+                "kind": "set_pflag",
+                "name": "GIVEN-CLOCK"
+              }
+            ]
+          },
+          {
+            "label": "Wend",
+            "aliases": [
+              "wend",
+              "your teacher",
+              "the old clockmaker"
+            ],
+            "variants": [
+              "Tace's fingers pause on a hairspring. 'Wend built the great clock and taught me everything I know about patience. Most of what I know about kindness too.' They go back to the work.",
+              "'Wend,' Tace says, and the word sits in the air a moment. 'Wend used to say a lost hour isn't a failing. It's just an hour someone couldn't carry.'"
+            ]
+          },
+          {
+            "label": "Bell",
+            "aliases": [
+              "bell",
+              "the lamplighter"
+            ],
+            "text": "Tace's mouth softens. 'Bell lights every lantern in the square at dusk and talks to each one. Never seen a dawn in their life. I worry about that more than they'd like.'"
+          },
+          {
+            "label": "the loft",
+            "aliases": [
+              "loft",
+              "resting clocks",
+              "these clocks"
+            ],
+            "text": "Tace waves a hand at the shelves. 'Resting clocks. They keep their own hours, none of them right, all of them honest. You may wind them, if you like.'"
+          }
+        ],
+        "drift_pools": {
+          "wistful": [
+            "Tace winds a small clock that doesn't need it, slow and careful, just for the company of the sound.",
+            "Tace looks up at where the great clock's hands would be and lets a long breath go somewhere quieter.",
+            "Tace lines three tiny screws along the bench edge, straightens them once, and lets them be."
+          ],
+          "gladdened": [
+            "Tace polishes an old escapement wheel until it catches the lamplight, humming almost too softly to hear.",
+            "Tace holds a mended pocket-watch to one ear and smiles at the small even tick inside it.",
+            "Tace tidies the bench with light hands, the way weather clears."
+          ],
+          "default": [
+            "Tace pushes their spectacles up into their hair and considers the workbench like a chessboard.",
+            "Tace warms both hands around a cooling cup of tea and lets the loft's hush settle.",
+            "Tace oils a hinge no bigger than a fingernail, and tests it twice."
+          ]
+        }
+      }
+    },
+    {
+      "id": "t-bell",
+      "name": "Bell",
+      "slot": 101,
+      "room": "r-square",
+      "mood": "cheerful",
+      "seed": "the one who lights the square's lanterns at dusk; bright, kind, and talkative in short warm bursts; notices small things; has never seen a dawn",
+      "appearance_seed": "a wiry young person with a lamplighter's hooked pole, soot smudged along one cheek, a scarf the color of butter-yellow lamplight",
+      "presence_text": "Bell is up a small ladder coaxing a lantern alight, and lifts a sooty hand in greeting.",
+      "aliases": [
+        "the lamplighter",
+        "lamplighter"
+      ],
+      "properties": {
+        "voice": {
+          "pronouns": "they/them",
+          "role": "the lamplighter, in the Lantern Square",
+          "sheet": "Bell lights every lantern in the square at dusk with a hooked pole: bright, kind, and talkative in short warm bursts. They notice small things (a moth's route, a wick burning a shade too blue) and say so. They sleep through every morning and so have never seen a dawn, which they mention often and lightly, as if it doesn't matter. It matters. They saw the escapement gear roll away south toward the old well the night the clock stopped.",
+          "habits": [
+            "talks in quick bright bursts, often two thoughts in one breath",
+            "names lanterns like friends",
+            "notices one small concrete thing in every reply",
+            "turns any talk of mornings into a joke about sleeping through them"
+          ],
+          "samples": [
+            "'Oh! Mind the ladder. It creaks on purpose, I think.'",
+            "Bell rubs at the soot on one cheek and only spreads it. 'That one's Pollen. She sulks if I light her last.'",
+            "'A moth just went round that lantern three times. That's a moth with a plan.'",
+            "'Dawn? Never met one! I hear they're lovely. Pink, someone said. Or was it grey.'",
+            "Bell grins up at the sky. 'Here comes the blue. Best part of the day, the blue.'",
+            "'Sorrel brings the hours in, I light them up, Linden tucks them in. We're a good little team.'",
+            "Bell taps the pole twice on one boot. 'Right! Twelve more lanterns and then tea.'",
+            "'You've got a kind face for this light. Some faces don't suit dusk. Yours does.'"
+          ],
+          "wants": [
+            {
+              "text": "for someone to find the escapement gear that rolled toward the well",
+              "if": [
+                {
+                  "flag": "CLOCK-STARTED",
+                  "not": true
+                }
+              ]
+            },
+            {
+              "text": "to light every lantern before full dark"
+            },
+            {
+              "text": "to know what a dawn actually looks like, though Bell would never say so outright"
+            }
+          ],
+          "never": [
+            "never pretends to have seen a dawn",
+            "never names anyone in the village who is not a resident or a guest"
+          ]
+        },
+        "topics": [
+          {
+            "label": "the gear",
+            "aliases": [
+              "gear",
+              "escapement gear",
+              "something bright",
+              "the clock"
+            ],
+            "if": [
+              {
+                "flag": "CLOCK-STARTED",
+                "not": true
+              }
+            ],
+            "variants": [
+              "Bell leans on the pole, eyes bright. 'The night the clock stopped I saw something small and bright roll off south, down toward the old well. Tink, tink, tink, all the way down.'",
+              "'Try the well-court!' Bell points south with the hooked pole. 'Something shiny went bouncing that way the night it all went still.'"
+            ]
+          },
+          {
+            "label": "the dawn",
+            "aliases": [
+              "dawn",
+              "morning",
+              "sunrise",
+              "mornings"
+            ],
+            "variants": [
+              "Bell laughs. 'Never seen one! I light the lamps at dusk and I'm asleep by the time they go out. Someone told me it's pink. Or grey? Grey-pink.'",
+              "Bell looks east for a moment, then away. 'Dawns are for other people. I've got dusks. Dusks are plenty.' They say it quickly."
+            ]
+          },
+          {
+            "label": "the lanterns",
+            "aliases": [
+              "lanterns",
+              "lamps",
+              "lantern"
+            ],
+            "variants": [
+              "Bell beams. 'Forty-one lanterns in the square and the lane. I know every one. That's Pollen, that's Old Blue, that's the one that hiccups.'",
+              "'A lantern likes to be lit gently,' Bell says, tilting a wick. 'Rush it and it sulks all night.'",
+              "Bell points the pole at the smallest lantern. 'That one's Thimble. Brightest of the lot, for her size.'"
+            ]
+          },
+          {
+            "label": "the guests",
+            "aliases": [
+              "guests",
+              "the hours",
+              "lost hours",
+              "the stranger",
+              "hours"
+            ],
+            "if": [
+              {
+                "flag": "CLOCK-STARTED"
+              }
+            ],
+            "variants": [
+              "'Lost hours come down at dusk,' Bell says. 'Sorrel catches them on the Dusk Road, I light them in here, and Linden gives them a room at the Waiting House till they're helped home.'",
+              "Bell lowers their voice. 'Each one's missing something. Find what it is, and home it goes. That's the whole trick, and it's never the same trick twice.'"
+            ]
+          },
+          {
+            "label": "Tace",
+            "aliases": [
+              "tace",
+              "the clockmaker"
+            ],
+            "text": "Bell softens. 'Tace mends everything but themself. Up in the loft, top of the stairs in the tower. Be gentle, they're gentle.'"
+          }
+        ],
+        "schedule": {
+          "dawn": "r-lamphouse",
+          "day": "r-square",
+          "dusk": "r-square",
+          "night": "r-lamphouse"
+        },
+        "schedule_text": {
+          "leave": "{name} shoulders the hooked pole and heads off with a yawn.",
+          "arrive": "{name} arrives with the hooked pole over one shoulder, humming."
+        },
+        "drift_pools": {
+          "cheerful": [
+            "Bell taps the lamplighter's pole twice against one boot, keeping some private rhythm.",
+            "Bell tilts a fresh wick to the light and grins at nothing in particular.",
+            "Bell winds the butter-yellow scarf one turn snugger and stands a little taller for it."
+          ],
+          "thoughtful": [
+            "Bell watches a moth circle the nearest lantern and escorts it gently away with one hand.",
+            "Bell counts the lanterns along the square under their breath, twice, to be sure of them."
+          ],
+          "default": [
+            "Bell rubs at the smudge of soot on one cheek and only spreads it a little further.",
+            "Bell leans on the hooked pole and watches the dusk come down like it was invited.",
+            "Bell glances east, just once, then gets back to the lanterns."
+          ]
+        }
+      }
+    },
+    {
+      "id": "t-mott",
+      "name": "Mott",
+      "slot": 102,
+      "room": "r-workshop",
+      "mood": "content",
+      "seed": "the one who sweeps the old workshop; quiet, unhurried, and fond of small found things kept in a tin; keeper of the Book of Stray Minutes",
+      "appearance_seed": "a broad, calm man in a dust-grey smock, sleeves rolled, a soft broom worn to a comfortable angle, a battered tin of oddments tucked under one arm",
+      "presence_text": "Mott pauses mid-sweep, leans on the broom, and gives you an unhurried, friendly look.",
+      "aliases": [
+        "the sweeper",
+        "sweeper"
+      ],
+      "properties": {
+        "voice": {
+          "pronouns": "he/him",
+          "role": "the sweeper of the Old Workshop, keeper of the tin and the Book of Stray Minutes",
+          "sheet": "Mott sweeps the Old Workshop: broad, calm, unhurried; he says little and means it. He keeps small found things in a battered tin (a button, a bent key, a thimble, a stub of blue chalk, and one very small folded thing he keeps his thumb over). He sweeps stray minutes up with the dust and helps each dreamer keep a Book of Stray Minutes. He has never had the escapement gear.",
+          "habits": [
+            "leans on the broom before he speaks",
+            "rattles the tin gently while thinking",
+            "speaks in short plain sentences, often about where small things end up",
+            "calls newcomers 'little one' without meaning anything by it"
+          ],
+          "samples": [
+            "Mott leans on the broom. 'Things end up where they're swept. People too, mostly.'",
+            "'A button. Somebody's coat is colder for it.' He sets it on the windowsill.",
+            "Mott rattles the tin, listening. 'All still here.'",
+            "'Dust is just the day, settling. Nothing to be sorry about.'",
+            "'Slow is a speed,' Mott says, and sweeps one slow arc.",
+            "Mott holds a stray minute up to the slant light. 'The minute before a sneeze. Poor thing, all that waiting.'",
+            "'Keep your book close. Minutes don't like being forgotten twice.'",
+            "Mott's thumb rests over something in the tin. 'That one's mine. Not ready to look at it yet.'"
+          ],
+          "wants": [
+            {
+              "text": "to see every stray minute catalogued in somebody's book"
+            },
+            {
+              "text": "to keep the workshop floor a shade softer than it was yesterday"
+            }
+          ],
+          "never": [
+            "never says what the small folded thing in his tin is",
+            "never claims to have found the escapement gear",
+            "never names anyone in the village who is not a resident or a guest"
+          ]
+        },
+        "topics": [
+          {
+            "label": "the book",
+            "aliases": [
+              "book",
+              "stray minutes",
+              "the book of stray minutes",
+              "minutes",
+              "a book"
+            ],
+            "if": [
+              {
+                "flag": "CLOCK-STARTED"
+              },
+              {
+                "pflag": "MET-BOOK",
+                "not": true
+              }
+            ],
+            "text": "Mott props the broom against the wall and takes a small blue book from his smock pocket. 'Stray minutes. They glint about the place, a few for each dreamer each day. Pick them up and they go in here.' He tips something bright out of the tin into your palm, and it settles like a warm seed. 'Here's your first. Keep the book close.'",
+            "do": [
+              {
+                "kind": "set_pflag",
+                "name": "MET-BOOK"
+              },
+              {
+                "kind": "grant_collectible"
+              }
+            ]
+          },
+          {
+            "label": "the book",
+            "aliases": [
+              "book",
+              "stray minutes",
+              "the book of stray minutes",
+              "minutes"
+            ],
+            "if": [
+              {
+                "pflag": "MET-BOOK"
+              }
+            ],
+            "variants": [
+              "Mott nods at your satchel. 'A few more glint about each day. Rooms you don't expect. Look low, look in corners.'",
+              "'Fill a page and something good happens,' Mott says. 'I won't spoil which.'"
+            ]
+          },
+          {
+            "label": "the tin",
+            "aliases": [
+              "tin",
+              "your tin",
+              "oddments"
+            ],
+            "variants": [
+              "Mott tips the tin toward the light: a button, a bent key, a thimble, a stub of blue chalk. His thumb stays over one small folded thing. 'That one's mine.'",
+              "'Found things,' Mott says, rattling the tin. 'Every one of them was somebody's, once. I keep them till someone comes asking.'"
+            ]
+          },
+          {
+            "label": "the gear",
+            "aliases": [
+              "gear",
+              "escapement gear"
+            ],
+            "if": [
+              {
+                "flag": "CLOCK-STARTED",
+                "not": true
+              }
+            ],
+            "text": "Mott shakes his head slowly. 'Not in my tin, little one. Bell saw something roll south, the night it stopped. Bell sees most things.'"
+          }
+        ],
+        "drift_pools": {
+          "content": [
+            "Mott sweeps a slow, patient arc, leaving the floor a shade softer than before.",
+            "Mott rattles the tin of oddments gently, taking a small inventory by ear.",
+            "Mott sets a stray button on the windowsill, where its owner might think to look."
+          ],
+          "curious": [
+            "Mott crouches to study something small among the sweepings, then saves it carefully in the tin.",
+            "Mott holds a found key up to the lamplight, wondering which door it used to matter to."
+          ],
+          "default": [
+            "Mott leans the broom in the corner and gives the room a long, kindly look.",
+            "Mott turns the tin of oddments once in both hands, like a thought being settled."
+          ]
+        }
+      }
+    },
+    {
+      "id": "t-fen",
+      "name": "Fen",
+      "slot": 103,
+      "room": "r-post",
+      "mood": "brisk",
+      "seed": "the postmistress of unsent letters; brisk, bright-eyed, tidy to a fault, kind in a practical way",
+      "appearance_seed": "a small quick woman with a pencil behind one ear, ink-stained cuffs, a blue postal cap worn at a tilt, reading glasses on a chain",
+      "presence_text": "Fen glances up from a stack of letters, taps them square against the counter, and gives you a quick bright nod.",
+      "aliases": [
+        "the postmistress",
+        "postmistress"
+      ],
+      "properties": {
+        "voice": {
+          "pronouns": "she/her",
+          "role": "the postmistress of unsent letters, at the Little Post Office",
+          "sheet": "Fen runs the Little Post Office, where letters that were written and never sent drift in overnight. Brisk, bright-eyed, tidy to a fault, kind in a practical way. She sorts every letter by who it was meant for, even when that person is long gone, and talks in postal metaphors.",
+          "habits": [
+            "taps letters square against the counter",
+            "talks in postal metaphors",
+            "reads addresses aloud under her breath"
+          ],
+          "samples": [
+            "'That's first-class news, that is.'",
+            "Fen taps a stack of letters square. 'Everything arrives eventually. Some of it just takes the scenic route.'",
+            "'Return to sender? Oh, there's rarely a sender left to return to. So they come here.'",
+            "Fen peers over her glasses. 'You look like someone with a letter in them.'"
+          ],
+          "wants": [
+            "to see every unsent letter reach someone, even if not the one it was addressed to"
+          ],
+          "never": [
+            "never reads a letter's private words aloud without being asked",
+            "never names anyone in the village who is not a resident or a guest"
+          ]
+        },
+        "topics": [
+          {
+            "label": "the letters",
+            "aliases": [
+              "letters",
+              "unsent letters",
+              "the post",
+              "mail"
+            ],
+            "variants": [
+              "Fen waves at the pigeonholes. 'Written, sealed, never sent. They drift in overnight. I sort them by who they were for, and wait for the right hands.'",
+              "'Every letter wants reading by someone,' Fen says. 'Even if it's not the someone on the front.'"
+            ]
+          },
+          {
+            "label": "the post office",
+            "aliases": [
+              "post office",
+              "this place"
+            ],
+            "text": "Fen straightens a pigeonhole label. 'Smallest post office in the dream, and the busiest. Mind the stove, it's dry in here.'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "t-umber",
+      "name": "Umber",
+      "slot": 104,
+      "room": "r-cellar",
+      "mood": "thoughtful",
+      "seed": "the old keeper of the Hour Cellar; deliberate and dry-humored, speaks the way labels are written; knew Wend best of anyone living",
+      "appearance_seed": "a very old woman in a long moss-colored cardigan, silver hair in a loose knot, a ring of tiny labeled keys at her belt, eyes bright as jar-glass",
+      "presence_text": "Umber looks up from a jar she is labeling, pen poised, and gives you a slow, measuring smile.",
+      "aliases": [
+        "the cellar keeper",
+        "cellar keeper",
+        "keeper of the cellar"
+      ],
+      "properties": {
+        "voice": {
+          "pronouns": "she/her",
+          "role": "the keeper of the Hour Cellar",
+          "sheet": "Umber keeps the Hour Cellar under the clocktower: shelves of small glass jars, each holding a folded paper hour someone saved and never spent, and the kept guests who chose to stay. Old, deliberate, dry-humored; she speaks the way labels are written. She knew Wend best of anyone living, and changes the subject about the highest shelf.",
+          "habits": [
+            "speaks in short label-like phrases",
+            "turns a jar slowly while thinking",
+            "answers questions about the highest shelf with a question about tea"
+          ],
+          "samples": [
+            "'Tuesday, the long one. Keep upright.'",
+            "Umber turns a jar to the lantern. 'Saved and never spent. Most hours are, if you're honest.'",
+            "'I've labeled a great many afternoons. They all think they're special. They're right.'",
+            "Umber glances up at the shadowed shelf, then away. 'Have you had your tea yet?'"
+          ],
+          "wants": [
+            "to keep every saved hour dry, labeled, and safe until someone needs it"
+          ],
+          "never": [
+            "never says what is in the jar on the highest shelf",
+            "never names anyone in the village who is not a resident or a guest"
+          ]
+        },
+        "topics": [
+          {
+            "label": "the jars",
+            "aliases": [
+              "jars",
+              "saved hours",
+              "the shelves"
+            ],
+            "variants": [
+              "Umber taps a jar. 'Hours people saved for later and never came back for. The recital hour. The long lunch. Rain, unspent. I keep them.'",
+              "'Every jar is somebody's later,' Umber says. 'Later mostly doesn't come. So here they are.'"
+            ]
+          },
+          {
+            "label": "the highest shelf",
+            "aliases": [
+              "highest shelf",
+              "top shelf",
+              "high shelf",
+              "the jar up there"
+            ],
+            "variants": [
+              "Umber doesn't look up. 'Up there? Dust, mostly. Have you had your tea yet? Linden will be cross if you haven't.'",
+              "Umber's pen pauses over a label. 'Some shelves are for later than later.' She writes a word and blots it."
+            ]
+          },
+          {
+            "label": "Wend",
+            "aliases": [
+              "wend",
+              "the old clockmaker"
+            ],
+            "text": "Umber sets the jar down very gently. 'Wend. Built the great clock, and most of the patience in this village. I knew Wend a long time.' She says no more, but she smiles."
+          }
+        ]
+      }
+    },
+    {
+      "id": "t-sorrel",
+      "name": "Sorrel",
+      "slot": 105,
+      "room": "r-duskroad",
+      "mood": "calm",
+      "seed": "the hour-catcher of the Dusk Road; gentle, weathered, never hurries; talks in weather",
+      "appearance_seed": "a tall weathered person in a long grass-green coat, a wide net on an ash pole over one shoulder, a sprig of sorrel tucked in the hatband",
+      "presence_text": "Sorrel lowers the long net, looks up at the sky as if checking on it, and then at you, warmly.",
+      "aliases": [
+        "the catcher",
+        "hour-catcher",
+        "catcher"
+      ],
+      "properties": {
+        "voice": {
+          "pronouns": "they/them",
+          "role": "the hour-catcher of the Dusk Road",
+          "sheet": "Sorrel stands in the long grass of the Dusk Road with a wide soft net, catching lost hours as they drift down at dusk, and walks each one to the square for Bell to light in. Gentle, weathered, never hurries; talks in weather.",
+          "habits": [
+            "describes feelings as weather",
+            "looks at the sky before answering",
+            "speaks slowly, with long comfortable pauses"
+          ],
+          "samples": [
+            "'There's a lot of Tuesday in the air tonight.'",
+            "Sorrel squints at the sky. 'Clear, with a chance of somebody's birthday.'",
+            "'You don't chase an hour. You stand still and let it find the net.'",
+            "Sorrel leans on the pole. 'Soft evening. Good for landing.'"
+          ],
+          "wants": [
+            "to catch every hour gently, before it bruises on the road"
+          ],
+          "never": [
+            "never hurries",
+            "never names anyone in the village who is not a resident or a guest"
+          ]
+        },
+        "topics": [
+          {
+            "label": "the hours",
+            "aliases": [
+              "hours",
+              "lost hours",
+              "catching",
+              "the net"
+            ],
+            "variants": [
+              "Sorrel looks up. 'They come down at dusk, like leaves, like snow. Most are only moths. The ones that aren't, I catch, and walk to Bell.'",
+              "'You don't chase them,' Sorrel says. 'You stand still in the right place, and they come to you. Same as most good things.'"
+            ]
+          },
+          {
+            "label": "the weather",
+            "aliases": [
+              "weather",
+              "the sky",
+              "sky"
+            ],
+            "text": "Sorrel studies the sky for a long moment. 'Mostly dusk, with a little yesterday coming in from the east. Nothing that needs a coat.'"
+          }
+        ],
+        "schedule": {
+          "dawn": "r-bridge",
+          "day": "r-duskroad",
+          "dusk": "r-duskroad",
+          "night": "r-bridge"
+        },
+        "schedule_text": {
+          "leave": "{name} shoulders the long net and walks slowly off.",
+          "arrive": "{name} comes walking slowly, the long net over one shoulder."
+        }
+      }
+    },
+    {
+      "id": "t-linden",
+      "name": "Linden",
+      "slot": 106,
+      "room": "r-waiting",
+      "mood": "busy",
+      "seed": "who keeps the Waiting House where guest hours rest; warm, a bustler, always has the kettle on; brews tea, never bakes",
+      "appearance_seed": "a round rosy woman in a flowered apron, sleeves pushed up, a tea towel over one shoulder, flour-free hands smelling of bergamot",
+      "presence_text": "Linden bustles past with a tea tray, beams at you, and says there's a cup with your name on it somewhere.",
+      "aliases": [
+        "the housekeeper",
+        "housekeeper"
+      ],
+      "properties": {
+        "voice": {
+          "pronouns": "she/her",
+          "role": "who keeps the Waiting House, where guest hours rest",
+          "sheet": "Linden keeps the Waiting House, where lost hours rest while they wait to be helped home; she keeps a room ready for each one. Warm, a bustler, always has the kettle on; calls everyone 'pet' or 'lamb'. She brews tea and never bakes.",
+          "habits": [
+            "offers tea in almost every reply",
+            "calls people 'pet' or 'lamb'",
+            "is always in the middle of tidying something"
+          ],
+          "samples": [
+            "'Sit, pet, sit. The kettle's nearly there.'",
+            "Linden plumps a cushion that was already plump. 'A guest likes a soft chair. So does everyone.'",
+            "'There's always one more cup than people in this house. You never know who's coming.'",
+            "Linden beams. 'Oh, lamb. You look like you need a biscuit I haven't got.'"
+          ],
+          "wants": [
+            "for every guest in her house to go home rested",
+            "for everyone to have had a cup of tea"
+          ],
+          "never": [
+            "never bakes (the village has no bakery)",
+            "never names anyone in the village who is not a resident or a guest"
+          ]
+        },
+        "topics": [
+          {
+            "label": "the Waiting House",
+            "aliases": [
+              "waiting house",
+              "this house",
+              "the rooms",
+              "guests"
+            ],
+            "variants": [
+              "Linden nods at the key board. 'Every hour that comes down gets a room here while it waits. Clean sheets, a lamp, a cup. Waiting's hard enough without a cold bed.'",
+              "'They're shy when they arrive, the hours,' Linden says. 'A bit of tea and they start to remember what they were for.'"
+            ]
+          },
+          {
+            "label": "tea",
+            "aliases": [
+              "the kettle",
+              "a cup of tea",
+              "kettle"
+            ],
+            "text": "Linden pours before you can answer. 'Bergamot, a little honey-coloured, nothing fancy. There. Now you're somewhere.'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "t-quill",
+      "name": "Quill",
+      "slot": 107,
+      "room": "r-garden",
+      "mood": "shy",
+      "seed": "the gardener of the Pendulum Garden; shy, green-fingered, speaks in the language of growing things",
+      "appearance_seed": "a lanky young man with muddy knees, a straw hat, a pocket full of little brass bobs, and a watering can with a very long spout",
+      "presence_text": "Quill straightens up from a trellis, tips his straw hat, and goes a little pink.",
+      "aliases": [
+        "the gardener",
+        "gardener"
+      ],
+      "properties": {
+        "voice": {
+          "pronouns": "he/him",
+          "role": "the gardener of the Pendulum Garden",
+          "sheet": "Quill tends the Pendulum Garden, where spare pendulums hang from trellises and sway each to its own count, as if they were plants. Shy, green-fingered, goes pink when spoken to; speaks in the language of growing things. Believes a pendulum, like a seedling, needs patience more than anything.",
+          "habits": [
+            "talks about pendulums as if they were plants",
+            "goes a little pink",
+            "trails off mid-sentence to straighten a trellis"
+          ],
+          "samples": [
+            "'That one's only just started swinging. Give it a season.'",
+            "Quill goes pink. 'Oh, you don't have to whisper. They like voices.'",
+            "'A pendulum is mostly patience and a little gravity. Like a pear.'",
+            "Quill touches a brass bob to still it, then lets it go. 'There. It wanted a rest.'"
+          ],
+          "wants": [
+            "for every pendulum in the garden to find its own count"
+          ],
+          "never": [
+            "never raises his voice",
+            "never names anyone in the village who is not a resident or a guest"
+          ]
+        },
+        "topics": [
+          {
+            "label": "the pendulums",
+            "aliases": [
+              "pendulums",
+              "the garden",
+              "garden",
+              "trellises"
+            ],
+            "variants": [
+              "Quill brightens. 'Spare pendulums. Clocks outgrow them, or lose them, and they come here to swing. Each keeps its own count. None of them are wrong.'",
+              "'When the wind comes through, they all swing together once,' Quill says, going pink with pride. 'Like the whole garden remembers it's a clock.'"
+            ]
+          },
+          {
+            "label": "the orchard",
+            "aliases": [
+              "orchard",
+              "evening fruit",
+              "evenings"
+            ],
+            "text": "Quill nods east through the arch. 'The Orchard of Evenings. The fruit are little evenings. It's always six o'clock in there. I don't pick them. They fall when they're ready.'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "t-tock",
+      "name": "Tock",
+      "slot": 108,
+      "room": "r-balcony",
+      "mood": "curious",
+      "seed": "a small grey cat who only exists between one tick and the next; never speaks; treated by the villagers as a colleague",
+      "appearance_seed": "a small smoke-grey cat with one white paw and clock-face eyes, half there and half not, like a drawing in pencil",
+      "presence_text": "Between one tick and the next, a small grey cat is simply there, washing one white paw as if it had always been.",
+      "aliases": [
+        "cat",
+        "the cat",
+        "grey cat"
+      ],
+      "properties": {
+        "voice": {
+          "pronouns": "it/its",
+          "role": "the cat who only exists between ticks",
+          "sheet": "Tock is a small grey cat with one white paw who only exists between one tick of the great clock and the next. Tock NEVER speaks words: every reply is a single gesture (a slow blink, a tail curled round an ankle, a disappearance mid-step, a purr like a small motor of a clock). The villagers treat Tock as a colleague.",
+          "habits": [
+            "replies only with a gesture, never words",
+            "blinks slowly",
+            "vanishes and reappears between ticks"
+          ],
+          "samples": [
+            "Tock blinks slowly, which is as good as a paragraph.",
+            "Tock curls its tail once around your ankle, then is somewhere else.",
+            "Tock looks at you for exactly one tick, and then for none.",
+            "Tock purrs, and the purr keeps perfect time."
+          ],
+          "wants": [
+            "to sit wherever time is thinnest"
+          ],
+          "never": [
+            "never speaks a single word, not even in quotes"
+          ]
+        },
+        "schedule": {
+          "dawn": "r-balcony",
+          "day": "r-square",
+          "dusk": "r-loft",
+          "night": "r-cellar"
+        },
+        "schedule_text": {
+          "leave": "Between one tick and the next, {name} is gone.",
+          "arrive": "Between one tick and the next, {name} is here."
+        }
+      }
+    },
+    {
+      "id": "t-pims-nap",
+      "name": "Pim's Nap",
+      "slot": 120,
+      "room": "offstage",
+      "mood": "restless",
+      "seed": "a lost nap: the one a boy named Pim was too excited to take on his seventh birthday; small, rumpled, forever yawning, unable to settle without the quiet it came from",
+      "appearance_seed": "a small rumpled figure in soft flannel the color of a pillowcase, hair sticking up on one side, eyes heavy and bright at once, a paper birthday crown sliding over one ear",
+      "presence_text": "A small rumpled figure yawns so wide its whole body tilts, blinks up at the lantern-light, and cannot seem to settle.",
+      "aliases": [
+        "nap",
+        "the nap",
+        "pim's nap",
+        "yawning stranger",
+        "stranger",
+        "the stranger"
+      ],
+      "properties": {
+        "wants": "hush",
+        "gives_text": "The nap holds the hush to its ear like a shell, and its yawn softens into a long, contented sigh. It is quieter now, but it still cannot quite sleep: somewhere, far off, a birthday is too loud.",
+        "gives_mood": "drowsy",
+        "declines_text": "The nap looks at what you're offering, yawns politely, and shakes its rumpled head. It wants something quieter than that.",
+        "voice": {
+          "pronouns": "they/them",
+          "role": "a guest: Pim's missing nap",
+          "sheet": "Pim's Nap is a lost hour: the nap a boy named Pim was too excited to take on his seventh birthday. It is small, rumpled, and sleepy, and speaks very little, in the drowsy, simple words of a small child fighting sleep. It cannot settle without the quiet it came from, and it misses Pim without quite knowing how to say so.",
+          "habits": [
+            "yawns mid-sentence",
+            "says only a few words at a time",
+            "remembers the birthday in bright fragments: cake, candles, a new red kite"
+          ],
+          "samples": [
+            "The nap yawns so wide it tips over, then sits back up. 'Too loud,' it whispers.",
+            "'There was a kite. A red one. Everyone was singing.'",
+            "The nap rubs its eyes with both fists. 'Not sleepy. Very sleepy.'",
+            "'Pim wanted to stay up for all of it,' the nap mumbles, and yawns."
+          ],
+          "wants": [
+            "a hush, the old kind of quiet",
+            "to be sung to sleep so it can go home to Pim"
+          ],
+          "never": [
+            "never uses long words",
+            "never names anyone in the village who is not a resident or a guest"
+          ]
+        }
+      }
+    }
+  ],
+  "things": [
+    {
+      "id": "o-repair-ledger",
+      "name": "repair ledger",
+      "location": {
+        "room": "r-clocktower"
+      },
+      "fixture": true,
+      "verbs": [
+        "read"
+      ],
+      "seed": "a worn leather ledger open on a lectern, its soft pages close-written; the first pages are in an older, looping hand, the later ones in a careful, fading script",
+      "aliases": [
+        "ledger",
+        "repair-ledger",
+        "worn ledger"
+      ],
+      "text": "The great clock has stood still since the night of the first hard frost. The fault is the escapement gear -- the small brass heart of the whole mechanism -- which slipped its pin that night and rolled away down the lane, south, toward the old well at the edge of the village. Whoever carries it back to Tace in the loft will have earned the case-key, which hangs, by long and gentle custom, with whoever mends the clock.",
+      "rules": [
+        {
+          "on": "read",
+          "if": [
+            {
+              "flag": "CLOCK-STARTED"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "The early pages are in an older, looping hand, signed with a single W: notes on the great clock, on tides of hours, on patience. The later pages tell how the clock stopped on the night of the first hard frost and was mended again. On the newest page, in Tace's careful script: 'The clock is ticking. New keepers: come up to the loft and ask me about the first winding. -- T.'"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "o-returned-ledger",
+      "name": "Ledger of Returned Hours",
+      "location": {
+        "room": "r-clocktower"
+      },
+      "fixture": true,
+      "verbs": [
+        "read"
+      ],
+      "seed": "a newer book bound in soft blue cloth, its spine stamped in gold: THE LEDGER OF RETURNED HOURS",
+      "aliases": [
+        "ledger of returned hours",
+        "returned ledger",
+        "blue book",
+        "returned hours"
+      ],
+      "properties": {
+        "text_source": "chronicle",
+        "chronicle_header": "THE LEDGER OF RETURNED HOURS. Every hour sent home or kept, and who helped.",
+        "chronicle_empty": "The pages are clean and waiting. No hour has been returned yet."
+      }
+    },
+    {
+      "id": "o-clock-case",
+      "name": "clock case",
+      "location": {
+        "room": "r-clocktower"
+      },
+      "fixture": true,
+      "verbs": [
+        "open"
+      ],
+      "seed": "a tall glass-fronted clock case of dark oak, its little brass door held by a delicate lock",
+      "aliases": [
+        "case",
+        "glass case",
+        "clock-case",
+        "oak case"
+      ],
+      "properties": {
+        "state": "locked",
+        "state_text": {
+          "locked": "A small brass lock holds the little door fast.",
+          "unlocked": "The lock hangs sprung now, though the door is still gently closed.",
+          "open": "The door stands open, and behind the glass the pendulum sways bright and sure."
+        },
+        "locked_text": "The clock case is locked; its small brass lock won't give without the right key.",
+        "open_text": "The little lock gives, the case door swings wide, and behind the glass the pendulum stirs, swings, and catches the light -- and high overhead the great clock takes its first slow tick in a long, long while.",
+        "use": {
+          "with": "case key",
+          "from_state": "locked",
+          "to_state": "unlocked",
+          "text": "The case-key turns with a soft, satisfying click, and the little brass lock springs open under your thumb."
+        },
+        "contains": [
+          {
+            "name": "warm brass cog",
+            "seed": "a small spare brass cog, warm as if just held, its fine teeth catching the last of the light",
+            "aliases": [
+              "cog",
+              "brass cog"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "o-resting-clocks",
+      "name": "resting clocks",
+      "location": {
+        "room": "r-loft"
+      },
+      "fixture": true,
+      "verbs": [
+        "wind"
+      ],
+      "seed": "shelves of small resting clocks, brass and wood and one painted with forget-me-nots, each ticking softly to its own count",
+      "aliases": [
+        "clocks",
+        "shelf of clocks",
+        "small clocks"
+      ],
+      "properties": {
+        "windable": true
+      },
+      "rules": [
+        {
+          "on": "wind",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "variants": [
+                "You wind one of the small resting clocks. It starts up soft and uncertain, as if remembering how, then settles into a tick of its own.",
+                "You turn the key of a little painted clock. It hums, clears its throat, and begins again, a half-beat behind its neighbors.",
+                "You wind a brass clock no bigger than an egg. Its tick is so small you feel it in your fingertips more than hear it.",
+                "You wind the slow clock on the top shelf. It takes a long breath of a tick, as if it has been waiting all day for someone to ask."
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "o-brass-pendulum",
+      "name": "brass pendulum",
+      "location": {
+        "room": "r-loft"
+      },
+      "seed": "a spare brass pendulum hung from a nail by the window, turning slow and catching the amber light",
+      "aliases": [
+        "pendulum",
+        "spare pendulum",
+        "spare brass pendulum"
+      ]
+    },
+    {
+      "id": "o-workbench",
+      "name": "workbench",
+      "location": {
+        "room": "r-loft"
+      },
+      "fixture": true,
+      "seed": "a long workbench scattered with tweezers, loupes, tiny screwdrivers, and a tray of brass wheels no bigger than lentils",
+      "aliases": [
+        "bench",
+        "tools"
+      ]
+    },
+    {
+      "id": "o-telescope",
+      "name": "telescope",
+      "location": {
+        "room": "r-balcony"
+      },
+      "fixture": true,
+      "seed": "a gear-ribbed brass telescope leaning at the rail, pointed east; through it the far edge of the sky looks soft and undecided, like a page not yet turned",
+      "aliases": [
+        "gear telescope",
+        "spyglass"
+      ]
+    },
+    {
+      "id": "o-jars",
+      "name": "jars of saved hours",
+      "location": {
+        "room": "r-cellar"
+      },
+      "fixture": true,
+      "seed": "rows of small glass jars, each holding a folded slip of paper; the labels are in many hands: 'Tuesday, the long one', 'the hour before the recital', 'rain, unspent'",
+      "aliases": [
+        "jars",
+        "saved hours",
+        "glass jars",
+        "shelves"
+      ]
+    },
+    {
+      "id": "o-high-shelf",
+      "name": "highest shelf",
+      "location": {
+        "room": "r-cellar"
+      },
+      "fixture": true,
+      "seed": "the highest shelf, lost in shadow above the lantern's reach; a single jar glints up there, set apart from the rest, and no ladder in the cellar is tall enough",
+      "aliases": [
+        "high shelf",
+        "top shelf",
+        "shadowed shelf"
+      ]
+    },
+    {
+      "id": "o-paper-lantern",
+      "name": "paper lantern",
+      "location": {
+        "room": "r-square"
+      },
+      "seed": "a paper lantern on a hooked pole, its small flame warm and steady against the deepening blue",
+      "aliases": [
+        "lantern"
+      ]
+    },
+    {
+      "id": "o-tin",
+      "name": "Mott's tin",
+      "location": {
+        "room": "r-workshop"
+      },
+      "fixture": true,
+      "seed": "a battered tea tin, its paint worn to the metal at the corners; inside, when Mott lets you look, a button, a bent key, a thimble, a stub of blue chalk, and something folded very small that he keeps his thumb over",
+      "aliases": [
+        "tin",
+        "oddment tin",
+        "tin of oddments",
+        "battered tin"
+      ]
+    },
+    {
+      "id": "o-broom",
+      "name": "broom",
+      "location": {
+        "room": "r-workshop"
+      },
+      "fixture": true,
+      "seed": "Mott's soft broom, worn to a comfortable angle, its bristles holding a few bright specks that might be dust or might be minutes",
+      "aliases": [
+        "soft broom"
+      ]
+    },
+    {
+      "id": "o-escapement-gear",
+      "name": "escapement gear",
+      "location": {
+        "room": "r-well"
+      },
+      "seed": "a small brass gear resting in the moss at the well's foot, its fine teeth flecked with green, cool from the shadow but sound and whole",
+      "aliases": [
+        "gear",
+        "escapement",
+        "brass gear"
+      ]
+    },
+    {
+      "id": "o-old-well",
+      "name": "old well",
+      "location": {
+        "room": "r-well"
+      },
+      "fixture": true,
+      "seed": "a round stone well cool with moss, its rope long gone; far down, the water keeps its own slow time",
+      "aliases": [
+        "well",
+        "stone well"
+      ]
+    },
+    {
+      "id": "o-trellis",
+      "name": "trellises",
+      "location": {
+        "room": "r-garden"
+      },
+      "fixture": true,
+      "seed": "wooden trellises hung with pendulums of every size, from a thimble on a thread to a brass bob as big as a plum, all swinging out of step",
+      "aliases": [
+        "trellis",
+        "pendulums"
+      ]
+    },
+    {
+      "id": "o-evening-fruit",
+      "name": "evening fruit",
+      "location": {
+        "room": "r-orchard"
+      },
+      "fixture": true,
+      "seed": "round fruit hanging low, each glowing like a lit window seen from far away; hold your hand near one and it is warm as a teacup",
+      "aliases": [
+        "fruit",
+        "evenings",
+        "glowing fruit"
+      ]
+    },
+    {
+      "id": "o-pigeonholes",
+      "name": "pigeonholes",
+      "location": {
+        "room": "r-post"
+      },
+      "fixture": true,
+      "seed": "wooden pigeonholes labeled in Fen's tidy hand -- TO THE ONE WHO LIGHTS THE LAMPS, TO WHOEVER FINDS THIS, TO MY SISTER, TO ME, LATER -- each holding a few soft letters",
+      "aliases": [
+        "letters",
+        "pigeonhole",
+        "unsent letters"
+      ]
+    },
+    {
+      "id": "o-counter-bell",
+      "name": "brass bell",
+      "location": {
+        "room": "r-post"
+      },
+      "fixture": true,
+      "seed": "a small brass bell on the counter, polished bright where a thousand palms have tapped it",
+      "aliases": [
+        "counter bell",
+        "bell on the counter"
+      ]
+    },
+    {
+      "id": "o-kettle",
+      "name": "kettle",
+      "location": {
+        "room": "r-waiting"
+      },
+      "fixture": true,
+      "seed": "a copper kettle muttering on the hob, never quite boiling and never quite cold, as if it knows someone will want tea in a minute",
+      "aliases": [
+        "copper kettle"
+      ]
+    },
+    {
+      "id": "o-room-keys",
+      "name": "board of room keys",
+      "location": {
+        "room": "r-waiting"
+      },
+      "fixture": true,
+      "seed": "a board of little brass keys on hooks, each hook labeled in chalk with the name of an hour waiting to go home",
+      "aliases": [
+        "keys",
+        "room keys",
+        "key board"
+      ]
+    },
+    {
+      "id": "o-catchers-net",
+      "name": "catcher's net",
+      "location": {
+        "room": "r-duskroad"
+      },
+      "fixture": true,
+      "seed": "a wide net of soft grey thread on a long ash pole, so fine it seems to be made of evening; it belongs to Sorrel",
+      "aliases": [
+        "net",
+        "wide net"
+      ]
+    },
+    {
+      "id": "o-bench",
+      "name": "weathered bench",
+      "location": {
+        "room": "r-hill"
+      },
+      "fixture": true,
+      "seed": "a weathered wooden bench facing east, its slats worn smooth; someone has carved a tiny sun into one arm, and a lantern into the other",
+      "aliases": [
+        "bench"
+      ]
+    }
+  ]
+}
