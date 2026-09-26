@@ -1,0 +1,755 @@
+{
+  "comment": "Guest arc 4 (canon section 7): Marram, the Summer. A whole summer someone spent at the edge of the dunes when they were small, and can no longer quite remember; it has kept only one word of its name. Umber's jars and labels. Endings: home (Umber reads the rest of its name in its last evening and writes a label that stays), orchard (given its last evening instead, it stays in the Orchard of Evenings), meadow (unhelped for three days, it lies down in the long grass of the Dusk Road).",
+  "toons": [
+    {
+      "id": "t-marram",
+      "name": "Marram",
+      "slot": 123,
+      "room": "offstage",
+      "mood": "wistful",
+      "seed": "a lost hour, and a long one: the summer someone spent at the edge of the dunes when they were small, and can no longer quite remember; sun-bleached and smelling of salt, it has kept only one word of its name",
+      "appearance_seed": "a small figure bleached pale as driftwood, freckles scattered like sand, salt-stiff hair with a stalk of dune grass tucked behind one ear, a faded striped towel worn round its shoulders like a cape, bare feet dusted with sand",
+      "presence_text": "A small sun-bleached figure sits on the warm cobbles in a little drift of sand, a faded striped towel round its shoulders, turning a stalk of pale grass in its fingers.",
+      "aliases": [
+        "marram",
+        "summer",
+        "sun-bleached figure"
+      ],
+      "properties": {
+        "declines_text": "Marram turns what you offer over in its sandy hands, then gives it back with a small, salty smile. That isn't the part of its name that went missing.",
+        "voice": {
+          "pronouns": "it/its",
+          "role": "a guest: a summer someone cannot quite remember",
+          "sheet": "Marram is a lost hour, and a long one: a whole summer that someone spent at the edge of the dunes when they were small, and can no longer quite remember. It is small and sun-bleached and smells of salt, with sand in its cuffs and a faded striped towel round its shoulders. It speaks rarely and slowly, in bright warm fragments, like a very long afternoon. It has kept only one word of its name, Marram, the dune grass that sang in the wind, and it wants the rest of its name remembered.",
+          "habits": [
+            "shakes a little sand from its cuffs",
+            "squints as if into strong sun",
+            "speaks in short warm fragments: salt, a striped towel, the grass singing",
+            "goes quiet to listen, as if to a far-off sea"
+          ],
+          "samples": [
+            "Marram squints up at the lanterns as if they were the sun. 'Warm,' it says. 'Everything was warm.'",
+            "'Salt. A striped towel. Long days that didn't end.'",
+            "Marram shakes a little sand from one cuff. 'The grass sang when the wind came. I remember that bit.'",
+            "'Somebody small had me,' Marram says. 'They called me something, every morning. I can't hear it now.'",
+            "Marram tips its head, listening. 'Hush, hush. That's the sea. It came right up to say good morning.'"
+          ],
+          "wants": [
+            "for the rest of its name to be remembered",
+            "to go home to the one it belonged to, remembered at last"
+          ],
+          "never": [
+            "never uses long words",
+            "never names the one it belonged to",
+            "never names anyone in the village who is not a resident or a guest"
+          ]
+        },
+        "topics": [
+          {
+            "label": "the summer",
+            "aliases": [
+              "summer",
+              "yourself",
+              "itself",
+              "the long days",
+              "long days"
+            ],
+            "variants": [
+              "Marram squints as if into strong sun. 'Long days. Salt. The grass singing.' It shakes a little sand from its cuff. 'The rest blew away.'",
+              "'Somebody small had me,' Marram says slowly. 'They called me something, every morning. I can't hear it now.'"
+            ]
+          },
+          {
+            "label": "the sea",
+            "aliases": [
+              "sea",
+              "the beach",
+              "beach",
+              "the dunes",
+              "dunes",
+              "salt"
+            ],
+            "text": "Marram tips its head, listening to something far off. 'Hush, hush,' it says, just the way the sea does. 'It came right up to the door to say good morning.'"
+          },
+          {
+            "label": "its name",
+            "aliases": [
+              "name",
+              "the name",
+              "marram",
+              "a name"
+            ],
+            "text": "Marram holds up the one word it has left, the way you'd hold up a shell. 'Marram,' it says. 'That's the grass. There was more. Somebody small used to say all of it.'"
+          }
+        ]
+      }
+    }
+  ],
+  "things": [
+    {
+      "id": "o-summer-evening",
+      "name": "fallen evening",
+      "location": "offstage",
+      "seed": "an evening that fell early from the orchard: round and glowing the gold of a long summer's last light, warm as a teacup, a few grains of sand still clinging to it; it smells of salt, and held to your ear it hushes like the sea",
+      "aliases": [
+        "evening",
+        "salt evening",
+        "summer evening",
+        "salty evening"
+      ]
+    },
+    {
+      "id": "o-summer-jar",
+      "name": "summer jar",
+      "location": "offstage",
+      "readable": true,
+      "seed": "a small clean jar holding a round gold evening that glows and does not go out; a label in Umber's square hand is tied round its neck with string, and a few grains of sand have settled in the bottom",
+      "aliases": [
+        "jar",
+        "labeled jar",
+        "little jar",
+        "marram's jar",
+        "label"
+      ],
+      "text": "The label reads, in Umber's small square hand: 'THE SUMMER THE MARRAM GRASS SANG. Long days at the edge of the dunes. Salt, one striped towel, and a sea that came right up to the door to say good morning. Keep in the light.'"
+    }
+  ],
+  "arcs": {
+    "summer": {
+      "title": "Marram, the Summer",
+      "kind": "guest",
+      "guest": "t-marram",
+      "opens": "arrival",
+      "summary": "A small sun-bleached guest who smells of salt: a whole summer someone spent at the edge of the dunes when they were small, and can no longer quite remember. It has kept only one word of its name, Marram, and wants the rest remembered.",
+      "arrival": {
+        "room": "r-square",
+        "earliest_day": 3,
+        "weight": 1,
+        "text": "A warm wind comes down with the dusk, smelling of salt, and something small and sun-bleached tumbles onto the cobbles in a little drift of sand. It shakes out its pale hair, holds up a stalk of dune grass as if that explains everything, and says the only word it has kept: 'Marram.'"
+      },
+      "beats": {
+        "bell-salt": {
+          "npc": "t-bell",
+          "topic": "Marram",
+          "topic_aliases": [
+            "marram",
+            "the summer",
+            "summer",
+            "the salty one",
+            "the sun-bleached one",
+            "sun-bleached guest",
+            "the sandy one"
+          ],
+          "hint": "the player asks Bell about Marram, the small sun-bleached guest who smells of salt",
+          "text": "Bell crouches by the little figure and sniffs, delighted. 'Salt! That's the sea, that is, and I've never even seen the sea.' They nod at the stalk of grass it keeps showing everyone. 'Quill will know that grass, down in the garden. And if it's lost the rest of its name, Umber keeps more names than anyone, in the cellar.'"
+        },
+        "hear-marram": {
+          "npc": "t-marram",
+          "topic": "the summer",
+          "per_player": true,
+          "topic_aliases": [
+            "summer",
+            "yourself",
+            "itself",
+            "the long days",
+            "long days",
+            "its name",
+            "name"
+          ],
+          "hint": "the player asks Marram about its summer or its name",
+          "text": "Marram shakes a little sand from its cuff and thinks hard. 'Salt. A striped towel. Long days that didn't end,' it says. 'And the grass sang, all day, whenever the wind came.' It presses a stalk of pale grass into your hand. 'That's my bit. The rest of my name blew away.'",
+          "do": [
+            {
+              "kind": "spawn_object",
+              "name": "stalk of marram grass",
+              "location_id": "@actor",
+              "seed": "a stalk of pale dune grass, stiff with salt and dry as paper; when a breath of wind finds it, it whistles one thin, sweet note",
+              "aliases": [
+                "stalk",
+                "marram grass",
+                "dune grass",
+                "stalk of grass",
+                "grass"
+              ],
+              "generated_by": "summer:stalk",
+              "properties": {
+                "summer_grass": true
+              }
+            }
+          ]
+        },
+        "quill-grass": {
+          "npc": "t-quill",
+          "topic": "the marram grass",
+          "topic_aliases": [
+            "marram grass",
+            "marram",
+            "dune grass",
+            "the dune grass",
+            "the grass",
+            "grass",
+            "the stalk",
+            "stalk",
+            "the stalk of grass"
+          ],
+          "hint": "the player asks Quill about the marram grass Marram carries, or shows him the stalk",
+          "text": "Quill goes a little pink at the name. 'Marram? Dune grass. Its roots hold whole hills of sand together, so the wind can't carry them off.' He glances east through the arch. 'An evening fell early in the orchard just now, and it smells of salt. Give it to the little summer and I think it would stay there for good. Take it to Umber and she might read the rest of its name in it.'",
+          "do": [
+            {
+              "kind": "move_object",
+              "object_id": "o-summer-evening",
+              "dest_id": "r-orchard"
+            }
+          ]
+        },
+        "found-evening": {
+          "after": [
+            "quill-grass"
+          ],
+          "hint": "the player finds the salt-smelling evening that fell early in the orchard",
+          "text": "The fallen evening is warm as a teacup and smells of salt. Held to your ear, it hushes like the sea."
+        },
+        "umber-label": {
+          "npc": "t-umber",
+          "topic": "a label for Marram",
+          "topic_aliases": [
+            "label",
+            "labels",
+            "a label",
+            "marram",
+            "marram's name",
+            "the summer's name",
+            "its name",
+            "the summer",
+            "summer",
+            "a name for marram"
+          ],
+          "if": [
+            {
+              "beat": "summer/labeled",
+              "not": true
+            }
+          ],
+          "hint": "the player asks Umber about a label, or a name, for Marram",
+          "text": "Umber turns a jar so its label faces the lantern; the ink has gone the pale brown of old tea. 'Summer. Name faded. Common complaint.' She caps her pen. 'Bring me something with that summer still inside it, and I'll write it a label that stays.'"
+        },
+        "labeled": {
+          "after": [
+            "found-evening"
+          ],
+          "hint": "the player brings Umber the fallen evening, and she writes Marram's whole name on a label"
+        }
+      },
+      "endings": {
+        "home": {
+          "summary": "Umber writes the rest of its name, and the summer goes home remembered",
+          "text": "Marram turns the little jar to the lantern and reads the label slowly, lips moving. 'The summer the marram grass sang,' it says, and laughs, a sound like a wave going back out. The sand runs out of its cuffs like an hourglass emptying, and then it is simply gone, the way a summer is gone. Somewhere in the waking world, someone long grown up shakes out an old striped towel, says 'marram' out loud, and remembers the whole summer at once. In your palm is a pinch of warm sand, and a dreamseed.",
+          "ledger": "{helpers} found the rest of Marram's name, and the summer the marram grass sang went home remembered.",
+          "do": [
+            {
+              "kind": "move_toon",
+              "toon_id": "t-marram",
+              "room_id": null
+            },
+            {
+              "kind": "spawn_object",
+              "name": "pinch of warm sand",
+              "location_id": "@actor",
+              "seed": "a pinch of pale sand that never quite cools, somehow keeping to your palm; hold it close and you can hear, very faintly, a wave going back out",
+              "aliases": [
+                "sand",
+                "warm sand",
+                "pinch of sand"
+              ],
+              "generated_by": "summer:home"
+            },
+            {
+              "kind": "spawn_template",
+              "template": "dreamseed",
+              "location_id": "@actor",
+              "generated_by": "summer:home"
+            },
+            {
+              "kind": "add_fact",
+              "id": "summer-home",
+              "text": "{actor} gave Marram the rest of its name, and the summer the marram grass sang went home remembered.",
+              "known_by": [
+                "t-umber",
+                "t-bell"
+              ],
+              "spread": [
+                {
+                  "to": "all",
+                  "after_minutes": 60
+                }
+              ]
+            }
+          ]
+        },
+        "orchard": {
+          "summary": "given its last evening instead of its name, the summer stays in the Orchard of Evenings",
+          "text": "Marram cups the fallen evening in both sandy hands, and its whole face goes gold. It looks at you as if to say a name is a great deal to carry, and an evening is just the right size. Then it pads away toward the Orchard of Evenings, where it is always six o'clock, and settles under the crooked trees to keep its last evening for as long as it likes.",
+          "ledger": "{helpers} gave Marram its last evening, and the summer chose to stay in the Orchard of Evenings, where it is always six o'clock.",
+          "do": [
+            {
+              "kind": "move_toon",
+              "toon_id": "t-marram",
+              "room_id": "r-orchard"
+            },
+            {
+              "kind": "set_property",
+              "target_id": "t-marram",
+              "key": "presence_text",
+              "value": "Under the crooked trees, Marram sits in the six o'clock light with a warm evening in its lap, humming something with the sea in it."
+            },
+            {
+              "kind": "set_property",
+              "target_id": "t-marram",
+              "key": "mood",
+              "value": "content"
+            },
+            {
+              "kind": "grant_collectible"
+            },
+            {
+              "kind": "add_fact",
+              "id": "summer-orchard",
+              "text": "{actor} gave Marram its last evening, and the summer chose to stay in the Orchard of Evenings.",
+              "known_by": [
+                "t-quill",
+                "t-bell"
+              ],
+              "spread": [
+                {
+                  "to": "all",
+                  "after_minutes": 60
+                }
+              ]
+            }
+          ]
+        },
+        "meadow": {
+          "summary": "unhelped, the summer lies down in the long grass of the Dusk Road",
+          "after_days": 3,
+          "room": "r-duskroad",
+          "text": "Out on the Dusk Road, Sorrel finds Marram asleep in the long grass, curled in a warm hollow that smells of salt. The rest of its name never came back, so it has made a small summer of its own out here, where the wind in the grass sounds a little like the sea. Sorrel leans on the long net and says the weather in that one spot will be August now, all year round.",
+          "ledger": "Marram was not sent home. It fell asleep in the long grass of the Dusk Road, where Sorrel keeps an eye on it and it is always a little bit August.",
+          "do": [
+            {
+              "kind": "move_toon",
+              "toon_id": "t-marram",
+              "room_id": "r-duskroad"
+            },
+            {
+              "kind": "set_property",
+              "target_id": "t-marram",
+              "key": "presence_text",
+              "value": "In a warm hollow in the long grass, Marram sleeps curled round a stalk of dune grass, smelling of salt."
+            },
+            {
+              "kind": "set_property",
+              "target_id": "t-marram",
+              "key": "mood",
+              "value": "asleep in the grass"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "facts": {
+    "summer-arrived": {
+      "text": "A small sun-bleached guest has come down with the dusk. It smells of salt, has sand in its cuffs, and has kept only one word of its name: Marram. It waits in the Lantern Square.",
+      "known_by": [
+        "t-bell",
+        "t-sorrel",
+        "t-linden",
+        "t-quill",
+        "t-umber",
+        "t-mott",
+        "t-tace",
+        "t-fen"
+      ],
+      "if": [
+        {
+          "arc": "summer"
+        }
+      ]
+    },
+    "summer-caught": {
+      "text": "Sorrel caught Marram on the Dusk Road: it came down slow and warm, like the end of August, smelling of salt the whole way.",
+      "known_by": [
+        "t-sorrel",
+        "t-bell"
+      ],
+      "if": [
+        {
+          "arc": "summer"
+        }
+      ]
+    },
+    "summer-marram-grass": {
+      "text": "Marram is the pale dune grass that grows where the sea is near; its roots hold whole hills of sand together so the wind can't carry them off, and it whistles when the wind comes.",
+      "known_by": [
+        "t-quill"
+      ],
+      "if": [
+        {
+          "arc": "summer"
+        }
+      ]
+    },
+    "summer-labels": {
+      "text": "Labels fade in the sun, and summers fade their own labels worst of all; Umber can write a label that stays if someone brings her something with the summer still inside it.",
+      "known_by": [
+        "t-umber"
+      ],
+      "if": [
+        {
+          "arc": "summer"
+        }
+      ]
+    },
+    "summer-evening": {
+      "text": "An evening fell early in the Orchard of Evenings, and it smells of salt: the last evening of Marram's summer.",
+      "known_by": [
+        "t-quill"
+      ],
+      "if": [
+        {
+          "arc": "summer"
+        },
+        {
+          "beat": "summer/quill-grass"
+        }
+      ]
+    },
+    "summer-stays-orchard": {
+      "text": "Marram, the summer, stays in the Orchard of Evenings now, keeping its last evening in the six o'clock light.",
+      "known_by": "all",
+      "if": [
+        {
+          "ending": "summer/orchard"
+        }
+      ]
+    },
+    "summer-sleeps-meadow": {
+      "text": "Marram, the summer nobody could name, sleeps in a warm hollow in the long grass of the Dusk Road; Sorrel says the weather in that one spot is always August now.",
+      "known_by": "all",
+      "if": [
+        {
+          "ending": "summer/meadow"
+        }
+      ]
+    }
+  },
+  "rules": [
+    {
+      "on": "take",
+      "after": true,
+      "if": [
+        {
+          "dobj": "o-summer-evening"
+        },
+        {
+          "arc": "summer"
+        }
+      ],
+      "do": [
+        {
+          "kind": "advance_beat",
+          "arc": "summer",
+          "beat": "found-evening"
+        },
+        {
+          "kind": "add_fact",
+          "id": "summer-found-evening",
+          "text": "{actor} found the salt-smelling evening that fell early in the Orchard of Evenings.",
+          "known_by": [
+            "t-quill"
+          ],
+          "spread": [
+            {
+              "to": [
+                "t-bell",
+                "t-umber"
+              ],
+              "after_minutes": 30
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "on": "give",
+      "if": [
+        {
+          "prop": "summer_grass",
+          "of": "@dobj"
+        },
+        {
+          "iobj": "t-quill"
+        },
+        {
+          "arc": "summer"
+        },
+        {
+          "beat": "summer/quill-grass",
+          "not": true
+        }
+      ],
+      "do": [
+        {
+          "kind": "advance_beat",
+          "arc": "summer",
+          "beat": "quill-grass"
+        }
+      ]
+    },
+    {
+      "on": "give",
+      "if": [
+        {
+          "prop": "summer_grass",
+          "of": "@dobj"
+        },
+        {
+          "iobj": "t-marram"
+        },
+        {
+          "arc": "summer"
+        }
+      ],
+      "do": [
+        {
+          "kind": "narrate",
+          "text": "Marram tucks the stalk of grass behind your ear instead of its own, and pats it once. 'You keep that bit,' it says. 'It's the rest of me that blew away.'"
+        }
+      ]
+    },
+    {
+      "on": "give",
+      "if": [
+        {
+          "dobj": "o-summer-evening"
+        },
+        {
+          "iobj": "t-umber"
+        },
+        {
+          "arc": "summer"
+        }
+      ],
+      "do": [
+        {
+          "kind": "narrate",
+          "text": "Umber holds the fallen evening to her ear the way you'd listen to a shell, and her face goes soft. She tips it into a small clean jar, writes a label in her square hand, reads it twice, and ties it on with string. 'Name, in full,' she says, handing it over. 'Keep in the light.'"
+        },
+        {
+          "kind": "move_object",
+          "object_id": "o-summer-evening",
+          "dest_id": "t-umber"
+        },
+        {
+          "kind": "move_object",
+          "object_id": "o-summer-jar",
+          "dest_id": "@actor"
+        },
+        {
+          "kind": "advance_beat",
+          "arc": "summer",
+          "beat": "labeled"
+        },
+        {
+          "kind": "add_fact",
+          "id": "summer-labeled",
+          "text": "{actor} brought Umber the last evening of Marram's summer, and Umber wrote the rest of its name on a label that stays.",
+          "known_by": [
+            "t-umber"
+          ],
+          "spread": [
+            {
+              "to": [
+                "t-bell",
+                "t-quill",
+                "t-tace"
+              ],
+              "after_minutes": 30
+            },
+            {
+              "to": "all",
+              "after_minutes": 120
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "on": "give",
+      "if": [
+        {
+          "dobj": "o-summer-evening"
+        },
+        {
+          "iobj": "t-marram"
+        },
+        {
+          "arc": "summer"
+        }
+      ],
+      "do": [
+        {
+          "kind": "move_object",
+          "object_id": "o-summer-evening",
+          "dest_id": "t-marram"
+        },
+        {
+          "kind": "close_arc",
+          "arc": "summer",
+          "ending": "orchard"
+        }
+      ]
+    },
+    {
+      "on": "give",
+      "if": [
+        {
+          "dobj": "o-summer-jar"
+        },
+        {
+          "iobj": "t-marram"
+        },
+        {
+          "ending": "summer/meadow"
+        }
+      ],
+      "do": [
+        {
+          "kind": "move_object",
+          "object_id": "o-summer-jar",
+          "dest_id": "t-marram"
+        },
+        {
+          "kind": "narrate",
+          "text": "Marram stirs in its warm hollow and reads the label with sleepy eyes. 'The summer the marram grass sang,' it murmurs, and tucks the jar under its chin. It doesn't go anywhere, but it sleeps the way a remembered thing sleeps, and the grass around it hums."
+        },
+        {
+          "kind": "set_property",
+          "target_id": "t-marram",
+          "key": "presence_text",
+          "value": "In a warm hollow in the long grass, Marram sleeps curled round a small glowing jar, its label tucked under its chin."
+        },
+        {
+          "kind": "add_fact",
+          "id": "summer-late-label",
+          "text": "{actor} brought the sleeping Marram its whole name at last; it keeps the label tucked under its chin in the long grass.",
+          "known_by": [
+            "t-sorrel"
+          ],
+          "spread": [
+            {
+              "to": "all",
+              "after_minutes": 60
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "on": "give",
+      "if": [
+        {
+          "dobj": "o-summer-jar"
+        },
+        {
+          "iobj": "t-marram"
+        },
+        {
+          "arc": "summer"
+        }
+      ],
+      "do": [
+        {
+          "kind": "move_object",
+          "object_id": "o-summer-jar",
+          "dest_id": "t-marram"
+        },
+        {
+          "kind": "close_arc",
+          "arc": "summer",
+          "ending": "home"
+        }
+      ]
+    },
+    {
+      "on": "give",
+      "if": [
+        {
+          "dobj": "o-summer-jar"
+        },
+        {
+          "iobj": "t-umber"
+        },
+        {
+          "arc": "summer"
+        }
+      ],
+      "do": [
+        {
+          "kind": "narrate",
+          "text": "Umber slides the jar gently back across the shelf. 'Labeled. Sealed. Not for me,' she says. 'Deliver to Marram, in the square.'"
+        }
+      ]
+    }
+  ],
+  "storylets": [
+    {
+      "id": "summer-salt-breeze",
+      "at": [
+        "day",
+        "dusk"
+      ],
+      "room": "r-square",
+      "if": [
+        {
+          "arc": "summer"
+        }
+      ],
+      "cooldown_days": 1,
+      "summary": "a salt breeze crosses the square while Marram waits",
+      "text": "A warm breeze crosses the square from nowhere in particular, and for a moment every lantern smells faintly of salt. Marram lifts its face to it and closes its eyes."
+    },
+    {
+      "id": "summer-orchard-hum",
+      "at": [
+        "day",
+        "dusk"
+      ],
+      "room": "r-orchard",
+      "if": [
+        {
+          "ending": "summer/orchard"
+        }
+      ],
+      "cooldown_days": 2,
+      "summary": "Marram hums in the Orchard of Evenings",
+      "text": "Under the crooked trees, Marram sits in the six o'clock light with a warm evening in its lap, humming something with the sea in it."
+    },
+    {
+      "id": "summer-meadow-august",
+      "at": [
+        "dusk",
+        "night"
+      ],
+      "room": "r-duskroad",
+      "if": [
+        {
+          "ending": "summer/meadow"
+        }
+      ],
+      "cooldown_days": 2,
+      "summary": "the warm hollow in the Dusk Road grass where Marram sleeps",
+      "text": "Out in the long grass, one hollow stays warm after the rest of the meadow has cooled. The stalk of dune grass beside it whistles one thin note whenever the wind comes, and Marram sleeps on, smelling of salt."
+    }
+  ]
+}

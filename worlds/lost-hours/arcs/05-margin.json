@@ -1,0 +1,886 @@
+{
+  "comment": "Guest arc 5 (canon section 7): The Margin Afternoon. An afternoon a child daydreamed through in class, covered in half-finished doodles; a bell rang before it could finish its best drawing, a little garden with an empty middle. Quill's garden, Fen's pencils. Endings: finished (the dreamer draws the littlest pendulum into the middle, sitting in the Pendulum Garden, and the afternoon goes home), doodling (given a pencil of its own, it stays in the garden, happily unfinished), pigeonhole (unhelped for three days, it folds itself into Fen's pigeonhole marked TO ME, LATER).",
+  "toons": [
+    {
+      "id": "t-margin",
+      "name": "the Margin Afternoon",
+      "slot": 124,
+      "room": "offstage",
+      "mood": "dreamy",
+      "seed": "a lost hour: an afternoon a child daydreamed through in class, looking out of the window instead of at the sums on the board; small and papery and covered in half-finished doodles, it wants its drawing finished",
+      "appearance_seed": "a small papery figure the color of an old exercise-book page, faintly ruled with pale blue lines, covered in half-finished pencil doodles (a spiral, a boat with no sail, a four-pointed star, a cat with no tail), a smudge of pencil on its nose, a faraway look",
+      "presence_text": "A small papery figure sits cross-legged on the cobbles, half-finished doodles drifting over its arms like weather, gazing at nothing in particular as if there were a window there.",
+      "aliases": [
+        "afternoon",
+        "margin afternoon",
+        "doodled figure",
+        "papery figure"
+      ],
+      "properties": {
+        "declines_text": "The Afternoon looks at what you're offering the polite way you'd look at a sum, and hands it back. It's still thinking about its drawing.",
+        "voice": {
+          "pronouns": "it/its",
+          "role": "a guest: an afternoon a child daydreamed through in class",
+          "sheet": "The Margin Afternoon is a lost hour: an afternoon a child spent looking out of a classroom window instead of at the sums on the board, doodling in the margins while the clock on the wall went tick. It is small and papery, the color of an old exercise-book page, covered in half-finished doodles. It speaks rarely and a little absently, like a child called on in the middle of a daydream. A bell rang before it could finish its best drawing, a little garden in the corner of the page, and it wants that drawing finished.",
+          "habits": [
+            "trails off to look out of a window that isn't there",
+            "jumps at the word 'bell', then laughs at itself",
+            "adds a tiny doodle to its own sleeve while it thinks"
+          ],
+          "samples": [
+            "The Afternoon blinks, as if its name has just been called. 'Sorry. I was somewhere else.'",
+            "'There was a clock on the wall. Tick. Tick. And then I wasn't there anymore.'",
+            "The Afternoon draws a small spiral on its own wrist with one finger. 'That's the wind.'",
+            "'The sun came in sideways across the desks. I went with it.'",
+            "The Afternoon jumps, then laughs at itself. 'Not that bell. Sorry.'"
+          ],
+          "wants": [
+            "to have its drawing finished: the little garden with the empty middle"
+          ],
+          "never": [
+            "never uses long words",
+            "never names the child it belonged to",
+            "never names anyone in the village who is not a resident or a guest"
+          ]
+        },
+        "topics": [
+          {
+            "label": "the drawing",
+            "aliases": [
+              "drawing",
+              "its drawing",
+              "the page",
+              "page",
+              "the garden",
+              "doodles",
+              "the doodles"
+            ],
+            "variants": [
+              "The Afternoon traces an empty circle in the air with one finger. 'That's where the middle goes,' it says. 'I never got there.'",
+              "'A garden,' the Afternoon says dreamily, 'where the clocks grow on trees. I was just getting to the middle when the bell rang.'"
+            ]
+          },
+          {
+            "label": "the bell",
+            "aliases": [
+              "bell",
+              "a bell",
+              "the school bell"
+            ],
+            "text": "The Afternoon flinches, then laughs at itself. 'It rang right in the middle of the middle,' it says. 'Everyone got up. I was still in the garden.'"
+          },
+          {
+            "label": "the classroom",
+            "aliases": [
+              "class",
+              "school",
+              "classroom",
+              "the lesson",
+              "lesson",
+              "sums",
+              "the sums",
+              "the window",
+              "window"
+            ],
+            "text": "The Afternoon gazes past you, as if at a window. 'Sums on the board. A clock that went tick, tick. The sun came in sideways across the desks, and I went with it.'"
+          }
+        ]
+      }
+    }
+  ],
+  "things": [
+    {
+      "id": "o-margin-drawing",
+      "name": "margin drawing",
+      "location": {
+        "toon": "t-margin"
+      },
+      "seed": "a page torn soft from the margin of a sums book, crowded with pencil doodles: spirals, a boat with no sail, a four-pointed star, and in one corner a little garden where pendulums hang from the trees like fruit",
+      "aliases": [
+        "drawing",
+        "page",
+        "garden drawing",
+        "afternoon's drawing"
+      ],
+      "properties": {
+        "state": "unfinished",
+        "state_text": {
+          "unfinished": "The middle of the little garden is empty: a clean white space, left when the bell rang.",
+          "finished": "In the middle of the little garden the littlest pendulum swings now, drawn in soft pencil, and the whole page looks as if it has let out a long breath."
+        }
+      }
+    },
+    {
+      "id": "o-margin-littlest",
+      "name": "littlest pendulum",
+      "location": {
+        "room": "r-garden"
+      },
+      "fixture": true,
+      "seed": "the smallest pendulum in the garden, no bigger than a raindrop, swinging on a silk thread from the lowest trellis, right in the middle of everything; it keeps a small, earnest count all its own",
+      "aliases": [
+        "little pendulum",
+        "smallest pendulum",
+        "tiny pendulum",
+        "newest pendulum"
+      ]
+    }
+  ],
+  "arcs": {
+    "margin": {
+      "title": "The Margin Afternoon",
+      "kind": "guest",
+      "guest": "t-margin",
+      "opens": "arrival",
+      "summary": "A small papery guest covered in half-finished doodles: an afternoon a child daydreamed through in class. A bell rang before it could finish its best drawing, a little garden with an empty middle, and it wants that drawing finished.",
+      "arrival": {
+        "room": "r-square",
+        "earliest_day": 4,
+        "weight": 1,
+        "text": "Something drifts down through the dusk like a paper dart that has forgotten how to fly: a small figure the color of an old exercise-book page, doodles curling up its arms. It lands softly on the cobbles, gazes at the lanterns as if they were the most interesting thing in the world, and forgets, for a moment, to be anywhere else."
+      },
+      "beats": {
+        "bell-startles": {
+          "npc": "t-bell",
+          "topic": "the Margin Afternoon",
+          "topic_aliases": [
+            "the afternoon",
+            "afternoon",
+            "margin afternoon",
+            "the doodles",
+            "doodles",
+            "the doodled one",
+            "the doodled guest",
+            "the papery one"
+          ],
+          "hint": "the player asks Bell about the Margin Afternoon, the small doodled guest",
+          "text": "When you say Bell's name, the little doodled figure jumps as if a lesson has just ended. Bell laughs and crouches beside it. 'Not that kind of bell, sorry!' Then, more quietly: 'An afternoon, I'd say, the looking-out-of-windows sort. Ask it about its drawing. Fen keeps pencils at the post office, and those swinging things it doodles look a lot like Quill's garden.'"
+        },
+        "see-drawing": {
+          "npc": "t-margin",
+          "topic": "the drawing",
+          "topic_aliases": [
+            "drawing",
+            "its drawing",
+            "the page",
+            "page",
+            "the garden",
+            "doodles",
+            "the doodles"
+          ],
+          "hint": "the player asks the Margin Afternoon about its drawing",
+          "text": "The Afternoon unfolds a page from its lap, soft from being held: spirals, a boat with no sail, and in one corner a little garden where pendulums hang from the trees like fruit. The middle is empty. 'I didn't get to the middle,' it says. 'The bell rang.' It holds the page out for you to keep a while.",
+          "do": [
+            {
+              "kind": "move_object",
+              "object_id": "o-margin-drawing",
+              "dest_id": "@actor"
+            }
+          ]
+        },
+        "fen-pencil": {
+          "npc": "t-fen",
+          "topic": "a pencil",
+          "per_player": true,
+          "topic_aliases": [
+            "pencil",
+            "pencils",
+            "a soft pencil",
+            "soft pencil",
+            "the pencils",
+            "a pencil for the drawing",
+            "something to draw with"
+          ],
+          "hint": "the player asks Fen for a pencil to finish the Margin Afternoon's drawing",
+          "text": "Fen plucks the pencil from behind her ear, frowns at it, and swaps it for a better one from the jar on the counter: soft lead, sharpened to a whisper. 'Unfinished things are my whole trade,' she says. 'Use it on whatever wants finishing. No postage due.'",
+          "do": [
+            {
+              "kind": "spawn_object",
+              "name": "soft pencil",
+              "location_id": "@actor",
+              "seed": "a soft pencil from the jar on Fen's counter, sharpened to a whisper, its paint worn smooth where a thumb goes; it smells of cedar shavings",
+              "aliases": [
+                "pencil",
+                "fen's pencil"
+              ],
+              "verbs": [
+                "use"
+              ],
+              "generated_by": "margin:pencil",
+              "properties": {
+                "margin_pencil": true
+              }
+            },
+            {
+              "kind": "add_fact",
+              "id": "margin-pencil",
+              "text": "{actor} borrowed a soft pencil from Fen for the Margin Afternoon's drawing.",
+              "known_by": [
+                "t-fen"
+              ],
+              "spread": [
+                {
+                  "to": [
+                    "t-bell"
+                  ],
+                  "after_minutes": 30
+                }
+              ]
+            }
+          ]
+        },
+        "quill-middle": {
+          "npc": "t-quill",
+          "topic": "the drawing",
+          "topic_aliases": [
+            "drawing",
+            "the margin drawing",
+            "margin drawing",
+            "the garden drawing",
+            "the empty middle",
+            "the middle",
+            "middle",
+            "the littlest pendulum",
+            "littlest pendulum"
+          ],
+          "after": [
+            "see-drawing"
+          ],
+          "if": [
+            {
+              "carried": "o-margin-drawing"
+            }
+          ],
+          "hint": "the player shows Quill the Margin Afternoon's drawing, or asks him about it",
+          "text": "Quill leans over the page and goes very pink. 'That's my garden,' he says softly, 'or a garden that wanted to be it.' He kneels by the lowest trellis, where the littlest pendulum swings on its thread. 'The middle is where the newest one hangs. Sit here and draw it in, while it's swinging.'"
+        },
+        "drawn": {
+          "after": [
+            "quill-middle"
+          ],
+          "hint": "the player draws the littlest pendulum into the middle of the drawing, sitting in the Pendulum Garden"
+        }
+      },
+      "endings": {
+        "finished": {
+          "summary": "the drawing is finished in the Pendulum Garden, and the afternoon goes home",
+          "text": "The Afternoon takes the finished drawing in both hands and looks at it for a long, long time. Then it smiles the slow smile of someone called on who, for once, knows the answer, folds itself up small as a note passed along a row of desks, and is gone. Somewhere in the waking world, a grown-up leafing through an old sums book finds a little garden in the margin, finished, and cannot remember finishing it. In your hand is a curl of pencil shaving, and a dreamseed.",
+          "ledger": "{helpers} finished the Margin Afternoon's drawing, and the afternoon went home with its garden whole.",
+          "do": [
+            {
+              "kind": "move_toon",
+              "toon_id": "t-margin",
+              "room_id": null
+            },
+            {
+              "kind": "spawn_object",
+              "name": "curl of pencil shaving",
+              "location_id": "@actor",
+              "seed": "a curl of cedar pencil shaving, thin as a petal, with a little ring of grey at its edge; it smells of a classroom on a slow, sunny afternoon",
+              "aliases": [
+                "shaving",
+                "pencil shaving",
+                "curl"
+              ],
+              "generated_by": "margin:finished"
+            },
+            {
+              "kind": "spawn_template",
+              "template": "dreamseed",
+              "location_id": "@actor",
+              "generated_by": "margin:finished"
+            },
+            {
+              "kind": "add_fact",
+              "id": "margin-finished",
+              "text": "{actor} brought the Margin Afternoon its finished drawing, and the afternoon went home with its garden whole.",
+              "known_by": [
+                "t-bell",
+                "t-quill",
+                "t-fen"
+              ],
+              "spread": [
+                {
+                  "to": "all",
+                  "after_minutes": 60
+                }
+              ]
+            }
+          ]
+        },
+        "doodling": {
+          "summary": "given a pencil of its own, the afternoon stays in the Pendulum Garden, happily unfinished",
+          "text": "The Afternoon turns the soft pencil over in its papery hands, astonished, as if no one had ever given it one of its own. It doesn't reach for the unfinished drawing. Instead it wanders off toward the Pendulum Garden, sits down under the trellises, and begins to doodle every pendulum it sees, perfectly happy to stay unfinished.",
+          "ledger": "The Margin Afternoon was given a pencil of its own by {helpers}. It stays in the Pendulum Garden, doodling, and has decided it doesn't mind being unfinished.",
+          "do": [
+            {
+              "kind": "move_toon",
+              "toon_id": "t-margin",
+              "room_id": "r-garden"
+            },
+            {
+              "kind": "set_property",
+              "target_id": "t-margin",
+              "key": "presence_text",
+              "value": "Under the trellises, the Margin Afternoon sits cross-legged with a soft pencil, doodling the pendulums as they swing."
+            },
+            {
+              "kind": "set_property",
+              "target_id": "t-margin",
+              "key": "mood",
+              "value": "content"
+            },
+            {
+              "kind": "grant_collectible"
+            },
+            {
+              "kind": "add_fact",
+              "id": "margin-doodling",
+              "text": "{actor} gave the Margin Afternoon a pencil of its own; it stays in the Pendulum Garden now, doodling the pendulums.",
+              "known_by": [
+                "t-quill",
+                "t-fen"
+              ],
+              "spread": [
+                {
+                  "to": "all",
+                  "after_minutes": 60
+                }
+              ]
+            }
+          ]
+        },
+        "pigeonhole": {
+          "summary": "unhelped, the afternoon folds itself into Fen's pigeonhole marked TO ME, LATER",
+          "after_days": 3,
+          "room": "r-post",
+          "text": "At the Little Post Office, Fen finds the Margin Afternoon folded up small as a note passed in class, tucked into the pigeonhole marked TO ME, LATER. She doesn't wake it. She only smooths its doodled corner, the way you'd tuck in a blanket, and leaves it to be opened some slow afternoon.",
+          "ledger": "The Margin Afternoon was not sent home. It folded itself into Fen's pigeonhole marked TO ME, LATER, and she keeps it there, unfinished.",
+          "do": [
+            {
+              "kind": "move_toon",
+              "toon_id": "t-margin",
+              "room_id": "r-post"
+            },
+            {
+              "kind": "set_property",
+              "target_id": "t-margin",
+              "key": "presence_text",
+              "value": "In the pigeonhole marked TO ME, LATER, the Margin Afternoon sleeps folded small as a passed note, one doodled corner poking out."
+            },
+            {
+              "kind": "set_property",
+              "target_id": "t-margin",
+              "key": "mood",
+              "value": "folded up asleep"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "facts": {
+    "margin-arrived": {
+      "text": "A small guest the color of an old exercise-book page has come down with the dusk, covered in half-finished doodles: the Margin Afternoon, an afternoon a child daydreamed through in class. It waits in the Lantern Square and wants its drawing finished.",
+      "known_by": [
+        "t-bell",
+        "t-sorrel",
+        "t-linden",
+        "t-quill",
+        "t-fen",
+        "t-mott",
+        "t-tace",
+        "t-umber"
+      ],
+      "if": [
+        {
+          "arc": "margin"
+        }
+      ]
+    },
+    "margin-bell": {
+      "text": "The Margin Afternoon jumps whenever it hears the word bell: a bell rang and ended it before its drawing was done.",
+      "known_by": [
+        "t-bell",
+        "t-linden"
+      ],
+      "if": [
+        {
+          "arc": "margin"
+        }
+      ]
+    },
+    "margin-pencils": {
+      "text": "Fen keeps a jar of soft pencils on the post office counter, sharpened to a whisper, for anything unfinished.",
+      "known_by": [
+        "t-fen",
+        "t-bell"
+      ],
+      "if": [
+        {
+          "arc": "margin"
+        }
+      ]
+    },
+    "margin-drawing": {
+      "text": "The Margin Afternoon's drawing is a little garden where pendulums hang from the trees like fruit, with an empty space in the middle that was never drawn.",
+      "known_by": [
+        "t-quill",
+        "t-bell",
+        "t-fen"
+      ],
+      "if": [
+        {
+          "arc": "margin"
+        },
+        {
+          "beat": "margin/see-drawing"
+        }
+      ]
+    },
+    "margin-littlest": {
+      "text": "The littlest pendulum in the Pendulum Garden hangs from the lowest trellis, right in the middle; it is the newest one.",
+      "known_by": [
+        "t-quill"
+      ],
+      "if": [
+        {
+          "arc": "margin"
+        }
+      ]
+    },
+    "margin-stays-garden": {
+      "text": "The Margin Afternoon stays in the Pendulum Garden now, doodling the pendulums with a soft pencil of its own.",
+      "known_by": "all",
+      "if": [
+        {
+          "ending": "margin/doodling"
+        }
+      ]
+    },
+    "margin-sleeps-pigeonhole": {
+      "text": "The Margin Afternoon sleeps folded small in the pigeonhole marked TO ME, LATER at the Little Post Office, its drawing still unfinished.",
+      "known_by": "all",
+      "if": [
+        {
+          "ending": "margin/pigeonhole"
+        }
+      ]
+    }
+  },
+  "rules": [
+    {
+      "on": "give",
+      "if": [
+        {
+          "prop": "margin_pencil",
+          "of": "@dobj"
+        },
+        {
+          "iobj": "t-margin"
+        },
+        {
+          "arc": "margin"
+        },
+        {
+          "beat": "margin/see-drawing",
+          "not": true
+        }
+      ],
+      "do": [
+        {
+          "kind": "advance_beat",
+          "arc": "margin",
+          "beat": "see-drawing"
+        }
+      ]
+    },
+    {
+      "on": "give",
+      "if": [
+        {
+          "prop": "margin_pencil",
+          "of": "@dobj"
+        },
+        {
+          "iobj": "t-margin"
+        },
+        {
+          "arc": "margin"
+        },
+        {
+          "beat": "margin/drawn"
+        }
+      ],
+      "do": [
+        {
+          "kind": "narrate",
+          "text": "The Afternoon pushes the pencil gently back into your hand, its eyes on the page you carry. 'You did the middle,' it whispers. 'Can I see?'"
+        }
+      ]
+    },
+    {
+      "on": "give",
+      "if": [
+        {
+          "prop": "margin_pencil",
+          "of": "@dobj"
+        },
+        {
+          "iobj": "t-margin"
+        },
+        {
+          "arc": "margin"
+        }
+      ],
+      "do": [
+        {
+          "kind": "move_object",
+          "object_id": "@dobj",
+          "dest_id": "t-margin"
+        },
+        {
+          "kind": "close_arc",
+          "arc": "margin",
+          "ending": "doodling"
+        }
+      ]
+    },
+    {
+      "on": "give",
+      "if": [
+        {
+          "dobj": "o-margin-drawing"
+        },
+        {
+          "iobj": "t-margin"
+        },
+        {
+          "arc": "margin"
+        },
+        {
+          "prop": "state",
+          "of": "o-margin-drawing",
+          "eq": "finished"
+        }
+      ],
+      "do": [
+        {
+          "kind": "move_object",
+          "object_id": "o-margin-drawing",
+          "dest_id": "t-margin"
+        },
+        {
+          "kind": "close_arc",
+          "arc": "margin",
+          "ending": "finished"
+        }
+      ]
+    },
+    {
+      "on": "give",
+      "if": [
+        {
+          "dobj": "o-margin-drawing"
+        },
+        {
+          "iobj": "t-margin"
+        },
+        {
+          "ending": "margin/pigeonhole"
+        },
+        {
+          "prop": "state",
+          "of": "o-margin-drawing",
+          "eq": "finished"
+        }
+      ],
+      "do": [
+        {
+          "kind": "move_object",
+          "object_id": "o-margin-drawing",
+          "dest_id": "t-margin"
+        },
+        {
+          "kind": "narrate",
+          "text": "In its pigeonhole the folded Afternoon stirs just enough to take the finished drawing, and tucks it inside itself without quite waking. Fen, watching over her glasses, says it's the first time she has seen a letter smile."
+        },
+        {
+          "kind": "set_property",
+          "target_id": "t-margin",
+          "key": "presence_text",
+          "value": "In the pigeonhole marked TO ME, LATER, the Margin Afternoon sleeps folded small around its finished drawing, one doodled corner poking out."
+        },
+        {
+          "kind": "add_fact",
+          "id": "margin-late-drawing",
+          "text": "{actor} brought the folded Margin Afternoon its finished drawing; it keeps it tucked inside itself in Fen's pigeonhole.",
+          "known_by": [
+            "t-fen"
+          ],
+          "spread": [
+            {
+              "to": "all",
+              "after_minutes": 60
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "on": "give",
+      "if": [
+        {
+          "dobj": "o-margin-drawing"
+        },
+        {
+          "iobj": "t-margin"
+        },
+        {
+          "prop": "state",
+          "of": "o-margin-drawing",
+          "ne": "finished"
+        }
+      ],
+      "do": [
+        {
+          "kind": "narrate",
+          "text": "The Afternoon holds the drawing up to the lantern light and gazes at the empty middle. 'Still no middle,' it says softly, and gives it back to you."
+        }
+      ]
+    },
+    {
+      "on": "give",
+      "if": [
+        {
+          "dobj": "o-margin-drawing"
+        },
+        {
+          "iobj": "t-quill"
+        },
+        {
+          "arc": "margin"
+        },
+        {
+          "beat": "margin/quill-middle",
+          "not": true
+        }
+      ],
+      "do": [
+        {
+          "kind": "advance_beat",
+          "arc": "margin",
+          "beat": "quill-middle"
+        }
+      ]
+    },
+    {
+      "on": "give",
+      "if": [
+        {
+          "dobj": "o-margin-drawing"
+        },
+        {
+          "iobj": "t-fen"
+        },
+        {
+          "arc": "margin"
+        },
+        {
+          "prop": "state",
+          "of": "o-margin-drawing",
+          "ne": "finished"
+        }
+      ],
+      "do": [
+        {
+          "kind": "narrate",
+          "text": "Fen studies the page the way she studies an address, then hands it back. 'No stamp, no name, and no middle,' she says. 'Not ready for the post just yet.'"
+        }
+      ]
+    },
+    {
+      "on": "use",
+      "if": [
+        {
+          "prop": "margin_pencil",
+          "of": "@dobj"
+        },
+        {
+          "iobj": "o-margin-drawing"
+        },
+        {
+          "arc": "margin"
+        },
+        {
+          "in": "r-garden"
+        },
+        {
+          "beat": "margin/quill-middle"
+        },
+        {
+          "beat": "margin/drawn",
+          "not": true
+        }
+      ],
+      "do": [
+        {
+          "kind": "set_property",
+          "target_id": "o-margin-drawing",
+          "key": "state",
+          "value": "finished"
+        },
+        {
+          "kind": "narrate",
+          "text": "You sit on the moss by the lowest trellis and draw the littlest pendulum into the empty middle: one fine line, one round bob, a small curve to show it swinging. As you lift the pencil, the whole garden ticks once, all together, as if it approves."
+        },
+        {
+          "kind": "advance_beat",
+          "arc": "margin",
+          "beat": "drawn"
+        },
+        {
+          "kind": "add_fact",
+          "id": "margin-drawn",
+          "text": "{actor} sat in the Pendulum Garden and drew the littlest pendulum into the empty middle of the Margin Afternoon's drawing.",
+          "known_by": [
+            "t-quill"
+          ],
+          "spread": [
+            {
+              "to": [
+                "t-bell",
+                "t-fen"
+              ],
+              "after_minutes": 30
+            },
+            {
+              "to": "all",
+              "after_minutes": 120
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "on": "use",
+      "if": [
+        {
+          "prop": "margin_pencil",
+          "of": "@dobj"
+        },
+        {
+          "iobj": "o-margin-drawing"
+        },
+        {
+          "prop": "state",
+          "of": "o-margin-drawing",
+          "eq": "finished"
+        }
+      ],
+      "do": [
+        {
+          "kind": "narrate",
+          "to": "@actor",
+          "text": "You hold the pencil over the finished garden a moment, and decide it doesn't want another line."
+        }
+      ]
+    },
+    {
+      "on": "use",
+      "if": [
+        {
+          "prop": "margin_pencil",
+          "of": "@dobj"
+        },
+        {
+          "iobj": "o-margin-drawing"
+        },
+        {
+          "arc": "margin"
+        },
+        {
+          "in": "r-garden"
+        }
+      ],
+      "do": [
+        {
+          "kind": "narrate",
+          "to": "@actor",
+          "text": "You look from the drawing to the swinging trellises and back. Something belongs in that empty middle, but you can't tell which of all these swinging things. Quill would know his own garden."
+        }
+      ]
+    },
+    {
+      "on": "use",
+      "if": [
+        {
+          "prop": "margin_pencil",
+          "of": "@dobj"
+        },
+        {
+          "iobj": "o-margin-drawing"
+        },
+        {
+          "arc": "margin"
+        }
+      ],
+      "do": [
+        {
+          "kind": "narrate",
+          "to": "@actor",
+          "text": "You lift the pencil over the empty middle of the little garden, and stop. Whatever goes there, you'd have to see it to draw it."
+        }
+      ]
+    }
+  ],
+  "storylets": [
+    {
+      "id": "margin-window",
+      "at": [
+        "day",
+        "dusk"
+      ],
+      "room": "r-square",
+      "if": [
+        {
+          "arc": "margin"
+        }
+      ],
+      "cooldown_days": 1,
+      "summary": "the Margin Afternoon daydreams in the square",
+      "text": "The Margin Afternoon sits very still, gazing out of a window that isn't there, and a small doodled cloud drifts slowly up its sleeve."
+    },
+    {
+      "id": "margin-garden-doodles",
+      "at": [
+        "day",
+        "dusk"
+      ],
+      "room": "r-garden",
+      "if": [
+        {
+          "ending": "margin/doodling"
+        }
+      ],
+      "cooldown_days": 2,
+      "summary": "the Margin Afternoon doodles in the Pendulum Garden",
+      "text": "Under the trellises, the Margin Afternoon doodles the pendulums as they swing. Quill pretends not to notice, and goes pink with pleasure."
+    },
+    {
+      "id": "margin-to-me-later",
+      "at": [
+        "day"
+      ],
+      "room": "r-post",
+      "if": [
+        {
+          "ending": "margin/pigeonhole"
+        }
+      ],
+      "cooldown_days": 2,
+      "summary": "Fen checks on the Margin Afternoon asleep in its pigeonhole",
+      "text": "Fen pauses at the pigeonhole marked TO ME, LATER, where the Margin Afternoon sleeps folded small, and smooths its doodled corner without waking it."
+    }
+  ]
+}

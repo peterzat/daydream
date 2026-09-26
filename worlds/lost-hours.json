@@ -589,6 +589,627 @@
           ]
         }
       ]
+    },
+    {
+      "on": "take",
+      "after": true,
+      "if": [
+        {
+          "dobj": "o-summer-evening"
+        },
+        {
+          "arc": "summer"
+        }
+      ],
+      "do": [
+        {
+          "kind": "advance_beat",
+          "arc": "summer",
+          "beat": "found-evening"
+        },
+        {
+          "kind": "add_fact",
+          "id": "summer-found-evening",
+          "text": "{actor} found the salt-smelling evening that fell early in the Orchard of Evenings.",
+          "known_by": [
+            "t-quill"
+          ],
+          "spread": [
+            {
+              "to": [
+                "t-bell",
+                "t-umber"
+              ],
+              "after_minutes": 30
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "on": "give",
+      "if": [
+        {
+          "prop": "summer_grass",
+          "of": "@dobj"
+        },
+        {
+          "iobj": "t-quill"
+        },
+        {
+          "arc": "summer"
+        },
+        {
+          "beat": "summer/quill-grass",
+          "not": true
+        }
+      ],
+      "do": [
+        {
+          "kind": "advance_beat",
+          "arc": "summer",
+          "beat": "quill-grass"
+        }
+      ]
+    },
+    {
+      "on": "give",
+      "if": [
+        {
+          "prop": "summer_grass",
+          "of": "@dobj"
+        },
+        {
+          "iobj": "t-marram"
+        },
+        {
+          "arc": "summer"
+        }
+      ],
+      "do": [
+        {
+          "kind": "narrate",
+          "text": "Marram tucks the stalk of grass behind your ear instead of its own, and pats it once. 'You keep that bit,' it says. 'It's the rest of me that blew away.'"
+        }
+      ]
+    },
+    {
+      "on": "give",
+      "if": [
+        {
+          "dobj": "o-summer-evening"
+        },
+        {
+          "iobj": "t-umber"
+        },
+        {
+          "arc": "summer"
+        }
+      ],
+      "do": [
+        {
+          "kind": "narrate",
+          "text": "Umber holds the fallen evening to her ear the way you'd listen to a shell, and her face goes soft. She tips it into a small clean jar, writes a label in her square hand, reads it twice, and ties it on with string. 'Name, in full,' she says, handing it over. 'Keep in the light.'"
+        },
+        {
+          "kind": "move_object",
+          "object_id": "o-summer-evening",
+          "dest_id": "t-umber"
+        },
+        {
+          "kind": "move_object",
+          "object_id": "o-summer-jar",
+          "dest_id": "@actor"
+        },
+        {
+          "kind": "advance_beat",
+          "arc": "summer",
+          "beat": "labeled"
+        },
+        {
+          "kind": "add_fact",
+          "id": "summer-labeled",
+          "text": "{actor} brought Umber the last evening of Marram's summer, and Umber wrote the rest of its name on a label that stays.",
+          "known_by": [
+            "t-umber"
+          ],
+          "spread": [
+            {
+              "to": [
+                "t-bell",
+                "t-quill",
+                "t-tace"
+              ],
+              "after_minutes": 30
+            },
+            {
+              "to": "all",
+              "after_minutes": 120
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "on": "give",
+      "if": [
+        {
+          "dobj": "o-summer-evening"
+        },
+        {
+          "iobj": "t-marram"
+        },
+        {
+          "arc": "summer"
+        }
+      ],
+      "do": [
+        {
+          "kind": "move_object",
+          "object_id": "o-summer-evening",
+          "dest_id": "t-marram"
+        },
+        {
+          "kind": "close_arc",
+          "arc": "summer",
+          "ending": "orchard"
+        }
+      ]
+    },
+    {
+      "on": "give",
+      "if": [
+        {
+          "dobj": "o-summer-jar"
+        },
+        {
+          "iobj": "t-marram"
+        },
+        {
+          "ending": "summer/meadow"
+        }
+      ],
+      "do": [
+        {
+          "kind": "move_object",
+          "object_id": "o-summer-jar",
+          "dest_id": "t-marram"
+        },
+        {
+          "kind": "narrate",
+          "text": "Marram stirs in its warm hollow and reads the label with sleepy eyes. 'The summer the marram grass sang,' it murmurs, and tucks the jar under its chin. It doesn't go anywhere, but it sleeps the way a remembered thing sleeps, and the grass around it hums."
+        },
+        {
+          "kind": "set_property",
+          "target_id": "t-marram",
+          "key": "presence_text",
+          "value": "In a warm hollow in the long grass, Marram sleeps curled round a small glowing jar, its label tucked under its chin."
+        },
+        {
+          "kind": "add_fact",
+          "id": "summer-late-label",
+          "text": "{actor} brought the sleeping Marram its whole name at last; it keeps the label tucked under its chin in the long grass.",
+          "known_by": [
+            "t-sorrel"
+          ],
+          "spread": [
+            {
+              "to": "all",
+              "after_minutes": 60
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "on": "give",
+      "if": [
+        {
+          "dobj": "o-summer-jar"
+        },
+        {
+          "iobj": "t-marram"
+        },
+        {
+          "arc": "summer"
+        }
+      ],
+      "do": [
+        {
+          "kind": "move_object",
+          "object_id": "o-summer-jar",
+          "dest_id": "t-marram"
+        },
+        {
+          "kind": "close_arc",
+          "arc": "summer",
+          "ending": "home"
+        }
+      ]
+    },
+    {
+      "on": "give",
+      "if": [
+        {
+          "dobj": "o-summer-jar"
+        },
+        {
+          "iobj": "t-umber"
+        },
+        {
+          "arc": "summer"
+        }
+      ],
+      "do": [
+        {
+          "kind": "narrate",
+          "text": "Umber slides the jar gently back across the shelf. 'Labeled. Sealed. Not for me,' she says. 'Deliver to Marram, in the square.'"
+        }
+      ]
+    },
+    {
+      "on": "give",
+      "if": [
+        {
+          "prop": "margin_pencil",
+          "of": "@dobj"
+        },
+        {
+          "iobj": "t-margin"
+        },
+        {
+          "arc": "margin"
+        },
+        {
+          "beat": "margin/see-drawing",
+          "not": true
+        }
+      ],
+      "do": [
+        {
+          "kind": "advance_beat",
+          "arc": "margin",
+          "beat": "see-drawing"
+        }
+      ]
+    },
+    {
+      "on": "give",
+      "if": [
+        {
+          "prop": "margin_pencil",
+          "of": "@dobj"
+        },
+        {
+          "iobj": "t-margin"
+        },
+        {
+          "arc": "margin"
+        },
+        {
+          "beat": "margin/drawn"
+        }
+      ],
+      "do": [
+        {
+          "kind": "narrate",
+          "text": "The Afternoon pushes the pencil gently back into your hand, its eyes on the page you carry. 'You did the middle,' it whispers. 'Can I see?'"
+        }
+      ]
+    },
+    {
+      "on": "give",
+      "if": [
+        {
+          "prop": "margin_pencil",
+          "of": "@dobj"
+        },
+        {
+          "iobj": "t-margin"
+        },
+        {
+          "arc": "margin"
+        }
+      ],
+      "do": [
+        {
+          "kind": "move_object",
+          "object_id": "@dobj",
+          "dest_id": "t-margin"
+        },
+        {
+          "kind": "close_arc",
+          "arc": "margin",
+          "ending": "doodling"
+        }
+      ]
+    },
+    {
+      "on": "give",
+      "if": [
+        {
+          "dobj": "o-margin-drawing"
+        },
+        {
+          "iobj": "t-margin"
+        },
+        {
+          "arc": "margin"
+        },
+        {
+          "prop": "state",
+          "of": "o-margin-drawing",
+          "eq": "finished"
+        }
+      ],
+      "do": [
+        {
+          "kind": "move_object",
+          "object_id": "o-margin-drawing",
+          "dest_id": "t-margin"
+        },
+        {
+          "kind": "close_arc",
+          "arc": "margin",
+          "ending": "finished"
+        }
+      ]
+    },
+    {
+      "on": "give",
+      "if": [
+        {
+          "dobj": "o-margin-drawing"
+        },
+        {
+          "iobj": "t-margin"
+        },
+        {
+          "ending": "margin/pigeonhole"
+        },
+        {
+          "prop": "state",
+          "of": "o-margin-drawing",
+          "eq": "finished"
+        }
+      ],
+      "do": [
+        {
+          "kind": "move_object",
+          "object_id": "o-margin-drawing",
+          "dest_id": "t-margin"
+        },
+        {
+          "kind": "narrate",
+          "text": "In its pigeonhole the folded Afternoon stirs just enough to take the finished drawing, and tucks it inside itself without quite waking. Fen, watching over her glasses, says it's the first time she has seen a letter smile."
+        },
+        {
+          "kind": "set_property",
+          "target_id": "t-margin",
+          "key": "presence_text",
+          "value": "In the pigeonhole marked TO ME, LATER, the Margin Afternoon sleeps folded small around its finished drawing, one doodled corner poking out."
+        },
+        {
+          "kind": "add_fact",
+          "id": "margin-late-drawing",
+          "text": "{actor} brought the folded Margin Afternoon its finished drawing; it keeps it tucked inside itself in Fen's pigeonhole.",
+          "known_by": [
+            "t-fen"
+          ],
+          "spread": [
+            {
+              "to": "all",
+              "after_minutes": 60
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "on": "give",
+      "if": [
+        {
+          "dobj": "o-margin-drawing"
+        },
+        {
+          "iobj": "t-margin"
+        },
+        {
+          "prop": "state",
+          "of": "o-margin-drawing",
+          "ne": "finished"
+        }
+      ],
+      "do": [
+        {
+          "kind": "narrate",
+          "text": "The Afternoon holds the drawing up to the lantern light and gazes at the empty middle. 'Still no middle,' it says softly, and gives it back to you."
+        }
+      ]
+    },
+    {
+      "on": "give",
+      "if": [
+        {
+          "dobj": "o-margin-drawing"
+        },
+        {
+          "iobj": "t-quill"
+        },
+        {
+          "arc": "margin"
+        },
+        {
+          "beat": "margin/quill-middle",
+          "not": true
+        }
+      ],
+      "do": [
+        {
+          "kind": "advance_beat",
+          "arc": "margin",
+          "beat": "quill-middle"
+        }
+      ]
+    },
+    {
+      "on": "give",
+      "if": [
+        {
+          "dobj": "o-margin-drawing"
+        },
+        {
+          "iobj": "t-fen"
+        },
+        {
+          "arc": "margin"
+        },
+        {
+          "prop": "state",
+          "of": "o-margin-drawing",
+          "ne": "finished"
+        }
+      ],
+      "do": [
+        {
+          "kind": "narrate",
+          "text": "Fen studies the page the way she studies an address, then hands it back. 'No stamp, no name, and no middle,' she says. 'Not ready for the post just yet.'"
+        }
+      ]
+    },
+    {
+      "on": "use",
+      "if": [
+        {
+          "prop": "margin_pencil",
+          "of": "@dobj"
+        },
+        {
+          "iobj": "o-margin-drawing"
+        },
+        {
+          "arc": "margin"
+        },
+        {
+          "in": "r-garden"
+        },
+        {
+          "beat": "margin/quill-middle"
+        },
+        {
+          "beat": "margin/drawn",
+          "not": true
+        }
+      ],
+      "do": [
+        {
+          "kind": "set_property",
+          "target_id": "o-margin-drawing",
+          "key": "state",
+          "value": "finished"
+        },
+        {
+          "kind": "narrate",
+          "text": "You sit on the moss by the lowest trellis and draw the littlest pendulum into the empty middle: one fine line, one round bob, a small curve to show it swinging. As you lift the pencil, the whole garden ticks once, all together, as if it approves."
+        },
+        {
+          "kind": "advance_beat",
+          "arc": "margin",
+          "beat": "drawn"
+        },
+        {
+          "kind": "add_fact",
+          "id": "margin-drawn",
+          "text": "{actor} sat in the Pendulum Garden and drew the littlest pendulum into the empty middle of the Margin Afternoon's drawing.",
+          "known_by": [
+            "t-quill"
+          ],
+          "spread": [
+            {
+              "to": [
+                "t-bell",
+                "t-fen"
+              ],
+              "after_minutes": 30
+            },
+            {
+              "to": "all",
+              "after_minutes": 120
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "on": "use",
+      "if": [
+        {
+          "prop": "margin_pencil",
+          "of": "@dobj"
+        },
+        {
+          "iobj": "o-margin-drawing"
+        },
+        {
+          "prop": "state",
+          "of": "o-margin-drawing",
+          "eq": "finished"
+        }
+      ],
+      "do": [
+        {
+          "kind": "narrate",
+          "to": "@actor",
+          "text": "You hold the pencil over the finished garden a moment, and decide it doesn't want another line."
+        }
+      ]
+    },
+    {
+      "on": "use",
+      "if": [
+        {
+          "prop": "margin_pencil",
+          "of": "@dobj"
+        },
+        {
+          "iobj": "o-margin-drawing"
+        },
+        {
+          "arc": "margin"
+        },
+        {
+          "in": "r-garden"
+        }
+      ],
+      "do": [
+        {
+          "kind": "narrate",
+          "to": "@actor",
+          "text": "You look from the drawing to the swinging trellises and back. Something belongs in that empty middle, but you can't tell which of all these swinging things. Quill would know his own garden."
+        }
+      ]
+    },
+    {
+      "on": "use",
+      "if": [
+        {
+          "prop": "margin_pencil",
+          "of": "@dobj"
+        },
+        {
+          "iobj": "o-margin-drawing"
+        },
+        {
+          "arc": "margin"
+        }
+      ],
+      "do": [
+        {
+          "kind": "narrate",
+          "to": "@actor",
+          "text": "You lift the pencil over the empty middle of the little garden, and stop. Whatever goes there, you'd have to see it to draw it."
+        }
+      ]
     }
   ],
   "fuses": {
@@ -719,6 +1340,101 @@
       "summary": "an evening fruit ripens and falls softly in the orchard",
       "text": "In the orchard an evening fruit ripens, glows a little brighter, and drops into the grass with a soft sound, like someone sitting down after a long day.",
       "cooldown_days": 2
+    },
+    {
+      "id": "summer-salt-breeze",
+      "at": [
+        "day",
+        "dusk"
+      ],
+      "room": "r-square",
+      "if": [
+        {
+          "arc": "summer"
+        }
+      ],
+      "cooldown_days": 1,
+      "summary": "a salt breeze crosses the square while Marram waits",
+      "text": "A warm breeze crosses the square from nowhere in particular, and for a moment every lantern smells faintly of salt. Marram lifts its face to it and closes its eyes."
+    },
+    {
+      "id": "summer-orchard-hum",
+      "at": [
+        "day",
+        "dusk"
+      ],
+      "room": "r-orchard",
+      "if": [
+        {
+          "ending": "summer/orchard"
+        }
+      ],
+      "cooldown_days": 2,
+      "summary": "Marram hums in the Orchard of Evenings",
+      "text": "Under the crooked trees, Marram sits in the six o'clock light with a warm evening in its lap, humming something with the sea in it."
+    },
+    {
+      "id": "summer-meadow-august",
+      "at": [
+        "dusk",
+        "night"
+      ],
+      "room": "r-duskroad",
+      "if": [
+        {
+          "ending": "summer/meadow"
+        }
+      ],
+      "cooldown_days": 2,
+      "summary": "the warm hollow in the Dusk Road grass where Marram sleeps",
+      "text": "Out in the long grass, one hollow stays warm after the rest of the meadow has cooled. The stalk of dune grass beside it whistles one thin note whenever the wind comes, and Marram sleeps on, smelling of salt."
+    },
+    {
+      "id": "margin-window",
+      "at": [
+        "day",
+        "dusk"
+      ],
+      "room": "r-square",
+      "if": [
+        {
+          "arc": "margin"
+        }
+      ],
+      "cooldown_days": 1,
+      "summary": "the Margin Afternoon daydreams in the square",
+      "text": "The Margin Afternoon sits very still, gazing out of a window that isn't there, and a small doodled cloud drifts slowly up its sleeve."
+    },
+    {
+      "id": "margin-garden-doodles",
+      "at": [
+        "day",
+        "dusk"
+      ],
+      "room": "r-garden",
+      "if": [
+        {
+          "ending": "margin/doodling"
+        }
+      ],
+      "cooldown_days": 2,
+      "summary": "the Margin Afternoon doodles in the Pendulum Garden",
+      "text": "Under the trellises, the Margin Afternoon doodles the pendulums as they swing. Quill pretends not to notice, and goes pink with pleasure."
+    },
+    {
+      "id": "margin-to-me-later",
+      "at": [
+        "day"
+      ],
+      "room": "r-post",
+      "if": [
+        {
+          "ending": "margin/pigeonhole"
+        }
+      ],
+      "cooldown_days": 2,
+      "summary": "Fen checks on the Margin Afternoon asleep in its pigeonhole",
+      "text": "Fen pauses at the pigeonhole marked TO ME, LATER, where the Margin Afternoon sleeps folded small, and smooths its doodled corner without waking it."
     }
   ],
   "facts": {
@@ -784,6 +1500,11 @@
         "t-mott",
         "t-umber",
         "t-linden"
+      ],
+      "if": [
+        {
+          "flag": "CLOCK-STARTED"
+        }
       ]
     },
     "the-book": {
@@ -793,6 +1514,11 @@
         "t-bell",
         "t-fen",
         "t-linden"
+      ],
+      "if": [
+        {
+          "flag": "CLOCK-STARTED"
+        }
       ]
     },
     "residents": {
@@ -836,6 +1562,177 @@
     "no-shops": {
       "text": "The village has no shops, and nobody here bakes bread, keeps bees, or runs a mill.",
       "known_by": "all"
+    },
+    "summer-arrived": {
+      "text": "A small sun-bleached guest has come down with the dusk. It smells of salt, has sand in its cuffs, and has kept only one word of its name: Marram. It waits in the Lantern Square.",
+      "known_by": [
+        "t-bell",
+        "t-sorrel",
+        "t-linden",
+        "t-quill",
+        "t-umber",
+        "t-mott",
+        "t-tace",
+        "t-fen"
+      ],
+      "if": [
+        {
+          "arc": "summer"
+        }
+      ]
+    },
+    "summer-caught": {
+      "text": "Sorrel caught Marram on the Dusk Road: it came down slow and warm, like the end of August, smelling of salt the whole way.",
+      "known_by": [
+        "t-sorrel",
+        "t-bell"
+      ],
+      "if": [
+        {
+          "arc": "summer"
+        }
+      ]
+    },
+    "summer-marram-grass": {
+      "text": "Marram is the pale dune grass that grows where the sea is near; its roots hold whole hills of sand together so the wind can't carry them off, and it whistles when the wind comes.",
+      "known_by": [
+        "t-quill"
+      ],
+      "if": [
+        {
+          "arc": "summer"
+        }
+      ]
+    },
+    "summer-labels": {
+      "text": "Labels fade in the sun, and summers fade their own labels worst of all; Umber can write a label that stays if someone brings her something with the summer still inside it.",
+      "known_by": [
+        "t-umber"
+      ],
+      "if": [
+        {
+          "arc": "summer"
+        }
+      ]
+    },
+    "summer-evening": {
+      "text": "An evening fell early in the Orchard of Evenings, and it smells of salt: the last evening of Marram's summer.",
+      "known_by": [
+        "t-quill"
+      ],
+      "if": [
+        {
+          "arc": "summer"
+        },
+        {
+          "beat": "summer/quill-grass"
+        }
+      ]
+    },
+    "summer-stays-orchard": {
+      "text": "Marram, the summer, stays in the Orchard of Evenings now, keeping its last evening in the six o'clock light.",
+      "known_by": "all",
+      "if": [
+        {
+          "ending": "summer/orchard"
+        }
+      ]
+    },
+    "summer-sleeps-meadow": {
+      "text": "Marram, the summer nobody could name, sleeps in a warm hollow in the long grass of the Dusk Road; Sorrel says the weather in that one spot is always August now.",
+      "known_by": "all",
+      "if": [
+        {
+          "ending": "summer/meadow"
+        }
+      ]
+    },
+    "margin-arrived": {
+      "text": "A small guest the color of an old exercise-book page has come down with the dusk, covered in half-finished doodles: the Margin Afternoon, an afternoon a child daydreamed through in class. It waits in the Lantern Square and wants its drawing finished.",
+      "known_by": [
+        "t-bell",
+        "t-sorrel",
+        "t-linden",
+        "t-quill",
+        "t-fen",
+        "t-mott",
+        "t-tace",
+        "t-umber"
+      ],
+      "if": [
+        {
+          "arc": "margin"
+        }
+      ]
+    },
+    "margin-bell": {
+      "text": "The Margin Afternoon jumps whenever it hears the word bell: a bell rang and ended it before its drawing was done.",
+      "known_by": [
+        "t-bell",
+        "t-linden"
+      ],
+      "if": [
+        {
+          "arc": "margin"
+        }
+      ]
+    },
+    "margin-pencils": {
+      "text": "Fen keeps a jar of soft pencils on the post office counter, sharpened to a whisper, for anything unfinished.",
+      "known_by": [
+        "t-fen",
+        "t-bell"
+      ],
+      "if": [
+        {
+          "arc": "margin"
+        }
+      ]
+    },
+    "margin-drawing": {
+      "text": "The Margin Afternoon's drawing is a little garden where pendulums hang from the trees like fruit, with an empty space in the middle that was never drawn.",
+      "known_by": [
+        "t-quill",
+        "t-bell",
+        "t-fen"
+      ],
+      "if": [
+        {
+          "arc": "margin"
+        },
+        {
+          "beat": "margin/see-drawing"
+        }
+      ]
+    },
+    "margin-littlest": {
+      "text": "The littlest pendulum in the Pendulum Garden hangs from the lowest trellis, right in the middle; it is the newest one.",
+      "known_by": [
+        "t-quill"
+      ],
+      "if": [
+        {
+          "arc": "margin"
+        }
+      ]
+    },
+    "margin-stays-garden": {
+      "text": "The Margin Afternoon stays in the Pendulum Garden now, doodling the pendulums with a soft pencil of its own.",
+      "known_by": "all",
+      "if": [
+        {
+          "ending": "margin/doodling"
+        }
+      ]
+    },
+    "margin-sleeps-pigeonhole": {
+      "text": "The Margin Afternoon sleeps folded small in the pigeonhole marked TO ME, LATER at the Little Post Office, its drawing still unfinished.",
+      "known_by": "all",
+      "if": [
+        {
+          "ending": "margin/pigeonhole"
+        }
+      ]
     }
   },
   "arcs": {
@@ -1151,6 +2048,498 @@
               "target_id": "t-pims-nap",
               "key": "mood",
               "value": "asleep in a jar"
+            }
+          ]
+        }
+      }
+    },
+    "summer": {
+      "title": "Marram, the Summer",
+      "kind": "guest",
+      "guest": "t-marram",
+      "opens": "arrival",
+      "summary": "A small sun-bleached guest who smells of salt: a whole summer someone spent at the edge of the dunes when they were small, and can no longer quite remember. It has kept only one word of its name, Marram, and wants the rest remembered.",
+      "arrival": {
+        "room": "r-square",
+        "earliest_day": 3,
+        "weight": 1,
+        "text": "A warm wind comes down with the dusk, smelling of salt, and something small and sun-bleached tumbles onto the cobbles in a little drift of sand. It shakes out its pale hair, holds up a stalk of dune grass as if that explains everything, and says the only word it has kept: 'Marram.'"
+      },
+      "beats": {
+        "bell-salt": {
+          "npc": "t-bell",
+          "topic": "Marram",
+          "topic_aliases": [
+            "marram",
+            "the summer",
+            "summer",
+            "the salty one",
+            "the sun-bleached one",
+            "sun-bleached guest",
+            "the sandy one"
+          ],
+          "hint": "the player asks Bell about Marram, the small sun-bleached guest who smells of salt",
+          "text": "Bell crouches by the little figure and sniffs, delighted. 'Salt! That's the sea, that is, and I've never even seen the sea.' They nod at the stalk of grass it keeps showing everyone. 'Quill will know that grass, down in the garden. And if it's lost the rest of its name, Umber keeps more names than anyone, in the cellar.'"
+        },
+        "hear-marram": {
+          "npc": "t-marram",
+          "topic": "the summer",
+          "per_player": true,
+          "topic_aliases": [
+            "summer",
+            "yourself",
+            "itself",
+            "the long days",
+            "long days",
+            "its name",
+            "name"
+          ],
+          "hint": "the player asks Marram about its summer or its name",
+          "text": "Marram shakes a little sand from its cuff and thinks hard. 'Salt. A striped towel. Long days that didn't end,' it says. 'And the grass sang, all day, whenever the wind came.' It presses a stalk of pale grass into your hand. 'That's my bit. The rest of my name blew away.'",
+          "do": [
+            {
+              "kind": "spawn_object",
+              "name": "stalk of marram grass",
+              "location_id": "@actor",
+              "seed": "a stalk of pale dune grass, stiff with salt and dry as paper; when a breath of wind finds it, it whistles one thin, sweet note",
+              "aliases": [
+                "stalk",
+                "marram grass",
+                "dune grass",
+                "stalk of grass",
+                "grass"
+              ],
+              "generated_by": "summer:stalk",
+              "properties": {
+                "summer_grass": true
+              }
+            }
+          ]
+        },
+        "quill-grass": {
+          "npc": "t-quill",
+          "topic": "the marram grass",
+          "topic_aliases": [
+            "marram grass",
+            "marram",
+            "dune grass",
+            "the dune grass",
+            "the grass",
+            "grass",
+            "the stalk",
+            "stalk",
+            "the stalk of grass"
+          ],
+          "hint": "the player asks Quill about the marram grass Marram carries, or shows him the stalk",
+          "text": "Quill goes a little pink at the name. 'Marram? Dune grass. Its roots hold whole hills of sand together, so the wind can't carry them off.' He glances east through the arch. 'An evening fell early in the orchard just now, and it smells of salt. Give it to the little summer and I think it would stay there for good. Take it to Umber and she might read the rest of its name in it.'",
+          "do": [
+            {
+              "kind": "move_object",
+              "object_id": "o-summer-evening",
+              "dest_id": "r-orchard"
+            }
+          ]
+        },
+        "found-evening": {
+          "after": [
+            "quill-grass"
+          ],
+          "hint": "the player finds the salt-smelling evening that fell early in the orchard",
+          "text": "The fallen evening is warm as a teacup and smells of salt. Held to your ear, it hushes like the sea."
+        },
+        "umber-label": {
+          "npc": "t-umber",
+          "topic": "a label for Marram",
+          "topic_aliases": [
+            "label",
+            "labels",
+            "a label",
+            "marram",
+            "marram's name",
+            "the summer's name",
+            "its name",
+            "the summer",
+            "summer",
+            "a name for marram"
+          ],
+          "if": [
+            {
+              "beat": "summer/labeled",
+              "not": true
+            }
+          ],
+          "hint": "the player asks Umber about a label, or a name, for Marram",
+          "text": "Umber turns a jar so its label faces the lantern; the ink has gone the pale brown of old tea. 'Summer. Name faded. Common complaint.' She caps her pen. 'Bring me something with that summer still inside it, and I'll write it a label that stays.'"
+        },
+        "labeled": {
+          "after": [
+            "found-evening"
+          ],
+          "hint": "the player brings Umber the fallen evening, and she writes Marram's whole name on a label"
+        }
+      },
+      "endings": {
+        "home": {
+          "summary": "Umber writes the rest of its name, and the summer goes home remembered",
+          "text": "Marram turns the little jar to the lantern and reads the label slowly, lips moving. 'The summer the marram grass sang,' it says, and laughs, a sound like a wave going back out. The sand runs out of its cuffs like an hourglass emptying, and then it is simply gone, the way a summer is gone. Somewhere in the waking world, someone long grown up shakes out an old striped towel, says 'marram' out loud, and remembers the whole summer at once. In your palm is a pinch of warm sand, and a dreamseed.",
+          "ledger": "{helpers} found the rest of Marram's name, and the summer the marram grass sang went home remembered.",
+          "do": [
+            {
+              "kind": "move_toon",
+              "toon_id": "t-marram",
+              "room_id": null
+            },
+            {
+              "kind": "spawn_object",
+              "name": "pinch of warm sand",
+              "location_id": "@actor",
+              "seed": "a pinch of pale sand that never quite cools, somehow keeping to your palm; hold it close and you can hear, very faintly, a wave going back out",
+              "aliases": [
+                "sand",
+                "warm sand",
+                "pinch of sand"
+              ],
+              "generated_by": "summer:home"
+            },
+            {
+              "kind": "spawn_template",
+              "template": "dreamseed",
+              "location_id": "@actor",
+              "generated_by": "summer:home"
+            },
+            {
+              "kind": "add_fact",
+              "id": "summer-home",
+              "text": "{actor} gave Marram the rest of its name, and the summer the marram grass sang went home remembered.",
+              "known_by": [
+                "t-umber",
+                "t-bell"
+              ],
+              "spread": [
+                {
+                  "to": "all",
+                  "after_minutes": 60
+                }
+              ]
+            }
+          ]
+        },
+        "orchard": {
+          "summary": "given its last evening instead of its name, the summer stays in the Orchard of Evenings",
+          "text": "Marram cups the fallen evening in both sandy hands, and its whole face goes gold. It looks at you as if to say a name is a great deal to carry, and an evening is just the right size. Then it pads away toward the Orchard of Evenings, where it is always six o'clock, and settles under the crooked trees to keep its last evening for as long as it likes.",
+          "ledger": "{helpers} gave Marram its last evening, and the summer chose to stay in the Orchard of Evenings, where it is always six o'clock.",
+          "do": [
+            {
+              "kind": "move_toon",
+              "toon_id": "t-marram",
+              "room_id": "r-orchard"
+            },
+            {
+              "kind": "set_property",
+              "target_id": "t-marram",
+              "key": "presence_text",
+              "value": "Under the crooked trees, Marram sits in the six o'clock light with a warm evening in its lap, humming something with the sea in it."
+            },
+            {
+              "kind": "set_property",
+              "target_id": "t-marram",
+              "key": "mood",
+              "value": "content"
+            },
+            {
+              "kind": "grant_collectible"
+            },
+            {
+              "kind": "add_fact",
+              "id": "summer-orchard",
+              "text": "{actor} gave Marram its last evening, and the summer chose to stay in the Orchard of Evenings.",
+              "known_by": [
+                "t-quill",
+                "t-bell"
+              ],
+              "spread": [
+                {
+                  "to": "all",
+                  "after_minutes": 60
+                }
+              ]
+            }
+          ]
+        },
+        "meadow": {
+          "summary": "unhelped, the summer lies down in the long grass of the Dusk Road",
+          "after_days": 3,
+          "room": "r-duskroad",
+          "text": "Out on the Dusk Road, Sorrel finds Marram asleep in the long grass, curled in a warm hollow that smells of salt. The rest of its name never came back, so it has made a small summer of its own out here, where the wind in the grass sounds a little like the sea. Sorrel leans on the long net and says the weather in that one spot will be August now, all year round.",
+          "ledger": "Marram was not sent home. It fell asleep in the long grass of the Dusk Road, where Sorrel keeps an eye on it and it is always a little bit August.",
+          "do": [
+            {
+              "kind": "move_toon",
+              "toon_id": "t-marram",
+              "room_id": "r-duskroad"
+            },
+            {
+              "kind": "set_property",
+              "target_id": "t-marram",
+              "key": "presence_text",
+              "value": "In a warm hollow in the long grass, Marram sleeps curled round a stalk of dune grass, smelling of salt."
+            },
+            {
+              "kind": "set_property",
+              "target_id": "t-marram",
+              "key": "mood",
+              "value": "asleep in the grass"
+            }
+          ]
+        }
+      }
+    },
+    "margin": {
+      "title": "The Margin Afternoon",
+      "kind": "guest",
+      "guest": "t-margin",
+      "opens": "arrival",
+      "summary": "A small papery guest covered in half-finished doodles: an afternoon a child daydreamed through in class. A bell rang before it could finish its best drawing, a little garden with an empty middle, and it wants that drawing finished.",
+      "arrival": {
+        "room": "r-square",
+        "earliest_day": 4,
+        "weight": 1,
+        "text": "Something drifts down through the dusk like a paper dart that has forgotten how to fly: a small figure the color of an old exercise-book page, doodles curling up its arms. It lands softly on the cobbles, gazes at the lanterns as if they were the most interesting thing in the world, and forgets, for a moment, to be anywhere else."
+      },
+      "beats": {
+        "bell-startles": {
+          "npc": "t-bell",
+          "topic": "the Margin Afternoon",
+          "topic_aliases": [
+            "the afternoon",
+            "afternoon",
+            "margin afternoon",
+            "the doodles",
+            "doodles",
+            "the doodled one",
+            "the doodled guest",
+            "the papery one"
+          ],
+          "hint": "the player asks Bell about the Margin Afternoon, the small doodled guest",
+          "text": "When you say Bell's name, the little doodled figure jumps as if a lesson has just ended. Bell laughs and crouches beside it. 'Not that kind of bell, sorry!' Then, more quietly: 'An afternoon, I'd say, the looking-out-of-windows sort. Ask it about its drawing. Fen keeps pencils at the post office, and those swinging things it doodles look a lot like Quill's garden.'"
+        },
+        "see-drawing": {
+          "npc": "t-margin",
+          "topic": "the drawing",
+          "topic_aliases": [
+            "drawing",
+            "its drawing",
+            "the page",
+            "page",
+            "the garden",
+            "doodles",
+            "the doodles"
+          ],
+          "hint": "the player asks the Margin Afternoon about its drawing",
+          "text": "The Afternoon unfolds a page from its lap, soft from being held: spirals, a boat with no sail, and in one corner a little garden where pendulums hang from the trees like fruit. The middle is empty. 'I didn't get to the middle,' it says. 'The bell rang.' It holds the page out for you to keep a while.",
+          "do": [
+            {
+              "kind": "move_object",
+              "object_id": "o-margin-drawing",
+              "dest_id": "@actor"
+            }
+          ]
+        },
+        "fen-pencil": {
+          "npc": "t-fen",
+          "topic": "a pencil",
+          "per_player": true,
+          "topic_aliases": [
+            "pencil",
+            "pencils",
+            "a soft pencil",
+            "soft pencil",
+            "the pencils",
+            "a pencil for the drawing",
+            "something to draw with"
+          ],
+          "hint": "the player asks Fen for a pencil to finish the Margin Afternoon's drawing",
+          "text": "Fen plucks the pencil from behind her ear, frowns at it, and swaps it for a better one from the jar on the counter: soft lead, sharpened to a whisper. 'Unfinished things are my whole trade,' she says. 'Use it on whatever wants finishing. No postage due.'",
+          "do": [
+            {
+              "kind": "spawn_object",
+              "name": "soft pencil",
+              "location_id": "@actor",
+              "seed": "a soft pencil from the jar on Fen's counter, sharpened to a whisper, its paint worn smooth where a thumb goes; it smells of cedar shavings",
+              "aliases": [
+                "pencil",
+                "fen's pencil"
+              ],
+              "verbs": [
+                "use"
+              ],
+              "generated_by": "margin:pencil",
+              "properties": {
+                "margin_pencil": true
+              }
+            },
+            {
+              "kind": "add_fact",
+              "id": "margin-pencil",
+              "text": "{actor} borrowed a soft pencil from Fen for the Margin Afternoon's drawing.",
+              "known_by": [
+                "t-fen"
+              ],
+              "spread": [
+                {
+                  "to": [
+                    "t-bell"
+                  ],
+                  "after_minutes": 30
+                }
+              ]
+            }
+          ]
+        },
+        "quill-middle": {
+          "npc": "t-quill",
+          "topic": "the drawing",
+          "topic_aliases": [
+            "drawing",
+            "the margin drawing",
+            "margin drawing",
+            "the garden drawing",
+            "the empty middle",
+            "the middle",
+            "middle",
+            "the littlest pendulum",
+            "littlest pendulum"
+          ],
+          "after": [
+            "see-drawing"
+          ],
+          "if": [
+            {
+              "carried": "o-margin-drawing"
+            }
+          ],
+          "hint": "the player shows Quill the Margin Afternoon's drawing, or asks him about it",
+          "text": "Quill leans over the page and goes very pink. 'That's my garden,' he says softly, 'or a garden that wanted to be it.' He kneels by the lowest trellis, where the littlest pendulum swings on its thread. 'The middle is where the newest one hangs. Sit here and draw it in, while it's swinging.'"
+        },
+        "drawn": {
+          "after": [
+            "quill-middle"
+          ],
+          "hint": "the player draws the littlest pendulum into the middle of the drawing, sitting in the Pendulum Garden"
+        }
+      },
+      "endings": {
+        "finished": {
+          "summary": "the drawing is finished in the Pendulum Garden, and the afternoon goes home",
+          "text": "The Afternoon takes the finished drawing in both hands and looks at it for a long, long time. Then it smiles the slow smile of someone called on who, for once, knows the answer, folds itself up small as a note passed along a row of desks, and is gone. Somewhere in the waking world, a grown-up leafing through an old sums book finds a little garden in the margin, finished, and cannot remember finishing it. In your hand is a curl of pencil shaving, and a dreamseed.",
+          "ledger": "{helpers} finished the Margin Afternoon's drawing, and the afternoon went home with its garden whole.",
+          "do": [
+            {
+              "kind": "move_toon",
+              "toon_id": "t-margin",
+              "room_id": null
+            },
+            {
+              "kind": "spawn_object",
+              "name": "curl of pencil shaving",
+              "location_id": "@actor",
+              "seed": "a curl of cedar pencil shaving, thin as a petal, with a little ring of grey at its edge; it smells of a classroom on a slow, sunny afternoon",
+              "aliases": [
+                "shaving",
+                "pencil shaving",
+                "curl"
+              ],
+              "generated_by": "margin:finished"
+            },
+            {
+              "kind": "spawn_template",
+              "template": "dreamseed",
+              "location_id": "@actor",
+              "generated_by": "margin:finished"
+            },
+            {
+              "kind": "add_fact",
+              "id": "margin-finished",
+              "text": "{actor} brought the Margin Afternoon its finished drawing, and the afternoon went home with its garden whole.",
+              "known_by": [
+                "t-bell",
+                "t-quill",
+                "t-fen"
+              ],
+              "spread": [
+                {
+                  "to": "all",
+                  "after_minutes": 60
+                }
+              ]
+            }
+          ]
+        },
+        "doodling": {
+          "summary": "given a pencil of its own, the afternoon stays in the Pendulum Garden, happily unfinished",
+          "text": "The Afternoon turns the soft pencil over in its papery hands, astonished, as if no one had ever given it one of its own. It doesn't reach for the unfinished drawing. Instead it wanders off toward the Pendulum Garden, sits down under the trellises, and begins to doodle every pendulum it sees, perfectly happy to stay unfinished.",
+          "ledger": "The Margin Afternoon was given a pencil of its own by {helpers}. It stays in the Pendulum Garden, doodling, and has decided it doesn't mind being unfinished.",
+          "do": [
+            {
+              "kind": "move_toon",
+              "toon_id": "t-margin",
+              "room_id": "r-garden"
+            },
+            {
+              "kind": "set_property",
+              "target_id": "t-margin",
+              "key": "presence_text",
+              "value": "Under the trellises, the Margin Afternoon sits cross-legged with a soft pencil, doodling the pendulums as they swing."
+            },
+            {
+              "kind": "set_property",
+              "target_id": "t-margin",
+              "key": "mood",
+              "value": "content"
+            },
+            {
+              "kind": "grant_collectible"
+            },
+            {
+              "kind": "add_fact",
+              "id": "margin-doodling",
+              "text": "{actor} gave the Margin Afternoon a pencil of its own; it stays in the Pendulum Garden now, doodling the pendulums.",
+              "known_by": [
+                "t-quill",
+                "t-fen"
+              ],
+              "spread": [
+                {
+                  "to": "all",
+                  "after_minutes": 60
+                }
+              ]
+            }
+          ]
+        },
+        "pigeonhole": {
+          "summary": "unhelped, the afternoon folds itself into Fen's pigeonhole marked TO ME, LATER",
+          "after_days": 3,
+          "room": "r-post",
+          "text": "At the Little Post Office, Fen finds the Margin Afternoon folded up small as a note passed in class, tucked into the pigeonhole marked TO ME, LATER. She doesn't wake it. She only smooths its doodled corner, the way you'd tuck in a blanket, and leaves it to be opened some slow afternoon.",
+          "ledger": "The Margin Afternoon was not sent home. It folded itself into Fen's pigeonhole marked TO ME, LATER, and she keeps it there, unfinished.",
+          "do": [
+            {
+              "kind": "move_toon",
+              "toon_id": "t-margin",
+              "room_id": "r-post"
+            },
+            {
+              "kind": "set_property",
+              "target_id": "t-margin",
+              "key": "presence_text",
+              "value": "In the pigeonhole marked TO ME, LATER, the Margin Afternoon sleeps folded small as a passed note, one doodled corner poking out."
+            },
+            {
+              "kind": "set_property",
+              "target_id": "t-margin",
+              "key": "mood",
+              "value": "folded up asleep"
             }
           ]
         }
@@ -3682,6 +5071,175 @@
           ]
         }
       }
+    },
+    {
+      "id": "t-marram",
+      "name": "Marram",
+      "slot": 123,
+      "room": "offstage",
+      "mood": "wistful",
+      "seed": "a lost hour, and a long one: the summer someone spent at the edge of the dunes when they were small, and can no longer quite remember; sun-bleached and smelling of salt, it has kept only one word of its name",
+      "appearance_seed": "a small figure bleached pale as driftwood, freckles scattered like sand, salt-stiff hair with a stalk of dune grass tucked behind one ear, a faded striped towel worn round its shoulders like a cape, bare feet dusted with sand",
+      "presence_text": "A small sun-bleached figure sits on the warm cobbles in a little drift of sand, a faded striped towel round its shoulders, turning a stalk of pale grass in its fingers.",
+      "aliases": [
+        "marram",
+        "summer",
+        "sun-bleached figure"
+      ],
+      "properties": {
+        "declines_text": "Marram turns what you offer over in its sandy hands, then gives it back with a small, salty smile. That isn't the part of its name that went missing.",
+        "voice": {
+          "pronouns": "it/its",
+          "role": "a guest: a summer someone cannot quite remember",
+          "sheet": "Marram is a lost hour, and a long one: a whole summer that someone spent at the edge of the dunes when they were small, and can no longer quite remember. It is small and sun-bleached and smells of salt, with sand in its cuffs and a faded striped towel round its shoulders. It speaks rarely and slowly, in bright warm fragments, like a very long afternoon. It has kept only one word of its name, Marram, the dune grass that sang in the wind, and it wants the rest of its name remembered.",
+          "habits": [
+            "shakes a little sand from its cuffs",
+            "squints as if into strong sun",
+            "speaks in short warm fragments: salt, a striped towel, the grass singing",
+            "goes quiet to listen, as if to a far-off sea"
+          ],
+          "samples": [
+            "Marram squints up at the lanterns as if they were the sun. 'Warm,' it says. 'Everything was warm.'",
+            "'Salt. A striped towel. Long days that didn't end.'",
+            "Marram shakes a little sand from one cuff. 'The grass sang when the wind came. I remember that bit.'",
+            "'Somebody small had me,' Marram says. 'They called me something, every morning. I can't hear it now.'",
+            "Marram tips its head, listening. 'Hush, hush. That's the sea. It came right up to say good morning.'"
+          ],
+          "wants": [
+            "for the rest of its name to be remembered",
+            "to go home to the one it belonged to, remembered at last"
+          ],
+          "never": [
+            "never uses long words",
+            "never names the one it belonged to",
+            "never names anyone in the village who is not a resident or a guest"
+          ]
+        },
+        "topics": [
+          {
+            "label": "the summer",
+            "aliases": [
+              "summer",
+              "yourself",
+              "itself",
+              "the long days",
+              "long days"
+            ],
+            "variants": [
+              "Marram squints as if into strong sun. 'Long days. Salt. The grass singing.' It shakes a little sand from its cuff. 'The rest blew away.'",
+              "'Somebody small had me,' Marram says slowly. 'They called me something, every morning. I can't hear it now.'"
+            ]
+          },
+          {
+            "label": "the sea",
+            "aliases": [
+              "sea",
+              "the beach",
+              "beach",
+              "the dunes",
+              "dunes",
+              "salt"
+            ],
+            "text": "Marram tips its head, listening to something far off. 'Hush, hush,' it says, just the way the sea does. 'It came right up to the door to say good morning.'"
+          },
+          {
+            "label": "its name",
+            "aliases": [
+              "name",
+              "the name",
+              "marram",
+              "a name"
+            ],
+            "text": "Marram holds up the one word it has left, the way you'd hold up a shell. 'Marram,' it says. 'That's the grass. There was more. Somebody small used to say all of it.'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "t-margin",
+      "name": "the Margin Afternoon",
+      "slot": 124,
+      "room": "offstage",
+      "mood": "dreamy",
+      "seed": "a lost hour: an afternoon a child daydreamed through in class, looking out of the window instead of at the sums on the board; small and papery and covered in half-finished doodles, it wants its drawing finished",
+      "appearance_seed": "a small papery figure the color of an old exercise-book page, faintly ruled with pale blue lines, covered in half-finished pencil doodles (a spiral, a boat with no sail, a four-pointed star, a cat with no tail), a smudge of pencil on its nose, a faraway look",
+      "presence_text": "A small papery figure sits cross-legged on the cobbles, half-finished doodles drifting over its arms like weather, gazing at nothing in particular as if there were a window there.",
+      "aliases": [
+        "afternoon",
+        "margin afternoon",
+        "doodled figure",
+        "papery figure"
+      ],
+      "properties": {
+        "declines_text": "The Afternoon looks at what you're offering the polite way you'd look at a sum, and hands it back. It's still thinking about its drawing.",
+        "voice": {
+          "pronouns": "it/its",
+          "role": "a guest: an afternoon a child daydreamed through in class",
+          "sheet": "The Margin Afternoon is a lost hour: an afternoon a child spent looking out of a classroom window instead of at the sums on the board, doodling in the margins while the clock on the wall went tick. It is small and papery, the color of an old exercise-book page, covered in half-finished doodles. It speaks rarely and a little absently, like a child called on in the middle of a daydream. A bell rang before it could finish its best drawing, a little garden in the corner of the page, and it wants that drawing finished.",
+          "habits": [
+            "trails off to look out of a window that isn't there",
+            "jumps at the word 'bell', then laughs at itself",
+            "adds a tiny doodle to its own sleeve while it thinks"
+          ],
+          "samples": [
+            "The Afternoon blinks, as if its name has just been called. 'Sorry. I was somewhere else.'",
+            "'There was a clock on the wall. Tick. Tick. And then I wasn't there anymore.'",
+            "The Afternoon draws a small spiral on its own wrist with one finger. 'That's the wind.'",
+            "'The sun came in sideways across the desks. I went with it.'",
+            "The Afternoon jumps, then laughs at itself. 'Not that bell. Sorry.'"
+          ],
+          "wants": [
+            "to have its drawing finished: the little garden with the empty middle"
+          ],
+          "never": [
+            "never uses long words",
+            "never names the child it belonged to",
+            "never names anyone in the village who is not a resident or a guest"
+          ]
+        },
+        "topics": [
+          {
+            "label": "the drawing",
+            "aliases": [
+              "drawing",
+              "its drawing",
+              "the page",
+              "page",
+              "the garden",
+              "doodles",
+              "the doodles"
+            ],
+            "variants": [
+              "The Afternoon traces an empty circle in the air with one finger. 'That's where the middle goes,' it says. 'I never got there.'",
+              "'A garden,' the Afternoon says dreamily, 'where the clocks grow on trees. I was just getting to the middle when the bell rang.'"
+            ]
+          },
+          {
+            "label": "the bell",
+            "aliases": [
+              "bell",
+              "a bell",
+              "the school bell"
+            ],
+            "text": "The Afternoon flinches, then laughs at itself. 'It rang right in the middle of the middle,' it says. 'Everyone got up. I was still in the garden.'"
+          },
+          {
+            "label": "the classroom",
+            "aliases": [
+              "class",
+              "school",
+              "classroom",
+              "the lesson",
+              "lesson",
+              "sums",
+              "the sums",
+              "the window",
+              "window"
+            ],
+            "text": "The Afternoon gazes past you, as if at a window. 'Sums on the board. A clock that went tick, tick. The sun came in sideways across the desks, and I went with it.'"
+          }
+        ]
+      }
     }
   ],
   "things": [
@@ -4059,6 +5617,69 @@
       "seed": "a weathered wooden bench facing east, its slats worn smooth; someone has carved a tiny sun into one arm, and a lantern into the other",
       "aliases": [
         "bench"
+      ]
+    },
+    {
+      "id": "o-summer-evening",
+      "name": "fallen evening",
+      "location": "offstage",
+      "seed": "an evening that fell early from the orchard: round and glowing the gold of a long summer's last light, warm as a teacup, a few grains of sand still clinging to it; it smells of salt, and held to your ear it hushes like the sea",
+      "aliases": [
+        "evening",
+        "salt evening",
+        "summer evening",
+        "salty evening"
+      ]
+    },
+    {
+      "id": "o-summer-jar",
+      "name": "summer jar",
+      "location": "offstage",
+      "readable": true,
+      "seed": "a small clean jar holding a round gold evening that glows and does not go out; a label in Umber's square hand is tied round its neck with string, and a few grains of sand have settled in the bottom",
+      "aliases": [
+        "jar",
+        "labeled jar",
+        "little jar",
+        "marram's jar",
+        "label"
+      ],
+      "text": "The label reads, in Umber's small square hand: 'THE SUMMER THE MARRAM GRASS SANG. Long days at the edge of the dunes. Salt, one striped towel, and a sea that came right up to the door to say good morning. Keep in the light.'"
+    },
+    {
+      "id": "o-margin-drawing",
+      "name": "margin drawing",
+      "location": {
+        "toon": "t-margin"
+      },
+      "seed": "a page torn soft from the margin of a sums book, crowded with pencil doodles: spirals, a boat with no sail, a four-pointed star, and in one corner a little garden where pendulums hang from the trees like fruit",
+      "aliases": [
+        "drawing",
+        "page",
+        "garden drawing",
+        "afternoon's drawing"
+      ],
+      "properties": {
+        "state": "unfinished",
+        "state_text": {
+          "unfinished": "The middle of the little garden is empty: a clean white space, left when the bell rang.",
+          "finished": "In the middle of the little garden the littlest pendulum swings now, drawn in soft pencil, and the whole page looks as if it has let out a long breath."
+        }
+      }
+    },
+    {
+      "id": "o-margin-littlest",
+      "name": "littlest pendulum",
+      "location": {
+        "room": "r-garden"
+      },
+      "fixture": true,
+      "seed": "the smallest pendulum in the garden, no bigger than a raindrop, swinging on a silk thread from the lowest trellis, right in the middle of everything; it keeps a small, earnest count all its own",
+      "aliases": [
+        "little pendulum",
+        "smallest pendulum",
+        "tiny pendulum",
+        "newest pendulum"
       ]
     }
   ]

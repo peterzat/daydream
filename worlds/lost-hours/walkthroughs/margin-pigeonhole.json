@@ -1,0 +1,217 @@
+{
+  "name": "margin-pigeonhole",
+  "comment": "The Margin Afternoon, ending pigeonhole (timed): no one helps for three days, and at the dusk of day 4 the afternoon folds itself into Fen's pigeonhole marked TO ME, LATER.",
+  "clock": "2026-10-01T17:00:00+00:00",
+  "players": [
+    {
+      "as": "A",
+      "name": "Wren"
+    }
+  ],
+  "segments": [
+    {
+      "name": "prologue",
+      "commands": [
+        {
+          "cmd": "read ledger",
+          "expect": {
+            "narrate_contains": "escapement gear",
+            "beats": [
+              "prologue/read-ledger"
+            ],
+            "phase": "stopped"
+          }
+        },
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-square"
+          }
+        },
+        {
+          "cmd": "south",
+          "expect": {
+            "room": "r-well"
+          }
+        },
+        {
+          "cmd": "take gear",
+          "expect": {
+            "carrying": [
+              "escapement gear"
+            ],
+            "beats": [
+              "prologue/found-gear"
+            ]
+          }
+        },
+        {
+          "cmd": "north"
+        },
+        {
+          "cmd": "west"
+        },
+        {
+          "cmd": "up",
+          "expect": {
+            "room": "r-loft"
+          }
+        },
+        {
+          "cmd": "give gear to tace",
+          "expect": {
+            "carrying": [
+              "case key"
+            ],
+            "beats": [
+              "prologue/gave-gear"
+            ],
+            "narrate_contains": "You carried it all the way home."
+          }
+        },
+        {
+          "cmd": "down",
+          "expect": {
+            "room": "r-clocktower"
+          }
+        },
+        {
+          "cmd": "use key on case",
+          "expect": {
+            "beats": [
+              "prologue/unlocked"
+            ]
+          }
+        },
+        {
+          "cmd": "open case",
+          "expect": {
+            "ending": {
+              "prologue": "mended"
+            },
+            "flag": {
+              "CLOCK-STARTED": true
+            },
+            "narrate_contains": "first slow tick",
+            "day": {
+              "eq": 1
+            }
+          }
+        },
+        {
+          "cmd": "take dreamseed",
+          "expect": {
+            "carrying": [
+              "dreamseed"
+            ]
+          }
+        },
+        {
+          "cmd": "take cog",
+          "expect": {
+            "carrying": [
+              "warm brass cog"
+            ],
+            "arc": {
+              "pim": "open"
+            },
+            "phase": "dusk",
+            "located": {
+              "t-pims-nap": "r-square"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "no one finishes it",
+      "commands": [
+        {
+          "summon": "margin",
+          "expect": {
+            "arc": {
+              "margin": "open"
+            },
+            "located": {
+              "t-margin": "r-square"
+            }
+          }
+        },
+        {
+          "clock": "+3d",
+          "expect": {
+            "arc": {
+              "margin": "open"
+            }
+          }
+        },
+        {
+          "clock": "@dusk",
+          "expect": {
+            "ending": {
+              "margin": "pigeonhole"
+            },
+            "located": {
+              "t-margin": "r-post",
+              "o-margin-drawing": "t-margin"
+            },
+            "day": {
+              "eq": 4
+            },
+            "knows": {
+              "t-fen": "margin-sleeps-pigeonhole"
+            }
+          }
+        },
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-square"
+          }
+        },
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-lane"
+          }
+        },
+        {
+          "cmd": "north",
+          "expect": {
+            "room": "r-post"
+          }
+        },
+        {
+          "cmd": "ask afternoon about the bell",
+          "expect": {
+            "narrate_contains": "middle of the middle"
+          }
+        },
+        {
+          "cmd": "south",
+          "expect": {
+            "room": "r-lane"
+          }
+        },
+        {
+          "cmd": "west",
+          "expect": {
+            "room": "r-square"
+          }
+        },
+        {
+          "cmd": "west",
+          "expect": {
+            "room": "r-clocktower"
+          }
+        },
+        {
+          "cmd": "read ledger of returned hours",
+          "expect": {
+            "narrate_contains": "It folded itself into Fen's pigeonhole marked TO ME, LATER"
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -389,6 +389,10 @@ def validate_toon_story(t: dict, where: str, *, known: dict, ks: dict,
                 if k in voice and not (isinstance(voice[k], list) and all(
                         isinstance(x, str) for x in voice[k])):
                     errors.append(f"{vw}.{k} must be a list of strings")
+            if "silent" in voice and not isinstance(voice["silent"], bool):
+                errors.append(f"{vw}.silent must be a boolean")
+            if "role" in voice and not isinstance(voice["role"], str):
+                errors.append(f"{vw}.role must be a string")
             for i, w in enumerate(voice.get("wants") or []):
                 if isinstance(w, str):
                     continue

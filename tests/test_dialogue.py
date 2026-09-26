@@ -50,7 +50,7 @@ async def test_prompt_carries_voice_state_and_the_offered_beats(monkeypatch):
     ada = player(1, "Ada", "r-green")
     await _open_moth(ada)
     objects.move(ada, "r-lane")
-    calls = _mock(monkeypatch, {"line": "Hob grins. 'Evening, Ada.'", "advance": "none"})
+    calls = _mock(monkeypatch, {"gesture": "Hob grins.", "say": "Evening, Ada.", "advance": "none"})
     await talk(ada, "t-hob", "how is the evening?")
     kw = calls[0]
     assert "they/them pronouns" in kw["system"]
@@ -73,7 +73,7 @@ async def test_an_offered_beat_advances_and_speaks_its_authored_line(monkeypatch
     ada = player(1, "Ada", "r-green")
     await _open_moth(ada)
     objects.move(ada, "r-lane")
-    _mock(monkeypatch, {"line": "Hob squints at the moth. 'Well now.'",
+    _mock(monkeypatch, {"gesture": "Hob squints at the moth.", "say": "Well now.",
                         "advance": "moth/hob-notices"})
     before = events.max_seq()
     await talk(ada, "t-hob", "did you see the little moth?")
@@ -87,7 +87,7 @@ async def test_an_unoffered_id_changes_nothing(monkeypatch):
     ada = player(1, "Ada", "r-green")
     await _open_moth(ada)
     objects.move(ada, "r-lane")
-    _mock(monkeypatch, {"line": "Hob nods. 'Lamps, lamps.'", "advance": "moth/lit-for-moth"})
+    _mock(monkeypatch, {"gesture": "Hob nods.", "say": "Lamps, lamps.", "advance": "moth/lit-for-moth"})
     before = events.max_seq()
     await talk(ada, "t-hob", "hello")
     assert not story.beat_done(WORLD, "moth", "lit-for-moth")
@@ -103,7 +103,7 @@ async def test_a_beat_that_went_stale_before_commit_changes_nothing(monkeypatch)
     async def racing(**kw):
         # Another player completes the beat while this call is in flight.
         story.advance_beat(WORLD, "moth", "hob-notices", bo, "r-lane")
-        return {"line": "Hob laughs. 'Busy evening.'", "advance": "moth/hob-notices"}
+        return {"gesture": "Hob laughs.", "say": "Busy evening.", "advance": "moth/hob-notices"}
 
     monkeypatch.setattr("daydream.llm.client.acompletion_json", racing)
     monkeypatch.setenv("DAYDREAM_DIALOGUE_NBEST", "1")
@@ -118,8 +118,8 @@ async def test_a_beat_that_went_stale_before_commit_changes_nothing(monkeypatch)
 async def test_nbest_rerank_prefers_pronoun_canon_and_fresh_openers(monkeypatch):
     ada = player(1, "Ada", "r-green")
     _mock(monkeypatch,
-          {"line": "Hob taps her ladder. 'Evening!'", "advance": "none"},
-          {"line": "Hob taps their ladder. 'Evening!'", "advance": "none"})
+          {"gesture": "Hob taps her ladder.", "say": "Evening!", "advance": "none"},
+          {"gesture": "Hob taps their ladder.", "say": "Evening!", "advance": "none"})
     before = events.max_seq()
     await talk(ada, "t-hob", "hello")
     text = " ".join(narrations(before))
@@ -171,3 +171,17 @@ async def test_relationship_in_context_is_per_player(monkeypatch):
     _, b_user, _ = dlg.build_prompt(objects.get(bo), hob, "hi", "r-green", [])
     assert "Hob and Ada: a friend" in a_user
     assert "Hob and Bo: a stranger" in b_user
+
+
+
+def test_compose_always_attributes_and_quotes():
+    assert dlg.compose("Tace", "sets down the loupe", '"Hello, friend."') == \
+        "Tace sets down the loupe. 'Hello, friend.'"
+    assert dlg.compose("Tace", "Tace smiles.", "") == "Tace smiles."
+    assert dlg.compose("Tace", "", "Hello.") == "Tace says, 'Hello.'"
+
+
+def test_a_repeated_closing_tic_is_penalized():
+    recent = ["Tace smiles. 'The clock is patient, friend.'"]
+    assert dlg.score("Tace nods. 'All is well, friend.'", "Tace", "they", [], recent) > \
+        dlg.score("Tace nods. 'All is well.'", "Tace", "they", [], recent)

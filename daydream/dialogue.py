@@ -134,18 +134,29 @@ def build_prompt(actor: objects.Object, npc: objects.Object, text: str,
     voice = npc.properties.get("voice") if isinstance(npc.properties.get("voice"), dict) else {}
     pkey = _pronoun_key(voice)
     forms = "/".join(sorted(_PRONOUN_FORMS[pkey], key=len)[:3])
+    silent = bool(voice.get("silent"))
+    speech = (
+        f'"say": "" (always empty: {npc.name} never speaks words; the gesture is the '
+        "whole reply)"
+        if silent else
+        f'"say": {npc.name}\'s spoken words only, one or two short sentences, WITHOUT '
+        f"quotation marks; it may address {actor.name} as you"
+    )
     system = (
         f"You are the voice of {npc.name}, a character in a cozy watercolor story "
-        f"village. Write {npc.name}'s reply to {actor.name}: one small third-person "
-        f"gesture and one spoken line in quotes, at most two sentences. {npc.name} "
-        f"uses {voice.get('pronouns', 'they/them')} pronouns: in narration say "
-        f"{npc.name} or {forms}, never any other pronoun. The narration never calls "
-        f"the player 'you'; only the quoted line may. Say ONLY what the sections "
-        "below support: never invent a person, place, object, or event that is not "
-        "listed. Asked about something not listed, answer honestly that you don't "
-        "know, in character. Vary how you begin: never open the way you opened "
-        "recently. Cozy and warm, soft stakes allowed, no urgency, no modern "
-        'things. Return strict JSON: {"line": "...", "advance": "<id or none>"}.'
+        f"village, replying to {actor.name}. Return strict JSON with three fields. "
+        f'"gesture": one short third-person action that starts with the name '
+        f"{npc.name} (for example: {npc.name} sets down a tool.). {speech}. "
+        '"advance": a story-moment id from the list below, or "none". '
+        f"{npc.name} uses {voice.get('pronouns', 'they/them')} pronouns: in the "
+        f"gesture say {npc.name} or {forms}, never any other pronoun, and never call "
+        "the player 'you' in the gesture. Say ONLY what the sections below support: "
+        "never invent a person, place, object, animal, or event that is not listed, "
+        "and never claim something happened that the sections do not say. Asked "
+        "about something not listed, say honestly that you don't know. Do not echo "
+        "your own recent lines: new words, a new opening, and a pet name for the "
+        "player only once in a while. Cozy and warm, soft stakes allowed, no urgency, "
+        "no modern things."
     )
     room = rooms.get_room(room_id)
     here = [t for t in objects.contents(room_id, kind="toon") if t.id != npc.id]
@@ -175,7 +186,7 @@ def build_prompt(actor: objects.Object, npc: objects.Object, text: str,
     cast = _cast(world_id, {t.id for t in here})
     if cast:
         sections.append("THE VILLAGE'S PEOPLE (no one else exists): " + "; ".join(cast))
-    facts = knowledge.known_facts(npc, actor.id, limit=10)
+    facts = knowledge.known_facts(npc, actor.id, limit=14)
     if facts:
         sections.append(f"WHAT {npc.name.upper()} KNOWS (the only facts they may state):\n"
                         + "\n".join(f"- {f['text']}" for f in facts))
@@ -187,9 +198,11 @@ def build_prompt(actor: objects.Object, npc: objects.Object, text: str,
         lines.append(f"- {actor.name} said: \"{ex.get('said', '')}\" / "
                      f"{npc.name} replied: {ex.get('reply', '')}")
     sections.append("\n".join(lines))
-    openers = recent_openers(world_id, npc.id)
-    if openers:
-        sections.append("RECENT OPENINGS TO AVOID:\n" + "\n".join(f"- {o}" for o in openers[-5:]))
+    lines_said = recent_lines(world_id, npc.id)
+    if lines_said:
+        sections.append(f"{npc.name.upper()}'S LAST FEW LINES (never reuse their words, "
+                        "openings, or pet names):\n"
+                        + "\n".join(f"- {x}" for x in lines_said[-4:]))
     ids: list[str] = []
     if beats:
         blines = []
@@ -208,18 +221,60 @@ def build_prompt(actor: objects.Object, npc: objects.Object, text: str,
 def _schema(ids: list[str]) -> dict:
     return {"type": "json_schema", "json_schema": {"name": "reply", "schema": {
         "type": "object",
-        "properties": {"line": {"type": "string"},
+        "properties": {"gesture": {"type": "string"}, "say": {"type": "string"},
                        "advance": {"type": "string", "enum": ids + ["none"]}},
-        "required": ["line", "advance"], "additionalProperties": False}}}
+        "required": ["gesture", "say", "advance"], "additionalProperties": False}}}
+
+
+LINES_PREFIX = "lines:"
+LINE_MEMORY = 6
+
+
+def recent_lines(world_id: str, npc_id: str) -> list[str]:
+    v = worldstate.get(world_id, LINES_PREFIX + npc_id)
+    return [x for x in v if isinstance(x, str)] if isinstance(v, list) else []
+
+
+def _note_line(world_id: str, npc_id: str, line: str) -> None:
+    log = recent_lines(world_id, npc_id)
+    log.append(line)
+    worldstate.set(world_id, LINES_PREFIX + npc_id, log[-LINE_MEMORY:])
+
+
+_QUOTE_CHARS = "\"'\u201c\u201d\u2018\u2019"
+
+
+def compose(npc_name: str, gesture: str, say: str) -> str:
+    """The reply as the player reads it: the NPC's gesture (always naming
+    them, so the line is attributed) and their words in quotes."""
+    g = " ".join((gesture or "").split()).strip()
+    words = " ".join((say or "").split()).strip().strip(_QUOTE_CHARS).strip()
+    if g and npc_name.lower() not in g.lower():
+        g = f"{npc_name} {g[0].lower()}{g[1:]}"
+    if g and g[-1] not in ".!?":
+        g += "."
+    if not words:
+        return g
+    return f"{g} '{words}'" if g else f"{npc_name} says, '{words}'"
 
 
 # ---- scoring ----------------------------------------------------------------
 
 
-def score(line: str, npc_name: str, pkey: str, openers: list[str]) -> int:
+def _tail(text: str, n: int = 2) -> str:
+    return " ".join(re.findall(r"[a-z']+", (text or "").lower())[-n:])
+
+
+def score(line: str, npc_name: str, pkey: str, openers: list[str],
+          recent: list[str] | None = None) -> int:
     """Lower is better. Mechanical: pronoun canon, point of view, opener
-    novelty against this NPC's recent openings, length."""
+    novelty against this NPC's recent openings, a verbal tic (the same
+    closing words as a recent line: the ', friend' on every reply), length."""
     penalty = 0
+    for prev in recent or []:
+        if _tail(line) and _tail(line) == _tail(prev):
+            penalty += 3
+            break
     bare = _QUOTED.sub(" ", line)
     words = set(re.findall(r"[a-z]+", bare.lower()))
     wrong = (_GENDERED | _PRONOUN_FORMS["it"]) - _PRONOUN_FORMS[pkey]
@@ -240,10 +295,13 @@ def score(line: str, npc_name: str, pkey: str, openers: list[str]) -> int:
     return penalty
 
 
-def _clean(result, ids: list[str]) -> tuple[str, str | None] | None:
+def _clean(result, ids: list[str], npc_name: str = "") -> tuple[str, str | None] | None:
     if not isinstance(result, dict) or safety.parse_refusal(result) is not None:
         return None
-    line = result.get("line")
+    if isinstance(result.get("gesture"), str) or isinstance(result.get("say"), str):
+        line = compose(npc_name, result.get("gesture") or "", result.get("say") or "")
+    else:
+        line = result.get("line")
     if not isinstance(line, str) or not line.strip():
         return None
     line = " ".join(line.split())[:MAX_LINE_CHARS]
@@ -284,7 +342,7 @@ async def talk(actor: objects.Object, npc: objects.Object, text: str, room_id: s
         ref = safety.parse_refusal(r)
         if ref is not None and refusal is None:
             refusal = ref.reason
-        c = _clean(r, ids)
+        c = _clean(r, ids, npc.name)
         if c is not None:
             candidates.append(c)
     if not candidates:
@@ -295,7 +353,8 @@ async def talk(actor: objects.Object, npc: objects.Object, text: str, room_id: s
             events.append("system", None, "narrate",
                           {"text": refusal or _BANNED_FALLBACK}, room_id=room_id)
         return False
-    candidates.sort(key=lambda c: score(c[0], npc.name, pkey, openers))
+    said = recent_lines(world_id, npc.id)
+    candidates.sort(key=lambda c: score(c[0], npc.name, pkey, openers, said[-3:]))
     line, advance = candidates[0]
     story.note_conversation(world_id, npc.id, actor.id)
     spoken = line
@@ -310,5 +369,6 @@ async def talk(actor: objects.Object, npc: objects.Object, text: str, room_id: s
     if spoken is not None:
         events.append("system", None, "narrate", {"text": spoken}, room_id=room_id)
         _note_opener(world_id, npc.id, spoken)
+        _note_line(world_id, npc.id, spoken)
     story.remember_exchange(world_id, npc.id, actor.id, text, spoken or "(the moment)")
     return True

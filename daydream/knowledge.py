@@ -127,11 +127,17 @@ def known_facts(npc: objects.Object, actor_id: str | None = None,
     actor = objects.get(actor_id) if actor_id else None
     ctx = (rules._build_ctx(actor, None, None, actor.location_id or "", npc, "facts")
            if actor is not None else rules.world_ctx(world_id, None, "facts"))
-    for fid, f in facts_def(world_id).items():
+    ranked = []
+    for order, (fid, f) in enumerate(facts_def(world_id).items()):
         if not isinstance(f, dict) or not _in(npc.id, f.get("known_by")):
             continue
         if not rules.conditions_hold(f.get("if"), ctx):
             continue
         if isinstance(f.get("text"), str) and f["text"].strip():
-            authored.append({"text": f["text"].strip(), "kind": "fact", "id": fid})
+            # Relevance: a situational fact (gated on an open arc, the clock,
+            # a beat) is news and outranks standing lore; lore this NPC
+            # specifically knows outranks what the whole village knows.
+            rank = (0 if f.get("if") else 1, 0 if f.get("known_by") != "all" else 1, order)
+            ranked.append((rank, {"text": f["text"].strip(), "kind": "fact", "id": fid}))
+    authored = [e for _, e in sorted(ranked, key=lambda x: x[0])]
     return (mine + others + authored)[:limit]

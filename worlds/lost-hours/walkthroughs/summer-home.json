@@ -1,0 +1,347 @@
+{
+  "name": "summer-home",
+  "comment": "Marram, the Summer, ending home: Bell and Marram point to Quill, who names the grass and drops the summer's last evening in the orchard; Umber reads the rest of its name in it and writes a label that stays. The prologue's dreamseed is dropped first so the ending's own dreamseed is what the final step asserts.",
+  "clock": "2026-10-01T17:00:00+00:00",
+  "players": [
+    {
+      "as": "A",
+      "name": "Wren"
+    }
+  ],
+  "segments": [
+    {
+      "name": "prologue",
+      "commands": [
+        {
+          "cmd": "read ledger",
+          "expect": {
+            "narrate_contains": "escapement gear",
+            "beats": [
+              "prologue/read-ledger"
+            ],
+            "phase": "stopped"
+          }
+        },
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-square"
+          }
+        },
+        {
+          "cmd": "south",
+          "expect": {
+            "room": "r-well"
+          }
+        },
+        {
+          "cmd": "take gear",
+          "expect": {
+            "carrying": [
+              "escapement gear"
+            ],
+            "beats": [
+              "prologue/found-gear"
+            ]
+          }
+        },
+        {
+          "cmd": "north"
+        },
+        {
+          "cmd": "west"
+        },
+        {
+          "cmd": "up",
+          "expect": {
+            "room": "r-loft"
+          }
+        },
+        {
+          "cmd": "give gear to tace",
+          "expect": {
+            "carrying": [
+              "case key"
+            ],
+            "beats": [
+              "prologue/gave-gear"
+            ],
+            "narrate_contains": "You carried it all the way home."
+          }
+        },
+        {
+          "cmd": "down",
+          "expect": {
+            "room": "r-clocktower"
+          }
+        },
+        {
+          "cmd": "use key on case",
+          "expect": {
+            "beats": [
+              "prologue/unlocked"
+            ]
+          }
+        },
+        {
+          "cmd": "open case",
+          "expect": {
+            "ending": {
+              "prologue": "mended"
+            },
+            "flag": {
+              "CLOCK-STARTED": true
+            },
+            "narrate_contains": "first slow tick",
+            "day": {
+              "eq": 1
+            }
+          }
+        },
+        {
+          "cmd": "take dreamseed",
+          "expect": {
+            "carrying": [
+              "dreamseed"
+            ]
+          }
+        },
+        {
+          "cmd": "take cog",
+          "expect": {
+            "carrying": [
+              "warm brass cog"
+            ],
+            "arc": {
+              "pim": "open"
+            },
+            "phase": "dusk",
+            "located": {
+              "t-pims-nap": "r-square"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "a summer with one word left",
+      "commands": [
+        {
+          "summon": "summer",
+          "expect": {
+            "arc": {
+              "summer": "open"
+            },
+            "located": {
+              "t-marram": "r-square"
+            }
+          }
+        },
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-square"
+          }
+        },
+        {
+          "cmd": "ask bell about marram",
+          "expect": {
+            "beats": [
+              "summer/bell-salt"
+            ],
+            "narrate_contains": "Umber keeps more names than anyone"
+          }
+        },
+        {
+          "cmd": "ask marram about the summer",
+          "expect": {
+            "carrying": [
+              "stalk of marram grass"
+            ],
+            "narrate_contains": "The rest of my name blew away",
+            "knows": {
+              "t-bell": "summer-arrived"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "the fallen evening",
+      "commands": [
+        {
+          "cmd": "south",
+          "expect": {
+            "room": "r-well"
+          }
+        },
+        {
+          "cmd": "south",
+          "expect": {
+            "room": "r-garden"
+          }
+        },
+        {
+          "cmd": "ask quill about the marram grass",
+          "expect": {
+            "beats": [
+              "summer/quill-grass"
+            ],
+            "narrate_contains": "read the rest of its name",
+            "located": {
+              "o-summer-evening": "r-orchard"
+            }
+          }
+        },
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-orchard"
+          }
+        },
+        {
+          "cmd": "take fallen evening",
+          "expect": {
+            "carrying": [
+              "fallen evening"
+            ],
+            "beats": [
+              "summer/found-evening"
+            ],
+            "narrate_contains": "hushes like the sea"
+          }
+        },
+        {
+          "cmd": "west",
+          "expect": {
+            "room": "r-garden"
+          }
+        },
+        {
+          "cmd": "north",
+          "expect": {
+            "room": "r-well"
+          }
+        },
+        {
+          "cmd": "north",
+          "expect": {
+            "room": "r-square"
+          }
+        },
+        {
+          "cmd": "west",
+          "expect": {
+            "room": "r-clocktower"
+          }
+        },
+        {
+          "cmd": "down",
+          "expect": {
+            "room": "r-cellar"
+          }
+        }
+      ]
+    },
+    {
+      "name": "a label that stays",
+      "commands": [
+        {
+          "cmd": "ask umber about a label for marram",
+          "expect": {
+            "beats": [
+              "summer/umber-label"
+            ],
+            "narrate_contains": "Common complaint"
+          }
+        },
+        {
+          "cmd": "give fallen evening to umber",
+          "expect": {
+            "beats": [
+              "summer/labeled"
+            ],
+            "carrying": [
+              "summer jar"
+            ],
+            "not_carrying": [
+              "fallen evening"
+            ],
+            "located": {
+              "o-summer-evening": "t-umber"
+            },
+            "narrate_contains": "Name, in full",
+            "knows": {
+              "t-umber": "summer-labeled"
+            }
+          }
+        },
+        {
+          "cmd": "read summer jar",
+          "expect": {
+            "narrate_contains": "THE SUMMER THE MARRAM GRASS SANG"
+          }
+        },
+        {
+          "cmd": "up",
+          "expect": {
+            "room": "r-clocktower"
+          }
+        },
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-square"
+          }
+        },
+        {
+          "cmd": "drop dreamseed",
+          "expect": {
+            "not_carrying": [
+              "dreamseed"
+            ]
+          }
+        },
+        {
+          "cmd": "give summer jar to marram",
+          "expect": {
+            "ending": {
+              "summer": "home"
+            },
+            "carrying": [
+              "pinch of warm sand",
+              "dreamseed"
+            ],
+            "not_carrying": [
+              "summer jar"
+            ],
+            "located": {
+              "t-marram": null
+            },
+            "narrate_contains": "remembers the whole summer at once",
+            "knows": {
+              "t-umber": "summer-home"
+            },
+            "rel": {
+              "t-umber": {
+                "gte": 1
+              }
+            }
+          }
+        },
+        {
+          "cmd": "west",
+          "expect": {
+            "room": "r-clocktower"
+          }
+        },
+        {
+          "cmd": "read ledger of returned hours",
+          "expect": {
+            "narrate_contains": "Wren found the rest of Marram's name, and the summer the marram grass sang went home remembered."
+          }
+        }
+      ]
+    }
+  ]
+}
