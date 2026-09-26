@@ -38,9 +38,8 @@ from __future__ import annotations
 
 import logging
 import re
-from datetime import datetime, timezone
 
-from daydream import config, events, journal, objects, rooms, worldstate
+from daydream import config, events, journal, objects, rooms, worldclock, worldstate
 from daydream.llm import client, safety
 from daydream.skills import effects
 
@@ -407,7 +406,7 @@ async def execute_plant(
     seed: objects.Object,
     args: str,
     allowed: frozenset[str],
-) -> None:
+) -> bool:
     """Run the full plant pipeline for `actor` planting `seed` in `room_id`
     with vision phrase `args`, dispatching effects through the verb's
     `allowed` set. Emits events as its only side effects."""
@@ -417,24 +416,24 @@ async def execute_plant(
     # ---- gates (pre-LLM; every refusal is free and mutates nothing) ----
     if seed.location_id != actor.id:
         _narrate(room_id, _NOT_CARRIED)
-        return
+        return False
     if seed.properties.get("state") == "spent":
         _narrate(room_id, _SPENT)
-        return
+        return False
     growth = seed.properties.get("growth")
     if not _growth_shape_ok(growth):
         _narrate(room_id, _NO_GROWTH)
-        return
+        return False
     if rooms.grown_room_count(world_id) >= config.growth_max_rooms():
         _narrate(room_id, _CAP_REACHED)
-        return
+        return False
     room = rooms.get_room(room_id)
     if room is None:
         _narrate(room_id, _WONT_HOLD_YET)
-        return
+        return False
     if _free_direction(room) is None:
         _narrate(room_id, _NO_DIRECTION)
-        return
+        return False
     if not phrase:
         # The typed two-turn path: ask the seed's authored question and wait
         # for the player's next input. No session state; the next `plant ...`
@@ -445,13 +444,13 @@ async def execute_plant(
             question if isinstance(question, str) and question.strip()
             else "Where does the new way lead?",
         )
-        return
+        return False
     if len(phrase) > MAX_PHRASE_CHARS:
         _narrate(room_id, _PHRASE_TOO_LONG)
-        return
+        return False
     if safety.first_banned(phrase) is not None:
         _narrate(room_id, _OFF_TONE)
-        return
+        return False
 
     # ---- compose: the single LLM call ----
     try:
@@ -465,20 +464,20 @@ async def execute_plant(
     except client.LLMUnavailable as e:
         logger.warning("plant: LLM unavailable: %s", e)
         _narrate(room_id, _FOGGY)
-        return
+        return False
 
     refusal = safety.parse_refusal(result)
     if refusal is not None:
         _narrate(room_id, refusal.reason)
-        return
+        return False
 
     composition = validate_growth_output(result, growth)
     if composition is None:
         logger.info("plant: composition rejected by validation")
         _narrate(room_id, _WONT_HOLD_YET)
-        return
+        return False
 
-    _commit_growth(actor.id, seed.id, phrase, composition, allowed)
+    return _commit_growth(actor.id, seed.id, phrase, composition, allowed)
 
 
 def _commit_growth(
@@ -487,39 +486,39 @@ def _commit_growth(
     phrase: str,
     composition: dict,
     allowed: frozenset[str],
-) -> None:
+) -> bool:
     """The post-LLM synchronous commit block: NO awaits from the first
     re-check to the last effect, so nothing can interleave (asyncio is
     cooperative). Re-checks every gate the LLM await could have raced —
     a re-check failure narrates in character and mutates nothing."""
     actor = objects.get(actor_id)
     if actor is None:
-        return
+        return False
     world_id = actor.world_id
     current_room_id = actor.location_id or ""
     seed = objects.get(seed_id)  # re-read: the await may have moved/spent it
     if seed is None or seed.location_id != actor_id:
         _narrate(current_room_id, _NOT_CARRIED)
-        return
+        return False
     if seed.properties.get("state") == "spent":
         _narrate(current_room_id, _SPENT)
-        return
+        return False
     growth = seed.properties.get("growth")
     if not isinstance(growth, dict):
         _narrate(current_room_id, _NO_GROWTH)
-        return
+        return False
     if rooms.grown_room_count(world_id) >= config.growth_max_rooms():
         _narrate(current_room_id, _CAP_REACHED)
-        return
+        return False
     room = rooms.get_room(current_room_id)
     if room is None:
         _narrate(current_room_id, _WONT_HOLD_YET)
-        return
+        return False
     # Phrase-hinted pick, re-run at commit: a rival plant may have taken it.
     direction = _pick_direction(room, phrase)
     if direction is None:
         _narrate(current_room_id, _NO_DIRECTION)
-        return
+        return False
 
     slug, new_room_id = _unique_slug_and_id(world_id, composition["title"])
     provenance = f"plant:{seed_id}"
@@ -527,7 +526,7 @@ def _commit_growth(
         "seed_id": seed_id,
         "planter_id": actor_id,
         "phrase": phrase,
-        "at": datetime.now(tz=timezone.utc).isoformat(timespec="seconds"),
+        "at": worldclock.iso(),
     }
 
     # One ordered effect batch, with a structural checkpoint: the room + exit
@@ -555,7 +554,7 @@ def _commit_growth(
             "seed preserved", new_room_id, slug,
         )
         _narrate(current_room_id, _WONT_HOLD_YET)
-        return
+        return False
 
     consume: list[dict] = []
     # Propagation rides the same commit batch, FIRST among the spawns: the
@@ -610,3 +609,5 @@ def _commit_growth(
         })
         _narrate(current_room_id, first_text.strip())
         journal.append_authored(actor_id, first_text.strip())
+    return True
+

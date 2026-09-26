@@ -41,6 +41,7 @@ import re
 from pathlib import Path
 
 from daydream import config, db, rules, version, worldstate, worldverbs
+from daydream.llm import story_format
 from daydream.verbs import VERBS
 
 logger = logging.getLogger(__name__)
@@ -156,6 +157,11 @@ def validate_envelope2(env: dict) -> list[str]:
         known_fuses=set(fuses.keys()), known_daemons=set(daemons.keys()),
     )
     known_verbs = _known_verb_names(env)
+    # The story reference universe (SPEC 2026-09-26): arcs, beats, endings,
+    # facts, per-player names, pages, collectibles, templates.
+    ks = story_format.known_story(env)
+    errors.extend(story_format.validate_story(
+        env, known=known, ks=ks, room_ids=room_ids, toon_ids=toon_ids))
 
     # Verbs block.
     if "verbs" in env:
@@ -164,8 +170,8 @@ def validate_envelope2(env: dict) -> list[str]:
     # World rules.
     if "rules" in env:
         errors.extend(rules.validate_rules(
-            env["rules"], source="rules", known_verbs=known_verbs, **known,
-        ))
+            env["rules"], source="rules", known_verbs=known_verbs, **known, known_story=ks,
+            ))
 
     # Fuses: {name: {turns, do}}.
     for name, d in fuses.items():
@@ -176,8 +182,8 @@ def validate_envelope2(env: dict) -> list[str]:
         if not isinstance(d.get("turns"), int) or d["turns"] < 1:
             errors.append(f"{where}.turns must be an int >= 1")
         errors.extend(rules.validate_effect_list(
-            d.get("do"), f"{where}.do", require_nonempty=True, **known,
-        ))
+            d.get("do"), f"{where}.do", require_nonempty=True, **known, known_story=ks,
+            ))
         unknown = set(d) - {"turns", "do"}
         if unknown:
             errors.append(f"{where}: unknown field(s) {sorted(unknown)}")
@@ -196,10 +202,10 @@ def validate_envelope2(env: dict) -> list[str]:
         if kind == "script":
             errors.extend(rules.validate_condition_list(
                 d.get("if"), f"{where}.if",
-                known_flags=known_flags, known_ids=all_ids,
+                known_flags=known_flags, known_ids=all_ids, known_story=ks,
             ))
             errors.extend(rules.validate_effect_list(
-                d.get("do"), f"{where}.do", require_nonempty=True, **known,
+                d.get("do"), f"{where}.do", require_nonempty=True, **known, known_story=ks,
             ))
         elif kind == "wanderer":
             if not isinstance(d.get("toon"), str) or d["toon"] not in all_ids:
@@ -294,13 +300,13 @@ def validate_envelope2(env: dict) -> list[str]:
                     edges.add((r["id"], value["to"]))
                 errors.extend(rules.validate_condition_list(
                     value.get("if"), f"{ewhere}.if",
-                    known_flags=known_flags, known_ids=all_ids,
-                ))
+                    known_flags=known_flags, known_ids=all_ids, known_story=ks,
+            ))
                 if "on_traverse" in value:
                     errors.extend(rules.validate_effect_list(
                         value["on_traverse"], f"{ewhere}.on_traverse",
-                        allow_inline_if=True, **known,
-                    ))
+                        allow_inline_if=True, **known, known_story=ks,
+            ))
                 for tk in ("blocked_text",):
                     if tk in value and not isinstance(value[tk], str):
                         errors.append(f"{ewhere}.{tk} must be a string")
@@ -317,14 +323,14 @@ def validate_envelope2(env: dict) -> list[str]:
         if "enter_if" in r:
             errors.extend(rules.validate_condition_list(
                 r["enter_if"], f"{where}.enter_if",
-                known_flags=known_flags, known_ids=all_ids,
+                known_flags=known_flags, known_ids=all_ids, known_story=ks,
             ))
         if "enter_blocked_text" in r and not isinstance(r["enter_blocked_text"], str):
             errors.append(f"{where}.enter_blocked_text must be a string")
         if "rules" in r:
             errors.extend(rules.validate_rules(
                 r["rules"], source=f"{where}.rules",
-                known_verbs=known_verbs, **known,
+                known_verbs=known_verbs, **known, known_story=ks,
             ))
         if "properties" in r and not isinstance(r["properties"], dict):
             errors.append(f"{where}.properties must be an object")
@@ -347,8 +353,10 @@ def validate_envelope2(env: dict) -> list[str]:
             errors.append(f"{where}: duplicate slot {slot}")
         else:
             seen_slots.add(slot)
-        if t.get("room") not in room_ids:
-            errors.append(f"{where}.room must name a declared room id")
+        if t.get("room") not in room_ids and t.get("room") != "offstage":
+            errors.append(f"{where}.room must name a declared room id or \"offstage\"")
+        errors.extend(story_format.validate_toon_story(
+            t, where, known=known, ks=ks, room_ids=room_ids))
         if t.get("is_human_controlled") not in (None, 0, 1):
             errors.append(f"{where}.is_human_controlled must be 0 or 1")
         dlg = t.get("dialogue")
@@ -361,7 +369,7 @@ def validate_envelope2(env: dict) -> list[str]:
         if "rules" in t:
             errors.extend(rules.validate_rules(
                 t["rules"], source=f"{where}.rules",
-                known_verbs=known_verbs, **known,
+                known_verbs=known_verbs, **known, known_story=ks,
             ))
         if "properties" in t and not isinstance(t["properties"], dict):
             errors.append(f"{where}.properties must be an object")
@@ -391,7 +399,7 @@ def validate_envelope2(env: dict) -> list[str]:
         if "rules" in th:
             errors.extend(rules.validate_rules(
                 th["rules"], source=f"{where}.rules",
-                known_verbs=known_verbs, **known,
+                known_verbs=known_verbs, **known, known_story=ks,
             ))
         if "properties" in th and not isinstance(th["properties"], dict):
             errors.append(f"{where}.properties must be an object")
@@ -415,7 +423,7 @@ def validate_envelope2(env: dict) -> list[str]:
 # sync by tests/test_format2.py::test_prototypes_match_v1_loader).
 _PROTOTYPES: tuple[tuple[str, list[str]], ...] = (
     ("room", ["look"]),
-    ("npc", ["examine", "talk"]),
+    ("npc", ["examine", "talk", "ask"]),
     ("thing", ["examine", "take", "drop", "give", "put"]),
     ("readable", ["examine", "take", "drop", "give", "put", "read"]),
     ("fixture", ["examine"]),
@@ -526,7 +534,8 @@ def _write_db2(env: dict, output_path: Path) -> None:
                 "location_id, prototype_id, properties_json, slot, "
                 "controller_session, is_human_controlled, kicked_at) "
                 "VALUES (?, ?, 'toon', ?, ?, ?, ?, ?, ?, NULL, ?, NULL)",
-                (t["id"], world_id, t["name"], json.dumps(aliases), t["room"],
+                (t["id"], world_id, t["name"], json.dumps(aliases),
+                 None if t["room"] == "offstage" else t["room"],
                  "proto-npc", json.dumps(props), t["slot"],
                  int(t.get("is_human_controlled") or 0)),
             )
@@ -602,6 +611,9 @@ def _write_db2(env: dict, output_path: Path) -> None:
             defs["config"] = env["config"]
         if isinstance(env.get("voice"), dict):
             defs["voice"] = env["voice"]
+        for section, key in story_format.STORY_DEF_KEYS.items():
+            if section in env:
+                defs[key] = env[section]
         defs["rng_seed"] = (
             world.get("rng_seed") if isinstance(world.get("rng_seed"), str)
             else world["slug"]

@@ -11,6 +11,15 @@ warm server is off; see CLAUDE.md). Two kinds of work contend:
   several GB above its resident footprint, so an exclusive holder runs
   alone: no LLM call and no other exclusive may overlap it.
 
+- ``kind="background"`` — a non-player LLM call (the story director ranking
+  authored storylets, SPEC 2026-09-26 criterion 5). At most ONE runs at a
+  time, it is admitted only when no render is active or queued AND no
+  player-facing LLM call is queued, and it does NOT count against the LLM
+  cap (vLLM's --max-num-seqs is 4 = the cap of 3 + this one slot), so it
+  can never delay a player-facing call. A queued render waits for an active
+  background call to finish but no new background call is admitted past it,
+  so renders are never starved by background work.
+
 Admission policy is TEXT-PRIORITY: an LLM waiter is admitted whenever no
 exclusive is active (it barges past queued exclusives); an exclusive is
 admitted only when nothing is active AND no LLM waiter is queued. A
@@ -41,36 +50,56 @@ from daydream import config
 
 _active_llm = 0
 _active_exclusive = False
+_active_bg = 0
+BACKGROUND_CAP = 1
 # Each queue entry is (future, enqueued_monotonic).
 _llm_q: deque[tuple[asyncio.Future, float]] = deque()
 _excl_q: deque[tuple[asyncio.Future, float]] = deque()
-_max_wait_ms = {"llm": 0, "exclusive": 0}
+_bg_q: deque[tuple[asyncio.Future, float]] = deque()
+_max_wait_ms = {"llm": 0, "exclusive": 0, "background": 0}
+
+
+def _live(q: deque) -> bool:
+    return any(not f.done() for f, _ in q)
 
 
 def _wake() -> None:
     """Grant every currently-admissible waiter. Synchronous: runs to
     completion on the event loop, so check+grant is atomic."""
-    global _active_llm, _active_exclusive
+    global _active_llm, _active_exclusive, _active_bg
     while _llm_q and not _active_exclusive and _active_llm < config.llm_concurrency():
         fut, _ = _llm_q.popleft()
         if not fut.done():  # skip futures cancelled while queued
             _active_llm += 1  # grant BEFORE set_result
             fut.set_result(None)
     while (
-        _excl_q and not _active_exclusive and _active_llm == 0 and not _llm_q
+        _excl_q and not _active_exclusive and _active_llm == 0
+        and _active_bg == 0 and not _llm_q
     ):
         fut, _ = _excl_q.popleft()  # text priority: llm queue must be empty
         if not fut.done():
             _active_exclusive = True
+            fut.set_result(None)
+    # Background: lowest priority. Never past a queued render or a queued
+    # player call, never alongside a render, at most BACKGROUND_CAP at once.
+    while (
+        _bg_q and not _active_exclusive and _active_bg < BACKGROUND_CAP
+        and not _live(_excl_q) and not _live(_llm_q)
+    ):
+        fut, _ = _bg_q.popleft()
+        if not fut.done():
+            _active_bg += 1
             fut.set_result(None)
 
 
 def _release(kind: str) -> None:
     """Synchronous release + wake — safe inside a ``finally`` even while
     the releasing task is itself being cancelled."""
-    global _active_llm, _active_exclusive
+    global _active_llm, _active_exclusive, _active_bg
     if kind == "llm":
         _active_llm -= 1
+    elif kind == "background":
+        _active_bg -= 1
     else:
         _active_exclusive = False
     _wake()
@@ -86,9 +115,9 @@ async def acquire(kind: str = "exclusive") -> AsyncIterator[None]:
         async with arbiter.acquire():             # exclusive (image gen)
             await call_image_gen()
     """
-    if kind not in ("llm", "exclusive"):
+    if kind not in ("llm", "exclusive", "background"):
         raise ValueError(f"unknown arbiter kind {kind!r}")
-    q = _llm_q if kind == "llm" else _excl_q
+    q = {"llm": _llm_q, "exclusive": _excl_q, "background": _bg_q}[kind]
     t0 = time.monotonic()
     fut: asyncio.Future = asyncio.get_running_loop().create_future()
     q.append((fut, t0))
@@ -120,7 +149,7 @@ async def acquire(kind: str = "exclusive") -> AsyncIterator[None]:
 def is_locked() -> bool:
     """Whether ANY gate activity is in flight (back-compat name: for tests
     and `bin/game status`, 'the GPU is busy')."""
-    return _active_exclusive or _active_llm > 0
+    return _active_exclusive or _active_llm > 0 or _active_bg > 0
 
 
 def exclusive_held() -> bool:
@@ -145,16 +174,20 @@ def stats() -> dict:
         "max_wait_ms_llm": _max_wait_ms["llm"],
         "max_wait_ms_exclusive": _max_wait_ms["exclusive"],
         "llm_concurrency": config.llm_concurrency(),
+        "active_background": _active_bg,
+        "waiting_background": sum(1 for f, _ in _bg_q if not f.done()),
     }
 
 
 def reset() -> None:
     """Test helper: drop all gate state so each test starts fresh.
     Not for production paths."""
-    global _active_llm, _active_exclusive
+    global _active_llm, _active_exclusive, _active_bg
     _active_llm = 0
     _active_exclusive = False
+    _active_bg = 0
     _llm_q.clear()
     _excl_q.clear()
-    _max_wait_ms["llm"] = 0
-    _max_wait_ms["exclusive"] = 0
+    _bg_q.clear()
+    for k in _max_wait_ms:
+        _max_wait_ms[k] = 0

@@ -307,6 +307,9 @@ def _list_npcs() -> list[dict[str, Any]]:
             "seed": t.seed,
         }
         for t in toons.get_npcs()
+        # An offstage toon (a guest who has not arrived, or has gone home)
+        # has no room: a drift beat for it would broadcast to no one sensible.
+        if t.current_room_id is not None
     ]
 
 

@@ -17,7 +17,7 @@ from fastapi.responses import (
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
-from daydream import config, db, drift, version
+from daydream import config, db, drift, version, village
 from daydream.api import auth, slots, world, ws
 from daydream.api import rooms as rooms_api
 from daydream.api.access import AccessMiddleware
@@ -41,12 +41,17 @@ async def lifespan(app: FastAPI):
     version.check_world_compat(db.get_conn())
     version.build_sha()
     drift.start_drift_loop()
+    # The living day (SPEC 2026-09-26): process wall-clock phase boundaries
+    # (catching up any missed while the server was down) and let the
+    # director pick small events, even with no one connected.
+    village.start_loop()
     try:
         yield
     finally:
         # No-argument stop targets the module-tracked live task. A world
         # hot-swap replaces that task mid-run, so stopping via a startup-time
         # handle would miss the post-swap task and leak it to loop teardown.
+        await village.stop_loop()
         await drift.stop_drift_loop()
         db.close_db()
 
@@ -123,6 +128,7 @@ async def status_arbiter():
         f" +{s['waiting_llm']} waiting"
         f" / image {'busy' if s['active_exclusive'] else 'idle'}"
         f" +{s['waiting_exclusive']} waiting"
+        f" / bg {s['active_background']} active +{s['waiting_background']} waiting"
         f" / max wait llm {s['max_wait_ms_llm']}ms"
         f" image {s['max_wait_ms_exclusive']}ms"
         f" / events dropped {events.dropped_event_total()}\n"

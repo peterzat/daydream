@@ -75,6 +75,20 @@ ALLOWED_KINDS: frozenset[str] = frozenset({
     "start_daemon",
     "stop_daemon",
     "win",
+    # Story vocabulary (SPEC 2026-09-26): authored rules, beats, endings,
+    # topics, and storylets only — never an LLM-facing path.
+    "adjust_rel",
+    "set_pflag",
+    "adjust_pcounter",
+    "open_arc",
+    "advance_beat",
+    "close_arc",
+    "add_fact",
+    "grant_collectible",
+    "start_time",
+    "run_phase",
+    "move_toon",
+    "spawn_template",
     # Retained aliases for existing data-skill author files.
     "add_item",
     "set_mood",
@@ -96,6 +110,9 @@ RULE_ONLY_KINDS: frozenset[str] = frozenset({
     "set_flag", "adjust_counter", "adjust_score", "destroy_object",
     "teleport_actor", "kill_actor", "start_fuse", "stop_fuse",
     "start_daemon", "stop_daemon", "win",
+    "adjust_rel", "set_pflag", "adjust_pcounter", "open_arc", "advance_beat",
+    "close_arc", "add_fact", "grant_collectible", "start_time", "run_phase",
+    "move_toon", "spawn_template",
 })
 RESTRICTED_KINDS: frozenset[str] = (
     WORLD_SHAPING_KINDS | {"rename_object", "set_property"} | RULE_ONLY_KINDS
@@ -251,15 +268,23 @@ def _apply_narrate(
     reach only the acting player. `room: <id>` overrides which room's log
     the line lands in (a daemon narrating into its own room)."""
     text = eff.get("text")
+    target_room = eff.get("room")
+    if not (isinstance(target_room, str) and target_room.strip()):
+        target_room = room_id
+    vs = eff.get("variants")
+    if isinstance(vs, list) and any(isinstance(v, str) and v.strip() for v in vs):
+        # Authored variants (criterion 11): no verbatim repeat within the
+        # recent tellings in this room, deterministic per telling.
+        from daydream import variants
+
+        key = eff.get("key") if isinstance(eff.get("key"), str) else variants.key_for(vs)
+        text = variants.pick(world_id, key, vs, target_room)
     if not isinstance(text, str) or not text.strip():
         return None
     to = eff.get("to")
     recipient: str | None = None
     if isinstance(to, str) and to.strip():
         recipient = actor_id if to.strip() == "@actor" else to.strip()
-    target_room = eff.get("room")
-    if not (isinstance(target_room, str) and target_room.strip()):
-        target_room = room_id
     return events.append(
         "system", None, "narrate", {"text": text.strip()},
         room_id=target_room, recipient_id=recipient,
@@ -850,6 +875,150 @@ def _apply_win(
     return events.append("system", None, "game_won", dict(won), room_id=None)
 
 
+# ---- story kinds (SPEC 2026-09-26) ------------------------------------------
+
+
+def _toon_or_none(tid) -> objects.Object | None:
+    t = objects.get(tid) if isinstance(tid, str) and tid else None
+    return t if t is not None and t.kind == "toon" else None
+
+
+def _apply_adjust_rel(eff: dict, *, actor_id: str, room_id: str, world_id: str):
+    from daydream import story
+
+    npc = _toon_or_none(eff.get("npc"))
+    toon = _toon_or_none(eff.get("toon_id", actor_id))
+    delta = eff.get("delta")
+    if npc is None or toon is None or not isinstance(delta, int):
+        return None
+    value = story.adjust_rel(world_id, npc.id, toon.id, delta)
+    return events.append("system", None, "rel_changed",
+                         {"npc": npc.id, "toon": toon.id, "value": value},
+                         room_id=room_id, recipient_id=toon.id)
+
+
+def _apply_set_pflag(eff: dict, *, actor_id: str, room_id: str, world_id: str):
+    from daydream import story
+
+    toon = _toon_or_none(eff.get("toon_id", actor_id))
+    name = eff.get("name")
+    if toon is None or not isinstance(name, str) or not name.strip():
+        return None
+    value = bool(eff.get("value", True))
+    story.pset(world_id, toon.id, f"flag:{name.strip()}", value)
+    return events.append("system", None, "pflag_set",
+                         {"name": name.strip(), "value": value},
+                         room_id=room_id, recipient_id=toon.id)
+
+
+def _apply_adjust_pcounter(eff: dict, *, actor_id: str, room_id: str, world_id: str):
+    from daydream import story
+
+    toon = _toon_or_none(eff.get("toon_id", actor_id))
+    name, delta = eff.get("name"), eff.get("delta")
+    if toon is None or not isinstance(name, str) or not isinstance(delta, int):
+        return None
+    value = story.pcounter(world_id, toon.id, name.strip()) + delta
+    story.pset(world_id, toon.id, f"counter:{name.strip()}", value)
+    return events.append("system", None, "pcounter_adjusted",
+                         {"name": name.strip(), "value": value},
+                         room_id=room_id, recipient_id=toon.id)
+
+
+def _apply_open_arc(eff: dict, *, actor_id: str, room_id: str, world_id: str):
+    from daydream import story
+
+    arc = eff.get("arc")
+    return story.open_arc(world_id, arc, actor_id or None, room_id or None) \
+        if isinstance(arc, str) else None
+
+
+def _apply_advance_beat(eff: dict, *, actor_id: str, room_id: str, world_id: str):
+    from daydream import story
+
+    arc, beat = eff.get("arc"), eff.get("beat")
+    if not isinstance(arc, str) or not isinstance(beat, str):
+        return None
+    return story.advance_beat(world_id, arc, beat, actor_id or None, room_id or None)
+
+
+def _apply_close_arc(eff: dict, *, actor_id: str, room_id: str, world_id: str):
+    from daydream import story
+
+    arc, ending = eff.get("arc"), eff.get("ending")
+    if not isinstance(arc, str) or not isinstance(ending, str):
+        return None
+    return story.close_arc(world_id, arc, ending, actor_id or None, room_id or None)
+
+
+def _apply_add_fact(eff: dict, *, actor_id: str, room_id: str, world_id: str):
+    from daydream import knowledge
+
+    about = eff.get("about", actor_id)
+    return knowledge.add_fact(
+        world_id, eff.get("id"), eff.get("text"), about or None,
+        eff.get("known_by", []), eff.get("spread", []), room_id or None,
+    )
+
+
+def _apply_grant_collectible(eff: dict, *, actor_id: str, room_id: str, world_id: str):
+    from daydream import collect
+
+    toon = _toon_or_none(eff.get("toon_id", actor_id))
+    if toon is None:
+        return None
+    cid = eff.get("id") if isinstance(eff.get("id"), str) else None
+    return collect.grant(world_id, toon.id, cid, room_id or toon.location_id)
+
+
+def _apply_start_time(eff: dict, *, actor_id: str, room_id: str, world_id: str):
+    from daydream import village
+
+    return village.start_time(world_id, room_id or None)
+
+
+def _apply_run_phase(eff: dict, *, actor_id: str, room_id: str, world_id: str):
+    from daydream import village
+
+    ph = eff.get("phase")
+    return village.run_phase_now(world_id, ph, room_id or None) \
+        if isinstance(ph, str) else None
+
+
+def _apply_move_toon(eff: dict, *, actor_id: str, room_id: str, world_id: str):
+    from daydream import story
+
+    toon = _toon_or_none(eff.get("toon_id"))
+    if toon is None or toon.is_human_controlled:
+        return None  # rules walk NPCs; players move themselves (or teleport_actor)
+    dest = eff.get("room_id")
+    if dest is not None and not isinstance(dest, str):
+        return None
+    arrive = eff.get("arrive_text") if isinstance(eff.get("arrive_text"), str) else None
+    leave = eff.get("leave_text") if isinstance(eff.get("leave_text"), str) else None
+    return story.place_toon(toon.id, dest, arrive_text=arrive, leave_text=leave)
+
+
+def _apply_spawn_template(eff: dict, *, actor_id: str, room_id: str, world_id: str):
+    """Spawn one authored template (worldstate config.templates[name], a
+    spawn_object field set: name/seed/aliases/verbs/properties) at
+    `location_id` (default the room). The dreamseed an arc ending grants is
+    one template authored once, not a growth block copied into every
+    ending."""
+    cfg = worldstate.get(world_id, "config")
+    templates = cfg.get("templates") if isinstance(cfg, dict) else None
+    tpl = templates.get(eff.get("template")) if isinstance(templates, dict) else None
+    if not isinstance(tpl, dict):
+        return None
+    spawn = dict(tpl)
+    spawn["kind"] = "spawn_object"
+    spawn["location_id"] = eff.get("location_id", room_id)
+    if isinstance(eff.get("generated_by"), str):
+        spawn["generated_by"] = eff["generated_by"]
+    return _apply_spawn_object(spawn, actor_id=actor_id, room_id=room_id,
+                               world_id=world_id)
+
+
 _HANDLERS: dict[str, Callable[..., events.Event | None]] = {
     "narrate": _apply_narrate,
     "set_property": _apply_set_property,
@@ -869,6 +1038,18 @@ _HANDLERS: dict[str, Callable[..., events.Event | None]] = {
     "start_daemon": _apply_start_daemon,
     "stop_daemon": _apply_stop_daemon,
     "win": _apply_win,
+    "adjust_rel": _apply_adjust_rel,
+    "set_pflag": _apply_set_pflag,
+    "adjust_pcounter": _apply_adjust_pcounter,
+    "open_arc": _apply_open_arc,
+    "advance_beat": _apply_advance_beat,
+    "close_arc": _apply_close_arc,
+    "add_fact": _apply_add_fact,
+    "grant_collectible": _apply_grant_collectible,
+    "start_time": _apply_start_time,
+    "run_phase": _apply_run_phase,
+    "move_toon": _apply_move_toon,
+    "spawn_template": _apply_spawn_template,
     "add_item": _apply_add_item,
     "set_mood": _apply_set_mood,
 }

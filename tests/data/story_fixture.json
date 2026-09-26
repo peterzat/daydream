@@ -1,0 +1,508 @@
+{
+  "_comment": "A small format-2 world exercising every story primitive (SPEC 2026-09-26): time, arcs with talk beats + a timed ending, facts + gossip, storylets (a ritual + events), collectibles + a page, per-player flags, a voice-sheet NPC with a schedule and topics, an offstage guest, and after-hooks. Test data only; the engine never reads it outside tests.",
+  "format": 2,
+  "world": {
+    "name": "Fixture Hamlet",
+    "slug": "fixture",
+    "aesthetic_seed": "a tiny test hamlet",
+    "rng_seed": "fixture-seed"
+  },
+  "start_room": "r-green",
+  "flags": [
+    "STARTED"
+  ],
+  "player_flags": [
+    "GREETED"
+  ],
+  "player_counters": [
+    "favors"
+  ],
+  "time": {
+    "tz": "UTC",
+    "start_flag": "STARTED",
+    "phases": {
+      "dawn": "06:00",
+      "day": "08:00",
+      "dusk": "18:00",
+      "night": "21:30"
+    },
+    "labels": {
+      "dusk": "dusk"
+    }
+  },
+  "config": {
+    "director": {
+      "max_open_guests": 1,
+      "event_minutes": 30
+    },
+    "relationship_tiers": [
+      {
+        "min": 0,
+        "label": "a stranger"
+      },
+      {
+        "min": 3,
+        "label": "a friend"
+      }
+    ],
+    "templates": {
+      "seedling": {
+        "name": "seedling",
+        "seed": "a green seedling",
+        "verbs": [
+          "plant"
+        ]
+      }
+    },
+    "collect": {
+      "per_day": 2,
+      "rooms": [
+        "r-green",
+        "r-mill",
+        "r-lane"
+      ],
+      "name": "glint",
+      "aliases": [
+        "spark"
+      ],
+      "seed": "a small glint of light",
+      "found_text": "You catch {name}: {text}",
+      "book_title": "Book of Glints"
+    }
+  },
+  "rooms": [
+    {
+      "id": "r-green",
+      "slug": "green",
+      "title": "The Green",
+      "seed": "a village green",
+      "exits": {
+        "north": "r-mill",
+        "east": "r-lane"
+      }
+    },
+    {
+      "id": "r-mill",
+      "slug": "mill",
+      "title": "The Mill",
+      "seed": "a quiet mill",
+      "exits": {
+        "south": "r-green"
+      }
+    },
+    {
+      "id": "r-lane",
+      "slug": "lane",
+      "title": "The Lane",
+      "seed": "a hedged lane",
+      "exits": {
+        "west": "r-green"
+      }
+    }
+  ],
+  "toons": [
+    {
+      "id": "t-hob",
+      "name": "Hob",
+      "slot": 100,
+      "room": "r-green",
+      "seed": "the hamlet's lamplighter",
+      "properties": {
+        "voice": {
+          "pronouns": "they/them",
+          "sheet": "Hob lights lamps and talks in short bright bursts.",
+          "samples": [
+            "'Evening! Mind the wick.'"
+          ],
+          "wants": [
+            "to see every lamp lit by dark"
+          ]
+        },
+        "schedule": {
+          "day": "r-green",
+          "dusk": "r-lane",
+          "night": "r-mill"
+        },
+        "schedule_text": {
+          "leave": "{name} heads off with the ladder.",
+          "arrive": "{name} arrives with the ladder."
+        },
+        "topics": [
+          {
+            "label": "the lamps",
+            "aliases": [
+              "lamps"
+            ],
+            "variants": [
+              "'Twelve lamps, all mine.'",
+              "'The lamps hum at dusk.'",
+              "'Every lamp has a name.'"
+            ]
+          },
+          {
+            "label": "the stranger",
+            "if": [
+              {
+                "arc": "moth",
+                "eq": "closed"
+              }
+            ],
+            "text": "'The moth went home, you know.'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "t-wynn",
+      "name": "Wynn",
+      "slot": 101,
+      "room": "r-mill",
+      "seed": "the miller's apprentice",
+      "properties": {
+        "voice": {
+          "pronouns": "she/her",
+          "sheet": "Wynn is shy and precise."
+        },
+        "wants": "sack of oats"
+      }
+    },
+    {
+      "id": "t-moth",
+      "name": "Moth",
+      "slot": 102,
+      "room": "offstage",
+      "seed": "a lost moth-hour",
+      "properties": {
+        "voice": {
+          "pronouns": "it/its",
+          "sheet": "A lost hour shaped like a moth."
+        }
+      }
+    },
+    {
+      "id": "t-reed",
+      "name": "Reed",
+      "slot": 103,
+      "room": "offstage",
+      "seed": "a second guest"
+    }
+  ],
+  "things": [
+    {
+      "id": "o-oats",
+      "name": "sack of oats",
+      "location": {
+        "room": "r-lane"
+      },
+      "seed": "a small sack of oats",
+      "aliases": [
+        "oats",
+        "sack"
+      ]
+    },
+    {
+      "id": "o-lamp",
+      "name": "lamp",
+      "location": {
+        "room": "r-green"
+      },
+      "seed": "an unlit lamp on a post",
+      "fixture": true,
+      "verbs": [
+        "light"
+      ]
+    },
+    {
+      "id": "o-ledger",
+      "name": "ledger",
+      "location": {
+        "room": "r-green"
+      },
+      "seed": "a small ledger",
+      "fixture": true,
+      "readable": true,
+      "properties": {
+        "text_source": "chronicle",
+        "chronicle_header": "The Hamlet Ledger.",
+        "chronicle_empty": "No hours have come home yet."
+      },
+      "verbs": [
+        "read"
+      ]
+    }
+  ],
+  "verbs": {
+    "light": {
+      "ui_hint": "Light",
+      "needs_dobj": true,
+      "valid_dobj_kinds": [
+        "thing"
+      ],
+      "fail_text": "It won't light."
+    }
+  },
+  "rules": [
+    {
+      "on": "light",
+      "if": [
+        {
+          "dobj": "o-lamp"
+        }
+      ],
+      "do": [
+        {
+          "kind": "narrate",
+          "text": "The lamp catches."
+        },
+        {
+          "kind": "start_time"
+        }
+      ]
+    },
+    {
+      "on": "give",
+      "after": true,
+      "if": [
+        {
+          "dobj": "o-oats"
+        },
+        {
+          "iobj": "t-wynn"
+        }
+      ],
+      "do": [
+        {
+          "kind": "add_fact",
+          "id": "gave-oats",
+          "text": "{actor} brought Wynn the oats.",
+          "known_by": [
+            "t-wynn"
+          ],
+          "spread": [
+            {
+              "to": [
+                "t-hob"
+              ],
+              "after_minutes": 30
+            }
+          ]
+        },
+        {
+          "kind": "adjust_pcounter",
+          "name": "favors",
+          "delta": 1
+        },
+        {
+          "kind": "adjust_rel",
+          "npc": "t-wynn",
+          "delta": 2
+        }
+      ]
+    }
+  ],
+  "facts": {
+    "lamps-twelve": {
+      "text": "There are twelve lamps in the hamlet.",
+      "known_by": [
+        "t-hob"
+      ]
+    },
+    "moth-lost": {
+      "text": "A lost moth-hour is waiting on the lane.",
+      "known_by": "all",
+      "if": [
+        {
+          "arc": "moth"
+        }
+      ]
+    }
+  },
+  "arcs": {
+    "moth": {
+      "title": "The Moth Hour",
+      "kind": "guest",
+      "guest": "t-moth",
+      "summary": "A lost hour shaped like a moth wants its lamp.",
+      "arrival": {
+        "room": "r-lane",
+        "text": "A small moth-shaped hour settles on the lane.",
+        "first": true
+      },
+      "beats": {
+        "hob-notices": {
+          "npc": "t-hob",
+          "topic": "the moth",
+          "topic_aliases": [
+            "moth"
+          ],
+          "hint": "the player mentions the moth",
+          "text": "Hob squints. 'That moth wants a lamp.'",
+          "do": [
+            {
+              "kind": "set_pflag",
+              "name": "GREETED"
+            }
+          ]
+        },
+        "hear-story": {
+          "npc": "t-moth",
+          "topic": "home",
+          "per_player": true,
+          "after": [
+            "hob-notices"
+          ],
+          "text": "The moth hums of a porch light long ago."
+        },
+        "lit-for-moth": {
+          "after": [
+            "hob-notices"
+          ],
+          "text": "The moth circles the lamp once and is gone home."
+        }
+      },
+      "endings": {
+        "home": {
+          "text": "Somewhere, a porch light flickers on.",
+          "ledger": "{helpers} lit a lamp for the moth hour.",
+          "do": [
+            {
+              "kind": "move_toon",
+              "toon_id": "t-moth",
+              "room_id": null
+            },
+            {
+              "kind": "spawn_template",
+              "template": "seedling",
+              "location_id": "@actor"
+            }
+          ]
+        },
+        "kept": {
+          "after_days": 2,
+          "text": "The moth folds itself into the ledger's pages, kept.",
+          "ledger": "The moth hour was kept.",
+          "do": [
+            {
+              "kind": "move_toon",
+              "toon_id": "t-moth",
+              "room_id": null
+            }
+          ]
+        }
+      }
+    },
+    "reed": {
+      "title": "The Reed Hour",
+      "kind": "guest",
+      "guest": "t-reed",
+      "arrival": {
+        "room": "r-mill",
+        "text": "A reedy hour leans in the mill door.",
+        "weight": 1
+      },
+      "beats": {
+        "sing": {
+          "npc": "t-wynn",
+          "topic": "the reed",
+          "text": "Wynn hums a reed song."
+        }
+      },
+      "endings": {
+        "sung": {
+          "text": "The reed hour goes home singing."
+        },
+        "stays": {
+          "after_days": 3,
+          "text": "The reed hour stays by the wheel."
+        }
+      }
+    }
+  },
+  "storylets": [
+    {
+      "id": "lamps-lit",
+      "at": "dusk",
+      "always": true,
+      "room": "r-green",
+      "text": "One by one, the hamlet's lamps come on."
+    },
+    {
+      "id": "owl",
+      "at": [
+        "night",
+        "dusk"
+      ],
+      "room": "r-mill",
+      "text": "An owl settles on the mill roof.",
+      "summary": "an owl on the mill"
+    },
+    {
+      "id": "fox",
+      "at": [
+        "night",
+        "dusk"
+      ],
+      "room": "r-lane",
+      "text": "A fox pads down the lane.",
+      "summary": "a fox in the lane",
+      "cooldown_days": 2
+    },
+    {
+      "id": "dawn-bells",
+      "at": "dawn",
+      "always": true,
+      "room": "r-green",
+      "text": "Somewhere a small bell rings dawn."
+    }
+  ],
+  "pages": {
+    "p-first": {
+      "title": "First Glints",
+      "reward": {
+        "text": "The page glows warm.",
+        "do": [
+          {
+            "kind": "adjust_pcounter",
+            "name": "favors",
+            "delta": 5
+          }
+        ]
+      }
+    },
+    "p-second": {
+      "title": "Second Glints"
+    }
+  },
+  "collectibles": [
+    {
+      "id": "g-kettle",
+      "name": "the kettle glint",
+      "text": "a kettle that would not boil",
+      "page": "p-first"
+    },
+    {
+      "id": "g-sneeze",
+      "name": "the sneeze glint",
+      "text": "the minute before a sneeze",
+      "page": "p-first"
+    },
+    {
+      "id": "g-rain",
+      "name": "the rain glint",
+      "text": "rain on a tin roof",
+      "page": "p-second"
+    },
+    {
+      "id": "g-bus",
+      "name": "the waiting glint",
+      "text": "waiting for a letter",
+      "page": "p-second"
+    },
+    {
+      "id": "g-bell",
+      "name": "the bell glint",
+      "text": "a school bell's last ring",
+      "page": "p-second"
+    }
+  ]
+}

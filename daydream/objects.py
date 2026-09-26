@@ -125,6 +125,20 @@ def contents(container_id: str, kind: str | None = None) -> list[Object]:
     return [Object.from_row(r) for r in rows]
 
 
+def visible_to(obj: Object, viewer_id: str | None) -> bool:
+    """A thing authored or spawned `private_to` one toon exists only for that
+    toon (a player's own daily find, a newcomer's own small clock). Every
+    other object is visible to everyone (SPEC 2026-09-26 criterion 12)."""
+    owner = obj.properties.get("private_to")
+    return not owner or owner == viewer_id
+
+
+def contents_for(container_id: str, viewer_id: str | None,
+                 kind: str | None = None) -> list[Object]:
+    """`contents`, minus things private to someone other than the viewer."""
+    return [o for o in contents(container_id, kind) if visible_to(o, viewer_id)]
+
+
 def content_ids(container_id: str, kind: str | None = None) -> list[str]:
     """Just the ids of a container's contents (cheap; used to fill a toon's
     inventory without materializing every contained Object)."""
@@ -196,7 +210,7 @@ def in_scope(actor_id: str) -> list[Object]:
             seen.setdefault(room.id, room)
         if not dark:
             for o in contents(room_id):
-                if o.kind != "prototype":
+                if o.kind != "prototype" and visible_to(o, actor_id):
                     seen.setdefault(o.id, o)
     for o in contents(actor_id):
         if o.kind != "prototype":
@@ -212,7 +226,7 @@ def in_scope(actor_id: str) -> list[Object]:
         next_frontier: list[Object] = []
         for c in frontier:
             for o in contents(c.id):
-                if o.kind == "prototype" or o.id in seen:
+                if o.kind == "prototype" or o.id in seen or not visible_to(o, actor_id):
                     continue
                 seen[o.id] = o
                 if o.kind == "thing" and contents_visible(o):

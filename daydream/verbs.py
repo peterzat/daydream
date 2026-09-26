@@ -210,6 +210,16 @@ VERBS: dict[str, VerbSpec] = {
         allowed_effects=frozenset({"set_property", "narrate"}),
         aliases=("debark",),
     ),
+    "ask": VerbSpec(
+        name="ask", ui_hint="Ask",
+        description="Ask someone about a topic. Target: the toon. Args: the topic.",
+        needs_dobj=True, valid_dobj_kinds=frozenset({"toon"}),
+        # Authored topic answers + talk beats run as rules (RULE_KINDS inside
+        # story.ask); the verb itself only narrates the topic list.
+        allowed_effects=frozenset({"narrate"}),
+        aliases=("tell",),
+        needs_text=True, text_prompt="Ask about what?",
+    ),
     "say": VerbSpec(
         name="say", ui_hint="Say",
         description="Speak something aloud to the room. Args: the text to say.",
@@ -351,6 +361,17 @@ async def execute_command(
     actor = objects.get(actor_id)
     if actor is None:
         return
+    # The living day (SPEC 2026-09-26 criteria 4, 12): with no background
+    # loop running (tests, walkthroughs, admin tools), every command first
+    # processes any wall-clock boundary crossed since the last one, and a
+    # player's daily finds are placed. Both are cheap no-ops for worlds that
+    # author no time or collectibles.
+    from daydream import collect, village
+
+    if not village.loop_running():
+        village.catch_up(actor.world_id)
+    collect.ensure_daily(actor_id)
+    actor = objects.get(actor_id) or actor
     room_id = actor.location_id or ""
     spec = resolve(actor.world_id, verb)
     if spec is None:
@@ -430,7 +451,10 @@ async def _execute_resolved(
         return
 
     if spec.name == "talk" and dobj is not None:
-        await _handle_talk(actor, room_id, dobj, args, spec)
+        ok = await _handle_talk(actor, room_id, dobj, args, spec)
+        if ok is not False:
+            await rules.dispatch(actor, spec.name, dobj, iobj, room_id=room_id,
+                                 phase="after")
         return
 
     handler = _ENGINE_HANDLERS.get(spec.name)
@@ -445,7 +469,13 @@ async def _execute_resolved(
         else:
             _narrate(room_id, _DONT_UNDERSTAND, recipient_id=actor_id)
         return
-    await handler(actor, room_id, dobj, iobj, args, spec)
+    ok = await handler(actor, room_id, dobj, iobj, args, spec)
+    # After-hooks (SPEC 2026-09-26 criterion 9): authored `after: true` rules
+    # follow a verb whose normal handling succeeded (a handler returns False
+    # only on an in-world refusal), and never suppress it.
+    if ok is not False:
+        await rules.dispatch(actor, spec.name, dobj, iobj,
+                             room_id=actor.location_id or room_id, phase="after")
 
 
 def _resolve_in_scope(actor_id: str, object_id: str | None) -> objects.Object | None:
@@ -521,7 +551,7 @@ async def _handle_look(actor, room_id, dobj, iobj, args, spec) -> None:
             "text": lighting.darkness_text(actor.world_id), "to": "@actor"}], spec)
         return
     text = room.description_cached or f"You are in {room.title}."
-    things = objects.contents(room_id, kind="thing")
+    things = objects.contents_for(room_id, actor.id, kind="thing")
     if things:
         text += " You see: " + ", ".join(t.name for t in things) + "."
     # Visible container contents compose into the look (criterion 4): an
@@ -611,7 +641,7 @@ async def _handle_examine(actor, room_id, dobj, iobj, args, spec) -> None:
     if detail is None:
         _dispatch(actor, room_id, [{"kind": "narrate", "to": "@actor",
             "text": f"You look at the {dobj.name}, but the dream is too foggy to make out the details just now."}], spec)
-        return
+        return False
     _dispatch(actor, room_id, [
         {"kind": "set_property", "target_id": dobj.id, "key": "examined_text", "value": detail},
         {"kind": "narrate", "text": _examine_line(dobj, detail), "to": "@actor"},
@@ -663,9 +693,14 @@ def _carry_capacity(actor: objects.Object) -> int | None:
 
 
 async def _handle_take(actor, room_id, dobj, iobj, args, spec) -> None:
+    from daydream import collect
+
+    if collect.is_collectible(dobj):
+        # A daily find goes straight into the player's book, not the satchel.
+        return collect.collect(actor, dobj, room_id)
     if dobj.location_id == actor.id:
         _dispatch(actor, room_id, [{"kind": "narrate", "text": f"You're already carrying the {dobj.name}."}], spec)
-        return
+        return False
     # Container gate: reaching INTO a closed container is refused. This only
     # bites for closed TRANSPARENT ones — a closed opaque container's
     # contents are already out of scope entirely (criterion 4).
@@ -673,12 +708,12 @@ async def _handle_take(actor, room_id, dobj, iobj, args, spec) -> None:
     if holder is not None and holder.kind == "thing" and not objects.container_open(holder):
         _dispatch(actor, room_id, [{"kind": "narrate",
             "text": f"The {holder.name} is closed.", "to": "@actor"}], spec)
-        return
+        return False
     cap = _carry_capacity(actor)
     if cap is not None and objects.load_of(actor.id) + objects.size_of(dobj) > cap:
         _dispatch(actor, room_id, [{"kind": "narrate",
             "text": "You're carrying too much already.", "to": "@actor"}], spec)
-        return
+        return False
     effs: list = [
         {"kind": "move_object", "object_id": dobj.id, "dest_id": actor.id},
         {"kind": "narrate", "text": f"You take the {dobj.name}."},
@@ -695,7 +730,7 @@ async def _handle_take(actor, room_id, dobj, iobj, args, spec) -> None:
 async def _handle_drop(actor, room_id, dobj, iobj, args, spec) -> None:
     if dobj.location_id != actor.id:
         _dispatch(actor, room_id, [{"kind": "narrate", "text": f"You aren't carrying the {dobj.name}."}], spec)
-        return
+        return False
     _dispatch(actor, room_id, [
         {"kind": "move_object", "object_id": dobj.id, "dest_id": room_id},
         {"kind": "narrate", "text": f"You drop the {dobj.name}."},
@@ -712,17 +747,17 @@ async def _handle_give(actor, room_id, dobj, iobj, args, spec) -> None:
     if dobj.location_id != actor.id:
         _dispatch(actor, room_id, [{"kind": "narrate",
             "text": f"You aren't carrying the {dobj.name}."}], spec)
-        return
+        return False
     if iobj.id == actor.id:
         _dispatch(actor, room_id, [{"kind": "narrate",
             "text": "You can't give something to yourself."}], spec)
-        return
+        return False
     if not _matches_name(dobj, iobj.properties.get("wants")):
         decline = iobj.properties.get("declines_text")
         if not (isinstance(decline, str) and decline.strip()):
             decline = f"{iobj.name} smiles and gently sets the {dobj.name} back in your hands."
         _dispatch(actor, room_id, [{"kind": "narrate", "text": decline}], spec)
-        return
+        return False
 
     effs: list = [{"kind": "move_object", "object_id": dobj.id, "dest_id": iobj.id}]
     mood = iobj.properties.get("gives_mood")
@@ -789,6 +824,7 @@ async def _handle_use(actor, room_id, dobj, iobj, args, spec) -> None:
     if not (isinstance(wrong, str) and wrong.strip()):
         wrong = f"You try the {dobj.name} on the {iobj.name}, but nothing happens."
     _dispatch(actor, room_id, [{"kind": "narrate", "text": wrong}], spec)
+    return False
 
 
 async def _handle_open(actor, room_id, dobj, iobj, args, spec) -> None:
@@ -811,11 +847,11 @@ async def _handle_open(actor, room_id, dobj, iobj, args, spec) -> None:
         if not (isinstance(locked, str) and locked.strip()):
             locked = f"The {dobj.name} is locked."
         _dispatch(actor, room_id, [{"kind": "narrate", "text": locked}], spec)
-        return
+        return False
     if state == "open":
         _dispatch(actor, room_id, [{"kind": "narrate",
             "text": f"The {dobj.name} is already open."}], spec)
-        return
+        return False
     effs: list = [
         {"kind": "set_property", "target_id": dobj.id, "key": "state", "value": "open"},
     ]
@@ -863,7 +899,7 @@ async def _handle_close(actor, room_id, dobj, iobj, args, spec) -> None:
     if dobj.properties.get("state") != "open":
         _dispatch(actor, room_id, [{"kind": "narrate",
             "text": f"The {dobj.name} is already closed.", "to": "@actor"}], spec)
-        return
+        return False
     close_text = dobj.properties.get("close_text")
     if not (isinstance(close_text, str) and close_text.strip()):
         close_text = f"You close the {dobj.name}."
@@ -882,21 +918,21 @@ async def _handle_put(actor, room_id, dobj, iobj, args, spec) -> None:
     if dobj.location_id != actor.id:
         _dispatch(actor, room_id, [{"kind": "narrate",
             "text": f"You aren't carrying the {dobj.name}.", "to": "@actor"}], spec)
-        return
+        return False
     surface = bool(iobj.properties.get("surface"))
     prep = "on" if surface else "in"
     if dobj.id == iobj.id:
         _dispatch(actor, room_id, [{"kind": "narrate",
             "text": f"You can't put the {dobj.name} inside itself.", "to": "@actor"}], spec)
-        return
+        return False
     if not objects.is_container(iobj):
         _dispatch(actor, room_id, [{"kind": "narrate",
             "text": f"You can't put things {prep} the {iobj.name}.", "to": "@actor"}], spec)
-        return
+        return False
     if not objects.container_open(iobj):
         _dispatch(actor, room_id, [{"kind": "narrate",
             "text": f"The {iobj.name} is closed.", "to": "@actor"}], spec)
-        return
+        return False
     # Containment-cycle gate: walking up from the target, the carried thing
     # must not appear (putting the sack into the box inside the sack).
     cur = iobj
@@ -906,7 +942,7 @@ async def _handle_put(actor, room_id, dobj, iobj, args, spec) -> None:
         if cur.location_id == dobj.id:
             _dispatch(actor, room_id, [{"kind": "narrate",
                 "text": f"You can't put the {dobj.name} inside itself.", "to": "@actor"}], spec)
-            return
+            return False
         parent = objects.get(cur.location_id)
         if parent is None:
             break
@@ -916,7 +952,7 @@ async def _handle_put(actor, room_id, dobj, iobj, args, spec) -> None:
         _dispatch(actor, room_id, [{"kind": "narrate",
             "text": f"The {dobj.name} won't fit {prep} the {iobj.name}.",
             "to": "@actor"}], spec)
-        return
+        return False
     effs: list = [
         {"kind": "move_object", "object_id": dobj.id, "dest_id": iobj.id},
         {"kind": "narrate", "text": f"You put the {dobj.name} {prep} the {iobj.name}."},
@@ -936,12 +972,21 @@ async def _handle_read(actor, room_id, dobj, iobj, args, spec) -> None:
     """Narrate a readable's authored `text` (the words on the page), distinct
     from `examine`'s physical description. Degrades gently when there is no
     text. Deterministic (no LLM)."""
+    if dobj.properties.get("text_source") == "chronicle":
+        # A chronicle book (SPEC 2026-09-26 criterion 15): its text is the
+        # world's closed arcs and who helped, composed at read time.
+        from daydream import story
+
+        _dispatch(actor, room_id, [{"kind": "narrate", "to": "@actor",
+            "text": story.chronicle_text(actor.world_id, dobj)}], spec)
+        return
     text = dobj.properties.get("text")
     if isinstance(text, str) and text.strip():
         _dispatch(actor, room_id, [{"kind": "narrate", "text": text.strip(), "to": "@actor"}], spec)
         return
     _dispatch(actor, room_id, [{"kind": "narrate", "to": "@actor",
         "text": f"There's nothing written on the {dobj.name} to read."}], spec)
+    return False
 
 
 async def _handle_plant(actor, room_id, dobj, iobj, args, spec) -> None:
@@ -952,14 +997,14 @@ async def _handle_plant(actor, room_id, dobj, iobj, args, spec) -> None:
     stays inside what `plant` declares."""
     from daydream import growth
 
-    await growth.execute_plant(actor, room_id, dobj, args, spec.allowed_effects)
+    return await growth.execute_plant(actor, room_id, dobj, args, spec.allowed_effects)
 
 
 async def _handle_say(actor, room_id, dobj, iobj, args, spec) -> None:
     text = args.strip()
     if not text:
         _narrate(room_id, "Say what?", recipient_id=actor.id)
-        return
+        return False
     # `say` is the actor speaking, not system narration: emit a `say` event
     # keyed to the actor. Carry the speaker's display NAME in the payload so the
     # client attributes by name and never falls back to a raw id (SPEC
@@ -1103,11 +1148,11 @@ async def _handle_go(actor, room_id, dobj, iobj, args, spec) -> None:
     raw = args.strip()
     if not raw:
         _narrate(room_id, "Go where?", recipient_id=actor.id)
-        return
+        return False
     room = rooms.get_room(room_id)
     if room is None:
         _narrate(room_id, "You are nowhere recognizable.", recipient_id=actor.id)
-        return
+        return False
     direction = canonical_direction(raw)
     exit_value = room.exits.get(direction)
     if exit_value is None:
@@ -1120,7 +1165,7 @@ async def _handle_go(actor, room_id, dobj, iobj, args, spec) -> None:
             exit_value = room.exits.get(direction)
     if exit_value is None:
         _narrate(room_id, f"You can't go {raw} from here.", recipient_id=actor.id)
-        return
+        return False
     # Conditional / secret / message-only exits (criterion 7). A refusal
     # narrates the authored text and still ticks the clock (the tick lives
     # in execute_command's tail, which this return path reaches).
@@ -1128,11 +1173,11 @@ async def _handle_go(actor, room_id, dobj, iobj, args, spec) -> None:
     if target_id is None:
         _narrate(room_id, refusal or f"You can't go {raw} from here.",
                  recipient_id=actor.id)
-        return
+        return False
     dest = objects.get(target_id)
     if dest is None or dest.kind != "room":
         _narrate(room_id, "The way shimmers closed.", recipient_id=actor.id)
-        return
+        return False
     # Destination entry gate: a room can require conditions to enter (a
     # water room refuses foot entry: enter_if [{"in_vehicle": true}]).
     enter_if = dest.properties.get("enter_if")
@@ -1144,7 +1189,7 @@ async def _handle_go(actor, room_id, dobj, iobj, args, spec) -> None:
                  blocked if isinstance(blocked, str) and blocked.strip()
                  else f"You can't go {raw} from here.",
                  recipient_id=actor.id)
-        return
+        return False
     # The vehicle rides along: while aboard, going somewhere moves the
     # vehicle (and, by co-location, keeps the aboard flag valid there).
     vehicle = rules.vehicle_of(actor)
@@ -1188,7 +1233,7 @@ async def _handle_attack(actor, room_id, dobj, iobj, args, spec) -> None:
     which reads the villain's authored `properties.combat` block."""
     from daydream import combat
 
-    await combat.execute_attack(actor, room_id, dobj, iobj, args, spec)
+    return await combat.execute_attack(actor, room_id, dobj, iobj, args, spec)
 
 
 async def _handle_diagnose(actor, room_id, dobj, iobj, args, spec) -> None:
@@ -1215,20 +1260,20 @@ async def _handle_board(actor, room_id, dobj, iobj, args, spec) -> None:
     if not dobj.properties.get("vehicle"):
         _dispatch(actor, room_id, [{"kind": "narrate",
             "text": f"You can't board the {dobj.name}.", "to": "@actor"}], spec)
-        return
+        return False
     if dobj.location_id != room_id:
         _dispatch(actor, room_id, [{"kind": "narrate",
             "text": f"Put the {dobj.name} down first.", "to": "@actor"}], spec)
-        return
+        return False
     current = rules.vehicle_of(actor)
     if current is not None:
         if current.id == dobj.id:
             _dispatch(actor, room_id, [{"kind": "narrate",
                 "text": f"You're already aboard the {dobj.name}.", "to": "@actor"}], spec)
-            return
+            return False
         _dispatch(actor, room_id, [{"kind": "narrate",
             "text": f"You're already aboard the {current.name}.", "to": "@actor"}], spec)
-        return
+        return False
     board_text = dobj.properties.get("board_text")
     if not (isinstance(board_text, str) and board_text.strip()):
         board_text = f"You climb into the {dobj.name}."
@@ -1244,7 +1289,7 @@ async def _handle_disembark(actor, room_id, dobj, iobj, args, spec) -> None:
     if vehicle is None:
         _dispatch(actor, room_id, [{"kind": "narrate",
             "text": "You aren't aboard anything.", "to": "@actor"}], spec)
-        return
+        return False
     out_text = vehicle.properties.get("disembark_text")
     if not (isinstance(out_text, str) and out_text.strip()):
         out_text = f"You climb out of the {vehicle.name}."
@@ -1267,7 +1312,33 @@ async def _handle_inventory(actor, room_id, dobj, iobj, args, spec) -> None:
     _dispatch(actor, room_id, [{"kind": "narrate", "text": f"You're carrying: {names}.", "to": "@actor"}], spec)
 
 
+async def _handle_ask(actor, room_id, dobj, iobj, args, spec) -> None:
+    """Ask an NPC about a topic (SPEC 2026-09-26 criterion 6): the
+    deterministic producer for talk beats and authored topic answers, zero
+    LLM calls when the topic matches. No topic lists what they could tell
+    you; an unmatched topic becomes an ordinary conversation."""
+    from daydream import story
+
+    topic_text = args.strip()
+    if not topic_text:
+        topics = story.available_topics(dobj, actor.id)
+        if topics:
+            labels = ", ".join(t["label"] for t in topics)
+            text = f"You could ask {dobj.name} about: {labels}."
+        else:
+            text = f"{dobj.name} has nothing in particular to tell you just now."
+        _dispatch(actor, room_id, [{"kind": "narrate", "text": text,
+                                    "to": "@actor"}], spec)
+        return False
+    topic = story.match_topic(dobj, actor.id, topic_text)
+    if topic is None:
+        return await _handle_talk(actor, room_id, dobj, f"About {topic_text}?",
+                                  VERBS["talk"])
+    story.ask(actor, dobj, topic, room_id)
+
+
 _ENGINE_HANDLERS = {
+    "ask": _handle_ask,
     "look": _handle_look,
     "examine": _handle_examine,
     "take": _handle_take,
@@ -1312,11 +1383,17 @@ async def _handle_talk(actor, room_id, dobj, args, spec) -> None:
     memory to this toon directly (playtest fix 2026-07-02)."""
     from daydream.skills import data as data_skills
 
+    if isinstance(dobj.properties.get("voice"), dict):
+        # A voice-sheet NPC (SPEC 2026-09-26 criteria 6, 10): grounded
+        # dialogue with game state injected, and the talk-beat advance.
+        from daydream import dialogue
+
+        return await dialogue.talk(actor, dobj, args, room_id)
     skill_name = _bound_dialogue_skill(dobj)
     pair = data_skills.find(skill_name) if skill_name else None
     if pair is None:
         _narrate(room_id, f"{dobj.name} doesn't have much to say just now.")
-        return
+        return False
     sspec, body = pair
     await data_skills.execute(
         sspec, body, actor.id, room_id, args, allowed=spec.allowed_effects,

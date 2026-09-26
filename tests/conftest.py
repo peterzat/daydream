@@ -83,6 +83,13 @@ os.environ["DAYDREAM_RETELL_ENABLED"] = "0"
 # mock daydream.llm.client.acompletion_json.
 os.environ["DAYDREAM_JOURNAL_ENABLED"] = "0"
 
+# The village loop (real-time phase processing) and the director's LLM
+# ranking default ON in production, OFF in tests: with no loop running, every
+# command runs the deterministic catch-up itself (fake clock), so story tests
+# and walkthroughs stay LLM-free and time-pinned (SPEC 2026-09-26).
+os.environ["DAYDREAM_VILLAGE_ENABLED"] = "0"
+os.environ["DAYDREAM_DIRECTOR_LLM"] = "0"
+
 # Redirect HOME to a session-scoped temp dir as a belt-and-suspenders measure:
 # any other code that resolves `~/...` during tests writes under this dir,
 # which the OS reaps. Use mkdtemp (not TemporaryDirectory) so the dir lives

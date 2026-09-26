@@ -75,12 +75,19 @@ async def acompletion_json(
     max_tokens: int = 256,
     timeout: float = 10.0,
     purpose: str = "unlabeled",
+    gate: str = "llm",
+    response_format: dict | None = None,
 ) -> dict:
     """Call the LLM and parse a JSON object from the response.
 
     `purpose` names the calling surface ("parser", "dialogue", "drift",
     "growth", "retell", "examine", ...) for the usage log; it never
     reaches the model.
+
+    `gate` is the arbiter class: "llm" for player-facing text (the default),
+    "background" for the story director (never delays a player call).
+    `response_format` overrides the default {"type": "json_object"} (e.g. a
+    json_schema whose enum constrains a choice to offered ids).
 
     Raises LLMUnavailable on any backend failure or unparseable output. The
     caller decides how to recover (typically by narrating FOGGY_TEXT)."""
@@ -94,7 +101,7 @@ async def acompletion_json(
     # config.llm_concurrency()) but never overlap an exclusive image
     # render. See daydream/gpu/arbiter.py for the admission policy.
     try:
-        async with arbiter.acquire("llm"):
+        async with arbiter.acquire(gate):
             t_start = time.monotonic()
             response = await litellm.acompletion(
                 model=resolved_model,
@@ -107,7 +114,7 @@ async def acompletion_json(
                 temperature=temperature,
                 max_tokens=max_tokens,
                 timeout=timeout,
-                response_format={"type": "json_object"},
+                response_format=response_format or {"type": "json_object"},
             )
     except Exception as e:
         usage_logger.info(

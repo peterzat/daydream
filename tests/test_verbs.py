@@ -53,6 +53,8 @@ def test_closed_verb_registry_with_arg_specs():
         "look", "examine", "take", "drop", "talk", "give", "use",
         "open", "close", "put", "read", "plant", "say", "go", "inventory",
         "attack", "diagnose", "board", "disembark",
+        # ask: the talk-beat producer (SPEC 2026-09-26 criterion 6).
+        "ask",
     }
     # Arg-specs: object-targeted verbs declare a dobj + valid kinds.
     assert verbs.VERBS["take"].needs_dobj
@@ -86,7 +88,7 @@ def test_available_verbs_derive_from_kind_prototype():
     # A thing exposes examine/take/drop; an NPC exposes examine/talk — from the
     # prototype, with no per-object re-declaration.
     assert objects.verbs_for(objects.get("i-lantern")) == ["examine", "take", "drop", "put"]
-    assert objects.verbs_for(objects.get("t-rook")) == ["examine", "talk"]
+    assert objects.verbs_for(objects.get("t-rook")) == ["examine", "talk", "ask"]
 
 
 # ---- take / drop move objects ------------------------------------------

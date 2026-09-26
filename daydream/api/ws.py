@@ -181,7 +181,7 @@ def _state_snapshot(
     # scene panels behind the authored darkness text, no art, no co-located
     # toons — inventory stays usable.
     lit = lighting.room_lit(room_id)
-    things_in = objects.contents(room_id, kind="thing") if lit else []
+    things_in = objects.contents_for(room_id, toon_id, kind="thing") if lit else []
     inventory_in = objects.contents(toon_id, kind="thing")
     toons_in = toons.get_toons_in_room(room_id) if lit else []
     # The controlled toon's own identity, so the SPA can render WHO YOU ARE

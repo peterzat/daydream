@@ -614,7 +614,7 @@ def _proto_id(kind: str) -> str:
 # a meaningful hint, not noise on every thing.
 _PROTOTYPES: tuple[tuple[str, list[str]], ...] = (
     ("room", ["look"]),
-    ("npc", ["examine", "talk"]),
+    ("npc", ["examine", "talk", "ask"]),
     ("thing", ["examine", "take", "drop", "give", "put"]),
     ("readable", ["examine", "take", "drop", "give", "put", "read"]),
     ("fixture", ["examine"]),

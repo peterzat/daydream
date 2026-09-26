@@ -36,8 +36,27 @@ refused):
     {"contains": ID, "of": REF?}                container directly holds it
     {"in_vehicle": true | ID}                   actor is aboard (any/that one)
 
+Story conditions (SPEC 2026-09-26; read per-player state for the actor):
+
+    {"rel": NPC_ID, <op>: N}                    actor's relationship with NPC
+    {"pflag": NAME, "eq": bool?}                actor's per-player flag
+    {"pcounter": NAME, <op>: N}                 actor's per-player counter
+    {"beat": "ARC/BEAT", "by": REF?}            beat done (by that toon)
+    {"arc": ARC_ID, <op>: STATUS?}              arc status (no op = open)
+    {"ending": "ARC/ENDING"}                    arc closed with that ending
+    {"helped": ARC_ID}                          actor helped that arc
+    {"phase": NAME | [NAME, ...]}               the village's time of day
+    {"day": {<op>: N}}                          the village day
+    {"knows": FACT_ID, "who": REF, "about": REF?}  an NPC knows a fact
+    {"collected": {<op>: N}, "page": ID?}       actor's collectibles found
+
 Any condition may add `"not": true` to invert itself ("passable only while
 NOT carrying the coffin").
+
+A rule authored `"after": true` is an AFTER-HOOK: it runs only once the
+verb's normal handling has succeeded, and never suppresses it (the gear is
+given as usual, and also the village hears of it). Before-rules (the
+default) keep their replace-the-verb semantics exactly.
 
 `<op>` is exactly one of eq / ne / lt / lte / gt / gte / in; a prop condition
 with no op is a truthy check. REF and ID values accept the sigils `@self`
@@ -67,10 +86,16 @@ OPS = ("eq", "ne", "lt", "lte", "gt", "gte", "in")
 # their membership operator ({"prop": "state", "in": [...]}) and as the
 # am-I-in-this-room form ({"in": "r-x"}).
 CONDITION_KEYS = (
-    "prop", "counter", "score", "carrying_count", "flag", "dobj", "iobj",
+    "prop", "counter", "score", "carrying_count", "rel", "pcounter", "arc",
+    "flag", "dobj", "iobj",
     "carried", "carried_filter", "only_carrying", "empty_handed", "chance",
-    "present", "contains", "in_vehicle", "in",
+    "present", "contains", "in_vehicle",
+    "pflag", "beat", "ending", "helped", "phase", "day", "knows", "collected",
+    "in",
 )
+# Discriminators whose aux keys may include the `in` membership operator
+# (so a bare `in` is theirs, not the am-I-in-this-room form).
+_IN_OWNERS = ("prop", "counter", "rel", "pcounter", "arc")
 
 
 # ---- context + references ------------------------------------------------
@@ -92,6 +117,20 @@ def _build_ctx(
         "world_id": actor.world_id,
         "self": holder,
         "rng_purpose": rng_purpose,
+    }
+
+
+def world_ctx(world_id: str, room_id: str | None, rng_purpose: str) -> dict:
+    """A condition context with no acting toon (the director, dusk, timed
+    endings): world-level conditions evaluate normally; actor-bound ones
+    (carried, rel, pflag...) read an empty stub and are simply false."""
+    stub = objects.Object(
+        id="", world_id=world_id, kind="toon", name="", aliases=[],
+        location_id=room_id, prototype_id=None, properties={},
+    )
+    return {
+        "actor": stub, "dobj": None, "iobj": None, "room_id": room_id or "",
+        "world_id": world_id, "self": None, "rng_purpose": rng_purpose,
     }
 
 
@@ -249,11 +288,90 @@ def _eval_condition(cond: dict, ctx: dict) -> bool:
         if want is False:
             return vehicle is None
         return vehicle is not None and vehicle.id == _ref_id(want, ctx)
+    story_result = _eval_story_condition(cond, ctx)
+    if story_result is not None:
+        return story_result
     if "in" in cond:
         return actor.location_id == _ref_id(cond["in"], ctx)
 
     logger.warning("unknown rule condition %r evaluates false", cond)
     return False
+
+
+def _split_ref(ref) -> tuple[str, str] | None:
+    if isinstance(ref, str) and "/" in ref:
+        a, b = ref.split("/", 1)
+        if a and b:
+            return a, b
+    return None
+
+
+def _eval_story_condition(cond: dict, ctx: dict) -> bool | None:
+    """The story-layer conditions (SPEC 2026-09-26). None = not a story
+    condition (fall through)."""
+    from daydream import story
+
+    actor: objects.Object = ctx["actor"]
+    world_id: str = ctx["world_id"]
+    if "rel" in cond:
+        npc = _ref_id(cond["rel"], ctx)
+        if not npc or not actor.id:
+            return False
+        return _op_compare(cond, story.rel(world_id, npc, actor.id))
+    if "pcounter" in cond:
+        if not actor.id:
+            return False
+        return _op_compare(cond, story.pcounter(world_id, actor.id, cond["pcounter"]))
+    if "arc" in cond:
+        status = story.arc_status(world_id, str(cond["arc"]))
+        if not any(op in cond for op in OPS):
+            return status == "open"
+        return _op_compare(cond, status)
+    if "pflag" in cond:
+        if not actor.id:
+            return cond.get("eq", True) is False
+        return story.pflag(world_id, actor.id, cond["pflag"]) == cond.get("eq", True)
+    if "beat" in cond:
+        ref = _split_ref(cond["beat"])
+        if ref is None:
+            return False
+        by = _ref_id(cond["by"], ctx) if "by" in cond else None
+        if "by" in cond and not by:
+            return False
+        return story.beat_done(world_id, ref[0], ref[1], by=by)
+    if "ending" in cond:
+        ref = _split_ref(cond["ending"])
+        return ref is not None and story.ending_of(world_id, ref[0]) == ref[1]
+    if "helped" in cond:
+        return bool(actor.id) and actor.id in story.arc_state(
+            world_id, str(cond["helped"]))["helpers"]
+    if "phase" in cond:
+        from daydream import village
+
+        want = cond["phase"]
+        now = village.phase(world_id)
+        return now in want if isinstance(want, list) else now == want
+    if "day" in cond:
+        from daydream import village
+
+        spec = cond["day"]
+        return isinstance(spec, dict) and _op_compare(spec, village.day(world_id))
+    if "knows" in cond:
+        from daydream import knowledge
+
+        who = _ref_id(cond.get("who", "@self"), ctx)
+        about = _ref_id(cond["about"], ctx) if "about" in cond else None
+        if not who:
+            return False
+        return knowledge.npc_knows(world_id, who, str(cond["knows"]), about=about)
+    if "collected" in cond:
+        from daydream import collect
+
+        spec = cond["collected"]
+        if not isinstance(spec, dict) or not actor.id:
+            return False
+        return _op_compare(spec, collect.count(world_id, actor.id, cond.get("page")))
+    return None
 
 
 def conditions_hold(conds, ctx: dict) -> bool:
@@ -314,6 +432,7 @@ async def dispatch(
     iobj: objects.Object | None,
     *,
     room_id: str,
+    phase: str = "before",
 ) -> bool:
     """Run the first matching rule for `verb_name` (or the pseudo-event
     `enter`) across dobj -> iobj -> room -> world. Returns True if any rule
@@ -325,7 +444,12 @@ async def dispatch(
     dispatch, with the authored text as the unconditional fallback — a
     world with retell off (or the LLM absent) takes a zero-await path
     identical to the old sync dispatch. Fuses and daemons keep their own
-    sync path (clock.tick) and are never retold."""
+    sync path (clock.tick) and are never retold.
+
+    `phase="after"` runs only rules authored `"after": true` (after-hooks,
+    called once the verb's normal handling succeeded); the default "before"
+    phase runs only the rest, so an after-hook can never replace a verb."""
+    want_after = phase == "after"
     room = objects.get(room_id) if room_id else None
     fired = False
     holders: list[tuple[objects.Object | None, str]] = [
@@ -342,6 +466,8 @@ async def dispatch(
         rule_list = world_rules(actor.world_id) if role == "world" else rules_on(holder)
         for idx, rule in enumerate(rule_list):
             if rule.get("on") != verb_name:
+                continue
+            if bool(rule.get("after", False)) != want_after:
                 continue
             as_role = rule.get("as", "dobj")
             if role == "dobj" and as_role != "dobj":
@@ -389,11 +515,23 @@ _CONDITION_AUX: dict[str, frozenset[str]] = {
     "present": frozenset(),
     "contains": frozenset({"of"}),
     "in_vehicle": frozenset(),
+    "rel": frozenset(OPS),
+    "pcounter": frozenset(OPS),
+    "arc": frozenset(OPS),
+    "pflag": frozenset({"eq"}),
+    "beat": frozenset({"by"}),
+    "ending": frozenset(),
+    "helped": frozenset(),
+    "phase": frozenset(),
+    "day": frozenset(),
+    "knows": frozenset({"who", "about"}),
+    "collected": frozenset({"page"}),
 }
 
 # Effect-dict keys that reference objects/rooms and so must cross-validate
 # against the world's known ids (sigils always pass).
-_EFFECT_ID_FIELDS = ("object_id", "dest_id", "target_id", "room_id", "actor_id", "location_id")
+_EFFECT_ID_FIELDS = ("object_id", "dest_id", "target_id", "room_id", "actor_id",
+                     "location_id", "toon_id", "npc")
 
 
 def _check_ref(value, known_ids: set[str], errors: list[str], where: str) -> None:
@@ -402,10 +540,13 @@ def _check_ref(value, known_ids: set[str], errors: list[str], where: str) -> Non
 
 
 def validate_condition_list(
-    conds, where: str, *, known_flags: set[str], known_ids: set[str]
+    conds, where: str, *, known_flags: set[str], known_ids: set[str],
+    known_story: dict | None = None,
 ) -> list[str]:
     """Named errors for one authored condition list (a rule's `if`, an
-    exit's `if`, a room's `enter_if`, a script daemon's `if`)."""
+    exit's `if`, a room's `enter_if`, a script daemon's `if`). With
+    `known_story` ({arcs, beats, endings, facts, pflags, pcounters, pages}),
+    story references are closed too."""
     errors: list[str] = []
     if conds is None:
         return errors
@@ -419,7 +560,7 @@ def validate_condition_list(
         discs = [k for k in CONDITION_KEYS if k in cond]
         # `in` doubles as prop/counter's membership operator; it is a
         # discriminator only when no higher-precedence form claimed it.
-        if "in" in discs and any(d in cond for d in ("prop", "counter")):
+        if "in" in discs and any(d in cond for d in _IN_OWNERS):
             discs.remove("in")
         if len(discs) != 1:
             errors.append(
@@ -445,7 +586,44 @@ def validate_condition_list(
             _check_ref(cond.get("of", "@self"), known_ids, errors, cwhere)
         if disc == "in_vehicle" and isinstance(cond.get("in_vehicle"), str):
             _check_ref(cond.get("in_vehicle"), known_ids, errors, cwhere)
+        if disc in ("rel",):
+            _check_ref(cond.get("rel"), known_ids, errors, cwhere)
+        if disc == "knows":
+            _check_ref(cond.get("who", "@self"), known_ids, errors, cwhere)
+            if "about" in cond:
+                _check_ref(cond["about"], known_ids, errors, cwhere)
+        if disc in ("day", "collected") and not isinstance(cond.get(disc), dict):
+            errors.append(f"{cwhere}: {disc!r} takes an {{op: N}} object")
+        if known_story is not None:
+            errors.extend(_story_ref_errors(disc, cond, known_story, cwhere))
     return errors
+
+
+def _story_ref_errors(disc: str, cond: dict, ks: dict, where: str) -> list[str]:
+    errs: list[str] = []
+    if disc == "arc" and cond.get("arc") not in ks.get("arcs", set()):
+        errs.append(f"{where}: unknown arc {cond.get('arc')!r}")
+    if disc == "helped" and cond.get("helped") not in ks.get("arcs", set()):
+        errs.append(f"{where}: unknown arc {cond.get('helped')!r}")
+    if disc == "beat" and cond.get("beat") not in ks.get("beats", set()):
+        errs.append(f"{where}: unknown beat {cond.get('beat')!r} (use 'arc/beat')")
+    if disc == "ending" and cond.get("ending") not in ks.get("endings", set()):
+        errs.append(f"{where}: unknown ending {cond.get('ending')!r} (use 'arc/ending')")
+    if disc == "knows" and cond.get("knows") not in ks.get("facts", set()):
+        errs.append(f"{where}: unknown fact {cond.get('knows')!r}")
+    if disc == "pflag" and cond.get("pflag") not in ks.get("pflags", set()):
+        errs.append(f"{where}: undeclared player flag {cond.get('pflag')!r}")
+    if disc == "pcounter" and cond.get("pcounter") not in ks.get("pcounters", set()):
+        errs.append(f"{where}: undeclared player counter {cond.get('pcounter')!r}")
+    if disc == "collected" and "page" in cond and cond["page"] not in ks.get("pages", set()):
+        errs.append(f"{where}: unknown page {cond['page']!r}")
+    if disc == "phase":
+        ph = cond.get("phase")
+        phases = ph if isinstance(ph, list) else [ph]
+        for x in phases:
+            if x not in ("dawn", "day", "dusk", "night", "stopped"):
+                errs.append(f"{where}: unknown phase {x!r}")
+    return errs
 
 
 def validate_effect_list(
@@ -454,6 +632,7 @@ def validate_effect_list(
     known_fuses: set[str], known_daemons: set[str],
     require_nonempty: bool = False,
     allow_inline_if: bool = False,
+    known_story: dict | None = None,
 ) -> list[str]:
     """Named errors for one authored effect list (a rule's `do`, a fuse's
     `do`, a daemon's `do`, an exit's `on_traverse` — the last with inline
@@ -471,6 +650,7 @@ def validate_effect_list(
             errors.extend(validate_condition_list(
                 eff["if"], f"{ewhere}.if",
                 known_flags=known_flags, known_ids=known_ids,
+                known_story=known_story,
             ))
         elif "if" in eff:
             errors.append(f"{ewhere}: inline 'if' not allowed here")
@@ -488,7 +668,77 @@ def validate_effect_list(
         for field in _EFFECT_ID_FIELDS:
             if field in eff:
                 _check_ref(eff[field], known_ids, errors, f"{ewhere}.{field}")
+        errors.extend(_story_effect_errors(kind, eff, known_story, ewhere))
     return errors
+
+
+def _story_effect_errors(kind: str, eff: dict, ks: dict | None, where: str) -> list[str]:
+    """Shape + closure checks for the story effect kinds (SPEC 2026-09-26)."""
+    errs: list[str] = []
+    if kind == "narrate":
+        has_text = isinstance(eff.get("text"), str) and eff["text"].strip()
+        vs = eff.get("variants")
+        has_vars = isinstance(vs, list) and vs and all(
+            isinstance(v, str) and v.strip() for v in vs)
+        if not has_text and not has_vars:
+            errs.append(f"{where}: narrate needs 'text' or non-empty 'variants'")
+    if kind in ("adjust_rel",):
+        if not isinstance(eff.get("npc"), str):
+            errs.append(f"{where}: adjust_rel needs 'npc'")
+        if not isinstance(eff.get("delta"), int):
+            errs.append(f"{where}: adjust_rel needs an int 'delta'")
+    if kind in ("set_pflag", "adjust_pcounter"):
+        name = eff.get("name")
+        if not isinstance(name, str) or not name.strip():
+            errs.append(f"{where}: {kind} needs 'name'")
+        elif ks is not None:
+            pool = ks.get("pflags" if kind == "set_pflag" else "pcounters", set())
+            if name not in pool:
+                errs.append(f"{where}: undeclared player "
+                            f"{'flag' if kind == 'set_pflag' else 'counter'} {name!r}")
+        if kind == "adjust_pcounter" and not isinstance(eff.get("delta"), int):
+            errs.append(f"{where}: adjust_pcounter needs an int 'delta'")
+    if kind in ("open_arc", "advance_beat", "close_arc"):
+        arc = eff.get("arc")
+        if not isinstance(arc, str):
+            errs.append(f"{where}: {kind} needs 'arc'")
+        elif ks is not None and arc not in ks.get("arcs", set()):
+            errs.append(f"{where}: unknown arc {arc!r}")
+        if kind == "advance_beat" and ks is not None \
+                and f"{arc}/{eff.get('beat')}" not in ks.get("beats", set()):
+            errs.append(f"{where}: unknown beat {arc}/{eff.get('beat')}")
+        if kind == "close_arc" and ks is not None \
+                and f"{arc}/{eff.get('ending')}" not in ks.get("endings", set()):
+            errs.append(f"{where}: unknown ending {arc}/{eff.get('ending')}")
+    if kind == "add_fact":
+        if not isinstance(eff.get("id"), str) or not isinstance(eff.get("text"), str):
+            errs.append(f"{where}: add_fact needs string 'id' and 'text'")
+        kb = eff.get("known_by", [])
+        if not (kb == "all" or isinstance(kb, list)):
+            errs.append(f"{where}: add_fact known_by must be a list or 'all'")
+        for st in eff.get("spread") or []:
+            if not (isinstance(st, dict) and isinstance(st.get("after_minutes"), (int, float))
+                    and (st.get("to") == "all" or isinstance(st.get("to"), list))):
+                errs.append(f"{where}: add_fact spread stages are "
+                            "{to: [ids]|'all', after_minutes: N}")
+    if kind == "grant_collectible":
+        cid = eff.get("id")
+        if cid is not None and ks is not None and cid not in ks.get("collectibles", set()):
+            errs.append(f"{where}: unknown collectible {cid!r}")
+    if kind == "run_phase" and eff.get("phase") not in ("dawn", "day", "dusk", "night"):
+        errs.append(f"{where}: run_phase needs a phase")
+    if kind == "move_toon":
+        if not isinstance(eff.get("toon_id"), str):
+            errs.append(f"{where}: move_toon needs 'toon_id'")
+        if "room_id" not in eff:
+            errs.append(f"{where}: move_toon needs 'room_id' (null sends offstage)")
+    if kind == "spawn_template":
+        t = eff.get("template")
+        if not isinstance(t, str):
+            errs.append(f"{where}: spawn_template needs 'template'")
+        elif ks is not None and t not in ks.get("templates", set()):
+            errs.append(f"{where}: unknown template {t!r}")
+    return errs
 
 
 def validate_rules(
@@ -500,6 +750,7 @@ def validate_rules(
     known_ids: set[str],
     known_fuses: set[str],
     known_daemons: set[str],
+    known_story: dict | None = None,
 ) -> list[str]:
     """Validate one authored rule list. Returns named errors (empty = valid);
     the format-2 loader refuses the world on any error, with zero writes.
@@ -522,16 +773,18 @@ def validate_rules(
         errors.extend(validate_condition_list(
             rule.get("if", []), f"{where}.if",
             known_flags=known_flags, known_ids=known_ids,
+            known_story=known_story,
         ))
         errors.extend(validate_effect_list(
             rule.get("do", []), f"{where}.do",
             known_flags=known_flags, known_ids=known_ids,
             known_fuses=known_fuses, known_daemons=known_daemons,
-            require_nonempty=True,
+            require_nonempty=True, known_story=known_story,
         ))
-        if "stop" in rule and not isinstance(rule["stop"], bool):
-            errors.append(f"{where}: 'stop' must be a boolean")
-        unknown_rule_keys = set(rule) - {"on", "as", "if", "do", "stop"}
+        for bkey in ("stop", "after"):
+            if bkey in rule and not isinstance(rule[bkey], bool):
+                errors.append(f"{where}: '{bkey}' must be a boolean")
+        unknown_rule_keys = set(rule) - {"on", "as", "if", "do", "stop", "after"}
         if unknown_rule_keys:
             errors.append(f"{where}: unknown rule key(s) {sorted(unknown_rule_keys)}")
     return errors

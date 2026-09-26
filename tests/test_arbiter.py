@@ -291,3 +291,94 @@ def test_status_arbiter_endpoint():
         assert r.text.startswith("arbiter: llm 0/")
         assert "image idle" in r.text
         assert "events dropped 0" in r.text
+
+
+# ---- the background class (SPEC 2026-09-26 criterion 5) --------------------
+
+
+async def test_background_never_delays_a_player_facing_call(monkeypatch):
+    """A running background (director) call does not count against the LLM
+    cap: with the cap at 1 and a background call in flight, a player-facing
+    LLM call is admitted at once."""
+    monkeypatch.setattr("daydream.config.llm_concurrency", lambda: 1)
+    order: list[str] = []
+    bg_holding = asyncio.Event()
+
+    async def background():
+        async with arbiter.acquire("background"):
+            order.append("bg-in")
+            bg_holding.set()
+            await asyncio.sleep(0.05)
+            order.append("bg-out")
+
+    async def player():
+        await bg_holding.wait()
+        async with arbiter.acquire("llm"):
+            order.append("player-in")
+
+    await asyncio.gather(background(), player())
+    assert order.index("player-in") < order.index("bg-out")
+
+
+async def test_background_waits_behind_queued_player_calls(monkeypatch):
+    monkeypatch.setattr("daydream.config.llm_concurrency", lambda: 1)
+    order: list[str] = []
+
+    async def holder():
+        async with arbiter.acquire("llm"):
+            order.append("p1-in")
+            await asyncio.sleep(0.03)
+            order.append("p1-out")
+
+    async def queued_player():
+        await asyncio.sleep(0.005)
+        async with arbiter.acquire("llm"):
+            order.append("p2-in")
+            await asyncio.sleep(0.01)
+
+    async def background():
+        await asyncio.sleep(0.01)
+        async with arbiter.acquire("background"):
+            order.append("bg-in")
+
+    await asyncio.gather(holder(), queued_player(), background())
+    # The background call was not admitted while a player call was queued.
+    assert order.index("bg-in") > order.index("p2-in")
+
+
+async def test_background_never_starves_a_queued_render():
+    """With a render queued behind an active background call, no NEW
+    background call is admitted past it: the render goes next."""
+    order: list[str] = []
+
+    async def bg(tag, delay):
+        await asyncio.sleep(delay)
+        async with arbiter.acquire("background"):
+            order.append(f"{tag}-in")
+            await asyncio.sleep(0.03)
+
+    async def render():
+        await asyncio.sleep(0.01)
+        async with arbiter.acquire("exclusive"):
+            order.append("render-in")
+            await asyncio.sleep(0.01)
+
+    await asyncio.gather(bg("bg1", 0), render(), bg("bg2", 0.02))
+    assert order == ["bg1-in", "render-in", "bg2-in"]
+
+
+async def test_background_holds_at_most_one_slot():
+    active = 0
+    peak = 0
+
+    async def bg():
+        nonlocal active, peak
+        async with arbiter.acquire("background"):
+            active += 1
+            peak = max(peak, active)
+            await asyncio.sleep(0.01)
+            active -= 1
+
+    await asyncio.gather(*(bg() for _ in range(4)))
+    assert peak == 1
+    assert arbiter.stats()["active_background"] == 0

@@ -137,7 +137,7 @@ def test_concrete_object_inherits_prototype_verbs():
     )
     assert objects.verbs_for(papers) == ["examine", "take", "drop", "put"]
     # An NPC inherits examine + talk from proto-npc.
-    assert objects.verbs_for(objects.get("t-rook")) == ["examine", "talk"]
+    assert objects.verbs_for(objects.get("t-rook")) == ["examine", "talk", "ask"]
 
 
 def test_per_object_verbs_union_with_prototype():

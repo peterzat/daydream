@@ -299,6 +299,8 @@ def _fast_path(actor_id: str, text: str, room: rooms.Room | None):
         return None
 
     verb = spec.name
+    if verb == "ask":
+        return _ask_fast_path(actor_id, rest)
     # Free-text verbs (say/talk/plant) with args may name a target ("say hi
     # to rook" -> talk); hand those to the LLM rather than claim them here.
     if rest and spec.free_text:
@@ -356,6 +358,33 @@ def _fast_path(actor_id: str, text: str, room: rooms.Room | None):
     if iobj_id is None:
         return _fill_iobj_default(actor_id, spec, parses)
     return parses
+
+
+def _ask_fast_path(actor_id: str, rest: str):
+    """`ask|tell <someone> about <topic>` (SPEC 2026-09-26 criterion 6):
+    the topic is text, not an object, so it never grounds; the someone
+    does. With no someone named ("ask about the lanterns"), the one other
+    toon here is assumed; a bare "ask bell" lists what Bell could tell you.
+    Anything else defers to the LLM."""
+    low = rest.lower()
+    if low.startswith("about "):
+        who, topic = "", rest[6:]
+    else:
+        idx = low.find(" about ")
+        who, topic = (rest[:idx], rest[idx + 7:]) if idx >= 0 else (rest, "")
+    who = _strip_article(who)
+    if not who:
+        others = [o for o in objects.in_scope(actor_id)
+                  if o.kind == "toon" and o.id != actor_id]
+        if len(others) != 1:
+            return [Parse("ask")] if not topic else None
+        return [Parse("ask", dobj_id=others[0].id, args=topic.strip())]
+    matches = [o for o in _ground(actor_id, who) if o.kind == "toon"]
+    if len(matches) == 1:
+        return [Parse("ask", dobj_id=matches[0].id, args=topic.strip())]
+    if len(matches) > 1:
+        return _clarify("ask", "dobj", who, matches)
+    return None
 
 
 def _verb_by_word(world_id: str | None, word: str) -> verbs.VerbSpec | None:
