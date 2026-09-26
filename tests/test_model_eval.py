@@ -119,3 +119,63 @@ def test_subset_rerun_refuses_to_merge_a_different_model(tmp_path, monkeypatch, 
     err = capsys.readouterr().err
     assert "refusing" not in err and "endpoint unreachable" in err
     assert len(probes) == 1
+
+
+# ---- canon suite + opener metric (SPEC 2026-09-26 criterion 10) -----------
+
+
+def _item(item_id: str) -> dict:
+    return next(i for i in model_eval.CANON["items"] if i["id"] == item_id)
+
+
+@pytest.mark.parametrize("item_id,reply,bad", [
+    # Real 2026-09-26 shipped-model replies (model-eval q35-9b-shipped).
+    ("gear-seen", "Tace pauses. 'I found one tucked beneath the pendulum, waiting "
+     "for the right hands,' they say.", True),
+    ("gear-seen", "Bell tilts their head. 'I saw a small bright thing roll south, "
+     "down toward the old well.'", False),
+    ("gear-seen", "Mott leans on the broom. 'It isn't in the tin, friend. I've not "
+     "seen it.'", False),
+    # Scenery is not a claim: no gear referent in the sentence.
+    ("gear-where", "Tace traces a line of brass dust on the workbench. 'It slipped "
+     "away south, toward the well.'", False),
+    ("gear-where", "Mott smiles. 'It slipped into the tin, little one.'", True),
+    ("neighbors", "Tace smiles. 'The baker's daughter keeps bees in the garden.'", True),
+    ("neighbors", "Bell smiles. 'Tace up in the loft, and Mott in the workshop.'", False),
+    ("baker-trap", "Mott blinks. 'Oh yes, her bees hum all afternoon.'", True),
+    ("baker-trap", "Mott tilts his head. 'There's no baker here, friend.'", False),
+    ("well-where", "Bell points with the pole. 'South, past the last lantern.'", False),
+    ("well-where", "Bell points. 'Just north of the square, love.'", True),
+    ("tin", "Mott rattles it. 'Buttons, a bent key, a thimble.'", False),
+    ("tin", "Mott opens the tin. 'And the escapement gear, of course.'", True),
+])
+def test_canon_contradiction_rules(item_id, reply, bad):
+    item = _item(item_id)
+    hits = model_eval.canon_contradictions(
+        reply, item["contradicts"], sentence_must=item.get("sentence_must"))
+    assert bool(hits) is bad, hits
+
+
+def test_canon_pronoun_rule_reads_only_narration():
+    they = model_eval.CANON["pronouns"]["Tace"]
+    assert model_eval.canon_contradictions(
+        "Tace sets down her loupe. 'Hello.'", [], they) == ["pronoun"]
+    assert model_eval.canon_contradictions(
+        "Tace sets down their loupe. 'She was here, he said.'", [], they) == []
+
+
+def test_every_canon_item_names_a_known_npc_and_compiles():
+    import re
+
+    for item in model_eval.CANON["items"]:
+        assert item["npcs"] and set(item["npcs"]) <= set(model_eval.DIALOGUE_NPCS)
+        for pat in item["contradicts"]:
+            re.compile(pat)
+
+
+def test_opener_max_share():
+    same = "Tace pauses, the scent of cedar oil and dust hanging soft."
+    texts = [same, same + " More.", same, "Tace looks up from the bench, smiling now."]
+    assert model_eval.opener_key(same) == "tace pauses the scent of cedar"
+    assert model_eval.opener_max_share(texts) == 3
+    assert model_eval.opener_max_share(["short one"]) == 0

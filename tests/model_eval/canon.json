@@ -1,0 +1,117 @@
+{
+  "comment": "The canon suite (SPEC 2026-09-26 criterion 10). Questions whose answers are fixed by facts AUTHORED in the world data (the loft's ledger text, NPC seeds, and authored narration), asked through the production talk path and scored mechanically: a reply contradicts canon when a `contradicts` pattern matches outside a negation window ('not', 'never', 'no one' within the few words before) and, when the item sets `sentence_must`, inside a sentence that refers to the thing asked about (so scenery like 'brass dust on the workbench' is not a claim about the gear). Pronoun canon is checked on every canon reply's narration outside quoted speech. The same items judge the BEFORE run (the loft's persona-only prompt) and the AFTER run (Lost Hours, state injected), so both are measured against one world truth. Facts: the escapement gear slipped its pin and rolled SOUTH toward the old well (ledger); whoever carries it back to Tace, the clockmaker in the loft, earns the case-key (ledger); the great clock stopped at the first hard frost, a season ago (ledger, Tace's seed); the village's people are the keepers (no baker, miller, smith, or beekeeper exists); Mott's tin holds small found oddments, never the gear; the well is south of the square (world exits); Tace and Bell are they/them (authored narration).",
+  "samples": 2,
+  "pronouns": {
+    "Tace": "they",
+    "Bell": "they"
+  },
+  "items": [
+    {
+      "id": "gear-where",
+      "npcs": [
+        "Tace",
+        "Bell",
+        "Mott"
+      ],
+      "ask": "Where did the escapement gear go?",
+      "contradicts": [
+        "\\b(beneath|under|behind|inside|into|in|on|atop)\\s+(the\\s+|my\\s+|a\\s+|your\\s+)?(pendulum|drawer|shelf|workbench|bench|tin|pocket|apron|cupboard)\\b",
+        "\\b(rolled|roll|went|gone|tumbled|drifted)\\b[^.!?]{0,40}\\b(north|east|west|upstairs|up the stairs)\\b",
+        "\\b(i|we)\\s+(found|have|keep|kept|put|tucked|hid)\\s+(it|one|the gear)\\b"
+      ],
+      "sentence_must": "\\b(gear|escapement|it|one|treasure)\\b"
+    },
+    {
+      "id": "gear-seen",
+      "npcs": [
+        "Tace",
+        "Bell",
+        "Mott"
+      ],
+      "ask": "Have you seen a small brass gear anywhere?",
+      "contradicts": [
+        "\\b(beneath|under|behind|inside|into|in|on|atop)\\s+(the\\s+|my\\s+|a\\s+|your\\s+)?(pendulum|drawer|shelf|workbench|bench|tin|pocket|apron|cupboard|sawdust)\\b",
+        "\\b(i|we)\\s+(found|have|keep|kept|put|tucked|hid)\\s+(it|one|the gear|a gear)\\b",
+        "\\b(here it is|there it sits|there it is|right here)\\b",
+        "\\b(rolled|roll|went|gone|tumbled|drifted|headed)\\b[^.!?]{0,40}\\b(north|east|west)\\b"
+      ],
+      "sentence_must": "\\b(gear|escapement|it|one|treasure)\\b"
+    },
+    {
+      "id": "gear-to-whom",
+      "npcs": [
+        "Bell",
+        "Mott"
+      ],
+      "ask": "If I find the gear, who should I bring it to?",
+      "contradicts": [
+        "\\b(bring|give|take|carry|return|hand)\\b[^.!?]{0,30}\\bto\\s+(me|mott|bell|the mayor|the baker|the smith)\\b",
+        "\\b(bring|give|hand)\\s+(it\\s+)?(to\\s+)?me\\b"
+      ]
+    },
+    {
+      "id": "clock-when",
+      "npcs": [
+        "Tace"
+      ],
+      "ask": "When did the great clock stop?",
+      "contradicts": [
+        "\\b(yesterday|last week|this morning|last night|years? ago|a hundred|decades?|centur(y|ies)|in the summer|midsummer)\\b"
+      ]
+    },
+    {
+      "id": "clock-why",
+      "npcs": [
+        "Tace"
+      ],
+      "ask": "Why did the great clock stop?",
+      "contradicts": [
+        "\\b(stolen|stole|thief|thieves|storm|lightning|mainspring|rust(ed)?|flood)\\b"
+      ]
+    },
+    {
+      "id": "neighbors",
+      "npcs": [
+        "Tace",
+        "Bell",
+        "Mott"
+      ],
+      "ask": "Who else lives around here?",
+      "contradicts": [
+        "\\b(baker'?s?|miller'?s?|blacksmith|smith|innkeeper|tavern|mayor|farmer|fisherm[ae]n|shopkeeper|priest|doctor|beekeeper|bees|butcher|grocer|schoolteacher|teacher)\\b"
+      ]
+    },
+    {
+      "id": "baker-trap",
+      "npcs": [
+        "Bell",
+        "Mott"
+      ],
+      "ask": "Is the baker's daughter still keeping bees?",
+      "contradicts": [
+        "[\"'“‘]\\s*(yes|oh,? yes|she (is|does|still))\\b",
+        "\\b(her bees|the bees|hives?|honey|the baker'?s daughter (is|keeps|has|still))\\b"
+      ]
+    },
+    {
+      "id": "tin",
+      "npcs": [
+        "Mott"
+      ],
+      "ask": "What do you keep in your tin?",
+      "contradicts": [
+        "\\b(escapement|the gear|a brass gear|that gear)\\b"
+      ]
+    },
+    {
+      "id": "well-where",
+      "npcs": [
+        "Bell"
+      ],
+      "ask": "Which way is the old well from here?",
+      "contradicts": [
+        "\\b(north|east|west|up the hill|behind the clock|upstairs)\\b"
+      ]
+    }
+  ]
+}

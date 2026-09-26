@@ -65,10 +65,20 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 LOFT = PROJECT_ROOT / "worlds" / "clockmakers-loft.json"
+# The world the dialogue/canon suites talk to (`--world`). Dialogue runs
+# through the production `talk` path, so the world's own dialogue mechanism
+# (a persona data skill, or a voice sheet with injected state) is what gets
+# measured.
+WORLD = LOFT
 JSON_PROMPTS = PROJECT_ROOT / "tests" / "drift" / "prompts"
 
-SUITES = ("parser", "dialogue", "growth", "journal", "retell", "examine",
+SUITES = ("parser", "dialogue", "canon", "growth", "journal", "retell", "examine",
           "drift", "json", "burst")
+
+# The canon suite (SPEC 2026-09-26 criterion 10): questions whose answers are
+# fixed by authored facts, scored mechanically for contradiction. See the
+# corpus file's comment for the facts and the scoring rule.
+CANON = json.loads((PROJECT_ROOT / "tests" / "model_eval" / "canon.json").read_text())
 
 # ---- parser corpus -------------------------------------------------------
 #
@@ -234,6 +244,102 @@ def _sentences(text: str) -> int:
     return len([s for s in re.split(r"(?<=[.!?])[\"')\s]+", text.strip()) if s])
 
 
+_NEGATION = re.compile(r"\b(no|not|never|nobody|none|nothing|without|no one|n't)\b|n't\b", re.I)
+_GENDERED = re.compile(r"\b(he|him|his|himself|she|her|hers|herself)\b", re.I)
+
+
+def _negated(text: str, start: int) -> bool:
+    """True when a negation cue sits within the few words before `start` in
+    the same sentence ("it isn't in the tin" is not a claim that it is)."""
+    window = text[max(0, start - 32):start]
+    window = re.split(r"[.!?]", window)[-1]
+    return bool(_NEGATION.search(window))
+
+
+def _sentence_at(text: str, pos: int) -> str:
+    start = max(text.rfind(c, 0, pos) for c in ".!?") + 1
+    ends = [i for i in (text.find(c, pos) for c in ".!?") if i >= 0]
+    return text[start:(min(ends) + 1) if ends else len(text)]
+
+
+def canon_contradictions(reply: str, patterns: list[str],
+                         pronoun: str | None = None,
+                         sentence_must: str | None = None) -> list[str]:
+    """The canon rules a reply breaks: each `patterns` regex that matches
+    outside a negation window (and, with `sentence_must`, inside a sentence
+    that refers to the thing asked about), plus a pronoun break when the
+    NPC's canon is they/them and the narration OUTSIDE quoted speech genders
+    them."""
+    hits: list[str] = []
+    for pat in patterns:
+        for m in re.finditer(pat, reply, re.I):
+            if _negated(reply, m.start()):
+                continue
+            if sentence_must and not re.search(
+                    sentence_must, _sentence_at(reply, m.start()), re.I):
+                continue
+            hits.append(f"pattern:{pat[:40]}")
+            break
+    if pronoun == "they":
+        bare = _QUOTED.sub(" ", reply)
+        if _GENDERED.search(bare):
+            hits.append("pronoun")
+    return hits
+
+
+def opener_key(text: str, n: int = 6) -> str:
+    """The first `n` words, lowercased and stripped of punctuation: two
+    replies with the same key open identically."""
+    words = re.findall(r"[a-z']+", (text or "").lower())
+    return " ".join(words[:n])
+
+
+def opener_max_share(texts: list[str], n: int = 6) -> int:
+    """How many replies share the most common opener (criterion 10 caps this
+    at two per NPC across the dialogue suite)."""
+    counts: dict[str, int] = {}
+    for t in texts:
+        k = opener_key(t, n)
+        if len(k.split()) >= n:
+            counts[k] = counts.get(k, 0) + 1
+    return max(counts.values(), default=0)
+
+
+PROBE_NAME = "Juniper"
+
+
+def _probe_near(npc) -> str:
+    """The probe PLAYER (a real human-slot toon, named) standing beside `npc`,
+    so dialogue runs through the production `talk` path exactly as a player's
+    would (scope gate, per-verb allowlist, the world's dialogue mechanism)."""
+    from daydream import db, objects, toons
+
+    row = db.get_conn().execute(
+        "SELECT id FROM objects WHERE kind = 'toon' AND name = ? "
+        "AND is_human_controlled = 1", (PROBE_NAME,)).fetchone()
+    if row is None:
+        t = toons.create_toon_in_slot(
+            8, PROBE_NAME, "a traveler with a patched green scarf", "model-eval")
+        probe_id = t.id
+    else:
+        probe_id = row["id"]
+    objects.move(probe_id, npc.location_id)
+    return probe_id
+
+
+async def _talk(npc, text: str) -> str | None:
+    """One player line to `npc` through verbs.execute_command; returns the
+    reply narration (the last narrate the talk produced), or None."""
+    from daydream import events, verbs
+
+    probe = _probe_near(npc)
+    before = events.max_seq()
+    await verbs.execute_command(probe, "talk", dobj_id=npc.id, args=text)
+    narr = [e.payload.get("text", "") for e in events.fetch_since(before)
+            if e.kind == "narrate" and e.payload.get("text")]
+    return narr[-1] if narr else None
+
+
 # ---- suites --------------------------------------------------------------
 
 
@@ -314,13 +420,11 @@ async def suite_parser(tmp: Path) -> dict:
 
 
 async def suite_dialogue(tmp: Path) -> dict:
-    from daydream import events, verbs
     from daydream.llm import client as llm_client
     from daydream.llm import safety
-    from daydream.skills import data as data_skills
 
     _current_purpose.set("dialogue")
-    _fresh_db(tmp, "dialogue", LOFT)
+    _fresh_db(tmp, "dialogue", WORLD)
     runs = []
     for name in DIALOGUE_NPCS:
         npc = _npc(name)
@@ -351,20 +455,13 @@ async def suite_dialogue(tmp: Path) -> dict:
             safety.first_banned, safety.parse_refusal = spy_banned, spy_refusal
             llm_client.acompletion_json = spy_call
             try:
-                before = events.max_seq()
-                # The production `talk` path (verbs._handle_talk): the NPC
-                # rides along, selecting the third-person dialogue voice, and
-                # talk's per-verb effect allowlist applies.
-                sspec, body = data_skills.find(npc.properties["dialogue"])
-                await data_skills.execute(
-                    sspec, body, "t-probe", npc.location_id, text,
-                    allowed=verbs.VERBS["talk"].allowed_effects, npc=npc)
+                # The production `talk` path, spoken by a probe player
+                # standing beside the NPC: whatever dialogue mechanism the
+                # world uses is exactly what gets measured.
+                rec["narrate"] = await _talk(npc, text)
             finally:
                 safety.first_banned, safety.parse_refusal = real_banned, real_refusal
                 llm_client.acompletion_json = real_call
-            narr = [e.payload.get("text", "") for e in events.fetch_since(before)
-                    if e.kind == "narrate"]
-            rec["narrate"] = narr[-1] if narr else None
             if rec["layer"] is None:
                 if banned and banned[0]:
                     rec["layer"] = "input_banlist"
@@ -397,12 +494,86 @@ async def suite_dialogue(tmp: Path) -> dict:
     for r in runs_scored:
         if not r["ok"]:
             layers[r["layer"] or "unknown"] = layers.get(r["layer"] or "unknown", 0) + 1
+    # Opener distinctness (criterion 10): per NPC, how many of its replies
+    # share the most common first six words (target: at most two).
+    openers = {name: opener_max_share([r["narrate"] for r in ok if r["npc"] == name])
+               for name in DIALOGUE_NPCS}
     return {"score": len(ok) / len(runs_scored), "ok": len(ok), "n": len(runs_scored),
+            "opener_max_share": openers,
+            "opener_max": max(openers.values(), default=0),
             "injection_leaks": leaks, "pov_slips": pov,
             "brief_rate": len(brief) / max(1, len(ok)),
             "mean_chars": round(statistics.mean(r["chars"] for r in ok)) if ok else 0,
             "hint_hits": f"{sum(hints)}/{len(hints)}",
             "fallback_layers": layers, "runs": runs}
+
+
+async def suite_canon(tmp: Path) -> dict:
+    """Canon questions through the production talk path; every reply is
+    scored for contradiction against the authored facts (canon.json)."""
+    _current_purpose.set("dialogue")
+    _fresh_db(tmp, "canon", WORLD)
+    samples = int(CANON.get("samples", 1))
+    pronouns = CANON.get("pronouns", {})
+    runs = []
+    for item in CANON["items"]:
+        for name in item["npcs"]:
+            npc = _npc(name)
+            for i in range(samples):
+                reply = await _talk(npc, item["ask"])
+                hits = canon_contradictions(reply or "", item["contradicts"],
+                                            pronouns.get(name),
+                                            item.get("sentence_must"))
+                runs.append({"item": item["id"], "npc": name, "sample": i,
+                             "ask": item["ask"], "reply": reply,
+                             "contradictions": hits})
+    return _canon_summary(runs)
+
+
+def _canon_summary(runs: list[dict]) -> dict:
+    n_bad = sum(1 for r in runs if r["contradictions"])
+    by_item: dict[str, int] = {}
+    for r in runs:
+        if r["contradictions"]:
+            by_item[r["item"]] = by_item.get(r["item"], 0) + 1
+    return {"score": 1 - n_bad / max(1, len(runs)), "n": len(runs),
+            "contradicting_replies": n_bad,
+            "pronoun_breaks": sum("pronoun" in r["contradictions"] for r in runs),
+            "by_item": by_item, "runs": runs}
+
+
+def _rescore(args) -> int:
+    """Re-apply the CURRENT canon and opener rules to a run's stored replies
+    (no LLM calls), rewriting its results.json and report.md. Keeps the
+    before/after comparison on one rule set as the rules are refined."""
+    out = Path(args.dir).expanduser()
+    r = json.loads((out / "results.json").read_text())
+    c = r["suites"].get("canon")
+    if c:
+        items = {i["id"]: i for i in CANON["items"]}
+        pronouns = CANON.get("pronouns", {})
+        for run in c["runs"]:
+            item = items.get(run["item"])
+            if item is None:
+                continue
+            run["contradictions"] = canon_contradictions(
+                run.get("reply") or "", item["contradicts"],
+                pronouns.get(run["npc"]), item.get("sentence_must"))
+        wall = c.get("wall_s")
+        r["suites"]["canon"] = _canon_summary(c["runs"])
+        if wall is not None:
+            r["suites"]["canon"]["wall_s"] = wall
+    d = r["suites"].get("dialogue")
+    if d:
+        ok = [x for x in d["runs"] if x.get("ok")]
+        d["opener_max_share"] = {
+            name: opener_max_share([x["narrate"] for x in ok if x["npc"] == name])
+            for name in DIALOGUE_NPCS}
+        d["opener_max"] = max(d["opener_max_share"].values(), default=0)
+    (out / "results.json").write_text(json.dumps(r, indent=2))
+    (out / "report.md").write_text(_report([r]))
+    print(f"[model-eval] rescored {out}")
+    return 0
 
 
 def _shipped_growth():
@@ -742,6 +913,8 @@ def _summary_row(r: dict) -> dict:
         "parser": g("parser"), "dialogue": g("dialogue"),
         "dlg_brief": g("dialogue", "brief_rate"), "dlg_hint": g("dialogue", "hint_hits"),
         "dlg_pov": g("dialogue", "pov_slips"),
+        "dlg_opener": g("dialogue", "opener_max"),
+        "canon_x": g("canon", "contradicting_replies"),
         "growth": g("growth"), "journal": g("journal"), "retell": g("retell"),
         "examine": g("examine"), "drift": g("drift"), "json": g("json"),
         "burst1": g("burst", "single_s"), "burst3": g("burst", "burst3_s"),
@@ -758,7 +931,8 @@ def _fmt(v) -> str:
 
 def _report(runs: list[dict]) -> str:
     lines = ["# Model eval", ""]
-    cols = ["label", "parser", "dialogue", "dlg_brief", "dlg_hint", "dlg_pov", "growth",
+    cols = ["label", "parser", "dialogue", "dlg_brief", "dlg_hint", "dlg_pov",
+            "dlg_opener", "canon_x", "growth",
             "journal", "retell", "examine", "drift", "json", "burst1", "burst3"]
     lines.append("| " + " | ".join(cols) + " |")
     lines.append("|" + "---|" * len(cols))
@@ -792,6 +966,20 @@ def _report(runs: list[dict]) -> str:
         if d:
             lines.append(f"## {r['label']}: dialogue fallbacks {d['fallback_layers']}")
             lines.append("")
+            if "opener_max_share" in d:
+                lines.append(f"Opener max share per NPC: {d['opener_max_share']}")
+                lines.append("")
+        c = r["suites"].get("canon")
+        if c:
+            lines.append(f"## {r['label']}: canon ({c['contradicting_replies']}"
+                         f"/{c['n']} replies contradict; pronoun breaks "
+                         f"{c['pronoun_breaks']}; by item {c['by_item']})")
+            lines.append("")
+            for x in c["runs"]:
+                if x["contradictions"]:
+                    lines.append(f"- **{x['npc']}** / {x['item']}: {x['contradictions']}  ")
+                    lines.append(f"  > {x['reply']}")
+            lines.append("")
     return "\n".join(lines)
 
 
@@ -804,6 +992,8 @@ def _prose_items(r: dict) -> dict[str, str]:
         items[f"dialogue | {x['npc']} | {x['input']}"] = (
             x["narrate"] if x.get("ok") or "leak" in x
             else f"[FALLBACK:{x['layer']}] {x['narrate']}")
+    for x in s.get("canon", {}).get("runs", []):
+        items[f"canon | {x['npc']} | {x['item']} | {x['sample']}"] = x["reply"] or "[NONE]"
     for x in s.get("growth", {}).get("runs", []):
         items[f"growth | {x['phrase']}"] = (
             f"**{x['title']}** — {x['description']}  \n_objects:_ "
@@ -861,8 +1051,12 @@ def main(argv: list[str] | None = None) -> int:
     run.add_argument("--repeat", type=int, default=2,
                      help="retell tellings per line (production temp 0.8)")
     run.add_argument("--out", default="~/data/daydream/model-eval")
+    run.add_argument("--world", help="envelope the dialogue/canon suites talk to "
+                     "(default: the loft)")
     run.add_argument("--parser-schema", action="store_true",
                      help="constrain parser calls with a json_schema (enum verbs/ids)")
+    rs = sub.add_parser("rescore", help="re-apply current canon/opener rules to a run")
+    rs.add_argument("dir")
     cmp_ = sub.add_parser("compare", help="metrics table + blind prose sheet")
     cmp_.add_argument("dirs", nargs="+")
     cmp_.add_argument("--out", default="~/data/daydream/model-eval/_compare")
@@ -870,8 +1064,12 @@ def main(argv: list[str] | None = None) -> int:
     args = ap.parse_args(argv)
     if args.cmd == "compare":
         return _compare(args)
-    global PARSER_SCHEMA
+    if args.cmd == "rescore":
+        return _rescore(args)
+    global PARSER_SCHEMA, WORLD
     PARSER_SCHEMA = getattr(args, "parser_schema", False)
+    if getattr(args, "world", None):
+        WORLD = Path(args.world).expanduser().resolve()
     if args.model:
         os.environ["DAYDREAM_LLM_MODEL"] = args.model
     if args.base_url:

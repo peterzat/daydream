@@ -183,6 +183,17 @@ def rng(world_id: str, purpose: str) -> random.Random:
     return random.Random(f"{rng_seed(world_id)}:{turn(world_id)}:{purpose}")
 
 
+def rng_stable(world_id: str, purpose: str) -> random.Random:
+    """A deterministic RNG for a STORY decision, seeded with (world rng_seed,
+    purpose) and deliberately NOT the turn. The long walkthrough taught that
+    turn-keyed rolls make datasets brittle (one inserted command shifts every
+    later roll); story rolls key on stable purposes instead, date plus entity
+    ("director:2026-10-01:dusk", "collect:2026-10-01:t-slot1-ab12"), so a
+    patched world and a replayed walkthrough stay deterministic (SPEC
+    2026-09-26 criterion 4)."""
+    return random.Random(f"{rng_seed(world_id)}::{purpose}")
+
+
 # ---- rank + snapshot status ----------------------------------------------
 
 
