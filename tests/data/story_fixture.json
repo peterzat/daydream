@@ -270,6 +270,32 @@
       "if": [
         {
           "dobj": "o-lamp"
+        },
+        {
+          "arc": "moth"
+        },
+        {
+          "beat": "moth/hob-notices"
+        }
+      ],
+      "do": [
+        {
+          "kind": "advance_beat",
+          "arc": "moth",
+          "beat": "lit-for-moth"
+        },
+        {
+          "kind": "close_arc",
+          "arc": "moth",
+          "ending": "home"
+        }
+      ]
+    },
+    {
+      "on": "light",
+      "if": [
+        {
+          "dobj": "o-lamp"
         }
       ],
       "do": [
@@ -427,7 +453,14 @@
         "sing": {
           "npc": "t-wynn",
           "topic": "the reed",
-          "text": "Wynn hums a reed song."
+          "text": "Wynn hums a reed song.",
+          "do": [
+            {
+              "kind": "close_arc",
+              "arc": "reed",
+              "ending": "sung"
+            }
+          ]
         }
       },
       "endings": {

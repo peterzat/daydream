@@ -121,3 +121,8 @@ are dropped. Room data skills dispatch under their declared allowlist.
 ## State
 
 - 2026-09-26: plan written; baseline medium tier green (1234 passed).
+- 2026-09-26: security fixes (a932d6e); raw input log (2c1110e); canon suite +
+  BEFORE run: 20/34 canon replies contradict, 8 pronoun breaks, opener max 6,
+  JSON 100%, dialogue p50 3.15 s (63b1229, docs/model-eval/before-2026-09-26);
+  story primitives (c2f9780); grounded dialogue, authored-first drift, warm
+  prose (c88b376). Next: walkthrough replayer + analyzer, then the world.

@@ -1,0 +1,20 @@
+{
+  "name": "moth-home",
+  "clock": "2026-10-01T10:00:00+00:00",
+  "players": [{"as": "A", "name": "Ada"}],
+  "segments": [
+    {"name": "time begins", "commands": [
+      {"cmd": "light lamp", "expect": {"flag": {"STARTED": true}, "phase": "day", "day": {"eq": 1}}},
+      {"clock": "@dusk", "expect": {"arc": {"moth": "open"}, "phase": "dusk"}}
+    ]},
+    {"name": "the moth goes home", "commands": [
+      {"cmd": "east", "expect": {"room": "r-lane"}},
+      {"cmd": "ask hob about the moth", "expect": {"beats": ["moth/hob-notices"], "pflag": {"GREETED": true},
+                                                    "narrate_contains": "That moth wants a lamp."}},
+      {"cmd": "west"},
+      {"cmd": "light lamp", "expect": {"ending": {"moth": "home"}, "carrying": ["seedling"],
+                                        "located": {"t-moth": null}}},
+      {"cmd": "read ledger", "expect": {"narrate_contains": "Ada lit a lamp for the moth hour."}}
+    ]}
+  ]
+}

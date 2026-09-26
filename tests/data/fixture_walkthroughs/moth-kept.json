@@ -1,0 +1,13 @@
+{
+  "name": "moth-kept",
+  "clock": "2026-10-01T10:00:00+00:00",
+  "players": [{"as": "A", "name": "Ada"}],
+  "segments": [
+    {"name": "nobody helps", "commands": [
+      {"cmd": "light lamp"},
+      {"clock": "@dusk", "expect": {"arc": {"moth": "open"}}},
+      {"clock": "+2d", "expect": {"ending": {"moth": "kept"}, "day": {"eq": 3}}},
+      {"cmd": "read ledger", "expect": {"narrate_contains": "The moth hour was kept."}}
+    ]}
+  ]
+}

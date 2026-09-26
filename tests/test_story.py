@@ -55,7 +55,8 @@ def test_fixture_validates():
     (lambda e: e["arcs"]["moth"]["endings"].pop("kept"), "at least two endings"),
     (lambda e: e["arcs"]["moth"]["beats"]["hob-notices"].pop("topic"), "needs a 'topic'"),
     (lambda e: e["arcs"]["moth"]["beats"]["hear-story"].update(after=["nope"]), "unknown beat"),
-    (lambda e: e["rules"][1]["do"][1].update(name="unknown"), "undeclared player counter"),
+    (lambda e: next(r for r in e["rules"] if r["on"] == "give")["do"][1].update(
+        name="unknown"), "undeclared player counter"),
     (lambda e: e["arcs"]["moth"]["endings"]["home"]["do"].append(
         {"kind": "kill_actor"}), "never fail states"),
     (lambda e: e["time"].update(start_flag="NOPE"), "start_flag"),
