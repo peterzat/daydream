@@ -1,24 +1,24 @@
 {
-  "captured_at": "2026-07-02T01:10:19+00:00",
-  "description": "Books line the walls, their spines worn and pages yellowed, each one marked by a tiny, folded paper hour. Moth wings flutter softly, keeping the hours as they have for generations. The air is thick with the scent of aged paper and the gentle fluttering of wings, creating a cozy, almost whispering atmosphere.",
+  "captured_at": "2026-09-26T18:09:06+00:00",
+  "description": "The air is warm and still, holding the quiet dust of a thousand folded hours. Moths with wings like stained glass cluster on the brass gears, keeping the time that never rushes. A single paper lantern glows low, casting long, soft shadows that move as slowly as a sleeping breath.",
   "distinct_from_exemplars": true,
-  "latency_ms": 3999.4016519922297,
-  "model": "hosted_vllm/Qwen/Qwen2.5-7B-Instruct-AWQ",
+  "latency_ms": 5469.138065000152,
+  "model": "hosted_vllm/cyankiwi/Qwen3.5-9B-AWQ-4bit",
   "object_count": 2,
   "objects": [
     {
-      "name": "Folded Paper Hours",
-      "seed": "Each page marked by a tiny, folded paper hour, each one carefully labeled with the time it represents."
+      "name": "moth-wing hourglass",
+      "seed": "a small glass vessel filled with fine brass dust, where two moth wings rest on the sand to mark a pause in the day"
     },
     {
-      "name": "Moth Wings",
-      "seed": "Soft, delicate wings fluttering gently, marking the passage of time in this attic."
+      "name": "folded paper hour",
+      "seed": "a crisp square of cream paper tucked into a brass gear, holding a single written minute of rest for the village clock"
     }
   ],
   "phrase": "an attic where the moths keep the hours",
   "phrase_woven": true,
   "refused": false,
-  "room_seed": "An attic filled with old books and moth wings, each page marked by a tiny, folded paper hour, the air thick with the scent of aged paper and the gentle fluttering of wings.",
-  "title": "The Moth Library",
+  "room_seed": "a high attic room where soft-winged moths rest on shelves of brass gears, their dust forming gentle hours in the amber light",
+  "title": "The Moth Attic",
   "valid": true
 }

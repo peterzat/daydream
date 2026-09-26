@@ -51,7 +51,7 @@ VLLM_PORT="${DAYDREAM_VLLM_PORT:-8000}"
 # to expose on the tailnet (e.g., for an external monitoring tool).
 VLLM_HOST="${DAYDREAM_VLLM_HOST:-127.0.0.1}"
 VLLM_URL="${DAYDREAM_LLM_BASE_URL:-http://localhost:$VLLM_PORT/v1}"
-VLLM_MODEL="${DAYDREAM_VLLM_MODEL:-Qwen/Qwen2.5-7B-Instruct-AWQ}"
+VLLM_MODEL="${DAYDREAM_VLLM_MODEL:-cyankiwi/Qwen3.5-9B-AWQ-4bit}"
 # 0.45 = ~9 GB on a 20 GB card; leaves room for SDXL during inference.
 VLLM_GPU_FRACTION="${DAYDREAM_VLLM_GPU_FRACTION:-0.45}"
 VLLM_MAX_LEN="${DAYDREAM_VLLM_MAX_LEN:-8192}"
@@ -489,32 +489,48 @@ cmd_vllm_up() {
         return 2
     fi
     local logf; logf="$(_log_file "vllm")"
-    # Tunings inherited from ~/src/qwen-2.5-localreview's Ada experiments.
-    # See CLAUDE.md "vLLM tunings on Ada" for the rationale + the fp8 KV
-    # cache decision.
+    # Flags measured in the 2026-09-26 bake-off (docs/gpu-and-models.md
+    # "September 2026 re-evaluation"); `bin/game model-eval` is the harness.
     #
-    #   --enforce-eager           : disables CUDA graphs; avoids a
-    #                               graph-induced OOM localreview hit on
-    #                               this card. Tiny perf cost, big
-    #                               stability win for serial-inference.
+    #   --language-model-only     : Qwen3.5 is a vision-language model;
+    #                               serve the text tower only (the vision
+    #                               encoder never loads). Harmless on a
+    #                               text-only model.
+    #   --default-chat-template-kwargs enable_thinking=false
+    #                             : Qwen3.x thinks by default; every
+    #                               daydream call wants the answer, not a
+    #                               reasoning trace. Server-side so the
+    #                               client stays model-agnostic. Ignored by
+    #                               templates without the switch.
+    #   CUDA graphs ON            : --enforce-eager (inherited from
+    #                               localreview's 0.19-era OOM) is dropped.
+    #                               vLLM >= 0.21 profiles graph memory
+    #                               before sizing KV; graphs cost ~0.03 GiB
+    #                               and cut the hybrid 9B's latency ~10%.
+    #                               Re-add via DAYDREAM_VLLM_EXTRA_ARGS
+    #                               if a graph-capture OOM ever returns.
+    #   PATH += venv/bin          : FlashInfer JIT-compiles kernels with
+    #                               `ninja`, which lives in the venv; off
+    #                               PATH the engine dies at startup.
     #
-    # NOT enabled (deliberately, despite localreview using it):
-    #   --kv-cache-dtype fp8_e4m3 : breaks tight-format adherence on
-    #                               Qwen 2.5 7B Instruct AWQ (verified
-    #                               via tools/arbiter-smoke.py: model
-    #                               loops "!***" garbage). Localreview's
-    #                               14B Coder absorbs the precision loss;
-    #                               our 7B does not. Re-enable only if we
-    #                               either (a) move to a >=14B model or
-    #                               (b) ship calibrated FP8 KV scales.
+    # NOT enabled (deliberately):
+    #   --kv-cache-dtype fp8_e4m3 : no latency gain at our ~1k-token
+    #                               prompts (weights dominate bandwidth),
+    #                               and its larger startup workspace fails
+    #                               to boot beside a resident SDXL. On the
+    #                               old 7B it also broke JSON adherence.
     local logging_level="${VLLM_LOG_LEVEL:-ERROR}"
+    # shellcheck disable=SC2086  # word-splitting of the extra args is intended
+    PATH="$VLLM_DIR/.venv/bin:$PATH" \
     VLLM_LOGGING_LEVEL="$logging_level" \
     nohup "$VLLM_BIN" serve "$VLLM_MODEL" \
         --host "$VLLM_HOST" --port "$VLLM_PORT" \
         --gpu-memory-utilization "$VLLM_GPU_FRACTION" \
         --max-model-len "$VLLM_MAX_LEN" \
         --max-num-seqs "$VLLM_MAX_NUM_SEQS" \
-        --enforce-eager \
+        --language-model-only \
+        --default-chat-template-kwargs '{"enable_thinking": false}' \
+        ${DAYDREAM_VLLM_EXTRA_ARGS:-} \
         > "$logf" 2>&1 < /dev/null &
     echo $! > "$(_pid_file vllm)"
     echo "vllm: started (pid $!, $VLLM_HOST:$VLLM_PORT, model $VLLM_MODEL, log $logf)"

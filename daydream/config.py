@@ -66,16 +66,16 @@ def llm_base_url() -> str:
 
 def llm_model() -> str:
     """litellm-prefixed model name. Default matches bin/vllm-bootstrap's
-    default model (Qwen 2.5 7B Instruct AWQ); override via DAYDREAM_LLM_MODEL
+    default model (Qwen3.5 9B AWQ 4-bit); override via DAYDREAM_LLM_MODEL
     if vLLM is serving something else.
 
-    Why Qwen 2.5 7B Instruct AWQ specifically: see docs/gpu-and-models.md
-    "LLM stack" — the picks alongside this one (Gemma 2 9B, Llama 3.x 8B,
-    Mistral 7B variants), and why we landed here for our VRAM budget +
-    vLLM compatibility. Bumping the model? Re-run tools/arbiter-smoke.py;
-    the strict-JSON probe catches the 7B-class precision regressions
-    documented in the same file (the fp8-KV-cache story)."""
-    return os.environ.get("DAYDREAM_LLM_MODEL", "hosted_vllm/Qwen/Qwen2.5-7B-Instruct-AWQ")
+    Why this model: see docs/gpu-and-models.md "September 2026
+    re-evaluation": the bake-off against Qwen 2.5 7B, Qwen3 8B/14B,
+    Gemma 4 12B and Qwen3.5 4B, and why the 9B won inside the unchanged
+    0.45 VRAM slice. Bumping the model? Run `bin/game model-eval run`
+    against it (and tools/arbiter-smoke.py); compare with `model-eval
+    compare` before switching."""
+    return os.environ.get("DAYDREAM_LLM_MODEL", "hosted_vllm/cyankiwi/Qwen3.5-9B-AWQ-4bit")
 
 
 def llm_api_key() -> str:

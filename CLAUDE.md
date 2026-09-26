@@ -26,7 +26,7 @@ Foundational and load-bearing; it informs every design and build decision in thi
 
 ## Lifecycle
 
-`bin/game up`, `bin/game deploy` (restart on current code, world preserved), `bin/game down`, `bin/game status`, `bin/game logs` are the supported daydream-server entry points; `bin/game comfyui-up`/`down` and `bin/game vllm-up`/`down` manage the inference engines (see "External engines" below); `bin/game image-test "<prompt>"` is the aesthetic A/B harness for image gen; `bin/game review` builds the offline batched-review contact sheet (see "Review & verification" below). `bin/game up` is GPU-assuming by default: it runs a GPU preflight (free-VRAM check via `nvidia-smi`; floor `DAYDREAM_GPU_MIN_FREE_MIB`, default 9500 MiB) that exits with an actionable error if the GPU won't be available, then starts FastAPI synchronously and kicks off vLLM + ComfyUI in the background (engines warm over ~30-60 s; the game is reachable as soon as FastAPI's readiness poll completes). `bin/game up --no-gpu` brings up FastAPI only (CPU-only / docs / tests: no preflight, no engines). `bin/game up-all` is a back-compat alias for `bin/game up`. There is no symmetric `down-all`; `bin/game down` stops only FastAPI, so the engines need explicit `vllm-down` / `comfyui-down`. Each daemon command writes a PID file to `$XDG_RUNTIME_DIR/daydream-<env>/<process>.pid` and a log alongside; `bin/game status` reports liveness and reachability for all three processes plus the current `DAYDREAM_ACCESS` mode and a UFW-reminder warning when `public`.
+`bin/game up`, `bin/game deploy` (restart on current code, world preserved), `bin/game down`, `bin/game status`, `bin/game logs` are the supported daydream-server entry points; `bin/game comfyui-up`/`down` and `bin/game vllm-up`/`down` manage the inference engines (see "External engines" below); `bin/game image-test "<prompt>"` is the aesthetic A/B harness for image gen; `bin/game review` builds the offline batched-review contact sheet (see "Review & verification" below); `bin/game model-eval` is the LLM bake-off harness (see "vLLM (v1 LLM)" below). `bin/game up` is GPU-assuming by default: it runs a GPU preflight (free-VRAM check via `nvidia-smi`; floor `DAYDREAM_GPU_MIN_FREE_MIB`, default 9500 MiB) that exits with an actionable error if the GPU won't be available, then starts FastAPI synchronously and kicks off vLLM + ComfyUI in the background (engines warm over ~30-60 s; the game is reachable as soon as FastAPI's readiness poll completes). `bin/game up --no-gpu` brings up FastAPI only (CPU-only / docs / tests: no preflight, no engines). `bin/game up-all` is a back-compat alias for `bin/game up`. There is no symmetric `down-all`; `bin/game down` stops only FastAPI, so the engines need explicit `vllm-down` / `comfyui-down`. Each daemon command writes a PID file to `$XDG_RUNTIME_DIR/daydream-<env>/<process>.pid` and a log alongside; `bin/game status` reports liveness and reachability for all three processes plus the current `DAYDREAM_ACCESS` mode and a UFW-reminder warning when `public`.
 
 Tests are tiered under a single entry point: `bin/game test {short,medium,long,ci,human}`. The durable contract (tier budgets, drift-loop semantics, adding a new test) lives in [`TESTING.md`](TESTING.md); read that before adding tests or bumping a model / LoRA / workflow. `bin/game test short` is the pre-commit gate (~10 s); `bin/game test long` runs the real-GPU drift probes under `tests/drift/` and compares against git-committed baselines at `tests/baselines/*.golden.json` (the baseline-update loop is the primary drift-detection mechanism, so a PR that changes a golden is a review event by design). The pytest-ified arbiter smoke replaces `tools/arbiter-smoke.py` as the authoritative source; the standalone script is still usable but reads the same probe corpus from `tests/drift/prompts/`.
 
@@ -135,7 +135,7 @@ The 100.64.0.0/10 hardcoding is correct because Tailscale's CGNAT range is fixed
 
 ## GPU posture
 
-20 GB VRAM ceiling on this box (RTX 4000 SFF Ada, compute capability 8.9). vLLM (Qwen 2.5 7B Instruct AWQ, ~5 GB resident) and ComfyUI (SDXL base + watercolor LoRA, ~6 GB resident, ~10-12 GB peak during inference) coexist behind a flock-free in-process arbiter at `daydream/gpu/arbiter.py` — a shared/exclusive gate (v2, 2026-07-02): LLM calls take shared slots and run CONCURRENTLY up to `DAYDREAM_LLM_CONCURRENCY` (default 3; vLLM batches natively inside its preallocated slice, so concurrency costs KV tokens, not extra VRAM), while every image render takes the exclusive slot and runs alone. Admission is text-priority — a queued LLM call is admitted before a queued render (renders lazy-paint; text is a player waiting). Observability: `GET /status/arbiter`, surfaced in `bin/game status`. All LLM calls flow through `daydream/llm/client.py` (acquires `"llm"` internally) and all image-gen through `daydream/images/client.py` (caller wraps in `arbiter.acquire()`) so the gate has exactly two call sites.
+20 GB VRAM ceiling on this box (RTX 4000 SFF Ada, compute capability 8.9). vLLM (Qwen3.5 9B AWQ 4-bit, ~7.5 GB resident) and ComfyUI (SDXL base + watercolor LoRA, ~6 GB resident, ~10-12 GB peak during inference) coexist behind a flock-free in-process arbiter at `daydream/gpu/arbiter.py` — a shared/exclusive gate (v2, 2026-07-02): LLM calls take shared slots and run CONCURRENTLY up to `DAYDREAM_LLM_CONCURRENCY` (default 3; vLLM batches natively inside its preallocated slice, so concurrency costs KV tokens, not extra VRAM), while every image render takes the exclusive slot and runs alone. Admission is text-priority — a queued LLM call is admitted before a queued render (renders lazy-paint; text is a player waiting). Observability: `GET /status/arbiter`, surfaced in `bin/game status`. All LLM calls flow through `daydream/llm/client.py` (acquires `"llm"` internally) and all image-gen through `daydream/images/client.py` (caller wraps in `arbiter.acquire()`) so the gate has exactly two call sites.
 
 This project assumes Daydream is the only GPU consumer on this box. The `qwen-2.5-localreview` warm server is off (per its `.env`) and is assumed to stay off indefinitely; no external process competes for VRAM. The arbiter therefore needs only in-process coordination (an asyncio gate is sufficient; flock is still a fine code template at `~/src/qwen-2.5-localreview/gpu_lock.py`).
 
@@ -193,12 +193,12 @@ The shared workflow JSON at `daydream/images/workflows/painterly_room.json` is r
 
 ## vLLM (v1 LLM)
 
-The second engine on the pattern. Different from ComfyUI in that vLLM is a pip package (no upstream clone), and its model weights live in the shared HF cache (per the exception above). Binds `127.0.0.1:8000` by default since daydream is the only consumer; override `DAYDREAM_VLLM_HOST=0.0.0.0` to expose on the tailnet. Override the URL daydream calls with `DAYDREAM_LLM_BASE_URL` or the port via `DAYDREAM_VLLM_PORT`. Default model is Qwen 2.5 7B Instruct AWQ (`DAYDREAM_VLLM_MODEL` to override).
+The second engine on the pattern. Different from ComfyUI in that vLLM is a pip package (no upstream clone), and its model weights live in the shared HF cache (per the exception above). Binds `127.0.0.1:8000` by default since daydream is the only consumer; override `DAYDREAM_VLLM_HOST=0.0.0.0` to expose on the tailnet. Override the URL daydream calls with `DAYDREAM_LLM_BASE_URL` or the port via `DAYDREAM_VLLM_PORT`. Default model is Qwen3.5 9B AWQ 4-bit, `cyankiwi/Qwen3.5-9B-AWQ-4bit` (`DAYDREAM_VLLM_MODEL` to override; `DAYDREAM_LLM_MODEL` for the client side).
 
 One-time install:
 
 ```sh
-bin/vllm-bootstrap           # venv, pip install vllm, pre-cache Qwen 2.5 7B AWQ (~5 GB)
+bin/vllm-bootstrap           # venv, pip install vllm, pre-cache Qwen3.5 9B AWQ (~9 GB)
 ```
 
 Daily lifecycle:
@@ -208,32 +208,35 @@ bin/game vllm-up             # start daemon (PID owned by daydream)
 bin/game vllm-down           # stop daemon
 ```
 
-`bin/game vllm-up` launches with `--gpu-memory-utilization 0.45` (~9 GB on the 20 GB card) leaving headroom for SDXL during inference. Both daemons can stay resident under the arbiter; concurrent LLM calls batch inside vLLM's preallocated slice while an image render runs exclusively, so the VRAM peak is bounded by (residents + one render's working set), never two engines inferencing at once. `--max-model-len 8192` is the default context window; increase if v2 long-context needs warrant it (raises KV cache memory). `--max-num-seqs 4` (`DAYDREAM_VLLM_MAX_NUM_SEQS`) caps engine-side batch concurrency: it must be >= `DAYDREAM_LLM_CONCURRENCY` (default 3) because a timed-out client abandons a request that keeps decoding server-side, so the engine cap — not the app's arbiter admission — is the true bound. The KV pool at 0.45 (~50-60k tokens) covers the worst case (4 × 8192 = 32.8k) with headroom; see docs/gpu-and-models.md.
+`bin/game vllm-up` launches with `--gpu-memory-utilization 0.45` (~9 GB on the 20 GB card) leaving headroom for SDXL during inference. Both daemons can stay resident under the arbiter; concurrent LLM calls batch inside vLLM's preallocated slice while an image render runs exclusively, so the VRAM peak is bounded by (residents + one render's working set), never two engines inferencing at once. `--max-model-len 8192` is the default context window; increase if v2 long-context needs warrant it (raises KV cache memory). `--max-num-seqs 4` (`DAYDREAM_VLLM_MAX_NUM_SEQS`) caps engine-side batch concurrency: it must be >= `DAYDREAM_LLM_CONCURRENCY` (default 3) because a timed-out client abandons a request that keeps decoding server-side, so the engine cap — not the app's arbiter admission — is the true bound. The KV pool at 0.45 is ~21k tokens (Qwen3.5's hybrid attention keeps KV in only a quarter of its layers, so a smaller pool still holds 2.5 full 8192-token contexts); real calls peak around 1.1k tokens (a Zork-scale parser prompt), so 4 concurrent calls use ~4.5k. See docs/gpu-and-models.md.
 
 daydream calls vLLM through `daydream/llm/client.py` via `litellm.acompletion` against the OpenAI-compatible endpoint, all wrapped in `daydream.gpu.arbiter.acquire("llm")` so text shares the GPU under the arbiter's cap and never overlaps an image render.
 
 ### vLLM tunings on Ada
 
-These flags ride on every `bin/game vllm-up`. Most are inherited from `~/src/qwen-2.5-localreview`, which did careful experiments on this same RTX 4000 SFF Ada (compute capability 8.9). Treat them as load-bearing: don't drop one without re-running `tools/arbiter-smoke.py` and confirming both decode latency AND output quality (the smoke prompts a tight-format JSON echo specifically to catch quality regressions). Full rationale per flag, plus the alternatives we considered, lives in [`docs/gpu-and-models.md`](docs/gpu-and-models.md).
+These flags ride on every `bin/game vllm-up`. They were re-measured in the September 2026 bake-off (`bin/game model-eval`; docs/gpu-and-models.md "September 2026 re-evaluation") on top of the earlier `~/src/qwen-2.5-localreview` experiments on this same card. Treat them as load-bearing: don't change one without re-running `bin/game model-eval run` (scores + per-surface latency) and `tools/arbiter-smoke.py`. Full rationale per flag lives in [`docs/gpu-and-models.md`](docs/gpu-and-models.md).
 
 | Flag | Why |
 |---|---|
-| `--enforce-eager` | Disables CUDA-graph capture. Avoids a graph-induced OOM localreview hit on this card (their commit 8321af1). Trades a small bit of perf for stability; keep until proven unnecessary. |
+| `--language-model-only` | Qwen3.5 is vision-language; this loads only the text tower (7.55 GiB). Harmless on a text-only model (verified with the Qwen 2.5 rollback). |
+| `--default-chat-template-kwargs '{"enable_thinking": false}'` | Qwen3.x reasons before answering by default. Every daydream call wants the answer only; set server-side so `daydream/llm/client.py` stays model-agnostic. |
+| CUDA graphs on (no `--enforce-eager`) | The old 0.19-era OOM reason is gone: vLLM >= 0.21 profiles graph memory before sizing KV (graph pool ~0.03 GiB). ~10% lower latency on the hybrid 9B; none on a dense 7B. Re-add via `DAYDREAM_VLLM_EXTRA_ARGS=--enforce-eager` if a capture OOM ever returns. |
+| `PATH` includes the vLLM venv's `bin/` | FlashInfer JIT-compiles kernels with `ninja`, which lives in the venv; off `PATH` the engine dies at startup. |
 | `VLLM_LOGGING_LEVEL=ERROR` | Suppresses vLLM's verbose startup banner. Override with `VLLM_LOG_LEVEL=INFO bin/game vllm-up` when debugging. |
-| `vllm==0.19.1` (pinned in bootstrap) | The version localreview validated against. Bumping is allowed but should be paired with a re-run of the arbiter smoke. |
+| `vllm==0.30.0` (pinned in bootstrap) | >= 0.20 is required for Qwen3.5's Gated DeltaNet layers. A pin change REBUILDS the venv (the stale one is moved to `external/vLLM/.venv.stale-*`, the rollback copy): an in-place upgrade left a CUDA 12 runtime and a mismatched flashinfer-cubin behind. |
 
-**Model choice (Qwen 2.5 7B Instruct AWQ).** AWQ INT4 weights are the right pick on this VRAM budget: ~5 GB resident leaves room for SDXL's 7-10 GB during image-gen inference. Switching to FP8 weights (Ada-supported) would push past 7 GB resident with marginal gain over AWQ + Marlin kernels at single-stream decode latency.
+`DAYDREAM_VLLM_EXTRA_ARGS` appends raw flags for experiments. Rollback to the previous model is `DAYDREAM_VLLM_MODEL=Qwen/Qwen2.5-7B-Instruct-AWQ` + `DAYDREAM_LLM_MODEL=hosted_vllm/Qwen/Qwen2.5-7B-Instruct-AWQ` (runs on the same launcher and engine).
+
+**Model choice (Qwen3.5 9B AWQ 4-bit, since 2026-09-26).** It won the bake-off against Qwen 2.5 7B (the prior pick), Qwen3 8B/14B, Gemma 4 12B and Qwen3.5 4B: parser grounding 47/48 vs 41/48, zero NPC point-of-view slips, blind-graded prose +0.69 on a 5-point scale (95% CI 0.41-0.97), all inside the UNCHANGED 0.45 slice (peak 17.1 GB with an SDXL portrait render). The cost is latency: dialogue p50 ~2.7 s vs ~1.5 s, parser ~1.0 s vs ~0.6 s. Qwen3 14B scored as well but leaves ~0.65 GB free during a portrait render; Gemma 4 12B wrote the best rooms but ran long and slow. The 2026 Qwens carry a 248K vocabulary whose embeddings stay BF16 under AWQ, which is why a "4-bit" 9B weighs ~7.5 GiB.
 
 ### `--kv-cache-dtype fp8_e4m3` deliberately NOT enabled
 
-Localreview gets a documented **+58% decode TPS / ~0.9 GB freed VRAM** from FP8 KV cache on their 14B Coder. We tried it on Qwen 2.5 7B Instruct AWQ and it deterministically broke tight-format JSON adherence — the model started fine then looped `!***` garbage tokens. The 14B has the parameter capacity to absorb FP8 KV's precision loss; the 7B does not.
+Localreview gets a documented **+58% decode TPS / ~0.9 GB freed VRAM** from FP8 KV cache on their 14B Coder with long (32K) contexts. On our workload it has never paid:
 
-Re-enable FP8 KV cache only after one of:
-1. Moving to a >=14B model that fits our VRAM budget (would require swapping SDXL out during LLM inference; significantly more arbiter complexity).
-2. Shipping calibrated per-channel FP8 KV scales (vLLM supports loading them; needs a one-time calibration pass over a representative dataset).
-3. Confirming a future Qwen / Llama 7B variant tolerates fp8_e4m3 KV by re-running `tools/arbiter-smoke.py` and getting clean JSON across all five turns.
+- **Qwen 2.5 7B (2026-05):** deterministically broke tight-format JSON adherence (the model looped `!***` garbage tokens).
+- **Qwen3.5 9B (2026-09-26):** no quality regression, but no latency gain either. Our prompts are ~1k tokens, so decode bandwidth is dominated by weights, not KV. Its larger startup workspace also fails to boot beside a resident SDXL at 0.45.
 
-The smoke harness's choice of a strict-JSON LLM probe is intentional precisely so this regression surfaces immediately when someone tries to re-add the flag.
+Revisit only if prompts grow to multi-thousand-token contexts (long NPC memory, whole-room histories), where KV reads start to dominate. Verify with `bin/game model-eval run` plus a co-resident boot.
 
 ## NPC memory
 
@@ -304,6 +307,8 @@ WHIMSY owns world tone/voice/image; the **interface** counterpart is [`DESIGN.md
 `pytest` from the project root. Tests must not require GPU or a running vLLM; mock the LLM client. Slow/integration tests that boot the server with a stubbed LLM are fine if marked. Tests that need the real arbiter path opt in via `@pytest.mark.real_image_gen` (see `tests/conftest.py`).
 
 For live-stack verification (vLLM and ComfyUI both up), `tools/arbiter-smoke.py` runs 5 alternating LLM + image requests through the real call paths, asserts no OOM under a 90 s wall-clock budget, AND probes LLM output quality with a strict-JSON echo. The JSON probe is what caught the fp8-KV regression on 7B models documented in [`docs/gpu-and-models.md`](docs/gpu-and-models.md). Re-run the smoke after any vLLM version bump, model swap, or tuning-flag change.
+
+For choosing between models (not catching drift), `bin/game model-eval run --label <name>` drives every runtime LLM surface (parser, dialogue via the real `talk` path, growth, journal, retell, examine, drift, JSON, a concurrency burst) through the production prompts and validators against whatever vLLM serves, and `bin/game model-eval compare <dirs>` writes a metrics table plus a blinded prose sheet for in-session WHIMSY grading (use a fresh subagent as the blind grader so it has never seen which model is which). Results land in `~/data/daydream/model-eval/`. The drift probes' goldens are pinned to the shipped model; a model swap re-ratifies them.
 
 ## Review & verification (batching the eyeballs)
 

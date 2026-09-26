@@ -136,7 +136,8 @@ def _system_prompt(voice: dict) -> str:
         lines.extend(f"- {e}" for e in examples[:3] if isinstance(e, str))
     lines.append(
         "Rules: keep every proper noun, name, number, and stated fact exactly; "
-        "change only the phrasing; similar length or shorter; never add new "
+        "change only the phrasing, and always change it: returning the line "
+        "word-for-word is not a retelling; similar length or shorter; never add new "
         "events or objects; no exclamation marks unless the original has them. "
         "Use plain, short words — NEVER swap a plain word for a fancier "
         "synonym; keep any joke or understatement intact. "

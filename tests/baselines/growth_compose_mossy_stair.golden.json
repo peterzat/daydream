@@ -1,20 +1,24 @@
 {
-  "captured_at": "2026-07-02T01:10:15+00:00",
-  "description": "Moss covers the steps, clinging like a soft blanket. Each step is worn smooth, a testament to countless treads. At the bottom, the river whispers secrets, its current as slow as the ticking of a clock. The air is filled with the scent of damp earth and the distant chime of a clock somewhere above.",
+  "captured_at": "2026-09-26T18:09:00+00:00",
+  "description": "A wide stone stair descends into the hush, its steps thick with soft green moss that feels like velvet underfoot. The river below moves so slowly it looks like a single, long breath held by the world. Paper lanterns float gently on the surface, their warm glow turning the water into a pool of liquid amber.",
   "distinct_from_exemplars": true,
-  "latency_ms": 3726.0626000061166,
-  "model": "hosted_vllm/Qwen/Qwen2.5-7B-Instruct-AWQ",
-  "object_count": 1,
+  "latency_ms": 6120.588452999982,
+  "model": "hosted_vllm/cyankiwi/Qwen3.5-9B-AWQ-4bit",
+  "object_count": 2,
   "objects": [
     {
-      "name": "Folded Paper Hour",
-      "seed": "A small folded paper hour, carefully labeled 'The River's Pace', tucked into a crevice of moss."
+      "name": "mossy river stone",
+      "seed": "a smooth, rounded stone half-buried in the moss, cool to the touch and heavy with the quiet weight of a thousand paused seconds"
+    },
+    {
+      "name": "folded paper hour",
+      "seed": "a small square of cream paper resting on a drift of moss, marked with a tiny brass tick and a note written in a careful, fading hand"
     }
   ],
   "phrase": "a mossy stair down to a slow river",
   "phrase_woven": true,
   "refused": false,
-  "room_seed": "A moss-covered stone staircase descends into a tranquil river, where the current flows as slowly as the ticking of a clock. Each step is worn smooth by time, and the moss clings like a gentle embrace.",
-  "title": "The Mossy Descender",
+  "room_seed": "a slow river of liquid time flows down a mossy stone stair, its surface holding the soft amber light of dusk lanterns while deep blue shadows gather in the folds of the water",
+  "title": "The Mossy River",
   "valid": true
 }

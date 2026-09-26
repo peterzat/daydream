@@ -2,13 +2,13 @@
 
 The durable home for *why* daydream uses the GPU the way it does, *what* we picked, *what we tried and rejected*, and *what we should consider trying later*. Read this before bumping a model, swapping an engine, or adding a tuning flag.
 
-If you only read one section, read [The fp8-KV story](#the-fp8-kv-story) and [Things we have not tried yet](#things-we-have-not-tried-yet).
+If you only read one section, read [September 2026 re-evaluation](#september-2026-re-evaluation), [The fp8-KV story](#the-fp8-kv-story) and [Things we have not tried yet](#things-we-have-not-tried-yet). Choosing a model? Run `bin/game model-eval` (the bake-off harness) before arguing from benchmarks.
 
 ## The box
 
 - **GPU:** NVIDIA RTX 4000 SFF Ada Generation. Compute capability 8.9 (Ada Lovelace, sm_89). 20 GB ECC GDDR6. 70 W TDP — inference and experimentation, not heavy training. Per-channel FP8 (E4M3 and E5M2), FlashAttention-2 / 3, Marlin INT4 kernels, BF16, TF32 are all hardware-supported.
 - **CPU/RAM:** Intel i5-13500 (14 cores, 20 threads), 64 GB DDR4. Plenty for inference servers' Python sides.
-- **OS:** Ubuntu 22.04, CUDA driver 13.x, Python 3.10. ComfyUI venv carries torch 2.11+cu130; vLLM venv carries whatever vllm 0.19.1 pins.
+- **OS:** Ubuntu 22.04, CUDA driver 13.x, Python 3.10. ComfyUI venv carries torch 2.11+cu130; vLLM venv carries what vllm 0.30.0 pins (torch 2.13+cu130, transformers 5.x).
 - **Singleness:** This box is assumed dedicated to daydream. The only prior GPU consumer (`~/src/qwen-2.5-localreview`'s warm server) is off in its `.env` and stays off; see [CLAUDE.md "GPU posture"](../CLAUDE.md). Every tuning decision below assumes no external contention for VRAM.
 - **Network exposure:** vLLM and ComfyUI bind `127.0.0.1` by default — daydream is their only consumer, so they don't need to be on the tailnet. The user-visible game port (`54321` by default) is filtered by the `AccessMiddleware` per `DAYDREAM_ACCESS=tailscale|public`. See [CLAUDE.md "Network access"](../CLAUDE.md#network-access).
 
@@ -18,7 +18,7 @@ If you only read one section, read [The fp8-KV story](#the-fp8-kv-story) and [Th
 
 | | Resident | Peak during inference |
 |---|---:|---:|
-| vLLM (Qwen 2.5 7B Instruct AWQ) | ~5 GB weights | ~7 GB (weights + KV cache + activations on short prompts) |
+| vLLM (Qwen3.5 9B AWQ 4-bit, since 2026-09-26) | ~9.2 GB slice (7.55 GiB weights + 20.8k-token KV pool) | the slice is preallocated; it does not grow |
 | ComfyUI (SDXL base + watercolor LoRA, smart-managed) | ~6 GB when warm; drops idle | ~10-12 GB during a 1024×384 generation |
 | **Sum (both resident, one inferencing)** | ~11 GB idle | ~17 GB peak (whichever side is in flight) |
 
@@ -76,9 +76,36 @@ GPU memory (via `nvidia-smi`, 20,475 MiB total):
 
 vLLM resident is ~9,414 MiB; ComfyUI resident is ~6.8 GB. The **marginal** render working set at our resolution is only ~200 MiB (SDXL weights stay resident; a 1024×384 latent's activations are cheap, and the render completes in ~4 s). The operator's observed ~85% bursts come from heavier moments (concurrent probes under `bin/game test long`), not steady play. Steady state, even mid-render, leaves ~4 GB free — that is the burst absorber the 0.45 fraction was chosen to preserve, and the reason we did NOT raise it.
 
+## September 2026 re-evaluation
+
+Full method, per-model tables and negative results: [`docs/model-evals/2026-09-26-bakeoff.md`](model-evals/2026-09-26-bakeoff.md). Summary:
+
+- **Model: Qwen3.5 9B AWQ 4-bit (`cyankiwi/Qwen3.5-9B-AWQ-4bit`) replaces Qwen 2.5 7B Instruct AWQ.**
+  - Blind-graded prose rose +0.69 on a 5-point scale (95% CI 0.41-0.97).
+  - Parser grounding went from 41/48 to 47/48, and NPC point-of-view slips from 5 to 0.
+  - It runs in the same 0.45 slice: 17.1 GB peak with an SDXL portrait render.
+  - Cost: dialogue p50 ~1.6 s to ~2.7 s, parser ~0.6 s to ~1.0 s.
+- **Challengers:**
+  - Qwen3 14B and Gemma 4 12B scored as well or slightly better on prose, but need 0.60-0.68 slices. That leaves under 1.5 GB (the 14B: 0.65 GB during a portrait render) beside a resident SDXL.
+  - Qwen3 8B broke the dialogue format.
+  - Qwen3.5 4B grounded "take the moon" to the lantern.
+- **Engine: vLLM 0.19.1 to 0.30.0.** It is quality-neutral for the old model and required for Qwen3.5's Gated DeltaNet layers. A version bump rebuilds the venv, because an in-place upgrade left a CUDA 12 runtime and a mismatched flashinfer-cubin behind.
+- **Flags:**
+  - `--language-model-only`: Qwen3.5 is vision-language.
+  - `--default-chat-template-kwargs '{"enable_thinking": false}'`: set server-side so the client stays model-agnostic.
+  - CUDA graphs on (`--enforce-eager` dropped): vLLM >= 0.21 profiles graph memory, and graphs are ~10% faster on the hybrid model.
+  - The venv's `bin/` on PATH: FlashInfer JIT-compiles with `ninja`.
+- **Rejected, measured:**
+  - FP8 KV cache on the 9B: no gain, and it can't boot beside SDXL.
+  - `json_schema`-constrained parsing: 47/48 either way. The misses are semantic.
+- **Model-fit prompt change:** the retell rules now say an unchanged line is not a retelling. The 9B otherwise echoed most lines verbatim.
+- **Why the 2026 Qwens are big for their size:** a 248K-token vocabulary whose embeddings stay BF16 under AWQ and GPTQ. The "4-bit" 9B weighs 7.55 GiB text-only. That, not parameter count, is the fit constraint on this card (localreview found the same for the 27B).
+
+The sections below keep the April-July history; where they disagree with this section, this section is current.
+
 ## LLM stack
 
-### What we picked: Qwen 2.5 7B Instruct AWQ, served by vLLM
+### What we picked (April 2026, superseded 2026-09-26): Qwen 2.5 7B Instruct AWQ, served by vLLM
 
 Selection criteria:
 
@@ -105,9 +132,9 @@ vLLM was picked over llama.cpp, TGI, SGLang, LM Studio's server, and Aphrodite. 
 
 llama.cpp would be a fair second choice if we ever want a much smaller dependency footprint, but its OpenAI-compatible server is less mature than vLLM's.
 
-### Tunings inherited from `~/src/qwen-2.5-localreview`
+### Tunings inherited from `~/src/qwen-2.5-localreview` (April 2026; see the September re-evaluation for the current flags)
 
-That project ran careful experiments on the *same* RTX 4000 SFF Ada and committed the deltas to git history. Treat their findings as load-bearing prior art.
+That project ran careful experiments on the *same* RTX 4000 SFF Ada and committed the deltas to git history. Treat their findings as load-bearing prior art. As of 2026-09-26, `--enforce-eager` is dropped (vLLM >= 0.21 profiles CUDA-graph memory, the OOM reason is gone) and the pin is 0.30.0.
 
 | Flag | Decision | Reason |
 |---|---|---|
@@ -194,14 +221,16 @@ Swapping is config, not code, by design. The places it touches:
 Captured as BACKLOG entries (`BACKLOG.md`) so they survive turn-close. Listed here in rough ROI order:
 
 1. **`watercolor-lora-ab`** — try `ntc-ai/SDXL-LoRA-slider.watercolor` and `lora-library/B-LoRA-watercolor` against the current ostris pick. 12 MB each.
-2. **`calibrated-fp8-kv-scales`** — recover localreview's 58% decode TPS win on our 7B by running vLLM's calibration pass and shipping per-channel scales. Real engineering work; only worth it if we ever bottleneck on LLM throughput.
-3. **`creative-finetune-json-fluent-base`** — re-attempt the voice-quality A/B with a creative-writing finetune of a JSON-fluent base (Qwen 2.5, Llama 3.x). The Mistral Nemo attempts in 2026-05-06/05-07 (both finetune and controlled-base) failed the data-skill pipeline, so we know the next attempt needs a base that preserves structured-output capability. Blocked on a published finetune existing.
+2. **`calibrated-fp8-kv-scales`** — superseded 2026-09-26: naive FP8 KV no longer breaks the (new, 9B) model, but it buys no latency at our ~1k-token prompts. Only relevant if prompts grow to multi-thousand tokens.
+3. **`creative-finetune-json-fluent-base`** — re-attempt the voice-quality A/B with a creative-writing finetune of a JSON-fluent base (now Qwen3.5 9B or Qwen3 8B/14B). The Mistral Nemo attempts in 2026-05-06/05-07 (both finetune and controlled-base) failed the data-skill pipeline, so we know the next attempt needs a base that preserves structured-output capability. Blocked on a published finetune existing.
 4. **`free-form-prose-pipeline`** — daydream pipeline change so `daydream/skills/data.py` accepts free-form prose from the LLM and post-parses, instead of requiring strict-JSON `response_format`. Would enable prose-continuation finetunes (RP-Ink and similar) that don't fit the current pipeline. Architectural change; defer until a specific finetune is worth the work.
-5. **`mistral-7b-instruct-fp16-ab`** — Mistral 7B Instruct A/B at fp16 against Qwen 2.5 7B Instruct AWQ. Smaller (less Q4-sensitive), fits BF16 in our budget without GGUF. Would separate the quantization axis from the architecture axis after the 12B Q4 Nemo experiments came up inconclusive.
+5. **`mistral-7b-instruct-fp16-ab`** — (likely moot after the 2026-09-26 bake-off; an older base than every model tested there) Mistral 7B Instruct A/B at fp16 against Qwen 2.5 7B Instruct AWQ. Smaller (less Q4-sensitive), fits BF16 in our budget without GGUF. Would separate the quantization axis from the architecture axis after the 12B Q4 Nemo experiments came up inconclusive.
+
+6. **`llm-14b-if-sdxl-offloaded`**: Qwen3 14B AWQ matched the shipped 9B on prose and was perfect on the parser, but needs a 0.60 slice. If ComfyUI ever offloads SDXL between renders (renders are cached and rare), the ~6 GB it frees makes the 14B fit with margin. Measure the render cold-load cost first.
 
 We are also watching for:
 
-- Qwen 3 series releases. Already in vLLM recipes per recent search (Qwen 3.5/3.6 docs). Refresh the model pick every ~6 months.
+- Small-model releases (a 9B-class model at the incumbent's latency is the thing that would change the answer). Refresh the pick every ~6 months with `bin/game model-eval`; the 2026-09 field is recorded in the bake-off doc.
 - New SDXL-class base models (SD3, etc.) once their licensing and tooling stabilize. SDXL is a known quantity; don't churn without reason.
 
 ## Things we tried and rejected
@@ -219,7 +248,7 @@ vLLM flag deviation captured for the GGUF legs: `--max-model-len 4096` (down fro
 
 Relevant commits: `4084bab` (RP-Ink leg), `55fffd0` (Instruct controlled-base leg).
 
-### gguf packaging-metadata bug in transformers (worked around in `bin/vllm-bootstrap`)
+### gguf packaging-metadata bug in transformers (worked around in `bin/vllm-bootstrap`; moot on vLLM 0.30, which no longer installs gguf)
 
 Loading any GGUF in vLLM 0.19.1 originally crashed during config-load because `transformers.is_gguf_available()` reads gguf's version via `importlib.metadata.packages_distributions()` and falls back to `getattr(gguf, '__version__', 'N/A')`. Every gguf release in vLLM's supported `>=0.17.0` range (0.17.0, 0.17.1, 0.18.0, 0.19.0) fails to register the gguf import name in `packages_distributions()` AND exposes no `__version__` attr. Result: `version.parse('N/A')` raises `InvalidVersion: Invalid version: 'N/A'`.
 

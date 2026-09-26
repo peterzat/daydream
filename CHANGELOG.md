@@ -7,6 +7,12 @@ and, for the GPU/model decisions, [docs/gpu-and-models.md](docs/gpu-and-models.m
 Versions follow the app's own semver (`daydream/version.py:APP_VERSION`);
 `WORLD_VERSION` is the separate world-content compatibility stamp.
 
+## Unreleased
+
+- **A better local dreamer.** The runtime LLM moves from Qwen 2.5 7B Instruct AWQ to Qwen3.5 9B AWQ 4-bit on vLLM 0.30.0, in the same VRAM slice beside SDXL. Blind-graded prose +0.69/5, parser grounding 41 to 47 of 48, no more NPC replies narrated as the player's body; dialogue now takes ~2.7 s instead of ~1.6 s. The retell rules gain one line so the new model varies repeat tellings instead of echoing them.
+- **`bin/game model-eval`**, a bake-off harness that drives every runtime LLM surface through the production prompts and validators, plus a blinded prose sheet for in-session grading. The benign-refusal probe now measures the real `talk` prompt.
+- Full record: [docs/model-evals/2026-09-26-bakeoff.md](docs/model-evals/2026-09-26-bakeoff.md).
+
 ## v1.0.0 — the release turn (2026-07-07)
 
 The four flagship features that close the product's own promises, plus the

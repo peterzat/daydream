@@ -1,24 +1,24 @@
 {
-  "captured_at": "2026-07-02T01:10:24+00:00",
-  "description": "The hearth glows warmly, casting a soft light over the shelves lined with jars of preserved herbs and spices. The air is rich with the scent of cedar and rain, as if the kitchen is a part of the forest itself. Each jar tells a story of something carefully gathered and stored away for another day.",
+  "captured_at": "2026-09-26T18:09:11+00:00",
+  "description": "The room holds a quiet warmth, smelling of dry cedar shavings and the fresh scent of rain on stone. A tall glass case stands against the wall, holding the great clock's brass gears like treasures kept safe from the storm. The ledger on the lectern lies open, its pages waiting for the next gentle hour to be written.",
   "distinct_from_exemplars": true,
-  "latency_ms": 4855.694551981287,
-  "model": "hosted_vllm/Qwen/Qwen2.5-7B-Instruct-AWQ",
+  "latency_ms": 5553.35430300056,
+  "model": "hosted_vllm/cyankiwi/Qwen3.5-9B-AWQ-4bit",
   "object_count": 2,
   "objects": [
     {
-      "name": "Preserved Lemons",
-      "seed": "A jar filled with lemons, their skins peeled back to reveal the tender flesh beneath, preserved in a sweet syrup. Each lemon tells a story of the sun and rain that nurtured it."
+      "name": "cedar rain-scented bowl",
+      "seed": "a small wooden bowl filled with dried cedar chips that smell like a storm just passing over the village roof"
     },
     {
-      "name": "Raindrop Candle",
-      "seed": "A candle shaped like a raindrop, its wick flickering softly. The wax is a deep, rich blue, as if it captures the essence of a rain-soaked night."
+      "name": "worn brass clock key",
+      "seed": "a heavy brass key with a paper tag tied to it, labeled in a careful hand for the kitchen's special hour"
     }
   ],
   "phrase": "a warm kitchen that smells of cedar and rain",
   "phrase_woven": true,
   "refused": false,
-  "room_seed": "A cozy kitchen where the hearth glows with a warm ember light, surrounded by shelves lined with jars of preserved herbs and spices. The air is filled with the scent of cedar and rain, as if the walls themselves are made of the forest.",
+  "room_seed": "a warm kitchen where the air smells of cedar and rain, the light soft and amber like a lantern glowing in a storm",
   "title": "The Cedar Hearth",
   "valid": true
 }

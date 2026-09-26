@@ -2,7 +2,7 @@
 # bin/vllm-bootstrap — one-time, idempotent vLLM install for daydream.
 #
 # Creates external/vLLM/.venv, installs vllm, pre-downloads the default
-# model (Qwen 2.5 7B Instruct AWQ ~5 GB) into the shared HuggingFace cache
+# model (Qwen3.5 9B AWQ 4-bit, ~9 GB) into the shared HuggingFace cache
 # (~/.cache/huggingface; per zat.env never override HF_HOME). Re-runs are
 # no-ops on every step.
 #
@@ -18,18 +18,34 @@ set -euo pipefail
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 VLLM_DIR="$PROJECT_ROOT/external/vLLM"
-MODEL="${DAYDREAM_VLLM_MODEL:-Qwen/Qwen2.5-7B-Instruct-AWQ}"
+MODEL="${DAYDREAM_VLLM_MODEL:-cyankiwi/Qwen3.5-9B-AWQ-4bit}"
 
-# Pin to the version the qwen-2.5-localreview project ran their Ada
-# experiments against (0.19.0/0.19.1 are interchangeable for our flags).
-# Bumping this is fine but treat as a tunable: re-run tools/arbiter-smoke.py
-# after any bump and check decode TPS + output quality have not regressed.
-# Full rationale: docs/gpu-and-models.md "vLLM stack".
-VLLM_VERSION="${DAYDREAM_VLLM_PACKAGE_VERSION:-0.19.1}"
+# Pinned to the version the 2026-09-26 model bake-off validated
+# (docs/gpu-and-models.md "September 2026 re-evaluation"). 0.20+ is required
+# for the Qwen3.5 hybrid (Gated DeltaNet) architecture; 0.30 brings torch
+# 2.13 + CUDA 13 wheels. Bumping is fine but treat it as a tunable: re-run
+# `bin/game model-eval run` and tools/arbiter-smoke.py after any bump and
+# check latency + scores have not regressed.
+VLLM_VERSION="${DAYDREAM_VLLM_PACKAGE_VERSION:-0.30.0}"
 
 mkdir -p "$VLLM_DIR"
 
 echo "==> vLLM venv"
+# A version bump REBUILDS the venv rather than pip-upgrading over it: an
+# in-place 0.19.1 -> 0.30.0 upgrade left 21 orphans (a whole CUDA 12 runtime
+# beside the cu13 one, and a flashinfer-cubin 0.6.6 that FlashInfer's startup
+# version check refuses; `pip check` passes because nothing declares them).
+# The stale venv is MOVED aside, never deleted: it is also the rollback path
+# (move it back), and the operator removes it once the new stack is trusted.
+if [[ -x "$VLLM_DIR/.venv/bin/python" ]]; then
+    INSTALLED_VER="$("$VLLM_DIR/.venv/bin/python" -c 'import vllm; print(vllm.__version__)' 2>/dev/null || echo none)"
+    if [[ "$INSTALLED_VER" != "$VLLM_VERSION" ]]; then
+        STALE="$VLLM_DIR/.venv.stale-$INSTALLED_VER-$(date +%Y%m%d%H%M%S)"
+        echo "    vllm $INSTALLED_VER installed, pin is $VLLM_VERSION; moving the venv to $STALE and rebuilding"
+        echo "    (delete $STALE once the new stack is verified; move it back to roll back)"
+        mv "$VLLM_DIR/.venv" "$STALE"
+    fi
+fi
 if [[ -x "$VLLM_DIR/.venv/bin/python" ]]; then
     echo "    present at $VLLM_DIR/.venv"
 else
@@ -41,14 +57,9 @@ fi
 echo "==> vLLM package (pinned $VLLM_VERSION)"
 if "$VLLM_DIR/.venv/bin/python" -c "import vllm" 2>/dev/null; then
     INSTALLED_VER="$("$VLLM_DIR/.venv/bin/python" -c 'import vllm; print(vllm.__version__)' 2>/dev/null || echo unknown)"
-    if [[ "$INSTALLED_VER" == "$VLLM_VERSION" ]]; then
-        echo "    installed (vllm $INSTALLED_VER)"
-    else
-        echo "    installed (vllm $INSTALLED_VER), but pin is $VLLM_VERSION; reinstalling ..."
-        "$VLLM_DIR/.venv/bin/python" -m pip install --quiet "vllm==$VLLM_VERSION"
-    fi
+    echo "    installed (vllm $INSTALLED_VER)"
 else
-    echo "    installing vllm==$VLLM_VERSION (~3 GB of torch + deps; ~5 min) ..."
+    echo "    installing vllm==$VLLM_VERSION (~4 GB of torch + deps; ~5 min) ..."
     "$VLLM_DIR/.venv/bin/python" -m pip install --quiet "vllm==$VLLM_VERSION"
 fi
 
@@ -65,8 +76,10 @@ echo "==> gguf metadata patch (workaround for upstream packaging bug)"
 # distribution metadata (which is correct; only the import-name
 # mapping is broken). Idempotent: re-runs detect the prior patch
 # and skip. See SPEC 2026-05-06 "RP-Ink A/B + tic-detection probe"
-# for the diagnosis chain. Remove this block whenever upstream gguf
-# fixes its packaging metadata.
+# for the diagnosis chain. Since vllm 0.30 gguf is no longer a vllm
+# dependency, so this block self-skips unless gguf is installed by hand
+# (only needed to serve a GGUF checkpoint). Remove it whenever upstream
+# gguf fixes its packaging metadata.
 GGUF_VER="$("$VLLM_DIR/.venv/bin/python" -c 'import importlib.metadata; print(importlib.metadata.version("gguf"))' 2>/dev/null || echo)"
 GGUF_INIT="$("$VLLM_DIR/.venv/bin/python" -c 'import gguf, os; print(os.path.join(os.path.dirname(gguf.__file__), "__init__.py"))' 2>/dev/null || echo)"
 if [[ -z "$GGUF_VER" || -z "$GGUF_INIT" || ! -f "$GGUF_INIT" ]]; then
