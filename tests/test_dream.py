@@ -183,6 +183,14 @@ async def test_digest_is_deterministic_and_carries_raw_input_and_deeds():
     assert typed == ["take oats", "give oats to wynn"]
     assert any("Ada brought Wynn the oats" in x["text"] for x in d1["deeds"])
     assert "Ada" in dream.render_digest(d1)
+    # Voice provenance (docs/REFLEXES.md): the digest counts what the local
+    # model wrote and lists its lines for the dreamer.
+    assert d1["voice"]["local"] == 0 and d1["voice"]["narrations"] > 0
+    events.append("system", None, "narrate", {"text": "Wynn hums at the mill.", "src": "local"},
+                  room_id="r-mill")
+    d3 = dream.digest(WORLD)
+    assert d3["voice"]["local"] == 1 and d3["voice"]["local_lines"] == ["Wynn hums at the mill."]
+    assert "1 of" in dream.render_digest(d3) and "Wynn hums at the mill." in dream.render_digest(d3)
     dream.mark(WORLD)
     assert dream.digest(WORLD)["players"]["Ada"]["inputs"] == []
 

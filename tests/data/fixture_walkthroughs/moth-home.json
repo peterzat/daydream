@@ -5,7 +5,8 @@
   "segments": [
     {"name": "time begins", "commands": [
       {"cmd": "light lamp", "expect": {"flag": {"STARTED": true}, "phase": "day", "day": {"eq": 1}}},
-      {"clock": "@dusk", "expect": {"arc": {"moth": "open"}, "phase": "dusk"}}
+      {"clock": "@dusk", "expect": {"arc": {"moth": "open"}, "phase": "dusk",
+                                     "narrate_contains": "A small moth-shaped hour settles on the lane."}}
     ]},
     {"name": "the moth goes home", "commands": [
       {"cmd": "east", "expect": {"room": "r-lane"}},

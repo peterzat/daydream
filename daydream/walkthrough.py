@@ -133,6 +133,9 @@ def join(run: Run, who: str, name: str, slot: int | None = None) -> str:
 
 async def run_step(run: Run, step: dict, *, honor_at: bool = True) -> None:
     world_id = _world_id()
+    # Marked before the clock moves, so a step's narration includes what its
+    # clock change brought (a dusk arrival, a storylet), not only its command.
+    before = events.max_seq()
     if honor_at and isinstance(step.get("at"), str):
         worldclock.set_fake_now(step["at"])
         village.catch_up(world_id)
@@ -146,7 +149,6 @@ async def run_step(run: Run, step: dict, *, honor_at: bool = True) -> None:
         j = step["join"]
         join(run, j.get("as", "B"), j.get("name", "Dreamer"), j.get("slot"))
     actor = run.actors.get(step.get("as", "A"))
-    before = events.max_seq()
     label = step.get("cmd") or json.dumps(step.get("command") or {})
     if "cmd" in step:
         if actor is None:

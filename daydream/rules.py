@@ -367,7 +367,7 @@ def _eval_story_condition(cond: dict, ctx: dict) -> bool | None:
         about = _ref_id(cond["about"], ctx) if "about" in cond else None
         if not who:
             return False
-        return knowledge.npc_knows(world_id, who, str(cond["knows"]), about=about)
+        return knowledge.npc_knows(world_id, who, str(cond["knows"]), about=about, ctx=ctx)
     if "collected" in cond:
         from daydream import collect
 

@@ -546,6 +546,15 @@ def _authored_pools(npc_id: str) -> dict[str, list[str]] | None:
     return None if pools is _GENERIC_DRIFT_POOL else pools
 
 
+PHASE_BUCKETS = ("dawn", "day", "dusk", "night")
+
+
+def is_phase_bucket(key: str) -> bool:
+    """A drift bucket keyed to a time of day ("night", "night@r-room"), not a
+    mood: only valid while that phase holds, so never borrowed elsewhere."""
+    return str(key).split("@", 1)[0] in PHASE_BUCKETS
+
+
 def _pick_authored(npc: dict[str, Any], pools: dict[str, list[str]]) -> str | None:
     """The next authored line for this NPC in its room: the mood bucket (else
     default, else any), never repeating a line within the recent tellings
@@ -555,7 +564,9 @@ def _pick_authored(npc: dict[str, Any], pools: dict[str, list[str]]) -> str | No
     mood = npc.get("mood")
     # Time of day wins over mood (a keeper asleep at night does not "watch
     # the dusk come down"): a bucket named for the village's current phase
-    # (dawn / day / dusk / night) is used when the NPC authors one.
+    # (dawn / day / dusk / night) is used when the NPC authors one, and a
+    # "<phase>@<room-id>" bucket beats it while the NPC is in that room (asleep
+    # in bed at night, but awake on a hill if a story keeps them up).
     phase = None
     try:
         from daydream import village
@@ -563,11 +574,15 @@ def _pick_authored(npc: dict[str, Any], pools: dict[str, list[str]]) -> str | No
         phase = village.phase(npc["world_id"])
     except Exception:
         phase = None
-    if phase and pools.get(phase):
+    here = f"{phase}@{npc.get('current_room_id')}" if phase else None
+    if here and pools.get(here):
+        bucket = here
+    elif phase and pools.get(phase):
         bucket = phase
     else:
-        bucket = mood if mood and pools.get(mood) else (
-            "default" if pools.get("default") else next((k for k, v in pools.items() if v), None))
+        bucket = mood if mood and pools.get(mood) and not is_phase_bucket(mood) else (
+            "default" if pools.get("default") else next(
+                (k for k, v in pools.items() if v and not is_phase_bucket(k)), None))
     if bucket is None:
         return None
     lines = [ln.replace("{name}", npc["name"]) for ln in pools[bucket] if isinstance(ln, str)]
@@ -671,7 +686,7 @@ async def _tick(rng: random.Random | None = None) -> bool:
         actor_type="system",
         actor_id=None,
         kind="narrate",
-        payload={"text": text},
+        payload={"text": text, "src": "local"} if llm_text is not None else {"text": text},
         room_id=room_id,
     )
     _last_emitted[room_id] = text

@@ -410,3 +410,13 @@ async def test_an_arc_opened_during_a_catch_up_records_its_own_day():
     days = sorted(story.arc_state(WORLD, a).get("opened_day") for a in ("moth", "reed"))
     assert days[0] == 1                # the day-1 dusk opened the first guest
     assert days[1] in (2, 3)           # the second only after the cap freed
+
+
+async def test_knows_honors_an_authored_facts_own_condition():
+    """The `knows` condition applies the fact's `if`, exactly as the dialogue
+    context does: a gated fact is not known while its gate is shut."""
+    assert knowledge.npc_knows(WORLD, "t-hob", "lamps-twelve")      # ungated
+    assert story.arc_status(WORLD, "moth") != "open"
+    assert not knowledge.npc_knows(WORLD, "t-hob", "moth-lost")    # arc not open
+    story.open_arc(WORLD, "moth", None, None)
+    assert knowledge.npc_knows(WORLD, "t-hob", "moth-lost")

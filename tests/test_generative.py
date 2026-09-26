@@ -131,6 +131,16 @@ async def test_examine_generates_once_then_serves_cache(monkeypatch):
     assert spy.call_count == 1  # unchanged
     assert "careful little sketches" in _last_narrate()
 
+    # Provenance (docs/REFLEXES.md): both tellings carry src=local; an
+    # authored seed's examine does not.
+    tellings = [e for e in events.fetch_since(0) if e.kind == "narrate"
+                and "careful little sketches" in e.payload["text"]]
+    assert len(tellings) == 2 and all(e.payload.get("src") == "local" for e in tellings)
+    objects.move("t-wren", "r-meadow")
+    await verbs.execute_command("t-wren", "examine", dobj_id="i-lantern")
+    last = [e for e in events.fetch_since(0) if e.kind == "narrate"][-1]
+    assert "src" not in last.payload
+
 
 @pytest.mark.asyncio
 async def test_examine_seeded_object_never_calls_llm(monkeypatch):

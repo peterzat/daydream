@@ -300,7 +300,9 @@ async def test_tick_authored_line_may_be_varied_but_never_replaced(monkeypatch):
     monkeypatch.setattr("daydream.llm.client.acompletion_json", invents)
     before_seq = events.max_seq()
     assert await drift._tick(rng=random.Random(0)) is True
-    assert events.fetch_since(before_seq)[0].payload["text"] in rook_lines
+    authored = events.fetch_since(before_seq)[0]
+    assert authored.payload["text"] in rook_lines
+    assert "src" not in authored.payload  # the authored line stood
 
     async def varies(system, user, **kw):
         line = user.split(": ", 1)[1]
@@ -309,8 +311,10 @@ async def test_tick_authored_line_may_be_varied_but_never_replaced(monkeypatch):
     monkeypatch.setattr("daydream.llm.client.acompletion_json", varies)
     before_seq = events.max_seq()
     assert await drift._tick(rng=random.Random(1)) is True
-    text = events.fetch_since(before_seq)[0].payload["text"]
+    varied = events.fetch_since(before_seq)[0]
+    text = varied.payload["text"]
     assert text.startswith("Rook, unhurried,")
+    assert varied.payload.get("src") == "local"  # provenance (docs/REFLEXES.md)
     assert drift.validate_variation("Rook hums low.", "Rook hums quietly.", "Rook")
     assert not drift.validate_variation("Rook hums low.", "Rook hums with Tamsin.", "Rook")
     assert not drift.validate_variation("Rook hums low.", 'Rook says "hi".', "Rook")
@@ -1149,3 +1153,25 @@ async def test_a_phase_bucket_wins_over_mood(monkeypatch):
            "current_room_id": "r-meadow"}
     pools = {"cheerful": ["Bell grins at a lantern."], "night": ["Bell sleeps soundly."]}
     assert drift._pick_authored(npc, pools) == "Bell sleeps soundly."
+
+
+@pytest.mark.tier_medium
+@pytest.mark.asyncio
+async def test_a_phase_at_room_bucket_beats_the_phase_bucket(monkeypatch):
+    """`night@<room>` beats `night` while the NPC is in that room, and a
+    room-keyed bucket never leaks elsewhere: a keeper asleep in bed at night is
+    awake on the hill if a story keeps them up there."""
+    from daydream import config
+    db.init_live(migrations_dir=config.MIGRATIONS_DIR)
+    monkeypatch.setattr("daydream.village.phase", lambda world_id, at=None: "night")
+    pools = {"default": ["Bell looks up at the stars."],
+             "night@r-bedroom": ["Bell sleeps soundly under the quilt."]}
+    npc = {"id": "t-x", "name": "Bell", "world_id": "w-bunny", "mood": None,
+           "current_room_id": "r-bedroom"}
+    assert drift._pick_authored(npc, pools) == "Bell sleeps soundly under the quilt."
+    npc["current_room_id"] = "r-hill"
+    assert drift._pick_authored(npc, pools) == "Bell looks up at the stars."
+    # A phase bucket is never the "any" fallback when no default exists.
+    assert drift._pick_authored(npc, {"night@r-bedroom": ["asleep"], "calm": ["awake"]}) == "awake"
+    assert drift.is_phase_bucket("dawn@r-lamphouse") and drift.is_phase_bucket("night")
+    assert not drift.is_phase_bucket("cheerful")

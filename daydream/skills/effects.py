@@ -217,7 +217,8 @@ def dispatch_effects(
     `origin="llm"` marks a model-authored batch (dialogue, data skills):
     each effect is first narrowed by `_sanitize_llm_effect`, so a model can
     never carry authored-only properties onto a spawn or reach outside the
-    actor's scope (criterion 19). Engine verbs and authored rules pass the
+    actor's scope (criterion 19), and its narrations are tagged
+    `src: "local"` in the event payload. Engine verbs and authored rules pass the
     default `origin="engine"` and are unaffected.
 
     Malformed entries (non-dicts) get a narrate fallback and are logged;
@@ -248,6 +249,8 @@ def dispatch_effects(
                 applied.append(AppliedEffect(kind, None))
                 continue
             eff = narrowed
+            if kind == "narrate":
+                eff = {**eff, "src": "local"}
         handler = _HANDLERS[kind]
         try:
             event = handler(eff, actor_id=actor_id, room_id=room_id, world_id=world_id)
@@ -285,8 +288,14 @@ def _apply_narrate(
     recipient: str | None = None
     if isinstance(to, str) and to.strip():
         recipient = actor_id if to.strip() == "@actor" else to.strip()
+    payload = {"text": text.strip()}
+    if eff.get("src") == "local":
+        # Provenance (docs/REFLEXES.md): the local model wrote this line.
+        # Absent means authored or engine text. Read by the dream digest and
+        # the playtest analysis; the SPA ignores it.
+        payload["src"] = "local"
     return events.append(
-        "system", None, "narrate", {"text": text.strip()},
+        "system", None, "narrate", payload,
         room_id=target_room, recipient_id=recipient,
     )
 

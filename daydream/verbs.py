@@ -616,7 +616,10 @@ async def _handle_examine(actor, room_id, dobj, iobj, args, spec) -> None:
     cache."""
     cached = dobj.properties.get("examined_text")
     if isinstance(cached, str) and cached.strip():
-        _dispatch(actor, room_id, [{"kind": "narrate", "text": _examine_line(dobj, cached) + _container_glance(dobj), "to": "@actor"}], spec)
+        eff = {"kind": "narrate", "text": _examine_line(dobj, cached) + _container_glance(dobj), "to": "@actor"}
+        if dobj.properties.get("examined_src") == "local":
+            eff["src"] = "local"  # the lazy LLM path below wrote this cache
+        _dispatch(actor, room_id, [eff], spec)
         return
     if dobj.kind == "toon":
         appearance = dobj.properties.get("appearance_seed", "")
@@ -644,7 +647,8 @@ async def _handle_examine(actor, room_id, dobj, iobj, args, spec) -> None:
         return False
     _dispatch(actor, room_id, [
         {"kind": "set_property", "target_id": dobj.id, "key": "examined_text", "value": detail},
-        {"kind": "narrate", "text": _examine_line(dobj, detail), "to": "@actor"},
+        {"kind": "set_property", "target_id": dobj.id, "key": "examined_src", "value": "local"},
+        {"kind": "narrate", "text": _examine_line(dobj, detail), "to": "@actor", "src": "local"},
     ], spec)
 
 

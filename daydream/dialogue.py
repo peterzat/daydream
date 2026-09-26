@@ -330,9 +330,12 @@ def _fresh_gesture(npc: objects.Object, gesture: str, recent: list[str]) -> str:
     key = _gesture_key(compose(npc.name, gesture, ""))
     if not key or not any(_gesture_key(r) == key for r in recent):
         return gesture
+    from daydream.drift import is_phase_bucket
+
     pools = npc.properties.get("drift_pools")
-    lines = [ln for v in (pools.values() if isinstance(pools, dict) else [])
-             if isinstance(v, list) for ln in v if isinstance(ln, str)]
+    lines = [ln for k, v in (pools.items() if isinstance(pools, dict) else [])
+             if isinstance(v, list) and not is_phase_bucket(k)
+             for ln in v if isinstance(ln, str)]
     lines = [ln for ln in lines if not any(_gesture_key(r) == _gesture_key(ln) for r in recent)]
     if not lines:
         return gesture
@@ -417,7 +420,8 @@ async def talk(actor: objects.Object, npc: objects.Object, text: str, room_id: s
         if ev is not None and authored:
             spoken = None  # the author wrote this moment; it has been told
     if spoken is not None:
-        events.append("system", None, "narrate", {"text": spoken}, room_id=room_id)
+        events.append("system", None, "narrate", {"text": spoken, "src": "local"},
+                      room_id=room_id)
         _note_opener(world_id, npc.id, spoken)
         _note_line(world_id, npc.id, spoken)
     story.remember_exchange(world_id, npc.id, actor.id, text, spoken or "(the moment)")

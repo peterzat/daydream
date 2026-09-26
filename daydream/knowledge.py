@@ -90,13 +90,29 @@ def deed_known_by(fact: dict, npc_id: str, now=None) -> bool:
     return False
 
 
+_CHECKING: set[str] = set()
+
+
 def npc_knows(world_id: str, npc_id: str, fact_id: str,
-              about: str | None = None, now=None) -> bool:
+              about: str | None = None, now=None, ctx: dict | None = None) -> bool:
     """The `knows` rule condition: does this NPC know the fact (an authored
-    fact id, or any deed fact with that id, optionally about one player)?"""
+    fact id, or any deed fact with that id, optionally about one player)?
+    An authored fact is known only while its own `if` holds (the same test
+    the dialogue context applies), evaluated in the caller's rule context
+    when given, else the world's."""
     auth = facts_def(world_id).get(fact_id)
     if isinstance(auth, dict) and about is None and _in(npc_id, auth.get("known_by")):
-        return True
+        if not auth.get("if"):
+            return True
+        if fact_id not in _CHECKING:  # a fact gated on knowing itself is not known
+            from daydream import rules
+
+            _CHECKING.add(fact_id)
+            try:
+                if rules.conditions_hold(auth["if"], ctx or rules.world_ctx(world_id, None, "facts")):
+                    return True
+            finally:
+                _CHECKING.discard(fact_id)
     for f in deed_facts(world_id):
         if f.get("id") != fact_id:
             continue

@@ -192,7 +192,10 @@ async def test_a_worn_opening_gesture_is_swapped_for_an_authored_one(monkeypatch
     ada = player(1, "Ada", "r-green")
     hob = objects.get("t-hob")
     objects.set_property("t-hob", "drift_pools", {"default": [
-        "Hob polishes a lamp glass until it squeaks.", "Hob counts the lamps under their breath."]})
+        "Hob polishes a lamp glass until it squeaks.", "Hob counts the lamps under their breath."],
+        # Time-of-day buckets are never borrowed as a talking gesture.
+        "night": ["Hob sleeps soundly under the quilt."],
+        "dawn@r-green": ["Hob snores gently."]})
     _mock(monkeypatch, {"gesture": "Hob leans on the ladder and hums.", "say": "Evening.", "advance": "none"})
     monkeypatch.setenv("DAYDREAM_DIALOGUE_NBEST", "1")
     first = " ".join(await talk(ada, "t-hob", "hi"))
@@ -209,3 +212,23 @@ def test_pet_names_are_dampened_after_recent_use():
     assert dlg._dampen_pet_names(hob, "Welcome back, little one.", recent) == "Welcome back."
     assert dlg._dampen_pet_names(hob, "Little one, the lamps are lit.", recent) == "The lamps are lit."
     assert dlg._dampen_pet_names(hob, "Welcome back, little one.", []) == "Welcome back, little one."
+
+
+async def test_a_local_reply_is_tagged_and_an_authored_beat_is_not(monkeypatch):
+    """Provenance (docs/REFLEXES.md): the 9B's improvised line carries
+    src=local in the event payload; engine and authored lines never do."""
+    ada = player(1, "Ada", "r-green")
+    _mock(monkeypatch, {"gesture": "Hob smiles.", "say": "Evening.", "advance": "none"})
+    monkeypatch.setenv("DAYDREAM_DIALOGUE_NBEST", "1")
+    before = events.max_seq()
+    await talk(ada, "t-hob", "hi")
+    evs = [e for e in events.fetch_since(before) if e.kind == "narrate"]
+    assert evs and evs[-1].payload.get("src") == "local"
+    before = events.max_seq()
+    await verbs_look(ada)
+    assert all("src" not in e.payload for e in events.fetch_since(before) if e.kind == "narrate")
+
+
+async def verbs_look(actor):
+    from daydream import verbs
+    await verbs.execute_command(actor, "look")

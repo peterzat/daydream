@@ -521,11 +521,17 @@ def digest(world_id: str | None = None) -> dict:
     kinds = {}
     for e in since_events:
         kinds[e.kind] = kinds.get(e.kind, 0) + 1
+    # Reflexes, not voice (docs/REFLEXES.md): how much of what players read
+    # the local model wrote, and a sample of its lines for the dreamer to read.
+    told = [e for e in since_events if e.kind == "narrate"]
+    local = [e for e in told if e.payload.get("src") == "local"]
+    voice = {"narrations": len(told), "local": len(local),
+             "local_lines": [e.payload.get("text") for e in local[-40:]]}
     return {
         "world": world_id, "since": m, "now": worldclock.iso(),
         "village": village.status(world_id) if village.time_def(world_id) else None,
         "players": by_player, "arcs": arcs, "grown_rooms": grown, "deeds": deeds,
-        "chronicle": story.chronicle(world_id), "event_counts": kinds,
+        "chronicle": story.chronicle(world_id), "event_counts": kinds, "voice": voice,
         "dreams_applied": [a["id"] for a in applied(world_id)],
     }
 
@@ -561,6 +567,13 @@ def render_digest(d: dict) -> str:
     lines += ["", "## Chronicle"]
     for c in d["chronicle"] or [{"text": "(nothing yet)"}]:
         lines.append(f"- {c.get('text')}")
+    v = d.get("voice") or {}
+    if v:
+        lines += ["", "## Voice (authored vs local)",
+                  f"{v['local']} of {v['narrations']} narrations were written by the local "
+                  "model; the rest were authored or engine text. Recent local lines "
+                  "(candidates for an authored rewrite):"]
+        lines += [f"- {t}" for t in v["local_lines"]] or ["- (none)"]
     return "\n".join(lines) + "\n"
 
 
