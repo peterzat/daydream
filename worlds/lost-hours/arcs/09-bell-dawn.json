@@ -1,0 +1,243 @@
+{
+  "comment": "Keeper arc 8 (canon section 7): Bell's First Dawn (Bell). Bell has never seen a dawn. Two ways through: stay up with Bell (Linden's night tea wakes them in the Lamp House at night; Bell walks up the Hill of Long Shadows, their schedule moved there for the night; a dreamer keeps them talking about the stars; at dawn a storylet closes first-dawn if Bell is still awake on the hill, or lets Bell doze through it and walks them home to try another night), or find that dusk is enough (Tace fans spare clock hands into a half-sun under one of Bell's lantern-skins; Bell lights the sunrise lantern at dusk). No timed ending: the thread waits for a dreamer.",
+  "things": [
+    {"id": "o-bell-dawn-skin", "name": "lantern-skin", "location": {"room": "r-lamphouse"},
+     "seed": "a spare paper lantern-skin folded flat, thin as a moth's wing and faintly sooty at the seams",
+     "aliases": ["skin", "lantern skin", "paper skin", "spare lantern-skin"],
+     "rules": [
+       {"on": "give", "if": [{"iobj": "t-tace"}, {"carried": "@self"}, {"arc": "bell-dawn"},
+                             {"beat": "bell-dawn/tace-sunburst"}],
+        "do": [
+          {"kind": "move_object", "object_id": "o-bell-dawn-skin", "dest_id": "t-tace"},
+          {"kind": "move_object", "object_id": "o-bell-dawn-lantern", "dest_id": "@actor"},
+          {"kind": "narrate",
+           "text": "Tace smooths the lantern-skin flat on the bench, and for once their hands move quickly. They fan a dozen spare clock hands into a half-sun, bind them at the hub with fine brass wire, and stretch the skin over the rays. When they hold it up, it is a morning, folded small. 'For Bell,' Tace says. 'Give it to them at dusk, so it can be lit with the others.'"},
+          {"kind": "advance_beat", "arc": "bell-dawn", "beat": "sunrise-made"},
+          {"kind": "add_fact", "id": "bell-dawn-sunrise-made",
+           "text": "{actor} asked Tace to make Bell a lantern shaped like a sunrise. It's meant as a surprise.",
+           "known_by": ["t-tace"],
+           "spread": [{"to": ["t-linden", "t-mott"], "after_minutes": 60}]}
+        ]},
+       {"on": "give", "if": [{"iobj": "t-tace"}, {"carried": "@self"}],
+        "do": [{"kind": "narrate",
+                "text": "Tace turns the lantern-skin over and holds it to the window light. 'One of Bell's,' they say. 'Bell will want it back, friend, unless you've a plan for it.'"}]}
+     ]},
+
+    {"id": "o-bell-dawn-flask", "name": "flask of night tea", "location": "offstage",
+     "seed": "a dented tin flask of Linden's night tea, strong enough to stand a spoon in, and somehow still hot however long you carry it",
+     "aliases": ["flask", "night tea", "tea flask", "dented flask"],
+     "rules": [
+       {"on": "give", "if": [{"iobj": "t-bell"}, {"carried": "@self"}, {"arc": "bell-dawn"},
+                             {"in": "r-lamphouse"}, {"phase": "night"}],
+        "do": [
+          {"kind": "narrate",
+           "text": "Bell surfaces from the blankets one eye at a time. They sniff the flask, sit bolt upright, and take a long swallow. 'Linden's night tea,' they croak. 'You planned this.' They wind the butter-yellow scarf twice round, grab the hooked pole out of habit, and clatter down the stair. 'The hill! Come on, before I think about it.'"},
+          {"kind": "set_property", "target_id": "t-bell", "key": "schedule",
+           "value": {"dawn": "r-hill", "day": "r-square", "dusk": "r-square", "night": "r-hill"}},
+          {"kind": "set_property", "target_id": "t-bell", "key": "presence_text",
+           "value": "Bell sits on the weathered bench in the butter-yellow scarf, facing east, blinking hard and determinedly awake."},
+          {"kind": "move_toon", "toon_id": "t-bell", "room_id": "r-hill",
+           "arrive_text": "Bell comes puffing up the hill with the hooked pole over one shoulder and drops onto the weathered bench, facing east."},
+          {"kind": "advance_beat", "arc": "bell-dawn", "beat": "bell-woken"},
+          {"kind": "add_fact", "id": "bell-dawn-woke-bell",
+           "text": "{actor} woke Bell in the night with Linden's night tea and walked them up the Hill of Long Shadows to wait for the dawn.",
+           "known_by": ["t-bell", "t-sorrel"],
+           "spread": [{"to": ["t-linden"], "after_minutes": 60}]}
+        ]},
+       {"on": "give", "if": [{"iobj": "t-bell"}, {"carried": "@self"}, {"arc": "bell-dawn"},
+                             {"in": "r-lamphouse"}, {"phase": "dawn"}],
+        "do": [{"kind": "narrate",
+                "text": "Bell mumbles into the pillow and doesn't open their eyes. The window faces west, and out east, somewhere, the dawn is already going on without them. 'Tonight,' Bell mumbles. 'Wake me tonight.'"}]},
+       {"on": "give", "if": [{"iobj": "t-bell"}, {"carried": "@self"}, {"arc": "bell-dawn"},
+                             {"in": "r-hill"}],
+        "do": [{"kind": "narrate",
+                "text": "Bell takes another swallow and shudders happily. 'Awake! Mostly. Keep me talking.'"}]},
+       {"on": "give", "if": [{"iobj": "t-bell"}, {"carried": "@self"}, {"arc": "bell-dawn"}],
+        "do": [{"kind": "narrate",
+                "text": "Bell sniffs the flask and grins. 'Linden's night tea! Not yet, not yet, or I'll be wide awake at teatime and asleep by the stars. Wake me with it tonight, up in the Lamp House.'"}]}
+     ]},
+
+    {"id": "o-bell-dawn-lantern", "name": "sunrise lantern", "location": "offstage",
+     "seed": "a paper lantern-skin stretched over a half-sun of fanned brass clock hands, bound at the hub with fine wire; unlit, it looks like a morning folded up small",
+     "aliases": ["sunrise", "brass sunrise"],
+     "properties": {"state": "new", "state_text": {
+       "hung": "It hangs on the easternmost pole of the square now. Bell lights it last of all, every dusk, and for a while the cobbles glow rose and gold."}},
+     "rules": [
+       {"on": "give", "if": [{"iobj": "t-bell"}, {"carried": "@self"}, {"arc": "bell-dawn"},
+                             {"phase": "dusk"}],
+        "do": [{"kind": "close_arc", "arc": "bell-dawn", "ending": "dusk-enough"}]},
+       {"on": "give", "if": [{"iobj": "t-bell"}, {"carried": "@self"}, {"phase": ["night", "dawn"]}],
+        "do": [{"kind": "narrate",
+                "text": "Bell is fast asleep, one arm flung over their eyes, and doesn't stir. Better bring it at dusk, when the lanterns are lit."}]},
+       {"on": "give", "if": [{"iobj": "t-bell"}, {"carried": "@self"}],
+        "do": [{"kind": "narrate",
+                "text": "Bell turns the sunrise lantern over in their sooty hands, and their face does something complicated and bright. 'Oh. Oh! Keep it till dusk, would you? I want to light it properly, last of all.'"}]},
+       {"on": "take", "if": [{"prop": "state", "of": "@self", "eq": "hung"}],
+        "do": [{"kind": "narrate", "to": "@actor",
+                "text": "It hangs where Bell can light it every dusk. You leave it there."}]}
+     ]},
+
+    {"id": "o-bell-dawn-light", "name": "sliver of first light", "location": "offstage",
+     "seed": "a sliver of the first light Bell ever saw, folded small and still faintly rose at the edges; it is cool in the hand, the way a morning is",
+     "aliases": ["first light", "sliver"]}
+  ],
+  "arcs": {
+    "bell-dawn": {
+      "title": "Bell's First Dawn",
+      "kind": "keeper",
+      "opens": "rule",
+      "summary": "Bell lights every dusk and has never seen a dawn. Help them stay awake all night on the Hill of Long Shadows, with Linden's night tea and some company, or give them a lantern shaped like a sunrise to light at dusk.",
+      "beats": {
+        "bell-confides": {
+          "npc": "t-bell",
+          "topic": "staying up",
+          "topic_aliases": ["staying up all night", "stay up", "staying awake", "stay awake",
+                            "a whole night", "the whole night", "seeing a dawn"],
+          "if": [{"rel": "t-bell", "gte": 2}],
+          "hint": "the player asks Bell about staying up all night to see a dawn",
+          "text": "Bell laughs, then doesn't. 'I've tried! I get as far as the last lantern and then I'm yawning into my scarf.' They glance east. 'I'd need company, and something of Linden's, hot and strong. Or a sunrise I could just light at dusk, like a lantern, and never mind the staying up. Tace can bend brass into anything.'"
+        },
+        "linden-flask": {
+          "npc": "t-linden",
+          "topic": "night tea",
+          "topic_aliases": ["a flask of night tea", "flask of night tea", "the night tea", "tea for bell",
+                            "a flask for bell", "strong tea", "tea for staying up"],
+          "after": ["bell-confides"],
+          "hint": "the player asks Linden for something to help Bell stay awake all night",
+          "text": "Linden's eyebrows go up, and then she's already reaching for a dented flask at the back of the stove. 'Night tea. Strong enough to stand a spoon in.' She screws the lid on tight and presses it into your hands. 'That lamb will be asleep before the last lantern's cold, pet, so you'll have to wake them, up in the Lamp House, and put this in their hands. Gently, mind.'",
+          "do": [
+            {"kind": "move_object", "object_id": "o-bell-dawn-flask", "dest_id": "@actor"},
+            {"kind": "add_fact", "id": "bell-dawn-helping",
+             "text": "{actor} is helping Bell stay awake all night to see a dawn from the Hill of Long Shadows.",
+             "known_by": ["t-linden", "t-bell"],
+             "spread": [{"to": ["t-sorrel", "t-tace", "t-mott"], "after_minutes": 30}]}
+          ]
+        },
+        "bell-woken": {
+          "after": ["linden-flask"],
+          "hint": "the player wakes Bell in the Lamp House at night with Linden's night tea"
+        },
+        "named-stars": {
+          "npc": "t-bell",
+          "topic": "the stars",
+          "topic_aliases": ["stars", "the night sky", "night sky", "star names", "naming the stars"],
+          "after": ["bell-woken"],
+          "if": [{"phase": "night"}, {"in": "r-hill"}],
+          "hint": "on the hill at night, the player keeps Bell awake by asking them about the stars",
+          "text": "Bell tips their head back and starts naming the stars the way they name lanterns. 'That's Pollen's cousin. That one's Old Blue, gone up in the world, and the little one's Thimble.' They yawn, catch it halfway, and laugh. 'Keep asking me things. It's working.'",
+          "do": [
+            {"kind": "add_fact", "id": "bell-dawn-sat-up",
+             "text": "{actor} sat up with Bell on the Hill of Long Shadows, naming the stars like lanterns to keep them awake for the dawn.",
+             "known_by": ["t-bell"],
+             "spread": [{"to": "all", "after_minutes": 60}]}
+          ]
+        },
+        "tace-sunburst": {
+          "npc": "t-tace",
+          "topic": "a sunrise lantern",
+          "topic_aliases": ["sunrise lantern", "the sunrise lantern", "a lantern like a sunrise",
+                            "a lantern shaped like a sunrise", "a sunrise for bell", "a brass sunrise"],
+          "after": ["bell-confides"],
+          "hint": "the player asks Tace to make a lantern shaped like a sunrise for Bell",
+          "text": "Tace's eyes go to a jar of spare clock hands on the bench, and something in their face wakes a little. 'A sunrise,' they say. 'I could fan these into one.' They are already sorting hands by length. 'Bring me one of Bell's spare lantern-skins from the Lamp House, friend, and I'll give it something to glow around.'"
+        },
+        "sunrise-made": {
+          "after": ["tace-sunburst"],
+          "hint": "the player brings Tace one of Bell's lantern-skins, and Tace makes the sunrise lantern"
+        }
+      },
+      "endings": {
+        "first-dawn": {
+          "summary": "kept awake all night on the Hill of Long Shadows, Bell sees their first dawn",
+          "room": "r-hill",
+          "text": "The sky over the hill goes grey, then pearl, then the faintest rose, the way a thought comes back to you. Bell stops talking in the middle of a word. They watch the whole of it with the butter-yellow scarf pulled up to their chin, and when the first gold edge comes over the rim of the world they laugh out loud, once, like a lantern catching. 'Oh,' Bell whispers. 'It is pink. It really is pink.'",
+          "ledger": "{helpers} kept Bell awake all night on the Hill of Long Shadows, and Bell saw their first dawn. It was pink.",
+          "do": [
+            {"kind": "set_property", "target_id": "t-bell", "key": "schedule",
+             "value": {"dawn": "r-lamphouse", "day": "r-square", "dusk": "r-square", "night": "r-lamphouse"}},
+            {"kind": "set_property", "target_id": "t-bell", "key": "presence_text",
+             "value": "Bell is up a small ladder coaxing a lantern alight, humming something that sounds like a morning, and lifts a sooty hand in greeting."},
+            {"kind": "set_property", "target_id": "t-bell", "key": "mood", "value": "cheerful"},
+            {"kind": "move_object", "object_id": "o-bell-dawn-light", "dest_id": "r-hill"},
+            {"kind": "move_toon", "toon_id": "t-bell", "room_id": "r-lamphouse",
+             "leave_text": "Then Bell yawns the biggest yawn of their life and wanders down the hill toward bed, looking back over one shoulder the whole way. On the bench where they sat, a sliver of the first light has stayed behind."}
+          ]
+        },
+        "dusk-enough": {
+          "summary": "Bell lights a lantern shaped like a sunrise at dusk and decides dusk is enough",
+          "text": "Bell holds the sunrise lantern up to the last of the light, and for once has nothing to say. They hang it on the easternmost pole and tip the hooked pole's little flame to the wick, and the whole square goes rose and gold, the way the sky must, somewhere, in the mornings. Bell watches it a long time. 'Huh,' they say softly. 'So that's what they look like.' Then, grinning, they dab a thumb of soot on your cheek for luck. 'Dusk is enough, I think. Dusk, and this.'",
+          "ledger": "{helpers} gave Bell a lantern shaped like a sunrise, and Bell lit it at dusk and decided dusk is enough.",
+          "do": [
+            {"kind": "move_object", "object_id": "o-bell-dawn-lantern", "dest_id": "r-square"},
+            {"kind": "set_property", "target_id": "o-bell-dawn-lantern", "key": "state", "value": "hung"},
+            {"kind": "spawn_object", "name": "thumbprint of soot", "location_id": "@actor",
+             "seed": "a thumbprint of lamp-soot Bell dabbed on your cheek for luck; somehow you can carry it, and it smells of wick-smoke and warm paper",
+             "aliases": ["soot", "thumbprint", "soot thumbprint"],
+             "generated_by": "bell-dawn:dusk-enough"},
+            {"kind": "set_property", "target_id": "t-bell", "key": "mood", "value": "cheerful"},
+            {"kind": "adjust_rel", "npc": "t-bell", "delta": 2},
+            {"kind": "add_fact", "id": "bell-dawn-gave-sunrise",
+             "text": "{actor} gave Bell a lantern shaped like a sunrise, and Bell hung it on the easternmost pole and lit it at dusk.",
+             "known_by": ["t-bell"],
+             "spread": [{"to": "all", "after_minutes": 60}]}
+          ]
+        }
+      }
+    }
+  },
+  "facts": {
+    "bell-dawn-looking-east": {
+      "text": "Lately, after lighting the last lantern, Bell stands a moment looking east toward the Hill of Long Shadows, where the dawn is said to come up.",
+      "known_by": ["t-bell", "t-linden", "t-tace", "t-sorrel", "t-mott"],
+      "if": [{"arc": "bell-dawn"}]},
+    "bell-dawn-night-tea": {
+      "text": "Linden brews a night tea strong enough to stand a spoon in, for anyone who needs to stay awake. Bell has never managed a whole night without falling asleep.",
+      "known_by": ["t-linden", "t-bell"],
+      "if": [{"arc": "bell-dawn", "ne": "dormant"}]},
+    "bell-dawn-the-hill": {
+      "text": "The Hill of Long Shadows is the one place in the village to watch a dawn from. The Lamp House, where Bell sleeps, has only a west window.",
+      "known_by": ["t-bell", "t-sorrel", "t-linden", "t-tace"],
+      "if": [{"arc": "bell-dawn"}]},
+    "bell-dawn-seen": {
+      "text": "Bell has seen a dawn at last, from the bench on the Hill of Long Shadows: grey, then pearl, then rose. It really is pink.",
+      "known_by": "all",
+      "if": [{"ending": "bell-dawn/first-dawn"}]},
+    "bell-dawn-sunrise-lantern": {
+      "text": "A sunrise lantern, a paper skin stretched over a half-sun of brass clock hands, hangs on the easternmost pole of the Lantern Square. Bell lights it last every dusk, and says dusk is enough.",
+      "known_by": "all",
+      "if": [{"ending": "bell-dawn/dusk-enough"}]}
+  },
+  "storylets": [
+    {"id": "bell-dawn-opens", "at": "dusk", "always": true, "once": true, "room": "r-square",
+     "summary": "after the last lantern, Bell stands looking east toward the dawn they have never seen",
+     "if": [{"flag": "CLOCK-STARTED"}, {"day": {"gte": 2}}, {"arc": "bell-dawn", "eq": "dormant"}],
+     "text": "When the last lantern is lit, Bell doesn't reach for the ladder. They stand a moment with the hooked pole on one shoulder, looking east, where the sky has already gone to ink. 'Someone told me the dawn comes up over the hill,' Bell says to the nearest lantern. 'Pink. Imagine.'",
+     "do": [
+       {"kind": "open_arc", "arc": "bell-dawn"},
+       {"kind": "set_property", "target_id": "t-bell", "key": "mood", "value": "thoughtful"}
+     ]},
+    {"id": "bell-dawn-first-light", "at": "dawn", "always": true, "room": "r-hill",
+     "summary": "Bell, still awake on the hill, sees the dawn come up",
+     "if": [{"arc": "bell-dawn"}, {"beat": "bell-dawn/named-stars"}, {"contains": "t-bell", "of": "r-hill"}],
+     "do": [{"kind": "close_arc", "arc": "bell-dawn", "ending": "first-dawn"}]},
+    {"id": "bell-dawn-dozed", "at": "dawn", "always": true, "room": "r-hill",
+     "summary": "Bell dozes off on the hill bench and sleeps through the dawn",
+     "if": [{"arc": "bell-dawn"}, {"beat": "bell-dawn/bell-woken"}, {"beat": "bell-dawn/named-stars", "not": true},
+            {"contains": "t-bell", "of": "r-hill"}],
+     "text": "On the Hill of Long Shadows, Bell has fallen asleep on the bench with the butter-yellow scarf pulled over their nose, and the dawn comes up grey and pearl and rose right over them. Nobody has the heart to wake them. Later Bell blinks at the ordinary morning, laughs at themself, and wanders down to bed. Next time, they will need someone to keep them talking.",
+     "do": [
+       {"kind": "set_property", "target_id": "t-bell", "key": "schedule",
+        "value": {"dawn": "r-lamphouse", "day": "r-square", "dusk": "r-square", "night": "r-lamphouse"}},
+       {"kind": "set_property", "target_id": "t-bell", "key": "presence_text",
+        "value": "Bell is up a small ladder coaxing a lantern alight, and lifts a sooty hand in greeting."},
+       {"kind": "move_toon", "toon_id": "t-bell", "room_id": "r-lamphouse"}
+     ]},
+    {"id": "bell-dawn-sunrise-lit", "at": "dusk", "always": true, "room": "r-square",
+     "summary": "Bell lights the sunrise lantern last of all",
+     "if": [{"ending": "bell-dawn/dusk-enough"}],
+     "variants": [
+       "Last of all, Bell lights the sunrise lantern on the easternmost pole, and for a while the whole square glows rose and gold, like a morning that came early to visit.",
+       "Bell saves the sunrise lantern for last, as always. It catches, the cobbles go the color of a dawn, and Bell stands under it humming."
+     ]}
+  ]
+}

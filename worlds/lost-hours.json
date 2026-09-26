@@ -163,8 +163,7 @@
           "own_clock": true
         }
       }
-    },
-    "under_construction": true
+    }
   },
   "verbs": {
     "wind": {
@@ -1837,6 +1836,275 @@
           "text": "In the Little Post Office, Fen reads nothing aloud tonight. She runs a finger through the pigeonhole labelled TO ME, LATER, looking, as she does every night, for one particular hand. It isn't there. She straightens the little card and gives it a pat. 'Scenic route,' she murmurs."
         }
       ]
+    },
+    {
+      "id": "tace-hour-opens",
+      "at": "dawn",
+      "always": true,
+      "once": true,
+      "room": "r-loft",
+      "summary": "a new frost finds the loft window, and Tace does not pick up a tool",
+      "if": [
+        {
+          "flag": "CLOCK-STARTED"
+        },
+        {
+          "day": {
+            "gte": 3
+          }
+        },
+        {
+          "arc": "tace-hour",
+          "eq": "dormant"
+        }
+      ],
+      "text": "The season's first frost comes in the night, thin as lace across the loft's round window. In the grey morning Tace stands at the glass with both hands in their apron pockets, and does not pick up a single tool.",
+      "do": [
+        {
+          "kind": "open_arc",
+          "arc": "tace-hour"
+        },
+        {
+          "kind": "set_property",
+          "target_id": "o-tace-hour-window",
+          "key": "state",
+          "value": "frosted"
+        },
+        {
+          "kind": "set_property",
+          "target_id": "t-tace",
+          "key": "presence_text",
+          "value": "Tace stands at the frosted window with both hands in their apron pockets, and the bench behind them sits untouched."
+        },
+        {
+          "kind": "set_property",
+          "target_id": "t-tace",
+          "key": "mood",
+          "value": "wistful"
+        }
+      ]
+    },
+    {
+      "id": "tace-hour-jar-lamp",
+      "at": "night",
+      "always": true,
+      "cooldown_days": 3,
+      "room": "r-cellar",
+      "summary": "Umber turns the lantern toward the jar on the lowest shelf",
+      "if": [
+        {
+          "ending": "tace-hour/within-reach"
+        }
+      ],
+      "text": "Before she settles for the night, Umber turns the lantern a little, so that its light falls on the dusty jar on the lowest shelf. Then she goes back to her labels."
+    },
+    {
+      "id": "tace-hour-rung-clock",
+      "at": "day",
+      "always": true,
+      "cooldown_days": 3,
+      "room": "r-cellar",
+      "summary": "the little clock ticks on at the foot of Wend's ladder",
+      "if": [
+        {
+          "ending": "tace-hour/past-eleven"
+        }
+      ],
+      "text": "At the foot of Wend's ladder the little clock ticks on, soft and sure. Umber has started setting her own slow pace by it."
+    },
+    {
+      "id": "bell-dawn-opens",
+      "at": "dusk",
+      "always": true,
+      "once": true,
+      "room": "r-square",
+      "summary": "after the last lantern, Bell stands looking east toward the dawn they have never seen",
+      "if": [
+        {
+          "flag": "CLOCK-STARTED"
+        },
+        {
+          "day": {
+            "gte": 2
+          }
+        },
+        {
+          "arc": "bell-dawn",
+          "eq": "dormant"
+        }
+      ],
+      "text": "When the last lantern is lit, Bell doesn't reach for the ladder. They stand a moment with the hooked pole on one shoulder, looking east, where the sky has already gone to ink. 'Someone told me the dawn comes up over the hill,' Bell says to the nearest lantern. 'Pink. Imagine.'",
+      "do": [
+        {
+          "kind": "open_arc",
+          "arc": "bell-dawn"
+        },
+        {
+          "kind": "set_property",
+          "target_id": "t-bell",
+          "key": "mood",
+          "value": "thoughtful"
+        }
+      ]
+    },
+    {
+      "id": "bell-dawn-first-light",
+      "at": "dawn",
+      "always": true,
+      "room": "r-hill",
+      "summary": "Bell, still awake on the hill, sees the dawn come up",
+      "if": [
+        {
+          "arc": "bell-dawn"
+        },
+        {
+          "beat": "bell-dawn/named-stars"
+        },
+        {
+          "contains": "t-bell",
+          "of": "r-hill"
+        }
+      ],
+      "do": [
+        {
+          "kind": "close_arc",
+          "arc": "bell-dawn",
+          "ending": "first-dawn"
+        }
+      ]
+    },
+    {
+      "id": "bell-dawn-dozed",
+      "at": "dawn",
+      "always": true,
+      "room": "r-hill",
+      "summary": "Bell dozes off on the hill bench and sleeps through the dawn",
+      "if": [
+        {
+          "arc": "bell-dawn"
+        },
+        {
+          "beat": "bell-dawn/bell-woken"
+        },
+        {
+          "beat": "bell-dawn/named-stars",
+          "not": true
+        },
+        {
+          "contains": "t-bell",
+          "of": "r-hill"
+        }
+      ],
+      "text": "On the Hill of Long Shadows, Bell has fallen asleep on the bench with the butter-yellow scarf pulled over their nose, and the dawn comes up grey and pearl and rose right over them. Nobody has the heart to wake them. Later Bell blinks at the ordinary morning, laughs at themself, and wanders down to bed. Next time, they will need someone to keep them talking.",
+      "do": [
+        {
+          "kind": "set_property",
+          "target_id": "t-bell",
+          "key": "schedule",
+          "value": {
+            "dawn": "r-lamphouse",
+            "day": "r-square",
+            "dusk": "r-square",
+            "night": "r-lamphouse"
+          }
+        },
+        {
+          "kind": "set_property",
+          "target_id": "t-bell",
+          "key": "presence_text",
+          "value": "Bell is up a small ladder coaxing a lantern alight, and lifts a sooty hand in greeting."
+        },
+        {
+          "kind": "move_toon",
+          "toon_id": "t-bell",
+          "room_id": "r-lamphouse"
+        }
+      ]
+    },
+    {
+      "id": "bell-dawn-sunrise-lit",
+      "at": "dusk",
+      "always": true,
+      "room": "r-square",
+      "summary": "Bell lights the sunrise lantern last of all",
+      "if": [
+        {
+          "ending": "bell-dawn/dusk-enough"
+        }
+      ],
+      "variants": [
+        "Last of all, Bell lights the sunrise lantern on the easternmost pole, and for a while the whole square glows rose and gold, like a morning that came early to visit.",
+        "Bell saves the sunrise lantern for last, as always. It catches, the cobbles go the color of a dawn, and Bell stands under it humming."
+      ]
+    },
+    {
+      "id": "mott-minute-opens",
+      "at": "day",
+      "always": true,
+      "once": true,
+      "room": "r-workshop",
+      "summary": "Mott sweeps the same corner three times, one hand drifting to the tin",
+      "if": [
+        {
+          "flag": "CLOCK-STARTED"
+        },
+        {
+          "day": {
+            "gte": 4
+          }
+        },
+        {
+          "arc": "mott-minute",
+          "eq": "dormant"
+        }
+      ],
+      "text": "Mott sweeps the same corner of the workshop three times over. Each time, his free hand drifts to the tin on the shelf and rests on the lid, as if it might open by itself.",
+      "do": [
+        {
+          "kind": "open_arc",
+          "arc": "mott-minute"
+        },
+        {
+          "kind": "set_property",
+          "target_id": "t-mott",
+          "key": "presence_text",
+          "value": "Mott leans on the broom, one hand resting on the lid of the tin as if it might open by itself."
+        },
+        {
+          "kind": "set_property",
+          "target_id": "t-mott",
+          "key": "mood",
+          "value": "curious"
+        }
+      ]
+    },
+    {
+      "id": "mott-minute-humming",
+      "at": "day",
+      "always": true,
+      "cooldown_days": 3,
+      "room": "r-workshop",
+      "summary": "Mott hums while he sweeps",
+      "if": [
+        {
+          "ending": "mott-minute/looked-together"
+        }
+      ],
+      "text": "Mott sweeps a slow arc across the workshop floor, humming something under his breath he never used to hum. The broom seems to know the tune."
+    },
+    {
+      "id": "mott-minute-pigeonhole",
+      "at": "day",
+      "always": true,
+      "cooldown_days": 4,
+      "room": "r-post",
+      "summary": "Fen checks on the envelope in the TO ME, LATER pigeonhole",
+      "if": [
+        {
+          "ending": "mott-minute/kept-for-later"
+        }
+      ],
+      "text": "Fen runs a finger along the pigeonholes, pauses at the one marked TO ME, LATER, finds the cream envelope still waiting, and gives it a small approving pat."
     }
   ],
   "facts": {
@@ -2631,6 +2899,222 @@
       "if": [
         {
           "ending": "letters/dead-letter"
+        }
+      ]
+    },
+    "tace-hour-frost-window": {
+      "text": "A new frost has come to the loft window, and Tace has been standing at it instead of working. Frost mornings are hard on Tace.",
+      "known_by": [
+        "t-umber",
+        "t-mott",
+        "t-bell",
+        "t-linden"
+      ],
+      "if": [
+        {
+          "arc": "tace-hour"
+        }
+      ]
+    },
+    "tace-hour-wends-night": {
+      "text": "The first hard frost, the night the great clock stopped, was also the night Wend died. Tace sat up with Wend in the loft through the last of it, and Umber took the tea up at eleven.",
+      "known_by": [
+        "t-umber",
+        "t-mott",
+        "t-sorrel"
+      ],
+      "if": [
+        {
+          "beat": "tace-hour/umber-frost"
+        }
+      ]
+    },
+    "tace-hour-ladder": {
+      "text": "Wend's tall ladder, the only one that ever reached the Hour Cellar's highest shelf, was put away in the Old Workshop at Tace's asking, the morning after the first hard frost.",
+      "known_by": [
+        "t-mott",
+        "t-umber"
+      ],
+      "if": [
+        {
+          "arc": "tace-hour",
+          "ne": "dormant"
+        }
+      ]
+    },
+    "tace-hour-song": {
+      "text": "Wend always sang the same slow climbing song going up the tall ladder. Sorrel still knows it.",
+      "known_by": [
+        "t-sorrel",
+        "t-umber",
+        "t-mott"
+      ],
+      "if": [
+        {
+          "arc": "tace-hour",
+          "ne": "dormant"
+        }
+      ]
+    },
+    "tace-hour-jar-down": {
+      "text": "A jar that stood alone on the Hour Cellar's highest shelf, labeled in Wend's old hand, now sits unopened on the lowest shelf, where the lantern reaches. Nobody asks Tace about it.",
+      "known_by": [
+        "t-umber",
+        "t-tace",
+        "t-mott"
+      ],
+      "if": [
+        {
+          "ending": "tace-hour/within-reach"
+        }
+      ]
+    },
+    "tace-hour-clock-going": {
+      "text": "Tace's little clock, stopped at eleven since the first hard frost, is ticking again on the bottom rung of Wend's ladder in the Hour Cellar.",
+      "known_by": [
+        "t-tace",
+        "t-umber",
+        "t-mott"
+      ],
+      "if": [
+        {
+          "ending": "tace-hour/past-eleven"
+        }
+      ]
+    },
+    "tace-hour-bottom-step": {
+      "text": "One night this season Tace went down the cellar stair alone, as far as the bottom step, and came back up. Umber left a cup of tea on the step for next time.",
+      "known_by": [
+        "t-umber"
+      ],
+      "if": [
+        {
+          "ending": "tace-hour/another-season"
+        }
+      ]
+    },
+    "bell-dawn-looking-east": {
+      "text": "Lately, after lighting the last lantern, Bell stands a moment looking east toward the Hill of Long Shadows, where the dawn is said to come up.",
+      "known_by": [
+        "t-bell",
+        "t-linden",
+        "t-tace",
+        "t-sorrel",
+        "t-mott"
+      ],
+      "if": [
+        {
+          "arc": "bell-dawn"
+        }
+      ]
+    },
+    "bell-dawn-night-tea": {
+      "text": "Linden brews a night tea strong enough to stand a spoon in, for anyone who needs to stay awake. Bell has never managed a whole night without falling asleep.",
+      "known_by": [
+        "t-linden",
+        "t-bell"
+      ],
+      "if": [
+        {
+          "arc": "bell-dawn",
+          "ne": "dormant"
+        }
+      ]
+    },
+    "bell-dawn-the-hill": {
+      "text": "The Hill of Long Shadows is the one place in the village to watch a dawn from. The Lamp House, where Bell sleeps, has only a west window.",
+      "known_by": [
+        "t-bell",
+        "t-sorrel",
+        "t-linden",
+        "t-tace"
+      ],
+      "if": [
+        {
+          "arc": "bell-dawn"
+        }
+      ]
+    },
+    "bell-dawn-seen": {
+      "text": "Bell has seen a dawn at last, from the bench on the Hill of Long Shadows: grey, then pearl, then rose. It really is pink.",
+      "known_by": "all",
+      "if": [
+        {
+          "ending": "bell-dawn/first-dawn"
+        }
+      ]
+    },
+    "bell-dawn-sunrise-lantern": {
+      "text": "A sunrise lantern, a paper skin stretched over a half-sun of brass clock hands, hangs on the easternmost pole of the Lantern Square. Bell lights it last every dusk, and says dusk is enough.",
+      "known_by": "all",
+      "if": [
+        {
+          "ending": "bell-dawn/dusk-enough"
+        }
+      ]
+    },
+    "mott-minute-quiet": {
+      "text": "Lately Mott's free hand keeps drifting to the lid of his tin, where he keeps one small folded thing to himself.",
+      "known_by": [
+        "t-bell",
+        "t-tace",
+        "t-umber",
+        "t-linden",
+        "t-fen"
+      ],
+      "if": [
+        {
+          "arc": "mott-minute"
+        }
+      ]
+    },
+    "mott-minute-own": {
+      "text": "The small folded thing in Mott's tin is a minute: his own, the minute he first arrived in the village, before he remembers anything else. He has never looked at it, and he is a little afraid to.",
+      "known_by": [
+        "t-mott",
+        "t-umber"
+      ],
+      "if": [
+        {
+          "beat": "mott-minute/mott-confides"
+        }
+      ]
+    },
+    "mott-minute-arrival": {
+      "text": "Umber remembers the long Tuesday evening Mott first came to the village, with sawdust in his hair and nothing in his pockets but one folded minute.",
+      "known_by": [
+        "t-umber"
+      ],
+      "if": [
+        {
+          "arc": "mott-minute",
+          "ne": "dormant"
+        }
+      ]
+    },
+    "mott-minute-looked": {
+      "text": "Mott has looked at his oldest minute at last. It was the minute he arrived: a broom already waiting in the corner, and someone old and kind, smelling of clock oil, who had kept it for him. He catalogued it as the minute he was expected.",
+      "known_by": [
+        "t-mott",
+        "t-umber",
+        "t-bell"
+      ],
+      "if": [
+        {
+          "ending": "mott-minute/looked-together"
+        }
+      ]
+    },
+    "mott-minute-later": {
+      "text": "Mott's oldest minute waits, sealed and unread, in the Little Post Office pigeonhole marked TO ME, LATER, until he is ready for it.",
+      "known_by": [
+        "t-mott",
+        "t-fen",
+        "t-umber"
+      ],
+      "if": [
+        {
+          "ending": "mott-minute/kept-for-later"
         }
       ]
     }
@@ -4391,6 +4875,840 @@
               "target_id": "o-letters-drawer",
               "key": "state",
               "value": "locked"
+            }
+          ]
+        }
+      }
+    },
+    "tace-hour": {
+      "title": "The Hour Before",
+      "kind": "keeper",
+      "opens": "rule",
+      "summary": "A new frost finds the loft window, and Tace stops working. Umber, Mott, and Sorrel each hold a piece of the night the great clock stopped, which was the night Wend died. Bringing Wend's ladder home to the Hour Cellar lets Tace take one small step toward the highest shelf, never the whole way.",
+      "beats": {
+        "tace-frost": {
+          "npc": "t-tace",
+          "topic": "the frost",
+          "topic_aliases": [
+            "frost",
+            "the new frost",
+            "the window",
+            "the frosted window",
+            "frosted window",
+            "the round window",
+            "round window",
+            "the frost on the window"
+          ],
+          "if": [
+            {
+              "rel": "t-tace",
+              "gte": 2
+            }
+          ],
+          "hint": "the player asks Tace about the frost on the loft window",
+          "text": "Tace's hands go still on the bench, and stay still. At last they lift a little brass clock down from the top shelf, its hands standing at eleven, and set it in your palm. 'Keep this one for me a while, friend. It hasn't ticked since the first hard frost, and I'd rather not look at it today.' They turn back to the window. 'Umber keeps a lamp lit on frost mornings. She always did.'",
+          "do": [
+            {
+              "kind": "move_object",
+              "object_id": "o-tace-hour-clock",
+              "dest_id": "@actor"
+            },
+            {
+              "kind": "set_property",
+              "target_id": "o-tace-hour-clock",
+              "key": "state",
+              "value": "kept"
+            },
+            {
+              "kind": "add_fact",
+              "id": "tace-hour-keeping-clock",
+              "text": "{actor} is keeping Tace's little stopped clock for them a while.",
+              "known_by": [
+                "t-tace"
+              ],
+              "spread": [
+                {
+                  "to": [
+                    "t-umber",
+                    "t-mott"
+                  ],
+                  "after_minutes": 30
+                }
+              ]
+            }
+          ]
+        },
+        "umber-frost": {
+          "npc": "t-umber",
+          "topic": "the first hard frost",
+          "topic_aliases": [
+            "first hard frost",
+            "the frost",
+            "frost",
+            "the first frost",
+            "wend's last night",
+            "that night",
+            "wend",
+            "the night the clock stopped",
+            "the night of the frost"
+          ],
+          "after": [
+            "tace-frost"
+          ],
+          "hint": "the player asks Umber about the first hard frost, or about Wend",
+          "text": "Umber sets down her pen, and for once she doesn't mention tea. 'The first hard frost was Wend's last night,' she says. 'Tace sat up with Wend in the loft. I took the tea up at eleven and left them to it, and by morning the great clock was still.' She looks up into the dark of the highest shelf. 'There was a ladder that reached up there, once. Wend's. Mott carried it off after, and I never asked where.'"
+        },
+        "mott-ladder": {
+          "npc": "t-mott",
+          "topic": "Wend's ladder",
+          "topic_aliases": [
+            "the ladder",
+            "ladder",
+            "a ladder",
+            "a tall ladder",
+            "the tall ladder",
+            "tall ladder",
+            "wend's old ladder"
+          ],
+          "after": [
+            "umber-frost"
+          ],
+          "hint": "the player asks Mott about Wend's tall ladder",
+          "text": "Mott leans on the broom a long while before he speaks. 'The morning after the frost, Tace asked me to carry Wend's ladder up out of the cellar and put it somewhere they wouldn't have to see it.' He draws it out from behind a drift of shavings, folds it small the way dream things fold, and tucks it under your arm. 'Wend never went up it without singing. Sorrel will have the song.'",
+          "do": [
+            {
+              "kind": "move_object",
+              "object_id": "o-tace-hour-ladder",
+              "dest_id": "@actor"
+            },
+            {
+              "kind": "add_fact",
+              "id": "tace-hour-carrying-ladder",
+              "text": "{actor} is carrying Wend's old ladder back toward the Hour Cellar.",
+              "known_by": [
+                "t-mott"
+              ],
+              "spread": [
+                {
+                  "to": [
+                    "t-umber",
+                    "t-tace"
+                  ],
+                  "after_minutes": 30
+                },
+                {
+                  "to": "all",
+                  "after_minutes": 120
+                }
+              ]
+            }
+          ]
+        },
+        "sorrel-song": {
+          "npc": "t-sorrel",
+          "topic": "Wend's climbing song",
+          "topic_aliases": [
+            "wend's song",
+            "the climbing song",
+            "climbing song",
+            "the ladder song",
+            "ladder song",
+            "the frost night",
+            "the night of the frost",
+            "the first hard frost"
+          ],
+          "after": [
+            "umber-frost"
+          ],
+          "hint": "the player asks Sorrel about the song Wend sang going up the ladder, or about the night of the first hard frost",
+          "text": "Sorrel looks at the sky a long while. 'The night of the first hard frost, a lamp burned low in the loft window until the hour before midnight,' they say. 'Then the clock went quiet, and the frost came down all at once, like a held breath.' They hum a few slow, climbing bars and fold the tune into your hands like a pressed leaf. 'Wend's ladder song. It wants singing again.'",
+          "do": [
+            {
+              "kind": "move_object",
+              "object_id": "o-tace-hour-song",
+              "dest_id": "@actor"
+            },
+            {
+              "kind": "add_fact",
+              "id": "tace-hour-learned-song",
+              "text": "{actor} learned Wend's old climbing song from Sorrel.",
+              "known_by": [
+                "t-sorrel"
+              ],
+              "spread": [
+                {
+                  "to": [
+                    "t-umber",
+                    "t-mott"
+                  ],
+                  "after_minutes": 60
+                }
+              ]
+            }
+          ]
+        },
+        "ladder-set": {
+          "after": [
+            "mott-ladder"
+          ],
+          "hint": "the player leans Wend's ladder against the highest shelf in the Hour Cellar"
+        },
+        "tace-told": {
+          "npc": "t-tace",
+          "topic": "Wend's ladder",
+          "topic_aliases": [
+            "the ladder",
+            "ladder",
+            "the tall ladder",
+            "the ladder in the cellar",
+            "the highest shelf",
+            "highest shelf",
+            "the cellar"
+          ],
+          "after": [
+            "ladder-set"
+          ],
+          "hint": "the player tells Tace that Wend's ladder is standing in the Hour Cellar again",
+          "text": "For a long moment Tace only looks at the floorboards, as if they could see down through them to the cellar. 'Standing again,' they say, very quietly. 'I'd go down, I think, if I had something to carry.'"
+        }
+      },
+      "endings": {
+        "within-reach": {
+          "summary": "given Wend's climbing song, Tace climbs the ladder and sets the jar from the highest shelf down where the lantern reaches, unopened",
+          "text": "Tace holds the folded song to one ear, and after a while begins to hum it, low and a little off-key. They take your arm, and together you go down into the Hour Cellar, where Umber sets her pen aside without a word. Rung by rung Tace climbs Wend's ladder into the shadow, humming, and stays at the top a long while; when they come down, they carry a small dusty jar in both hands and set it, unopened, on the lowest shelf, where the lantern reaches. Back up in the loft, Tace wipes the dust from their fingers. 'Not yet,' they say. 'But I'd like to be able to see it from the stairs.'",
+          "ledger": "{helpers} brought Wend's ladder home to the Hour Cellar and gave Tace the old climbing song; Tace climbed it, humming, and set a jar down where the lantern reaches.",
+          "do": [
+            {
+              "kind": "move_object",
+              "object_id": "o-tace-hour-song",
+              "dest_id": "t-tace"
+            },
+            {
+              "kind": "move_object",
+              "object_id": "o-tace-hour-jar",
+              "dest_id": "r-cellar"
+            },
+            {
+              "kind": "set_property",
+              "target_id": "o-high-shelf",
+              "key": "seed",
+              "value": "the highest shelf, lost in shadow above the lantern's reach, with Wend's tall ladder leaning against it; where a single jar stood apart, there is only a clean circle in the dust"
+            },
+            {
+              "kind": "set_property",
+              "target_id": "o-tace-hour-window",
+              "key": "state",
+              "value": "thawed"
+            },
+            {
+              "kind": "set_property",
+              "target_id": "t-tace",
+              "key": "presence_text",
+              "value": "Tace looks up from a bench of small clocks, a smudge of cellar dust still on one sleeve, and offers a small, steady nod."
+            },
+            {
+              "kind": "set_property",
+              "target_id": "t-tace",
+              "key": "mood",
+              "value": "gladdened"
+            },
+            {
+              "kind": "adjust_rel",
+              "npc": "t-tace",
+              "delta": 2
+            },
+            {
+              "kind": "add_fact",
+              "id": "tace-hour-sang-up",
+              "text": "{actor} gave Tace Wend's climbing song, and Tace climbed the ladder humming it and brought a jar down to where the lantern reaches.",
+              "known_by": [
+                "t-tace",
+                "t-umber"
+              ],
+              "spread": [
+                {
+                  "to": "all",
+                  "after_minutes": 60
+                }
+              ]
+            }
+          ]
+        },
+        "past-eleven": {
+          "summary": "given back the stopped clock, Tace winds it past eleven and leaves it ticking on the bottom rung of Wend's ladder, and does not climb this season",
+          "text": "Tace takes the little clock in both hands. After a long moment they find its key and turn it, once, twice, and the clock hesitates, and ticks, and its hands move past eleven for the first time since the frost. They take your arm, and together you carry it down into the Hour Cellar and set it ticking on the bottom rung of Wend's ladder, under the highest shelf; Tace sits on the step beside it a while, just listening. Back up in the loft, they let out a long breath. 'Not the ladder,' Tace says. 'Not this season. But it's going again.'",
+          "ledger": "{helpers} kept Tace's stopped clock a while; Tace wound it past eleven and left it ticking at the foot of Wend's ladder.",
+          "do": [
+            {
+              "kind": "move_object",
+              "object_id": "o-tace-hour-clock",
+              "dest_id": "r-cellar"
+            },
+            {
+              "kind": "set_property",
+              "target_id": "o-tace-hour-clock",
+              "key": "state",
+              "value": "ticking"
+            },
+            {
+              "kind": "set_property",
+              "target_id": "o-tace-hour-window",
+              "key": "state",
+              "value": "thawed"
+            },
+            {
+              "kind": "set_property",
+              "target_id": "t-tace",
+              "key": "presence_text",
+              "value": "Tace looks up from a bench of small clocks, sets down a fine brass tool, and offers a tired, kind nod."
+            },
+            {
+              "kind": "set_property",
+              "target_id": "t-tace",
+              "key": "mood",
+              "value": "gladdened"
+            },
+            {
+              "kind": "adjust_rel",
+              "npc": "t-tace",
+              "delta": 2
+            },
+            {
+              "kind": "add_fact",
+              "id": "tace-hour-past-eleven",
+              "text": "{actor} kept Tace's stopped clock until Tace was ready to wind it past eleven.",
+              "known_by": [
+                "t-tace",
+                "t-umber"
+              ],
+              "spread": [
+                {
+                  "to": "all",
+                  "after_minutes": 60
+                }
+              ]
+            }
+          ]
+        },
+        "another-season": {
+          "summary": "unhelped for a week of frosts, Tace goes down the cellar stair alone as far as the bottom step, and Umber leaves tea there for next time",
+          "after_days": 7,
+          "room": "r-loft",
+          "text": "All week the frost comes and goes on the loft window. One night, very late, Tace goes down the cellar stair alone as far as the bottom step, stands there a while looking up into the dark of the highest shelf, and climbs back up to bed. Umber hears the stair. In the morning there is a cup of tea on the bottom step, still warm, for next time.",
+          "ledger": "This season Tace went as far as the bottom step of the cellar stair, alone, and Umber left a cup of tea there for next time.",
+          "do": [
+            {
+              "kind": "set_property",
+              "target_id": "o-tace-hour-window",
+              "key": "state",
+              "value": "thawed"
+            },
+            {
+              "kind": "set_property",
+              "target_id": "t-tace",
+              "key": "presence_text",
+              "value": "Tace looks up from a bench of small clocks, sets down a fine brass tool, and offers a tired, kind nod."
+            },
+            {
+              "kind": "set_property",
+              "target_id": "t-tace",
+              "key": "mood",
+              "value": "wistful"
+            }
+          ]
+        }
+      }
+    },
+    "bell-dawn": {
+      "title": "Bell's First Dawn",
+      "kind": "keeper",
+      "opens": "rule",
+      "summary": "Bell lights every dusk and has never seen a dawn. Help them stay awake all night on the Hill of Long Shadows, with Linden's night tea and some company, or give them a lantern shaped like a sunrise to light at dusk.",
+      "beats": {
+        "bell-confides": {
+          "npc": "t-bell",
+          "topic": "staying up",
+          "topic_aliases": [
+            "staying up all night",
+            "stay up",
+            "staying awake",
+            "stay awake",
+            "a whole night",
+            "the whole night",
+            "seeing a dawn"
+          ],
+          "if": [
+            {
+              "rel": "t-bell",
+              "gte": 2
+            }
+          ],
+          "hint": "the player asks Bell about staying up all night to see a dawn",
+          "text": "Bell laughs, then doesn't. 'I've tried! I get as far as the last lantern and then I'm yawning into my scarf.' They glance east. 'I'd need company, and something of Linden's, hot and strong. Or a sunrise I could just light at dusk, like a lantern, and never mind the staying up. Tace can bend brass into anything.'"
+        },
+        "linden-flask": {
+          "npc": "t-linden",
+          "topic": "night tea",
+          "topic_aliases": [
+            "a flask of night tea",
+            "flask of night tea",
+            "the night tea",
+            "tea for bell",
+            "a flask for bell",
+            "strong tea",
+            "tea for staying up"
+          ],
+          "after": [
+            "bell-confides"
+          ],
+          "hint": "the player asks Linden for something to help Bell stay awake all night",
+          "text": "Linden's eyebrows go up, and then she's already reaching for a dented flask at the back of the stove. 'Night tea. Strong enough to stand a spoon in.' She screws the lid on tight and presses it into your hands. 'That lamb will be asleep before the last lantern's cold, pet, so you'll have to wake them, up in the Lamp House, and put this in their hands. Gently, mind.'",
+          "do": [
+            {
+              "kind": "move_object",
+              "object_id": "o-bell-dawn-flask",
+              "dest_id": "@actor"
+            },
+            {
+              "kind": "add_fact",
+              "id": "bell-dawn-helping",
+              "text": "{actor} is helping Bell stay awake all night to see a dawn from the Hill of Long Shadows.",
+              "known_by": [
+                "t-linden",
+                "t-bell"
+              ],
+              "spread": [
+                {
+                  "to": [
+                    "t-sorrel",
+                    "t-tace",
+                    "t-mott"
+                  ],
+                  "after_minutes": 30
+                }
+              ]
+            }
+          ]
+        },
+        "bell-woken": {
+          "after": [
+            "linden-flask"
+          ],
+          "hint": "the player wakes Bell in the Lamp House at night with Linden's night tea"
+        },
+        "named-stars": {
+          "npc": "t-bell",
+          "topic": "the stars",
+          "topic_aliases": [
+            "stars",
+            "the night sky",
+            "night sky",
+            "star names",
+            "naming the stars"
+          ],
+          "after": [
+            "bell-woken"
+          ],
+          "if": [
+            {
+              "phase": "night"
+            },
+            {
+              "in": "r-hill"
+            }
+          ],
+          "hint": "on the hill at night, the player keeps Bell awake by asking them about the stars",
+          "text": "Bell tips their head back and starts naming the stars the way they name lanterns. 'That's Pollen's cousin. That one's Old Blue, gone up in the world, and the little one's Thimble.' They yawn, catch it halfway, and laugh. 'Keep asking me things. It's working.'",
+          "do": [
+            {
+              "kind": "add_fact",
+              "id": "bell-dawn-sat-up",
+              "text": "{actor} sat up with Bell on the Hill of Long Shadows, naming the stars like lanterns to keep them awake for the dawn.",
+              "known_by": [
+                "t-bell"
+              ],
+              "spread": [
+                {
+                  "to": "all",
+                  "after_minutes": 60
+                }
+              ]
+            }
+          ]
+        },
+        "tace-sunburst": {
+          "npc": "t-tace",
+          "topic": "a sunrise lantern",
+          "topic_aliases": [
+            "sunrise lantern",
+            "the sunrise lantern",
+            "a lantern like a sunrise",
+            "a lantern shaped like a sunrise",
+            "a sunrise for bell",
+            "a brass sunrise"
+          ],
+          "after": [
+            "bell-confides"
+          ],
+          "hint": "the player asks Tace to make a lantern shaped like a sunrise for Bell",
+          "text": "Tace's eyes go to a jar of spare clock hands on the bench, and something in their face wakes a little. 'A sunrise,' they say. 'I could fan these into one.' They are already sorting hands by length. 'Bring me one of Bell's spare lantern-skins from the Lamp House, friend, and I'll give it something to glow around.'"
+        },
+        "sunrise-made": {
+          "after": [
+            "tace-sunburst"
+          ],
+          "hint": "the player brings Tace one of Bell's lantern-skins, and Tace makes the sunrise lantern"
+        }
+      },
+      "endings": {
+        "first-dawn": {
+          "summary": "kept awake all night on the Hill of Long Shadows, Bell sees their first dawn",
+          "room": "r-hill",
+          "text": "The sky over the hill goes grey, then pearl, then the faintest rose, the way a thought comes back to you. Bell stops talking in the middle of a word. They watch the whole of it with the butter-yellow scarf pulled up to their chin, and when the first gold edge comes over the rim of the world they laugh out loud, once, like a lantern catching. 'Oh,' Bell whispers. 'It is pink. It really is pink.'",
+          "ledger": "{helpers} kept Bell awake all night on the Hill of Long Shadows, and Bell saw their first dawn. It was pink.",
+          "do": [
+            {
+              "kind": "set_property",
+              "target_id": "t-bell",
+              "key": "schedule",
+              "value": {
+                "dawn": "r-lamphouse",
+                "day": "r-square",
+                "dusk": "r-square",
+                "night": "r-lamphouse"
+              }
+            },
+            {
+              "kind": "set_property",
+              "target_id": "t-bell",
+              "key": "presence_text",
+              "value": "Bell is up a small ladder coaxing a lantern alight, humming something that sounds like a morning, and lifts a sooty hand in greeting."
+            },
+            {
+              "kind": "set_property",
+              "target_id": "t-bell",
+              "key": "mood",
+              "value": "cheerful"
+            },
+            {
+              "kind": "move_object",
+              "object_id": "o-bell-dawn-light",
+              "dest_id": "r-hill"
+            },
+            {
+              "kind": "move_toon",
+              "toon_id": "t-bell",
+              "room_id": "r-lamphouse",
+              "leave_text": "Then Bell yawns the biggest yawn of their life and wanders down the hill toward bed, looking back over one shoulder the whole way. On the bench where they sat, a sliver of the first light has stayed behind."
+            }
+          ]
+        },
+        "dusk-enough": {
+          "summary": "Bell lights a lantern shaped like a sunrise at dusk and decides dusk is enough",
+          "text": "Bell holds the sunrise lantern up to the last of the light, and for once has nothing to say. They hang it on the easternmost pole and tip the hooked pole's little flame to the wick, and the whole square goes rose and gold, the way the sky must, somewhere, in the mornings. Bell watches it a long time. 'Huh,' they say softly. 'So that's what they look like.' Then, grinning, they dab a thumb of soot on your cheek for luck. 'Dusk is enough, I think. Dusk, and this.'",
+          "ledger": "{helpers} gave Bell a lantern shaped like a sunrise, and Bell lit it at dusk and decided dusk is enough.",
+          "do": [
+            {
+              "kind": "move_object",
+              "object_id": "o-bell-dawn-lantern",
+              "dest_id": "r-square"
+            },
+            {
+              "kind": "set_property",
+              "target_id": "o-bell-dawn-lantern",
+              "key": "state",
+              "value": "hung"
+            },
+            {
+              "kind": "spawn_object",
+              "name": "thumbprint of soot",
+              "location_id": "@actor",
+              "seed": "a thumbprint of lamp-soot Bell dabbed on your cheek for luck; somehow you can carry it, and it smells of wick-smoke and warm paper",
+              "aliases": [
+                "soot",
+                "thumbprint",
+                "soot thumbprint"
+              ],
+              "generated_by": "bell-dawn:dusk-enough"
+            },
+            {
+              "kind": "set_property",
+              "target_id": "t-bell",
+              "key": "mood",
+              "value": "cheerful"
+            },
+            {
+              "kind": "adjust_rel",
+              "npc": "t-bell",
+              "delta": 2
+            },
+            {
+              "kind": "add_fact",
+              "id": "bell-dawn-gave-sunrise",
+              "text": "{actor} gave Bell a lantern shaped like a sunrise, and Bell hung it on the easternmost pole and lit it at dusk.",
+              "known_by": [
+                "t-bell"
+              ],
+              "spread": [
+                {
+                  "to": "all",
+                  "after_minutes": 60
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "mott-minute": {
+      "title": "The Oldest Minute",
+      "kind": "keeper",
+      "opens": "rule",
+      "summary": "The oldest thing in Mott's tin is a minute he has never catalogued: his own, the minute he first arrived in the village, before he remembers anything else. He is a little afraid of it. Help him look at it together, or help him seal it away with Fen until he's ready.",
+      "beats": {
+        "mott-confides": {
+          "npc": "t-mott",
+          "topic": "the oldest minute",
+          "topic_aliases": [
+            "oldest minute",
+            "your own minute",
+            "the folded thing",
+            "folded thing",
+            "the small folded thing",
+            "the folded minute",
+            "folded minute"
+          ],
+          "if": [
+            {
+              "rel": "t-mott",
+              "gte": 2
+            }
+          ],
+          "hint": "the player asks Mott about the small folded thing he keeps in his tin",
+          "text": "Mott is quiet a moment. Then he sets the tin on the sill in the slant light and lifts his thumb from the small folded thing. 'A minute,' he says. 'Mine. The one I arrived in, before I remember anything else.' He covers it again. 'Never looked. Bit afraid to, truth be told. Tace would say look at it properly, with a loupe; Fen would say some things keep better sealed.'",
+          "do": [
+            {
+              "kind": "set_property",
+              "target_id": "t-mott",
+              "key": "mood",
+              "value": "curious"
+            }
+          ]
+        },
+        "umber-remembers": {
+          "npc": "t-umber",
+          "topic": "when Mott came",
+          "topic_aliases": [
+            "mott",
+            "mott's arrival",
+            "the day mott came",
+            "when mott arrived",
+            "mott arriving",
+            "mott's first day"
+          ],
+          "after": [
+            "mott-confides"
+          ],
+          "hint": "the player asks Umber what she remembers of Mott arriving in the village",
+          "text": "Umber turns a jar slowly in the lamplight. 'Mott came on a Tuesday, a long one, with sawdust in his hair and nothing in his pockets but that minute.' She sets the jar down just so. 'Some things you keep folded because you're not ready, and some because you're afraid they're empty. Either is allowed.'"
+        },
+        "tace-loupe": {
+          "npc": "t-tace",
+          "topic": "a loupe",
+          "topic_aliases": [
+            "loupe",
+            "a spare loupe",
+            "a loupe for mott",
+            "mott's minute",
+            "an old minute"
+          ],
+          "after": [
+            "mott-confides"
+          ],
+          "hint": "the player asks Tace for a loupe to help Mott look at his minute",
+          "text": "Tace takes a spare loupe from the drawer, polishes it on their apron, and hangs it round your neck by its ribbon. 'For the smallest things,' they say. 'Old minutes fold very small. Tell Mott to open it along its own creases, never new ones, and in good light.'",
+          "do": [
+            {
+              "kind": "move_object",
+              "object_id": "o-mott-minute-loupe",
+              "dest_id": "@actor"
+            },
+            {
+              "kind": "add_fact",
+              "id": "mott-minute-loupe",
+              "text": "{actor} borrowed a spare loupe from Tace, to help Mott look at something very small.",
+              "known_by": [
+                "t-tace"
+              ],
+              "spread": [
+                {
+                  "to": [
+                    "t-mott"
+                  ],
+                  "after_minutes": 10
+                }
+              ]
+            }
+          ]
+        },
+        "fen-envelope": {
+          "npc": "t-fen",
+          "topic": "an envelope for later",
+          "topic_aliases": [
+            "envelope",
+            "an envelope",
+            "the envelope",
+            "to me, later",
+            "to me later",
+            "an envelope for mott",
+            "something to keep sealed"
+          ],
+          "after": [
+            "mott-confides"
+          ],
+          "hint": "the player asks Fen for something to keep Mott's minute sealed until he is ready",
+          "text": "Fen takes a stiff cream envelope from under the counter and writes across it, in her tidiest hand: TO ME, LATER. 'For things that aren't ready to be read,' she says, and taps it square. 'Mind, I've one of my own that's been in transit a very long time. Nothing wrong with the scenic route.'",
+          "do": [
+            {
+              "kind": "move_object",
+              "object_id": "o-mott-minute-envelope",
+              "dest_id": "@actor"
+            },
+            {
+              "kind": "add_fact",
+              "id": "mott-minute-envelope",
+              "text": "{actor} took an envelope marked TO ME, LATER from Fen, for Mott.",
+              "known_by": [
+                "t-fen"
+              ]
+            }
+          ]
+        },
+        "sealed": {
+          "after": [
+            "fen-envelope"
+          ],
+          "hint": "the player gives Mott Fen's envelope, and he seals his minute inside it unread"
+        }
+      },
+      "endings": {
+        "looked-together": {
+          "summary": "with a dreamer beside him and Tace's loupe, Mott unfolds his oldest minute: the minute he was expected",
+          "text": "Mott sets the tin on the sill, in the one blade of slant light, and you sit beside him there, shoulders touching. With Tace's loupe to his eye he unfolds the minute along its own old creases. Inside is a doorway full of evening, a broom already leaning in the corner as if it had been waiting, and someone old and kind, smelling faintly of clock oil, saying: 'There you are. We kept a broom for you.' Mott is quiet a long while. 'Somebody was waiting,' he says at last. 'All this time I thought I'd only been swept in.'",
+          "ledger": "{helpers} sat with Mott while he looked at his oldest minute at last: the minute he was expected.",
+          "do": [
+            {
+              "kind": "narrate",
+              "text": "Mott writes it into a Book of Stray Minutes of his own, in his slow, square hand: the minute I was expected. Then he sweeps up a single pale curl of cedar shaving and presses it into your palm, as if it were the most ordinary thing in the world."
+            },
+            {
+              "kind": "set_property",
+              "target_id": "o-tin",
+              "key": "seed",
+              "value": "a battered tea tin, its paint worn to the metal at the corners; inside, a button, a bent key, a thimble, a stub of blue chalk, and a small minute, unfolded at last and catalogued in Mott's slow, square hand"
+            },
+            {
+              "kind": "spawn_object",
+              "name": "curl of cedar shaving",
+              "location_id": "@actor",
+              "seed": "a single pale curl of cedar shaving from the Old Workshop floor, the first thing Mott swept after he looked; it smells of sawdust and evening",
+              "aliases": [
+                "cedar shaving",
+                "shaving",
+                "curl"
+              ],
+              "generated_by": "mott-minute:looked-together"
+            },
+            {
+              "kind": "set_property",
+              "target_id": "t-mott",
+              "key": "presence_text",
+              "value": "Mott sweeps a slow, easy arc, humming something he's never hummed before, and gives you an unhurried, friendly look."
+            },
+            {
+              "kind": "set_property",
+              "target_id": "t-mott",
+              "key": "mood",
+              "value": "content"
+            },
+            {
+              "kind": "adjust_rel",
+              "npc": "t-mott",
+              "delta": 2
+            },
+            {
+              "kind": "add_fact",
+              "id": "mott-minute-sat-with",
+              "text": "{actor} sat with Mott while he unfolded his oldest minute at last.",
+              "known_by": [
+                "t-mott"
+              ],
+              "spread": [
+                {
+                  "to": "all",
+                  "after_minutes": 60
+                }
+              ]
+            }
+          ]
+        },
+        "kept-for-later": {
+          "summary": "Mott seals his oldest minute unread, and a dreamer carries it to Fen's pigeonhole marked TO ME, LATER",
+          "text": "Fen reads the envelope, TO ME, LATER, and doesn't ask a single question. She files it in the pigeonhole with the same words on its label, taps it square, and gives it a small pat. 'It'll keep,' she says. 'Things do, here. And when he's ready, it'll be exactly where he left it.' Then she presses a spare stamp into your hand, printed with a tiny lantern. 'First class. For your trouble.'",
+          "ledger": "{helpers} carried Mott's oldest minute, sealed and unread, to the pigeonhole marked TO ME, LATER, where it waits until he is ready.",
+          "do": [
+            {
+              "kind": "move_object",
+              "object_id": "o-mott-minute-envelope",
+              "dest_id": "o-pigeonholes"
+            },
+            {
+              "kind": "spawn_object",
+              "name": "lantern stamp",
+              "location_id": "@actor",
+              "seed": "a small paper stamp printed with a tiny lantern, first class, its edges perforated like a row of stitches",
+              "aliases": [
+                "stamp",
+                "first-class stamp"
+              ],
+              "generated_by": "mott-minute:kept-for-later"
+            },
+            {
+              "kind": "set_property",
+              "target_id": "t-mott",
+              "key": "presence_text",
+              "value": "Mott pauses mid-sweep, leans on the broom, and gives you an unhurried, friendly look; the tin under his arm rattles a little lighter than it did."
+            },
+            {
+              "kind": "set_property",
+              "target_id": "t-mott",
+              "key": "mood",
+              "value": "content"
+            },
+            {
+              "kind": "adjust_rel",
+              "npc": "t-mott",
+              "delta": 2
+            },
+            {
+              "kind": "add_fact",
+              "id": "mott-minute-posted",
+              "text": "{actor} carried Mott's oldest minute, sealed and unread, to the pigeonhole marked TO ME, LATER.",
+              "known_by": [
+                "t-fen"
+              ],
+              "spread": [
+                {
+                  "to": [
+                    "t-mott"
+                  ],
+                  "after_minutes": 10
+                },
+                {
+                  "to": "all",
+                  "after_minutes": 60
+                }
+              ]
             }
           ]
         }
@@ -11170,6 +12488,1278 @@
         "envelope stars",
         "stars",
         "paper star"
+      ]
+    },
+    {
+      "id": "o-tace-hour-window",
+      "name": "round window",
+      "location": {
+        "room": "r-loft"
+      },
+      "fixture": true,
+      "seed": "old glass, faintly rippled, in a round frame worn smooth by elbows",
+      "aliases": [
+        "window",
+        "loft window",
+        "frosted window"
+      ],
+      "properties": {
+        "state": "clear",
+        "state_text": {
+          "clear": "Through it the rooftops lean together like old friends.",
+          "frosted": "Frost has grown across the glass in fine white lace, and in the middle someone has drawn a small clock face with one fingertip, both hands pointing at eleven.",
+          "thawed": "The frost has gone, but a faint round mark stays on the glass where a clock face was drawn, like a breath that hasn't quite faded."
+        }
+      }
+    },
+    {
+      "id": "o-tace-hour-clock",
+      "name": "little brass clock",
+      "location": {
+        "room": "r-loft"
+      },
+      "seed": "a little brass clock no bigger than a pocket watch; on its back, scratched small in an old looping hand, is a single letter: W",
+      "aliases": [
+        "stopped clock",
+        "brass clock",
+        "clock at eleven",
+        "tace's clock"
+      ],
+      "verbs": [
+        "wind"
+      ],
+      "properties": {
+        "state": "stopped",
+        "state_text": {
+          "stopped": "It sits apart from the others on the top shelf, its hands standing at eleven; it hasn't ticked since the first hard frost.",
+          "kept": "Its hands stand at eleven, and it hasn't ticked since the first hard frost.",
+          "ticking": "It ticks now, soft and sure, on the bottom rung of Wend's ladder, its hands long past eleven."
+        }
+      },
+      "rules": [
+        {
+          "on": "take",
+          "if": [
+            {
+              "beat": "tace-hour/tace-frost",
+              "not": true
+            },
+            {
+              "present": "t-tace"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "You reach for the little clock. 'Not that one, friend,' Tace says quietly, without looking up."
+            }
+          ]
+        },
+        {
+          "on": "take",
+          "if": [
+            {
+              "beat": "tace-hour/tace-frost",
+              "not": true
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "It sits apart from the others as if it would rather not be moved. You leave it be."
+            }
+          ]
+        },
+        {
+          "on": "take",
+          "if": [
+            {
+              "prop": "state",
+              "of": "@self",
+              "eq": "ticking"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "It is ticking where Tace set it, under the highest shelf. You leave it there."
+            }
+          ]
+        },
+        {
+          "on": "wind",
+          "if": [
+            {
+              "prop": "state",
+              "of": "@self",
+              "eq": "ticking"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "It is already ticking, soft and sure, and doesn't need your hands. It seems glad of that."
+            }
+          ]
+        },
+        {
+          "on": "wind",
+          "if": [
+            {
+              "carried": "@self",
+              "not": true
+            },
+            {
+              "present": "t-tace"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "You reach for the little key. 'Not that one, friend,' Tace says quietly."
+            }
+          ]
+        },
+        {
+          "on": "wind",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "The little key won't turn for you. Whatever this clock is waiting for, it isn't your hands."
+            }
+          ]
+        },
+        {
+          "on": "give",
+          "if": [
+            {
+              "iobj": "t-tace"
+            },
+            {
+              "carried": "@self"
+            },
+            {
+              "arc": "tace-hour"
+            },
+            {
+              "beat": "tace-hour/tace-told"
+            }
+          ],
+          "do": [
+            {
+              "kind": "close_arc",
+              "arc": "tace-hour",
+              "ending": "past-eleven"
+            }
+          ]
+        },
+        {
+          "on": "give",
+          "if": [
+            {
+              "iobj": "t-tace"
+            },
+            {
+              "carried": "@self"
+            },
+            {
+              "arc": "tace-hour"
+            },
+            {
+              "beat": "tace-hour/ladder-set"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "text": "Tace looks at the little clock, then at the stairs, and doesn't take it. 'You've cellar dust on your sleeve,' they say. 'What's standing down there, friend?'"
+            }
+          ]
+        },
+        {
+          "on": "give",
+          "if": [
+            {
+              "iobj": "t-tace"
+            },
+            {
+              "carried": "@self"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "text": "Tace closes your fingers gently back over the little clock. 'Keep it a while longer, friend.'"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "o-tace-hour-ladder",
+      "name": "tall ladder",
+      "location": "offstage",
+      "seed": "Wend's tall oak library ladder, its rungs worn pale in the middle by years of careful feet; like most dream things, it folds far smaller than it should",
+      "aliases": [
+        "ladder",
+        "wend's ladder",
+        "oak ladder"
+      ],
+      "verbs": [
+        "use"
+      ],
+      "properties": {
+        "state": "folded",
+        "state_text": {
+          "folded": "Folded, it tucks under one arm.",
+          "standing": "It stands against the highest shelf of the Hour Cellar now, reaching, just."
+        }
+      },
+      "rules": [
+        {
+          "on": "use",
+          "if": [
+            {
+              "prop": "state",
+              "of": "@self",
+              "eq": "standing"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "It already stands against the highest shelf, reaching, just."
+            }
+          ]
+        },
+        {
+          "on": "use",
+          "if": [
+            {
+              "iobj": "o-high-shelf"
+            },
+            {
+              "arc": "tace-hour"
+            }
+          ],
+          "do": [
+            {
+              "kind": "move_object",
+              "object_id": "o-tace-hour-ladder",
+              "dest_id": "r-cellar"
+            },
+            {
+              "kind": "set_property",
+              "target_id": "o-tace-hour-ladder",
+              "key": "state",
+              "value": "standing"
+            },
+            {
+              "kind": "set_property",
+              "target_id": "o-high-shelf",
+              "key": "seed",
+              "value": "the highest shelf, lost in shadow above the lantern's reach; Wend's tall ladder leans against it now, and up at the top a single jar glints, set apart from the rest"
+            },
+            {
+              "kind": "narrate",
+              "text": "You unfold Wend's ladder and lean it against the highest shelf. It reaches, just. Up in the shadow a single jar glints, set apart from the others, its label written in an old, looping hand. Umber looks at the ladder a long moment. 'That's not mine to climb,' she says quietly, 'and it isn't yours, lamb. Go and tell Tace it's standing.'"
+            },
+            {
+              "kind": "advance_beat",
+              "arc": "tace-hour",
+              "beat": "ladder-set"
+            },
+            {
+              "kind": "add_fact",
+              "id": "tace-hour-ladder-standing",
+              "text": "{actor} stood Wend's ladder against the Hour Cellar's highest shelf again.",
+              "known_by": [
+                "t-umber"
+              ],
+              "spread": [
+                {
+                  "to": [
+                    "t-tace",
+                    "t-mott"
+                  ],
+                  "after_minutes": 20
+                },
+                {
+                  "to": "all",
+                  "after_minutes": 120
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "on": "put",
+          "if": [
+            {
+              "iobj": "o-high-shelf"
+            },
+            {
+              "arc": "tace-hour"
+            },
+            {
+              "prop": "state",
+              "of": "@self",
+              "ne": "standing"
+            }
+          ],
+          "do": [
+            {
+              "kind": "move_object",
+              "object_id": "o-tace-hour-ladder",
+              "dest_id": "r-cellar"
+            },
+            {
+              "kind": "set_property",
+              "target_id": "o-tace-hour-ladder",
+              "key": "state",
+              "value": "standing"
+            },
+            {
+              "kind": "set_property",
+              "target_id": "o-high-shelf",
+              "key": "seed",
+              "value": "the highest shelf, lost in shadow above the lantern's reach; Wend's tall ladder leans against it now, and up at the top a single jar glints, set apart from the rest"
+            },
+            {
+              "kind": "narrate",
+              "text": "You unfold Wend's ladder and lean it against the highest shelf. It reaches, just. Up in the shadow a single jar glints, set apart from the others, its label written in an old, looping hand. Umber looks at the ladder a long moment. 'That's not mine to climb,' she says quietly, 'and it isn't yours, lamb. Go and tell Tace it's standing.'"
+            },
+            {
+              "kind": "advance_beat",
+              "arc": "tace-hour",
+              "beat": "ladder-set"
+            },
+            {
+              "kind": "add_fact",
+              "id": "tace-hour-ladder-standing",
+              "text": "{actor} stood Wend's ladder against the Hour Cellar's highest shelf again.",
+              "known_by": [
+                "t-umber"
+              ],
+              "spread": [
+                {
+                  "to": [
+                    "t-tace",
+                    "t-mott"
+                  ],
+                  "after_minutes": 20
+                },
+                {
+                  "to": "all",
+                  "after_minutes": 120
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "on": "drop",
+          "if": [
+            {
+              "carried": "@self"
+            },
+            {
+              "in": "r-cellar"
+            },
+            {
+              "arc": "tace-hour"
+            }
+          ],
+          "do": [
+            {
+              "kind": "move_object",
+              "object_id": "o-tace-hour-ladder",
+              "dest_id": "r-cellar"
+            },
+            {
+              "kind": "set_property",
+              "target_id": "o-tace-hour-ladder",
+              "key": "state",
+              "value": "standing"
+            },
+            {
+              "kind": "set_property",
+              "target_id": "o-high-shelf",
+              "key": "seed",
+              "value": "the highest shelf, lost in shadow above the lantern's reach; Wend's tall ladder leans against it now, and up at the top a single jar glints, set apart from the rest"
+            },
+            {
+              "kind": "narrate",
+              "text": "You unfold Wend's ladder and lean it against the highest shelf. It reaches, just. Up in the shadow a single jar glints, set apart from the others, its label written in an old, looping hand. Umber looks at the ladder a long moment. 'That's not mine to climb,' she says quietly, 'and it isn't yours, lamb. Go and tell Tace it's standing.'"
+            },
+            {
+              "kind": "advance_beat",
+              "arc": "tace-hour",
+              "beat": "ladder-set"
+            },
+            {
+              "kind": "add_fact",
+              "id": "tace-hour-ladder-standing",
+              "text": "{actor} stood Wend's ladder against the Hour Cellar's highest shelf again.",
+              "known_by": [
+                "t-umber"
+              ],
+              "spread": [
+                {
+                  "to": [
+                    "t-tace",
+                    "t-mott"
+                  ],
+                  "after_minutes": 20
+                },
+                {
+                  "to": "all",
+                  "after_minutes": 120
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "on": "use",
+          "if": [
+            {
+              "iobj": "o-high-shelf"
+            }
+          ],
+          "do": [
+            {
+              "kind": "move_object",
+              "object_id": "o-tace-hour-ladder",
+              "dest_id": "r-cellar"
+            },
+            {
+              "kind": "set_property",
+              "target_id": "o-tace-hour-ladder",
+              "key": "state",
+              "value": "standing"
+            },
+            {
+              "kind": "set_property",
+              "target_id": "o-high-shelf",
+              "key": "seed",
+              "value": "the highest shelf, lost in shadow above the lantern's reach; Wend's tall ladder leans against it now, and up at the top a single jar glints, set apart from the rest"
+            },
+            {
+              "kind": "narrate",
+              "text": "You unfold Wend's ladder and lean it against the highest shelf. Umber looks at it a long moment, then nods, once. 'Leave it there,' she says. 'For another season.'"
+            }
+          ]
+        },
+        {
+          "on": "put",
+          "if": [
+            {
+              "iobj": "o-high-shelf"
+            },
+            {
+              "prop": "state",
+              "of": "@self",
+              "ne": "standing"
+            }
+          ],
+          "do": [
+            {
+              "kind": "move_object",
+              "object_id": "o-tace-hour-ladder",
+              "dest_id": "r-cellar"
+            },
+            {
+              "kind": "set_property",
+              "target_id": "o-tace-hour-ladder",
+              "key": "state",
+              "value": "standing"
+            },
+            {
+              "kind": "set_property",
+              "target_id": "o-high-shelf",
+              "key": "seed",
+              "value": "the highest shelf, lost in shadow above the lantern's reach; Wend's tall ladder leans against it now, and up at the top a single jar glints, set apart from the rest"
+            },
+            {
+              "kind": "narrate",
+              "text": "You unfold Wend's ladder and lean it against the highest shelf. Umber looks at it a long moment, then nods, once. 'Leave it there,' she says. 'For another season.'"
+            }
+          ]
+        },
+        {
+          "on": "take",
+          "if": [
+            {
+              "prop": "state",
+              "of": "@self",
+              "eq": "standing"
+            },
+            {
+              "present": "t-umber"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "Umber shakes her head. 'Leave it standing, lamb. It's waited long enough.'"
+            }
+          ]
+        },
+        {
+          "on": "take",
+          "if": [
+            {
+              "prop": "state",
+              "of": "@self",
+              "eq": "standing"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "You leave it standing. It has waited long enough."
+            }
+          ]
+        },
+        {
+          "on": "use",
+          "if": [
+            {
+              "in": "r-cellar"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "Not there. The ladder wants the highest shelf."
+            }
+          ]
+        },
+        {
+          "on": "use",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "There's nothing here that needs a ladder so tall. It wants the Hour Cellar, and the highest shelf."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "o-tace-hour-song",
+      "name": "climbing song",
+      "location": "offstage",
+      "seed": "a few bars of Wend's old climbing song, folded small as a pressed leaf; held close, it hums, slow and a little off-key, and your feet feel surer for it",
+      "aliases": [
+        "song",
+        "wend's song",
+        "ladder song",
+        "folded song"
+      ],
+      "rules": [
+        {
+          "on": "give",
+          "if": [
+            {
+              "iobj": "t-tace"
+            },
+            {
+              "carried": "@self"
+            },
+            {
+              "arc": "tace-hour"
+            },
+            {
+              "beat": "tace-hour/tace-told"
+            }
+          ],
+          "do": [
+            {
+              "kind": "close_arc",
+              "arc": "tace-hour",
+              "ending": "within-reach"
+            }
+          ]
+        },
+        {
+          "on": "give",
+          "if": [
+            {
+              "iobj": "t-tace"
+            },
+            {
+              "carried": "@self"
+            },
+            {
+              "arc": "tace-hour"
+            },
+            {
+              "beat": "tace-hour/ladder-set"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "text": "Tace hears the song humming in your hands and goes still. 'You've cellar dust on your sleeve,' they say. 'What's standing down there, friend?'"
+            }
+          ]
+        },
+        {
+          "on": "give",
+          "if": [
+            {
+              "iobj": "t-tace"
+            },
+            {
+              "carried": "@self"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "text": "Tace listens to the folded song a moment and smiles, small and tired. 'Wend's ladder song,' they say. 'There's no ladder down there tall enough for it anymore.' They fold it back into your hands."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "o-tace-hour-jar",
+      "name": "dusty jar",
+      "location": "offstage",
+      "seed": "a small jar set apart from all the others, its glass furred with dust except where Tace's thumbs have been, resting on the lowest shelf where the lantern reaches; a folded paper hour sits inside, and the label, in an old looping hand, reads: For Tace, when they're ready. The lid is still sealed",
+      "aliases": [
+        "jar",
+        "wend's jar",
+        "labeled jar"
+      ],
+      "verbs": [
+        "open"
+      ],
+      "rules": [
+        {
+          "on": "take",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "Your hand stops short of it. The name on the label isn't yours."
+            }
+          ]
+        },
+        {
+          "on": "open",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "The lid is sealed, and the label isn't your name. Some jars wait for one pair of hands."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "o-bell-dawn-skin",
+      "name": "lantern-skin",
+      "location": {
+        "room": "r-lamphouse"
+      },
+      "seed": "a spare paper lantern-skin folded flat, thin as a moth's wing and faintly sooty at the seams",
+      "aliases": [
+        "skin",
+        "lantern skin",
+        "paper skin",
+        "spare lantern-skin"
+      ],
+      "rules": [
+        {
+          "on": "give",
+          "if": [
+            {
+              "iobj": "t-tace"
+            },
+            {
+              "carried": "@self"
+            },
+            {
+              "arc": "bell-dawn"
+            },
+            {
+              "beat": "bell-dawn/tace-sunburst"
+            }
+          ],
+          "do": [
+            {
+              "kind": "move_object",
+              "object_id": "o-bell-dawn-skin",
+              "dest_id": "t-tace"
+            },
+            {
+              "kind": "move_object",
+              "object_id": "o-bell-dawn-lantern",
+              "dest_id": "@actor"
+            },
+            {
+              "kind": "narrate",
+              "text": "Tace smooths the lantern-skin flat on the bench, and for once their hands move quickly. They fan a dozen spare clock hands into a half-sun, bind them at the hub with fine brass wire, and stretch the skin over the rays. When they hold it up, it is a morning, folded small. 'For Bell,' Tace says. 'Give it to them at dusk, so it can be lit with the others.'"
+            },
+            {
+              "kind": "advance_beat",
+              "arc": "bell-dawn",
+              "beat": "sunrise-made"
+            },
+            {
+              "kind": "add_fact",
+              "id": "bell-dawn-sunrise-made",
+              "text": "{actor} asked Tace to make Bell a lantern shaped like a sunrise. It's meant as a surprise.",
+              "known_by": [
+                "t-tace"
+              ],
+              "spread": [
+                {
+                  "to": [
+                    "t-linden",
+                    "t-mott"
+                  ],
+                  "after_minutes": 60
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "on": "give",
+          "if": [
+            {
+              "iobj": "t-tace"
+            },
+            {
+              "carried": "@self"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "text": "Tace turns the lantern-skin over and holds it to the window light. 'One of Bell's,' they say. 'Bell will want it back, friend, unless you've a plan for it.'"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "o-bell-dawn-flask",
+      "name": "flask of night tea",
+      "location": "offstage",
+      "seed": "a dented tin flask of Linden's night tea, strong enough to stand a spoon in, and somehow still hot however long you carry it",
+      "aliases": [
+        "flask",
+        "night tea",
+        "tea flask",
+        "dented flask"
+      ],
+      "rules": [
+        {
+          "on": "give",
+          "if": [
+            {
+              "iobj": "t-bell"
+            },
+            {
+              "carried": "@self"
+            },
+            {
+              "arc": "bell-dawn"
+            },
+            {
+              "in": "r-lamphouse"
+            },
+            {
+              "phase": "night"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "text": "Bell surfaces from the blankets one eye at a time. They sniff the flask, sit bolt upright, and take a long swallow. 'Linden's night tea,' they croak. 'You planned this.' They wind the butter-yellow scarf twice round, grab the hooked pole out of habit, and clatter down the stair. 'The hill! Come on, before I think about it.'"
+            },
+            {
+              "kind": "set_property",
+              "target_id": "t-bell",
+              "key": "schedule",
+              "value": {
+                "dawn": "r-hill",
+                "day": "r-square",
+                "dusk": "r-square",
+                "night": "r-hill"
+              }
+            },
+            {
+              "kind": "set_property",
+              "target_id": "t-bell",
+              "key": "presence_text",
+              "value": "Bell sits on the weathered bench in the butter-yellow scarf, facing east, blinking hard and determinedly awake."
+            },
+            {
+              "kind": "move_toon",
+              "toon_id": "t-bell",
+              "room_id": "r-hill",
+              "arrive_text": "Bell comes puffing up the hill with the hooked pole over one shoulder and drops onto the weathered bench, facing east."
+            },
+            {
+              "kind": "advance_beat",
+              "arc": "bell-dawn",
+              "beat": "bell-woken"
+            },
+            {
+              "kind": "add_fact",
+              "id": "bell-dawn-woke-bell",
+              "text": "{actor} woke Bell in the night with Linden's night tea and walked them up the Hill of Long Shadows to wait for the dawn.",
+              "known_by": [
+                "t-bell",
+                "t-sorrel"
+              ],
+              "spread": [
+                {
+                  "to": [
+                    "t-linden"
+                  ],
+                  "after_minutes": 60
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "on": "give",
+          "if": [
+            {
+              "iobj": "t-bell"
+            },
+            {
+              "carried": "@self"
+            },
+            {
+              "arc": "bell-dawn"
+            },
+            {
+              "in": "r-lamphouse"
+            },
+            {
+              "phase": "dawn"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "text": "Bell mumbles into the pillow and doesn't open their eyes. The window faces west, and out east, somewhere, the dawn is already going on without them. 'Tonight,' Bell mumbles. 'Wake me tonight.'"
+            }
+          ]
+        },
+        {
+          "on": "give",
+          "if": [
+            {
+              "iobj": "t-bell"
+            },
+            {
+              "carried": "@self"
+            },
+            {
+              "arc": "bell-dawn"
+            },
+            {
+              "in": "r-hill"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "text": "Bell takes another swallow and shudders happily. 'Awake! Mostly. Keep me talking.'"
+            }
+          ]
+        },
+        {
+          "on": "give",
+          "if": [
+            {
+              "iobj": "t-bell"
+            },
+            {
+              "carried": "@self"
+            },
+            {
+              "arc": "bell-dawn"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "text": "Bell sniffs the flask and grins. 'Linden's night tea! Not yet, not yet, or I'll be wide awake at teatime and asleep by the stars. Wake me with it tonight, up in the Lamp House.'"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "o-bell-dawn-lantern",
+      "name": "sunrise lantern",
+      "location": "offstage",
+      "seed": "a paper lantern-skin stretched over a half-sun of fanned brass clock hands, bound at the hub with fine wire; unlit, it looks like a morning folded up small",
+      "aliases": [
+        "sunrise",
+        "brass sunrise"
+      ],
+      "properties": {
+        "state": "new",
+        "state_text": {
+          "hung": "It hangs on the easternmost pole of the square now. Bell lights it last of all, every dusk, and for a while the cobbles glow rose and gold."
+        }
+      },
+      "rules": [
+        {
+          "on": "give",
+          "if": [
+            {
+              "iobj": "t-bell"
+            },
+            {
+              "carried": "@self"
+            },
+            {
+              "arc": "bell-dawn"
+            },
+            {
+              "phase": "dusk"
+            }
+          ],
+          "do": [
+            {
+              "kind": "close_arc",
+              "arc": "bell-dawn",
+              "ending": "dusk-enough"
+            }
+          ]
+        },
+        {
+          "on": "give",
+          "if": [
+            {
+              "iobj": "t-bell"
+            },
+            {
+              "carried": "@self"
+            },
+            {
+              "phase": [
+                "night",
+                "dawn"
+              ]
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "text": "Bell is fast asleep, one arm flung over their eyes, and doesn't stir. Better bring it at dusk, when the lanterns are lit."
+            }
+          ]
+        },
+        {
+          "on": "give",
+          "if": [
+            {
+              "iobj": "t-bell"
+            },
+            {
+              "carried": "@self"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "text": "Bell turns the sunrise lantern over in their sooty hands, and their face does something complicated and bright. 'Oh. Oh! Keep it till dusk, would you? I want to light it properly, last of all.'"
+            }
+          ]
+        },
+        {
+          "on": "take",
+          "if": [
+            {
+              "prop": "state",
+              "of": "@self",
+              "eq": "hung"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "It hangs where Bell can light it every dusk. You leave it there."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "o-bell-dawn-light",
+      "name": "sliver of first light",
+      "location": "offstage",
+      "seed": "a sliver of the first light Bell ever saw, folded small and still faintly rose at the edges; it is cool in the hand, the way a morning is",
+      "aliases": [
+        "first light",
+        "sliver"
+      ]
+    },
+    {
+      "id": "o-mott-minute-loupe",
+      "name": "spare loupe",
+      "location": "offstage",
+      "seed": "one of Tace's spare loupes, a little brass eyeglass on a faded ribbon; through it the smallest things look patient and enormous",
+      "aliases": [
+        "loupe",
+        "eyeglass",
+        "tace's loupe"
+      ],
+      "rules": [
+        {
+          "on": "give",
+          "if": [
+            {
+              "iobj": "t-mott"
+            },
+            {
+              "carried": "@self"
+            },
+            {
+              "arc": "mott-minute"
+            },
+            {
+              "beat": "mott-minute/mott-confides"
+            },
+            {
+              "beat": "mott-minute/sealed",
+              "not": true
+            }
+          ],
+          "do": [
+            {
+              "kind": "close_arc",
+              "arc": "mott-minute",
+              "ending": "looked-together"
+            }
+          ]
+        },
+        {
+          "on": "give",
+          "if": [
+            {
+              "iobj": "t-mott"
+            },
+            {
+              "carried": "@self"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "text": "Mott turns the loupe over in his broad fingers and hands it back. 'Good glass,' he says. 'Nothing in the tin I need it for, though.'"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "o-mott-minute-envelope",
+      "name": "cream envelope",
+      "location": "offstage",
+      "seed": "a stiff cream envelope; across the front, in Fen's tidy hand, it says TO ME, LATER",
+      "aliases": [
+        "envelope",
+        "sealed envelope"
+      ],
+      "verbs": [
+        "open"
+      ],
+      "properties": {
+        "state": "empty",
+        "state_text": {
+          "empty": "It's empty, and waiting for something small.",
+          "sealed": "It's sealed now, and something very small and folded makes a soft bump in one corner."
+        }
+      },
+      "rules": [
+        {
+          "on": "give",
+          "if": [
+            {
+              "iobj": "t-mott"
+            },
+            {
+              "carried": "@self"
+            },
+            {
+              "prop": "state",
+              "of": "@self",
+              "eq": "empty"
+            },
+            {
+              "arc": "mott-minute"
+            },
+            {
+              "beat": "mott-minute/mott-confides"
+            }
+          ],
+          "do": [
+            {
+              "kind": "set_property",
+              "target_id": "o-mott-minute-envelope",
+              "key": "state",
+              "value": "sealed"
+            },
+            {
+              "kind": "set_property",
+              "target_id": "o-tin",
+              "key": "seed",
+              "value": "a battered tea tin, its paint worn to the metal at the corners; inside, a button, a bent key, a thimble, a stub of blue chalk, and a small empty corner where something folded used to be"
+            },
+            {
+              "kind": "narrate",
+              "text": "Mott reads what Fen has written, and something in his shoulders comes down. He lifts the small folded minute from the tin without looking at it, slips it inside, and presses the flap shut with his thumb. 'Would you take it to Fen for me?' he says. 'I'd only open it on the way.'"
+            },
+            {
+              "kind": "advance_beat",
+              "arc": "mott-minute",
+              "beat": "sealed"
+            },
+            {
+              "kind": "add_fact",
+              "id": "mott-minute-carrying",
+              "text": "{actor} is carrying Mott's oldest minute, sealed, to the Little Post Office.",
+              "known_by": [
+                "t-mott"
+              ],
+              "spread": [
+                {
+                  "to": [
+                    "t-fen",
+                    "t-umber"
+                  ],
+                  "after_minutes": 20
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "on": "give",
+          "if": [
+            {
+              "iobj": "t-fen"
+            },
+            {
+              "carried": "@self"
+            },
+            {
+              "prop": "state",
+              "of": "@self",
+              "eq": "sealed"
+            },
+            {
+              "arc": "mott-minute"
+            }
+          ],
+          "do": [
+            {
+              "kind": "close_arc",
+              "arc": "mott-minute",
+              "ending": "kept-for-later"
+            }
+          ]
+        },
+        {
+          "on": "give",
+          "if": [
+            {
+              "iobj": "t-fen"
+            },
+            {
+              "carried": "@self"
+            },
+            {
+              "prop": "state",
+              "of": "@self",
+              "eq": "empty"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "text": "Fen taps the empty envelope against the counter. 'Wrong way round, that,' she says. 'It wants filling before it wants filing. Take it to Mott first.'"
+            }
+          ]
+        },
+        {
+          "on": "give",
+          "if": [
+            {
+              "iobj": "t-mott"
+            },
+            {
+              "carried": "@self"
+            },
+            {
+              "prop": "state",
+              "of": "@self",
+              "eq": "sealed"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "text": "Mott pushes it gently back into your hands. 'I'd only open it,' he says. 'Fen's, please.'"
+            }
+          ]
+        },
+        {
+          "on": "open",
+          "if": [
+            {
+              "prop": "state",
+              "of": "@self",
+              "eq": "sealed"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "You turn the envelope over in your hands. It's Mott's, and it's sealed for a reason. You leave it be."
+            }
+          ]
+        },
+        {
+          "on": "open",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "It's already open, and empty, waiting for something small."
+            }
+          ]
+        }
       ]
     }
   ]

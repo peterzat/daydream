@@ -1,0 +1,488 @@
+{
+  "name": "tace-hour-within-reach",
+  "comment": "The Hour Before, ending within-reach: the stopped clock from Tace, Umber's piece, Wend's ladder from Mott, the climbing song from Sorrel; the ladder stands in the cellar again, and given the song Tace climbs and sets the jar down where the lantern reaches, unopened.",
+  "clock": "2026-10-01T17:00:00+00:00",
+  "players": [
+    {
+      "as": "A",
+      "name": "Wren"
+    }
+  ],
+  "segments": [
+    {
+      "name": "prologue",
+      "commands": [
+        {
+          "cmd": "read ledger",
+          "expect": {
+            "narrate_contains": "escapement gear",
+            "beats": [
+              "prologue/read-ledger"
+            ],
+            "phase": "stopped"
+          }
+        },
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-square"
+          }
+        },
+        {
+          "cmd": "south",
+          "expect": {
+            "room": "r-well"
+          }
+        },
+        {
+          "cmd": "take gear",
+          "expect": {
+            "carrying": [
+              "escapement gear"
+            ],
+            "beats": [
+              "prologue/found-gear"
+            ]
+          }
+        },
+        {
+          "cmd": "north"
+        },
+        {
+          "cmd": "west"
+        },
+        {
+          "cmd": "up",
+          "expect": {
+            "room": "r-loft"
+          }
+        },
+        {
+          "cmd": "give gear to tace",
+          "expect": {
+            "carrying": [
+              "case key"
+            ],
+            "beats": [
+              "prologue/gave-gear"
+            ],
+            "narrate_contains": "You carried it all the way home."
+          }
+        },
+        {
+          "cmd": "down",
+          "expect": {
+            "room": "r-clocktower"
+          }
+        },
+        {
+          "cmd": "use key on case",
+          "expect": {
+            "beats": [
+              "prologue/unlocked"
+            ]
+          }
+        },
+        {
+          "cmd": "open case",
+          "expect": {
+            "ending": {
+              "prologue": "mended"
+            },
+            "flag": {
+              "CLOCK-STARTED": true
+            },
+            "narrate_contains": "first slow tick",
+            "day": {
+              "eq": 1
+            }
+          }
+        },
+        {
+          "cmd": "take dreamseed",
+          "expect": {
+            "carrying": [
+              "dreamseed"
+            ]
+          }
+        },
+        {
+          "cmd": "take cog",
+          "expect": {
+            "carrying": [
+              "warm brass cog"
+            ],
+            "arc": {
+              "pim": "open"
+            },
+            "phase": "dusk",
+            "located": {
+              "t-pims-nap": "r-square"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "a new frost",
+      "commands": [
+        {
+          "clock": "+2d",
+          "expect": {
+            "arc": {
+              "tace-hour": "open"
+            },
+            "day": {
+              "eq": 3
+            }
+          }
+        },
+        {
+          "summon": "tace-hour",
+          "expect": {
+            "arc": {
+              "tace-hour": "open"
+            }
+          }
+        },
+        {
+          "cmd": "up",
+          "expect": {
+            "room": "r-loft"
+          }
+        },
+        {
+          "cmd": "examine round window",
+          "expect": {
+            "narrate_contains": "both hands pointing at eleven"
+          }
+        },
+        {
+          "cmd": "examine stopped clock",
+          "expect": {
+            "narrate_contains": "sits apart from the others on the top shelf"
+          }
+        },
+        {
+          "cmd": "take stopped clock",
+          "expect": {
+            "not_carrying": [
+              "little brass clock"
+            ],
+            "narrate_contains": "Not that one, friend"
+          }
+        },
+        {
+          "cmd": "ask tace about the frost",
+          "expect": {
+            "beats": [
+              "tace-hour/tace-frost"
+            ],
+            "carrying": [
+              "little brass clock"
+            ],
+            "narrate_contains": "Umber keeps a lamp lit"
+          }
+        }
+      ]
+    },
+    {
+      "name": "three pieces",
+      "commands": [
+        {
+          "cmd": "wind stopped clock",
+          "expect": {
+            "narrate_contains": "won't turn for you"
+          }
+        },
+        {
+          "cmd": "examine little brass clock",
+          "expect": {
+            "narrate_contains": "hasn't ticked since the first hard frost"
+          }
+        },
+        {
+          "cmd": "down",
+          "expect": {
+            "room": "r-clocktower"
+          }
+        },
+        {
+          "cmd": "down",
+          "expect": {
+            "room": "r-cellar"
+          }
+        },
+        {
+          "cmd": "ask umber about the first hard frost",
+          "expect": {
+            "beats": [
+              "tace-hour/umber-frost"
+            ],
+            "narrate_contains": "Wend's last night"
+          }
+        },
+        {
+          "cmd": "up"
+        },
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-square"
+          }
+        },
+        {
+          "cmd": "north",
+          "expect": {
+            "room": "r-workshop"
+          }
+        },
+        {
+          "cmd": "ask mott about wend's ladder",
+          "expect": {
+            "beats": [
+              "tace-hour/mott-ladder"
+            ],
+            "carrying": [
+              "tall ladder"
+            ],
+            "narrate_contains": "Sorrel will have the song"
+          }
+        },
+        {
+          "cmd": "south",
+          "expect": {
+            "room": "r-square"
+          }
+        },
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-lane"
+          }
+        },
+        {
+          "cmd": "south",
+          "expect": {
+            "room": "r-bridge"
+          }
+        },
+        {
+          "cmd": "south",
+          "expect": {
+            "room": "r-duskroad"
+          }
+        },
+        {
+          "cmd": "ask sorrel about wend's climbing song",
+          "expect": {
+            "beats": [
+              "tace-hour/sorrel-song"
+            ],
+            "carrying": [
+              "climbing song"
+            ],
+            "narrate_contains": "the hour before midnight"
+          }
+        }
+      ]
+    },
+    {
+      "name": "the ladder stands",
+      "commands": [
+        {
+          "cmd": "north",
+          "expect": {
+            "room": "r-bridge"
+          }
+        },
+        {
+          "cmd": "north",
+          "expect": {
+            "room": "r-lane"
+          }
+        },
+        {
+          "cmd": "west",
+          "expect": {
+            "room": "r-square"
+          }
+        },
+        {
+          "cmd": "west",
+          "expect": {
+            "room": "r-clocktower"
+          }
+        },
+        {
+          "cmd": "up",
+          "expect": {
+            "room": "r-loft"
+          }
+        },
+        {
+          "cmd": "give climbing song to tace",
+          "expect": {
+            "carrying": [
+              "climbing song"
+            ],
+            "narrate_contains": "no ladder down there tall enough"
+          }
+        },
+        {
+          "cmd": "down"
+        },
+        {
+          "cmd": "down",
+          "expect": {
+            "room": "r-cellar"
+          }
+        },
+        {
+          "cmd": "use tall ladder on highest shelf",
+          "expect": {
+            "beats": [
+              "tace-hour/ladder-set"
+            ],
+            "located": {
+              "o-tace-hour-ladder": "r-cellar"
+            },
+            "not_carrying": [
+              "tall ladder"
+            ],
+            "narrate_contains": "Go and tell Tace it's standing"
+          }
+        },
+        {
+          "cmd": "take tall ladder",
+          "expect": {
+            "located": {
+              "o-tace-hour-ladder": "r-cellar"
+            },
+            "narrate_contains": "Leave it standing"
+          }
+        },
+        {
+          "cmd": "examine highest shelf",
+          "expect": {
+            "narrate_contains": "leans against it now"
+          }
+        },
+        {
+          "cmd": "use tall ladder on jars",
+          "expect": {
+            "narrate_contains": "It already stands"
+          }
+        },
+        {
+          "cmd": "up"
+        },
+        {
+          "cmd": "up",
+          "expect": {
+            "room": "r-loft"
+          }
+        },
+        {
+          "cmd": "give climbing song to tace",
+          "expect": {
+            "carrying": [
+              "climbing song"
+            ],
+            "narrate_contains": "cellar dust on your sleeve"
+          }
+        },
+        {
+          "cmd": "ask tace about wend's ladder",
+          "expect": {
+            "beats": [
+              "tace-hour/tace-told"
+            ],
+            "narrate_contains": "if I had something to carry"
+          }
+        },
+        {
+          "cmd": "give climbing song to tace",
+          "expect": {
+            "ending": {
+              "tace-hour": "within-reach"
+            },
+            "not_carrying": [
+              "climbing song"
+            ],
+            "carrying": [
+              "little brass clock"
+            ],
+            "located": {
+              "t-tace": "r-loft",
+              "o-tace-hour-jar": "r-cellar"
+            },
+            "room": "r-loft",
+            "narrate_contains": "see it from the stairs",
+            "knows": {
+              "t-tace": "tace-hour-sang-up"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "where the lantern reaches",
+      "commands": [
+        {
+          "cmd": "examine round window",
+          "expect": {
+            "narrate_contains": "faint round mark"
+          }
+        },
+        {
+          "cmd": "down"
+        },
+        {
+          "cmd": "down",
+          "expect": {
+            "room": "r-cellar"
+          }
+        },
+        {
+          "cmd": "examine dusty jar",
+          "expect": {
+            "narrate_contains": "For Tace, when they're ready"
+          }
+        },
+        {
+          "cmd": "open dusty jar",
+          "expect": {
+            "narrate_contains": "The lid is sealed"
+          }
+        },
+        {
+          "cmd": "take dusty jar",
+          "expect": {
+            "located": {
+              "o-tace-hour-jar": "r-cellar"
+            }
+          }
+        },
+        {
+          "cmd": "examine highest shelf",
+          "expect": {
+            "narrate_contains": "a clean circle in the dust"
+          }
+        },
+        {
+          "cmd": "up",
+          "expect": {
+            "room": "r-clocktower"
+          }
+        },
+        {
+          "cmd": "read ledger of returned hours",
+          "expect": {
+            "narrate_contains": "Tace climbed it, humming, and set a jar down where the lantern reaches."
+          }
+        }
+      ]
+    }
+  ]
+}

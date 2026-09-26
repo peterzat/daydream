@@ -1,0 +1,328 @@
+{
+  "name": "mott-minute-looked-together",
+  "comment": "The Oldest Minute, ending looked-together: Mott confides; Umber remembers the evening he came; Tace lends a loupe; with the dreamer beside him Mott unfolds his own minute and finds he was expected.",
+  "clock": "2026-10-01T17:00:00+00:00",
+  "players": [
+    {
+      "as": "A",
+      "name": "Wren"
+    }
+  ],
+  "segments": [
+    {
+      "name": "prologue",
+      "commands": [
+        {
+          "cmd": "read ledger",
+          "expect": {
+            "narrate_contains": "escapement gear",
+            "beats": [
+              "prologue/read-ledger"
+            ],
+            "phase": "stopped"
+          }
+        },
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-square"
+          }
+        },
+        {
+          "cmd": "south",
+          "expect": {
+            "room": "r-well"
+          }
+        },
+        {
+          "cmd": "take gear",
+          "expect": {
+            "carrying": [
+              "escapement gear"
+            ],
+            "beats": [
+              "prologue/found-gear"
+            ]
+          }
+        },
+        {
+          "cmd": "north"
+        },
+        {
+          "cmd": "west"
+        },
+        {
+          "cmd": "up",
+          "expect": {
+            "room": "r-loft"
+          }
+        },
+        {
+          "cmd": "give gear to tace",
+          "expect": {
+            "carrying": [
+              "case key"
+            ],
+            "beats": [
+              "prologue/gave-gear"
+            ],
+            "narrate_contains": "You carried it all the way home."
+          }
+        },
+        {
+          "cmd": "down",
+          "expect": {
+            "room": "r-clocktower"
+          }
+        },
+        {
+          "cmd": "use key on case",
+          "expect": {
+            "beats": [
+              "prologue/unlocked"
+            ]
+          }
+        },
+        {
+          "cmd": "open case",
+          "expect": {
+            "ending": {
+              "prologue": "mended"
+            },
+            "flag": {
+              "CLOCK-STARTED": true
+            },
+            "narrate_contains": "first slow tick",
+            "day": {
+              "eq": 1
+            }
+          }
+        },
+        {
+          "cmd": "take dreamseed",
+          "expect": {
+            "carrying": [
+              "dreamseed"
+            ]
+          }
+        },
+        {
+          "cmd": "take cog",
+          "expect": {
+            "carrying": [
+              "warm brass cog"
+            ],
+            "arc": {
+              "pim": "open"
+            },
+            "phase": "dusk",
+            "located": {
+              "t-pims-nap": "r-square"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "the book",
+      "commands": [
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-square"
+          }
+        },
+        {
+          "cmd": "north",
+          "expect": {
+            "room": "r-workshop"
+          }
+        },
+        {
+          "cmd": "ask mott about the book",
+          "expect": {
+            "pflag": {
+              "MET-BOOK": true
+            },
+            "rel": {
+              "t-mott": {
+                "gte": 1
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "the oldest thing in the tin",
+      "commands": [
+        {
+          "clock": "+3d",
+          "expect": {
+            "arc": {
+              "mott-minute": "open"
+            },
+            "day": {
+              "eq": 4
+            }
+          }
+        },
+        {
+          "summon": "mott-minute",
+          "expect": {
+            "arc": {
+              "mott-minute": "open"
+            }
+          }
+        },
+        {
+          "cmd": "ask mott about the tin",
+          "expect": {
+            "rel": {
+              "t-mott": {
+                "gte": 2
+              }
+            }
+          }
+        },
+        {
+          "cmd": "ask mott about the oldest minute",
+          "expect": {
+            "beats": [
+              "mott-minute/mott-confides"
+            ],
+            "narrate_contains": "Bit afraid to, truth be told."
+          }
+        }
+      ]
+    },
+    {
+      "name": "a loupe",
+      "commands": [
+        {
+          "cmd": "south",
+          "expect": {
+            "room": "r-square"
+          }
+        },
+        {
+          "cmd": "west",
+          "expect": {
+            "room": "r-clocktower"
+          }
+        },
+        {
+          "cmd": "down",
+          "expect": {
+            "room": "r-cellar"
+          }
+        },
+        {
+          "cmd": "ask umber about when mott came",
+          "expect": {
+            "beats": [
+              "mott-minute/umber-remembers"
+            ],
+            "narrate_contains": "Either is allowed."
+          }
+        },
+        {
+          "cmd": "up"
+        },
+        {
+          "cmd": "up",
+          "expect": {
+            "room": "r-loft"
+          }
+        },
+        {
+          "cmd": "ask tace about a loupe",
+          "expect": {
+            "beats": [
+              "mott-minute/tace-loupe"
+            ],
+            "carrying": [
+              "spare loupe"
+            ],
+            "narrate_contains": "along its own creases"
+          }
+        }
+      ]
+    },
+    {
+      "name": "in the slant light",
+      "commands": [
+        {
+          "cmd": "down",
+          "expect": {
+            "room": "r-clocktower"
+          }
+        },
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-square"
+          }
+        },
+        {
+          "cmd": "north",
+          "expect": {
+            "room": "r-workshop"
+          }
+        },
+        {
+          "cmd": "give spare loupe to mott",
+          "expect": {
+            "ending": {
+              "mott-minute": "looked-together"
+            },
+            "carrying": [
+              "curl of cedar shaving",
+              "spare loupe"
+            ],
+            "narrate_contains": [
+              "We kept a broom for you.",
+              "the minute I was expected"
+            ],
+            "knows": {
+              "t-mott": "mott-minute-sat-with"
+            }
+          }
+        },
+        {
+          "cmd": "examine tin",
+          "expect": {
+            "narrate_contains": "unfolded at last"
+          }
+        },
+        {
+          "cmd": "give spare loupe to mott",
+          "expect": {
+            "carrying": [
+              "spare loupe"
+            ],
+            "narrate_contains": "Good glass"
+          }
+        },
+        {
+          "cmd": "south",
+          "expect": {
+            "room": "r-square"
+          }
+        },
+        {
+          "cmd": "west",
+          "expect": {
+            "room": "r-clocktower"
+          }
+        },
+        {
+          "cmd": "read ledger of returned hours",
+          "expect": {
+            "narrate_contains": "Wren sat with Mott while he looked at his oldest minute at last: the minute he was expected."
+          }
+        }
+      ]
+    }
+  ]
+}

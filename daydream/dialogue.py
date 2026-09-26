@@ -227,7 +227,7 @@ def _schema(ids: list[str]) -> dict:
 
 
 LINES_PREFIX = "lines:"
-LINE_MEMORY = 6
+LINE_MEMORY = 10
 
 
 def recent_lines(world_id: str, npc_id: str) -> list[str]:
@@ -400,7 +400,9 @@ async def talk(actor: objects.Object, npc: objects.Object, text: str, room_id: s
     candidates.sort(key=lambda c: score(c[0], npc.name, pkey, openers, said[-3:]))
     line, advance, gesture, say = candidates[0]
     if gesture or say:
-        g2 = _fresh_gesture(npc, gesture, said[-3:])
+        # The gesture look-back is long (eight lines): a model's favourite
+        # opening recurs every four or five replies, not back to back.
+        g2 = _fresh_gesture(npc, gesture, said[-8:])
         s2 = _dampen_pet_names(npc, say, said)
         if (g2, s2) != (gesture, say):
             line = compose(npc.name, g2, s2)
