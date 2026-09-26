@@ -87,3 +87,35 @@ def test_compare_writes_a_consistent_blind_sheet(tmp_path):
     # Labels never leak into the sheet itself.
     assert "model-a" not in sheet and "model-b" not in sheet
     assert "| model-a |" in (out / "compare.md").read_text()
+
+
+def test_subset_rerun_refuses_to_merge_a_different_model(tmp_path, monkeypatch, capsys):
+    """A --suites re-run under a label holding another model's results would
+    merge two models into one results.json. It must refuse before any endpoint
+    work and leave the old file intact; the same model passes the check."""
+    import httpx
+
+    prior = tmp_path / "x" / "results.json"
+    prior.parent.mkdir()
+    prior.write_text(json.dumps({"label": "x", "model": "hosted_vllm/a", "suites": {}}))
+    before = prior.read_bytes()
+    probes = []
+
+    def no_endpoint(url, **kw):
+        probes.append(url)
+        raise ConnectionError("no endpoint in tests")
+
+    monkeypatch.setattr(httpx, "get", no_endpoint)
+    # main() writes DAYDREAM_LLM_MODEL from --model; setenv restores it after.
+    monkeypatch.setenv("DAYDREAM_LLM_MODEL", "hosted_vllm/a")
+    run = ["run", "--label", "x", "--suites", "dialogue", "--out", str(tmp_path)]
+
+    assert model_eval.main([*run, "--model", "hosted_vllm/b"]) == 2
+    err = capsys.readouterr().err
+    assert "refusing to merge" in err and "hosted_vllm/a" in err and "hosted_vllm/b" in err
+    assert probes == [] and prior.read_bytes() == before
+
+    assert model_eval.main([*run, "--model", "hosted_vllm/a"]) == 2
+    err = capsys.readouterr().err
+    assert "refusing" not in err and "endpoint unreachable" in err
+    assert len(probes) == 1

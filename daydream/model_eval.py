@@ -656,6 +656,19 @@ async def _run(args) -> int:
 
     from daydream import config, db, events
 
+    out = Path(args.out).expanduser() / args.label
+    prior = out / "results.json"
+    if args.suites and prior.exists():
+        # A subset re-run merges into this label's result (below); a different
+        # model there would leave its scores under this run's model name.
+        # Refuse before any endpoint or GPU work, so nothing is spent or written.
+        old_model = json.loads(prior.read_text()).get("model")
+        if old_model != config.llm_model():
+            print(f"[model-eval] refusing to merge: label {args.label!r} holds results "
+                  f"for {old_model}, not {config.llm_model()}; re-run under a new --label",
+                  file=sys.stderr)
+            return 2
+
     base = config.llm_base_url()
     try:
         models = httpx.get(base.rstrip("/") + "/models", timeout=3).json()
@@ -700,9 +713,7 @@ async def _run(args) -> int:
                 os.environ.pop("DAYDREAM_DATA_DIR", None)
             else:
                 os.environ["DAYDREAM_DATA_DIR"] = saved_home
-    out = Path(args.out).expanduser() / args.label
     out.mkdir(parents=True, exist_ok=True)
-    prior = out / "results.json"
     if args.suites and prior.exists():
         # A subset re-run merges into the label's existing result: the re-run
         # suites (and their calls) replace the old ones, the rest are kept.
