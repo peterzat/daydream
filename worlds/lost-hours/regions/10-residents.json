@@ -38,7 +38,7 @@
       "slot": 101,
       "room": "r-square",
       "mood": "cheerful",
-      "seed": "the one who lights the square's lanterns at dusk; bright, kind, and talkative in short warm bursts; notices small things; has never seen a dawn",
+      "seed": "the one who lights the square's lanterns at dusk; bright, kind, and talkative in short warm bursts; notices small things; sleeps through the mornings",
       "appearance_seed": "a wiry young person with a lamplighter's hooked pole, soot smudged along one cheek, a scarf the color of butter-yellow lamplight",
       "presence_text": "Bell is up a small ladder coaxing a lantern alight, and lifts a sooty hand in greeting.",
       "aliases": [
@@ -251,7 +251,13 @@
     },
     "bell-no-dawn": {
       "text": "Bell lights every dusk and sleeps through every morning, and so has never once seen a dawn.",
-      "known_by": "all"
+      "known_by": "all",
+      "if": [
+        {
+          "ending": "bell-dawn/first-dawn",
+          "not": true
+        }
+      ]
     },
     "mott-tin": {
       "text": "Mott's tin holds small found things: a button, a bent key, a thimble, a stub of blue chalk, and one very small folded thing he keeps to himself. The escapement gear was never in it.",
@@ -259,6 +265,27 @@
         "t-mott",
         "t-bell",
         "t-tace"
+      ],
+      "if": [
+        {
+          "arc": "mott-minute",
+          "eq": "closed",
+          "not": true
+        }
+      ]
+    },
+    "mott-tin-after": {
+      "text": "Mott's tin holds small found things: a button, a bent key, a thimble, a stub of blue chalk. The escapement gear was never in it.",
+      "known_by": [
+        "t-mott",
+        "t-bell",
+        "t-tace"
+      ],
+      "if": [
+        {
+          "arc": "mott-minute",
+          "eq": "closed"
+        }
       ]
     },
     "wend": {
@@ -310,6 +337,13 @@
         "Over the hill the sky pales, very slowly, the way a thought comes back to you. Down in the village every lantern is out, and Bell is fast asleep.",
         "Dawn edges up at the far rim of the sky, grey, then pearl, then the faintest rose. The bench on the hill faces it like an empty theater seat.",
         "A cool wind comes over the hill with the dawn in it. Somewhere below, a single lantern Bell forgot goes on burning, small and brave."
+      ],
+      "if": [
+        {
+          "contains": "t-bell",
+          "of": "r-hill",
+          "not": true
+        }
       ]
     },
     {

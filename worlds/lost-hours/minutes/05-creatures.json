@@ -1,9 +1,29 @@
 {
   "comment": "Book of Stray Minutes, page 5 of 12: small creatures. Tock (it/its, never speaks) approves with a gesture, and the page warms it to the finder.",
   "pages": {
-    "p-creatures": {"title": "Minutes with Small Creatures",
-                    "reward": {"text": "As the last of the Minutes with Small Creatures settles onto its page, something soft winds once round your ankle and is gone before you can look down. Tock, it seems, approves.",
-                               "do": [{"kind": "adjust_rel", "npc": "t-tock", "delta": 2}]}}
+    "p-creatures": {
+      "title": "Minutes with Small Creatures",
+      "reward": {
+        "text": "The Small Creatures page is full. On your sleeve, where nothing was a tick ago, there is a single silver-grey whisker.",
+        "do": [
+          {
+            "kind": "adjust_rel",
+            "npc": "t-tock",
+            "delta": 2
+          },
+          {
+            "kind": "spawn_object",
+            "name": "silver whisker",
+            "location_id": "@actor",
+            "seed": "a single silver-grey whisker, left on your sleeve by a cat who only exists between ticks; it is exactly as long as a second",
+            "aliases": [
+              "whisker"
+            ],
+            "generated_by": "page:creatures"
+          }
+        ]
+      }
+    }
   },
   "collectibles": [
     {"id": "m-chosen-lap", "name": "the chosen-lap minute", "text": "a cat deciding, after long thought, that your lap would do", "page": "p-creatures"},

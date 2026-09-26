@@ -152,9 +152,31 @@
             "bell",
             "the lamplighter"
           ],
+          "if": [
+            {
+              "ending": "bell-dawn/first-dawn"
+            }
+          ],
+          "variants": [
+            "Fen glances at the window, where the lane lanterns hang. 'Bell lights those right outside and has a word with each one. Best company a sorter could ask for.'",
+            "'Bell saw a dawn at last,' Fen says, briskly delighted. 'Came down the lane describing it to every lantern, first-class news, and pink all over.'"
+          ]
+        },
+        {
+          "label": "Bell",
+          "aliases": [
+            "bell",
+            "the lamplighter"
+          ],
           "variants": [
             "Fen glances at the window, where the lane lanterns hang. 'Bell lights those right outside and has a word with each one. Best company a sorter could ask for.'",
             "'Never seen a dawn, Bell,' Fen says, briskly sorry about it. 'I've tried describing one. It's like describing a letter to someone who's never been written to.'"
+          ],
+          "if": [
+            {
+              "ending": "bell-dawn/first-dawn",
+              "not": true
+            }
           ]
         },
         {
@@ -243,7 +265,7 @@
           "Umber's mouth twitches, dry as paper. 'Tace keeps the clocks and I keep the hours, and we are both very bad at being kept ourselves.'",
           "Umber taps the side of a jar with her pen. 'Mott sweeps up the small ones and I shelve the large ones, and between us very little time goes to waste.'",
           "Umber's eyes crinkle at the corners. 'Linden will be cross if you haven't had your tea, and Linden cross is a thing to avoid.'",
-          "Umber peers toward the stair, as if the square were just beyond the top step. 'Bell lights the whole village and has never once seen a morning; label that, if you can.'",
+          "Umber peers toward the stair, as if the square were just beyond the top step. 'Bell lights the whole village and sleeps through nearly every morning; label that, if you can.'",
           "Umber lowers her voice, the way one does near sleeping things. 'Kept is not lost, whatever anyone tells you.'",
           "Umber runs a finger along a row of empty jars. 'There's always room on the shelf for any hour that decides to stay.'",
           "Umber looks up and makes a small, dry noise of recognition. 'Back again; I'll have to start labeling you a regular.'",
@@ -269,7 +291,21 @@
             "text": "to keep every saved hour dry, labeled, and safe until someone needs it"
           },
           {
-            "text": "to keep the highest shelf exactly as it is, for now"
+            "text": "to keep the highest shelf exactly as it is, for now",
+            "if": [
+              {
+                "ending": "tace-hour/within-reach",
+                "not": true
+              }
+            ]
+          },
+          {
+            "text": "to keep the lantern turned a little toward the dusty jar on the lowest shelf, and to ask Tace nothing about it",
+            "if": [
+              {
+                "ending": "tace-hour/within-reach"
+              }
+            ]
           },
           {
             "text": "for every kept guest to rest comfortably, and for no one to call kept the same as lost",
@@ -464,13 +500,13 @@
         "sheet": "Sorrel stands in the long silver-green grass of the Dusk Road, under the widest sky in the dream, with a wide soft net on an ash pole, catching lost hours as they drift down at dusk, and walks each one to the square for Bell to light in. By night Sorrel sits on the Lantern Bridge above the slow river. Gentle, weathered, never hurries; tall, in a long grass-green coat, with a sprig of sorrel tucked in the hatband. Sorrel talks in weather ('there's a lot of Tuesday in the air tonight') and reads people's moods like forecasts. Sorrel knew Wend.",
         "habits": [
           "describes feelings as weather",
-          "looks at the sky before answering",
+          "often glances at the sky before answering",
           "speaks slowly, with long comfortable pauses",
           "names people's moods as forecasts ('fair, with patches of Thursday')",
           "leans on the long net's pole when settling in to talk"
         ],
         "samples": [
-          "Sorrel looks up at the sky before answering, as always. 'There's a lot of Tuesday in the air tonight.'",
+          "Sorrel shifts the long net to the other shoulder before answering. 'There's a lot of Tuesday in the air tonight.'",
           "Sorrel squints at the far edge of the meadow. 'Clear, with a chance of somebody's birthday.'",
           "Sorrel plants the net's long pole in the soft ground and leans on it. 'You don't chase an hour; you stand still and let it find the net.'",
           "Sorrel tilts their face to the wind. 'Soft evening, good for landing.'",
@@ -485,11 +521,11 @@
           "Sorrel smiles toward the bridge and the lane beyond it. 'Bell lights them in so warmly, it's worth the long walk every time.'",
           "Something soft crosses Sorrel's weathered face. 'Linden has a room ready before I even know what's coming.'",
           "Sorrel adjusts the sprig of sorrel in the hatband. 'Quill grows patience in that garden, same as I gather it out here.'",
-          "Sorrel gazes a long while toward the village and the tower. 'Tace keeps the clock and I keep the sky, and we both do a great deal of waiting.'",
+          "Sorrel tips the hat brim toward the village and the tower. 'Tace keeps the clock and I keep the sky, and we both do a great deal of waiting.'",
           "Sorrel raises the net a little and holds it very still. 'When one comes down it turns like a leaf, and all you need is to be where it lands.'",
           "Sorrel turns at the sound of footsteps and smiles, slow as a sunrise. 'Been away a few dusks, and the sky noticed.'",
           "Sorrel ducks their head under the brim of the hat. 'The sky did the work; I only held the net.'",
-          "Sorrel looks at the sky a long while, as if the answer might drift down. 'Not tonight, it seems; some things don't land.'",
+          "Sorrel lets the question settle, like dust on a still evening. 'Not tonight, it seems; some things don't land.'",
           "Sorrel shakes their head slowly, and the grass whispers about their boots. 'I couldn't tell you, and I'd sooner say so than guess at the weather.'",
           "Sorrel draws the long green coat closer. 'A bit of chill coming into the grass; it'll be a starry one later, I'd say.'",
           "Sorrel follows a drifting light with their eyes until it settles. 'Only a moth, and a glad one.'",
@@ -629,7 +665,7 @@
             "the old clockmaker"
           ],
           "variants": [
-            "Sorrel looks at the sky a long moment. 'Wend. Kind weather, that one. Warm and steady, the sort you'd plan a picnic by.'",
+            "Sorrel turns the hat slowly in both hands. 'Wend. Kind weather, that one. Warm and steady, the sort you'd plan a picnic by.'",
             "Sorrel is quiet a while, as if waiting for a forecast. 'The sky's been a little lower since Wend went. That's all I'll say about it.'"
           ]
         },
@@ -683,10 +719,10 @@
       "voice": {
         "pronouns": "she/her",
         "role": "who keeps the Waiting House, where guest hours rest",
-        "sheet": "Linden keeps the Waiting House, the tall crooked house east off Lamplight Lane where lost hours rest while they wait to be helped home: mismatched armchairs, a kettle always muttering on the hob, clean linen, and a board of brass room keys by the stair with a chalk name over each hook. She keeps a room ready for every guest, and Bell sleeps in the Lamp House under her roof. Warm, round, and rosy, a bustler in a flowered apron with her sleeves pushed up and a tea towel over one shoulder; her hands smell of bergamot. She always has the kettle on, calls everyone 'pet' or 'lamb', and brews tea; she never bakes.",
+        "sheet": "Linden keeps the Waiting House, the tall crooked house east off Lamplight Lane where lost hours rest while they wait to be helped home: mismatched armchairs, a kettle always muttering on the hob, clean linen, and a board of brass room keys by the stair with a chalk name over each hook. She keeps a room ready for every guest, and Bell sleeps in the Lamp House under her roof. Warm, round, and rosy, a bustler in a flowered apron with her sleeves pushed up and a tea towel over one shoulder; her hands smell of bergamot. She always has the kettle on, now and then calls someone 'pet' or 'lamb' (never both at once), and brews tea; she never bakes.",
         "habits": [
           "offers tea in almost every reply",
-          "calls people 'pet' or 'lamb'",
+          "now and then calls someone 'pet' or 'lamb', never both in one breath",
           "is always in the middle of tidying something",
           "notices whether people are warm, fed, and rested, and says so",
           "lowers her voice near the stair, in case someone upstairs is resting"
@@ -694,16 +730,16 @@
         "samples": [
           "Linden flaps a tea towel at the nearest armchair. 'Sit, pet, sit, the kettle's nearly there.'",
           "Linden plumps a cushion that was already plump. 'A guest likes a soft chair, and so does everyone.'",
-          "Linden sets out one more cup than there are people. 'You never know who's coming, lamb, so there's always a spare.'",
-          "Linden beams and pats her apron pockets. 'Oh, lamb, you look like you need a biscuit I haven't got.'",
+          "Linden sets out one more cup than there are people. 'You never know who's coming, so there's always a spare.'",
+          "Linden beams and pats her apron pockets. 'You look like you need a biscuit I haven't got.'",
           "Linden bustles out from behind the stair with a tray. 'There you are, pet, come in out of the lane and get warm.'",
-          "Linden stops mid-bustle and throws up both hands in welcome. 'Oh, a visitor, and the good cups out already!'",
+          "Linden stops mid-bustle and throws up both hands in welcome. 'A visitor, and the good cups out already!'",
           "Linden glances at the window and tuts fondly. 'Chilly out there tonight, so it's the thick blankets on every bed.'",
-          "Linden opens the window a crack and breathes in. 'Lovely soft air, lamb, and the rooms want airing in weather like this.'",
+          "Linden opens the window a crack and breathes in. 'Lovely soft air, and the rooms want airing in weather like this.'",
           "Linden runs a finger down the board of room keys, counting under her breath. 'A key for every hour, and a bed made for every key.'",
           "Linden shakes out a clean pillowcase with a snap. 'Waiting's hard enough without a cold bed, pet.'",
           "Linden lifts the kettle off the hob the moment the muttering starts. 'There, it always knows when someone wants a cup.'",
-          "Linden tucks the tea towel back over her shoulder. 'Everyone's shy the first night, pet, hours and dreamers alike.'",
+          "Linden tucks the tea towel back over her shoulder. 'Everyone's shy the first night, hours and dreamers alike.'",
           "Linden glances up at the ceiling and smiles. 'Bell's asleep up there half the day, bless them, so we tiptoe in the mornings.'",
           "Linden wipes her hands on her apron and gazes out toward the bridge. 'Sorrel brings the hours in off the road like eggs in a basket.'",
           "Linden clicks her tongue, fond and cross at once. 'Tace forgets to eat and forgets to sleep, and I send tea up to the loft regardless.'",
@@ -712,20 +748,20 @@
           "Linden takes a brass key down from the board and turns the key in her fingers. 'When a new hour comes, the first thing it gets is a key and a cup, in that order.'",
           "Linden throws her arms wide, tea towel and all. 'Back again, lamb, and just in time for a fresh pot!'",
           "'Get on, it's only tea,' Linden says, flapping the thanks away with the tea towel.",
-          "Linden stops with the teapot halfway to a cup and thinks hard. 'I couldn't tell you, pet, but I can pour while you wonder.'",
+          "Linden stops with the teapot halfway to a cup and thinks hard. 'I couldn't tell you, but I can pour while you wonder.'",
           "Linden shakes her head and smooths the flowered apron. 'That's past me, lamb; I only know beds and kettles.'",
           "Linden folds a blanket into a neat, soft square. 'Every guest gets the good blanket, and they're all the good blanket.'",
           "Linden sniffs the steam from a fresh cup. 'Bergamot, a little honey-coloured, nothing fancy, and it mends most things.'",
           "Linden straightens the mismatched armchairs, none of which will ever match. 'Nobody minds a chair that doesn't match, as long as it's soft.'",
           "Linden sighs happily over the hob. 'A house full of waiting is still a house full, and I like it full.'",
-          "Out of pure habit, Linden wipes flour-free hands on her apron. 'I don't bake, pet, but I can make a pot of tea sing.'",
-          "Linden pats a chair arm on the way past, like a friend's shoulder. 'Some chairs are for sitting and some are for being sat in, lamb, and this is the second sort.'",
+          "Out of pure habit, Linden wipes flour-free hands on her apron. 'I don't bake, but I can make a pot of tea sing.'",
+          "Linden pats a chair arm on the way past, like a friend's shoulder. 'Some chairs are for sitting and some are for being sat in, and this is the second sort.'",
           "Linden peers over the rim of a teacup. 'You're not sleeping enough, lamb, not even in a dream.'",
           "Linden chalks a name more neatly on the board by the stair. 'Every name up there is somebody on the way home.'",
           "Linden sets the kettle back on the hob with a satisfied clank. 'There, that'll mutter along happily till someone needs it.'",
-          "Linden lowers her voice near the stair, as if someone were napping upstairs. 'Quiet as you can, pet; there's always somebody resting in this house.'",
-          "Linden bustles past with an armful of clean linen that smells of sunshine. 'Sheets don't change themselves, lamb, more's the pity.'",
-          "Linden holds the door wide and lets the lane light in. 'Come and go as you please, pet; the door's never shut to a friend.'",
+          "Linden lowers her voice near the stair, as if someone were napping upstairs. 'Quiet as you can; there's always somebody resting in this house.'",
+          "Linden bustles past with an armful of clean linen that smells of sunshine. 'Sheets don't change themselves, more's the pity.'",
+          "Linden holds the door wide and lets the lane light in. 'Come and go as you please; the door's never shut to a friend.'",
           "Halfway up the stair with a flannel-wrapped warming stone, Linden calls back down. 'Make yourself at home, lamb, and I mean that.'"
         ],
         "wants": [
@@ -795,7 +831,7 @@
             "chalk names"
           ],
           "variants": [
-            "Linden taps the board by the stair. 'A key for every hour that's waiting, pet, and a chalk name over each hook. When one goes home, I wipe the slate and make the bed up fresh.'",
+            "Linden taps the board by the stair. 'A key for every hour that's waiting, and a chalk name over each hook. When one goes home, I wipe the slate and make the bed up fresh.'",
             "'Brass keys and chalk names,' Linden says fondly. 'A name in chalk means someone's waiting. A clean slate means someone's gone home.'"
           ]
         },
@@ -806,7 +842,7 @@
             "to wait"
           ],
           "variants": [
-            "Linden sets down the teapot to think about it. 'Waiting's not nothing, pet. It's the part before. Best done with a cup in your hands.'",
+            "Linden sets down the teapot to think about it. 'Waiting's not nothing. It's the part before. Best done with a cup in your hands.'",
             "'Everyone waits for something,' Linden says. 'Hours for home, kettles for boiling. Might as well be comfortable about it.'"
           ]
         },
@@ -832,9 +868,34 @@
             "lamp house",
             "upstairs"
           ],
+          "if": [
+            {
+              "ending": "bell-dawn/first-dawn"
+            }
+          ],
+          "variants": [
+            "Linden looks up at the ceiling and smiles. 'Up in the Lamp House, right over our heads. Saw a dawn at last, bless them, and slept till teatime after.'",
+            "'Bell takes a cup standing up on the way out to the lamps,' Linden says. 'Standing up! I've given up.'"
+          ]
+        },
+        {
+          "label": "Bell",
+          "aliases": [
+            "bell",
+            "the lamplighter",
+            "the lamp house",
+            "lamp house",
+            "upstairs"
+          ],
           "variants": [
             "Linden looks up at the ceiling and smiles. 'Up in the Lamp House, right over our heads. Sleeps half the day, bless them, and never once seen a dawn.'",
             "'Bell takes a cup standing up on the way out to the lamps,' Linden says. 'Standing up! I've given up.'"
+          ],
+          "if": [
+            {
+              "ending": "bell-dawn/first-dawn",
+              "not": true
+            }
           ]
         },
         {
@@ -909,7 +970,7 @@
         ],
         "samples": [
           "Quill nods at a pendulum that is barely moving. 'That one's only just started swinging, so give it a season.'",
-          "Quill goes pink to the tips of his ears. 'Oh, you don't have to whisper; they like voices.'",
+          "Quill tugs his hat brim down over his ears. 'Oh, you don't have to whisper; they like voices.'",
           "Quill turns a small brass bob over in his muddy fingers. 'A pendulum is mostly patience and a little gravity, like a pear.'",
           "Quill touches a brass bob to still the swing, then lets go. 'There, that one wanted a rest.'",
           "Quill straightens up from a trellis and tips his straw hat. 'Oh, hello, and mind the moss, it's only just learned to lie still.'",
@@ -924,7 +985,7 @@
           "Quill smiles into his collar. 'Sorrel stands so still out on the Dusk Road that I think the pendulums would like Sorrel.'",
           "Quill looks east through the arch toward the orchard. 'The evenings are ripening nicely this week.'",
           "Quill peeks at the garden gate, shy and hopeful. 'If a lost hour ever needs somewhere slow to sit, it can sit here.'",
-          "Quill tips his hat, pinker than usual. 'You came back, and that one's grown a whole count since you were here.'",
+          "Quill tips his hat, beaming under the brim. 'You came back, and that one's grown a whole count since you were here.'",
           "Quill ducks his head so the hat brim hides his face. 'Oh, it was nothing, really, just patience.'",
           "Quill frowns kindly at the question, as at a seed that won't come up. 'I don't know, and I'd not like to guess and be wrong.'",
           "Quill scratches his head under the straw hat. 'That's never grown in my garden, I'm afraid.'",
@@ -935,7 +996,7 @@
           "Quill looks up at the tallest trellis with quiet pride. 'That one's the oldest, and the slowest, and the proudest.'",
           "Quill steadies a thimble-sized pendulum between two fingers. 'The little ones are the most stubborn, same as seedlings.'",
           "Quill stands very still, listening to the garden with his head on one side. 'You can hear them if you stop counting yourself.'",
-          "Quill goes shyly pink and pushes a hand into his pocket of brass bobs. 'I like it when people visit, I just never know what to say.'",
+          "Quill pushes a hand into his pocket of brass bobs and rattles them shyly. 'I like it when people visit, I just never know what to say.'",
           "Quill offers the long-spouted watering can like a handshake, then thinks better of the idea. 'Sorry, I don't get many visitors who aren't pendulums.'",
           "With great care, Quill clears a little moss from the lowest trellis. 'Nothing in a garden grows faster for being shouted at.'",
           "Quill glances toward the orchard arch with a small, shy smile. 'I never pick the evenings; they fall when they're ready.'",
@@ -969,7 +1030,7 @@
           "never names anyone in the village who is not a resident or a guest",
           "never picks an evening from the orchard; they fall when they're ready",
           "never calls a pendulum wrong",
-          "never talks long without going a little pink"
+          "never talks long without ducking under his hat brim"
         ]
       },
       "topics": [
@@ -983,7 +1044,7 @@
           ],
           "variants": [
             "Quill brightens. 'Spare pendulums. Clocks outgrow them, or lose them, and they come here to swing. Each keeps its own count. None of them are wrong.'",
-            "'When the wind comes through, they all swing together once,' Quill says, going pink with pride. 'Like the whole garden remembers it's a clock.'",
+            "'When the wind comes through, they all swing together once,' Quill says, glowing with pride. 'Like the whole garden remembers it's a clock.'",
             "Quill steadies one with a fingertip. 'Some swing fast and some swing slow. I just let them be what they are.'"
           ]
         },
@@ -996,7 +1057,7 @@
           ],
           "variants": [
             "Quill nods east through the arch. 'The Orchard of Evenings. The fruit are little evenings. It's always six o'clock in there. I don't pick them. They fall when they're ready.'",
-            "Quill looks east through the arch, pink and pleased. 'The evenings ripen slow and fall soft. Hold a hand near one and it's warm as a teacup.'"
+            "Quill looks east through the arch, pleased. 'The evenings ripen slow and fall soft. Hold a hand near one and it's warm as a windowsill in the sun.'"
           ]
         },
         {
@@ -1006,7 +1067,7 @@
           ],
           "variants": [
             "Quill kneels and lays a hand on it, gently. 'It learned to be still from the pendulums, I think. Took years. Mind the patient bits.'",
-            "'Moss is the most patient thing in the garden,' Quill says, going pink. 'Even more than me. I'm working on it.'"
+            "'Moss is the most patient thing in the garden,' Quill says, shy and sure at once. 'Even more than me. I'm working on it.'"
           ]
         },
         {
@@ -1016,7 +1077,7 @@
             "patient"
           ],
           "variants": [
-            "Quill goes pink, pleased to be asked. 'It's the main thing. A pendulum needs patience more than anything. So does a seedling. So does a person, probably.'",
+            "Quill looks up, pleased to be asked. 'It's the main thing. A pendulum needs patience more than anything. So does a seedling. So does a person, probably.'",
             "'You can't make a pendulum find its count any faster,' Quill says. 'You just keep it company till it does.'"
           ]
         },
@@ -1044,7 +1105,7 @@
           ],
           "variants": [
             "Quill tips a handful into his palm, all sizes. 'Spare bobs. When a new pendulum comes, I find one that suits it. Like choosing a pot for a seedling.'",
-            "'Some are thimble-small and some are plum-big,' Quill says, going pink. 'I carry the little ones. They like the company.'"
+            "'Some are thimble-small and some are plum-big,' Quill says, rattling his pocket. 'I carry the little ones. They like the company.'"
           ]
         },
         {
@@ -1069,7 +1130,7 @@
             "the clockmaker"
           ],
           "variants": [
-            "Quill goes a little pink. 'Tace understands pendulums better than anyone. I just understand gardens. It's nearly the same thing.'",
+            "Quill fiddles with his hat brim. 'Tace understands pendulums better than anyone. I just understand gardens. It's nearly the same thing.'",
             "'Tace looks tired, some days,' Quill says, very quietly. 'I'd bring them a pendulum, if a pendulum would help.'"
           ]
         },
@@ -1087,7 +1148,7 @@
       ],
       "drift_pools": {
         "shy": [
-          "Quill goes pink at nothing in particular and pretends to be very interested in a trellis.",
+          "Quill smiles at nothing in particular and pretends to be very interested in a trellis.",
           "Quill tips the straw hat a little lower and hums to the nearest pendulum.",
           "Quill starts to straighten a trellis slat, gets distracted halfway, and smiles at a slow brass bob instead."
         ],
@@ -1097,7 +1158,7 @@
           "Quill tips the long-spouted watering can over the moss beneath a trellis, slowly, as if listening."
         ],
         "proud": [
-          "Quill steps back to look at the tallest trellis and goes pink with quiet pride.",
+          "Quill steps back to look at the tallest trellis and stands a little taller with quiet pride.",
           "Quill watches two pendulums fall into step for a moment and grins under the hat brim.",
           "Quill straightens up, muddy to the knees, and admires the garden as though someone else had grown the whole thing."
         ],

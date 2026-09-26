@@ -1,13 +1,46 @@
 {
   "comment": "Book of Stray Minutes, page 8 of 12: letters, reading, and words. Fen keeps the post office of unsent letters, so the page warms her to the finder, and word of it travels.",
   "pages": {
-    "p-letters": {"title": "Minutes of Letters and Words",
-                  "reward": {"text": "The Minutes of Letters and Words page is full, and it crinkles like a letter read many times over. Fen, when the news reaches the Little Post Office, will call it first-class.",
-                             "do": [{"kind": "adjust_rel", "npc": "t-fen", "delta": 2},
-                                    {"kind": "add_fact", "id": "page-letters",
-                                     "text": "{actor} has filled the Letters and Words page of their Book of Stray Minutes: envelopes, postscripts, and a stamp stuck on crooked on purpose.",
-                                     "known_by": ["t-fen"],
-                                     "spread": [{"to": ["t-mott", "t-linden"], "after_minutes": 60}]}]}}
+    "p-letters": {
+      "title": "Minutes of Letters and Words",
+      "reward": {
+        "text": "The Letters and Words page is full, and on its last line someone has stuck a small lantern stamp, crooked on purpose.",
+        "do": [
+          {
+            "kind": "adjust_rel",
+            "npc": "t-fen",
+            "delta": 2
+          },
+          {
+            "kind": "add_fact",
+            "id": "page-letters",
+            "text": "{actor} has filled the Letters and Words page of their Book of Stray Minutes: envelopes, postscripts, and a stamp stuck on crooked on purpose.",
+            "known_by": [
+              "t-fen"
+            ],
+            "spread": [
+              {
+                "to": [
+                  "t-mott",
+                  "t-linden"
+                ],
+                "after_minutes": 60
+              }
+            ]
+          },
+          {
+            "kind": "spawn_object",
+            "name": "crooked stamp",
+            "location_id": "@actor",
+            "seed": "a small stamp printed with a lantern, stuck on crooked on purpose, the way you do when a letter is meant to make someone smile",
+            "aliases": [
+              "stamp"
+            ],
+            "generated_by": "page:letters"
+          }
+        ]
+      }
+    }
   },
   "collectibles": [
     {"id": "m-letterbox", "name": "the letterbox minute", "text": "the clack of the letterbox on a morning when a letter was due, and the soft flump of it landing", "page": "p-letters"},

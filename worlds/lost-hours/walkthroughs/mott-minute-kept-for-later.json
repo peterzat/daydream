@@ -1,6 +1,6 @@
 {
   "name": "mott-minute-kept-for-later",
-  "comment": "The Oldest Minute, ending kept-for-later: Mott confides; Fen gives an envelope marked TO ME, LATER; Mott seals his minute inside unread and asks the dreamer to carry it to Fen, who files it in the pigeonhole of the same name.",
+  "comment": "The Oldest Minute, ending kept-for-later: Mott confides; Fen gives an envelope marked TO ME, LATER; Mott seals his minute inside unread and asks the dreamer to carry it to Fen, who files it in the pigeonhole of the same name and gives the courier a stamp. Afterward the button letter reaches Mott, who touches the corner where his minute used to be.",
   "clock": "2026-10-01T17:00:00+00:00",
   "players": [
     {
@@ -191,7 +191,7 @@
             "beats": [
               "mott-minute/mott-confides"
             ],
-            "narrate_contains": "Bit afraid to, truth be told."
+            "narrate_contains": "Bit afraid to look, truth be told."
           }
         }
       ]
@@ -330,7 +330,64 @@
             "located": {
               "o-mott-minute-envelope": "o-pigeonholes"
             },
-            "narrate_contains": "It'll keep"
+            "narrate_contains": [
+              "It'll keep",
+              "For your trouble."
+            ]
+          }
+        },
+        {
+          "cmd": "take button letter",
+          "expect": {
+            "carrying": [
+              "button letter"
+            ]
+          }
+        },
+        {
+          "cmd": "south",
+          "expect": {
+            "room": "r-lane"
+          }
+        },
+        {
+          "cmd": "west",
+          "expect": {
+            "room": "r-square"
+          }
+        },
+        {
+          "cmd": "north",
+          "expect": {
+            "room": "r-workshop"
+          }
+        },
+        {
+          "cmd": "give button letter to mott",
+          "expect": {
+            "beats": [
+              "letters/mott-letter"
+            ],
+            "narrate_contains": "where his own minute used to be",
+            "narrate_lacks": "small folded thing"
+          }
+        },
+        {
+          "cmd": "south",
+          "expect": {
+            "room": "r-square"
+          }
+        },
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-lane"
+          }
+        },
+        {
+          "cmd": "north",
+          "expect": {
+            "room": "r-post"
           }
         },
         {
@@ -354,7 +411,7 @@
         {
           "cmd": "read ledger of returned hours",
           "expect": {
-            "narrate_contains": "Wren carried Mott's oldest minute, sealed and unread, to the pigeonhole marked TO ME, LATER"
+            "narrate_contains": "Wren helped Mott seal his oldest minute unread; it waits in the pigeonhole marked TO ME, LATER"
           }
         }
       ]

@@ -77,7 +77,14 @@
           ],
           "per_player": true,
           "hint": "the player asks Bell about the sleepy evening in the square",
-          "text": "Bell crouches by the rosy little figure and sniffs. 'Candle smoke and icing. That's a birthday evening, that is, and somebody nodded off before the singing, I'd bet my ladder on it.' They tap the pole on one boot. 'Songs come down in pieces, same as everything else. Ask Sorrel and Linden and Mott about the song.'"
+          "text": "Bell leans on the hooked pole and sniffs: candle smoke and icing. 'A birthday evening that nodded off before the song. Songs come down in pieces; ask Sorrel, Linden, and Mott about Nell's song.'",
+          "if": [
+            {
+              "contains": "t-bell",
+              "of": "r-lamphouse",
+              "not": true
+            }
+          ]
         },
         "hear-nell": {
           "npc": "t-nells-evening",
@@ -94,27 +101,21 @@
           ],
           "per_player": true,
           "hint": "the player asks the evening about Nell or her party",
-          "text": "The evening pulls its shawl close and speaks slowly, fondly. 'Nell was eighty. Such a cake, with all the candles, and she only closed her eyes for a moment.' Its head nods, then lifts. 'They sang, I think. The song went up the chimney in bits: one to the road, one to a kettle, one to a broom.'"
+          "text": "The evening pulls its shawl close. 'Nell was eighty. Such a cake, and she only closed her eyes a moment.' Its head nods, then lifts. 'The song went up the chimney in bits: one to the road, one to a kettle, one to a broom. If someone sang it whole, I'd hear it.'"
         },
         "sorrel-line": {
           "npc": "t-sorrel",
           "topic": "Nell's song",
           "topic_aliases": [
-            "the song",
-            "song",
-            "a song",
             "the birthday song",
             "nell's song",
-            "the tune",
-            "a line",
-            "the line",
-            "a line of song",
             "nell's evening",
-            "the sleepy evening"
+            "the sleepy evening",
+            "the song for nell"
           ],
           "per_player": true,
           "hint": "the player asks Sorrel about the song for Nell's evening",
-          "text": "Sorrel studies the sky a long while before answering. 'A line came down just ahead of that evening, like the first drops before rain.' They hum it, low and weathered: 'Here's to Nell, and her candles bright.' Then, with a shrug of the net: 'That's all the sky gave me. The rest went elsewhere.'",
+          "text": "Sorrel leans on the long net and nods down the road. 'A line came down just ahead of that evening, like the first drops before rain.' They sing it, weathered and slow: 'Here's to Nell, and her candles bright.' A shrug of the net. 'That's all the sky gave me. The rest went elsewhere.'",
           "do": [
             {
               "kind": "add_fact",
@@ -136,24 +137,18 @@
           "npc": "t-linden",
           "topic": "Nell's song",
           "topic_aliases": [
-            "the song",
-            "song",
-            "a song",
             "the birthday song",
             "nell's song",
-            "the tune",
-            "a line",
-            "the line",
-            "a line of song",
             "the whistling kettle",
             "the whistling",
             "whistling",
             "nell's evening",
-            "the sleepy evening"
+            "the sleepy evening",
+            "the song for nell"
           ],
           "per_player": true,
           "hint": "the player asks Linden about the song, or the tune her kettle whistles",
-          "text": "Linden stops mid-bustle. 'So that's what it's been!' She lifts the kettle off the hob, and it whistles, sweet and clear, a tune with words in it: 'here's to the kettle and the window light.' Linden laughs. 'Singing about itself, the vain thing. And if the little love can't wait up for the rest, pet, Quill's orchard keeps evenings.'",
+          "text": "Linden stops mid-bustle. 'So that's what it's been!' She lifts the kettle off the hob, and it whistles, sweet and clear, a tune with words in it: 'here's to the kettle and the window light.' Linden laughs. 'Singing about itself, the vain thing. If that sleepy lamb can't wait up for the rest, Quill's orchard keeps evenings.'",
           "do": [
             {
               "kind": "add_fact",
@@ -175,23 +170,16 @@
           "npc": "t-mott",
           "topic": "Nell's song",
           "topic_aliases": [
-            "the song",
-            "song",
-            "a song",
             "the birthday song",
             "nell's song",
-            "the tune",
-            "a tune",
-            "a line",
-            "the line",
-            "a line of song",
             "the swept-up tune",
             "nell's evening",
-            "the sleepy evening"
+            "the sleepy evening",
+            "the song for nell"
           ],
           "per_player": true,
           "hint": "the player asks Mott about the song or the tune he swept up",
-          "text": "Mott leans on the broom a long moment. 'Swept up a tune the other day, with the dust. Soft thing. Didn't know whose.' He hums it, low and careful, as if it might break: 'doze if you like, love, we'll sing it soft tonight.' Then, gruffly: 'Kept it in my head. Safest place for it.'",
+          "text": "Mott stops the broom mid-arc. 'Swept up a tune with the dust. Kept it in my head.' Then, soft as a lid closing, he sings it: 'doze if you like, love, we'll sing it soft tonight.'",
           "do": [
             {
               "kind": "add_fact",
@@ -224,7 +212,7 @@
           ],
           "per_player": true,
           "hint": "the player asks Quill about a windfall, or a place in the orchard for the sleepy evening",
-          "text": "Quill goes pink to the ears and ducks through the arch into the orchard. He comes back with a small glowing fruit cupped in both hands, warm as a teacup. 'A windfall. The ones that fall are ready,' he says. 'If your sleepy evening would rather rest than wait, give it this. It'll know the way.'",
+          "text": "Quill ducks through the arch and comes back with a small glowing fruit cupped in both hands, warm as a teacup. 'A windfall. The ones that fall are ready,' he says. 'If your sleepy evening would rather rest than wait, give it this. It'll know the way.'",
           "do": [
             {
               "kind": "spawn_object",
@@ -260,7 +248,7 @@
       "endings": {
         "home": {
           "summary": "a dreamer sings the whole song, and the evening goes home",
-          "text": "The evening listens with its eyes shut, smiling the whole way through, and on the last soft word it lets out one long, happy breath, like the moment after the candles are blown, and is gone. Somewhere in the waking world an old woman wakes in her armchair to the last of the singing, laughs, and asks who is cutting the cake. In your hand is a stub of birthday candle, still warm, and a dreamseed.",
+          "text": "The evening listens with its eyes shut, smiling, and on the last soft word lets out one long, happy breath and is gone. Somewhere in the waking world an old woman wakes in her armchair to the end of the singing and asks who is cutting the cake. In your hand: a stub of birthday candle, still warm, and a dreamseed.",
           "ledger": "{helpers} sang Nell's early evening its birthday song, and it went home.",
           "do": [
             {
@@ -307,7 +295,7 @@
         },
         "orchard": {
           "summary": "given a windfall, the evening chooses to rest in the Orchard of Evenings",
-          "text": "The evening cups the windfall in both hands and breathes in: cut grass, warm windows, somebody calling everyone in for supper. Its eyes go soft. It toddles off toward the well-court with the little fruit held close, and by the time anyone thinks to follow, there is a new evening on the lowest branch of the orchard, glowing rosier than the rest. Kept, and dozing, and always just before supper.",
+          "text": "The evening cups the windfall in both hands and breathes in: cut grass, warm windows, somebody calling everyone in for supper. It toddles off toward the well-court with the little fruit held close, and soon there is a new evening on the lowest branch of the orchard, glowing rosier than the rest. Kept, and dozing, and always just before supper.",
           "ledger": "Nell's early evening chose to rest in the Orchard of Evenings, where it is always six o'clock. {helpers} showed it the way.",
           "do": [
             {

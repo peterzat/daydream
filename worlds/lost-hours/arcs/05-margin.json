@@ -3,7 +3,7 @@
   "toons": [
     {
       "id": "t-margin",
-      "name": "the Margin Afternoon",
+      "name": "Margin Afternoon",
       "slot": 124,
       "room": "offstage",
       "mood": "dreamy",
@@ -14,7 +14,8 @@
         "afternoon",
         "margin afternoon",
         "doodled figure",
-        "papery figure"
+        "papery figure",
+        "the margin afternoon"
       ],
       "properties": {
         "declines_text": "The Afternoon looks at what you're offering the polite way you'd look at a sum, and hands it back. It's still thinking about its drawing.",
@@ -137,7 +138,7 @@
         "room": "r-square",
         "earliest_day": 4,
         "weight": 1,
-        "text": "Something drifts down through the dusk like a paper dart that has forgotten how to fly: a small figure the color of an old exercise-book page, doodles curling up its arms. It lands softly on the cobbles, gazes at the lanterns as if they were the most interesting thing in the world, and forgets, for a moment, to be anywhere else."
+        "text": "Sorrel comes in from the lane carrying something folded in both hands, the way you'd carry a note you mustn't read. Set down on the cobbles, it unfolds into a small papery figure the color of an old exercise-book page, doodles curling up its arms, and gazes at the lanterns as if they were the most interesting thing in the world."
       },
       "beats": {
         "bell-startles": {
@@ -153,8 +154,14 @@
             "the doodled guest",
             "the papery one"
           ],
+          "if": [
+            {
+              "in": "r-square"
+            }
+          ],
+          "per_player": true,
           "hint": "the player asks Bell about the Margin Afternoon, the small doodled guest",
-          "text": "When you say Bell's name, the little doodled figure jumps as if a lesson has just ended. Bell laughs and crouches beside it. 'Not that kind of bell, sorry!' Then, more quietly: 'An afternoon, I'd say, the looking-out-of-windows sort. Ask it about its drawing. Fen keeps pencils at the post office, and those swinging things it doodles look a lot like Quill's garden.'"
+          "text": "At Bell's name the doodled figure jumps, and Bell laughs. 'Not that bell, sorry! Ask it about its drawing. Fen has pencils, and those doodles look like Quill's garden.'"
         },
         "see-drawing": {
           "npc": "t-margin",
@@ -169,7 +176,7 @@
             "the doodles"
           ],
           "hint": "the player asks the Margin Afternoon about its drawing",
-          "text": "The Afternoon unfolds a page from its lap, soft from being held: spirals, a boat with no sail, and in one corner a little garden where pendulums hang from the trees like fruit. The middle is empty. 'I didn't get to the middle,' it says. 'The bell rang.' It holds the page out for you to keep a while.",
+          "text": "The Afternoon unfolds a soft page from its lap: spirals, a boat with no sail, and a little garden where pendulums hang from the trees like fruit, all around an empty middle. 'The bell rang,' it says, and holds the page out for you to keep a while.",
           "do": [
             {
               "kind": "move_object",
@@ -192,7 +199,7 @@
             "something to draw with"
           ],
           "hint": "the player asks Fen for a pencil to finish the Margin Afternoon's drawing",
-          "text": "Fen plucks the pencil from behind her ear, frowns at it, and swaps it for a better one from the jar on the counter: soft lead, sharpened to a whisper. 'Unfinished things are my whole trade,' she says. 'Use it on whatever wants finishing. No postage due.'",
+          "text": "Fen swaps the pencil behind her ear for a better one from the jar on the counter, soft lead sharpened to a whisper. 'A pencil's only a letter that hasn't started yet,' she says. 'Draw in whatever the page is missing. No postage due.'",
           "do": [
             {
               "kind": "spawn_object",
@@ -252,7 +259,7 @@
             }
           ],
           "hint": "the player shows Quill the Margin Afternoon's drawing, or asks him about it",
-          "text": "Quill leans over the page and goes very pink. 'That's my garden,' he says softly, 'or a garden that wanted to be it.' He kneels by the lowest trellis, where the littlest pendulum swings on its thread. 'The middle is where the newest one hangs. Sit here and draw it in, while it's swinging.'"
+          "text": "Quill leans over the page and his ears go red as radishes. 'That's my garden, or one that wanted to be.' He kneels by the lowest trellis, where the littlest pendulum swings: 'The middle is where the newest one hangs, so sit here and draw it in, while it's swinging.'"
         },
         "drawn": {
           "after": [
@@ -264,7 +271,7 @@
       "endings": {
         "finished": {
           "summary": "the drawing is finished in the Pendulum Garden, and the afternoon goes home",
-          "text": "The Afternoon takes the finished drawing in both hands and looks at it for a long, long time. Then it smiles the slow smile of someone called on who, for once, knows the answer, folds itself up small as a note passed along a row of desks, and is gone. Somewhere in the waking world, a grown-up leafing through an old sums book finds a little garden in the margin, finished, and cannot remember finishing it. In your hand is a curl of pencil shaving, and a dreamseed.",
+          "text": "The Afternoon takes the finished drawing in both hands and looks at it for a long, long time, smiling the slow smile of someone called on who, for once, knows the answer. Somewhere a bell rings, and this time it doesn't jump: it gets up, the way everyone does when the lesson is over, and goes. Far off, a grown-up leafing through an old sums book finds a little garden in the margin, finished, and cannot remember finishing it. In your hand is a curl of pencil shaving, and a dreamseed.",
           "ledger": "{helpers} finished the Margin Afternoon's drawing, and the afternoon went home with its garden whole.",
           "do": [
             {
@@ -732,7 +739,7 @@
         },
         {
           "kind": "narrate",
-          "text": "You sit on the moss by the lowest trellis and draw the littlest pendulum into the empty middle: one fine line, one round bob, a small curve to show it swinging. As you lift the pencil, the whole garden ticks once, all together, as if it approves."
+          "text": "You sit on the moss by the lowest trellis and draw the littlest pendulum into the empty middle: one fine line, one round bob, a small curve to show it swinging. As you lift the pencil, the whole garden ticks once, all together, as if it approves. Now it only wants taking back to its owner."
         },
         {
           "kind": "advance_beat",
@@ -865,7 +872,7 @@
       ],
       "cooldown_days": 2,
       "summary": "the Margin Afternoon doodles in the Pendulum Garden",
-      "text": "Under the trellises, the Margin Afternoon doodles the pendulums as they swing. Quill pretends not to notice, and goes pink with pleasure."
+      "text": "Under the trellises, the Margin Afternoon doodles the pendulums as they swing. Quill pretends not to notice, and waters the same trellis twice."
     },
     {
       "id": "margin-to-me-later",

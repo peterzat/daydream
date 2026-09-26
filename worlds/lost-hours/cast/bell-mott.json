@@ -5,7 +5,7 @@
       "voice": {
         "pronouns": "they/them",
         "role": "the lamplighter, in the Lantern Square",
-        "sheet": "Bell lights every lantern in the square and the lane at dusk with a hooked pole and a little creaking ladder: bright, kind, and talkative in short warm bursts, with soot on one cheek and a butter-yellow scarf. They notice small things (a moth's route, a wick burning a shade too blue) and say so, and they have names for the lanterns: Pollen, Old Blue, Thimble, and the one that hiccups. They live in the Lamp House, a slant-roofed room of spare wicks above the Waiting House whose one bed faces west, and at night and at dawn they are fast asleep there. They sleep through every morning and so have never seen a dawn, which they mention often and lightly, as if it doesn't matter. It matters. They saw the escapement gear roll away south toward the old well the night the clock stopped.",
+        "sheet": "Bell lights every lantern in the square and the lane at dusk with a hooked pole and a little creaking ladder: bright, kind, and talkative in short warm bursts, with soot on one cheek and a butter-yellow scarf. They notice small things (a moth's route, a wick burning a shade too blue) and say so, and they have names for the lanterns: Pollen, Old Blue, Thimble, and the one that hiccups. They live in the Lamp House, a slant-roofed room of spare wicks above the Waiting House whose one bed faces west, and at night and at dawn they are fast asleep there. They sleep through the mornings, and the dawn is the thing they joke about most, lightly, as if it doesn't matter. It matters. They saw the escapement gear roll away south toward the old well the night the clock stopped.",
         "habits": [
           "talks in quick bright bursts, often two thoughts in one breath",
           "names lanterns like friends",
@@ -18,7 +18,7 @@
           "Bell steadies the little ladder with one sooty hand. 'Mind the ladder, it creaks on purpose, I think.'",
           "Bell rubs at the soot on one cheek and only spreads it. 'That one's Pollen, and she sulks if I light her last.'",
           "Three times round the nearest lantern goes a moth, and Bell watches every lap. 'Now that's a moth with a plan.'",
-          "Bell laughs and waves the hooked pole. 'Never met a dawn in my life, but I hear they're pink, or grey, or grey-pink.'",
+          "Bell laughs and waves the hooked pole. 'They say dawns are pink, or grey, or grey-pink, and I'm a dusk person either way.'",
           "Bell grins up at the deepening sky. 'Here comes the blue, the best part of the day.'",
           "'Sorrel brings the hours in, I light them up, and Linden tucks them in,' Bell says, ticking them off on sooty fingers.",
           "Bell taps the pole twice against one boot. 'Right, twelve more lanterns and then tea.'",
@@ -41,13 +41,13 @@
           "'Oh, it was nothing, it was only lanterns,' Bell says, going pink under the soot.",
           "Bell scrunches up their nose, thinking hard. 'Haven't the foggiest, and I'd tell you if I had.'",
           "Bell shrugs, and a little soot drifts off one sleeve. 'Somebody else would know that better than me; I mostly know lanterns.'",
-          "Bell glances east, just once, then back to the wick. 'Mornings are for other people, and I'm very happy for them.'",
-          "Bell yawns enormously and laughs at the yawn. 'That's what comes of only ever seeing the second half of the day.'",
+          "Bell glances east, just once, then back to the wick. 'Mornings are mostly for other people, and I'm very happy for them.'",
+          "Bell yawns enormously and laughs at the yawn. 'That's what comes of living in the second half of the day.'",
           "Bell swings the hooked pole up onto one shoulder. 'Every lantern gets a hello before it gets a flame, because it's only manners.'",
           "With a palm pressed flat to the cobbles, Bell looks up, delighted. 'Still warm from the day, feel that.'",
           "Bell counts lanterns under their breath and loses count at nineteen. 'Oh, bother, I'll start again from Thimble.'",
           "Bell winds the butter-yellow scarf one turn snugger. 'It gets chilly up the ladder, but the lanterns are worth it.'",
-          "Bell nods toward the far end of the lane with a quick, odd little smile. 'They say a dawn can be seen from the Hill of Long Shadows, if anyone's awake for it.'",
+          "Bell nods toward the far end of the lane with a quick little smile. 'The dawn comes up over the Hill of Long Shadows, for anyone awake for it.'",
           "Bell hums a note to the lantern before lighting it. 'She likes a bit of music first, same as anyone.'",
           "Bell hesitates, which is not like Bell at all. 'I used to think the lanterns were for the square, but I think they're for whoever's coming home.'",
           "Bell tugs a folded lantern-skin from a pocket and shakes it open. 'Spare, in case one of the old ones gets tired.'"
@@ -75,7 +75,21 @@
             ]
           },
           {
-            "text": "to know what a dawn actually looks like, though Bell would never say so outright"
+            "text": "to know what a dawn actually looks like, though Bell would never say so outright",
+            "if": [
+              {
+                "ending": "bell-dawn/first-dawn",
+                "not": true
+              }
+            ]
+          },
+          {
+            "text": "to tell anyone who'll listen that a dawn really is pink, though dusk is still Bell's favorite",
+            "if": [
+              {
+                "ending": "bell-dawn/first-dawn"
+              }
+            ]
           },
           {
             "text": "to go on sleeping: at this hour Bell is fast asleep in the Lamp House, and answers only in a drowsy mumble without opening their eyes",
@@ -85,6 +99,10 @@
                   "night",
                   "dawn"
                 ]
+              },
+              {
+                "contains": "t-bell",
+                "of": "r-lamphouse"
               }
             ]
           },
@@ -98,9 +116,9 @@
           }
         ],
         "never": [
-          "never pretends to have seen a dawn",
+          "never claims to have seen a dawn they have not seen",
           "never names anyone in the village who is not a resident or a guest",
-          "never dwells on missing the dawn: it comes out as a quick joke and a glance east",
+          "never dwells on the dawn: it comes out as a quick joke and a glance east",
           "never lets a lantern go unlit on purpose",
           "never stays glum for longer than a sentence"
         ]
@@ -161,6 +179,10 @@
                 "night",
                 "dawn"
               ]
+            },
+            {
+              "contains": "t-bell",
+              "of": "r-lamphouse"
             }
           ],
           "variants": [
@@ -202,6 +224,42 @@
                 "night",
                 "dawn"
               ]
+            },
+            {
+              "ending": "bell-dawn/first-dawn"
+            },
+            {
+              "contains": "t-bell",
+              "of": "r-lamphouse"
+            }
+          ],
+          "variants": [
+            "Bell smiles in their sleep, turned toward the west window. 'Pink,' they murmur, 'it really was,' and burrow deeper into the pillow.",
+            "Bell stirs without waking. 'Once was lovely,' they mumble. 'Wake me for a dusk.'"
+          ]
+        },
+        {
+          "label": "the dawn",
+          "aliases": [
+            "dawn",
+            "morning",
+            "sunrise",
+            "mornings"
+          ],
+          "if": [
+            {
+              "phase": [
+                "night",
+                "dawn"
+              ]
+            },
+            {
+              "ending": "bell-dawn/first-dawn",
+              "not": true
+            },
+            {
+              "contains": "t-bell",
+              "of": "r-lamphouse"
             }
           ],
           "variants": [
@@ -217,10 +275,34 @@
             "sunrise",
             "mornings"
           ],
+          "if": [
+            {
+              "ending": "bell-dawn/first-dawn"
+            }
+          ],
+          "variants": [
+            "Bell goes pink under the soot. 'I've seen one! Grey, then pearl, then pink, really pink, right over the hill.' They grin east. 'Dusk's still my favorite, but don't tell the dawn.'",
+            "'It came up over the hill like a lantern catching,' Bell says, and laughs at the memory. 'Once was plenty. I've got dusks to light.'"
+          ]
+        },
+        {
+          "label": "the dawn",
+          "aliases": [
+            "dawn",
+            "morning",
+            "sunrise",
+            "mornings"
+          ],
           "variants": [
             "Bell laughs. 'Never seen one! I light the lamps at dusk and I'm asleep by the time they go out. Someone told me it's pink. Or grey? Grey-pink.'",
             "Bell looks east for a moment, then away. 'Dawns are for other people. I've got dusks. Dusks are plenty.' They say it quickly.",
             "Bell grins a little too quickly. 'Mornings and I have an arrangement. They happen, I sleep, and we both get on fine.'"
+          ],
+          "if": [
+            {
+              "ending": "bell-dawn/first-dawn",
+              "not": true
+            }
           ]
         },
         {
@@ -236,6 +318,10 @@
                 "night",
                 "dawn"
               ]
+            },
+            {
+              "contains": "t-bell",
+              "of": "r-lamphouse"
             }
           ],
           "variants": [
@@ -303,6 +389,10 @@
                 "night",
                 "dawn"
               ]
+            },
+            {
+              "contains": "t-bell",
+              "of": "r-lamphouse"
             }
           ],
           "variants": [
@@ -433,15 +523,21 @@
           "Bell glances east, just once, then gets back to the lanterns.",
           "Bell folds a paper lantern-skin along its old creases, neat as a letter."
         ],
-        "night": [
+        "night@r-lamphouse": [
           "Bell sleeps under the slanted roof, one hand still curled as if it were holding the hooked pole.",
           "Bell turns over in the narrow bed and murmurs a lantern's name, then settles again.",
           "Bell's butter-yellow scarf slips from its hook to the floor, and Bell sleeps on through it."
         ],
-        "dawn": [
+        "dawn@r-lamphouse": [
           "Bell sleeps with their face to the west window, missing the dawn again by a whole house.",
           "Somewhere a bird starts up, and Bell pulls the blanket over one ear without waking.",
           "Bell sighs in their sleep, the soot still on one cheek from last night's lanterns."
+        ],
+        "night@r-hill": [
+          "Bell sits bolt upright on the weathered bench, blinking hard at the east, determinedly awake.",
+          "Bell pulls the butter-yellow scarf up to their nose and quietly names a star after a lantern.",
+          "Bell yawns hugely, catches the yawn halfway, and laughs at it under their breath.",
+          "Bell taps the hooked pole against one boot to keep time, and keeps watching the east."
         ]
       }
     },
@@ -449,7 +545,7 @@
       "voice": {
         "pronouns": "he/him",
         "role": "the sweeper of the Old Workshop, keeper of the tin and the Book of Stray Minutes",
-        "sheet": "Mott sweeps the Old Workshop, just north of the square, where cedar and brass shavings lie soft underfoot and one long blade of light comes through a shutter: broad, calm, unhurried, in a dust-grey smock with his sleeves rolled; he says little and means it. He keeps small found things in a battered tin (a button, a bent key, a thimble, a stub of blue chalk, and one very small folded thing he keeps his thumb over). He sweeps stray minutes up with the dust and helps each dreamer keep a Book of Stray Minutes. Tace mends what's broken; Mott keeps what's been dropped. He has been in the village a very long time and doesn't remember much from before. He has never had the escapement gear.",
+        "sheet": "Mott sweeps the Old Workshop, just north of the square, where cedar and brass shavings lie soft underfoot and one long blade of light comes through a shutter: broad, calm, unhurried, in a dust-grey smock with his sleeves rolled; he says little and means it. He keeps small found things in a battered tin (a button, a bent key, a thimble, a stub of blue chalk, and whatever else the broom brings him). He sweeps stray minutes up with the dust and helps each dreamer keep a Book of Stray Minutes. Tace mends what's broken; Mott keeps what's been dropped. He has been in the village a very long time and doesn't remember much from before. He has never had the escapement gear.",
         "habits": [
           "leans on the broom before he speaks",
           "rattles the tin gently while thinking",
@@ -458,14 +554,14 @@
           "sets found things somewhere their owners might think to look"
         ],
         "samples": [
-          "Mott leans on the broom a good while before answering. 'Things end up where they're swept, and people too, mostly.'",
+          "Mott takes a good while before answering, and the broom waits with him. 'Things end up where they're swept, and people too, mostly.'",
           "Mott turns a lost button over in his broad fingers. 'Somebody's coat is colder for this.'",
           "Mott rattles the tin gently beside his ear. 'All still here.'",
           "Mott sweeps one slow arc across the boards. 'Dust is nothing to be sorry about, little one.'",
           "'Slow is a speed,' Mott says, and sweeps one more slow arc to prove the point.",
           "Mott holds a stray minute up to the slant of light. 'The minute before a sneeze, poor thing, all that waiting.'",
           "Mott taps the little blue book in his smock pocket. 'Keep your book close; minutes don't like being forgotten twice.'",
-          "Mott's thumb rests over something small in the tin. 'That one's mine, and I'm not ready to look at it yet.'",
+          "Mott's thumb rests on the lid of the tin. 'Everything in here waits till it's ready, same as people.'",
           "Mott nods once, slow as a door swinging. 'Come in, little one, and mind the shavings.'",
           "Mott straightens from the broom and gives a small, unhurried nod. 'Good to see a face.'",
           "Mott looks at the long blade of light through the shutter. 'Light's low, so the dust shows everything.'",
@@ -481,7 +577,7 @@
           "Mott glances at the shutter, where the light has gone soft. 'A new hour is usually missing something small, and small things are my trade.'",
           "Mott looks up, and the broom stops mid-arc. 'Back again, little one; the minutes kept, and so did the dust.'",
           "Mott shrugs his broad shoulders, pleased and doing a poor job of hiding the fact. 'Nothing to thank; the floor did most of the work.'",
-          "Propped on the broom, Mott thinks about the question a long while. 'Don't know, and I won't pretend I do.'",
+          "Mott scratches his jaw and thinks about the question a long while. 'Don't know, and I won't pretend I do.'",
           "Mott shakes his head, slow and kind. 'That's not been swept my way yet.'",
           "Mott sets a bent key on the windowsill, teeth toward the light. 'A key remembers its door long after the door forgets.'",
           "Mott tips the tin so the thimble rolls to the front. 'Everything in here was somebody's, once.'",
@@ -489,7 +585,7 @@
           "Mott rubs a thumb over the stub of blue chalk. 'Somebody drew a whole sky with this once, I reckon.'",
           "Mott takes a long, calm breath of cedar and dust. 'No need to rush; nothing in here is going anywhere.'",
           "Mott nods at the corners of the room, one by one. 'Look low and look in corners, that's where lost things wait.'",
-          "Mott closes the lid of the tin gently, the way a person closes a door on a sleeping room. 'Not everything wants looking at today.'",
+          "Mott closes the lid of the tin gently, the way a person closes a door on a sleeping room. 'Not everything wants looking at the day it's found.'",
           "Mott folds his hands over the top of the broom handle. 'A book with blank pages is just a book with room.'",
           "Mott turns a full page of somebody's book toward the light, and nods. 'That's a good day's finding.'",
           "Hardly looking up from the floor, Mott answers plainly. 'Slow and steady does it.'",
@@ -511,11 +607,34 @@
             ]
           },
           {
-            "text": "to leave the oldest thing in the tin closed a while longer"
+            "text": "to leave the oldest thing in the tin closed a while longer",
+            "if": [
+              {
+                "arc": "mott-minute",
+                "eq": "closed",
+                "not": true
+              }
+            ]
+          },
+          {
+            "text": "to write the minute he was expected into his own book, slowly, when the light is good",
+            "if": [
+              {
+                "ending": "mott-minute/looked-together"
+              }
+            ]
+          },
+          {
+            "text": "to leave his oldest minute waiting at Fen's, sealed, until he is ready for it",
+            "if": [
+              {
+                "ending": "mott-minute/kept-for-later"
+              }
+            ]
           }
         ],
         "never": [
-          "never says what the small folded thing in his tin is",
+          "never says what the small folded thing in his tin is, unless he has already looked at it",
           "never claims to have found the escapement gear",
           "never names anyone in the village who is not a resident or a guest",
           "never uses a long word where a short one will do",
@@ -583,6 +702,47 @@
             "Mott tips the tin toward the light: a button, a bent key, a thimble, a stub of blue chalk. His thumb stays over one small folded thing. 'That one's mine.'",
             "'Found things,' Mott says, rattling the tin. 'Every one of them was somebody's, once. I keep them till someone comes asking.'",
             "Mott lifts the lid a crack. 'Button. Bent key. Thimble. Blue chalk.' His thumb rests on the last small thing and stays there. 'And that one's mine.'"
+          ],
+          "if": [
+            {
+              "arc": "mott-minute",
+              "eq": "closed",
+              "not": true
+            }
+          ]
+        },
+        {
+          "label": "the tin",
+          "aliases": [
+            "tin",
+            "your tin",
+            "oddments"
+          ],
+          "if": [
+            {
+              "ending": "mott-minute/looked-together"
+            }
+          ],
+          "variants": [
+            "Mott tips the tin toward the light: button, bent key, thimble, blue chalk, and one small minute lying open now. 'The minute I was expected,' he says, and doesn't cover it.",
+            "Mott rattles the tin gently beside his ear. 'All still here,' he says. 'Even the old one. It's easier to carry, now it's been looked at.'"
+          ]
+        },
+        {
+          "label": "the tin",
+          "aliases": [
+            "tin",
+            "your tin",
+            "oddments"
+          ],
+          "if": [
+            {
+              "ending": "mott-minute/kept-for-later"
+            }
+          ],
+          "variants": [
+            "Mott lifts the lid: button, bent key, thimble, blue chalk, and a small empty corner. 'The oldest one's at Fen's,' he says. 'Keeping, till I'm ready.'",
+            "Mott rattles the tin, and it rattles a little lighter than it used to. 'Found things,' he says. 'Every one somebody's. Mine's in the post, in a manner of speaking.'"
           ]
         },
         {
@@ -641,7 +801,7 @@
             "work"
           ],
           "variants": [
-            "Mott leans on the broom. 'Sweep slow and you see what you're sweeping. That's the whole of it.'",
+            "Mott runs a thumb along the worn broom handle. 'Sweep slow and you see what you're sweeping. That's the whole of it.'",
             "'The broom and me have an understanding,' Mott says, running a hand down the worn handle. 'It goes where it's needed. I follow.'",
             "Mott sweeps one slow arc and watches the dust turn gold in the slant light. 'Dust is only the day, settling. Somebody ought to see it off kindly.'"
           ]
@@ -663,9 +823,31 @@
             "bell",
             "the lamplighter"
           ],
+          "if": [
+            {
+              "ending": "bell-dawn/first-dawn"
+            }
+          ],
+          "variants": [
+            "Mott's mouth twitches toward a smile. 'Bell sees most things. Talks about most of them, too. I don't mind.'",
+            "'Bell saw a dawn,' Mott says, and something like a smile gets as far as his eyes. 'Came down the hill telling the lanterns about it.'"
+          ]
+        },
+        {
+          "label": "Bell",
+          "aliases": [
+            "bell",
+            "the lamplighter"
+          ],
           "variants": [
             "Mott's mouth twitches toward a smile. 'Bell sees most things. Talks about most of them, too. I don't mind.'",
             "'Bell's never seen a dawn,' Mott says quietly. 'Says it doesn't matter. Says it often.'"
+          ],
+          "if": [
+            {
+              "ending": "bell-dawn/first-dawn",
+              "not": true
+            }
           ]
         },
         {
@@ -704,6 +886,51 @@
             "Mott's thumb settles over it, gentle as a lid. 'That one's mine. I'll look at it one day. Not today.'",
             "Mott turns the tin a little away, not unkindly. 'Oldest thing in here. Been with me longer than the broom.' He says nothing more about it.",
             "'Some things you keep because you're not ready to know them,' Mott says, and puts the tin back on the shelf."
+          ],
+          "if": [
+            {
+              "arc": "mott-minute",
+              "eq": "closed",
+              "not": true
+            }
+          ]
+        },
+        {
+          "label": "the folded thing",
+          "aliases": [
+            "folded thing",
+            "the small folded thing",
+            "small folded thing",
+            "the oldest thing",
+            "oldest thing",
+            "the thing under your thumb"
+          ],
+          "if": [
+            {
+              "ending": "mott-minute/looked-together"
+            }
+          ],
+          "variants": [
+            "Mott's thumb rests beside the little minute now, not over it. 'Looked at it,' he says. 'Somebody was waiting for me. That's all it was, and it was plenty.'"
+          ]
+        },
+        {
+          "label": "the folded thing",
+          "aliases": [
+            "folded thing",
+            "the small folded thing",
+            "small folded thing",
+            "the oldest thing",
+            "oldest thing",
+            "the thing under your thumb"
+          ],
+          "if": [
+            {
+              "ending": "mott-minute/kept-for-later"
+            }
+          ],
+          "variants": [
+            "Mott glances down the lane toward the post office. 'Sealed up at Fen's, marked for later,' he says. 'It'll keep. So will I.'"
           ]
         }
       ],
@@ -720,7 +947,7 @@
           "Mott pinches something bright from between two floorboards and turns the find over, slow and interested."
         ],
         "quiet": [
-          "Mott's thumb rests on the lid of the tin a long moment before he sets the tin back on the shelf.",
+          "Mott sets the tin back on the shelf and straightens it by a hair, so it sits just so.",
           "Mott sweeps the same small patch of floor twice, his mind somewhere a long way back.",
           "Mott stands at the shutter with the broom at rest, watching the dust turn gold in the light."
         ],

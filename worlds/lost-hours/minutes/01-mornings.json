@@ -1,13 +1,47 @@
 {
   "comment": "Book of Stray Minutes (canon section 2), page 1 of 12: mornings. Each text completes 'It was ___.' in config.collect.found_text. Bell has never seen a dawn, so this page is the one Bell would love.",
   "pages": {
-    "p-mornings": {"title": "Morning Minutes",
-                   "reward": {"text": "The Morning Minutes page is full, and it glows the pale gold of a sky just before the sun. Bell, who has never once seen a dawn, will want to hear every one of these.",
-                              "do": [{"kind": "adjust_rel", "npc": "t-bell", "delta": 2},
-                                     {"kind": "add_fact", "id": "page-mornings",
-                                      "text": "{actor} has filled the Morning Minutes page of their Book of Stray Minutes: a whole page of small mornings, each with a sunrise somewhere in it.",
-                                      "known_by": ["t-bell"],
-                                      "spread": [{"to": ["t-mott", "t-tace"], "after_minutes": 60}]}]}}
+    "p-mornings": {
+      "title": "Morning Minutes",
+      "reward": {
+        "text": "Tucked in the page's fold is a twist of paper holding a pinch of pale sunrise. Bell, when they see it, goes very quiet.",
+        "do": [
+          {
+            "kind": "adjust_rel",
+            "npc": "t-bell",
+            "delta": 2
+          },
+          {
+            "kind": "add_fact",
+            "id": "page-mornings",
+            "text": "{actor} has filled the Morning Minutes page of their Book of Stray Minutes: a whole page of small mornings, each with a sunrise somewhere in it.",
+            "known_by": [
+              "t-bell"
+            ],
+            "spread": [
+              {
+                "to": [
+                  "t-mott",
+                  "t-tace"
+                ],
+                "after_minutes": 60
+              }
+            ]
+          },
+          {
+            "kind": "spawn_object",
+            "name": "twist of sunrise",
+            "location_id": "@actor",
+            "seed": "a pinch of pale sunrise folded into a twist of paper: pink at one end, pearl-grey at the other, the colour Bell has only heard about",
+            "aliases": [
+              "sunrise",
+              "twist of paper"
+            ],
+            "generated_by": "page:mornings"
+          }
+        ]
+      }
+    }
   },
   "collectibles": [
     {"id": "m-first-light", "name": "the first-light minute", "text": "the grey minute before the birds agreed it was morning", "page": "p-mornings"},
@@ -20,7 +54,7 @@
     {"id": "m-curtains", "name": "the curtain minute", "text": "the moment the curtains were drawn back and the room filled up with yellow", "page": "p-mornings"},
     {"id": "m-big-stretch", "name": "the stretching minute", "text": "a morning stretch so enormous it ended in a small squeak", "page": "p-mornings"},
     {"id": "m-sunrise", "name": "the sunrise minute", "text": "the sun lifting clear of the far hills while somebody held their breath to watch", "page": "p-mornings"},
-    {"id": "m-mist", "name": "the mist minute", "text": "sixty seconds of early mist, when the far fields had simply not arrived yet", "page": "p-mornings"},
+    {"id": "m-mist", "name": "the mist minute", "text": "early mist, when the far fields had simply not arrived yet", "page": "p-mornings"},
     {"id": "m-odd-shoes", "name": "the odd-shoes minute", "text": "halfway down the stairs in shoes that did not match, and not minding one bit", "page": "p-mornings"},
     {"id": "m-pillow-hair", "name": "the pillow-hair minute", "text": "a first sleepy look at hair that had clearly had adventures in the night", "page": "p-mornings"},
     {"id": "m-cockerel", "name": "the cockerel minute", "text": "a cockerel who crowed once, thought better of it, and went back to sleep", "page": "p-mornings"},

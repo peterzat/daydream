@@ -296,7 +296,7 @@
         "room": "r-square",
         "earliest_day": 2,
         "weight": 1,
-        "text": "Something drifts down through the dusk and seems to arrive twice: once, and then, a breath later, again. It settles on the cobbles as a small figure in an autumn coat, smelling of woodsmoke and fallen leaves, and under the lanterns it casts two shadows, one a little behind the other."
+        "text": "Sorrel comes up from the lane and stops under the first lantern, looking back over one shoulder as if counting. Beside them stands a small figure in an autumn coat, smelling of woodsmoke and fallen leaves, and it casts two shadows, one a little behind the other. 'Caught that one twice,' Sorrel says mildly, and ambles back toward the Dusk Road."
       },
       "beats": {
         "bell-shadows": {
@@ -312,8 +312,14 @@
             "the figure in the autumn coat",
             "the hour that came back"
           ],
+          "if": [
+            {
+              "in": "r-square"
+            }
+          ],
+          "per_player": true,
           "hint": "the player asks Bell about the small figure with two shadows",
-          "text": "Bell crouches to look at the cobbles and gives a soft whistle. 'Two shadows! That's the hour that comes back when the clocks go back in autumn. It comes to everybody at once, so nobody ever really spends it.' They grin, a little crooked. 'I'd stay up for a dawn with it, only one hour won't stretch from dusk to morning; I did the sums. Ask Tace about turning the clocks back.'"
+          "text": "Bell counts the little figure's shadows twice and whistles softly. 'Two shadows! That's the hour that comes back when the clocks go back, and nobody ever quite spends it. If it were mine I'd spend it on the hill bench, facing east; ask Tace about turning clocks back.'"
         },
         "hear-autumn": {
           "npc": "t-extra-hour",
@@ -329,7 +335,7 @@
             "home"
           ],
           "hint": "the player asks the Extra Hour about the night the clocks went back",
-          "text": "The Extra Hour turns up its coat collar. 'The clocks went back, and there I was,' it says. 'For everyone. Everyone, all at once.' A leaf slips from its pocket, and it watches the leaf fall. 'Most of them slept right through. Just once, I'd like someone to spend me on purpose.'"
+          "text": "The Extra Hour turns up its coat collar. 'The clocks went back and there I was, for everyone, all at once, and most of them slept right through. Just once, I'd like someone to spend me on purpose. On purpose.'"
         },
         "tace-turnback": {
           "npc": "t-tace",
@@ -344,11 +350,8 @@
             "the hour with two shadows",
             "two shadows"
           ],
-          "after": [
-            "bell-shadows"
-          ],
           "hint": "the player asks Tace about turning the clocks back, for the Extra Hour",
-          "text": "Tace glances toward the tower, and for a moment their hands go still. 'Not the great clock,' they say quietly. 'That one has been held back enough.' Instead they lift a small resting clock from the shelf, open its glass with a thumbnail, and turn the hands back one hour. 'An hour needs a clock to happen in. Wind it where you mean to spend it, friend, or give it to someone who never has an hour to spare.'",
+          "text": "Tace sets down the loupe. 'Not the great clock; that one has been held back enough.' They turn a small resting clock back one hour and hold it out. 'Wind it where you mean to spend it, friend, or give it to someone who never sits down.'",
           "do": [
             {
               "kind": "move_object",
@@ -388,17 +391,14 @@
             "extra hour",
             "the hour with two shadows"
           ],
-          "after": [
-            "bell-shadows"
-          ],
           "hint": "the player asks Linden about sitting down, or about an hour to herself",
-          "text": "Linden laughs so suddenly she nearly drops the tea towel. 'Sit down? Oh, lamb, I haven't sat down since the kettle was new.' She glances at the softest armchair the way you'd glance at an old friend across a crowded room. 'If there were ever an hour that wasn't anybody's, I suppose I might.'"
+          "text": "Linden laughs so suddenly she nearly drops the tea towel, then glances at the softest armchair like an old friend across a crowded room. 'Sit down? If there were ever an hour that wasn't anybody's, I suppose I might.'"
         }
       },
       "endings": {
         "sat-down": {
           "summary": "given to Linden, who sits down for the whole of it, on purpose",
-          "text": "Linden turns the little clock over in her hands, then sits down in the softest armchair, slowly, as if remembering how, and winds it. For one whole hour she does nothing at all, on purpose. The kettle mutters on without her, her tea goes cold in her hands, and out in the square the Extra Hour is spent at last, and goes home. When the clock catches up with itself, Linden presses her cup into your hands. 'Stone cold,' she says, delighted. 'First one ever in this house. You keep it, pet.'",
+          "text": "Linden turns the little clock over in her hands, then sits down in the softest armchair, slowly, as if remembering how, and winds it. For one whole hour she does nothing at all, on purpose. The kettle mutters on without her, her tea goes cold in her hands, and out in the square the Extra Hour is spent at last, and goes home. When the little clock has ticked its borrowed hour all the way through, Linden presses her cup into your hands. 'Stone cold,' she says, delighted. 'First one ever in this house. You keep it, pet.'",
           "ledger": "{helpers} gave the Extra Hour to Linden, who sat down for the whole of it, on purpose.",
           "do": [
             {
@@ -473,7 +473,7 @@
             {
               "kind": "narrate",
               "room": "r-square",
-              "text": "Under the lanterns in the square, the small figure in the autumn coat looks up as if someone far off has called its name. Its two shadows slip together into one, and then it is simply gone, the way an extra hour is gone by morning."
+              "text": "Under the lanterns in the square, the small figure in the autumn coat looks up as if someone far off has called its name. Its two shadows slip together into one, and then there is only lantern-light on the cobbles where it stood."
             },
             {
               "kind": "spawn_template",
@@ -508,7 +508,7 @@
           "summary": "unspent for three days, the Extra Hour is kept in a jar on the lowest shelf of the Hour Cellar, labeled for everyone",
           "after_days": 3,
           "room": "r-cellar",
-          "text": "In the Hour Cellar, Umber finds a jar on the lowest shelf that wasn't there yesterday. Inside, curled in its autumn coat with two shadows folded beneath it, the Extra Hour is still waiting: kept, if not spent. Umber considers it a long while, then writes the label in her square hand and turns it where anyone can read it: THE EXTRA HOUR. AUTUMN. EVERYONE'S: HELP YOURSELF.",
+          "text": "Umber has cleared a space on the lowest shelf, where anyone can reach, and in the jar waiting there the Extra Hour has curled up in its autumn coat, two shadows folded beneath it. She writes the label slowly and turns it to face the stair: THE EXTRA HOUR. AUTUMN. EVERYONE'S: HELP YOURSELF.",
           "ledger": "The Extra Hour was not spent. Umber keeps it in a jar on the lowest shelf of the Hour Cellar, labeled for everyone.",
           "do": [
             {

@@ -51,6 +51,10 @@
                 "night",
                 "dawn"
               ]
+            },
+            {
+              "contains": "t-bell",
+              "of": "r-lamphouse"
             }
           ],
           "do": [
@@ -450,6 +454,15 @@
             },
             {
               "carried": "o-letters-button"
+            },
+            {
+              "beat": "mott-minute/sealed",
+              "not": true
+            },
+            {
+              "arc": "mott-minute",
+              "eq": "closed",
+              "not": true
             }
           ],
           "do": [
@@ -461,6 +474,118 @@
             {
               "kind": "narrate",
               "text": "Mott opens the tin, finds the brown button that has lived there for years, and holds it to the letter's corner: a match, thread and all. He tucks the letter in beside it. 'Don't remember coming here myself,' he says after a while. 'First thing I remember is this broom, and the floor.' His thumb settles over the small folded thing in the tin, and stays."
+            },
+            {
+              "kind": "adjust_rel",
+              "npc": "t-mott",
+              "delta": 2
+            },
+            {
+              "kind": "adjust_rel",
+              "npc": "t-fen",
+              "delta": 1
+            },
+            {
+              "kind": "add_fact",
+              "id": "letters-delivered-button",
+              "text": "{actor} carried a stray letter with a button on it to Mott, and the button in Mott's tin matched it, thread and all.",
+              "known_by": [
+                "t-mott"
+              ],
+              "spread": [
+                {
+                  "to": [
+                    "t-fen"
+                  ],
+                  "after_minutes": 20
+                },
+                {
+                  "to": "all",
+                  "after_minutes": 120
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "on": "give",
+          "stop": false,
+          "if": [
+            {
+              "iobj": "t-mott"
+            },
+            {
+              "carried": "o-letters-button"
+            },
+            {
+              "beat": "mott-minute/sealed"
+            }
+          ],
+          "do": [
+            {
+              "kind": "move_object",
+              "object_id": "o-letters-button",
+              "dest_id": "t-mott"
+            },
+            {
+              "kind": "narrate",
+              "text": "Mott opens the tin, finds the brown button that has lived there for years, and holds it to the letter's corner: a match, thread and all. He tucks the letter in beside it. 'Don't remember coming here myself,' he says after a while. 'First thing I remember is this broom, and the floor.' He touches the corner where his own minute used to be."
+            },
+            {
+              "kind": "adjust_rel",
+              "npc": "t-mott",
+              "delta": 2
+            },
+            {
+              "kind": "adjust_rel",
+              "npc": "t-fen",
+              "delta": 1
+            },
+            {
+              "kind": "add_fact",
+              "id": "letters-delivered-button",
+              "text": "{actor} carried a stray letter with a button on it to Mott, and the button in Mott's tin matched it, thread and all.",
+              "known_by": [
+                "t-mott"
+              ],
+              "spread": [
+                {
+                  "to": [
+                    "t-fen"
+                  ],
+                  "after_minutes": 20
+                },
+                {
+                  "to": "all",
+                  "after_minutes": 120
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "on": "give",
+          "stop": false,
+          "if": [
+            {
+              "iobj": "t-mott"
+            },
+            {
+              "carried": "o-letters-button"
+            },
+            {
+              "ending": "mott-minute/looked-together"
+            }
+          ],
+          "do": [
+            {
+              "kind": "move_object",
+              "object_id": "o-letters-button",
+              "dest_id": "t-mott"
+            },
+            {
+              "kind": "narrate",
+              "text": "Mott opens the tin, finds the brown button that has lived there for years, and holds it to the letter's corner: a match, thread and all. He tucks the letter in beside it. 'Couldn't remember coming here, for the longest time,' he says. 'Then I looked.' His thumb rests a moment on his own minute, unfolded in its corner."
             },
             {
               "kind": "adjust_rel",
@@ -840,7 +965,7 @@
             },
             {
               "kind": "narrate",
-              "text": "Linden presses the tea towel to her mouth before she has even finished reading. 'Oh, lamb,' she says. 'Oh, bless.' She props the letter behind the kettle, where it will keep warm. 'I came here waiting up for someone, pet, a long while ago. Can't think who, now. I waited so long I got good at it, and the house sort of grew up round me.'"
+              "text": "Linden presses the tea towel to her mouth before she has even finished reading. 'Oh, lamb,' she says. 'Oh, bless.' She props the letter behind the kettle, where it will keep warm. 'I came here waiting up for someone, long ago. Can't think who, now. I waited so long I got good at it, and the house sort of grew up round me.'"
             },
             {
               "kind": "adjust_rel",
@@ -1030,7 +1155,7 @@
             },
             {
               "kind": "narrate",
-              "text": "Sorrel holds the letter a long time, standing very still, the way they wait for an hour to land. 'Walked someone home once, I think,' they say at last. 'Came along the Dusk Road myself one evening, with nowhere in particular to be, and the sky was so kind I stayed to watch it.' They tuck the pressed clover into their hatband, beside the sorrel. 'Still watching.'"
+              "text": "Sorrel holds the letter very still, the way they wait for an hour to land. 'Walked someone home once, I think,' they say at last. 'Came along the Dusk Road myself one evening, with nowhere in particular to be, and the sky was so kind I stayed to watch it.' They tuck the pressed clover into their hatband, beside the sorrel. 'Still watching.'"
             },
             {
               "kind": "adjust_rel",
@@ -1380,7 +1505,7 @@
       "name": "paper stars",
       "location": "offstage",
       "fixture": true,
-      "seed": "paper stars folded from the envelopes of found letters, one hung beneath every lantern in the square; each still shows a scrap of address in a stranger's hand, and they turn slowly in the warm air as if reading themselves",
+      "seed": "paper stars Fen folded from spare envelopes, one hung beneath every lantern in the square; each is addressed in her tidy hand to a keeper whose letter came home, and they turn slowly in the warm air as if reading themselves",
       "aliases": [
         "envelope stars",
         "stars",
@@ -1441,9 +1566,14 @@
       "endings": {
         "found-letters": {
           "summary": "five stray letters found their doors; the village holds the Night of Found Letters",
-          "text": "Down the lane, the post office bell rings and rings, and Fen comes out onto her step waving her pencil like a baton. 'Five home! That's first-class,' she calls to anyone at all. 'When Bell next lights the lamps, we'll hold the Night of Found Letters.' As this last letter changes hands, something small and warm drops out of the envelope into yours: a dreamseed, folded like a tiny letter.",
+          "text": "From across the village comes the post office bell, ringing and ringing, bright as a laugh: five letters home. When Bell next lights the lamps, there will be a Night of Found Letters. As this last letter changes hands, something small and warm drops out of the envelope into yours: a dreamseed, folded like a tiny letter.",
           "ledger": "{helpers} carried the unsent letters to their doors, and the village held the Night of Found Letters.",
           "do": [
+            {
+              "kind": "narrate",
+              "room": "r-post",
+              "text": "Fen comes out onto her step waving her pencil like a baton. 'Five home! That's first-class,' she calls to anyone at all. 'When Bell next lights the lamps, we'll hold the Night of Found Letters.'"
+            },
             {
               "kind": "spawn_template",
               "template": "dreamseed",
@@ -1721,6 +1851,25 @@
         {
           "contains": "o-letters-button",
           "of": "t-mott"
+        },
+        {
+          "ending": "mott-minute/looked-together",
+          "not": true
+        }
+      ]
+    },
+    "letters-origin-button-looked": {
+      "text": "For the longest time Mott did not remember arriving in the village, only the broom in his hands and the workshop floor; since he looked at his oldest minute, he knows he was expected.",
+      "known_by": [
+        "t-mott"
+      ],
+      "if": [
+        {
+          "contains": "o-letters-button",
+          "of": "t-mott"
+        },
+        {
+          "ending": "mott-minute/looked-together"
         }
       ]
     },
@@ -1773,7 +1922,7 @@
       ]
     },
     "letters-night": {
-      "text": "Five stray letters found their doors, so the village holds a Night of Found Letters, with paper stars folded from the envelopes hung under the square's lanterns.",
+      "text": "Five stray letters found their doors, so the village holds a Night of Found Letters, with paper stars Fen folded from spare envelopes hung under the square's lanterns.",
       "known_by": "all",
       "if": [
         {
@@ -2058,7 +2207,7 @@
           "ending": "letters/found-letters"
         }
       ],
-      "text": "Tonight is the Night of Found Letters. Under every lantern in the square hangs a paper star, folded from an envelope that found its door, and from doorways all over the village comes the low, glad sound of letters being read aloud. The whole square smells of warm paper and wick-smoke.",
+      "text": "Tonight is the Night of Found Letters. Under every lantern in the square hangs a paper star Fen folded from a spare envelope, and from the loft, the cellar stair and the Waiting House comes the low, glad sound of letters being read aloud. The whole square smells of warm paper and wick-smoke.",
       "do": [
         {
           "kind": "move_object",
@@ -2068,7 +2217,7 @@
         {
           "kind": "narrate",
           "room": "r-post",
-          "text": "In the Little Post Office, Fen reads nothing aloud tonight. She runs a finger through the pigeonhole labelled TO ME, LATER, looking, as she does every night, for one particular hand. It isn't there. She straightens the little card and gives it a pat. 'Scenic route,' she murmurs."
+          "text": "In the Little Post Office, Fen reads nothing aloud tonight. She runs a finger along the one unlabeled pigeonhole near the top. Empty, as always. She gives it a pat. 'Scenic route,' she murmurs."
         }
       ]
     }

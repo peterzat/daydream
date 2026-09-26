@@ -229,7 +229,7 @@
         "room": "r-square",
         "earliest_day": 3,
         "weight": 1,
-        "text": "A soft patter comes down with the dusk, and under the nearest lantern it begins to rain on one cobble only. In the middle of the little shower stands a small damp figure holding a scrap of striped awning over its head, listening hard, as if someone beside it has only just stopped talking."
+        "text": "Sorrel walks in from the lane holding the long net up over something small, the way you'd hold a coat over someone in a shower. Under it, rain is falling on one small damp figure only. It stops by the nearest lantern, lifts its scrap of striped awning a little higher, and listens hard, as if someone beside it has only just stopped talking."
       },
       "beats": {
         "bell-rain": {
@@ -245,8 +245,14 @@
             "the one under the awning",
             "the puddle"
           ],
+          "if": [
+            {
+              "in": "r-square"
+            }
+          ],
+          "per_player": true,
           "hint": "the player asks Bell about the little rain falling on one cobble, or the damp figure under it",
-          "text": "Bell holds a hand under the little shower and laughs. 'Raining on exactly one cobble! Forty-one lanterns, and I've never seen that.' They lower their voice. 'It's a rain-wait: someone's long wait under an awning, left in the middle of a story. Fen keeps everything that never got finished, and Sorrel could finish anything, given enough sky.'"
+          "text": "Bell holds a palm under the little shower and laughs. 'Raining on exactly one cobble! That's a rain-wait, left in the middle of a story. Fen keeps the letters nobody posted, and Sorrel can finish anything, given enough sky.'"
         },
         "hear-beginning": {
           "npc": "t-rain-wait",
@@ -264,7 +270,7 @@
             "the lighthouse"
           ],
           "hint": "the player asks the Rain-Wait about its story, the stranger, or the rain",
-          "text": "The Rain-Wait tilts its scrap of awning back and tells it in someone else's voice, low and slow: 'Once there was a lighthouse on a hill, miles and miles from any sea. Every night its keeper climbed the stair and lit the lamp anyway, and every night, nothing came.' A drop falls from the awning's edge. 'Then the rain stopped,' it says in its own small voice, 'and they had to go. They said they'd write me the end. And then? And then what?'"
+          "text": "In someone else's low, slow voice, the Rain-Wait begins: 'Once there was a lighthouse on a hill, miles from any sea, and every night its keeper lit the lamp, and every night, nothing came.' Then, in its own small voice: 'The rain stopped, and they said they'd write me the end. And then?'"
         },
         "fen-letter": {
           "npc": "t-fen",
@@ -285,7 +291,7 @@
             "hear-beginning"
           ],
           "hint": "the player asks Fen about the end of the Rain-Wait's story, which the stranger promised to write down",
-          "text": "Fen stops with a letter halfway into its pigeonhole. 'The end of a story, promised to someone under an awning?' She is already up the little ladder, running one finger along the top row. 'Here. Rain-spotted, sealed, and never posted: it drifted in the night after a downpour, and I've kept it dry ever since.' She sets a soft envelope in your hands. 'First-class delivery, if you please. Read it to them, not to me.'",
+          "text": "Fen is up the little ladder before you finish. 'Rain-spotted, sealed, never posted.' She sets it in your hands. 'First-class delivery: read it to them, not to me.'",
           "do": [
             {
               "kind": "move_object",
@@ -331,7 +337,7 @@
             "hear-beginning"
           ],
           "hint": "the player tells Sorrel the beginning of the Rain-Wait's lighthouse story, and Sorrel finishes it",
-          "text": "Sorrel hears the whole beginning without a word, then studies the sky for a long, comfortable while. 'Clearing by morning, I'd say,' they offer at last. 'One wet night the keeper stops climbing the stair to look, and stands still in the doorway instead, and the thing she's waited for all those years comes up the hill and finds her there.' They lean on the net pole. 'That's how it goes, mostly. You could tell the Rain-Wait that one, if the real end never turns up.'"
+          "text": "Sorrel hears the beginning out, then leans on the net pole a long, comfortable while. 'Clearing by morning. One wet night the keeper stands still in the doorway instead of climbing the stair, and the thing she waited for comes up the hill to find her; tell the Rain-Wait that one, if the real end never turns up.'"
         },
         "told-sorrels-end": {
           "npc": "t-rain-wait",
@@ -344,13 +350,16 @@
             "a new ending",
             "the new ending",
             "another ending",
-            "the doorway"
+            "the doorway",
+            "the end",
+            "the ending",
+            "an ending"
           ],
           "after": [
             "sorrel-finishes"
           ],
           "hint": "the player tells the Rain-Wait the ending Sorrel made up for its story",
-          "text": "You tell it Sorrel's way: the keeper standing still in the doorway, and the long-awaited thing coming up the hill to find her. The Rain-Wait listens with its whole damp self. 'That might not be the stranger's ending,' it says slowly. Then its face lights like a lantern. 'But I like it. I like it so much I'd like to tell it to somebody.'",
+          "text": "You tell it Sorrel's way, and the Rain-Wait listens with its whole damp self. 'That might not be the stranger's ending,' it says slowly, and then its face lights like a lantern. 'But I like it so much I'd like to tell it to somebody.'",
           "do": [
             {
               "kind": "close_arc",
@@ -363,7 +372,7 @@
       "endings": {
         "the-end": {
           "summary": "the stranger's own ending, found in Fen's pigeonholes and read aloud; the Rain-Wait goes home",
-          "text": "The Rain-Wait lets out a long, slow breath. All around it the little rain stops, properly this time, the way rain stops when it has finished rather than when it has been interrupted. It folds its scrap of awning, tucks it under one arm, smiles at you, and is gone, home at last. Somewhere in the waking world, someone who once waited out a downpour under an awning suddenly knows how the story ends. On the dry cobble where it stood, a dreamseed glows.",
+          "text": "The Rain-Wait lets out a long, slow breath, and all around it the little rain stops, the way rain stops when it has finished rather than when it has been interrupted. It folds its scrap of awning, says 'The end,' very contentedly, to no one in particular, and walks off across the dry cobbles like someone with somewhere to be, home at last. Wherever that awning is now, the rain has stopped under it too. On the stone where it stood, a dreamseed glows.",
           "ledger": "{helpers} read the Rain-Wait the end of its story, from a letter that was never posted, and it went home dry.",
           "do": [
             {
@@ -433,7 +442,7 @@
               "kind": "spawn_object",
               "name": "kept raindrop",
               "location_id": "@actor",
-              "seed": "a single raindrop that never quite falls, hanging a finger's width above your palm; hold it to your ear and you can hear, very faintly, a story being told all the way to the end",
+              "seed": "a single raindrop that never quite falls, hanging a finger's width above your palm; look into it and, very small, a lighthouse on a hill has its lamp lit",
               "aliases": [
                 "raindrop",
                 "drop"
@@ -471,7 +480,7 @@
           "summary": "unhelped for four days, the Rain-Wait settles among the reeds by the Slow River, listening to a story that never ends",
           "after_days": 4,
           "room": "r-river",
-          "text": "Down at the Slow River's edge, the Rain-Wait has found a place among the reeds. The river says its one long word over and over and never reaches the end of it, and the Rain-Wait, it turns out, does not mind at all. It sits with its awning folded on its knees and listens, the way you listen to a story you hope will never end: kept, if not home.",
+          "text": "Down at the Slow River's edge, the Rain-Wait has found a place among the reeds. The river says its one long word over and over and never reaches the end of it, and the Rain-Wait, it turns out, does not mind at all. It sits with its awning folded on its knees and listens, the way you listen to a story you hope will never end. The river keeps it now, gently, the way rivers keep things.",
           "ledger": "The Rain-Wait was not sent home. It sits among the reeds at the Slow River's edge, listening to a story that never ends, and does not mind.",
           "do": [
             {

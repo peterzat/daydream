@@ -562,6 +562,7 @@
             ],
             "narrate_contains": [
               "the house sort of grew up round me",
+              "five letters home",
               "Five home!"
             ],
             "chronicle_contains": "Wren and Tamsin carried the unsent letters to their doors"
@@ -601,7 +602,7 @@
           "as": "B",
           "cmd": "examine paper stars",
           "expect": {
-            "narrate_contains": "folded from the envelopes of found letters"
+            "narrate_contains": "folded from spare envelopes"
           }
         },
         {

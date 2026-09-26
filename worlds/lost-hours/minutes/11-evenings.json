@@ -1,12 +1,26 @@
 {
   "comment": "Book of Stray Minutes, page 11 of 12: evenings, music, and bedtimes. The reward is a keepsake of six o'clock light, the light of the Orchard of Evenings.",
   "pages": {
-    "p-evenings": {"title": "Evening Minutes",
-                   "reward": {"text": "A little six o'clock light spills from the finished page of Evening Minutes and stays, folded, in your hands.",
-                              "do": [{"kind": "spawn_object", "name": "fold of evening light", "location_id": "@actor",
-                                      "seed": "a small fold of six o'clock light, the colour of honey on a windowsill; wherever it is set down, that corner feels like the end of a good day",
-                                      "aliases": ["evening light", "six o'clock light", "fold of light"],
-                                      "generated_by": "page:evenings"}]}}
+    "p-evenings": {
+      "title": "Evening Minutes",
+      "reward": {
+        "text": "A little six o'clock light spills from the finished page of Evening Minutes and stays, folded, in your hands.",
+        "do": [
+          {
+            "kind": "spawn_object",
+            "name": "fold of evening light",
+            "location_id": "@actor",
+            "seed": "a small fold of six o'clock light, the colour of honey on a windowsill; wherever it is set down, that corner feels like the end of a good day",
+            "aliases": [
+              "evening light",
+              "six o'clock light",
+              "fold of light"
+            ],
+            "generated_by": "page:evenings"
+          }
+        ]
+      }
+    }
   },
   "collectibles": [
     {"id": "m-first-lamp", "name": "the lamplighting minute", "text": "a single lamp lit in a darkening room, and the windows turning into mirrors", "page": "p-evenings"},

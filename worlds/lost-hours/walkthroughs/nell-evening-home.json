@@ -157,7 +157,7 @@
             "beats": [
               "nell-evening/bell-notices"
             ],
-            "narrate_contains": "Candle smoke and icing"
+            "narrate_contains": "candle smoke and icing"
           }
         },
         {
@@ -166,11 +166,23 @@
             "beats": [
               "nell-evening/hear-nell"
             ],
-            "narrate_contains": "one to the road, one to a kettle, one to a broom"
+            "narrate_contains": [
+              "one to the road, one to a kettle, one to a broom",
+              "If someone sang it whole"
+            ]
           }
         },
         {
           "cmd": "sing",
+          "expect": {
+            "arc": {
+              "nell-evening": "open"
+            },
+            "narrate_contains": "The evening"
+          }
+        },
+        {
+          "cmd": "sing to the evening",
           "expect": {
             "arc": {
               "nell-evening": "open"
@@ -190,7 +202,7 @@
           }
         },
         {
-          "cmd": "ask mott about the tune",
+          "cmd": "ask mott about nell's song",
           "expect": {
             "beats": [
               "nell-evening/mott-line"
@@ -217,7 +229,7 @@
           }
         },
         {
-          "cmd": "ask linden about the song",
+          "cmd": "ask linden about nell's song",
           "expect": {
             "beats": [
               "nell-evening/linden-line"
@@ -241,7 +253,7 @@
           }
         },
         {
-          "cmd": "ask sorrel about the song",
+          "cmd": "ask sorrel about the birthday song",
           "expect": {
             "beats": [
               "nell-evening/sorrel-line"

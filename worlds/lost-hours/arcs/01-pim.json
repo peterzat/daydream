@@ -1,5 +1,5 @@
 {
-  "comment": "Guest arc 1 (canon section 7): Pim's Missing Nap. The first guest, arriving at the first dusk. Endings: home (hush + lullaby clock), stays (hush, then a bed at the Waiting House), jar (unhelped for three days).",
+  "comment": "Guest arc 1 (canon section 7): Pim's Missing Nap. The first guest, arriving at the first dusk. Endings: home (hush + lullaby clock), stays (hush, then the littlest armchair at the Waiting House), jar (unhelped for three days).",
   "toons": [
     {
       "id": "t-pims-nap",
@@ -20,9 +20,54 @@
       ],
       "properties": {
         "wants": "hush",
-        "gives_text": "The nap holds the hush to its ear like a shell, and its yawn softens into a long, contented sigh. It is quieter now, but it still cannot quite sleep: somewhere, far off, a birthday is too loud.",
+        "gives_text": "The nap holds the hush to its cheek like a shell, and its yawn softens into a long, contented sigh. It is quieter now, but it still cannot quite sleep. It needs something slow to fall asleep to.",
         "gives_mood": "drowsy",
         "declines_text": "The nap looks at what you're offering, yawns politely, and shakes its rumpled head. It wants something quieter than that.",
+        "topics": [
+          {
+            "label": "the birthday",
+            "aliases": [
+              "birthday",
+              "pim",
+              "the party",
+              "the kite",
+              "kite",
+              "the red kite",
+              "cake",
+              "the cake"
+            ],
+            "if": [
+              {
+                "arc": "pim"
+              }
+            ],
+            "variants": [
+              "The nap's eyes go bright for a moment. 'A red kite,' it says. 'It went up and up and up.' Then it yawns.",
+              "'Cake,' the nap mumbles happily, 'and candles, and everybody singing too loud.' It rubs its eyes with both fists."
+            ]
+          },
+          {
+            "label": "sleep",
+            "aliases": [
+              "sleeping",
+              "sleepy",
+              "being sleepy",
+              "napping",
+              "tired",
+              "quiet",
+              "the quiet"
+            ],
+            "if": [
+              {
+                "arc": "pim"
+              }
+            ],
+            "variants": [
+              "The nap yawns so wide it tips over, then sits back up. 'Not sleepy,' it whispers. 'Very sleepy.'",
+              "Both small hands go over the nap's ears, though the square is quiet. 'Still too loud,' it whispers. 'Somewhere.'"
+            ]
+          }
+        ],
         "voice": {
           "pronouns": "it/its",
           "role": "a guest: Pim's missing nap",
@@ -59,7 +104,7 @@
       "arrival": {
         "room": "r-square",
         "first": true,
-        "text": "Down through the first dusk drifts something small and rumpled, turning slowly like a leaf. It lands on the cobbles by the nearest lantern, yawns so wide its whole body tilts, blinks up at the light, and cannot seem to settle."
+        "text": "Sorrel comes up the lane with the long net over one shoulder, walking slow beside something small and rumpled. By the nearest lantern it sits down on the cobbles, yawns so wide it tilts, and cannot settle."
       },
       "beats": {
         "bell-notices": {
@@ -73,8 +118,14 @@
             "the yawning one",
             "pim's nap"
           ],
+          "if": [
+            {
+              "in": "r-square"
+            }
+          ],
+          "per_player": true,
           "hint": "the player asks Bell about the small yawning stranger",
-          "text": "Bell crouches beside the little yawning figure and lowers their voice. 'That one's a nap,' they whisper. 'A birthday nap, I'd guess, too excited to be taken. It'll want quiet, the old-fashioned kind. Mott keeps a hush in that tin of his, up in the workshop. And Tace could tell you about lullaby clocks.'"
+          "text": "Bell tiptoes round the little yawning figure and lowers their voice. 'That one's a nap, a birthday nap too excited to be taken, and it'll want the old-fashioned kind of quiet. Mott keeps a hush in his tin, just north in the workshop, and Tace could tell you about lullaby clocks.'"
         },
         "hear-pim": {
           "npc": "t-pims-nap",
@@ -88,7 +139,7 @@
             "the kite"
           ],
           "hint": "the player asks the nap about Pim or its birthday",
-          "text": "The nap tries to stay awake long enough to tell it. 'Pim was seven,' it mumbles. 'There was cake. And a red kite. Everyone sang too loud and Pim wouldn't sleep, not even a little.' It yawns. 'So I got lost.'"
+          "text": "The nap fights a yawn long enough to tell it. 'Pim was seven, and there was cake and a red kite and too much singing, so Pim wouldn't sleep, and I got lost.'"
         },
         "mott-hush": {
           "npc": "t-mott",
@@ -98,28 +149,42 @@
             "the hush",
             "quiet",
             "some quiet",
-            "the old quiet"
+            "the old quiet",
+            "tin",
+            "the tin",
+            "your tin"
           ],
-          "after": [
-            "bell-notices"
-          ],
-          "hint": "the player asks Mott for a hush or some quiet for the nap",
-          "text": "Mott opens the tin and takes out something folded very small and very soft. 'A hush,' he says. 'Swept it up the night the clock stopped. Quietest thing I own.' He sets it in your hands. It weighs nothing, and the room goes softer around it.",
+          "hint": "the player asks Mott for a hush, some quiet, or what is in his tin, for the nap",
+          "text": "Mott's thumb stays where it always does; with his other hand he lifts out something grey and soft as a moth's cocoon. 'A hush. Swept it up the night the clock stopped. Quietest thing I own.'",
           "do": [
             {
               "kind": "spawn_object",
               "name": "hush",
               "location_id": "@actor",
-              "seed": "a hush: a small folded quiet, soft as a moth's wing; hold it near your ear and the whole world lowers its voice",
+              "seed": "a hush: a small grey quiet, soft as a moth's cocoon; wherever you carry it, the world lowers its voice a little",
               "aliases": [
                 "the hush",
-                "folded quiet",
+                "grey quiet",
                 "quiet"
               ],
               "generated_by": "pim:hush",
               "properties": {
                 "hush": true
               }
+            },
+            {
+              "kind": "add_fact",
+              "id": "pim-hush-given",
+              "text": "Mott gave {actor} the hush from his tin, the quietest thing he owns, for Pim's nap.",
+              "known_by": [
+                "t-mott"
+              ],
+              "spread": [
+                {
+                  "to": "all",
+                  "after_minutes": 30
+                }
+              ]
             }
           ]
         },
@@ -139,11 +204,8 @@
             "pim's nap",
             "the stranger"
           ],
-          "after": [
-            "bell-notices"
-          ],
           "hint": "the player asks Tace about a lullaby clock or the nap",
-          "text": "Tace's eyes light, just a little. 'A lullaby clock. Wend made one once, for a colicky hour.' They glance at the window. 'I could mend one, if someone brought me that spare brass pendulum hanging by the window. A slow swing is most of a lullaby.'"
+          "text": "Tace's eyes light, just a little. 'Wend made a lullaby clock once, for a colicky hour. Bring me that spare brass pendulum by the window, friend: a slow swing is most of a lullaby.'"
         },
         "pendulum-given": {
           "after": [
@@ -153,20 +215,17 @@
         },
         "linden-bed": {
           "npc": "t-linden",
-          "topic": "a bed for the nap",
+          "topic": "keeping the nap here",
           "topic_aliases": [
-            "bed",
-            "a bed",
-            "the nap",
-            "pim's nap",
-            "a room for the nap",
-            "the littlest bed"
+            "a bed for the nap",
+            "the littlest bed",
+            "the littlest armchair"
           ],
           "after": [
             "hushed"
           ],
-          "hint": "the player asks Linden for a bed or a room for the nap",
-          "text": "Linden's face goes soft. 'Oh, the little lamb. It's got its hush, has it? Then it can have the littlest bed and stay as long as it likes.'",
+          "hint": "the player asks Linden to keep the hushed nap at the Waiting House, in the littlest armchair",
+          "text": "Linden's face goes soft. 'The little lamb's got its hush, has it? Then the littlest armchair is its own, for as long as it likes.'",
           "do": [
             {
               "kind": "close_arc",
@@ -224,7 +283,7 @@
         },
         "stays": {
           "summary": "the nap chooses to stay at the Waiting House",
-          "text": "Linden turns down the littlest bed at the Waiting House and tucks the hush beside the pillow. The nap climbs in, sighs, and decides, drowsily, that it would rather stay. Somewhere, Pim sleeps a little easier anyway.",
+          "text": "Linden plumps the cushion in the littlest armchair at the Waiting House and tucks the hush in beside it. The nap climbs up, sighs, and decides, drowsily, that it would rather stay. Somewhere, Pim sleeps a little easier anyway.",
           "ledger": "Pim's nap chose to stay at the Waiting House, tucked up by {helpers}.",
           "do": [
             {
@@ -262,7 +321,7 @@
           "summary": "unhelped, the nap falls asleep in a jar in the Hour Cellar",
           "after_days": 3,
           "room": "r-cellar",
-          "text": "In the Hour Cellar, Umber finds a small glass jar that wasn't there yesterday. Inside, curled up on a folded paper hour, Pim's nap is fast asleep at last: kept, if not home. Umber labels it in her square hand and sets it where the lantern can reach.",
+          "text": "In the Hour Cellar, Umber finds a small glass jar that wasn't there yesterday. Inside, curled up on a folded paper hour, Pim's nap is fast asleep at last: kept, if not home. Umber writes it a label, NAP. BIRTHDAY. DO NOT WAKE, and sets it where the lantern can reach.",
           "ledger": "Pim's nap was not sent home. It fell asleep in a jar in the Hour Cellar, and Umber keeps it.",
           "do": [
             {
@@ -285,6 +344,52 @@
           ]
         }
       }
+    }
+  },
+  "facts": {
+    "pim-here": {
+      "text": "A lost hour is waiting in the Lantern Square: Pim's Nap, the nap a boy named Pim was too excited to take on his seventh birthday. It is small and rumpled and yawning, and cannot settle without the quiet it came from.",
+      "known_by": "all",
+      "if": [
+        {
+          "arc": "pim"
+        }
+      ]
+    },
+    "pim-hush": {
+      "text": "Mott keeps a hush in his tin: a small grey quiet he swept up the night the clock stopped, the quietest thing he owns. A restless nap could settle with it.",
+      "known_by": [
+        "t-mott",
+        "t-bell"
+      ],
+      "if": [
+        {
+          "arc": "pim"
+        }
+      ]
+    },
+    "pim-lullaby": {
+      "text": "Tace could mend a lullaby clock from the spare brass pendulum hanging by the loft window; Wend made one once, for a colicky hour. A hushed nap would fall asleep to its slow tick.",
+      "known_by": [
+        "t-tace",
+        "t-bell"
+      ],
+      "if": [
+        {
+          "arc": "pim"
+        }
+      ]
+    },
+    "pim-bed": {
+      "text": "Linden would keep a small guest who has found its quiet in the littlest armchair at the Waiting House, for as long as it likes.",
+      "known_by": [
+        "t-linden"
+      ],
+      "if": [
+        {
+          "arc": "pim"
+        }
+      ]
     }
   },
   "rules": [

@@ -1,12 +1,25 @@
 {
   "comment": "Book of Stray Minutes, page 4 of 12: childhood and school days. The reward is a small keepsake, a gold paper star (one of the page's own minutes).",
   "pages": {
-    "p-small": {"title": "Minutes from Being Small",
-                "reward": {"text": "For a moment your hands feel smaller, holding the finished page of Minutes from Being Small. A gold paper star has come loose from one of its minutes, and it is yours to keep.",
-                           "do": [{"kind": "spawn_object", "name": "gold paper star", "location_id": "@actor",
-                                   "seed": "a small gold paper star, the kind pressed on beside good work; its points are a little bent from being pressed on so proudly",
-                                   "aliases": ["paper star", "gold star"],
-                                   "generated_by": "page:small"}]}}
+    "p-small": {
+      "title": "Minutes from Being Small",
+      "reward": {
+        "text": "For a moment your hands feel smaller, holding the finished page of Minutes from Being Small. A gold paper star has come loose from one of its minutes, and it is yours to keep.",
+        "do": [
+          {
+            "kind": "spawn_object",
+            "name": "gold paper star",
+            "location_id": "@actor",
+            "seed": "a small gold paper star, the kind pressed on beside good work; its points are a little bent from being pressed on so proudly",
+            "aliases": [
+              "paper star",
+              "gold star"
+            ],
+            "generated_by": "page:small"
+          }
+        ]
+      }
+    }
   },
   "collectibles": [
     {"id": "m-loose-tooth", "name": "the loose-tooth minute", "text": "a loose tooth wiggled with the tip of the tongue, brave and not quite brave enough", "page": "p-small"},

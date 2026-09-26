@@ -1,6 +1,6 @@
 {
-  "name": "mott-minute-looked-together",
-  "comment": "The Oldest Minute, ending looked-together: Mott confides; Umber remembers the evening he came; Tace lends a loupe; with the dreamer beside him Mott unfolds his own minute and finds he was expected. Afterward the button letter reaches Mott, who remembers now.",
+  "name": "bell-dawn-spare-skin",
+  "comment": "Bell's First Dawn, ending dusk-enough through a spare lantern-skin: Tamsin takes the Lamp House's lantern-skin and keeps it. Wren asks Tace for a sunrise lantern; at the next dusk a spare lantern-skin turns up among Bell's wicks. Tace makes the sunrise from the spare, turns Tamsin's skin away once it is made, and Bell lights the lantern at dusk.",
   "clock": "2026-10-01T17:00:00+00:00",
   "players": [
     {
@@ -124,7 +124,7 @@
       ]
     },
     {
-      "name": "the book",
+      "name": "the lamplighter",
       "commands": [
         {
           "cmd": "east",
@@ -133,19 +133,10 @@
           }
         },
         {
-          "cmd": "north",
+          "cmd": "ask bell about the lanterns",
           "expect": {
-            "room": "r-workshop"
-          }
-        },
-        {
-          "cmd": "ask mott about the book",
-          "expect": {
-            "pflag": {
-              "MET-BOOK": true
-            },
             "rel": {
-              "t-mott": {
+              "t-bell": {
                 "gte": 1
               }
             }
@@ -154,55 +145,104 @@
       ]
     },
     {
-      "name": "the oldest thing in the tin",
+      "name": "looking east",
       "commands": [
         {
-          "clock": "+3d",
+          "clock": "+1d",
           "expect": {
             "arc": {
-              "mott-minute": "open"
+              "bell-dawn": "dormant"
             },
             "day": {
-              "eq": 4
+              "eq": 2
             }
           }
         },
         {
-          "summon": "mott-minute",
+          "clock": "@dusk",
           "expect": {
             "arc": {
-              "mott-minute": "open"
+              "bell-dawn": "open"
+            },
+            "day": {
+              "eq": 2
+            },
+            "phase": "dusk"
+          }
+        },
+        {
+          "summon": "bell-dawn",
+          "expect": {
+            "arc": {
+              "bell-dawn": "open"
             }
           }
         },
         {
-          "cmd": "ask mott about the tin",
+          "cmd": "ask bell about the dawn",
           "expect": {
             "rel": {
-              "t-mott": {
+              "t-bell": {
                 "gte": 2
               }
             }
           }
         },
         {
-          "cmd": "ask mott about the oldest minute",
+          "cmd": "ask bell about staying up",
           "expect": {
             "beats": [
-              "mott-minute/mott-confides"
+              "bell-dawn/bell-confides"
             ],
-            "narrate_contains": "Bit afraid to look, truth be told."
+            "narrate_contains": "Tace can bend brass into anything"
           }
         }
       ]
     },
     {
-      "name": "a loupe",
+      "name": "the first skin wanders off",
       "commands": [
         {
-          "cmd": "south",
+          "join": {
+            "as": "B",
+            "name": "Tamsin"
+          }
+        },
+        {
+          "as": "B",
+          "cmd": "east",
           "expect": {
             "room": "r-square"
+          }
+        },
+        {
+          "as": "B",
+          "cmd": "east",
+          "expect": {
+            "room": "r-lane"
+          }
+        },
+        {
+          "as": "B",
+          "cmd": "east",
+          "expect": {
+            "room": "r-waiting"
+          }
+        },
+        {
+          "as": "B",
+          "cmd": "up",
+          "expect": {
+            "room": "r-lamphouse"
+          }
+        },
+        {
+          "as": "B",
+          "cmd": "take lantern-skin",
+          "expect": {
+            "carrying": [
+              "lantern-skin"
+            ]
           }
         },
         {
@@ -210,24 +250,6 @@
           "expect": {
             "room": "r-clocktower"
           }
-        },
-        {
-          "cmd": "down",
-          "expect": {
-            "room": "r-cellar"
-          }
-        },
-        {
-          "cmd": "ask umber about when mott came",
-          "expect": {
-            "beats": [
-              "mott-minute/umber-remembers"
-            ],
-            "narrate_contains": "Either is allowed."
-          }
-        },
-        {
-          "cmd": "up"
         },
         {
           "cmd": "up",
@@ -236,21 +258,154 @@
           }
         },
         {
-          "cmd": "ask tace about a loupe",
+          "cmd": "ask tace about a sunrise lantern",
           "expect": {
             "beats": [
-              "mott-minute/tace-loupe"
+              "bell-dawn/tace-sunburst"
             ],
-            "carrying": [
-              "spare loupe"
-            ],
-            "narrate_contains": "along its own creases"
+            "narrate_contains": "something to glow around"
           }
         }
       ]
     },
     {
-      "name": "in the slant light",
+      "name": "a spare among the wicks",
+      "commands": [
+        {
+          "clock": "@dusk",
+          "expect": {
+            "phase": "dusk",
+            "day": {
+              "eq": 3
+            },
+            "arc": {
+              "bell-dawn": "open"
+            }
+          }
+        },
+        {
+          "cmd": "down",
+          "expect": {
+            "room": "r-clocktower"
+          }
+        },
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-square"
+          }
+        },
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-lane"
+          }
+        },
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-waiting"
+          }
+        },
+        {
+          "cmd": "up",
+          "expect": {
+            "room": "r-lamphouse"
+          }
+        },
+        {
+          "cmd": "take spare lantern-skin",
+          "expect": {
+            "carrying": [
+              "spare lantern-skin"
+            ]
+          }
+        },
+        {
+          "cmd": "down"
+        },
+        {
+          "cmd": "west"
+        },
+        {
+          "cmd": "west",
+          "expect": {
+            "room": "r-square"
+          }
+        },
+        {
+          "cmd": "west",
+          "expect": {
+            "room": "r-clocktower"
+          }
+        },
+        {
+          "cmd": "up",
+          "expect": {
+            "room": "r-loft"
+          }
+        },
+        {
+          "cmd": "give spare lantern-skin to tace",
+          "expect": {
+            "beats": [
+              "bell-dawn/sunrise-made"
+            ],
+            "carrying": [
+              "sunrise lantern"
+            ],
+            "not_carrying": [
+              "spare lantern-skin"
+            ],
+            "narrate_contains": "a morning, folded small"
+          }
+        },
+        {
+          "as": "B",
+          "cmd": "down",
+          "expect": {
+            "room": "r-waiting"
+          }
+        },
+        {
+          "as": "B",
+          "cmd": "west"
+        },
+        {
+          "as": "B",
+          "cmd": "west",
+          "expect": {
+            "room": "r-square"
+          }
+        },
+        {
+          "as": "B",
+          "cmd": "west",
+          "expect": {
+            "room": "r-clocktower"
+          }
+        },
+        {
+          "as": "B",
+          "cmd": "up",
+          "expect": {
+            "room": "r-loft"
+          }
+        },
+        {
+          "as": "B",
+          "cmd": "give lantern-skin to tace",
+          "expect": {
+            "carrying": [
+              "lantern-skin"
+            ],
+            "narrate_contains": "One's plenty, for a morning."
+          }
+        }
+      ]
+    },
+    {
+      "name": "dusk",
       "commands": [
         {
           "cmd": "down",
@@ -265,119 +420,21 @@
           }
         },
         {
-          "cmd": "north",
-          "expect": {
-            "room": "r-workshop"
-          }
-        },
-        {
-          "cmd": "give spare loupe to mott",
+          "cmd": "give sunrise lantern to bell",
           "expect": {
             "ending": {
-              "mott-minute": "looked-together"
+              "bell-dawn": "dusk-enough"
             },
+            "not_carrying": [
+              "sunrise lantern"
+            ],
             "carrying": [
-              "curl of cedar shaving",
-              "spare loupe"
+              "thumbprint of soot"
             ],
-            "narrate_contains": [
-              "as if he were only a little late",
-              "the minute I was expected"
-            ],
-            "knows": {
-              "t-mott": "mott-minute-sat-with"
+            "located": {
+              "o-bell-dawn-lantern": "r-square"
             },
-            "narrate_lacks": "kept a broom"
-          }
-        },
-        {
-          "cmd": "examine tin",
-          "expect": {
-            "narrate_contains": "unfolded at last"
-          }
-        },
-        {
-          "cmd": "give spare loupe to mott",
-          "expect": {
-            "carrying": [
-              "spare loupe"
-            ],
-            "narrate_contains": "Good glass"
-          }
-        },
-        {
-          "cmd": "south",
-          "expect": {
-            "room": "r-square"
-          }
-        },
-        {
-          "cmd": "east",
-          "expect": {
-            "room": "r-lane"
-          }
-        },
-        {
-          "cmd": "north",
-          "expect": {
-            "room": "r-post"
-          }
-        },
-        {
-          "cmd": "take button letter",
-          "expect": {
-            "carrying": [
-              "button letter"
-            ]
-          }
-        },
-        {
-          "cmd": "south",
-          "expect": {
-            "room": "r-lane"
-          }
-        },
-        {
-          "cmd": "west",
-          "expect": {
-            "room": "r-square"
-          }
-        },
-        {
-          "cmd": "north",
-          "expect": {
-            "room": "r-workshop"
-          }
-        },
-        {
-          "cmd": "give button letter to mott",
-          "expect": {
-            "beats": [
-              "letters/mott-letter"
-            ],
-            "narrate_contains": "Then I looked.",
-            "narrate_lacks": "small folded thing",
-            "knows": {
-              "t-mott": "letters-origin-button-looked"
-            }
-          }
-        },
-        {
-          "cmd": "south",
-          "expect": {
-            "room": "r-square"
-          }
-        },
-        {
-          "cmd": "west",
-          "expect": {
-            "room": "r-clocktower"
-          }
-        },
-        {
-          "cmd": "read ledger of returned hours",
-          "expect": {
-            "narrate_contains": "Wren sat with Mott while he looked at his oldest minute at last: the minute he was expected."
+            "narrate_contains": "Dusk is enough, I think."
           }
         }
       ]

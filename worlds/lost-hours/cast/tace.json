@@ -20,7 +20,7 @@
           "Tace wipes a bead of oil from the bench with a corner of the leather apron. 'Patience is most of clockmaking, and the rest is good light.'",
           "Setting down the loupe, Tace looks up at last. 'You found the stairs, and that's the hard part done.'",
           "Tace nods along the shelves of resting clocks. 'Every clock in this loft keeps a different hour, and I like them better for it.'",
-          "Tace's hands go still on the bench for a moment, then carry on. 'Let's talk about something with a mainspring.'",
+          "Tace's tweezers pause above the bench for a moment, then carry on. 'Let's talk about something with a mainspring.'",
           "Tace turns a tiny brass wheel toward the window. 'Wend always said a clock is just a promise that keeps itself.'",
           "A small, tired smile crosses Tace's face. 'Hope is a heavy little gear, and I'm learning to lift it again.'",
           "Tace pushes their spectacles up into greying hair. 'Come in, friend, and mind the top step; it ticks when trodden on.'",
@@ -86,14 +86,14 @@
         {"label": "the gear", "aliases": ["gear", "escapement gear", "escapement", "the escapement"],
          "if": [{"flag": "CLOCK-STARTED", "not": true}],
          "variants": [
-           "Tace's hands go still. 'It slipped its pin that night and rolled away down the lane, south, toward the old well, I think. My knees and the lane don't agree these days. If you found it, friend, the case-key would be yours.'",
+           "Tace sets the tweezers down. 'It slipped its pin that night and rolled out across the square and away south, toward the old well-court, I think. My knees and the tower stairs don't agree these days. If you found it, friend, the case-key would be yours.'",
            "Tace sets down the loupe and looks toward the window. 'South, I think, toward the old well-court. A small brass gear, sound and whole. Bring it home to this bench, friend, and by custom the case-key is yours.'"
          ]},
         {"label": "the gear", "aliases": ["gear", "escapement gear", "escapement", "the escapement"],
          "if": [{"flag": "CLOCK-STARTED"}],
          "variants": [
            "Tace glances up toward the tower and back to the bench, quick as a blink. 'Home in the clock, where it belongs. Let's leave it to its work, friend.'",
-           "Tace's hands go still, just for a tick, then carry on. 'It's ticking. That's all a gear needs from any of us.'"
+           "Tace polishes a lens that doesn't need it, just for a tick. 'It's ticking. That's all a gear needs from any of us.'"
          ]},
         {"label": "the first winding", "aliases": ["the custom", "first winding", "winding", "custom", "a clock of my own", "my own clock"],
          "if": [{"flag": "CLOCK-STARTED"}, {"pflag": "GIVEN-CLOCK", "not": true}],
@@ -113,6 +113,13 @@
            "Tace smiles, small and far away. 'Wend had the steadiest hands in the dream, and never once made a clock feel rushed.'"
          ]},
         {"label": "Bell", "aliases": ["bell", "the lamplighter"],
+         "if": [{"ending": "bell-dawn/first-dawn"}],
+         "variants": [
+           "Tace's mouth softens. 'Bell saw a dawn at last, from the hill, and came down telling every lantern it was pink. I've never heard the square so pleased with itself.'",
+           "'Bell notices everything,' Tace says, a little fondly. 'Lanterns, moths, whether I've eaten. It's a great deal to be noticed by.'"
+         ]},
+        {"label": "Bell", "aliases": ["bell", "the lamplighter"],
+         "if": [{"ending": "bell-dawn/first-dawn", "not": true}],
          "variants": [
            "Tace's mouth softens. 'Bell lights every lantern in the square at dusk and talks to each one. Never seen a dawn in their life. I worry about that more than they'd like.'",
            "'Bell notices everything,' Tace says, a little fondly. 'Lanterns, moths, whether I've eaten. It's a great deal to be noticed by.'"
@@ -161,6 +168,13 @@
            "'Umber knew Wend longer than anyone,' Tace says, and polishes a gear that's already clean. 'She'll tell you what she wants to, and not a word more.'"
          ]},
         {"label": "the highest shelf", "aliases": ["highest shelf", "top shelf", "high shelf", "the jar up there", "the cellar shelf"],
+         "if": [{"ending": "tace-hour/within-reach"}],
+         "variants": [
+           "Tace glances at the floorboards, toward the cellar, and doesn't look away this time. 'It's down where the lantern reaches now. I can see it from the stairs, and that's far enough, this season.'",
+           "Tace turns a small wheel over and over. 'I climbed Wend's ladder, friend. Brought it down. Didn't open it.' A breath. 'Not yet.'"
+         ]},
+        {"label": "the highest shelf", "aliases": ["highest shelf", "top shelf", "high shelf", "the jar up there", "the cellar shelf"],
+         "if": [{"ending": "tace-hour/within-reach", "not": true}],
          "variants": [
            "Tace's hands go still on the bench. 'That's Umber's shelf, friend, not mine.' They go back to the work, a little too carefully.",
            "Tace takes the spectacles off, cleans them slowly on the apron, and puts them back. 'Some shelves are too high for me,' they say, and that is all."

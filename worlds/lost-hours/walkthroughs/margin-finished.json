@@ -149,7 +149,7 @@
             "beats": [
               "margin/bell-startles"
             ],
-            "narrate_contains": "Not that kind of bell"
+            "narrate_contains": "Not that bell, sorry!"
           }
         },
         {
@@ -188,7 +188,10 @@
             "carrying": [
               "soft pencil"
             ],
-            "narrate_contains": "No postage due",
+            "narrate_contains": [
+              "No postage due",
+              "Draw in whatever the page is missing"
+            ],
             "knows": {
               "t-fen": "margin-pencil"
             }
@@ -263,7 +266,10 @@
             "beats": [
               "margin/drawn"
             ],
-            "narrate_contains": "the whole garden ticks once",
+            "narrate_contains": [
+              "the whole garden ticks once",
+              "taking back to its owner"
+            ],
             "knows": {
               "t-quill": "margin-drawn"
             }

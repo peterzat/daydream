@@ -1,9 +1,20 @@
 {
   "comment": "Book of Stray Minutes, page 7 of 12: journeys on foot and holidays. The reward is a dreamseed: somewhere new to walk to.",
   "pages": {
-    "p-journeys": {"title": "Minutes on Foot",
-                   "reward": {"text": "Full at last, the Minutes on Foot page has the tired, happy feel of boots set down by the door. In its spine is a dreamseed, as if the page thought you might like somewhere new to walk to.",
-                              "do": [{"kind": "spawn_template", "template": "dreamseed", "location_id": "@actor", "generated_by": "page:journeys"}]}}
+    "p-journeys": {
+      "title": "Minutes on Foot",
+      "reward": {
+        "text": "Full at last, the Minutes on Foot page has the tired, happy feel of boots set down by the door. In its spine is a dreamseed, as if the page thought you might like somewhere new to walk to.",
+        "do": [
+          {
+            "kind": "spawn_template",
+            "template": "dreamseed",
+            "location_id": "@actor",
+            "generated_by": "page:journeys"
+          }
+        ]
+      }
+    }
   },
   "collectibles": [
     {"id": "m-summer-sand", "name": "the sand-in-the-shoe minute", "text": "the last minute of a summer holiday, sand still in one shoe", "page": "p-journeys"},

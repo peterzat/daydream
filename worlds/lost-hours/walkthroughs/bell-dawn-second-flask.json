@@ -1,6 +1,6 @@
 {
-  "name": "bell-dawn-first-dawn",
-  "comment": "Bell's First Dawn, ending first-dawn: Linden's night tea wakes Bell in the Lamp House at night and Bell walks up the Hill of Long Shadows. The first night nobody keeps them talking and they doze through the dawn; the second night the dreamer sits up with them naming stars, and at dawn Bell sees it. Real time: @night and @dawn steps drive it. The next day, coming upon Bell in the square, the dreamer hears about the dawn once.",
+  "name": "bell-dawn-second-flask",
+  "comment": "Bell's First Dawn, ending first-dawn by a second dreamer: Wren hears Bell confide and takes Linden's night tea, then wanders off with it. Tamsin asks Linden too (the night-tea beat is per player, so the one flask comes to her), wakes Bell in the Lamp House at night, hands Bell the stray crayon letter on the hill (Bell is awake there, so there is no sleep refusal), keeps them talking about the stars, and at dawn Bell sees it. By day Tamsin hears about it once.",
   "clock": "2026-10-01T17:00:00+00:00",
   "players": [
     {
@@ -200,7 +200,7 @@
       ]
     },
     {
-      "name": "night tea",
+      "name": "the first flask",
       "commands": [
         {
           "cmd": "east",
@@ -222,58 +222,118 @@
             ],
             "carrying": [
               "flask of night tea"
-            ],
-            "narrate_contains": "put this in their hands"
-          }
-        },
-        {
-          "cmd": "west"
-        },
-        {
-          "cmd": "west",
-          "expect": {
-            "room": "r-square"
-          }
-        },
-        {
-          "cmd": "give flask of night tea to bell",
-          "expect": {
-            "carrying": [
-              "flask of night tea"
-            ],
-            "narrate_contains": "Wake me with it tonight"
+            ]
           }
         }
       ]
     },
     {
-      "name": "the first night",
+      "name": "a second dreamer",
       "commands": [
         {
-          "clock": "@night",
-          "expect": {
-            "phase": "night",
-            "located": {
-              "t-bell": "r-lamphouse"
-            }
+          "join": {
+            "as": "B",
+            "name": "Tamsin"
           }
         },
         {
-          "cmd": "east"
+          "as": "B",
+          "cmd": "east",
+          "expect": {
+            "room": "r-square"
+          }
         },
         {
+          "as": "B",
+          "cmd": "east",
+          "expect": {
+            "room": "r-lane"
+          }
+        },
+        {
+          "as": "B",
+          "cmd": "north",
+          "expect": {
+            "room": "r-post"
+          }
+        },
+        {
+          "as": "B",
+          "cmd": "take crayon letter",
+          "expect": {
+            "carrying": [
+              "crayon letter"
+            ]
+          }
+        },
+        {
+          "as": "B",
+          "cmd": "south",
+          "expect": {
+            "room": "r-lane"
+          }
+        },
+        {
+          "as": "B",
           "cmd": "east",
           "expect": {
             "room": "r-waiting"
           }
         },
         {
+          "as": "B",
+          "cmd": "ask linden about night tea",
+          "expect": {
+            "carrying": [
+              "flask of night tea"
+            ],
+            "narrate_contains": "put this in their hands"
+          }
+        },
+        {
+          "as": "A",
+          "expect": {
+            "not_carrying": [
+              "flask of night tea"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "the night",
+      "commands": [
+        {
+          "clock": "@night",
+          "expect": {
+            "phase": "night",
+            "day": {
+              "eq": 2
+            },
+            "located": {
+              "t-bell": "r-lamphouse"
+            }
+          }
+        },
+        {
+          "as": "B",
           "cmd": "up",
           "expect": {
             "room": "r-lamphouse"
           }
         },
         {
+          "as": "B",
+          "cmd": "give crayon letter to bell",
+          "expect": {
+            "carrying": [
+              "crayon letter"
+            ],
+            "narrate_contains": "fast asleep"
+          }
+        },
+        {
+          "as": "B",
           "cmd": "give flask of night tea to bell",
           "expect": {
             "beats": [
@@ -282,111 +342,69 @@
             "located": {
               "t-bell": "r-hill"
             },
-            "carrying": [
-              "flask of night tea"
-            ],
-            "narrate_contains": [
-              "The hill! Come on",
-              "talk to me about the stars"
-            ]
-          }
-        },
-        {
-          "clock": "@dawn",
-          "expect": {
-            "arc": {
-              "bell-dawn": "open"
-            },
-            "phase": "dawn",
-            "day": {
-              "eq": 3
-            },
-            "located": {
-              "t-bell": "r-lamphouse"
-            }
-          }
-        },
-        {
-          "cmd": "give flask of night tea to bell",
-          "expect": {
-            "carrying": [
-              "flask of night tea"
-            ],
-            "narrate_contains": "Wake me tonight"
-          }
-        }
-      ]
-    },
-    {
-      "name": "the second night",
-      "commands": [
-        {
-          "clock": "@night",
-          "expect": {
-            "phase": "night",
-            "day": {
-              "eq": 3
-            },
-            "located": {
-              "t-bell": "r-lamphouse"
-            }
-          }
-        },
-        {
-          "cmd": "give flask of night tea to bell",
-          "expect": {
-            "located": {
-              "t-bell": "r-hill"
-            },
             "narrate_contains": "The hill! Come on"
           }
         },
         {
+          "as": "B",
           "cmd": "down",
           "expect": {
             "room": "r-waiting"
           }
         },
         {
+          "as": "B",
           "cmd": "west",
           "expect": {
             "room": "r-lane"
           }
         },
         {
+          "as": "B",
           "cmd": "south",
           "expect": {
             "room": "r-bridge"
           }
         },
         {
+          "as": "B",
           "cmd": "south",
           "expect": {
             "room": "r-duskroad"
           }
         },
         {
+          "as": "B",
           "cmd": "east",
           "expect": {
             "room": "r-hill"
           }
         },
         {
-          "cmd": "give flask of night tea to bell",
+          "as": "B",
+          "cmd": "give crayon letter to bell",
           "expect": {
-            "narrate_contains": "Keep me talking"
+            "beats": [
+              "letters/bell-letter"
+            ],
+            "not_carrying": [
+              "crayon letter"
+            ],
+            "located": {
+              "o-letters-crayon": "t-bell"
+            },
+            "narrate_contains": "I never did give it back.",
+            "narrate_lacks": "fast asleep"
           }
         },
         {
+          "as": "B",
           "cmd": "ask bell about the stars",
           "expect": {
             "beats": [
               "bell-dawn/named-stars"
             ],
-            "narrate_contains": "Keep asking me things",
-            "knows": {
-              "t-bell": "bell-dawn-sat-up"
-            }
+            "narrate_contains": "Keep asking me things"
           }
         },
         {
@@ -396,7 +414,7 @@
               "bell-dawn": "first-dawn"
             },
             "day": {
-              "eq": 4
+              "eq": 3
             },
             "located": {
               "t-bell": "r-lamphouse",
@@ -407,91 +425,73 @@
       ]
     },
     {
-      "name": "the first light",
+      "name": "the morning after",
       "commands": [
         {
-          "cmd": "look",
-          "expect": {
-            "narrate_contains": "sliver of first light"
-          }
-        },
-        {
-          "cmd": "take sliver of first light",
-          "expect": {
-            "carrying": [
-              "sliver of first light"
-            ]
-          }
-        },
-        {
+          "as": "B",
           "cmd": "west",
           "expect": {
             "room": "r-duskroad"
           }
         },
         {
+          "as": "B",
           "cmd": "north",
           "expect": {
             "room": "r-bridge"
           }
         },
         {
+          "as": "B",
           "cmd": "north",
           "expect": {
             "room": "r-lane"
           }
         },
         {
+          "as": "B",
           "cmd": "west",
           "expect": {
-            "room": "r-square"
-          }
-        },
-        {
-          "cmd": "west",
-          "expect": {
-            "room": "r-clocktower"
-          }
-        },
-        {
-          "cmd": "read ledger of returned hours",
-          "expect": {
-            "narrate_contains": "Wren kept Bell awake all night on the Hill of Long Shadows, and Bell saw their first dawn. It was pink."
+            "room": "r-square",
+            "narrate_lacks": "I saw one."
           }
         },
         {
           "clock": "@day",
           "expect": {
             "phase": "day",
-            "day": {
-              "eq": 4
-            },
             "located": {
               "t-bell": "r-square"
             }
           }
         },
         {
-          "cmd": "east",
-          "expect": {
-            "room": "r-square",
-            "narrate_contains": "I saw one. I really did.",
-            "knows": {
-              "t-bell": "bell-dawn-told-helper"
-            }
-          }
-        },
-        {
+          "as": "B",
           "cmd": "west",
           "expect": {
             "room": "r-clocktower"
           }
         },
         {
+          "as": "B",
           "cmd": "east",
           "expect": {
             "room": "r-square",
-            "narrate_lacks": "I saw one."
+            "narrate_contains": "I saw one. I really did."
+          }
+        },
+        {
+          "as": "B",
+          "cmd": "west",
+          "expect": {
+            "room": "r-clocktower"
+          }
+        },
+        {
+          "as": "B",
+          "cmd": "read ledger of returned hours",
+          "expect": {
+            "narrate_contains": "Wren and Tamsin kept Bell awake all night on the Hill of Long Shadows"
           }
         }
       ]

@@ -1,17 +1,28 @@
 {
   "comment": "Book of Stray Minutes, page 9 of 12: waiting and almost-moments. The page id p-waiting is kept from the starter set; its reward is a dreamseed. The sneeze minute is the one Mott quotes in his voice sheet.",
   "pages": {
-    "p-waiting": {"title": "Minutes of Waiting",
-                  "reward": {"text": "All the small impatiences on the Minutes of Waiting page settle, now that it is full, into one long, contented sigh. Somewhere, very faintly, someone finally sneezes. Tucked in the spine is a dreamseed.",
-                             "do": [{"kind": "spawn_template", "template": "dreamseed", "location_id": "@actor", "generated_by": "page:waiting"}]}}
+    "p-waiting": {
+      "title": "Minutes of Waiting",
+      "reward": {
+        "text": "All the small impatiences on the Minutes of Waiting page settle, now that it is full, into one long, contented sigh. Somewhere, very faintly, someone finally sneezes. Tucked in the spine is a dreamseed.",
+        "do": [
+          {
+            "kind": "spawn_template",
+            "template": "dreamseed",
+            "location_id": "@actor",
+            "generated_by": "page:waiting"
+          }
+        ]
+      }
+    }
   },
   "collectibles": [
     {"id": "m-porch-rain", "name": "the porch minute", "text": "a porch step, a steady rain, and the drips from the gutter counted until it eased", "page": "p-waiting"},
-    {"id": "m-name-read", "name": "the name minute", "text": "the minute before a name was read out", "page": "p-waiting"},
-    {"id": "m-doorway-wave", "name": "the doorway minute", "text": "the minute in a doorway waiting for someone to turn at the corner and wave", "page": "p-waiting"},
-    {"id": "m-oven-door", "name": "the oven-door minute", "text": "the minute of not opening the oven door to look", "page": "p-waiting"},
-    {"id": "m-knock", "name": "the knock minute", "text": "the minute after a knock, before the door opened", "page": "p-waiting"},
-    {"id": "m-sneeze", "name": "the sneeze minute", "text": "the minute before a sneeze that never came", "page": "p-waiting"},
+    {"id": "m-name-read", "name": "the name minute", "text": "a hall gone quiet, and a name about to be read out that might be yours", "page": "p-waiting"},
+    {"id": "m-doorway-wave", "name": "the doorway minute", "text": "a figure at the corner of the lane, and the wave you waited for, which came", "page": "p-waiting"},
+    {"id": "m-oven-door", "name": "the oven-door minute", "text": "a cake rising in the oven, and a small face promising not to peek", "page": "p-waiting"},
+    {"id": "m-knock", "name": "the knock minute", "text": "a knock at the door, and everyone in the kitchen looking up at once", "page": "p-waiting"},
+    {"id": "m-sneeze", "name": "the sneeze minute", "text": "a sneeze gathering and gathering, and then, somehow, never arriving", "page": "p-waiting"},
     {"id": "m-tip-of-tongue", "name": "the tip-of-the-tongue minute", "text": "a word perched on the tip of the tongue, refusing to come one step further", "page": "p-waiting"},
     {"id": "m-hiccups", "name": "the hiccup minute", "text": "a held breath to cure the hiccups, and waiting, and waiting, and hic", "page": "p-waiting"},
     {"id": "m-bath-filling", "name": "the bath-filling minute", "text": "a bath taking its time to fill while the steam crept slowly up the mirror", "page": "p-waiting"},

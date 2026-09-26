@@ -246,7 +246,7 @@
             "carrying": [
               "tall ladder"
             ],
-            "narrate_contains": "Sorrel will have the song"
+            "narrate_contains": "Ask Sorrel for Wend's climbing song."
           }
         },
         {
@@ -350,7 +350,8 @@
             "not_carrying": [
               "tall ladder"
             ],
-            "narrate_contains": "Go and tell Tace it's standing"
+            "narrate_contains": "Tell Tace: ladder, standing.",
+            "narrate_lacks": "lamb"
           }
         },
         {
@@ -359,7 +360,7 @@
             "located": {
               "o-tace-hour-ladder": "r-cellar"
             },
-            "narrate_contains": "Leave it standing"
+            "narrate_contains": "Ladder: standing. Do not move."
           }
         },
         {
@@ -447,7 +448,8 @@
         {
           "cmd": "examine dusty jar",
           "expect": {
-            "narrate_contains": "For Tace, when they're ready"
+            "narrate_contains": "turned to face the wall",
+            "narrate_lacks": "when they're ready"
           }
         },
         {
@@ -461,7 +463,8 @@
           "expect": {
             "located": {
               "o-tace-hour-jar": "r-cellar"
-            }
+            },
+            "narrate_contains": "label to the wall"
           }
         },
         {

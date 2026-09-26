@@ -1,5 +1,5 @@
 {
-  "comment": "Keeper arc 7 (canon section 7): The Hour Before (Tace). A new frost finds the loft window and Tace stops working. Umber, Mott, and Sorrel each hold one piece: the first hard frost was Wend's last night; Wend's tall ladder was put away at Tace's asking; Wend's climbing song, and a lamp in the loft window until the hour before midnight. Bringing the ladder home lets Tace take one small step toward the highest shelf. Endings: within-reach (the song: Tace climbs and sets the jar down where the lantern reaches, unopened), past-eleven (the stopped clock: Tace winds it past eleven and leaves it ticking under the shelf), another-season (timed: Tace goes as far as the bottom step alone). Never the full reveal: the jar stays sealed for a future dream.",
+  "comment": "Keeper arc 7 (canon section 7): The Hour Before (Tace). A new frost finds the loft window and Tace stops working. Umber, Mott, and Sorrel each hold one piece: the first hard frost was Wend's last night; Wend's tall ladder was put away at Tace's asking; Wend's climbing song, and a lamp in the loft window until the hour before midnight. Bringing the ladder home lets Tace take one small step toward the highest shelf. Endings: within-reach (the song: Tace climbs and sets the jar down where the lantern reaches, unopened), past-eleven (the stopped clock: Tace winds it past eleven and leaves it ticking under the shelf), another-season (timed: Tace goes as far as the bottom step alone, and takes the little stopped clock home to the loft shelf from whoever was keeping it). Never the full reveal: the jar stays sealed for a future dream.",
   "things": [
     {"id": "o-tace-hour-window", "name": "round window", "location": {"room": "r-loft"}, "fixture": true,
      "seed": "old glass, faintly rippled, in a round frame worn smooth by elbows",
@@ -27,6 +27,9 @@
        {"on": "take", "if": [{"prop": "state", "of": "@self", "eq": "ticking"}],
         "do": [{"kind": "narrate", "to": "@actor",
                 "text": "It is ticking where Tace set it, under the highest shelf. You leave it there."}]},
+       {"on": "take", "if": [{"ending": "tace-hour/another-season"}],
+        "do": [{"kind": "narrate", "to": "@actor",
+                "text": "It sits back on the top shelf where Tace put it, hands at eleven. You leave it be, for another season."}]},
        {"on": "wind", "if": [{"prop": "state", "of": "@self", "eq": "ticking"}],
         "do": [{"kind": "narrate", "to": "@actor",
                 "text": "It is already ticking, soft and sure, and doesn't need your hands. It seems glad of that."}]},
@@ -64,7 +67,7 @@
                {"kind": "set_property", "target_id": "o-tace-hour-ladder", "key": "state", "value": "standing"},
                {"kind": "set_property", "target_id": "o-high-shelf", "key": "seed", "value": "the highest shelf, lost in shadow above the lantern's reach; Wend's tall ladder leans against it now, and up at the top a single jar glints, set apart from the rest"},
                {"kind": "narrate",
-                "text": "You unfold Wend's ladder and lean it against the highest shelf. It reaches, just. Up in the shadow a single jar glints, set apart from the others, its label written in an old, looping hand. Umber looks at the ladder a long moment. 'That's not mine to climb,' she says quietly, 'and it isn't yours, lamb. Go and tell Tace it's standing.'"},
+                "text": "You unfold Wend's ladder and lean it against the highest shelf. It reaches, just. Up in the shadow a single jar glints, set apart from the others. Umber regards the ladder over her pen. 'Not mine to climb. Not yours either. Tell Tace: ladder, standing.'"},
                {"kind": "advance_beat", "arc": "tace-hour", "beat": "ladder-set"},
                {"kind": "add_fact", "id": "tace-hour-ladder-standing",
                 "text": "{actor} stood Wend's ladder against the Hour Cellar's highest shelf again.",
@@ -77,7 +80,7 @@
                {"kind": "set_property", "target_id": "o-tace-hour-ladder", "key": "state", "value": "standing"},
                {"kind": "set_property", "target_id": "o-high-shelf", "key": "seed", "value": "the highest shelf, lost in shadow above the lantern's reach; Wend's tall ladder leans against it now, and up at the top a single jar glints, set apart from the rest"},
                {"kind": "narrate",
-                "text": "You unfold Wend's ladder and lean it against the highest shelf. It reaches, just. Up in the shadow a single jar glints, set apart from the others, its label written in an old, looping hand. Umber looks at the ladder a long moment. 'That's not mine to climb,' she says quietly, 'and it isn't yours, lamb. Go and tell Tace it's standing.'"},
+                "text": "You unfold Wend's ladder and lean it against the highest shelf. It reaches, just. Up in the shadow a single jar glints, set apart from the others. Umber regards the ladder over her pen. 'Not mine to climb. Not yours either. Tell Tace: ladder, standing.'"},
                {"kind": "advance_beat", "arc": "tace-hour", "beat": "ladder-set"},
                {"kind": "add_fact", "id": "tace-hour-ladder-standing",
                 "text": "{actor} stood Wend's ladder against the Hour Cellar's highest shelf again.",
@@ -89,7 +92,7 @@
                {"kind": "set_property", "target_id": "o-tace-hour-ladder", "key": "state", "value": "standing"},
                {"kind": "set_property", "target_id": "o-high-shelf", "key": "seed", "value": "the highest shelf, lost in shadow above the lantern's reach; Wend's tall ladder leans against it now, and up at the top a single jar glints, set apart from the rest"},
                {"kind": "narrate",
-                "text": "You unfold Wend's ladder and lean it against the highest shelf. It reaches, just. Up in the shadow a single jar glints, set apart from the others, its label written in an old, looping hand. Umber looks at the ladder a long moment. 'That's not mine to climb,' she says quietly, 'and it isn't yours, lamb. Go and tell Tace it's standing.'"},
+                "text": "You unfold Wend's ladder and lean it against the highest shelf. It reaches, just. Up in the shadow a single jar glints, set apart from the others. Umber regards the ladder over her pen. 'Not mine to climb. Not yours either. Tell Tace: ladder, standing.'"},
                {"kind": "advance_beat", "arc": "tace-hour", "beat": "ladder-set"},
                {"kind": "add_fact", "id": "tace-hour-ladder-standing",
                 "text": "{actor} stood Wend's ladder against the Hour Cellar's highest shelf again.",
@@ -101,16 +104,16 @@
                {"kind": "set_property", "target_id": "o-tace-hour-ladder", "key": "state", "value": "standing"},
                {"kind": "set_property", "target_id": "o-high-shelf", "key": "seed", "value": "the highest shelf, lost in shadow above the lantern's reach; Wend's tall ladder leans against it now, and up at the top a single jar glints, set apart from the rest"},
                {"kind": "narrate",
-                "text": "You unfold Wend's ladder and lean it against the highest shelf. Umber looks at it a long moment, then nods, once. 'Leave it there,' she says. 'For another season.'"}]},
+                "text": "You unfold Wend's ladder and lean it against the highest shelf. Umber nods at it, once. 'Wend's ladder. Standing. For another season.'"}]},
        {"on": "put", "if": [{"iobj": "o-high-shelf"}, {"prop": "state", "of": "@self", "ne": "standing"}],
         "do": [{"kind": "move_object", "object_id": "o-tace-hour-ladder", "dest_id": "r-cellar"},
                {"kind": "set_property", "target_id": "o-tace-hour-ladder", "key": "state", "value": "standing"},
                {"kind": "set_property", "target_id": "o-high-shelf", "key": "seed", "value": "the highest shelf, lost in shadow above the lantern's reach; Wend's tall ladder leans against it now, and up at the top a single jar glints, set apart from the rest"},
                {"kind": "narrate",
-                "text": "You unfold Wend's ladder and lean it against the highest shelf. Umber looks at it a long moment, then nods, once. 'Leave it there,' she says. 'For another season.'"}]},
+                "text": "You unfold Wend's ladder and lean it against the highest shelf. Umber nods at it, once. 'Wend's ladder. Standing. For another season.'"}]},
        {"on": "take", "if": [{"prop": "state", "of": "@self", "eq": "standing"}, {"present": "t-umber"}],
         "do": [{"kind": "narrate", "to": "@actor",
-                "text": "Umber shakes her head. 'Leave it standing, lamb. It's waited long enough.'"}]},
+                "text": "Umber shakes her head without looking up. 'Ladder: standing. Do not move.'"}]},
        {"on": "take", "if": [{"prop": "state", "of": "@self", "eq": "standing"}],
         "do": [{"kind": "narrate", "to": "@actor",
                 "text": "You leave it standing. It has waited long enough."}]},
@@ -139,16 +142,16 @@
      ]},
 
     {"id": "o-tace-hour-jar", "name": "dusty jar", "location": "offstage",
-     "seed": "a small jar set apart from all the others, its glass furred with dust except where Tace's thumbs have been, resting on the lowest shelf where the lantern reaches; a folded paper hour sits inside, and the label, in an old looping hand, reads: For Tace, when they're ready. The lid is still sealed",
+     "seed": "a small jar set apart from all the others, its glass furred with dust except where Tace's thumbs have been, resting on the lowest shelf where the lantern reaches; a folded paper hour sits inside, and its label, in an old looping hand, is turned to face the wall; Tace set it down that way. The lid is still sealed",
      "aliases": ["jar", "wend's jar", "labeled jar"],
      "verbs": ["open"],
      "rules": [
        {"on": "take",
         "do": [{"kind": "narrate", "to": "@actor",
-                "text": "Your hand stops short of it. The name on the label isn't yours."}]},
+                "text": "Your hand stops short of it. Tace set it just so, label to the wall, and it isn't yours to move."}]},
        {"on": "open",
         "do": [{"kind": "narrate", "to": "@actor",
-                "text": "The lid is sealed, and the label isn't your name. Some jars wait for one pair of hands."}]}
+                "text": "The lid is sealed, and it isn't yours to open. Some jars wait for one pair of hands."}]}
      ]}
   ],
   "arcs": {
@@ -165,7 +168,7 @@
                             "the round window", "round window", "the frost on the window"],
           "if": [{"rel": "t-tace", "gte": 2}],
           "hint": "the player asks Tace about the frost on the loft window",
-          "text": "Tace's hands go still on the bench, and stay still. At last they lift a little brass clock down from the top shelf, its hands standing at eleven, and set it in your palm. 'Keep this one for me a while, friend. It hasn't ticked since the first hard frost, and I'd rather not look at it today.' They turn back to the window. 'Umber keeps a lamp lit on frost mornings. She always did.'",
+          "text": "Tace's hands go still, and stay still. They set a little brass clock in your palm, its hands at eleven. 'Keep this one for me a while, friend. Umber keeps a lamp lit on frost mornings.'",
           "do": [
             {"kind": "move_object", "object_id": "o-tace-hour-clock", "dest_id": "@actor"},
             {"kind": "set_property", "target_id": "o-tace-hour-clock", "key": "state", "value": "kept"},
@@ -182,7 +185,7 @@
                             "that night", "wend", "the night the clock stopped", "the night of the frost"],
           "after": ["tace-frost"],
           "hint": "the player asks Umber about the first hard frost, or about Wend",
-          "text": "Umber sets down her pen, and for once she doesn't mention tea. 'The first hard frost was Wend's last night,' she says. 'Tace sat up with Wend in the loft. I took the tea up at eleven and left them to it, and by morning the great clock was still.' She looks up into the dark of the highest shelf. 'There was a ladder that reached up there, once. Wend's. Mott carried it off after, and I never asked where.'"
+          "text": "Umber sets down her pen, and for once doesn't mention tea. 'First hard frost. Wend's last night. Tace sat up; I took the tea at eleven.' Her eyes go to the dark above the lantern. 'Wend's ladder reached up there, once. Mott carried it off.'"
         },
         "mott-ladder": {
           "npc": "t-mott",
@@ -191,7 +194,7 @@
                             "tall ladder", "wend's old ladder"],
           "after": ["umber-frost"],
           "hint": "the player asks Mott about Wend's tall ladder",
-          "text": "Mott leans on the broom a long while before he speaks. 'The morning after the frost, Tace asked me to carry Wend's ladder up out of the cellar and put it somewhere they wouldn't have to see it.' He draws it out from behind a drift of shavings, folds it small the way dream things fold, and tucks it under your arm. 'Wend never went up it without singing. Sorrel will have the song.'",
+          "text": "Mott sets the broom against the bench. 'Morning after the frost, Tace asked me to put Wend's ladder where they wouldn't have to see it.' He draws it out from behind a drift of shavings, folds it small the way dream things fold, and tucks it under your arm. 'Wend never climbed it without singing. Ask Sorrel for Wend's climbing song.'",
           "do": [
             {"kind": "move_object", "object_id": "o-tace-hour-ladder", "dest_id": "@actor"},
             {"kind": "add_fact", "id": "tace-hour-carrying-ladder",
@@ -209,7 +212,7 @@
                             "the first hard frost"],
           "after": ["umber-frost"],
           "hint": "the player asks Sorrel about the song Wend sang going up the ladder, or about the night of the first hard frost",
-          "text": "Sorrel looks at the sky a long while. 'The night of the first hard frost, a lamp burned low in the loft window until the hour before midnight,' they say. 'Then the clock went quiet, and the frost came down all at once, like a held breath.' They hum a few slow, climbing bars and fold the tune into your hands like a pressed leaf. 'Wend's ladder song. It wants singing again.'",
+          "text": "Sorrel squints at the weather. 'First hard frost, a lamp burned in the loft window until the hour before midnight. Then the clock went quiet, and the frost came down like a held breath.' They hum a few slow, climbing bars and fold the tune into your hands. 'Wend's ladder song. It wants singing again.'",
           "do": [
             {"kind": "move_object", "object_id": "o-tace-hour-song", "dest_id": "@actor"},
             {"kind": "add_fact", "id": "tace-hour-learned-song",
@@ -229,13 +232,13 @@
                             "the highest shelf", "highest shelf", "the cellar"],
           "after": ["ladder-set"],
           "hint": "the player tells Tace that Wend's ladder is standing in the Hour Cellar again",
-          "text": "For a long moment Tace only looks at the floorboards, as if they could see down through them to the cellar. 'Standing again,' they say, very quietly. 'I'd go down, I think, if I had something to carry.'"
+          "text": "Tace looks down at the floorboards, as if they could see through them to the cellar. 'Standing again,' they say, very quietly. 'I'd go down, I think, if I had something to carry.'"
         }
       },
       "endings": {
         "within-reach": {
           "summary": "given Wend's climbing song, Tace climbs the ladder and sets the jar from the highest shelf down where the lantern reaches, unopened",
-          "text": "Tace holds the folded song to one ear, and after a while begins to hum it, low and a little off-key. They take your arm, and together you go down into the Hour Cellar, where Umber sets her pen aside without a word. Rung by rung Tace climbs Wend's ladder into the shadow, humming, and stays at the top a long while; when they come down, they carry a small dusty jar in both hands and set it, unopened, on the lowest shelf, where the lantern reaches. Back up in the loft, Tace wipes the dust from their fingers. 'Not yet,' they say. 'But I'd like to be able to see it from the stairs.'",
+          "text": "Tace hums the folded song, low and a little off-key, all the way down to the Hour Cellar. Rung by rung they climb Wend's ladder into the shadow and come down with a small dusty jar, which they set, unopened, on the lowest shelf, label to the wall. 'Not yet,' Tace says. 'But I'd like to see it from the stairs.'",
           "ledger": "{helpers} brought Wend's ladder home to the Hour Cellar and gave Tace the old climbing song; Tace climbed it, humming, and set a jar down where the lantern reaches.",
           "do": [
             {"kind": "move_object", "object_id": "o-tace-hour-song", "dest_id": "t-tace"},
@@ -254,7 +257,7 @@
         },
         "past-eleven": {
           "summary": "given back the stopped clock, Tace winds it past eleven and leaves it ticking on the bottom rung of Wend's ladder, and does not climb this season",
-          "text": "Tace takes the little clock in both hands. After a long moment they find its key and turn it, once, twice, and the clock hesitates, and ticks, and its hands move past eleven for the first time since the frost. They take your arm, and together you carry it down into the Hour Cellar and set it ticking on the bottom rung of Wend's ladder, under the highest shelf; Tace sits on the step beside it a while, just listening. Back up in the loft, they let out a long breath. 'Not the ladder,' Tace says. 'Not this season. But it's going again.'",
+          "text": "Tace finds the little clock's key and turns it, once, twice. It hesitates, then ticks, and its hands move past eleven for the first time since the frost. Down in the Hour Cellar, Tace sets it on the bottom rung of Wend's ladder and sits beside it with you a while, listening. 'Not the ladder. Not this season. But it's going again.'",
           "ledger": "{helpers} kept Tace's stopped clock a while; Tace wound it past eleven and left it ticking at the foot of Wend's ladder.",
           "do": [
             {"kind": "move_object", "object_id": "o-tace-hour-clock", "dest_id": "r-cellar"},
@@ -274,10 +277,12 @@
           "summary": "unhelped for a week of frosts, Tace goes down the cellar stair alone as far as the bottom step, and Umber leaves tea there for next time",
           "after_days": 7,
           "room": "r-loft",
-          "text": "All week the frost comes and goes on the loft window. One night, very late, Tace goes down the cellar stair alone as far as the bottom step, stands there a while looking up into the dark of the highest shelf, and climbs back up to bed. Umber hears the stair. In the morning there is a cup of tea on the bottom step, still warm, for next time.",
+          "text": "Frost comes and goes on the loft window all week. One night, very late, Tace goes down the cellar stair alone as far as the bottom step, looks up into the dark, and climbs back to bed. By morning the little brass clock is home on the top shelf, and Umber has left a cup of tea on the bottom step, for next time.",
           "ledger": "This season Tace went as far as the bottom step of the cellar stair, alone, and Umber left a cup of tea there for next time.",
           "do": [
             {"kind": "set_property", "target_id": "o-tace-hour-window", "key": "state", "value": "thawed"},
+            {"kind": "move_object", "object_id": "o-tace-hour-clock", "dest_id": "r-loft"},
+            {"kind": "set_property", "target_id": "o-tace-hour-clock", "key": "state", "value": "stopped"},
             {"kind": "set_property", "target_id": "t-tace", "key": "presence_text",
              "value": "Tace looks up from a bench of small clocks, sets down a fine brass tool, and offers a tired, kind nod."},
             {"kind": "set_property", "target_id": "t-tace", "key": "mood", "value": "wistful"}
@@ -304,7 +309,7 @@
       "known_by": ["t-sorrel", "t-umber", "t-mott"],
       "if": [{"arc": "tace-hour", "ne": "dormant"}]},
     "tace-hour-jar-down": {
-      "text": "A jar that stood alone on the Hour Cellar's highest shelf, labeled in Wend's old hand, now sits unopened on the lowest shelf, where the lantern reaches. Nobody asks Tace about it.",
+      "text": "A jar that stood alone on the Hour Cellar's highest shelf now sits unopened on the lowest shelf, where the lantern reaches, its label turned to the wall. Nobody asks Tace about it.",
       "known_by": ["t-umber", "t-tace", "t-mott"],
       "if": [{"ending": "tace-hour/within-reach"}]},
     "tace-hour-clock-going": {

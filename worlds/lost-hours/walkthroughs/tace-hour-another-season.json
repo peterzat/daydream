@@ -207,7 +207,8 @@
               "tace-hour": "another-season"
             },
             "located": {
-              "t-tace": "r-loft"
+              "t-tace": "r-loft",
+              "o-tace-hour-clock": "r-loft"
             },
             "day": {
               "eq": 10
@@ -221,12 +222,24 @@
           }
         },
         {
-          "cmd": "give stopped clock to tace",
+          "cmd": "examine stopped clock",
           "expect": {
-            "carrying": [
+            "located": {
+              "o-tace-hour-clock": "r-loft"
+            },
+            "not_carrying": [
               "little brass clock"
             ],
-            "narrate_contains": "Keep it a while longer"
+            "narrate_contains": "sits apart from the others on the top shelf"
+          }
+        },
+        {
+          "cmd": "take stopped clock",
+          "expect": {
+            "not_carrying": [
+              "little brass clock"
+            ],
+            "narrate_contains": "for another season"
           }
         },
         {

@@ -1,17 +1,42 @@
 {
   "comment": "Book of Stray Minutes, page 10 of 12: small bravery. Mott is a little afraid to look at his own oldest minute (canon section 3), so a page of small braveries is the one he quietly treasures. The page-brave deed fact is available to the mott-minute arc as a knows condition.",
   "pages": {
-    "p-brave": {"title": "Minutes of Small Bravery",
-                "reward": {"text": "With its last minute in place, the Minutes of Small Bravery page holds itself a little straighter than the others. Over in the Old Workshop, Mott's thumb rests a moment longer on the lid of his tin.",
-                           "do": [{"kind": "adjust_rel", "npc": "t-mott", "delta": 2},
-                                  {"kind": "add_fact", "id": "page-brave",
-                                   "text": "{actor} has filled the Small Bravery page of their Book of Stray Minutes: sorries said first, dark landings crossed, and one line remembered just in time.",
-                                   "known_by": ["t-mott"],
-                                   "spread": []}]}}
+    "p-brave": {
+      "title": "Minutes of Small Bravery",
+      "reward": {
+        "text": "The Small Bravery page is full. Pressed into the book's gutter is a smooth grey pebble, still warm from someone's brave pocket.",
+        "do": [
+          {
+            "kind": "adjust_rel",
+            "npc": "t-mott",
+            "delta": 2
+          },
+          {
+            "kind": "add_fact",
+            "id": "page-brave",
+            "text": "{actor} has filled the Small Bravery page of their Book of Stray Minutes: sorries said first, dark landings crossed, and one line remembered just in time.",
+            "known_by": [
+              "t-mott"
+            ],
+            "spread": []
+          },
+          {
+            "kind": "spawn_object",
+            "name": "warm pebble",
+            "location_id": "@actor",
+            "seed": "a smooth grey pebble, still warm, as if someone brave has been holding it tight in a pocket and has just now let it go",
+            "aliases": [
+              "pebble"
+            ],
+            "generated_by": "page:brave"
+          }
+        ]
+      }
+    }
   },
   "collectibles": [
     {"id": "m-floating", "name": "the floating minute", "text": "the first time the water held you up, after letting go of the riverbank", "page": "p-brave"},
-    {"id": "m-sorry-first", "name": "the sorry minute", "text": "the minute someone said sorry first, though it had not really been their fault", "page": "p-brave"},
+    {"id": "m-sorry-first", "name": "the sorry minute", "text": "a sorry said first, though it was not really your fault, and the room softening", "page": "p-brave"},
     {"id": "m-dark-landing", "name": "the landing minute", "text": "a dark landing crossed all alone, which turned out to be only a landing after all", "page": "p-brave"},
     {"id": "m-new-classroom", "name": "the new-classroom minute", "text": "a new classroom full of strange faces, and a 'hello' said anyway", "page": "p-brave"},
     {"id": "m-high-branch", "name": "the high-branch minute", "text": "one branch higher than ever before, a look down, and a quick look back up", "page": "p-brave"},
@@ -23,6 +48,6 @@
     {"id": "m-cold-sea", "name": "the cold-sea minute", "text": "a run straight into the cold sea, all at once, because slowly was worse", "page": "p-brave"},
     {"id": "m-splinter", "name": "the splinter minute", "text": "a splinter eased out of a thumb, a face held very still, and hardly any crying", "page": "p-brave"},
     {"id": "m-door-shut", "name": "the shut-door minute", "text": "bedtime with the door closed all the way for the very first time, and sleep coming anyway", "page": "p-brave"},
-    {"id": "m-one-line", "name": "the one-line minute", "text": "the wings of the school play, one line to say and all of it gone, until it came back just in time", "page": "p-brave"}
+    {"id": "m-one-line", "name": "the one-line minute", "text": "one line to say in the school play, gone completely, then back just in time", "page": "p-brave"}
   ]
 }

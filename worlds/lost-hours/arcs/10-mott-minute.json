@@ -1,5 +1,5 @@
 {
-  "comment": "Keeper arc 9 (canon section 7): The Oldest Minute (Mott). The oldest thing in Mott's tin is his own minute, the one he arrived in, before he remembers anything else, and he is a little afraid of it. Umber remembers the evening he came. Tace lends a loupe; Fen gives an envelope marked TO ME, LATER. Endings: looked-together (Mott unfolds it with a dreamer beside him: a broom already waiting, and someone old and kind, smelling of clock oil, who had kept it for him), kept-for-later (Mott seals it unread and a dreamer carries it to Fen's pigeonhole of the same name). No timed ending: the thread waits for a dreamer.",
+  "comment": "Keeper arc 9 (canon section 7): The Oldest Minute (Mott). The oldest thing in Mott's tin is his own minute, the one he arrived in, before he remembers anything else, and he is a little afraid of it. Umber remembers the evening he came. Tace lends a loupe; Fen gives an envelope marked TO ME, LATER. Endings: looked-together (Mott unfolds it with a dreamer beside him: a doorway full of evening, a broom in the corner, and someone old and kind, smelling of clock oil, who says 'There you are'), kept-for-later (Mott seals it unread and a dreamer carries it to Fen's pigeonhole of the same name). No timed ending: the thread waits for a dreamer. It cannot strand on a courier who wanders off: once the minute is sealed, a dawn storylet counts the nights it spends in transit, and on the third morning Fen finds the envelope on the mat and files it (the same kept-for-later ending, with no courier). The courier's own rewards (the lantern stamp, the deed, Mott's thanks) live on the give rule, never on the ending, so the timed path has no @actor to miss.",
   "things": [
     {"id": "o-mott-minute-loupe", "name": "spare loupe", "location": "offstage",
      "seed": "one of Tace's spare loupes, a little brass eyeglass on a faded ribbon; through it the smallest things look patient and enormous",
@@ -38,7 +38,21 @@
         ]},
        {"on": "give", "if": [{"iobj": "t-fen"}, {"carried": "@self"}, {"prop": "state", "of": "@self", "eq": "sealed"},
                              {"arc": "mott-minute"}],
-        "do": [{"kind": "close_arc", "arc": "mott-minute", "ending": "kept-for-later"}]},
+        "do": [
+          {"kind": "close_arc", "arc": "mott-minute", "ending": "kept-for-later"},
+          {"kind": "narrate",
+           "text": "Then Fen presses a spare stamp into your hand, printed with a tiny lantern. 'First class. For your trouble.'"},
+          {"kind": "spawn_object", "name": "lantern stamp", "location_id": "@actor",
+           "seed": "a small paper stamp printed with a tiny lantern, first class, its edges perforated like a row of stitches",
+           "aliases": ["stamp", "first-class stamp"],
+           "generated_by": "mott-minute:kept-for-later"},
+          {"kind": "adjust_rel", "npc": "t-mott", "delta": 2},
+          {"kind": "add_fact", "id": "mott-minute-posted",
+           "text": "{actor} carried Mott's oldest minute, sealed and unread, to the pigeonhole marked TO ME, LATER.",
+           "known_by": ["t-fen"],
+           "spread": [{"to": ["t-mott"], "after_minutes": 10},
+                      {"to": "all", "after_minutes": 60}]}
+        ]},
        {"on": "give", "if": [{"iobj": "t-fen"}, {"carried": "@self"}, {"prop": "state", "of": "@self", "eq": "empty"}],
         "do": [{"kind": "narrate",
                 "text": "Fen taps the empty envelope against the counter. 'Wrong way round, that,' she says. 'It wants filling before it wants filing. Take it to Mott first.'"}]},
@@ -64,10 +78,11 @@
           "npc": "t-mott",
           "topic": "the oldest minute",
           "topic_aliases": ["oldest minute", "your own minute", "the folded thing", "folded thing",
-                            "the small folded thing", "the folded minute", "folded minute"],
+                            "the small folded thing", "the folded minute", "folded minute",
+                            "the tin", "your tin", "mott's tin"],
           "if": [{"rel": "t-mott", "gte": 2}],
           "hint": "the player asks Mott about the small folded thing he keeps in his tin",
-          "text": "Mott is quiet a moment. Then he sets the tin on the sill in the slant light and lifts his thumb from the small folded thing. 'A minute,' he says. 'Mine. The one I arrived in, before I remember anything else.' He covers it again. 'Never looked. Bit afraid to, truth be told. Tace would say look at it properly, with a loupe; Fen would say some things keep better sealed.'",
+          "text": "Mott sets the tin on the sill in the slant light and lifts his thumb from the small folded thing. 'A minute,' he says. 'Mine. The one I arrived in, before I remember anything else. Bit afraid to look, truth be told. Tace would say look at it with a loupe; Fen would say some things keep better sealed.'",
           "do": [
             {"kind": "set_property", "target_id": "t-mott", "key": "mood", "value": "curious"}
           ]
@@ -100,10 +115,11 @@
           "npc": "t-fen",
           "topic": "an envelope for later",
           "topic_aliases": ["envelope", "an envelope", "the envelope", "to me, later", "to me later",
-                            "an envelope for mott", "something to keep sealed"],
+                            "an envelope for mott", "something to keep sealed",
+                            "mott's minute", "mott's tin", "sealing", "sealing it"],
           "after": ["mott-confides"],
           "hint": "the player asks Fen for something to keep Mott's minute sealed until he is ready",
-          "text": "Fen takes a stiff cream envelope from under the counter and writes across it, in her tidiest hand: TO ME, LATER. 'For things that aren't ready to be read,' she says, and taps it square. 'Mind, I've one of my own that's been in transit a very long time. Nothing wrong with the scenic route.'",
+          "text": "Fen takes a stiff cream envelope from under the counter and writes across it, in her tidiest hand: TO ME, LATER. 'For things that aren't ready to be read,' she says, and taps it square. Her pencil pauses over the unlabeled pigeonhole near the top, then moves briskly on. 'Some post keeps better than it travels.'",
           "do": [
             {"kind": "move_object", "object_id": "o-mott-minute-envelope", "dest_id": "@actor"},
             {"kind": "add_fact", "id": "mott-minute-envelope",
@@ -119,7 +135,7 @@
       "endings": {
         "looked-together": {
           "summary": "with a dreamer beside him and Tace's loupe, Mott unfolds his oldest minute: the minute he was expected",
-          "text": "Mott sets the tin on the sill, in the one blade of slant light, and you sit beside him there, shoulders touching. With Tace's loupe to his eye he unfolds the minute along its own old creases. Inside is a doorway full of evening, a broom already leaning in the corner as if it had been waiting, and someone old and kind, smelling faintly of clock oil, saying: 'There you are. We kept a broom for you.' Mott is quiet a long while. 'Somebody was waiting,' he says at last. 'All this time I thought I'd only been swept in.'",
+          "text": "You sit beside Mott on the sill while he unfolds the minute under Tace's loupe, along its own creases. Inside: a doorway full of evening, a broom leaning in the corner, and someone old and kind, smelling of clock oil, saying 'There you are,' as if he were only a little late. 'Somebody was waiting,' Mott says. 'I thought I'd only been swept in.'",
           "ledger": "{helpers} sat with Mott while he looked at his oldest minute at last: the minute he was expected.",
           "do": [
             {"kind": "narrate",
@@ -141,24 +157,14 @@
           ]
         },
         "kept-for-later": {
-          "summary": "Mott seals his oldest minute unread, and a dreamer carries it to Fen's pigeonhole marked TO ME, LATER",
-          "text": "Fen reads the envelope, TO ME, LATER, and doesn't ask a single question. She files it in the pigeonhole with the same words on its label, taps it square, and gives it a small pat. 'It'll keep,' she says. 'Things do, here. And when he's ready, it'll be exactly where he left it.' Then she presses a spare stamp into your hand, printed with a tiny lantern. 'First class. For your trouble.'",
-          "ledger": "{helpers} carried Mott's oldest minute, sealed and unread, to the pigeonhole marked TO ME, LATER, where it waits until he is ready.",
+          "summary": "Mott seals his oldest minute unread, and it goes to Fen's pigeonhole marked TO ME, LATER: carried by a dreamer, or found on the post office mat after three nights in transit",
+          "text": "Fen reads the front, TO ME, LATER, and doesn't ask a single question. She files it in the pigeonhole with the same words on its label and gives it a small pat. 'It'll keep,' she says. 'Things do, here. When he's ready, it'll be exactly where he left it.'",
+          "ledger": "{helpers} helped Mott seal his oldest minute unread; it waits in the pigeonhole marked TO ME, LATER until he is ready.",
           "do": [
             {"kind": "move_object", "object_id": "o-mott-minute-envelope", "dest_id": "o-pigeonholes"},
-            {"kind": "spawn_object", "name": "lantern stamp", "location_id": "@actor",
-             "seed": "a small paper stamp printed with a tiny lantern, first class, its edges perforated like a row of stitches",
-             "aliases": ["stamp", "first-class stamp"],
-             "generated_by": "mott-minute:kept-for-later"},
             {"kind": "set_property", "target_id": "t-mott", "key": "presence_text",
-             "value": "Mott pauses mid-sweep, leans on the broom, and gives you an unhurried, friendly look; the tin under his arm rattles a little lighter than it did."},
-            {"kind": "set_property", "target_id": "t-mott", "key": "mood", "value": "content"},
-            {"kind": "adjust_rel", "npc": "t-mott", "delta": 2},
-            {"kind": "add_fact", "id": "mott-minute-posted",
-             "text": "{actor} carried Mott's oldest minute, sealed and unread, to the pigeonhole marked TO ME, LATER.",
-             "known_by": ["t-fen"],
-             "spread": [{"to": ["t-mott"], "after_minutes": 10},
-                        {"to": "all", "after_minutes": 60}]}
+             "value": "Mott pauses mid-sweep and gives you an unhurried, friendly look; the tin under his arm rattles a little lighter than it did."},
+            {"kind": "set_property", "target_id": "t-mott", "key": "mood", "value": "content"}
           ]
         }
       }
@@ -168,17 +174,17 @@
     "mott-minute-quiet": {
       "text": "Lately Mott's free hand keeps drifting to the lid of his tin, where he keeps one small folded thing to himself.",
       "known_by": ["t-bell", "t-tace", "t-umber", "t-linden", "t-fen"],
-      "if": [{"arc": "mott-minute"}]},
+      "if": [{"arc": "mott-minute"}, {"beat": "mott-minute/sealed", "not": true}]},
     "mott-minute-own": {
-      "text": "The small folded thing in Mott's tin is a minute: his own, the minute he first arrived in the village, before he remembers anything else. He has never looked at it, and he is a little afraid to.",
+      "text": "The oldest minute Mott keeps is his own: the minute he first arrived in the village, before he remembers anything else. He has never looked at it, and he is a little afraid to.",
       "known_by": ["t-mott", "t-umber"],
-      "if": [{"beat": "mott-minute/mott-confides"}]},
+      "if": [{"beat": "mott-minute/mott-confides"}, {"ending": "mott-minute/looked-together", "not": true}]},
     "mott-minute-arrival": {
       "text": "Umber remembers the long Tuesday evening Mott first came to the village, with sawdust in his hair and nothing in his pockets but one folded minute.",
       "known_by": ["t-umber"],
       "if": [{"arc": "mott-minute", "ne": "dormant"}]},
     "mott-minute-looked": {
-      "text": "Mott has looked at his oldest minute at last. It was the minute he arrived: a broom already waiting in the corner, and someone old and kind, smelling of clock oil, who had kept it for him. He catalogued it as the minute he was expected.",
+      "text": "Mott has looked at his oldest minute at last. It was the minute he arrived: a doorway full of evening, a broom in the corner, and someone old and kind, smelling of clock oil, who said 'There you are.' He catalogued it as the minute he was expected.",
       "known_by": ["t-mott", "t-umber", "t-bell"],
       "if": [{"ending": "mott-minute/looked-together"}]},
     "mott-minute-later": {
@@ -194,9 +200,19 @@
      "do": [
        {"kind": "open_arc", "arc": "mott-minute"},
        {"kind": "set_property", "target_id": "t-mott", "key": "presence_text",
-        "value": "Mott leans on the broom, one hand resting on the lid of the tin as if it might open by itself."},
+        "value": "Mott stands with the broom idle in one hand, the other resting on the lid of the tin as if it might open by itself."},
        {"kind": "set_property", "target_id": "t-mott", "key": "mood", "value": "curious"}
      ]},
+    {"id": "mott-minute-in-transit", "at": "dawn", "always": true,
+     "summary": "Mott's sealed minute spends another night on its way to the post office",
+     "if": [{"arc": "mott-minute"}, {"beat": "mott-minute/sealed"}],
+     "do": [{"kind": "adjust_counter", "name": "mott-minute-nights-sealed", "delta": 1}]},
+    {"id": "mott-minute-on-the-mat", "at": "day", "always": true, "room": "r-post",
+     "summary": "after three nights in transit, Fen finds Mott's sealed envelope on the post office mat and files it",
+     "if": [{"arc": "mott-minute"}, {"beat": "mott-minute/sealed"},
+            {"counter": "mott-minute-nights-sealed", "gte": 3}],
+     "text": "This morning Fen finds a cream envelope on the post office mat, sealed, with a soft bump in one corner, as if it had found its own way.",
+     "do": [{"kind": "close_arc", "arc": "mott-minute", "ending": "kept-for-later"}]},
     {"id": "mott-minute-humming", "at": "day", "always": true, "cooldown_days": 3, "room": "r-workshop",
      "summary": "Mott hums while he sweeps",
      "if": [{"ending": "mott-minute/looked-together"}],
@@ -204,6 +220,6 @@
     {"id": "mott-minute-pigeonhole", "at": "day", "always": true, "cooldown_days": 4, "room": "r-post",
      "summary": "Fen checks on the envelope in the TO ME, LATER pigeonhole",
      "if": [{"ending": "mott-minute/kept-for-later"}],
-     "text": "Fen runs a finger along the pigeonholes, pauses at the one marked TO ME, LATER, finds the cream envelope still waiting, and gives it a small approving pat."}
+     "text": "Fen straightens the pigeonhole marked TO ME, LATER, finds the cream envelope still waiting, and gives it a small approving pat."}
   ]
 }

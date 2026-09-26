@@ -1,18 +1,49 @@
 {
   "comment": "Book of Stray Minutes, page 3 of 12: weather. Sorrel talks in weather, so the page warms them to the finder, and the village hears about it.",
   "pages": {
-    "p-weather": {"title": "Weather Minutes",
-                  "reward": {"text": "When you turn the finished Weather Minutes page, it rustles like wind through long grass. There is a whole year of sky in it, as Sorrel would say.",
-                             "do": [{"kind": "adjust_rel", "npc": "t-sorrel", "delta": 2},
-                                    {"kind": "add_fact", "id": "page-weather",
-                                     "text": "{actor} has filled the Weather Minutes page of their Book of Stray Minutes: rain on a tin roof, fog, first snow, and a rainbow that only got halfway.",
-                                     "known_by": ["t-sorrel"],
-                                     "spread": [{"to": "all", "after_minutes": 120}]}]}}
+    "p-weather": {
+      "title": "Weather Minutes",
+      "reward": {
+        "text": "The Weather Minutes page is full, and a scrap of blue sky, the kind that shows between two clouds after rain, has settled between its leaves.",
+        "do": [
+          {
+            "kind": "adjust_rel",
+            "npc": "t-sorrel",
+            "delta": 2
+          },
+          {
+            "kind": "add_fact",
+            "id": "page-weather",
+            "text": "{actor} has filled the Weather Minutes page of their Book of Stray Minutes: rain on a tin roof, fog, first snow, and a rainbow that only got halfway.",
+            "known_by": [
+              "t-sorrel"
+            ],
+            "spread": [
+              {
+                "to": "all",
+                "after_minutes": 120
+              }
+            ]
+          },
+          {
+            "kind": "spawn_object",
+            "name": "scrap of blue",
+            "location_id": "@actor",
+            "seed": "a scrap of clear blue sky no bigger than a stamp, the kind that shows between two clouds just after rain; it is cool to hold",
+            "aliases": [
+              "blue",
+              "patch of sky"
+            ],
+            "generated_by": "page:weather"
+          }
+        ]
+      }
+    }
   },
   "collectibles": [
     {"id": "m-tin-roof", "name": "the tin-roof minute", "text": "rain drumming on a tin roof while everyone underneath stayed perfectly dry", "page": "p-weather"},
-    {"id": "m-first-snow", "name": "the first-snow minute", "text": "the minute at the window waiting to see whether it would really snow, and then it did", "page": "p-weather"},
-    {"id": "m-thunder-count", "name": "the counting minute", "text": "one, two, three, all the way to nine, counted slowly between the lightning and the thunder", "page": "p-weather"},
+    {"id": "m-first-snow", "name": "the first-snow minute", "text": "a nose against the window, three slow flakes, and then, all at once, the rest", "page": "p-weather"},
+    {"id": "m-thunder-count", "name": "the counting minute", "text": "a flash over the hills, and a slow count to nine before the thunder answered", "page": "p-weather"},
     {"id": "m-half-rainbow", "name": "the half-rainbow minute", "text": "a rainbow that only got halfway across the sky and seemed pleased with itself anyway", "page": "p-weather"},
     {"id": "m-polite-gust", "name": "the hat minute", "text": "a gust that lifted a hat clean off and set it down again, very politely, two gardens along", "page": "p-weather"},
     {"id": "m-fog", "name": "the fog minute", "text": "fog so thick that the garden gate was only a rumour", "page": "p-weather"},

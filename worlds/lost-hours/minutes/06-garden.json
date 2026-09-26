@@ -1,10 +1,25 @@
 {
   "comment": "Book of Stray Minutes, page 6 of 12: gardens and seasons. Quill tends the Pendulum Garden, so the page warms him to the finder; a growing page grows a dreamseed.",
   "pages": {
-    "p-garden": {"title": "Minutes of Growing Things",
-                 "reward": {"text": "Every one of the Minutes of Growing Things is in its place now, and the page smells of turned earth and tomato leaves. Tucked in the fold, where a pressed flower might be, is a dreamseed; Quill would say it has only been waiting for the right hands.",
-                            "do": [{"kind": "adjust_rel", "npc": "t-quill", "delta": 2},
-                                   {"kind": "spawn_template", "template": "dreamseed", "location_id": "@actor", "generated_by": "page:garden"}]}}
+    "p-garden": {
+      "title": "Minutes of Growing Things",
+      "reward": {
+        "text": "Every one of the Minutes of Growing Things is in its place now, and the page smells of turned earth and tomato leaves. Tucked in the fold, where a pressed flower might be, is a dreamseed; Quill would say it has only been waiting for the right hands.",
+        "do": [
+          {
+            "kind": "adjust_rel",
+            "npc": "t-quill",
+            "delta": 2
+          },
+          {
+            "kind": "spawn_template",
+            "template": "dreamseed",
+            "location_id": "@actor",
+            "generated_by": "page:garden"
+          }
+        ]
+      }
+    }
   },
   "collectibles": [
     {"id": "m-bean-shoots", "name": "the bean-shoot minute", "text": "the morning the beans came up all at once, like little green question marks", "page": "p-garden"},

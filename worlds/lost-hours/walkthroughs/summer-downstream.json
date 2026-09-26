@@ -1,6 +1,6 @@
 {
-  "name": "tace-hour-past-eleven",
-  "comment": "The Hour Before, ending past-eleven: no song this time. With the ladder standing in the cellar, the dreamer gives Tace back the stopped clock; Tace winds it past eleven and leaves it ticking on the bottom rung, and does not climb this season.",
+  "name": "summer-downstream",
+  "comment": "Marram, the Summer, ending downstream: the dreamer gives Marram its last evening straight from the orchard instead of taking it to Umber, and the summer settles at the Slow River's edge, facing downstream toward the sea. Also covers the show-the-stalk-to-Quill producer.",
   "clock": "2026-10-01T17:00:00+00:00",
   "players": [
     {
@@ -124,103 +124,18 @@
       ]
     },
     {
-      "name": "a new frost",
+      "name": "a summer with one word left",
       "commands": [
         {
-          "clock": "+2d",
+          "summon": "summer",
           "expect": {
             "arc": {
-              "tace-hour": "open"
+              "summer": "open"
             },
-            "day": {
-              "eq": 3
+            "located": {
+              "t-marram": "r-square"
             }
           }
-        },
-        {
-          "summon": "tace-hour",
-          "expect": {
-            "arc": {
-              "tace-hour": "open"
-            }
-          }
-        },
-        {
-          "cmd": "up",
-          "expect": {
-            "room": "r-loft"
-          }
-        },
-        {
-          "cmd": "examine round window",
-          "expect": {
-            "narrate_contains": "both hands pointing at eleven"
-          }
-        },
-        {
-          "cmd": "examine stopped clock",
-          "expect": {
-            "narrate_contains": "sits apart from the others on the top shelf"
-          }
-        },
-        {
-          "cmd": "take stopped clock",
-          "expect": {
-            "not_carrying": [
-              "little brass clock"
-            ],
-            "narrate_contains": "Not that one, friend"
-          }
-        },
-        {
-          "cmd": "ask tace about the frost",
-          "expect": {
-            "beats": [
-              "tace-hour/tace-frost"
-            ],
-            "carrying": [
-              "little brass clock"
-            ],
-            "narrate_contains": "Umber keeps a lamp lit"
-          }
-        }
-      ]
-    },
-    {
-      "name": "two pieces",
-      "commands": [
-        {
-          "cmd": "give stopped clock to tace",
-          "expect": {
-            "carrying": [
-              "little brass clock"
-            ],
-            "narrate_contains": "Keep it a while longer"
-          }
-        },
-        {
-          "cmd": "down",
-          "expect": {
-            "room": "r-clocktower"
-          }
-        },
-        {
-          "cmd": "down",
-          "expect": {
-            "room": "r-cellar"
-          }
-        },
-        {
-          "cmd": "ask umber about the first hard frost",
-          "expect": {
-            "beats": [
-              "tace-hour/umber-frost"
-            ],
-            "narrate_contains": "Wend's last night"
-          }
-        },
-        {
-          "cmd": "up"
         },
         {
           "cmd": "east",
@@ -229,25 +144,161 @@
           }
         },
         {
-          "cmd": "north",
+          "cmd": "ask bell about marram",
           "expect": {
-            "room": "r-workshop"
+            "beats": [
+              "summer/bell-salt"
+            ],
+            "narrate_contains": "Umber keeps more names than anyone"
           }
         },
         {
-          "cmd": "ask mott about wend's ladder",
+          "cmd": "ask marram about the summer",
           "expect": {
-            "beats": [
-              "tace-hour/mott-ladder"
-            ],
             "carrying": [
-              "tall ladder"
+              "stalk of marram grass"
             ],
-            "narrate_contains": "Ask Sorrel for Wend's climbing song."
+            "narrate_contains": "The rest of my name blew away",
+            "knows": {
+              "t-bell": "summer-arrived"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "the fallen evening",
+      "commands": [
+        {
+          "cmd": "south",
+          "expect": {
+            "room": "r-well"
           }
         },
         {
           "cmd": "south",
+          "expect": {
+            "room": "r-garden"
+          }
+        },
+        {
+          "cmd": "give stalk to quill",
+          "expect": {
+            "beats": [
+              "summer/quill-grass"
+            ],
+            "carrying": [
+              "stalk of marram grass"
+            ],
+            "narrate_contains": "Dune grass",
+            "located": {
+              "o-summer-evening": "r-orchard"
+            }
+          }
+        },
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-orchard"
+          }
+        },
+        {
+          "cmd": "take fallen evening",
+          "expect": {
+            "carrying": [
+              "fallen evening"
+            ],
+            "beats": [
+              "summer/found-evening"
+            ],
+            "narrate_contains": "hushes like the sea",
+            "knows": {
+              "t-quill": "summer-found-evening"
+            }
+          }
+        },
+        {
+          "cmd": "west",
+          "expect": {
+            "room": "r-garden"
+          }
+        },
+        {
+          "cmd": "north",
+          "expect": {
+            "room": "r-well"
+          }
+        },
+        {
+          "cmd": "north",
+          "expect": {
+            "room": "r-square"
+          }
+        }
+      ]
+    },
+    {
+      "name": "an evening instead of a name",
+      "commands": [
+        {
+          "cmd": "give fallen evening to marram",
+          "expect": {
+            "ending": {
+              "summer": "downstream"
+            },
+            "not_carrying": [
+              "fallen evening"
+            ],
+            "located": {
+              "t-marram": "r-river"
+            },
+            "collected": {
+              "gte": 1
+            },
+            "narrate_contains": "facing downstream",
+            "knows": {
+              "t-bell": "summer-downstream"
+            }
+          }
+        },
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-lane"
+          }
+        },
+        {
+          "cmd": "south",
+          "expect": {
+            "room": "r-bridge"
+          }
+        },
+        {
+          "cmd": "down",
+          "expect": {
+            "room": "r-river"
+          }
+        },
+        {
+          "cmd": "ask marram about the sea",
+          "expect": {
+            "narrate_contains": "say good morning"
+          }
+        },
+        {
+          "cmd": "up",
+          "expect": {
+            "room": "r-bridge"
+          }
+        },
+        {
+          "cmd": "north",
+          "expect": {
+            "room": "r-lane"
+          }
+        },
+        {
+          "cmd": "west",
           "expect": {
             "room": "r-square"
           }
@@ -259,110 +310,9 @@
           }
         },
         {
-          "cmd": "down",
-          "expect": {
-            "room": "r-cellar"
-          }
-        },
-        {
-          "cmd": "drop tall ladder",
-          "expect": {
-            "beats": [
-              "tace-hour/ladder-set"
-            ],
-            "located": {
-              "o-tace-hour-ladder": "r-cellar"
-            },
-            "narrate_contains": "It reaches, just."
-          }
-        },
-        {
-          "cmd": "use tall ladder on highest shelf",
-          "expect": {
-            "narrate_contains": "It already stands against the highest shelf"
-          }
-        }
-      ]
-    },
-    {
-      "name": "past eleven",
-      "commands": [
-        {
-          "cmd": "up"
-        },
-        {
-          "cmd": "up",
-          "expect": {
-            "room": "r-loft"
-          }
-        },
-        {
-          "cmd": "ask tace about the ladder",
-          "expect": {
-            "beats": [
-              "tace-hour/tace-told"
-            ]
-          }
-        },
-        {
-          "cmd": "give stopped clock to tace",
-          "expect": {
-            "ending": {
-              "tace-hour": "past-eleven"
-            },
-            "not_carrying": [
-              "little brass clock"
-            ],
-            "located": {
-              "o-tace-hour-clock": "r-cellar",
-              "t-tace": "r-loft"
-            },
-            "narrate_contains": "But it's going again.",
-            "knows": {
-              "t-umber": "tace-hour-past-eleven"
-            }
-          }
-        },
-        {
-          "cmd": "down"
-        },
-        {
-          "cmd": "down",
-          "expect": {
-            "room": "r-cellar"
-          }
-        },
-        {
-          "cmd": "examine stopped clock",
-          "expect": {
-            "narrate_contains": "long past eleven"
-          }
-        },
-        {
-          "cmd": "take stopped clock",
-          "expect": {
-            "not_carrying": [
-              "little brass clock"
-            ],
-            "narrate_contains": "ticking where Tace set it"
-          }
-        },
-        {
-          "cmd": "wind stopped clock",
-          "expect": {
-            "narrate_contains": "already ticking"
-          }
-        },
-        {
-          "cmd": "up",
-          "expect": {
-            "room": "r-clocktower"
-          }
-        },
-        {
           "cmd": "read ledger of returned hours",
           "expect": {
-            "narrate_contains": "Tace wound it past eleven and left it ticking at the foot of Wend's ladder."
+            "narrate_contains": "Wren gave Marram its last evening, and the summer chose to stay at the Slow River's edge"
           }
         }
       ]

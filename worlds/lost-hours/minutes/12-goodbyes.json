@@ -1,18 +1,46 @@
 {
   "comment": "Book of Stray Minutes, page 12 of 12: gentle goodbyes and last times. Bittersweet, never grim. The reward is a readable label in Umber's hand; the deed fact reaches Umber at once and Tace later, a quiet echo of the long mystery (canon section 6).",
   "pages": {
-    "p-goodbyes": {"title": "Minutes of Gentle Goodbyes",
-                   "reward": {"text": "The Minutes of Gentle Goodbyes page is full. Read together, they do not feel sad so much as finished, the way a good day is finished. Pressed between the last two leaves is a small brown label in Umber's hand.",
-                              "do": [{"kind": "spawn_object", "name": "brown paper label", "location_id": "@actor",
-                                      "seed": "a small brown paper label on a loop of string, written in Umber's careful, upright hand",
-                                      "aliases": ["brown label", "goodbyes label", "umber's label"],
-                                      "readable": true,
-                                      "properties": {"text": "The label reads, in Umber's upright hand: 'Goodbyes, the gentle ones. Keep flat. Open when needed.'"},
-                                      "generated_by": "page:goodbyes"},
-                                     {"kind": "add_fact", "id": "page-goodbyes",
-                                      "text": "{actor} has filled the Gentle Goodbyes page of their Book of Stray Minutes: small endings that turned out all right.",
-                                      "known_by": ["t-umber"],
-                                      "spread": [{"to": ["t-tace"], "after_minutes": 60}]}]}}
+    "p-goodbyes": {
+      "title": "Minutes of Gentle Goodbyes",
+      "reward": {
+        "text": "The Minutes of Gentle Goodbyes page is full. Read together, they do not feel sad so much as finished, the way a good day is finished. Pressed between the last two leaves is a small brown label in Umber's hand.",
+        "do": [
+          {
+            "kind": "spawn_object",
+            "name": "brown paper label",
+            "location_id": "@actor",
+            "seed": "a small brown paper label on a loop of string, written in Umber's careful, upright hand",
+            "aliases": [
+              "brown label",
+              "goodbyes label",
+              "umber's label"
+            ],
+            "readable": true,
+            "properties": {
+              "text": "The label reads, in Umber's upright hand: 'Goodbyes, the gentle ones. Keep flat. Open when needed.'"
+            },
+            "generated_by": "page:goodbyes"
+          },
+          {
+            "kind": "add_fact",
+            "id": "page-goodbyes",
+            "text": "{actor} has filled the Gentle Goodbyes page of their Book of Stray Minutes: small endings that turned out all right.",
+            "known_by": [
+              "t-umber"
+            ],
+            "spread": [
+              {
+                "to": [
+                  "t-tace"
+                ],
+                "after_minutes": 60
+              }
+            ]
+          }
+        ]
+      }
+    }
   },
   "collectibles": [
     {"id": "m-last-bell", "name": "the last-bell minute", "text": "the last bell on the last day of school, and everyone suddenly quiet", "page": "p-goodbyes"},
@@ -21,7 +49,7 @@
     {"id": "m-outgrown", "name": "the outgrown minute", "text": "a favourite pair of shoes that no longer fitted, put away kindly at the back of the cupboard", "page": "p-goodbyes"},
     {"id": "m-open-hands", "name": "the open-hands minute", "text": "cupped hands opened for a mended sparrow, which flew off without once looking back", "page": "p-goodbyes"},
     {"id": "m-hand-me-down", "name": "the hand-me-down minute", "text": "a much-loved coat handed down to someone smaller, and the way it fitted them", "page": "p-goodbyes"},
-    {"id": "m-last-page", "name": "the last-page minute", "text": "the last page of a book nobody wanted to end", "page": "p-goodbyes"},
+    {"id": "m-last-page", "name": "the last-page minute", "text": "a book nobody wanted to end, down to its very last page", "page": "p-goodbyes"},
     {"id": "m-snowman", "name": "the snowman minute", "text": "the snowman's hat sliding off in the thaw, and everyone agreeing it had been a very good snowman", "page": "p-goodbyes"},
     {"id": "m-armchair", "name": "the armchair minute", "text": "a grandfather's armchair, sat in for the first time, and still the shape of him", "page": "p-goodbyes"},
     {"id": "m-garden-gate", "name": "the last-look minute", "text": "one last look back from the garden gate at a holiday cottage, its shutters already closed", "page": "p-goodbyes"},
