@@ -1,6 +1,11 @@
 # TESTING.md — daydream
 
-## Test Strategy Review — 2026-04-23 (tier counts refreshed 2026-07-07 for v1.0.0)
+## Test Strategy Review — 2026-04-23 (tier counts refreshed 2026-07-07 for v1.0.0; facts refreshed 2026-09-26, pre-pivot)
+
+**Refresh 2026-09-26 (the `pre-pivot` tag).** The strategy below still holds; what changed around it:
+- The gates are enforced now, not intent. `bin/install-hooks` installs pre-commit (`bin/game test short`) and pre-push (`bin/game test medium`), and GitHub Actions (`.github/workflows/test.yml`) runs `ruff check .` then the medium tier on Python 3.12 for every push.
+- **Run `ruff check .` locally before pushing.** CI lints before it tests; the model-eval push went red on a single unused-loop-variable warning, which also meant the medium tier never ran on 3.12 for that commit.
+- Model choice has its own harness, `bin/game model-eval` (see the `human` section); the tier_long probes stay the drift gate and are re-ratified when the model changes.
 
 **Summary:** Test architecture just shipped in commits C1-C5 (`4d606e6`..`844884e`). Three-tier dispatcher (`bin/game test short|medium|long|ci|human`) with 156/211/220 tests respectively; short in 2.06s, medium in 2.65s — well under budget. Drift loop is fully implemented with in-tree golden baselines, a perceptual-hash image corpus, a JSON-adherence LLM corpus, and an arbiter-held tripwire for real-GPU tests. The strategy is appropriate and proportionate for a single-contributor project at v1.
 
@@ -15,8 +20,8 @@
 - Fixtures: tmp_path DB isolation, HOME redirected to tmp, autouse arbiter/in-flight resets, TestClient-bypass of AccessMiddleware via `DAYDREAM_ACCESS=public`
 - Human-eval: `daydream.testing.human_eval` → qpeek rubric loop (commit C4)
 - Coverage tools: none configured (deliberate — TESTING.md explicitly rejects coverage-for-coverage)
-- CI system: none configured; single-contributor project (deferred per `## Future refinements`)
-- Pre-commit/pre-push hooks: none installed
+- CI system: GitHub Actions since v1.0 (`.github/workflows/test.yml`: ruff + medium tier, Python 3.12; GPU tiers stay local)
+- Pre-commit/pre-push hooks: installed by `bin/install-hooks` (short / medium)
 
 ### Findings
 
@@ -55,7 +60,7 @@ Right now, before reading further, run:
 bin/game test short
 ```
 
-Expected: under 10 seconds, exits 0, several hundred tests pass (~830 in ~7 s at v1.0.0). The marker expression, not the exact count, is the contract — the count grows with features. If not, the venv is broken or the repo is in a weird state — fix that first. The rest of this document assumes you have a green `short` tier as a starting point.
+Expected: under 10 seconds, exits 0, several hundred tests pass (~840 in ~7 s at the pre-pivot tag). The marker expression, not the exact count, is the contract — the count grows with features. If not, the venv is broken or the repo is in a weird state — fix that first. The rest of this document assumes you have a green `short` tier as a starting point.
 
 ## The single entry point
 
@@ -114,7 +119,7 @@ This project tilts deliberately toward **proxy** verification (a measurable numb
 ### `short` — the pre-commit gate
 
 - Marker expression: `tier_short`
-- Test count: ~830 at v1.0.0 (grows with features; the marker expression, not the count, is the contract). Wall-clock: ~7 s.
+- Test count: ~840 at the pre-pivot tag (grows with features; the marker expression, not the count, is the contract). Wall-clock: ~7 s.
 - What's in it: every test that doesn't boot `daydream.server.app`, spawn a subprocess, or do heavy filesystem I/O. Includes the object/verb/parser/generative core (`tests/test_objects.py`, `test_verbs.py`, `test_parser.py`, `test_generative.py`, `test_effects.py` — all DB-on-tmp + mocked-LLM), plus the constants-drift probes under `tests/drift/test_drift_constants.py` (cheap; they just read files), the WHIMSY suffix probe, the voice-baseline tic-regression probe (`tests/test_voice_baseline.py`; parses captured markdown, asserts pairwise-distinct openers), and the memory-ranking drift probe (`tests/drift/test_memory_ranking.py`; tmp_path SQLite + mocked embeddings, fingerprints the salience formula's ordering and per-item scores). The 2026-06-30 playtest turn added two authored-prompt static scans here: the second-person player-narration scan (`tests/test_second_person.py`, SPEC C9 — asserts no third-person "the visitor" framing in the affordance prompts) and the per-NPC voice-constraint presence scan (`tests/test_npc_voice.py`, SPEC C11).
 - What it catches: broken imports, wrong migration, object-access / verb-dispatch / parser-grounding regressions, effect-allowlist gaps, cache-key math bug, WHIMSY.md drift, vllm-version doc drift, prompt-template tic regressions on the captured voice corpus, salience-formula drift in NPC memory, third-person leakage into player-action prompts, missing per-NPC voice constraints.
 - When to run: every commit, every save if you've got a file-watcher. `bin/install-hooks` wires this to `.git/hooks/pre-commit` so it fires automatically.
@@ -122,7 +127,7 @@ This project tilts deliberately toward **proxy** verification (a measurable numb
 ### `medium` — the pre-push gate
 
 - Marker expression: `tier_short or tier_medium`
-- Test count: ~1210 at v1.0.0. Wall-clock: ~20 s.
+- Test count: ~1225 at the pre-pivot tag. Wall-clock: ~17 s. CI runs this tier after `ruff check .`.
 - What's in it: everything from `short` plus tests that boot `TestClient` (auth, frontend, ws + the command-frame / scene-object snapshot tests, ws_images, ws_rook, ws_iris, ws_swap, the WS cross-origin CSRF guard `test_csrf_middleware.py`), spawn `bin/game` as a subprocess, round-trip archives, or exercise the per-world DB schema (memories included) and the keyless object-schema world authoring (`test_world_load.py`, including the committed `worlds/bunny.json` reset world end to end). The scripted end-to-end gameplay-scenario test (`tests/test_scenario.py`, SPEC 2026-06-30 C14) lives here: one story through connect → picker → claim → look → take → go-to-place → talk → spawn → examine → inventory, mocked-LLM. GPU calls are still mocked; the BGE-small embedder is mocked at `daydream.memories._embed`.
 - What it catches: WebSocket protocol regressions (input + command frames), auth flow breaks, admin CLI breaks, bash dispatcher breaks, NPC dialogue path regressions, world-load / authoring regressions, memory capture/retrieve/scoping breaks, end-to-end playable-flow regressions (the picker-first entry + scene + inventory path the scenario test walks).
 - When to run: before every push, after finishing a feature. `bin/install-hooks` wires this to `.git/hooks/pre-push` so it fires automatically.
@@ -130,10 +135,10 @@ This project tilts deliberately toward **proxy** verification (a measurable numb
 ### `long` — the drift + end-to-end gate
 
 - Marker expression: `tier_short or tier_medium or tier_long`
-- Test count: ~1249 at v1.0.0 (the medium set + the real-engine drift probes: parser grounding, growth compose, retell, image/portrait dHash anchors, the refusal + journal probes, the archive roundtrip, the optional zork oracle). Wall-clock: ~3 min with vLLM + ComfyUI up.
+- Test count: ~1265 at the pre-pivot tag (the medium set + the real-engine drift probes: parser grounding, growth compose, retell, image/portrait dHash anchors, the refusal + journal probes, the archive roundtrip, the optional zork oracle). Wall-clock: ~4 min with vLLM + ComfyUI up (the Qwen3.5 9B decodes more slowly than the old 7B).
 - What's in it: everything from `medium` plus the `tests/drift/` probes. Real LLM calls through vLLM. Real image renders through ComfyUI. The arbiter smoke alternates the two under a 90-second budget. The parser-grounding probe (`tests/drift/test_parser_grounding.py`) grounds real Qwen output to in-scope ids across a command corpus.
 - What it catches: fp8-KV-style format-adherence regressions, parser verb/dobj grounding drift, LoRA-swap aesthetic drift, image-gen latency regressions, arbiter serialization bugs.
-- When to run: before a release, after swapping a model / LoRA / workflow, after any arbiter change.
+- When to run: before a release, after swapping a model / LoRA / workflow, after any arbiter change. Stop the FastAPI server first (`bin/game down`, per the GPU policy); the engines stay up.
 - Requires: `bin/game vllm-up && bin/game comfyui-up`. Engine-gated tests (`requires_vllm`, `requires_comfyui` markers) skip cleanly if engines are down — the rest of the tier still runs.
 
 ### `ci` — the "run it all" alias
@@ -149,6 +154,8 @@ Semantic equivalent of `long` today. Kept distinct so CI invocations are a stabl
 - Blocks on human interaction. Don't run this in CI.
 
 The voice-bench audit-trail harness (`bin/game voice-samples`) is a sibling to `human`: same "render a corpus, eyeball-diff against the prior baseline" pattern but for narration prose. Output lands at `docs/pretty/voice-samples/<date>-<model_slug>.md`. Re-run after any vLLM model / flag swap; the tic-regression probe (`tests/test_voice_baseline.py`, `tier_short`) parses the committed markdown and asserts pairwise-distinct openers across the 5 corpus prompts so a future capture that regresses the 04-24 prompt-template tic fails the gate mechanically.
+
+**Choosing a model is not a drift question.** The probes above pin each surface to the SHIPPED model's goldens, so a challenger fails them by construction. `bin/game model-eval run --label <name>` (`daydream/model_eval.py`) instead drives every runtime LLM surface through the production prompts and validators against whatever vLLM serves (parser incl. fail-safe cases, dialogue via the real `talk` path with point-of-view and prompt-leak checks, growth, journal, retell, examine, drift, JSON, a concurrency burst) and scores each by the game's own pass rules. `bin/game model-eval compare <dirs>` adds a blinded prose sheet; grade it with a fresh subagent that has never seen which model is which. Results live under `~/data/daydream/model-eval/`; the pure scoring rules are pinned in `tests/test_model_eval.py` (tier_short). Workflow for a swap: bake off with `model-eval`, switch, then run `bin/game test long` and re-ratify the LLM goldens after reading the captured prose. The 2026-09-26 run is written up in `docs/model-evals/2026-09-26-bakeoff.md`.
 
 ## The drift loop
 
@@ -169,11 +176,14 @@ A drift probe runs the real code path, measures something, and compares to a **g
 | Probe file                               | What it fingerprints                                                      | Corpus                                     |
 |------------------------------------------|---------------------------------------------------------------------------|--------------------------------------------|
 | `tests/drift/test_llm_json_adherence.py` | JSON schema keys + latency window per prompt.                             | `tests/drift/prompts/*.json` (5 probes)    |
-| `tests/drift/test_parser_grounding.py`   | Real Qwen grounds free text to the right closed verb + in-scope dobj id.   | 6-case command corpus (in-file)            |
+| `tests/drift/test_parser_grounding.py`   | Real Qwen grounds free text to the right closed verb + in-scope dobj id.   | 17-case command corpus (in-file; 7 loft + 10 wide-surface) |
 | `tests/drift/test_image_perceptual.py`   | dHash + resolution + (model, lora, workflow_hash). Hamming tolerance.     | `tests/drift/aesthetics/*.json` (4 probes; +`forge`) |
 | `tests/drift/test_arbiter_smoke.py`      | 5 alternating LLM + image calls; per-call + aggregate budgets.            | reuses prompts/                            |
 | `tests/drift/test_growth_compose.py`     | Shipped-seed growth composition against real vLLM: validity / refusal / phrase-woven / exemplar-distinctness / object count, + latency window. The mitigation-ladder gate — ratifying its golden records the rung decision (SPEC 2026-07-02). | 3-phrase vision corpus (in-file)           |
-| `tests/drift/test_drift_constants.py` (`tier_short`) | WHIMSY_PROMPT_SUFFIX vs WHIMSY.md; vllm version; GPU fraction; model id. | CLAUDE.md + bin/ scripts        |
+| `tests/drift/test_retell_probe.py`       | Second telling of 8 eligible wide-world lines at temperature 0: retold vs fallback counts; a majority must survive validation. | Envelope rules, sampled in author order |
+| `tests/drift/test_dialogue_refusal_probe.py` | 21 greetings through the real `talk` path; every fallback attributed to its safety layer. Evidence file `dialogue_refusal_probe.ratified.json`. | 7 greetings x 3 loft NPCs |
+| `tests/drift/test_journal_probe.py`      | 5 scripted sessions through `journal.write_entry`; >= 4 survive validation, second person, no ids. Evidence file `journal_probe.ratified.json`. | In-file sessions |
+| `tests/drift/test_drift_constants.py` (`tier_short`) | WHIMSY_PROMPT_SUFFIX vs WHIMSY.md; vllm version; GPU fraction; model id; the default model's pinned revision in bin/game vs bin/vllm-bootstrap. | CLAUDE.md + bin/ scripts        |
 | `tests/test_voice_baseline.py` (`tier_short`) | Pairwise-distinct narrate openers; glob-derived params classified by a `baseline-class` marker (tracked / regression-demo / documented-failure). | `docs/pretty/voice-samples/*.md` |
 | `tests/drift/test_memory_ranking.py` (`tier_short`) | Salience-formula ordering + per-item scores for a fixed (sim, age) corpus; pins `cosine * exp(-age/24h)` math + `DECAY_HOURS` constant. | 5-row in-memory corpus + mocked embeddings |
 
@@ -266,7 +276,7 @@ Liveness gates are orthogonal:
 - `requires_vllm` marker: test skips if `{DAYDREAM_LLM_BASE_URL}/models` is unreachable (2 s timeout, one probe per session).
 - `requires_comfyui` marker: test skips if `{DAYDREAM_COMFYUI_BASE_URL}/system_stats` is unreachable.
 
-So `bin/game test long` with both engines down still runs ~1210 tests (short + medium) and skips the engine-gated probes with a clear "engine unreachable" reason.
+So `bin/game test long` with both engines down still runs ~1225 tests (short + medium) and skips the engine-gated probes with a clear "engine unreachable" reason.
 
 ## Glossary
 
@@ -288,9 +298,5 @@ Tracked in `BACKLOG.md`. Worth naming the shape:
 - Per-call LLM latency windows tighten as we collect multi-run trends (`latency-regression-corpus`).
 - Aesthetic critic: DONE, and agent-driven — the Claude Code agent Reads each render and grades it against `WHIMSY.md`, no API key. An earlier cost-gated litellm version was removed 2026-07-01 (`claude-vision-quality-gate`).
 - Staging / prod_verify probes when those environments exist (`staging-probes`, `prod-verify-probes`).
-- CI pipeline when a second contributor lands (`ci-pipeline`).
 - mypy gate once the typing effort is worth it (`mypy-gate`).
 - Drift alarms that auto-open a Claude Code session when a baseline diff lands on main (`drift-alarms`).
-- Voice-baseline harness generalization so a new model adds to the regression-detection parametrization without code changes (`voice-baseline-add-model-helper`).
-- A perceptual-hash drift anchor for the authored `r-forge` render so "the forge looks like a forge" (SPEC 2026-06-30 C12) becomes a ratify-once-then-mechanical proxy rather than an eyeball-only check (`forge-render-drift-anchor`).
-- A tier_short guard pinning the present-player drift cadence to a minutes-scale value so it can't silently revert to the 30-min occupancy-hiding cadence the witnessed-drift criterion fixed (`present-player-drift-cadence-guard`).
