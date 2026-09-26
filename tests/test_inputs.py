@@ -97,3 +97,31 @@ def test_recorded_session_exports_as_a_replayable_walkthrough():
     steps = dataset["segments"][0]["commands"]
     assert [s["cmd"] for s in steps] == ["take the lantern", "drop lantern"]
     assert all(s["at"].startswith("2026-10-01T17:00") for s in steps)
+
+
+async def test_an_exported_session_replays_on_a_fresh_world(tmp_path):
+    """The raw input log is a regression oracle: a player's recorded
+    session, exported as a walkthrough, replays through the real parser on a
+    fresh copy of the world, at its original times."""
+    import json as _json
+
+    from daydream import walkthrough
+
+    with TestClient(app) as client:
+        _claim_wren(client)
+        with client.websocket_connect("/ws") as ws:
+            ws.receive_json()
+            ws.send_json({"kind": "input", "text": "take the lantern"})
+            _drain_until(ws, lambda f: f.get("kind") == "state_snapshot")
+            ws.send_json({"kind": "input", "text": "north"})
+            _drain_until(ws, lambda f: f.get("kind") == "state_snapshot")
+        dataset = inputs.export_walkthrough("t-wren")
+    db.close_db()
+    events.reset_subscribers()
+    from daydream import config
+
+    db.init_live(path=tmp_path / "replay.db", migrations_dir=config.MIGRATIONS_DIR)
+    dataset["players"] = [{"as": "A", "name": "Replayer"}]
+    dataset["segments"][0]["commands"][-1]["expect"] = {"carrying": ["lantern"]}
+    run = await walkthrough.replay(_json.loads(_json.dumps(dataset)))
+    assert run.steps == 2

@@ -24,6 +24,10 @@ A step is one of:
     {"join": {"as": "B", "name": "Tamsin"}}   a new player arrives
     {"expect": {...}}           assertions only
 
+A step may also carry `"at": ISO` (an exported real session's own
+timestamps): on a fresh replay the fake clock moves to it first, so a
+recorded session replays with its original timing.
+
 `expect` keys (all optional, all must hold):
 
     room, carrying [names], not_carrying [names], flag {NAME: bool},
@@ -127,8 +131,11 @@ def join(run: Run, who: str, name: str, slot: int | None = None) -> str:
     raise WalkthroughError(f"no free player slot for {name!r}")
 
 
-async def run_step(run: Run, step: dict) -> None:
+async def run_step(run: Run, step: dict, *, honor_at: bool = True) -> None:
     world_id = _world_id()
+    if honor_at and isinstance(step.get("at"), str):
+        worldclock.set_fake_now(step["at"])
+        village.catch_up(world_id)
     if "clock" in step:
         set_clock(step["clock"])
     if "summon" in step:
@@ -244,12 +251,14 @@ async def replay(dataset: dict, *, on_live_copy: bool = False) -> Run:
         worldclock.set_fake_now(worldclock.now())
     for p in dataset.get("players", [{"as": "A", "name": "Wren"}]):
         join(run, p.get("as", "A"), p.get("name", "Wren"), p.get("slot"))
+    if dataset.get("actor") and "A" not in run.actors:
+        join(run, "A", "Replayer")
     for seg in dataset.get("segments", []):
         for step in seg.get("commands", []):
             if on_live_copy and isinstance(step.get("clock"), str) \
                     and not (step["clock"].startswith("+") or step["clock"].startswith("@")):
                 raise WalkthroughError("absolute clock steps cannot replay on a live copy")
-            await run_step(run, step)
+            await run_step(run, step, honor_at=not on_live_copy)
     if dataset.get("final"):
         check(run, dataset["final"], "A", "", "(final)")
     return run

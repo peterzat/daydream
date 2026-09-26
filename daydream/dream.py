@@ -745,6 +745,11 @@ def main(argv: list[str] | None = None) -> int:
     ir.add_argument("patch")
     mk = sub.add_parser("mark", help="record the digest mark (after an install)")
     mk.add_argument("--db")
+    ex = sub.add_parser("export", help="a player's recorded session as a walkthrough dataset")
+    ex.add_argument("--toon", required=True, help="the player's name or toon id")
+    ex.add_argument("--since", type=int, default=0, help="input seq to start after")
+    ex.add_argument("--out", help="write the dataset here (default: stdout)")
+    ex.add_argument("--db")
     args = ap.parse_args(argv)
     db_path = Path(getattr(args, "db", None) or config.live_db_path()).expanduser()
 
@@ -794,6 +799,22 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         if args.cmd == "mark":
             print(json.dumps(mark(_live_world_id())))
+            return 0
+        if args.cmd == "export":
+            row = db.get_conn().execute(
+                "SELECT id FROM objects WHERE kind = 'toon' AND (id = ? OR name = ?) "
+                "ORDER BY is_human_controlled DESC LIMIT 1", (args.toon, args.toon)).fetchone()
+            if row is None:
+                print(f"no toon {args.toon!r}", file=sys.stderr)
+                return 1
+            data = inputs.export_walkthrough(row["id"], since=args.since,
+                                             name=f"session-{args.toon}")
+            text = json.dumps(data, indent=2) + "\n"
+            if args.out:
+                Path(args.out).expanduser().write_text(text)
+                print(f"wrote {args.out} ({len(data['segments'][0]['commands'])} steps)")
+            else:
+                print(text)
             return 0
     finally:
         db.close_db()
