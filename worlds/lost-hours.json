@@ -1159,6 +1159,96 @@
   },
   "collectibles": [
     {
+      "id": "m-first-light",
+      "name": "the first-light minute",
+      "text": "the grey minute before the birds agreed it was morning",
+      "page": "p-mornings"
+    },
+    {
+      "id": "m-warm-side",
+      "name": "the warm-side minute",
+      "text": "one more minute on the warm side of the blankets, asked for and granted",
+      "page": "p-mornings"
+    },
+    {
+      "id": "m-frost-ferns",
+      "name": "the frost-fern minute",
+      "text": "a fingertip tracing frost ferns on the inside of a bedroom window",
+      "page": "p-mornings"
+    },
+    {
+      "id": "m-dew",
+      "name": "the dew minute",
+      "text": "footprints across a lawn gone silver with dew, the first of the day",
+      "page": "p-mornings"
+    },
+    {
+      "id": "m-doorstep",
+      "name": "the doorstep minute",
+      "text": "bare feet on a cold doorstep, and the whole lane only just waking up",
+      "page": "p-mornings"
+    },
+    {
+      "id": "m-early-riser",
+      "name": "the early-riser minute",
+      "text": "that first quiet stretch when the whole house slept but you, and the morning was yours alone",
+      "page": "p-mornings"
+    },
+    {
+      "id": "m-blackbird",
+      "name": "the blackbird minute",
+      "text": "a blackbird on the gutter practising the same four notes until it got them right",
+      "page": "p-mornings"
+    },
+    {
+      "id": "m-curtains",
+      "name": "the curtain minute",
+      "text": "the moment the curtains were drawn back and the room filled up with yellow",
+      "page": "p-mornings"
+    },
+    {
+      "id": "m-big-stretch",
+      "name": "the stretching minute",
+      "text": "a morning stretch so enormous it ended in a small squeak",
+      "page": "p-mornings"
+    },
+    {
+      "id": "m-sunrise",
+      "name": "the sunrise minute",
+      "text": "the sun lifting clear of the far hills while somebody held their breath to watch",
+      "page": "p-mornings"
+    },
+    {
+      "id": "m-mist",
+      "name": "the mist minute",
+      "text": "sixty seconds of early mist, when the far fields had simply not arrived yet",
+      "page": "p-mornings"
+    },
+    {
+      "id": "m-odd-shoes",
+      "name": "the odd-shoes minute",
+      "text": "halfway down the stairs in shoes that did not match, and not minding one bit",
+      "page": "p-mornings"
+    },
+    {
+      "id": "m-pillow-hair",
+      "name": "the pillow-hair minute",
+      "text": "a first sleepy look at hair that had clearly had adventures in the night",
+      "page": "p-mornings"
+    },
+    {
+      "id": "m-cockerel",
+      "name": "the cockerel minute",
+      "text": "a cockerel who crowed once, thought better of it, and went back to sleep",
+      "page": "p-mornings"
+    },
+    {
+      "id": "m-holiday-morning",
+      "name": "the first-morning minute",
+      "text": "early on the first morning of the holidays, with the whole day still folded up and unopened",
+      "page": "p-mornings"
+    },
+    {
       "id": "m-kettle",
       "name": "the kettle minute",
       "text": "the minute spent watching a kettle that would not boil",
@@ -1167,31 +1257,31 @@
     {
       "id": "m-toast",
       "name": "the toast minute",
-      "text": "the minute between the toaster's tick and the toast popping up",
+      "text": "toast held to the fire on a long fork, golden on one side and a little too brave on the other",
       "page": "p-kitchen"
     },
     {
       "id": "m-last-biscuit",
       "name": "the last-biscuit minute",
-      "text": "the minute two people spent politely not taking the last biscuit",
+      "text": "two people politely not taking the last biscuit, for quite a long time",
       "page": "p-kitchen"
     },
     {
       "id": "m-steam",
       "name": "the steam minute",
-      "text": "the minute a cup of tea was too hot to drink and too good to leave",
+      "text": "a cup of tea too hot to drink and too good to leave",
       "page": "p-kitchen"
     },
     {
-      "id": "m-fridge-light",
-      "name": "the fridge-light minute",
-      "text": "the minute spent standing in front of an open cupboard, forgetting what for",
+      "id": "m-cupboard",
+      "name": "the cupboard minute",
+      "text": "an open cupboard, a puzzled face, and no memory at all of what it had been opened for",
       "page": "p-kitchen"
     },
     {
       "id": "m-dough",
       "name": "the dough minute",
-      "text": "the minute a grandmother's hands showed someone how to knead",
+      "text": "a grandmother's floury hands showing smaller hands how to knead",
       "page": "p-kitchen"
     },
     {
@@ -1203,31 +1293,571 @@
     {
       "id": "m-washing-up",
       "name": "the washing-up minute",
-      "text": "the minute two people washed and dried in easy silence",
+      "text": "the washing-up done side by side in easy silence, each plate passed from hand to hand",
       "page": "p-kitchen"
     },
     {
-      "id": "m-post",
-      "name": "the post minute",
-      "text": "the minute spent listening for the letterbox to clack",
+      "id": "m-mixing-bowl",
+      "name": "the mixing-bowl minute",
+      "text": "the cake spoon licked clean, and then, when nobody was looking, the bowl",
+      "page": "p-kitchen"
+    },
+    {
+      "id": "m-jam-lid",
+      "name": "the jam-lid minute",
+      "text": "a jam-jar lid that would not turn, would not turn, and then all at once did",
+      "page": "p-kitchen"
+    },
+    {
+      "id": "m-new-bread",
+      "name": "the new-bread minute",
+      "text": "the smell of warm bread climbing all the way to the top of the stairs",
+      "page": "p-kitchen"
+    },
+    {
+      "id": "m-apple-peel",
+      "name": "the apple-peel minute",
+      "text": "an apple peeled in one long unbroken curl, with nobody daring to breathe until the end",
+      "page": "p-kitchen"
+    },
+    {
+      "id": "m-cocoa",
+      "name": "the cocoa minute",
+      "text": "a skin forming on a mug of cocoa while someone finished a very long story",
+      "page": "p-kitchen"
+    },
+    {
+      "id": "m-forks",
+      "name": "the fork-side minute",
+      "text": "a small child laying the table with great seriousness and every fork on the wrong side",
+      "page": "p-kitchen"
+    },
+    {
+      "id": "m-tin-roof",
+      "name": "the tin-roof minute",
+      "text": "rain drumming on a tin roof while everyone underneath stayed perfectly dry",
+      "page": "p-weather"
+    },
+    {
+      "id": "m-first-snow",
+      "name": "the first-snow minute",
+      "text": "the minute at the window waiting to see whether it would really snow, and then it did",
+      "page": "p-weather"
+    },
+    {
+      "id": "m-thunder-count",
+      "name": "the counting minute",
+      "text": "one, two, three, all the way to nine, counted slowly between the lightning and the thunder",
+      "page": "p-weather"
+    },
+    {
+      "id": "m-half-rainbow",
+      "name": "the half-rainbow minute",
+      "text": "a rainbow that only got halfway across the sky and seemed pleased with itself anyway",
+      "page": "p-weather"
+    },
+    {
+      "id": "m-polite-gust",
+      "name": "the hat minute",
+      "text": "a gust that lifted a hat clean off and set it down again, very politely, two gardens along",
+      "page": "p-weather"
+    },
+    {
+      "id": "m-fog",
+      "name": "the fog minute",
+      "text": "fog so thick that the garden gate was only a rumour",
+      "page": "p-weather"
+    },
+    {
+      "id": "m-still-heat",
+      "name": "the still-afternoon minute",
+      "text": "an afternoon so hot and still that even the bees sat down",
+      "page": "p-weather"
+    },
+    {
+      "id": "m-snowflake",
+      "name": "the snowflake minute",
+      "text": "one snowflake on a dark wool sleeve, perfect for exactly as long as it took to look",
+      "page": "p-weather"
+    },
+    {
+      "id": "m-icicle",
+      "name": "the icicle minute",
+      "text": "the drop at the tip of an icicle, gathering itself to fall",
+      "page": "p-weather"
+    },
+    {
+      "id": "m-after-rain",
+      "name": "the after-rain minute",
+      "text": "the smell that rises from warm stones just after the rain",
+      "page": "p-weather"
+    },
+    {
+      "id": "m-inside-out",
+      "name": "the umbrella minute",
+      "text": "an umbrella blown inside out, and a stranger laughing kindly along with you",
+      "page": "p-weather"
+    },
+    {
+      "id": "m-sunbreak",
+      "name": "the sunbreak minute",
+      "text": "sunshine arriving while the rain was still falling, so that everything sparkled at once",
+      "page": "p-weather"
+    },
+    {
+      "id": "m-dragon-breath",
+      "name": "the dragon-breath minute",
+      "text": "breath clouds on a frosty morning, and a small dragon puffing its way to school",
+      "page": "p-weather"
+    },
+    {
+      "id": "m-misted-window",
+      "name": "the misted-window minute",
+      "text": "a word written backwards on a steamy window, for someone outside to read",
+      "page": "p-weather"
+    },
+    {
+      "id": "m-hail",
+      "name": "the hailstone minute",
+      "text": "a sudden clatter of hail, then sun again, as if the sky had changed its mind",
+      "page": "p-weather"
+    },
+    {
+      "id": "m-loose-tooth",
+      "name": "the loose-tooth minute",
+      "text": "a loose tooth wiggled with the tip of the tongue, brave and not quite brave enough",
+      "page": "p-small"
+    },
+    {
+      "id": "m-shoelace",
+      "name": "the shoelace minute",
+      "text": "the very first bow that stayed tied",
+      "page": "p-small"
+    },
+    {
+      "id": "m-chalk-dust",
+      "name": "the chalk-dust minute",
+      "text": "just before the bell, when the classroom smelled of chalk and rain-damp coats",
+      "page": "p-small"
+    },
+    {
+      "id": "m-gold-star",
+      "name": "the gold-star minute",
+      "text": "a gold paper star pressed on beside a page of careful handwriting",
+      "page": "p-small"
+    },
+    {
+      "id": "m-hide-and-seek",
+      "name": "the hide-and-seek minute",
+      "text": "a giggle held in behind the long curtains while the seeker walked right past",
+      "page": "p-small"
+    },
+    {
+      "id": "m-top-of-swing",
+      "name": "the top-of-the-swing minute",
+      "text": "the top of the swing, where for one heartbeat you weighed nothing at all",
+      "page": "p-small"
+    },
+    {
+      "id": "m-grazed-knee",
+      "name": "the grazed-knee minute",
+      "text": "a grazed knee being blown on, which somehow made it better",
+      "page": "p-small"
+    },
+    {
+      "id": "m-late-answer",
+      "name": "the late-answer minute",
+      "text": "the right answer arriving a second after the teacher had moved on",
+      "page": "p-small"
+    },
+    {
+      "id": "m-register",
+      "name": "the register minute",
+      "text": "your name in the morning register, and a 'here' that came out in a wobble",
+      "page": "p-small"
+    },
+    {
+      "id": "m-conker",
+      "name": "the conker minute",
+      "text": "a conker split from its spiky case, so shiny it looked wet",
+      "page": "p-small"
+    },
+    {
+      "id": "m-doorframe",
+      "name": "the doorframe minute",
+      "text": "a pencil line drawn above your head on the kitchen doorframe, higher than the last one",
+      "page": "p-small"
+    },
+    {
+      "id": "m-daisy-chain",
+      "name": "the daisy-chain minute",
+      "text": "a daisy chain long enough, at last, to go all the way round",
+      "page": "p-small"
+    },
+    {
+      "id": "m-den",
+      "name": "the den minute",
+      "text": "a den of blankets and chairs, a lantern inside, and the flap let down",
+      "page": "p-small"
+    },
+    {
+      "id": "m-cartwheel",
+      "name": "the cartwheel minute",
+      "text": "a cartwheel that finally landed the right way up, witnessed by nobody at all",
+      "page": "p-small"
+    },
+    {
+      "id": "m-chosen-lap",
+      "name": "the chosen-lap minute",
+      "text": "a cat deciding, after long thought, that your lap would do",
+      "page": "p-creatures"
+    },
+    {
+      "id": "m-snail",
+      "name": "the snail minute",
+      "text": "a snail crossing the garden path, and someone kneeling to wait for it",
+      "page": "p-creatures"
+    },
+    {
+      "id": "m-ladybird",
+      "name": "the ladybird minute",
+      "text": "a ladybird walking to the very tip of a finger and opening its wings",
+      "page": "p-creatures"
+    },
+    {
+      "id": "m-ducklings",
+      "name": "the duckling minute",
+      "text": "a line of ducklings crossing the lane, the last one running to catch up",
+      "page": "p-creatures"
+    },
+    {
+      "id": "m-whole-wag",
+      "name": "the wagging minute",
+      "text": "a dog so glad to see someone home that its whole back half wagged",
+      "page": "p-creatures"
+    },
+    {
+      "id": "m-robin",
+      "name": "the robin minute",
+      "text": "a robin on the handle of a garden spade, watching you dig as if it were in charge",
+      "page": "p-creatures"
+    },
+    {
+      "id": "m-moth",
+      "name": "the moth minute",
+      "text": "a moth resting on a lampshade, its wings the colour of old paper",
+      "page": "p-creatures"
+    },
+    {
+      "id": "m-frog",
+      "name": "the frog minute",
+      "text": "a frog sitting very still in a cupped hand, deciding whether you were a stone",
+      "page": "p-creatures"
+    },
+    {
+      "id": "m-warm-egg",
+      "name": "the warm-egg minute",
+      "text": "a hand slipped under a grumbling hen, and an egg still warm",
+      "page": "p-creatures"
+    },
+    {
+      "id": "m-bumblebee",
+      "name": "the bumblebee minute",
+      "text": "a bumblebee backing out of a foxglove, dusted all over with gold",
+      "page": "p-creatures"
+    },
+    {
+      "id": "m-owls",
+      "name": "the owl minute",
+      "text": "an owl calling twice across the dark fields, and another owl answering",
+      "page": "p-creatures"
+    },
+    {
+      "id": "m-kitten-string",
+      "name": "the string minute",
+      "text": "a kitten losing a long argument with a piece of string",
+      "page": "p-creatures"
+    },
+    {
+      "id": "m-caterpillar",
+      "name": "the caterpillar minute",
+      "text": "a caterpillar measuring a leaf, one careful loop at a time",
+      "page": "p-creatures"
+    },
+    {
+      "id": "m-velvet-nose",
+      "name": "the velvet-nose minute",
+      "text": "a pony's velvet nose lifting an apple from a flat, brave palm",
+      "page": "p-creatures"
+    },
+    {
+      "id": "m-bean-shoots",
+      "name": "the bean-shoot minute",
+      "text": "the morning the beans came up all at once, like little green question marks",
+      "page": "p-garden"
+    },
+    {
+      "id": "m-dandelion-clock",
+      "name": "the dandelion-clock minute",
+      "text": "a dandelion clock blown to pieces, and the hours counted as they floated off",
+      "page": "p-garden"
+    },
+    {
+      "id": "m-pea-pod",
+      "name": "the pea-pod minute",
+      "text": "a pea pod split with a thumbnail, and every pea eaten before it reached the kitchen",
+      "page": "p-garden"
+    },
+    {
+      "id": "m-windfall",
+      "name": "the windfall minute",
+      "text": "an apple dropping in the orchard with a soft thump, and nobody there to hear it but you",
+      "page": "p-garden"
+    },
+    {
+      "id": "m-leaf-pile",
+      "name": "the leaf-pile minute",
+      "text": "a jump into the pile of leaves someone had spent all afternoon raking",
+      "page": "p-garden"
+    },
+    {
+      "id": "m-no-coat",
+      "name": "the no-coat minute",
+      "text": "a spring day warm enough, at last, for no coat, with every face turned up like a flower",
+      "page": "p-garden"
+    },
+    {
+      "id": "m-sunflower",
+      "name": "the sunflower minute",
+      "text": "a measuring contest with a sunflower, which the sunflower won",
+      "page": "p-garden"
+    },
+    {
+      "id": "m-worm",
+      "name": "the digging minute",
+      "text": "a garden fork turning over dark soil, and a worm looking up, surprised",
+      "page": "p-garden"
+    },
+    {
+      "id": "m-snowdrop",
+      "name": "the snowdrop minute",
+      "text": "the first snowdrop of the year, found by someone kneeling in the cold to be sure",
+      "page": "p-garden"
+    },
+    {
+      "id": "m-tomato-leaves",
+      "name": "the tomato-leaf minute",
+      "text": "the green smell of tomato leaves on your fingers at the end of a long summer day",
+      "page": "p-garden"
+    },
+    {
+      "id": "m-blackberry",
+      "name": "the blackberry minute",
+      "text": "the best blackberry, just too far into the bramble, reached for anyway and won",
+      "page": "p-garden"
+    },
+    {
+      "id": "m-seed-packet",
+      "name": "the seed-packet minute",
+      "text": "a paper packet shaken gently to hear whether the seeds inside were still awake",
+      "page": "p-garden"
+    },
+    {
+      "id": "m-turning-leaf",
+      "name": "the turning-leaf minute",
+      "text": "one leaf on the lane gone gold a whole week ahead of the others",
+      "page": "p-garden"
+    },
+    {
+      "id": "m-cloud-rabbit",
+      "name": "the cloud-watching minute",
+      "text": "a rabbit found in the clouds from flat on your back in the long grass, and then lost again",
+      "page": "p-garden"
+    },
+    {
+      "id": "m-summer-sand",
+      "name": "the sand-in-the-shoe minute",
+      "text": "the last minute of a summer holiday, sand still in one shoe",
+      "page": "p-journeys"
+    },
+    {
+      "id": "m-deepest-puddle",
+      "name": "the puddle minute",
+      "text": "the deepest puddle on the way home, and boots that were exactly tall enough",
+      "page": "p-journeys"
+    },
+    {
+      "id": "m-stile",
+      "name": "the stile minute",
+      "text": "a rest on top of a stile halfway up the hill, with the whole valley folded out below",
+      "page": "p-journeys"
+    },
+    {
+      "id": "m-first-sea",
+      "name": "the first-sea minute",
+      "text": "the sea, seen at last from the top of the cliff path after a whole morning of walking toward it",
+      "page": "p-journeys"
+    },
+    {
+      "id": "m-milk-jug",
+      "name": "the milk-jug minute",
+      "text": "a jug of milk carried home very carefully, and only a little of it spilled",
+      "page": "p-journeys"
+    },
+    {
+      "id": "m-stepping-stones",
+      "name": "the stepping-stone minute",
+      "text": "the middle stepping stone, which wobbled, and the shriek, and the not falling in",
+      "page": "p-journeys"
+    },
+    {
+      "id": "m-wrong-turn",
+      "name": "the wrong-turn minute",
+      "text": "a wrong turning into a lane full of foxgloves, and nobody minding at all",
+      "page": "p-journeys"
+    },
+    {
+      "id": "m-warm-wall",
+      "name": "the warm-wall minute",
+      "text": "an apple eaten on a sun-warmed wall, halfway to wherever it was",
+      "page": "p-journeys"
+    },
+    {
+      "id": "m-shell",
+      "name": "the shell minute",
+      "text": "a shell held to one ear, with the sea still inside it",
+      "page": "p-journeys"
+    },
+    {
+      "id": "m-shoulders",
+      "name": "the shoulder-ride minute",
+      "text": "the final stretch of the way home, half asleep, carried high on someone's shoulders",
+      "page": "p-journeys"
+    },
+    {
+      "id": "m-rockpool",
+      "name": "the rockpool minute",
+      "text": "a tiny crab in a rockpool deciding at last that the large quiet face above it was only weather",
+      "page": "p-journeys"
+    },
+    {
+      "id": "m-signpost",
+      "name": "the signpost minute",
+      "text": "a crooked signpost pointing two ways at once, and the prettier way chosen",
+      "page": "p-journeys"
+    },
+    {
+      "id": "m-stick-race",
+      "name": "the stick-race minute",
+      "text": "two sticks dropped from one side of a bridge, and two faces at the other rail to see whose came out first",
+      "page": "p-journeys"
+    },
+    {
+      "id": "m-lit-window",
+      "name": "the nearly-home minute",
+      "text": "home's lit window, glimpsed through the trees at the end of a long walk",
+      "page": "p-journeys"
+    },
+    {
+      "id": "m-letterbox",
+      "name": "the letterbox minute",
+      "text": "the clack of the letterbox on a morning when a letter was due, and the soft flump of it landing",
+      "page": "p-letters"
+    },
+    {
+      "id": "m-one-more-line",
+      "name": "the one-more-line minute",
+      "text": "an envelope already sealed, and the sudden wish to add one more line",
+      "page": "p-letters"
+    },
+    {
+      "id": "m-postscript",
+      "name": "the postscript minute",
+      "text": "a P.S. that grew longer than the whole letter above it",
+      "page": "p-letters"
+    },
+    {
+      "id": "m-known-hand",
+      "name": "the known-hand minute",
+      "text": "your own name on an envelope, in a hand you knew before you had read a single word",
+      "page": "p-letters"
+    },
+    {
+      "id": "m-first-word",
+      "name": "the first-word minute",
+      "text": "a baby's first word, which everyone in the room heard differently",
+      "page": "p-letters"
+    },
+    {
+      "id": "m-pretend-asleep",
+      "name": "the pretend-asleep minute",
+      "text": "eyes shut tight and breathing slow, pretending to sleep so the chapter would keep going",
+      "page": "p-letters"
+    },
+    {
+      "id": "m-pressed-flower",
+      "name": "the pressed-flower minute",
+      "text": "a pressed flower slipping out of a library book, left there by a stranger long ago",
+      "page": "p-letters"
+    },
+    {
+      "id": "m-new-diary",
+      "name": "the new-diary minute",
+      "text": "the date written at the top of a brand-new diary in your very best hand",
+      "page": "p-letters"
+    },
+    {
+      "id": "m-postcards",
+      "name": "the postcard minute",
+      "text": "one postcard to choose for someone far away, and every single one of them wanted",
+      "page": "p-letters"
+    },
+    {
+      "id": "m-ink-blot",
+      "name": "the ink-blot minute",
+      "text": "an ink blot on a clean page that became, with a little help, a cat",
+      "page": "p-letters"
+    },
+    {
+      "id": "m-margin-note",
+      "name": "the margin minute",
+      "text": "a note in the margin of an old book, left by someone who had loved the same line",
+      "page": "p-letters"
+    },
+    {
+      "id": "m-thank-you",
+      "name": "the thank-you minute",
+      "text": "a thank-you letter written very slowly, with the tip of the tongue poking out at one corner",
+      "page": "p-letters"
+    },
+    {
+      "id": "m-crooked-stamp",
+      "name": "the crooked-stamp minute",
+      "text": "a stamp stuck on crooked, on purpose, as a secret way of saying hello",
+      "page": "p-letters"
+    },
+    {
+      "id": "m-folded-note",
+      "name": "the folded-note minute",
+      "text": "a note folded very small and passed along a row of desks to exactly the right person",
+      "page": "p-letters"
+    },
+    {
+      "id": "m-porch-rain",
+      "name": "the porch minute",
+      "text": "a porch step, a steady rain, and the drips from the gutter counted until it eased",
       "page": "p-waiting"
     },
     {
-      "id": "m-rain-stop",
-      "name": "the rain-stop minute",
-      "text": "the minute under an awning waiting for the rain to ease",
-      "page": "p-waiting"
-    },
-    {
-      "id": "m-results",
-      "name": "the results minute",
+      "id": "m-name-read",
+      "name": "the name minute",
       "text": "the minute before a name was read out",
       "page": "p-waiting"
     },
     {
-      "id": "m-platform",
+      "id": "m-doorway-wave",
       "name": "the doorway minute",
-      "text": "the minute in a doorway waiting for someone to turn and wave",
+      "text": "the minute in a doorway waiting for someone to turn at the corner and wave",
       "page": "p-waiting"
     },
     {
@@ -1237,15 +1867,9 @@
       "page": "p-waiting"
     },
     {
-      "id": "m-phone-ring",
+      "id": "m-knock",
       "name": "the knock minute",
       "text": "the minute after a knock, before the door opened",
-      "page": "p-waiting"
-    },
-    {
-      "id": "m-snow",
-      "name": "the first-snow minute",
-      "text": "the minute at the window waiting to see if it would really snow",
       "page": "p-waiting"
     },
     {
@@ -1253,18 +1877,482 @@
       "name": "the sneeze minute",
       "text": "the minute before a sneeze that never came",
       "page": "p-waiting"
+    },
+    {
+      "id": "m-tip-of-tongue",
+      "name": "the tip-of-the-tongue minute",
+      "text": "a word perched on the tip of the tongue, refusing to come one step further",
+      "page": "p-waiting"
+    },
+    {
+      "id": "m-hiccups",
+      "name": "the hiccup minute",
+      "text": "a held breath to cure the hiccups, and waiting, and waiting, and hic",
+      "page": "p-waiting"
+    },
+    {
+      "id": "m-bath-filling",
+      "name": "the bath-filling minute",
+      "text": "a bath taking its time to fill while the steam crept slowly up the mirror",
+      "page": "p-waiting"
+    },
+    {
+      "id": "m-birthday-eve",
+      "name": "the night-before minute",
+      "text": "the night before a birthday, far too awake to sleep, guessing at a rustle of paper downstairs",
+      "page": "p-waiting"
+    },
+    {
+      "id": "m-wet-paint",
+      "name": "the wet-paint minute",
+      "text": "a door freshly painted, a sign saying so, and one small finger that had to check",
+      "page": "p-waiting"
+    },
+    {
+      "id": "m-almost-said",
+      "name": "the almost-said minute",
+      "text": "the thing you meant to say, very nearly said, and a remark about the weather instead",
+      "page": "p-waiting"
+    },
+    {
+      "id": "m-nearly-landed",
+      "name": "the nearly-landed minute",
+      "text": "a butterfly that nearly landed on an outstretched hand, and chose a flower instead",
+      "page": "p-waiting"
+    },
+    {
+      "id": "m-jelly",
+      "name": "the jelly minute",
+      "text": "a jelly in a bowl, not set yet, and a small face checking on it every few minutes",
+      "page": "p-waiting"
+    },
+    {
+      "id": "m-egg-timer",
+      "name": "the egg-timer minute",
+      "text": "an egg timer's last few grains of sand, sliding through one by one",
+      "page": "p-waiting"
+    },
+    {
+      "id": "m-floating",
+      "name": "the floating minute",
+      "text": "the first time the water held you up, after letting go of the riverbank",
+      "page": "p-brave"
+    },
+    {
+      "id": "m-sorry-first",
+      "name": "the sorry minute",
+      "text": "the minute someone said sorry first, though it had not really been their fault",
+      "page": "p-brave"
+    },
+    {
+      "id": "m-dark-landing",
+      "name": "the landing minute",
+      "text": "a dark landing crossed all alone, which turned out to be only a landing after all",
+      "page": "p-brave"
+    },
+    {
+      "id": "m-new-classroom",
+      "name": "the new-classroom minute",
+      "text": "a new classroom full of strange faces, and a 'hello' said anyway",
+      "page": "p-brave"
+    },
+    {
+      "id": "m-high-branch",
+      "name": "the high-branch minute",
+      "text": "one branch higher than ever before, a look down, and a quick look back up",
+      "page": "p-brave"
+    },
+    {
+      "id": "m-solo",
+      "name": "the solo minute",
+      "text": "a song's opening note, sung alone in front of everyone before the voice had warmed up",
+      "page": "p-brave"
+    },
+    {
+      "id": "m-asking",
+      "name": "the asking minute",
+      "text": "a shy 'would you like to dance?', answered yes before it was even finished",
+      "page": "p-brave"
+    },
+    {
+      "id": "m-spider-cup",
+      "name": "the spider-and-cup minute",
+      "text": "a spider carried out to the garden under a teacup and a postcard, very gently",
+      "page": "p-brave"
+    },
+    {
+      "id": "m-owning-up",
+      "name": "the owning-up minute",
+      "text": "the broken vase, owned up to before anyone had even asked",
+      "page": "p-brave"
+    },
+    {
+      "id": "m-sit-beside",
+      "name": "the sit-beside minute",
+      "text": "an empty seat beside someone eating lunch alone, taken with a smile",
+      "page": "p-brave"
+    },
+    {
+      "id": "m-cold-sea",
+      "name": "the cold-sea minute",
+      "text": "a run straight into the cold sea, all at once, because slowly was worse",
+      "page": "p-brave"
+    },
+    {
+      "id": "m-splinter",
+      "name": "the splinter minute",
+      "text": "a splinter eased out of a thumb, a face held very still, and hardly any crying",
+      "page": "p-brave"
+    },
+    {
+      "id": "m-door-shut",
+      "name": "the shut-door minute",
+      "text": "bedtime with the door closed all the way for the very first time, and sleep coming anyway",
+      "page": "p-brave"
+    },
+    {
+      "id": "m-one-line",
+      "name": "the one-line minute",
+      "text": "the wings of the school play, one line to say and all of it gone, until it came back just in time",
+      "page": "p-brave"
+    },
+    {
+      "id": "m-first-lamp",
+      "name": "the lamplighting minute",
+      "text": "a single lamp lit in a darkening room, and the windows turning into mirrors",
+      "page": "p-evenings"
+    },
+    {
+      "id": "m-crickets",
+      "name": "the cricket minute",
+      "text": "one cricket starting up in the long grass, and then all of them",
+      "page": "p-evenings"
+    },
+    {
+      "id": "m-back-step",
+      "name": "the back-step minute",
+      "text": "a back step after supper, and nothing at all left to do",
+      "page": "p-evenings"
+    },
+    {
+      "id": "m-warm-towel",
+      "name": "the warm-towel minute",
+      "text": "a towel warmed by the fire, wrapped round someone small straight out of the bath",
+      "page": "p-evenings"
+    },
+    {
+      "id": "m-last-verse",
+      "name": "the lullaby minute",
+      "text": "a lullaby's last verse, sung slower and slower as the eyes closed",
+      "page": "p-evenings"
+    },
+    {
+      "id": "m-extra-story",
+      "name": "the extra-story minute",
+      "text": "the extra story, pleaded for and granted, which turned out to be the longest on the shelf",
+      "page": "p-evenings"
+    },
+    {
+      "id": "m-first-star",
+      "name": "the first-star minute",
+      "text": "the first star, and a wish made on it before anyone else could",
+      "page": "p-evenings"
+    },
+    {
+      "id": "m-music-box",
+      "name": "the music-box minute",
+      "text": "a music box winding down, its tune growing slower and sleepier until it stopped mid-note",
+      "page": "p-evenings"
+    },
+    {
+      "id": "m-stone-bottle",
+      "name": "the warm-spot minute",
+      "text": "cold feet finding the warm place where the stone bottle had been",
+      "page": "p-evenings"
+    },
+    {
+      "id": "m-goodnights",
+      "name": "the goodnights minute",
+      "text": "goodnight said to every room in the house on the way up to bed",
+      "page": "p-evenings"
+    },
+    {
+      "id": "m-embers",
+      "name": "the ember minute",
+      "text": "the embers of the fire building little towns and letting them fall",
+      "page": "p-evenings"
+    },
+    {
+      "id": "m-humming",
+      "name": "the humming minute",
+      "text": "someone humming over the dishes in the next room, the tune coming and going",
+      "page": "p-evenings"
+    },
+    {
+      "id": "m-supper",
+      "name": "the supper minute",
+      "text": "everyone at the supper table at once, all talking, and all of it lovely",
+      "page": "p-evenings"
+    },
+    {
+      "id": "m-fiddle",
+      "name": "the fiddle minute",
+      "text": "a fiddle tune drifting up the lane from somewhere on a summer evening",
+      "page": "p-evenings"
+    },
+    {
+      "id": "m-swifts",
+      "name": "the swift minute",
+      "text": "the blue minute after sunset, when the swifts came down low over the rooftops, calling",
+      "page": "p-evenings"
+    },
+    {
+      "id": "m-last-bell",
+      "name": "the last-bell minute",
+      "text": "the last bell on the last day of school, and everyone suddenly quiet",
+      "page": "p-goodbyes"
+    },
+    {
+      "id": "m-empty-room",
+      "name": "the empty-room minute",
+      "text": "an empty room on moving day, and a goodbye said to the marks on the wall",
+      "page": "p-goodbyes"
+    },
+    {
+      "id": "m-waving",
+      "name": "the waving minute",
+      "text": "a friend walking away down the lane, turning back to wave, and then once more",
+      "page": "p-goodbyes"
+    },
+    {
+      "id": "m-outgrown",
+      "name": "the outgrown minute",
+      "text": "a favourite pair of shoes that no longer fitted, put away kindly at the back of the cupboard",
+      "page": "p-goodbyes"
+    },
+    {
+      "id": "m-open-hands",
+      "name": "the open-hands minute",
+      "text": "cupped hands opened for a mended sparrow, which flew off without once looking back",
+      "page": "p-goodbyes"
+    },
+    {
+      "id": "m-hand-me-down",
+      "name": "the hand-me-down minute",
+      "text": "a much-loved coat handed down to someone smaller, and the way it fitted them",
+      "page": "p-goodbyes"
+    },
+    {
+      "id": "m-last-page",
+      "name": "the last-page minute",
+      "text": "the last page of a book nobody wanted to end",
+      "page": "p-goodbyes"
+    },
+    {
+      "id": "m-snowman",
+      "name": "the snowman minute",
+      "text": "the snowman's hat sliding off in the thaw, and everyone agreeing it had been a very good snowman",
+      "page": "p-goodbyes"
+    },
+    {
+      "id": "m-armchair",
+      "name": "the armchair minute",
+      "text": "a grandfather's armchair, sat in for the first time, and still the shape of him",
+      "page": "p-goodbyes"
+    },
+    {
+      "id": "m-garden-gate",
+      "name": "the last-look minute",
+      "text": "one last look back from the garden gate at a holiday cottage, its shutters already closed",
+      "page": "p-goodbyes"
+    },
+    {
+      "id": "m-last-swim",
+      "name": "the last-swim minute",
+      "text": "the last swim of the summer, the water a little colder than the day before",
+      "page": "p-goodbyes"
+    },
+    {
+      "id": "m-suitcases",
+      "name": "the suitcase minute",
+      "text": "an evening in a house by the sea, the last one, with the suitcases waiting by the door",
+      "page": "p-goodbyes"
+    },
+    {
+      "id": "m-too-old",
+      "name": "the last-lullaby minute",
+      "text": "the night someone said they were too old for lullabies, and then asked for just one more",
+      "page": "p-goodbyes"
+    },
+    {
+      "id": "m-see-you-soon",
+      "name": "the see-you-soon minute",
+      "text": "a 'see you soon' said at a gate, and meant, and true",
+      "page": "p-goodbyes"
     }
   ],
   "pages": {
-    "p-kitchen": {
-      "title": "Kitchen Minutes",
+    "p-mornings": {
+      "title": "Morning Minutes",
       "reward": {
-        "text": "The Kitchen Minutes page is full. It smells faintly of toast and warm tea, and Mott, when he hears, says it's the coziest page in the book.",
+        "text": "The Morning Minutes page is full, and it glows the pale gold of a sky just before the sun. Bell, who has never once seen a dawn, will want to hear every one of these.",
         "do": [
           {
             "kind": "adjust_rel",
-            "npc": "t-mott",
+            "npc": "t-bell",
             "delta": 2
+          },
+          {
+            "kind": "add_fact",
+            "id": "page-mornings",
+            "text": "{actor} has filled the Morning Minutes page of their Book of Stray Minutes: a whole page of small mornings, each with a sunrise somewhere in it.",
+            "known_by": [
+              "t-bell"
+            ],
+            "spread": [
+              {
+                "to": [
+                  "t-mott",
+                  "t-tace"
+                ],
+                "after_minutes": 60
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "p-kitchen": {
+      "title": "Kitchen Minutes",
+      "reward": {
+        "text": "Your Kitchen Minutes are all gathered, and the page smells faintly of toast and warm tea. In the Waiting House, Linden's copper kettle, which never quite boils, gives one small contented whistle.",
+        "do": [
+          {
+            "kind": "adjust_rel",
+            "npc": "t-linden",
+            "delta": 2
+          }
+        ]
+      }
+    },
+    "p-weather": {
+      "title": "Weather Minutes",
+      "reward": {
+        "text": "When you turn the finished Weather Minutes page, it rustles like wind through long grass. There is a whole year of sky in it, as Sorrel would say.",
+        "do": [
+          {
+            "kind": "adjust_rel",
+            "npc": "t-sorrel",
+            "delta": 2
+          },
+          {
+            "kind": "add_fact",
+            "id": "page-weather",
+            "text": "{actor} has filled the Weather Minutes page of their Book of Stray Minutes: rain on a tin roof, fog, first snow, and a rainbow that only got halfway.",
+            "known_by": [
+              "t-sorrel"
+            ],
+            "spread": [
+              {
+                "to": "all",
+                "after_minutes": 120
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "p-small": {
+      "title": "Minutes from Being Small",
+      "reward": {
+        "text": "For a moment your hands feel smaller, holding the finished page of Minutes from Being Small. A gold paper star has come loose from one of its minutes, and it is yours to keep.",
+        "do": [
+          {
+            "kind": "spawn_object",
+            "name": "gold paper star",
+            "location_id": "@actor",
+            "seed": "a small gold paper star, the kind pressed on beside good work; its points are a little bent from being pressed on so proudly",
+            "aliases": [
+              "paper star",
+              "gold star"
+            ],
+            "generated_by": "page:small"
+          }
+        ]
+      }
+    },
+    "p-creatures": {
+      "title": "Minutes with Small Creatures",
+      "reward": {
+        "text": "As the last of the Minutes with Small Creatures settles onto its page, something soft winds once round your ankle and is gone before you can look down. Tock, it seems, approves.",
+        "do": [
+          {
+            "kind": "adjust_rel",
+            "npc": "t-tock",
+            "delta": 2
+          }
+        ]
+      }
+    },
+    "p-garden": {
+      "title": "Minutes of Growing Things",
+      "reward": {
+        "text": "Every one of the Minutes of Growing Things is in its place now, and the page smells of turned earth and tomato leaves. Tucked in the fold, where a pressed flower might be, is a dreamseed; Quill would say it has only been waiting for the right hands.",
+        "do": [
+          {
+            "kind": "adjust_rel",
+            "npc": "t-quill",
+            "delta": 2
+          },
+          {
+            "kind": "spawn_template",
+            "template": "dreamseed",
+            "location_id": "@actor",
+            "generated_by": "page:garden"
+          }
+        ]
+      }
+    },
+    "p-journeys": {
+      "title": "Minutes on Foot",
+      "reward": {
+        "text": "Full at last, the Minutes on Foot page has the tired, happy feel of boots set down by the door. In its spine is a dreamseed, as if the page thought you might like somewhere new to walk to.",
+        "do": [
+          {
+            "kind": "spawn_template",
+            "template": "dreamseed",
+            "location_id": "@actor",
+            "generated_by": "page:journeys"
+          }
+        ]
+      }
+    },
+    "p-letters": {
+      "title": "Minutes of Letters and Words",
+      "reward": {
+        "text": "The Minutes of Letters and Words page is full, and it crinkles like a letter read many times over. Fen, when the news reaches the Little Post Office, will call it first-class.",
+        "do": [
+          {
+            "kind": "adjust_rel",
+            "npc": "t-fen",
+            "delta": 2
+          },
+          {
+            "kind": "add_fact",
+            "id": "page-letters",
+            "text": "{actor} has filled the Letters and Words page of their Book of Stray Minutes: envelopes, postscripts, and a stamp stuck on crooked on purpose.",
+            "known_by": [
+              "t-fen"
+            ],
+            "spread": [
+              {
+                "to": [
+                  "t-mott",
+                  "t-linden"
+                ],
+                "after_minutes": 60
+              }
+            ]
           }
         ]
       }
@@ -1272,13 +2360,95 @@
     "p-waiting": {
       "title": "Minutes of Waiting",
       "reward": {
-        "text": "The Minutes of Waiting page is full, and all its small impatiences settle into one long, contented sigh. Tucked in the spine is a dreamseed.",
+        "text": "All the small impatiences on the Minutes of Waiting page settle, now that it is full, into one long, contented sigh. Somewhere, very faintly, someone finally sneezes. Tucked in the spine is a dreamseed.",
         "do": [
           {
             "kind": "spawn_template",
             "template": "dreamseed",
             "location_id": "@actor",
             "generated_by": "page:waiting"
+          }
+        ]
+      }
+    },
+    "p-brave": {
+      "title": "Minutes of Small Bravery",
+      "reward": {
+        "text": "With its last minute in place, the Minutes of Small Bravery page holds itself a little straighter than the others. Over in the Old Workshop, Mott's thumb rests a moment longer on the lid of his tin.",
+        "do": [
+          {
+            "kind": "adjust_rel",
+            "npc": "t-mott",
+            "delta": 2
+          },
+          {
+            "kind": "add_fact",
+            "id": "page-brave",
+            "text": "{actor} has filled the Small Bravery page of their Book of Stray Minutes: sorries said first, dark landings crossed, and one line remembered just in time.",
+            "known_by": [
+              "t-mott"
+            ],
+            "spread": []
+          }
+        ]
+      }
+    },
+    "p-evenings": {
+      "title": "Evening Minutes",
+      "reward": {
+        "text": "A little six o'clock light spills from the finished page of Evening Minutes and stays, folded, in your hands.",
+        "do": [
+          {
+            "kind": "spawn_object",
+            "name": "fold of evening light",
+            "location_id": "@actor",
+            "seed": "a small fold of six o'clock light, the colour of honey on a windowsill; wherever it is set down, that corner feels like the end of a good day",
+            "aliases": [
+              "evening light",
+              "six o'clock light",
+              "fold of light"
+            ],
+            "generated_by": "page:evenings"
+          }
+        ]
+      }
+    },
+    "p-goodbyes": {
+      "title": "Minutes of Gentle Goodbyes",
+      "reward": {
+        "text": "The Minutes of Gentle Goodbyes page is full. Read together, they do not feel sad so much as finished, the way a good day is finished. Pressed between the last two leaves is a small brown label in Umber's hand.",
+        "do": [
+          {
+            "kind": "spawn_object",
+            "name": "brown paper label",
+            "location_id": "@actor",
+            "seed": "a small brown paper label on a loop of string, written in Umber's careful, upright hand",
+            "aliases": [
+              "brown label",
+              "goodbyes label",
+              "umber's label"
+            ],
+            "readable": true,
+            "properties": {
+              "text": "The label reads, in Umber's upright hand: 'Goodbyes, the gentle ones. Keep flat. Open when needed.'"
+            },
+            "generated_by": "page:goodbyes"
+          },
+          {
+            "kind": "add_fact",
+            "id": "page-goodbyes",
+            "text": "{actor} has filled the Gentle Goodbyes page of their Book of Stray Minutes: small endings that turned out all right.",
+            "known_by": [
+              "t-umber"
+            ],
+            "spread": [
+              {
+                "to": [
+                  "t-tace"
+                ],
+                "after_minutes": 60
+              }
+            ]
           }
         ]
       }

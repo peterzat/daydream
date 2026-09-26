@@ -1,0 +1,28 @@
+{
+  "comment": "Book of Stray Minutes, page 8 of 12: letters, reading, and words. Fen keeps the post office of unsent letters, so the page warms her to the finder, and word of it travels.",
+  "pages": {
+    "p-letters": {"title": "Minutes of Letters and Words",
+                  "reward": {"text": "The Minutes of Letters and Words page is full, and it crinkles like a letter read many times over. Fen, when the news reaches the Little Post Office, will call it first-class.",
+                             "do": [{"kind": "adjust_rel", "npc": "t-fen", "delta": 2},
+                                    {"kind": "add_fact", "id": "page-letters",
+                                     "text": "{actor} has filled the Letters and Words page of their Book of Stray Minutes: envelopes, postscripts, and a stamp stuck on crooked on purpose.",
+                                     "known_by": ["t-fen"],
+                                     "spread": [{"to": ["t-mott", "t-linden"], "after_minutes": 60}]}]}}
+  },
+  "collectibles": [
+    {"id": "m-letterbox", "name": "the letterbox minute", "text": "the clack of the letterbox on a morning when a letter was due, and the soft flump of it landing", "page": "p-letters"},
+    {"id": "m-one-more-line", "name": "the one-more-line minute", "text": "an envelope already sealed, and the sudden wish to add one more line", "page": "p-letters"},
+    {"id": "m-postscript", "name": "the postscript minute", "text": "a P.S. that grew longer than the whole letter above it", "page": "p-letters"},
+    {"id": "m-known-hand", "name": "the known-hand minute", "text": "your own name on an envelope, in a hand you knew before you had read a single word", "page": "p-letters"},
+    {"id": "m-first-word", "name": "the first-word minute", "text": "a baby's first word, which everyone in the room heard differently", "page": "p-letters"},
+    {"id": "m-pretend-asleep", "name": "the pretend-asleep minute", "text": "eyes shut tight and breathing slow, pretending to sleep so the chapter would keep going", "page": "p-letters"},
+    {"id": "m-pressed-flower", "name": "the pressed-flower minute", "text": "a pressed flower slipping out of a library book, left there by a stranger long ago", "page": "p-letters"},
+    {"id": "m-new-diary", "name": "the new-diary minute", "text": "the date written at the top of a brand-new diary in your very best hand", "page": "p-letters"},
+    {"id": "m-postcards", "name": "the postcard minute", "text": "one postcard to choose for someone far away, and every single one of them wanted", "page": "p-letters"},
+    {"id": "m-ink-blot", "name": "the ink-blot minute", "text": "an ink blot on a clean page that became, with a little help, a cat", "page": "p-letters"},
+    {"id": "m-margin-note", "name": "the margin minute", "text": "a note in the margin of an old book, left by someone who had loved the same line", "page": "p-letters"},
+    {"id": "m-thank-you", "name": "the thank-you minute", "text": "a thank-you letter written very slowly, with the tip of the tongue poking out at one corner", "page": "p-letters"},
+    {"id": "m-crooked-stamp", "name": "the crooked-stamp minute", "text": "a stamp stuck on crooked, on purpose, as a secret way of saying hello", "page": "p-letters"},
+    {"id": "m-folded-note", "name": "the folded-note minute", "text": "a note folded very small and passed along a row of desks to exactly the right person", "page": "p-letters"}
+  ]
+}

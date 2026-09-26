@@ -1,0 +1,27 @@
+{
+  "comment": "Book of Stray Minutes, page 4 of 12: childhood and school days. The reward is a small keepsake, a gold paper star (one of the page's own minutes).",
+  "pages": {
+    "p-small": {"title": "Minutes from Being Small",
+                "reward": {"text": "For a moment your hands feel smaller, holding the finished page of Minutes from Being Small. A gold paper star has come loose from one of its minutes, and it is yours to keep.",
+                           "do": [{"kind": "spawn_object", "name": "gold paper star", "location_id": "@actor",
+                                   "seed": "a small gold paper star, the kind pressed on beside good work; its points are a little bent from being pressed on so proudly",
+                                   "aliases": ["paper star", "gold star"],
+                                   "generated_by": "page:small"}]}}
+  },
+  "collectibles": [
+    {"id": "m-loose-tooth", "name": "the loose-tooth minute", "text": "a loose tooth wiggled with the tip of the tongue, brave and not quite brave enough", "page": "p-small"},
+    {"id": "m-shoelace", "name": "the shoelace minute", "text": "the very first bow that stayed tied", "page": "p-small"},
+    {"id": "m-chalk-dust", "name": "the chalk-dust minute", "text": "just before the bell, when the classroom smelled of chalk and rain-damp coats", "page": "p-small"},
+    {"id": "m-gold-star", "name": "the gold-star minute", "text": "a gold paper star pressed on beside a page of careful handwriting", "page": "p-small"},
+    {"id": "m-hide-and-seek", "name": "the hide-and-seek minute", "text": "a giggle held in behind the long curtains while the seeker walked right past", "page": "p-small"},
+    {"id": "m-top-of-swing", "name": "the top-of-the-swing minute", "text": "the top of the swing, where for one heartbeat you weighed nothing at all", "page": "p-small"},
+    {"id": "m-grazed-knee", "name": "the grazed-knee minute", "text": "a grazed knee being blown on, which somehow made it better", "page": "p-small"},
+    {"id": "m-late-answer", "name": "the late-answer minute", "text": "the right answer arriving a second after the teacher had moved on", "page": "p-small"},
+    {"id": "m-register", "name": "the register minute", "text": "your name in the morning register, and a 'here' that came out in a wobble", "page": "p-small"},
+    {"id": "m-conker", "name": "the conker minute", "text": "a conker split from its spiky case, so shiny it looked wet", "page": "p-small"},
+    {"id": "m-doorframe", "name": "the doorframe minute", "text": "a pencil line drawn above your head on the kitchen doorframe, higher than the last one", "page": "p-small"},
+    {"id": "m-daisy-chain", "name": "the daisy-chain minute", "text": "a daisy chain long enough, at last, to go all the way round", "page": "p-small"},
+    {"id": "m-den", "name": "the den minute", "text": "a den of blankets and chairs, a lantern inside, and the flap let down", "page": "p-small"},
+    {"id": "m-cartwheel", "name": "the cartwheel minute", "text": "a cartwheel that finally landed the right way up, witnessed by nobody at all", "page": "p-small"}
+  ]
+}

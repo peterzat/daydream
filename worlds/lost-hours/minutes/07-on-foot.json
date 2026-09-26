@@ -1,0 +1,24 @@
+{
+  "comment": "Book of Stray Minutes, page 7 of 12: journeys on foot and holidays. The reward is a dreamseed: somewhere new to walk to.",
+  "pages": {
+    "p-journeys": {"title": "Minutes on Foot",
+                   "reward": {"text": "Full at last, the Minutes on Foot page has the tired, happy feel of boots set down by the door. In its spine is a dreamseed, as if the page thought you might like somewhere new to walk to.",
+                              "do": [{"kind": "spawn_template", "template": "dreamseed", "location_id": "@actor", "generated_by": "page:journeys"}]}}
+  },
+  "collectibles": [
+    {"id": "m-summer-sand", "name": "the sand-in-the-shoe minute", "text": "the last minute of a summer holiday, sand still in one shoe", "page": "p-journeys"},
+    {"id": "m-deepest-puddle", "name": "the puddle minute", "text": "the deepest puddle on the way home, and boots that were exactly tall enough", "page": "p-journeys"},
+    {"id": "m-stile", "name": "the stile minute", "text": "a rest on top of a stile halfway up the hill, with the whole valley folded out below", "page": "p-journeys"},
+    {"id": "m-first-sea", "name": "the first-sea minute", "text": "the sea, seen at last from the top of the cliff path after a whole morning of walking toward it", "page": "p-journeys"},
+    {"id": "m-milk-jug", "name": "the milk-jug minute", "text": "a jug of milk carried home very carefully, and only a little of it spilled", "page": "p-journeys"},
+    {"id": "m-stepping-stones", "name": "the stepping-stone minute", "text": "the middle stepping stone, which wobbled, and the shriek, and the not falling in", "page": "p-journeys"},
+    {"id": "m-wrong-turn", "name": "the wrong-turn minute", "text": "a wrong turning into a lane full of foxgloves, and nobody minding at all", "page": "p-journeys"},
+    {"id": "m-warm-wall", "name": "the warm-wall minute", "text": "an apple eaten on a sun-warmed wall, halfway to wherever it was", "page": "p-journeys"},
+    {"id": "m-shell", "name": "the shell minute", "text": "a shell held to one ear, with the sea still inside it", "page": "p-journeys"},
+    {"id": "m-shoulders", "name": "the shoulder-ride minute", "text": "the final stretch of the way home, half asleep, carried high on someone's shoulders", "page": "p-journeys"},
+    {"id": "m-rockpool", "name": "the rockpool minute", "text": "a tiny crab in a rockpool deciding at last that the large quiet face above it was only weather", "page": "p-journeys"},
+    {"id": "m-signpost", "name": "the signpost minute", "text": "a crooked signpost pointing two ways at once, and the prettier way chosen", "page": "p-journeys"},
+    {"id": "m-stick-race", "name": "the stick-race minute", "text": "two sticks dropped from one side of a bridge, and two faces at the other rail to see whose came out first", "page": "p-journeys"},
+    {"id": "m-lit-window", "name": "the nearly-home minute", "text": "home's lit window, glimpsed through the trees at the end of a long walk", "page": "p-journeys"}
+  ]
+}

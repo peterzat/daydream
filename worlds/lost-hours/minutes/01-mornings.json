@@ -1,0 +1,29 @@
+{
+  "comment": "Book of Stray Minutes (canon section 2), page 1 of 12: mornings. Each text completes 'It was ___.' in config.collect.found_text. Bell has never seen a dawn, so this page is the one Bell would love.",
+  "pages": {
+    "p-mornings": {"title": "Morning Minutes",
+                   "reward": {"text": "The Morning Minutes page is full, and it glows the pale gold of a sky just before the sun. Bell, who has never once seen a dawn, will want to hear every one of these.",
+                              "do": [{"kind": "adjust_rel", "npc": "t-bell", "delta": 2},
+                                     {"kind": "add_fact", "id": "page-mornings",
+                                      "text": "{actor} has filled the Morning Minutes page of their Book of Stray Minutes: a whole page of small mornings, each with a sunrise somewhere in it.",
+                                      "known_by": ["t-bell"],
+                                      "spread": [{"to": ["t-mott", "t-tace"], "after_minutes": 60}]}]}}
+  },
+  "collectibles": [
+    {"id": "m-first-light", "name": "the first-light minute", "text": "the grey minute before the birds agreed it was morning", "page": "p-mornings"},
+    {"id": "m-warm-side", "name": "the warm-side minute", "text": "one more minute on the warm side of the blankets, asked for and granted", "page": "p-mornings"},
+    {"id": "m-frost-ferns", "name": "the frost-fern minute", "text": "a fingertip tracing frost ferns on the inside of a bedroom window", "page": "p-mornings"},
+    {"id": "m-dew", "name": "the dew minute", "text": "footprints across a lawn gone silver with dew, the first of the day", "page": "p-mornings"},
+    {"id": "m-doorstep", "name": "the doorstep minute", "text": "bare feet on a cold doorstep, and the whole lane only just waking up", "page": "p-mornings"},
+    {"id": "m-early-riser", "name": "the early-riser minute", "text": "that first quiet stretch when the whole house slept but you, and the morning was yours alone", "page": "p-mornings"},
+    {"id": "m-blackbird", "name": "the blackbird minute", "text": "a blackbird on the gutter practising the same four notes until it got them right", "page": "p-mornings"},
+    {"id": "m-curtains", "name": "the curtain minute", "text": "the moment the curtains were drawn back and the room filled up with yellow", "page": "p-mornings"},
+    {"id": "m-big-stretch", "name": "the stretching minute", "text": "a morning stretch so enormous it ended in a small squeak", "page": "p-mornings"},
+    {"id": "m-sunrise", "name": "the sunrise minute", "text": "the sun lifting clear of the far hills while somebody held their breath to watch", "page": "p-mornings"},
+    {"id": "m-mist", "name": "the mist minute", "text": "sixty seconds of early mist, when the far fields had simply not arrived yet", "page": "p-mornings"},
+    {"id": "m-odd-shoes", "name": "the odd-shoes minute", "text": "halfway down the stairs in shoes that did not match, and not minding one bit", "page": "p-mornings"},
+    {"id": "m-pillow-hair", "name": "the pillow-hair minute", "text": "a first sleepy look at hair that had clearly had adventures in the night", "page": "p-mornings"},
+    {"id": "m-cockerel", "name": "the cockerel minute", "text": "a cockerel who crowed once, thought better of it, and went back to sleep", "page": "p-mornings"},
+    {"id": "m-holiday-morning", "name": "the first-morning minute", "text": "early on the first morning of the holidays, with the whole day still folded up and unopened", "page": "p-mornings"}
+  ]
+}

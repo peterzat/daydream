@@ -1,0 +1,28 @@
+{
+  "comment": "Book of Stray Minutes, page 11 of 12: evenings, music, and bedtimes. The reward is a keepsake of six o'clock light, the light of the Orchard of Evenings.",
+  "pages": {
+    "p-evenings": {"title": "Evening Minutes",
+                   "reward": {"text": "A little six o'clock light spills from the finished page of Evening Minutes and stays, folded, in your hands.",
+                              "do": [{"kind": "spawn_object", "name": "fold of evening light", "location_id": "@actor",
+                                      "seed": "a small fold of six o'clock light, the colour of honey on a windowsill; wherever it is set down, that corner feels like the end of a good day",
+                                      "aliases": ["evening light", "six o'clock light", "fold of light"],
+                                      "generated_by": "page:evenings"}]}}
+  },
+  "collectibles": [
+    {"id": "m-first-lamp", "name": "the lamplighting minute", "text": "a single lamp lit in a darkening room, and the windows turning into mirrors", "page": "p-evenings"},
+    {"id": "m-crickets", "name": "the cricket minute", "text": "one cricket starting up in the long grass, and then all of them", "page": "p-evenings"},
+    {"id": "m-back-step", "name": "the back-step minute", "text": "a back step after supper, and nothing at all left to do", "page": "p-evenings"},
+    {"id": "m-warm-towel", "name": "the warm-towel minute", "text": "a towel warmed by the fire, wrapped round someone small straight out of the bath", "page": "p-evenings"},
+    {"id": "m-last-verse", "name": "the lullaby minute", "text": "a lullaby's last verse, sung slower and slower as the eyes closed", "page": "p-evenings"},
+    {"id": "m-extra-story", "name": "the extra-story minute", "text": "the extra story, pleaded for and granted, which turned out to be the longest on the shelf", "page": "p-evenings"},
+    {"id": "m-first-star", "name": "the first-star minute", "text": "the first star, and a wish made on it before anyone else could", "page": "p-evenings"},
+    {"id": "m-music-box", "name": "the music-box minute", "text": "a music box winding down, its tune growing slower and sleepier until it stopped mid-note", "page": "p-evenings"},
+    {"id": "m-stone-bottle", "name": "the warm-spot minute", "text": "cold feet finding the warm place where the stone bottle had been", "page": "p-evenings"},
+    {"id": "m-goodnights", "name": "the goodnights minute", "text": "goodnight said to every room in the house on the way up to bed", "page": "p-evenings"},
+    {"id": "m-embers", "name": "the ember minute", "text": "the embers of the fire building little towns and letting them fall", "page": "p-evenings"},
+    {"id": "m-humming", "name": "the humming minute", "text": "someone humming over the dishes in the next room, the tune coming and going", "page": "p-evenings"},
+    {"id": "m-supper", "name": "the supper minute", "text": "everyone at the supper table at once, all talking, and all of it lovely", "page": "p-evenings"},
+    {"id": "m-fiddle", "name": "the fiddle minute", "text": "a fiddle tune drifting up the lane from somewhere on a summer evening", "page": "p-evenings"},
+    {"id": "m-swifts", "name": "the swift minute", "text": "the blue minute after sunset, when the swifts came down low over the rooftops, calling", "page": "p-evenings"}
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "comment": "Book of Stray Minutes, page 9 of 12: waiting and almost-moments. The page id p-waiting is kept from the starter set; its reward is a dreamseed. The sneeze minute is the one Mott quotes in his voice sheet.",
+  "pages": {
+    "p-waiting": {"title": "Minutes of Waiting",
+                  "reward": {"text": "All the small impatiences on the Minutes of Waiting page settle, now that it is full, into one long, contented sigh. Somewhere, very faintly, someone finally sneezes. Tucked in the spine is a dreamseed.",
+                             "do": [{"kind": "spawn_template", "template": "dreamseed", "location_id": "@actor", "generated_by": "page:waiting"}]}}
+  },
+  "collectibles": [
+    {"id": "m-porch-rain", "name": "the porch minute", "text": "a porch step, a steady rain, and the drips from the gutter counted until it eased", "page": "p-waiting"},
+    {"id": "m-name-read", "name": "the name minute", "text": "the minute before a name was read out", "page": "p-waiting"},
+    {"id": "m-doorway-wave", "name": "the doorway minute", "text": "the minute in a doorway waiting for someone to turn at the corner and wave", "page": "p-waiting"},
+    {"id": "m-oven-door", "name": "the oven-door minute", "text": "the minute of not opening the oven door to look", "page": "p-waiting"},
+    {"id": "m-knock", "name": "the knock minute", "text": "the minute after a knock, before the door opened", "page": "p-waiting"},
+    {"id": "m-sneeze", "name": "the sneeze minute", "text": "the minute before a sneeze that never came", "page": "p-waiting"},
+    {"id": "m-tip-of-tongue", "name": "the tip-of-the-tongue minute", "text": "a word perched on the tip of the tongue, refusing to come one step further", "page": "p-waiting"},
+    {"id": "m-hiccups", "name": "the hiccup minute", "text": "a held breath to cure the hiccups, and waiting, and waiting, and hic", "page": "p-waiting"},
+    {"id": "m-bath-filling", "name": "the bath-filling minute", "text": "a bath taking its time to fill while the steam crept slowly up the mirror", "page": "p-waiting"},
+    {"id": "m-birthday-eve", "name": "the night-before minute", "text": "the night before a birthday, far too awake to sleep, guessing at a rustle of paper downstairs", "page": "p-waiting"},
+    {"id": "m-wet-paint", "name": "the wet-paint minute", "text": "a door freshly painted, a sign saying so, and one small finger that had to check", "page": "p-waiting"},
+    {"id": "m-almost-said", "name": "the almost-said minute", "text": "the thing you meant to say, very nearly said, and a remark about the weather instead", "page": "p-waiting"},
+    {"id": "m-nearly-landed", "name": "the nearly-landed minute", "text": "a butterfly that nearly landed on an outstretched hand, and chose a flower instead", "page": "p-waiting"},
+    {"id": "m-jelly", "name": "the jelly minute", "text": "a jelly in a bowl, not set yet, and a small face checking on it every few minutes", "page": "p-waiting"},
+    {"id": "m-egg-timer", "name": "the egg-timer minute", "text": "an egg timer's last few grains of sand, sliding through one by one", "page": "p-waiting"}
+  ]
+}

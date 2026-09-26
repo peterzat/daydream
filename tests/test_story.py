@@ -370,3 +370,29 @@ async def test_completing_a_page_grants_its_reward_once():
     assert story.pcounter(WORLD, ada, "favors") == 5
     page = next(p for p in collect.book(WORLD, ada)["pages"] if p["id"] == "p-first")
     assert page["complete"] and page["reward_text"] == "The page glows warm."
+
+
+async def test_daily_finds_favor_the_page_nearest_completion():
+    ada = player(1, "Ada", "r-green")
+    await _start(ada)
+    collect.grant(WORLD, ada, "g-rain", "r-green")   # one of p-second's three
+    assert collect.focus_page(WORLD, ada) == "p-second"
+    await say(ada, "look")
+    spawned = objects.things_where_property(WORLD, "private_to", ada)
+    pages = {collect.items(WORLD)[o.properties["collectible"]]["page"] for o in spawned}
+    assert "p-second" in pages
+
+
+async def test_a_second_dreamseed_from_another_source_is_never_dropped():
+    """Generative spawns dedup on the SAME provenance only: a page reward's
+    dreamseed arrives even while an arc's dreamseed is still carried."""
+    from daydream.skills import effects
+
+    ada = player(1, "Ada", "r-green")
+    for src in ("arc:one", "page:two", "arc:one"):
+        effects.dispatch_effects(
+            [{"kind": "spawn_template", "template": "seedling", "location_id": ada,
+              "generated_by": src}],
+            actor_id=ada, room_id="r-green", world_id=WORLD, allowed=effects.RULE_KINDS)
+    seeds = [o for o in objects.contents(ada, kind="thing") if o.name == "seedling"]
+    assert len(seeds) == 2   # one per source; the repeat of arc:one is deduped

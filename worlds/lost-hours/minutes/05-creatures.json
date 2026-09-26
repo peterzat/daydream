@@ -1,0 +1,24 @@
+{
+  "comment": "Book of Stray Minutes, page 5 of 12: small creatures. Tock (it/its, never speaks) approves with a gesture, and the page warms it to the finder.",
+  "pages": {
+    "p-creatures": {"title": "Minutes with Small Creatures",
+                    "reward": {"text": "As the last of the Minutes with Small Creatures settles onto its page, something soft winds once round your ankle and is gone before you can look down. Tock, it seems, approves.",
+                               "do": [{"kind": "adjust_rel", "npc": "t-tock", "delta": 2}]}}
+  },
+  "collectibles": [
+    {"id": "m-chosen-lap", "name": "the chosen-lap minute", "text": "a cat deciding, after long thought, that your lap would do", "page": "p-creatures"},
+    {"id": "m-snail", "name": "the snail minute", "text": "a snail crossing the garden path, and someone kneeling to wait for it", "page": "p-creatures"},
+    {"id": "m-ladybird", "name": "the ladybird minute", "text": "a ladybird walking to the very tip of a finger and opening its wings", "page": "p-creatures"},
+    {"id": "m-ducklings", "name": "the duckling minute", "text": "a line of ducklings crossing the lane, the last one running to catch up", "page": "p-creatures"},
+    {"id": "m-whole-wag", "name": "the wagging minute", "text": "a dog so glad to see someone home that its whole back half wagged", "page": "p-creatures"},
+    {"id": "m-robin", "name": "the robin minute", "text": "a robin on the handle of a garden spade, watching you dig as if it were in charge", "page": "p-creatures"},
+    {"id": "m-moth", "name": "the moth minute", "text": "a moth resting on a lampshade, its wings the colour of old paper", "page": "p-creatures"},
+    {"id": "m-frog", "name": "the frog minute", "text": "a frog sitting very still in a cupped hand, deciding whether you were a stone", "page": "p-creatures"},
+    {"id": "m-warm-egg", "name": "the warm-egg minute", "text": "a hand slipped under a grumbling hen, and an egg still warm", "page": "p-creatures"},
+    {"id": "m-bumblebee", "name": "the bumblebee minute", "text": "a bumblebee backing out of a foxglove, dusted all over with gold", "page": "p-creatures"},
+    {"id": "m-owls", "name": "the owl minute", "text": "an owl calling twice across the dark fields, and another owl answering", "page": "p-creatures"},
+    {"id": "m-kitten-string", "name": "the string minute", "text": "a kitten losing a long argument with a piece of string", "page": "p-creatures"},
+    {"id": "m-caterpillar", "name": "the caterpillar minute", "text": "a caterpillar measuring a leaf, one careful loop at a time", "page": "p-creatures"},
+    {"id": "m-velvet-nose", "name": "the velvet-nose minute", "text": "a pony's velvet nose lifting an apple from a flat, brave palm", "page": "p-creatures"}
+  ]
+}

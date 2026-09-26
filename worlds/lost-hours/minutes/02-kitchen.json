@@ -1,0 +1,24 @@
+{
+  "comment": "Book of Stray Minutes, page 2 of 12: kitchens. Linden always has the kettle on, so the page warms her to the finder. The page id p-kitchen is kept from the starter set.",
+  "pages": {
+    "p-kitchen": {"title": "Kitchen Minutes",
+                  "reward": {"text": "Your Kitchen Minutes are all gathered, and the page smells faintly of toast and warm tea. In the Waiting House, Linden's copper kettle, which never quite boils, gives one small contented whistle.",
+                             "do": [{"kind": "adjust_rel", "npc": "t-linden", "delta": 2}]}}
+  },
+  "collectibles": [
+    {"id": "m-kettle", "name": "the kettle minute", "text": "the minute spent watching a kettle that would not boil", "page": "p-kitchen"},
+    {"id": "m-toast", "name": "the toast minute", "text": "toast held to the fire on a long fork, golden on one side and a little too brave on the other", "page": "p-kitchen"},
+    {"id": "m-last-biscuit", "name": "the last-biscuit minute", "text": "two people politely not taking the last biscuit, for quite a long time", "page": "p-kitchen"},
+    {"id": "m-steam", "name": "the steam minute", "text": "a cup of tea too hot to drink and too good to leave", "page": "p-kitchen"},
+    {"id": "m-cupboard", "name": "the cupboard minute", "text": "an open cupboard, a puzzled face, and no memory at all of what it had been opened for", "page": "p-kitchen"},
+    {"id": "m-dough", "name": "the dough minute", "text": "a grandmother's floury hands showing smaller hands how to knead", "page": "p-kitchen"},
+    {"id": "m-recipe", "name": "the recipe minute", "text": "the minute someone found a recipe card in a handwriting they missed", "page": "p-kitchen"},
+    {"id": "m-washing-up", "name": "the washing-up minute", "text": "the washing-up done side by side in easy silence, each plate passed from hand to hand", "page": "p-kitchen"},
+    {"id": "m-mixing-bowl", "name": "the mixing-bowl minute", "text": "the cake spoon licked clean, and then, when nobody was looking, the bowl", "page": "p-kitchen"},
+    {"id": "m-jam-lid", "name": "the jam-lid minute", "text": "a jam-jar lid that would not turn, would not turn, and then all at once did", "page": "p-kitchen"},
+    {"id": "m-new-bread", "name": "the new-bread minute", "text": "the smell of warm bread climbing all the way to the top of the stairs", "page": "p-kitchen"},
+    {"id": "m-apple-peel", "name": "the apple-peel minute", "text": "an apple peeled in one long unbroken curl, with nobody daring to breathe until the end", "page": "p-kitchen"},
+    {"id": "m-cocoa", "name": "the cocoa minute", "text": "a skin forming on a mug of cocoa while someone finished a very long story", "page": "p-kitchen"},
+    {"id": "m-forks", "name": "the fork-side minute", "text": "a small child laying the table with great seriousness and every fork on the wrong side", "page": "p-kitchen"}
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "comment": "Book of Stray Minutes, page 6 of 12: gardens and seasons. Quill tends the Pendulum Garden, so the page warms him to the finder; a growing page grows a dreamseed.",
+  "pages": {
+    "p-garden": {"title": "Minutes of Growing Things",
+                 "reward": {"text": "Every one of the Minutes of Growing Things is in its place now, and the page smells of turned earth and tomato leaves. Tucked in the fold, where a pressed flower might be, is a dreamseed; Quill would say it has only been waiting for the right hands.",
+                            "do": [{"kind": "adjust_rel", "npc": "t-quill", "delta": 2},
+                                   {"kind": "spawn_template", "template": "dreamseed", "location_id": "@actor", "generated_by": "page:garden"}]}}
+  },
+  "collectibles": [
+    {"id": "m-bean-shoots", "name": "the bean-shoot minute", "text": "the morning the beans came up all at once, like little green question marks", "page": "p-garden"},
+    {"id": "m-dandelion-clock", "name": "the dandelion-clock minute", "text": "a dandelion clock blown to pieces, and the hours counted as they floated off", "page": "p-garden"},
+    {"id": "m-pea-pod", "name": "the pea-pod minute", "text": "a pea pod split with a thumbnail, and every pea eaten before it reached the kitchen", "page": "p-garden"},
+    {"id": "m-windfall", "name": "the windfall minute", "text": "an apple dropping in the orchard with a soft thump, and nobody there to hear it but you", "page": "p-garden"},
+    {"id": "m-leaf-pile", "name": "the leaf-pile minute", "text": "a jump into the pile of leaves someone had spent all afternoon raking", "page": "p-garden"},
+    {"id": "m-no-coat", "name": "the no-coat minute", "text": "a spring day warm enough, at last, for no coat, with every face turned up like a flower", "page": "p-garden"},
+    {"id": "m-sunflower", "name": "the sunflower minute", "text": "a measuring contest with a sunflower, which the sunflower won", "page": "p-garden"},
+    {"id": "m-worm", "name": "the digging minute", "text": "a garden fork turning over dark soil, and a worm looking up, surprised", "page": "p-garden"},
+    {"id": "m-snowdrop", "name": "the snowdrop minute", "text": "the first snowdrop of the year, found by someone kneeling in the cold to be sure", "page": "p-garden"},
+    {"id": "m-tomato-leaves", "name": "the tomato-leaf minute", "text": "the green smell of tomato leaves on your fingers at the end of a long summer day", "page": "p-garden"},
+    {"id": "m-blackberry", "name": "the blackberry minute", "text": "the best blackberry, just too far into the bramble, reached for anyway and won", "page": "p-garden"},
+    {"id": "m-seed-packet", "name": "the seed-packet minute", "text": "a paper packet shaken gently to hear whether the seeds inside were still awake", "page": "p-garden"},
+    {"id": "m-turning-leaf", "name": "the turning-leaf minute", "text": "one leaf on the lane gone gold a whole week ahead of the others", "page": "p-garden"},
+    {"id": "m-cloud-rabbit", "name": "the cloud-watching minute", "text": "a rabbit found in the clouds from flat on your back in the long grass, and then lost again", "page": "p-garden"}
+  ]
+}

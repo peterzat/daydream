@@ -170,6 +170,42 @@ def collect(actor: objects.Object, thing: objects.Object, room_id: str) -> bool:
     return True
 
 
+def focus_page(world_id: str, toon_id: str) -> str | None:
+    """The page a player is closest to finishing: the incomplete page with
+    the most found (ties to the earliest authored page)."""
+    have = found_ids(world_id, toon_id)
+    all_items = items(world_id)
+    best: tuple[int, int, str] | None = None
+    for order, pid in enumerate(pages(world_id)):
+        members = [i for i, it in all_items.items() if it.get("page") == pid]
+        found_n = sum(1 for i in members if i in have)
+        if not members or found_n == len(members):
+            continue
+        key = (-found_n, order, pid)
+        if best is None or key < best:
+            best = key
+    return best[2] if best else None
+
+
+def _daily_picks(world_id: str, toon_id: str, pool: list[str], n: int, rng) -> list[str]:
+    """Today's finds: the first from the focus page (so a page fills in about
+    a week and a half, a coffee-break cadence, instead of the two months a
+    uniform draw over 170 minutes would take), each further one a seeded
+    coin flip between the focus page and anywhere."""
+    all_items = items(world_id)
+    focus = focus_page(world_id, toon_id)
+    focus_pool = [i for i in pool if (all_items.get(i) or {}).get("page") == focus]
+    picks: list[str] = []
+    for k in range(n):
+        remaining = [i for i in pool if i not in picks]
+        fp = [i for i in focus_pool if i not in picks]
+        src = fp if fp and (k == 0 or rng.random() < 0.5) else remaining
+        if not src:
+            break
+        picks.append(rng.choice(sorted(src)))
+    return picks
+
+
 def ensure_daily(toon_id: str) -> list[str]:
     """Place today's finds for one player (idempotent per local date).
     Returns the ids of things spawned now ([] when already placed)."""
@@ -202,7 +238,7 @@ def ensure_daily(toon_id: str) -> list[str]:
         story.pset(world_id, toon_id, "collect_spawned", [])
         return []
     rng = worldstate.rng_stable(world_id, f"collect:{today}:{toon_id}")
-    picks = rng.sample(pool, n)
+    picks = _daily_picks(world_id, toon_id, pool, n, rng)
     where = rng.sample(rooms, n)
     spawned = []
     name = c.get("name") or "keepsake"

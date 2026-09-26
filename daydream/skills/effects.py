@@ -390,8 +390,13 @@ def _apply_spawn_object(
     # in the same location by name and skips. Narration is never auto-scanned;
     # an object becomes real only on an explicit spawn_object, exactly once.
     if isinstance(gen_by, str) and gen_by.strip():
+        # Keyed on the SAME provenance: a different source granting a thing
+        # of the same name (a second dreamseed from another arc or a page
+        # reward, while the first is still carried) is a new thing, never
+        # silently dropped (stray-minutes author's finding, 2026-09-26).
         for existing in objects.contents(location_id):
-            if existing.name == name.strip() and existing.properties.get("generated_by"):
+            if existing.name == name.strip() \
+                    and existing.properties.get("generated_by") == gen_by.strip():
                 return None
     proto = objects.PROTO_READABLE if eff.get("readable") else objects.PROTO_THING
     aliases = eff.get("aliases") if isinstance(eff.get("aliases"), list) else []
