@@ -588,6 +588,8 @@ async def _handle_examine(actor, room_id, dobj, iobj, args, spec) -> None:
         return
     if dobj.kind == "toon":
         appearance = dobj.properties.get("appearance_seed", "")
+        if not isinstance(appearance, str):  # an LLM set_property can store any JSON
+            appearance = ""
         parts = [p for p in (appearance, dobj.seed) if p and p.strip()]
         body = " ".join(_terminate(p) for p in parts)
         line = f"You see {dobj.name}: {body}" if body else f"You see {dobj.name}."
