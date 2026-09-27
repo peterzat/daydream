@@ -637,6 +637,7 @@ async def _handle_input(text: str, toon_id: str, conn: dict) -> dict | None:
             "slot": lp.clarify.slot,
             "dobj_id": lp.clarify.dobj_id,
             "iobj_id": lp.clarify.iobj_id,
+            "args": lp.clarify.args,
             "options": [
                 {"id": oid, "name": name} for oid, name in lp.clarify.options
             ],

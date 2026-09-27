@@ -129,3 +129,32 @@ async def test_refresh_sends_home_what_resting_players_hold(tmp_path):
     report = refresh.refresh(_envelope(tmp_path, enable))
     assert "o-oats" in report["sent_home"]
     assert objects.get("o-oats").location_id == "r-lane"
+
+
+async def test_refresh_keeps_a_grown_exit_the_envelope_now_authors(tmp_path):
+    """A way play grew keeps its direction when the envelope later authors
+    one there (codereview 2026-09-27): the grown room is never orphaned, the
+    rest of the change lands, and the refresh reports the conflict."""
+    objects.spawn(WORLD, "room", "Moss Stair", None, object_id="r-moss",
+                  properties={"title": "Moss Stair", "exits": {"west": "r-lane"},
+                              "grown": {"phrase": "a mossy stair"}})
+    lane = objects.get("r-lane")
+    objects.set_property("r-lane", "exits", {**lane.properties["exits"], "east": "r-moss"})
+
+    def author_east(env):
+        rooms = {r["id"]: r for r in env["rooms"]}
+        rooms["r-lane"]["exits"]["east"] = "r-mill"
+        rooms["r-mill"]["exits"]["west"] = "r-lane"
+
+    report = refresh.refresh(_envelope(tmp_path, author_east))
+    assert objects.get("r-lane").properties["exits"]["east"] == "r-moss"
+    assert objects.get("r-mill").properties["exits"]["west"] == "r-lane"
+    assert report["exit_conflicts"] == {"r-lane": ["east -> r-moss (envelope: r-mill)"]}
+
+
+async def test_refresh_refuses_a_major_version_change(tmp_path):
+    """A MAJOR mismatch is the boot gate's refusal: a refresh never stamps
+    past it, and names world reset instead."""
+    db.get_conn().execute("UPDATE worlds SET world_version = '99.0' WHERE id = ?", (WORLD,))
+    with pytest.raises(SystemExit, match="world reset"):
+        refresh.refresh(_envelope(tmp_path, lambda env: None))

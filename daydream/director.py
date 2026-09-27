@@ -32,6 +32,7 @@ keyed on date + phase + slot) stands.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 
@@ -41,6 +42,9 @@ logger = logging.getLogger(__name__)
 
 FIRED_PREFIX = "storylet:"
 FIRST_DONE = "director:first_arrival_done"
+# How long one ranking may take, arbiter queue included: the background slot
+# waits behind steady player traffic, and the phase work must not wait on it.
+RANK_WAIT_SECONDS = 30.0
 
 
 def llm_enabled() -> bool:
@@ -255,12 +259,12 @@ async def _rank(world_id: str, kind: str, options: list[tuple[str, str]],
     user = (_context(world_id, phase) + f"\n\nReady {kind}s:\n"
             + "\n".join(f"- {i}: {summ}" for i, summ in options))
     try:
-        result = await client.acompletion_json(
+        result = await asyncio.wait_for(client.acompletion_json(
             system=_SYSTEM, user=user, purpose="director", gate="background",
             temperature=0.7, max_tokens=40, timeout=20.0, response_format=schema,
-        )
-    except client.LLMUnavailable:
-        return None
+        ), RANK_WAIT_SECONDS)
+    except (client.LLMUnavailable, asyncio.TimeoutError):
+        return None  # the seeded choice stands
     choice = result.get("choice") if isinstance(result, dict) else None
     return choice if choice in ids else None
 

@@ -355,8 +355,15 @@ def _fast_path(actor_id: str, text: str, room: rooms.Room | None):
     if rest and spec.free_text:
         return None
     # "take X from Y" is taking X; "drop X in/into Y" is putting it there.
-    if verb == "take" and " from " in f" {rest.lower()} ":
-        rest = rest[:rest.lower().find(" from ")].strip() or rest
+    # "take from the box" names nothing to take; a thing whose own name
+    # holds "from" grounds whole before the split.
+    if verb == "take" and rest:
+        low = rest.lower()
+        idx = low.find(" from ")
+        if low.split()[0] == "from":
+            rest = ""
+        elif idx > 0 and not _ground(actor_id, rest):
+            rest = rest[:idx].strip()
     if verb == "drop" and re.search(r"\s(in|into|inside)\s", rest.lower()):
         put = _verb_by_word(world_id, "put")
         if put is not None:
@@ -444,10 +451,10 @@ def _say_fast_path(actor_id: str, rest: str):
     words = rest.split()
     if words and words[0].lower() == "to":
         who, k = _toon_prefix(actor_id, words[1:])
+        text = _LEAD_PUNCT.sub("", " ".join(words[1 + k:]))
         if isinstance(who, list):
-            return _clarify("talk", "dobj", " ".join(words[1:1 + k]), who)
+            return _clarify("talk", "dobj", " ".join(words[1:1 + k]), who, args=text)
         if who is not None:
-            text = _LEAD_PUNCT.sub("", " ".join(words[1 + k:]))
             return [Parse("talk", dobj_id=who.id, args=text)]
     low = rest.lower()
     idx = low.rfind(" to ")
@@ -470,11 +477,11 @@ def _talk_fast_path(actor_id: str, rest: str):
     who, k = _toon_prefix(actor_id, words)
     if who is None:
         return None
-    if isinstance(who, list):
-        return _clarify("talk", "dobj", " ".join(words[:k]), who)
     text = _LEAD_PUNCT.sub("", " ".join(words[k:]))
     if text.lower().startswith("about "):
         text = text[6:].strip()
+    if isinstance(who, list):
+        return _clarify("talk", "dobj", " ".join(words[:k]), who, args=text or "hello")
     return [Parse("talk", dobj_id=who.id, args=text or "hello")]
 
 
@@ -501,7 +508,7 @@ def _ask_fast_path(actor_id: str, rest: str):
     if len(matches) == 1:
         return [Parse("ask", dobj_id=matches[0].id, args=topic.strip())]
     if len(matches) > 1:
-        return _clarify("ask", "dobj", who, matches)
+        return _clarify("ask", "dobj", who, matches, args=topic.strip())
     return None
 
 
@@ -535,7 +542,7 @@ def _ground(actor_id: str, name: str) -> list[objects.Object]:
     return objects.find_all_in_scope_by_name(actor_id, needle)
 
 
-def _clarify(verb, slot, name, matches, iobj_id=None, dobj_hint=None):
+def _clarify(verb, slot, name, matches, iobj_id=None, dobj_hint=None, args=""):
     options = tuple((o.id, o.name) for o in matches[:6])
     dobj_id = None
     if dobj_hint is not None:
@@ -544,7 +551,7 @@ def _clarify(verb, slot, name, matches, iobj_id=None, dobj_hint=None):
         if len(dobj_matches) == 1:
             dobj_id = dobj_matches[0].id
     return Clarify(verb=verb, slot=slot, name=_strip_article(name).lower(),
-                   options=options, dobj_id=dobj_id, iobj_id=iobj_id)
+                   options=options, args=args, dobj_id=dobj_id, iobj_id=iobj_id)
 
 
 def _split_prep(spec: verbs.VerbSpec, rest: str) -> tuple[str, str | None]:
@@ -665,13 +672,15 @@ def _all_candidates(
         if room_id is None:
             return []
         pool: list[objects.Object] = []
-        for o in objects.contents(room_id, kind="thing"):
+        # Another player's private finds are not here for this actor.
+        for o in objects.contents_for(room_id, actor_id, kind="thing"):
             pool.append(o)
             # ALL reaches one level into see-through room containers and
             # surfaces (the sack on the kitchen table), matching the
             # original's behavior; it never empties a container it is
             # about to take.
-            pool.extend(objects.visible_contents(o))
+            pool.extend(c for c in objects.visible_contents(o)
+                        if objects.visible_to(c, actor_id))
         return [o for o in pool if "take" in objects.verbs_for(o)]
     carried = objects.contents(actor_id, kind="thing")
     if verb == "put" and iobj_id is not None:

@@ -649,7 +649,7 @@ cmd_dream() {
         cmd_up
         return 1
     fi
-    "$VENV_PY" -m daydream.dream mark --db "$LIVE_DB"
+    "$VENV_PY" -m daydream.dream mark --db "$LIVE_DB" --patch "$patch"
     echo "==> dream install: waking the village"
     cmd_up
 }

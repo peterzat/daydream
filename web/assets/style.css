@@ -174,7 +174,9 @@ body::before {
 
 /* Room description, rendered from the snapshot: full on first entry, a short
  * "you return to ..." line on re-entry. It is the drop-capped lead paragraph. */
-.room-desc { margin: 0 0 .7em; color: var(--ink); }
+/* flow-root: a one-line description still holds its drop cap, so the cap
+ * never floats down into the log beneath it. */
+.room-desc { margin: 0 0 .7em; color: var(--ink); display: flow-root; }
 .room-desc:empty { display: none; }
 .dropcap::first-letter {
   float: left; font-family: var(--serif); font-weight: 700;
@@ -287,6 +289,7 @@ body::before {
   border-bottom: 1px dotted var(--sage);
 }
 .satchel-link:hover { color: var(--sage-deep); }
+.satchel-link.hidden { display: none; }
 
 /* ---------- action ribbon ---------- */
 .ribbon-wrap { margin-top: 12px; }

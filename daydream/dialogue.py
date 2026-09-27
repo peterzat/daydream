@@ -383,8 +383,11 @@ def _dampen_pet_names(npc: objects.Object, say: str, recent: list[str]) -> str:
 async def talk(actor: objects.Object, npc: objects.Object, text: str, room_id: str) -> bool:
     world_id = npc.world_id
     text = (text or "").strip() or "Hello."
+    # Failure lines are the talker's, like the replies (private for a player).
+    to_actor = actor.id if actor.is_player else None
     if safety.first_banned(text) is not None:
-        events.append("system", None, "narrate", {"text": _BANNED_FALLBACK}, room_id=room_id)
+        events.append("system", None, "narrate", {"text": _BANNED_FALLBACK},
+                      room_id=room_id, recipient_id=to_actor)
         return False
     beats = story.open_beats_for(world_id, npc.id, actor.id)
     system, user, ids = build_prompt(actor, npc, text, room_id, beats)
@@ -414,10 +417,11 @@ async def talk(actor: objects.Object, npc: objects.Object, text: str, room_id: s
     if not candidates:
         if all(isinstance(r, BaseException) for r in results):
             events.append("system", None, "narrate", {"text": llm_client.FOGGY_TEXT},
-                          room_id=room_id)
+                          room_id=room_id, recipient_id=to_actor)
         else:
             events.append("system", None, "narrate",
-                          {"text": refusal or _BANNED_FALLBACK}, room_id=room_id)
+                          {"text": refusal or _BANNED_FALLBACK}, room_id=room_id,
+                          recipient_id=to_actor)
         return False
     said = recent_lines(world_id, npc.id)
     candidates.sort(key=lambda c: score(c[0], npc.name, pkey, openers, said[-3:]))

@@ -139,7 +139,8 @@ async def create_slot(slot: int, request: Request) -> dict:
     Body JSON: `{"name": str, "appearance_seed": str}`. Returns the
     created toon. Errors:
     - 400 missing / non-string / whitespace-only `name` or
-      `appearance_seed`; `appearance_seed` longer than
+      `appearance_seed`; `name` longer than toons.MAX_NAME_CHARS, not one
+      printable line, or tripping the banlist; `appearance_seed` longer than
       MAX_APPEARANCE_SEED_CHARS or tripping the WHIMSY input banlist.
     - 404 slot not in 1..5.
     - 409 slot already populated by an existing toon (claim or kick
@@ -158,6 +159,11 @@ async def create_slot(slot: int, request: Request) -> dict:
     appearance = body.get("appearance_seed")
     if not isinstance(name, str) or not name.strip():
         raise HTTPException(status_code=400, detail="name must be a non-empty string")
+    if len(name.strip()) > toons.MAX_NAME_CHARS or not name.strip().isprintable():
+        raise HTTPException(status_code=400, detail=(
+            f"name must be at most {toons.MAX_NAME_CHARS} characters on one line"))
+    if safety.first_banned(name) is not None:
+        raise HTTPException(status_code=400, detail="name doesn't fit the dream's tone")
     if not isinstance(appearance, str) or not appearance.strip():
         raise HTTPException(
             status_code=400, detail="appearance_seed must be a non-empty string"

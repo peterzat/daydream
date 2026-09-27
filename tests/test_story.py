@@ -206,6 +206,24 @@ async def test_llm_ranking_uses_the_background_class(monkeypatch):
     assert picks["event"] is None  # out-of-set -> treated as an outage
 
 
+async def test_a_ranking_stuck_behind_player_traffic_times_out_to_the_seeded_choice(monkeypatch):
+    """The background slot can wait indefinitely behind steady player calls;
+    the dusk work never waits on it (codereview 2026-09-27)."""
+    import asyncio
+
+    ada = player(1, "Ada", "r-green")
+    await _start(ada)
+
+    async def stuck(**kw):
+        await asyncio.sleep(5)
+        return {"choice": "owl"}
+
+    monkeypatch.setattr("daydream.llm.client.acompletion_json", stuck)
+    monkeypatch.setattr(director, "RANK_WAIT_SECONDS", 0.05)
+    picks = await asyncio.wait_for(director.llm_picks(WORLD, "2026-10-01", "night"), 2)
+    assert picks["event"] is None  # the seeded choice stands
+
+
 # ---- arcs, beats, endings, ask (criteria 2, 6, 15) --------------------------------
 
 

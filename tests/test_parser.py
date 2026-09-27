@@ -282,3 +282,63 @@ async def test_outage_does_not_break_fast_path(monkeypatch):
     objects.move("t-wren", "r-meadow")
     p = await parser.parse("t-wren", "north")
     assert p.verb == "go" and p.error is None
+
+
+# ---- codereview 2026-09-27 ------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_take_all_leaves_another_players_private_find(monkeypatch):
+    """"take all" never reaches a thing private to someone else (it would
+    otherwise refuse by name and leak the hidden find)."""
+    spy = _mock_llm(monkeypatch, {"verb": "none"})
+    mine = objects.spawn("w-bunny", "thing", "brass minute", "r-forge",
+                         prototype_id=objects.PROTO_THING, properties={"private_to": "t-wren"})
+    theirs = objects.spawn("w-bunny", "thing", "silver minute", "r-forge",
+                           prototype_id=objects.PROTO_THING, properties={"private_to": "t-rook"})
+    lp = await parser.parse_line("t-wren", "take all")
+    ids = [c.dobj_id for c in lp.commands]
+    assert mine.id in ids and theirs.id not in ids
+    assert spy.await_count == 0
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("text,verb,args", [
+    ("talk to moss: the bees are back", "talk", "the bees are back"),
+    ("say to moss: good morning", "talk", "good morning"),
+    ("ask moss about the lanterns", "ask", "the lanterns"),
+])
+async def test_a_clarify_keeps_the_players_words(monkeypatch, text, verb, args):
+    """Two toons answer to one name: the question carries what was said, so
+    the answer (typed or clicked) completes the whole command."""
+    spy = _mock_llm(monkeypatch, {"verb": "none"})
+    objects.spawn("w-bunny", "toon", "elder moss", "r-forge",
+                  prototype_id=objects.PROTO_NPC, aliases=["moss"])
+    young = objects.spawn("w-bunny", "toon", "young moss", "r-forge",
+                          prototype_id=objects.PROTO_NPC, aliases=["moss"])
+    lp = await parser.parse_line("t-wren", text)
+    assert lp.clarify is not None
+    assert (lp.clarify.verb, lp.clarify.args) == (verb, args)
+    answered = await parser.parse_line("t-wren", "the young one", pending=lp.clarify)
+    assert [(c.verb, c.dobj_id, c.args) for c in answered.commands] == [(verb, young.id, args)]
+    assert spy.await_count == 0
+
+
+@pytest.mark.asyncio
+async def test_take_from_a_container_naming_nothing_asks_what(monkeypatch):
+    """"take from the anvil" names nothing to take (it once read back "you
+    don't see the from the anvi here")."""
+    spy = _mock_llm(monkeypatch, {"verb": "none"})
+    p = await parser.parse("t-wren", "take from the anvil")
+    assert (p.verb, p.dobj_id, p.dobj_name) == ("take", None, None)
+    spy.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_a_thing_whose_name_holds_from_grounds_whole(monkeypatch):
+    spy = _mock_llm(monkeypatch, {"verb": "none"})
+    letter = objects.spawn("w-bunny", "thing", "letter from home", "r-forge",
+                           prototype_id=objects.PROTO_THING)
+    p = await parser.parse("t-wren", "take the letter from home")
+    assert (p.verb, p.dobj_id) == ("take", letter.id)
+    spy.assert_not_called()

@@ -94,7 +94,8 @@ def fresh_envelope(envelope_path: Path, world_id: str) -> dict:
     return env
 
 
-def _merge_props(live: dict, fresh: dict, played: set[str]) -> dict:
+def _merge_props(live: dict, fresh: dict, played: set[str],
+                 authored_rooms: set | None = None, conflicts: list | None = None) -> dict:
     keep = RUNTIME_KEYS | played
     merged = dict(live)
     for k, v in fresh.items():
@@ -107,6 +108,13 @@ def _merge_props(live: dict, fresh: dict, played: set[str]) -> dict:
     if isinstance(lx, dict) or isinstance(fx, dict):
         ex = dict(fx or {})
         for d, to in (lx or {}).items():
+            if (ex.get(d, to) != to and authored_rooms is not None
+                    and isinstance(to, str) and to not in authored_rooms):
+                # A way play grew (or a dream added) keeps its direction: an
+                # envelope exit there would orphan the room it leads to.
+                if conflicts is not None:
+                    conflicts.append(f"{d} -> {to} (envelope: {ex[d]})")
+                ex[d] = to
             ex.setdefault(d, to)
         merged["exits"] = ex
     ld, fd = live.get("description_cached"), fresh.get("description_cached")
@@ -128,7 +136,17 @@ def refresh(envelope_path: Path, *, check: bool = False) -> dict:
 
     conn = db.get_conn()
     world_id = dream._live_world_id()
+    # A MAJOR mismatch is the boot gate's refusal; a refresh never stamps past it.
+    from daydream import version
+    stamp = conn.execute("SELECT world_version FROM worlds WHERE id = ?", (world_id,)).fetchone()
+    live_major, _ = version.parse_version(stamp[0] if stamp else None)
+    if live_major and live_major != version.parse_version(version.WORLD_VERSION)[0]:
+        raise SystemExit(f"live world {world_id} is version {stamp[0]}, but this code is "
+                         f"{version.WORLD_VERSION}: a MAJOR change cannot be refreshed "
+                         f"forward. Run 'bin/game world reset'.")
     env = fresh_envelope(envelope_path, world_id)
+    authored_rooms = {r.get("id") for r in json.loads(envelope_path.read_text()).get("rooms") or []
+                      if isinstance(r, dict)}
     with tempfile.TemporaryDirectory() as tmp:
         scratch = Path(tmp) / "fresh.db"
         bootstrap.load_world("refresh", copy.deepcopy(env), scratch, force=True)
@@ -147,7 +165,7 @@ def refresh(envelope_path: Path, *, check: bool = False) -> dict:
     played = _played_keys(conn)
     renamed = _renamed(conn)
     report = {"world": world_id, "updated": [], "inserted": [], "kept_keys": {},
-              "defs": [], "at": worldclock.iso(), "check": check}
+              "exit_conflicts": {}, "defs": [], "at": worldclock.iso(), "check": check}
     conn.execute("BEGIN")
     try:
         live_ids = {r[0] for r in conn.execute(
@@ -157,7 +175,11 @@ def refresh(envelope_path: Path, *, check: bool = False) -> dict:
             fprops = json.loads(row["properties_json"] or "{}")
             if row["id"] in live_ids:
                 live = objects.get(row["id"])
-                merged = _merge_props(live.properties, fprops, played.get(row["id"], set()))
+                conflicts: list = []
+                merged = _merge_props(live.properties, fprops, played.get(row["id"], set()),
+                                      authored_rooms, conflicts)
+                if conflicts:
+                    report["exit_conflicts"][row["id"]] = conflicts
                 name, aliases = live.name, live.aliases
                 if row["id"] not in renamed:
                     name, aliases = row["name"], json.loads(row["aliases_json"] or "[]")
@@ -257,6 +279,8 @@ def main(argv: list[str] | None = None) -> int:
         print("  sent home from resting players: " + ", ".join(report["sent_home"]))
     if report["defs"]:
         print("  defs: " + ", ".join(report["defs"]))
+    for k, v in sorted(report["exit_conflicts"].items()):
+        print(f"  kept a grown or dreamed exit on {k}: " + "; ".join(v))
     held = {k: v for k, v in report["kept_keys"].items() if v}
     if held:
         print("  kept from play: " + "; ".join(f"{k} ({', '.join(v)})" for k, v in sorted(held.items())))

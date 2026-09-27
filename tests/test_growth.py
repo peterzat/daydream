@@ -852,6 +852,28 @@ def test_never_words_reject_a_composition_that_breaks_canon():
 
 
 @pytest.mark.asyncio
+async def test_a_never_word_in_the_vision_is_refused_before_any_call(monkeypatch):
+    """A phrase naming a canon-breaker would only fail after two calls
+    (codereview 2026-09-27): the gate turns it away first, gently."""
+    spy = _mock_llm(monkeypatch, dict(VALID_COMPOSITION))
+    seed = _seed(growth_block=dict(GROWTH_BLOCK, never_words=["bakery"]))
+    await _plant(seed, "a warm Bakery under the stair")
+    assert spy.call_count == 0
+    assert _last_narrate() == growth._NOT_THIS_DREAM
+    _assert_nothing_grew(seed.id)
+
+
+def test_a_capitalized_never_word_matches_only_as_a_name():
+    """A capitalized never_word is a name the gardener must not write, matched
+    case-sensitively: the everyday word it spells stays usable."""
+    g = dict(GROWTH_BLOCK, never_words=["Wend"])
+    verb = dict(VALID_COMPOSITION, description=VALID_COMPOSITION["description"] + " Paths wend downward.")
+    name = dict(VALID_COMPOSITION, description=VALID_COMPOSITION["description"] + " Wend once slept here.")
+    assert growth.validate_growth_output(verb, g) is not None
+    assert growth.validate_growth_output(name, g) is None
+
+
+@pytest.mark.asyncio
 async def test_empty_vision_adds_the_authored_hint_for_the_player(monkeypatch):
     """`question_hint` tells the player how to answer (playtest 2026-09-26);
     the gardener prompt quotes only the bare question."""

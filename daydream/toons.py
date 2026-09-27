@@ -10,6 +10,11 @@ from dataclasses import dataclass
 
 from daydream import db, objects
 
+# A player's name reaches other players' NPC prompts (gossip facts, scope
+# lists), so it is short and one line: checked at create (api/slots.py) and
+# truncated wherever it is baked into stored text (knowledge.py).
+MAX_NAME_CHARS = 24
+
 
 @dataclass(frozen=True)
 class Toon:

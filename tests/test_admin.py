@@ -610,3 +610,19 @@ def test_verify_refuses_without_live_db(tmp_path, monkeypatch, capsys):
     rc = admin.main(["verify"])
     assert rc == 2
     assert "no live DB" in capsys.readouterr().err
+
+
+def test_delete_cascades_inputs(live_world):
+    """Players' raw typed lines (migration 016, no FK) go with their world
+    (codereview 2026-09-27)."""
+    from daydream import inputs
+
+    inputs.record("t-wren", "text", text="hello there")
+    conn = db.get_conn()
+    assert conn.execute(
+        "SELECT COUNT(*) FROM inputs WHERE world_id = 'w-bunny'"
+    ).fetchone()[0] == 1
+    assert admin.main(["delete", "w-bunny", "--yes"]) == 0
+    assert conn.execute(
+        "SELECT COUNT(*) FROM inputs WHERE world_id = 'w-bunny'"
+    ).fetchone()[0] == 0

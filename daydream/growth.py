@@ -89,6 +89,8 @@ _CAP_REACHED = "The dream holds all the new places it can for now; let them sett
 _NO_DIRECTION = "Every way out of this place is already taken; the seed has nowhere to open."
 _PHRASE_TOO_LONG = "The seed trembles under so many words; hold a smaller vision."
 _OFF_TONE = "The seed stirs, but the dream won't hold that shape."
+_NOT_THIS_DREAM = ("The seed turns that vision over and lets it go; nothing of "
+                   "that kind grows in this dream. Try another.")
 _WONT_HOLD_YET = "The seed stirs, but the dream won't hold that shape yet."
 _FOGGY = client.FOGGY_TEXT
 _HUSK_DEFAULT = "a spent dreamseed, its light gone soft; something of it lives on in this place"
@@ -217,6 +219,19 @@ NEAR_COPY_OVERLAP = 0.6
 _WORD = re.compile(r"[a-z']+")
 
 
+def _never_word_hit(growth: dict, text: str) -> str | None:
+    """The first of the seed's `never_words` in `text`, or None. A
+    capitalized entry is a proper noun and matches case-sensitively (a name,
+    never the everyday word it spells); a lowercase one matches any case."""
+    for w in growth.get("never_words") or []:
+        if not (isinstance(w, str) and w.strip()):
+            continue
+        w = w.strip()
+        if re.search(rf"\b{re.escape(w)}\b", text, 0 if w[0].isupper() else re.I):
+            return w
+    return None
+
+
 def _overlap(text: str, exemplar: str) -> float:
     """The share of `text`'s distinct words that also appear in `exemplar`."""
     words = set(_WORD.findall((text or "").lower()))
@@ -269,10 +284,8 @@ def validate_growth_output(result: object, growth: dict) -> dict | None:
         return None
     # The world's own canon words it must never introduce (a world with no
     # bakery never grows a baker's note: playtest 2026-09-26).
-    for w in growth.get("never_words") or []:
-        if isinstance(w, str) and w.strip() and re.search(
-                rf"\b{re.escape(w.strip())}\b", all_text, re.I):
-            return None
+    if _never_word_hit(growth, all_text) is not None:
+        return None
     # Anti-copy tripwire: the composition must not BE an exemplar. Exact
     # normalized match on any exemplar's title / seed / description; the
     # softer "how distinct is it" measure lives in the tier_long probe.
@@ -485,6 +498,10 @@ async def execute_plant(
         return False
     if safety.first_banned(phrase) is not None:
         _narrate(room_id, _OFF_TONE)
+        return False
+    if _never_word_hit(growth, phrase) is not None:
+        # The composition would be rejected for it anyway (after two calls).
+        _narrate(room_id, _NOT_THIS_DREAM)
         return False
 
     # ---- compose: one LLM call (a second only if the first is rejected) ----

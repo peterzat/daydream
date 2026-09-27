@@ -171,8 +171,16 @@ def _sanitize_llm_effect(
     - move_object: both the object and the destination must be in the
       actor's scope (the room, its contents, the actor's inventory).
     - set_mood: the actor itself, or a non-player toon standing in the
-      acting room (never another player)."""
+      acting room (never another player).
+    - narrate: reduced to `text` (the only field the output banlist scans),
+      plus `to` when it is "@actor"; `variants`, `key`, `others`, `room`, and
+      any other `to` are dropped."""
     kind = eff.get("kind")
+    if kind == "narrate":
+        clean = {"kind": "narrate", "text": eff.get("text")}
+        if eff.get("to") == "@actor":
+            clean["to"] = "@actor"
+        return clean
     if kind in ("spawn_object", "add_item"):
         clean = {k: v for k, v in eff.items() if k in _LLM_SPAWN_FIELDS}
         loc = clean.get("location_id", room_id)

@@ -64,3 +64,40 @@ def test_input_history_and_topic_overflow():
 def test_phones_never_scroll_sideways():
     phone = CSS[CSS.index("@media (max-width: 640px) {"):]
     assert "overflow-x: hidden" in phone.split("}")[0] + phone.split("}")[1]
+
+
+# ---- codereview 2026-09-27 ------------------------------------------------
+
+
+def test_the_drop_cap_stays_in_its_paragraph_and_a_hidden_book_link_hides():
+    assert re.search(r"\.room-desc \{[^}]*display: flow-root", CSS)
+    assert ".satchel-link.hidden { display: none; }" in CSS
+
+
+def test_a_slept_note_survives_the_redeploy_reload():
+    reload_branch = JS.split("if (triggerUpdateReload()) {")[1][:300]
+    assert "stashSleptNote(snap.while_you_slept)" in reload_branch
+    assert "else if (carriedNote) showSleptPage(carriedNote);" in JS
+
+
+def test_the_picker_clears_every_story_surface():
+    body = JS.split("function clearSceneAndLog()")[1].split("\nfunction ")[0]
+    for call in ("renderTopics([])", "renderFolio(null)", "lastBook = null", "closeBook()",
+                 'getElementById("book-toggle").classList.add("hidden")',
+                 'getElementById("slept-panel").classList.add("hidden")'):
+        assert call in body, call
+
+
+def test_a_same_room_snapshot_keeps_a_scrolled_up_reader_in_place():
+    assert "snap.room.id === lastArrivalRoomId" in JS
+    assert "for (const [el, top] of keptScroll) el.scrollTop = top;" in JS
+
+
+def test_down_never_erases_a_half_typed_line():
+    assert 'if (ev.key === "ArrowDown" && !browsing) return;' in JS
+    assert "historyDraft = inp.value" in JS
+
+
+def test_a_clarify_click_carries_the_typed_words():
+    assert 'sendCommand(c.verb, opt.id, c.args || "", c.iobj_id)' in JS
+    assert 'sendCommand(c.verb, c.dobj_id, c.args || "", opt.id)' in JS

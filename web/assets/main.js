@@ -122,7 +122,11 @@ function renderSnapshot(snap) {
     (snap.build && snap.build !== loadedBuild) ||
     majorOf(snap.world_version) !== majorOf(loadedWorldVersion)
   ) {
-    if (triggerUpdateReload()) return; // reloading into fresh assets; stop here
+    if (triggerUpdateReload()) {
+      // The server marked this snapshot's note seen: carry it across the reload.
+      if (snap.while_you_slept) stashSleptNote(snap.while_you_slept);
+      return; // reloading into fresh assets; stop here
+    }
     // Guarded against a reload loop: adopt the new baseline and render
     // best-effort so the tab isn't frozen on the stale build.
     loadedBuild = snap.build || loadedBuild;
@@ -198,9 +202,17 @@ function renderSnapshot(snap) {
   }
   // A dream turned over while you were away: its note rides exactly one
   // snapshot, so show it now as a dismissible leaf.
+  const carriedNote = takeSleptNote(); // one carried across a redeploy reload
   if (snap.while_you_slept) showSleptPage(snap.while_you_slept);
+  else if (carriedNote) showSleptPage(carriedNote);
   // Re-hydrate the chat from the snapshot's recent events.
   const chat = document.getElementById("chat");
+  // A reader scrolled up in this same room keeps their place through the
+  // re-render; only one already at the bottom follows the newest line.
+  const sameRoom = !!snap.room && snap.room.id === lastArrivalRoomId;
+  const keptScroll = [chat, chat.closest(".prose")]
+    .filter((el) => sameRoom && el && el.scrollHeight - el.scrollTop - el.clientHeight > 8)
+    .map((el) => [el, el.scrollTop]);
   clearPending();
   chat.innerHTML = "";
   lastSeq = 0; // allow snapshot replays to render
@@ -245,6 +257,7 @@ function renderSnapshot(snap) {
     chat.appendChild(div);
     pinLog();
   }
+  for (const [el, top] of keptScroll) el.scrollTop = top;
   if (arrivalRoomId !== lastArrivalRoomId) requestAnimationFrame(showRoomTop);
   lastArrivalRoomId = arrivalRoomId;
   // Verb bar: Examine / Take / Drop / Talk. Click a verb to stage it, then
@@ -482,6 +495,12 @@ function clearSceneAndLog() {
   renderEndMarker();
   closeEndingPage();
   journalBeatShown = false; // the next toon entry may show its own beat
+  renderTopics([]);
+  renderFolio(null);
+  lastBook = null; // the book, like the note, belongs to the toon that left
+  document.getElementById("book-toggle").classList.add("hidden");
+  closeBook();
+  document.getElementById("slept-panel").classList.add("hidden");
 }
 
 function applyVerbGating() {
@@ -845,9 +864,9 @@ function renderClarify(c) {
     btn.textContent = opt.name;
     btn.onclick = () => {
       if (c.slot === "iobj") {
-        sendCommand(c.verb, c.dobj_id, "", opt.id);
+        sendCommand(c.verb, c.dobj_id, c.args || "", opt.id);
       } else {
-        sendCommand(c.verb, opt.id, "", c.iobj_id);
+        sendCommand(c.verb, opt.id, c.args || "", c.iobj_id);
       }
       div.remove();
     };
@@ -1000,6 +1019,7 @@ function escape(s) {
 // What you typed, for Up/Down recall (as in any text game), this tab only.
 const inputHistory = [];
 let historyPos = 0;
+let historyDraft = ""; // the half-typed line, kept while you browse history
 
 document.getElementById("input-form").addEventListener("submit", (ev) => {
   ev.preventDefault();
@@ -1017,11 +1037,14 @@ document.getElementById("input-form").addEventListener("submit", (ev) => {
 document.getElementById("input-text").addEventListener("keydown", (ev) => {
   if (ev.key !== "ArrowUp" && ev.key !== "ArrowDown") return;
   if (!inputHistory.length) return;
+  const browsing = historyPos < inputHistory.length;
+  if (ev.key === "ArrowDown" && !browsing) return; // never erases a half-typed line
   ev.preventDefault();
+  const inp = ev.target;
+  if (!browsing) historyDraft = inp.value;
   historyPos += ev.key === "ArrowUp" ? -1 : 1;
   historyPos = Math.max(0, Math.min(inputHistory.length, historyPos));
-  const inp = ev.target;
-  inp.value = inputHistory[historyPos] || "";
+  inp.value = historyPos < inputHistory.length ? inputHistory[historyPos] : historyDraft;
   inp.setSelectionRange(inp.value.length, inp.value.length);
 });
 
@@ -1100,6 +1123,22 @@ function renderBook(book) {
 }
 
 // ---- while you slept ------------------------------------------------------
+const SLEPT_KEY = "dd-slept-note"; // a note that arrived on a reloading snapshot
+
+function stashSleptNote(note) {
+  try { sessionStorage.setItem(SLEPT_KEY, JSON.stringify(note)); } catch (e) { /* best effort */ }
+}
+
+function takeSleptNote() {
+  try {
+    const raw = sessionStorage.getItem(SLEPT_KEY);
+    sessionStorage.removeItem(SLEPT_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch (e) {
+    return null;
+  }
+}
+
 function showSleptPage(note) {
   document.getElementById("slept-title").textContent = note.title || "While you slept";
   document.getElementById("slept-text").textContent = note.text || "";

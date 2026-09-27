@@ -144,6 +144,21 @@ async def test_outage_is_foggy_and_changes_nothing(monkeypatch):
     assert story.rel(WORLD, "t-hob", ada) == 0
 
 
+async def test_failure_lines_reach_only_the_player_who_talked(monkeypatch):
+    """A foggy or refused talk is the talker's, like a reply (codereview
+    2026-09-27): nobody else in the room reads it."""
+    from daydream.llm import client
+
+    ada = player(1, "Ada", "r-green")
+    _mock(monkeypatch, client.LLMUnavailable("down"))
+    before = events.max_seq()
+    await talk(ada, "t-hob", "hello")
+    await talk(ada, "t-hob", "a grimdark hello")
+    told = [e for e in events.fetch_since(before) if e.kind == "narrate"]
+    assert {e.payload["text"] for e in told} == {client.FOGGY_TEXT, dlg._BANNED_FALLBACK}
+    assert all(e.recipient_id == ada for e in told)
+
+
 async def test_gossip_reaches_another_npcs_dialogue_context_on_schedule(monkeypatch):
     """Criterion 7: after Ada gives something to Wynn, Hob's dialogue
     context names Ada's deed after the gossip interval and not before."""

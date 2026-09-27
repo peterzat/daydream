@@ -81,8 +81,10 @@ player.
 
 Dreamseed growth boundaries (the `dreamseed` template) also take
 `never_words` (canon-breakers the gardener must never write; a composition
-with one is rejected, seed kept) and `question_hint` (how to answer, added
-to the question when a player plants with no words).
+with one is rejected, seed kept, and a planted phrase with one is turned
+away before any model call; a capitalized entry is a name and matches only
+as written, a lowercase one matches any case) and `question_hint` (how to
+answer, added to the question when a player plants with no words).
 
 Changing authored content after launch: edit the sources, re-assemble, run
 `bin/game world refresh --check` (writes nothing), then `bin/game world

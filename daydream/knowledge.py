@@ -22,7 +22,7 @@ from __future__ import annotations
 
 from datetime import timedelta
 
-from daydream import events, objects, worldclock, worldstate
+from daydream import events, objects, toons, worldclock, worldstate
 
 FACT_PREFIX = "fact:"
 
@@ -50,14 +50,17 @@ def add_fact(world_id: str, fact_id: str, text: str, actor_id: str | None,
     key = f"{FACT_PREFIX}{fact_id.strip()}:{actor_id or '-'}"
     if worldstate.get(world_id, key) is not None:
         return None
-    rendered = text.replace("{actor}", actor.name if actor else "someone")
+    # A name made before names were bounded never carries past the cap into
+    # the stored fact (it reaches every resident's prompt).
+    who = actor.name[:toons.MAX_NAME_CHARS] if actor else None
+    rendered = text.replace("{actor}", who or "someone")
     stages = []
     for st in spread if isinstance(spread, list) else []:
         if isinstance(st, dict) and isinstance(st.get("after_minutes"), (int, float)):
             stages.append({"to": st.get("to"), "after_minutes": st["after_minutes"]})
     worldstate.set(world_id, key, {
         "id": fact_id.strip(), "text": rendered.strip(), "about": actor_id,
-        "about_name": actor.name if actor else None, "at": worldclock.iso(),
+        "about_name": who, "at": worldclock.iso(),
         "known_by": known_by if (known_by == "all" or isinstance(known_by, list)) else [],
         "spread": stages,
     })

@@ -127,3 +127,23 @@ def test_llm_move_object_is_scoped_to_the_actor():
     )
     assert applied[0].event is None
     assert objects.get(target.id).location_id == "r-forge"
+
+
+def test_llm_narrate_keeps_only_its_text():
+    """A model-authored narrate is one line of text (codereview WARN
+    2026-09-27): `variants` would dodge the output scan (it reads `text`),
+    `others` would broadcast unscanned text, `room` would narrate into another
+    room, and `to` could address another player. Only `to: "@actor"` stays."""
+    before = events.max_seq()
+    effects.dispatch_effects(
+        [{"kind": "narrate", "text": "Mossling hums.", "variants": ["unscanned"],
+          "key": "k", "others": "{actor} reads unscanned text", "room": "r-forge",
+          "to": "t-rook"},
+         {"kind": "narrate", "text": "Only you hear the hum.", "to": "@actor"}],
+        actor_id="t-wren", room_id="r-meadow", world_id="w-bunny",
+        allowed=frozenset({"narrate"}), origin="llm",
+    )
+    told = [(e.payload["text"], e.room_id, e.recipient_id)
+            for e in events.fetch_since(before) if e.kind == "narrate"]
+    assert told == [("Mossling hums.", "r-meadow", None),
+                    ("Only you hear the hum.", "r-meadow", "t-wren")]
