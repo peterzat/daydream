@@ -1,0 +1,137 @@
+{
+  "format": "dream-patch",
+  "id": "dream-2026-09-26",
+  "title": "The First Dream",
+  "world": "w-lost-hours",
+  "while_you_slept": "While you slept, the village turned over once. Tace hums at the bench now, which nobody has heard since the frost, and the great clock Marlow mended keeps steady time. Mott swept twice as quietly after Juniper carried his hush to the little nap, and Pim's Nap sleeps in the littlest armchair, where Oona asked Linden to keep it. Bell has tied a butter-yellow ribbon round Pollen's pole, in case Vesper borrows her again. North of the clocktower, the Case of Mended Ticks has its first cards.",
+  "add": {},
+  "live": {
+    "facts": {
+      "dream-2026-09-26-tace-hums": {
+        "text": "Since Marlow carried the escapement gear up from the well-court and the great clock began to tick again, Tace has taken to humming at the bench, which nobody has heard since the frost.",
+        "known_by": "all"
+      },
+      "dream-2026-09-26-juniper-hush": {
+        "text": "Juniper carried Mott's hush down to the square for Pim's Nap, careful as eggs; Mott swept twice as quietly all evening after.",
+        "known_by": ["t-mott", "t-linden", "t-bell", "t-tace"]
+      },
+      "dream-2026-09-26-oona-saucer": {
+        "text": "On Oona's first evening Linden chalked OONA on a saucer, and she keeps that saucer on the shelf by the kettle, ready for Oona's cup.",
+        "known_by": ["t-linden", "t-umber", "t-fen"]
+      },
+      "dream-2026-09-26-vesper-pollen": {
+        "text": "Vesper lifted Pollen, the square's nearest lantern, right off her pole on the first evening; Bell has since tied a butter-yellow ribbon round the pole so Pollen can always find her way home.",
+        "known_by": ["t-bell", "t-linden", "t-sorrel", "t-tace"]
+      },
+      "dream-2026-09-26-four-keepers": {
+        "text": "On the first evening four new keepers wound clocks of their own by the old custom: Marlow, Juniper, Oona and Vesper.",
+        "known_by": "all"
+      },
+      "dream-2026-09-26-no-baker": {
+        "text": "There has never been a baker in the village. The note on the pocket watch from the Case of Mended Ticks, fixed for the baker's morning tea, must have drifted in from someone else's dream.",
+        "known_by": ["t-linden", "t-umber", "t-tace"]
+      }
+    },
+    "cast_add": {
+      "t-tace": {
+        "topics": [
+          {"label": "Marlow", "aliases": ["the one who mended the clock", "who mended the clock"],
+           "variants": [
+             "Tace's tweezers pause, then go on, a little lighter. 'Marlow carried the gear all the way up from the well-court, friend, and never once asked for the key before it was offered. Good hands.'",
+             "Tace hums a bar of something, catches themself at it, and smiles. 'Marlow's gear is keeping better time than I remember the great clock ever keeping. I check it more than I need to.'"
+           ]},
+          {"label": "humming", "aliases": ["your humming", "that tune", "the tune you hum"],
+           "variants": [
+             "Tace looks up, caught out, and turns a little pink above the apron. 'Was I? Wend used to, at this bench. It seems to have come back with the ticking.'"
+           ]}
+        ]
+      },
+      "t-mott": {
+        "topics": [
+          {"label": "Juniper", "aliases": ["the mapmaker"],
+           "variants": [
+             "Mott props the broom against the bench. 'Juniper carried the hush down the lane in both hands, careful as eggs. Swept quiet all evening after. Felt right.'"
+           ]}
+        ]
+      },
+      "t-linden": {
+        "topics": [
+          {"label": "Oona", "aliases": ["oona's saucer", "the saucer", "the chalked saucer"],
+           "variants": [
+             "Linden lifts a saucer down from the shelf by the kettle: OONA, in chalk, not a letter smudged. 'Kept it, pet. You never know when someone's coming back for their cup.'"
+           ]},
+          {"label": "the baker", "aliases": ["a baker", "baker's note", "the pocket watch note"],
+           "variants": [
+             "Linden laughs and shakes her head. 'A baker? Not in this village, pet, and never was. That note must have blown in from somebody else's dream. Tea, though. Always tea.'"
+           ]}
+        ]
+      },
+      "t-bell": {
+        "topics": [
+          {"label": "Vesper", "aliases": ["the ribbon", "pollen's ribbon", "the yellow ribbon"],
+           "if": [{"contains": "t-bell", "of": "r-lamphouse", "not": true}],
+           "variants": [
+             "Bell laughs and flicks the yellow ribbon tied round Pollen's pole. 'Vesper! The one who borrowed Pollen. I tied this on so she can find her way home, and so Vesper knows where to bring her.'"
+           ]}
+        ]
+      },
+      "t-umber": {
+        "topics": [
+          {"label": "the new keepers", "aliases": ["new keepers", "the four keepers"],
+           "variants": [
+             "Umber writes a fresh label in her small square hand and holds it up: FOUR NEW KEEPERS. ONE EVENING. MARLOW, JUNIPER, OONA, VESPER. 'Filed under welcome,' she says, and pins it up."
+           ]}
+        ]
+      }
+    },
+    "furnish": [
+      {
+        "room": "r-the-case-of-mended-ticks",
+        "description": "A narrow archive tucked into the clocktower's shadow, lamplit and quiet as a held breath. Oak drawers climb every wall, and every drawer holds cards: one for each clock the village has mended, written in a careful hand and filed where it can be found again. The newest cards still smell of ink. A small desk waits under the lamp with a pen laid ready. The Clocktower is back to the south.",
+        "things": [
+          {"id": "o-dream-2026-09-26-great-clock-card", "name": "card for the great clock",
+           "location": {"room": "r-the-case-of-mended-ticks"}, "fixture": true, "verbs": ["read"],
+           "aliases": ["great clock card", "the first card", "card"],
+           "seed": "a stiff cream card at the front of the top drawer, the first one filed, its ink still dark",
+           "text": "THE GREAT CLOCK. Stopped: the night of the first hard frost. Fault: the escapement gear, found in the moss of the well-court. Mended by: Marlow. Ticking: yes, steadily, and the whole village can hear it."},
+          {"id": "o-dream-2026-09-26-keeper-cards", "name": "drawer of keeper cards",
+           "location": {"room": "r-the-case-of-mended-ticks"}, "fixture": true, "verbs": ["read"],
+           "aliases": ["keeper cards", "small cards", "cards", "drawer"],
+           "seed": "a long oak drawer of small cards, one for every clock a new keeper has wound by the old custom",
+           "text": "One card for every small clock a new keeper has wound by the old custom. The first four, all from the same evening: Marlow. Juniper. Oona. Vesper. Behind them the drawer runs back a long way, mostly empty, and patient."},
+          {"id": "o-dream-2026-09-26-desk", "name": "small desk",
+           "location": {"room": "r-the-case-of-mended-ticks"}, "fixture": true,
+           "aliases": ["desk", "pen", "blank card"],
+           "seed": "a small desk under the lamp, a pen laid ready beside a blank card, as though the archive expects more mending soon"}
+        ]
+      }
+    ]
+  },
+  "walkthroughs": {
+    "live": [
+      {
+        "name": "first-dream-callbacks",
+        "players": [{"as": "A", "name": "Wren"}],
+        "segments": [
+          {"name": "the archive and the keepers", "commands": [
+            {"cmd": "north", "expect": {"room": "r-the-case-of-mended-ticks"}},
+            {"cmd": "read card for the great clock", "expect": {"narrate_contains": "Mended by: Marlow"}},
+            {"cmd": "read keeper cards", "expect": {"narrate_contains": "Marlow. Juniper. Oona. Vesper."}},
+            {"cmd": "south", "expect": {"room": "r-clocktower"}},
+            {"cmd": "up", "expect": {"room": "r-loft"}},
+            {"cmd": "ask tace about marlow", "expect": {"narrate_contains": "Marlow"}},
+            {"cmd": "down"},
+            {"cmd": "east", "expect": {"room": "r-square"}},
+            {"cmd": "north", "expect": {"room": "r-workshop"}},
+            {"cmd": "ask mott about juniper", "expect": {"narrate_contains": "careful as eggs"}},
+            {"cmd": "south"},
+            {"cmd": "east", "expect": {"room": "r-lane"}},
+            {"cmd": "east", "expect": {"room": "r-waiting"}},
+            {"cmd": "ask linden about oona", "expect": {"narrate_contains": "OONA"}},
+            {"cmd": "ask linden about the baker", "expect": {"narrate_contains": "somebody else's dream"}}
+          ]}
+        ]
+      }
+    ]
+  }
+}

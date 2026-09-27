@@ -837,3 +837,31 @@ New lines (dreams included) should not add more of them.
   watering can, or straightening a trellis.
 - **Everyone:** "a long while" and "a long moment" were overused. Prefer a
   concrete measure: a tick, a breath, one slow arc.
+
+## 9. Dreams (canon added after launch)
+
+Each dream's patch lives in `worlds/lost-hours/dreams/<id>/` with its digest
+and rehearsal. What each made canon:
+
+### dream-2026-09-26: The First Dream (after the agent playtest day)
+
+- Four keepers wound their first clocks on the first evening: Marlow,
+  Juniper, Oona, Vesper. Umber has a label for it (FOUR NEW KEEPERS. ONE
+  EVENING.), and the Case of Mended Ticks keeps a drawer of keeper cards.
+- Marlow mended the great clock (found the gear in the well-court moss).
+  Since then Tace hums at the bench, which nobody had heard since the frost;
+  Tace says Wend used to.
+- Juniper carried Mott's hush to Pim's Nap, "careful as eggs"; Mott swept
+  quiet all evening after.
+- Linden chalked OONA on a saucer on Oona's first evening and keeps it on
+  the shelf by the kettle (a local-model flourish the player loved, made
+  canon).
+- Vesper borrowed Pollen from her pole; Bell tied a butter-yellow ribbon
+  round the pole so Pollen can always find her way home.
+- There has never been a baker in the village: the grown pocket watch's
+  note ("fixed for the baker's morning tea") drifted in from someone else's
+  dream.
+- The Case of Mended Ticks (grown by Marlow from "a small quiet archive
+  where every mended clock's story is written down") is an archive of oak
+  drawers and cards; its first card is the great clock's ("Mended by:
+  Marlow").
