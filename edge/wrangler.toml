@@ -25,7 +25,7 @@ COOKIE_NAME = "dd_session_prod"
 # the pass list. The id comes from `bin/game edge kv-create`.
 [[kv_namespaces]]
 binding = "STATE"
-id = "REPLACE_WITH_KV_NAMESPACE_ID"
+id = "871a206305f04a3a9c7fac38e91660e7"
 
 [assets]
 directory = "./public"
