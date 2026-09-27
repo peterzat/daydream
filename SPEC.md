@@ -10,7 +10,7 @@ after its first dream.
 
 ### Acceptance Criteria
 
-- [ ] **1. The Village of Lost Hours is the live world.** A format-2 world
+- [x] **1. The Village of Lost Hours is the live world.** A format-2 world
   replaces the Clockmaker's Loft as the default for `bin/game world reset` and
   is installed as the live world (the live Zork world archived first). It holds
   at least 15 rooms, at least 8 resident NPCs (guests not counted), at least 10
@@ -20,28 +20,28 @@ after its first dream.
   and every arc solvable (every beat reachable, every needed item obtainable),
   and fails on a deliberately broken fixture.
 
-- [ ] **2. Every arc ending is a contract.** Every arc has at least two
+- [x] **2. Every arc ending is a contract.** Every arc has at least two
   endings, chosen by what players did or by elapsed real time, and none is a
   fail state (no death, no lost progress, no player locked out of the world's
   content). Each ending ships a walkthrough: a command dataset replayed under a
   zero-LLM spy that ends at an asserted world state, run in tier_medium. The
   whole world is therefore completable with vLLM and ComfyUI down.
 
-- [ ] **3. The prologue starts time, and latecomers still get a beginning.**
+- [x] **3. The prologue starts time, and latecomers still get a beginning.**
   The existing clock quest opens the world: before the great clock is mended the
   village has no day cycle; mending it starts time, and the first dusk brings
   the first guest. A player who first arrives after someone else has already
   mended the clock still gets a complete authored first session, proved by a
   walkthrough for a second player joining a post-prologue world.
 
-- [ ] **4. Real time moves the village.** Each world keeps a wall-clock day
+- [x] **4. Real time moves the village.** Each world keeps a wall-clock day
   (dusk time configurable). Authored dusk events fire once per real day even
   with no one connected; a server restart neither skips nor double-fires a day;
   NPCs follow authored schedules between rooms by time of day. Tests drive all
   of this with a fake clock. Story randomness keys on stable purposes (date and
   entity), never on turn index.
 
-- [ ] **5. A background director chooses what happens.** Which eligible
+- [x] **5. A background director chooses what happens.** Which eligible
   arrival comes at dusk, and which small NPC events occur, are chosen among
   authored storylets. When the local LLM ranks the choices, it runs in a
   background arbiter class that never delays a player-facing call and never
@@ -49,7 +49,7 @@ after its first dream.
   seeded deterministic choice, and a choice outside the eligible set changes
   nothing.
 
-- [ ] **6. Talk moves the story.** Each NPC exposes the open beats it can
+- [x] **6. Talk moves the story.** Each NPC exposes the open beats it can
   advance (authored, condition-gated). A talk turn's single LLM call returns the
   spoken line plus at most one beat id chosen from the enumerated open beats,
   and the engine applies that beat's authored effects deterministically. An id
@@ -58,19 +58,19 @@ after its first dream.
   deterministic producer (a clickable ask-about topic or an exact phrasing), so
   walkthroughs need no LLM.
 
-- [ ] **7. NPCs know things, and the village talks.** NPC knowledge is data:
+- [x] **7. NPCs know things, and the village talks.** NPC knowledge is data:
   authored facts plus facts created by player deeds that name the player. A
   deed fact spreads from NPC to NPC on an authored real-time schedule, and an
   NPC's dialogue context includes what it knows. Tested: after player A gives
   something to Tace, Bell's dialogue context names A's deed after the gossip
   interval and not before.
 
-- [ ] **8. Relationships are per player.** Each (NPC, player toon) pair has
+- [x] **8. Relationships are per player.** Each (NPC, player toon) pair has
   relationship state that rules and effects can read and change and that the
   NPC's dialogue context receives. Two players' relationships with the same NPC
   are independent; world-scoped flags, counters, and score behave as before.
 
-- [ ] **9. Rules can follow, not only replace.** A rule can run after a verb's
+- [x] **9. Rules can follow, not only replace.** A rule can run after a verb's
   normal handling succeeds without suppressing it. The Zork walkthrough still
   ends at exactly 350 in tier_medium, and Zork is frozen: no edits under
   `worlds/zork1*` or `tests/data/zork1_walkthrough.json` this turn.
@@ -86,26 +86,26 @@ after its first dream.
   more than two of any NPC's dialogue-suite replies share their first six
   words; JSON validity at least 99%; dialogue p50 no worse than 3.5 s.
 
-- [ ] **11. Authored voice leads, and nothing repeats verbatim.** Drift for an
+- [x] **11. Authored voice leads, and nothing repeats verbatim.** Drift for an
   NPC with authored pools emits authored lines first (the LLM may vary them);
   the loft's `wind` and `listen` room skills are replaced by world-declared
   affordances that narrate authored variants; no NPC beat or affordance repeats
   the same line verbatim within its last several tellings in a room (tested).
   Prose surfaces run warm (temperature above 0); the parser stays deterministic.
 
-- [ ] **12. A daily find for everyone.** Each player can find at least one new
+- [x] **12. A daily find for everyone.** Each player can find at least one new
   stray minute per real day regardless of what other players have collected.
   Found minutes are catalogued in a per-player book viewable from the satchel,
   and completing an authored page of the book grants something authored.
 
-- [ ] **13. Dreamseeds come from arcs, and grown rooms join the story.** Some
+- [x] **13. Dreamseeds come from arcs, and grown rooms join the story.** Some
   arc endings grant a dreamseed. Planting still composes one room inside
   authored boundaries, and the existing growth guarantees (every failure path
   preserves the seed, direction hints, dedup) stay green. A dream can furnish a
   grown room (a resident, a hook, or a stray minute) while preserving the
   planter's phrase verbatim in its provenance.
 
-- [ ] **14. The dream works, in-session.** `bin/game dream digest` writes a
+- [x] **14. The dream works, in-session.** `bin/game dream digest` writes a
   deterministic digest of play since the last dream (raw inputs, deeds per
   player, beats advanced, arcs opened and closed, grown rooms, gossip).
   `bin/game world patch` validates a dream patch fail-loud with zero writes on
@@ -121,18 +121,18 @@ after its first dream.
   Claude Code session. Dreams run in-session only; no headless or scheduled
   runs.
 
-- [ ] **15. Returning players see what changed.** A player's first snapshot
+- [x] **15. Returning players see what changed.** A player's first snapshot
   after a dream carries that dream's "while you slept" note exactly once; the
   SPA shows it as a dismissible storybook leaf, and it does not repeat on
   reconnect. The Ledger of Returned Hours is a readable in-world book whose text
   reflects every closed arc and who helped.
 
-- [ ] **16. Every word a player types is kept.** Raw input for every command
+- [x] **16. Every word a player types is kept.** Raw input for every command
   (free text and structured) is persisted with actor, time, and the resolved
   command; it is never broadcast to other players; the dream digest includes
   it; and a recorded session can be exported as a walkthrough dataset.
 
-- [ ] **17. Agent playtesters.** `bin/game play` lets an agent drive a live
+- [x] **17. Agent playtesters.** `bin/game play` lets an agent drive a live
   session through the same WebSocket path a player uses, across repeated shell
   invocations (each prints the narration caused since the previous one) and
   with several concurrent toons. Before the operator gate, at least four
@@ -148,19 +148,19 @@ after its first dream.
   at least one specific player deed. Its digest, patch, and rehearsal result are
   committed, and a later agent session records observing the callback in play.
 
-- [ ] **19. The security side findings are closed.** An LLM-originated
+- [x] **19. The security side findings are closed.** An LLM-originated
   `spawn_object` cannot carry authored-only properties (rules, growth, extra
   verbs, combat, light, container, scoring); room data skills honor their
   declared effect allowlist or are retired; each has a regression test under
   `tests/security/`, and SECURITY.md records both.
 
-- [ ] **20. Art is pre-baked and graded.** Every room and NPC portrait in the
+- [x] **20. Art is pre-baked and graded.** Every room and NPC portrait in the
   new world is rendered at design time through the production pipeline, graded
   by the agent against WHIMSY.md (weak renders re-seeded or reframed, verdicts
   recorded), and cached so a first entry never waits on a render. Image anchors
   and goldens that change are re-ratified deliberately.
 
-- [ ] **21. Tone and docs tell the truth.** WHIMSY.md gains a stories section
+- [x] **21. Tone and docs tell the truth.** WHIMSY.md gains a stories section
   (soft stakes, wants, gentle time, and bittersweet endings allowed; cruelty,
   horror, and grimdark still banned), and the safety banlist matches it: a
   corpus of soft-stakes lines passes, and each still-banned category still
@@ -273,4 +273,4 @@ annotate them at turn end.
 criteria 7 (the loft reset) and 9 (the Zork playtest) were superseded by the
 2026-09-26 pivot.*
 
-<!-- SPEC_META: {"date":"2026-09-26","title":"The Village of Lost Hours: the pivot turn","criteria_total":22,"criteria_met":0} -->
+<!-- SPEC_META: {"date":"2026-09-26","title":"The Village of Lost Hours: the pivot turn","criteria_total":22,"criteria_met":20} -->
