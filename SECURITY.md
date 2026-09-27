@@ -2,7 +2,7 @@
 
 ## Security Review — 2026-09-27 (scope: full)
 
-**Summary:** Full audit at HEAD `5557e2d`, rewritten for internet exposure and weighted toward the going-live surface (accounts, invites and sessions, the sign-in gate and edge mode, toon ownership, prod operations and the sandbox, the Cloudflare Worker). The web boundary holds and nothing is a BLOCK; the gaps are behind it: operator tooling that follows paths the sandboxed service can plant, revocation that misses open sockets, an uncapped command frame, a global invite cap anyone can spend, a wider-than-documented admin, and a real-looking name in the tree (0 BLOCK / 6 WARN / 9 NOTE).
+**Summary:** Full audit at HEAD `bb6e82e`, rewritten for internet exposure and weighted toward the going-live surface (accounts, invites and sessions, the sign-in gate and edge mode, toon ownership, prod operations and the sandbox, the Cloudflare Worker). The web boundary holds and nothing is a BLOCK; the gaps are behind it: operator tooling that follows paths the sandboxed service can plant, revocation that misses open sockets, an uncapped command frame, a global invite cap anyone can spend, a wider-than-documented admin, and a real-looking name in the tree (0 BLOCK / 6 WARN / 9 NOTE).
 
 ### Scope and method
 
@@ -68,7 +68,7 @@ Dev keeps its own boundary: tailnet-only (`tailscale` mode plus UFW), the same a
 
 [WARN] daydream/accounts_cli.py:190, docs/GOING-LIVE.md:73, tests/test_accounts.py:189-340, tests/test_auth.py:201-251 — what appears to be a real person's full name is the example invitee in help text, documentation and tests.
   Attack vector: the repository is public. Once these commits are pushed, anyone can read the name and tie it to the operator and to this invite-only service.
-  Evidence: 17 occurrences across four tracked files (a first and last name, not a stock placeholder); also in the local, untracked `/invite` skill. It entered history in `69f4b5b` and `6bf3187`, both among the 10 commits not yet on origin/main. Whether the name is real is not verified; treat it as real.
+  Evidence: 17 occurrences across four tracked files (a first and last name, not a stock placeholder); also in the local, untracked `/invite` skill. It entered history in `082fe54` and `244097f`, both among the 10 commits not yet on origin/main. Whether the name is real is not verified; treat it as real.
   Remediation: replace it with a placeholder ("Test Friend") before the first push; because the commits are unpushed, amending them keeps it out of public history.
 
 [NOTE] daydream/api/csrf.py:65-67, edge/wrangler.toml:13-15 — the browser trust boundary is the whole www.eidolon.com origin, and the Origin check ignores the scheme.
@@ -111,20 +111,20 @@ Dev keeps its own boundary: tailnet-only (`tailscale` mode plus UFW), the same a
 
 | Finding | Status |
 |---|---|
-| WARN 1: operator tooling follows service-planted paths | Fixed in `19ede3f`. Every prod command that touches the data dir runs as the `daydream` user (sudoers `(daydream) NOPASSWD: ALL`, a privilege drop). The operator only receives bytes (keepsakes on stdout, streamed tarballs and pulls). Portraits are read with `O_NOFOLLOW` inside the cache root. Restores refuse symlinks. Graded art is staged in an operator-owned dir the service can only read. Tests: a symlinked portrait never exports; restore refuses a link. |
-| WARN 2: revocation missed idle sockets | Fixed in `ea991f1`. A per-socket watchdog re-reads the session every 30 s, and the SPA's 25 s keepalive rides the per-frame check. |
-| WARN 3: command frames skipped the cap | Fixed in `ea991f1`. Every frame is size-checked (2000 chars) before parsing, and prod's `--ws-max-size` is 16 KiB. |
-| WARN 4: anyone can pause invitations | Mitigated in `c88ce68`. The refusal names the operator, and `bin/game invite unblock` reopens invitations. The global cap stays, since it is the defense against distributed guessing (a residual, below). |
-| WARN 5: admin web sessions over friends' toons | Fixed in `05ea503`. No admin bypass on claim/kick/delete; moderation is `bin/game world rest-toon\|delete-toon`. |
-| WARN 6: a real name in the repo | Fixed in `8a55e42`: the fictional Robin Ash. The name remains in unpushed local history; scrub before the first push (see the go-live notes). |
-| NOTE: Origin ignores the scheme | Fixed in `c88ce68`: scheme and host both. |
-| NOTE: `$`-patterns in the asleep template | Fixed in `c88ce68`: function replacements. |
-| NOTE: username squatting | Fixed in `c88ce68`: `cli-*`, `agent-*` and a few names are reserved from invites (the CLI may still create them), and keepsakes skip those accounts. |
-| NOTE: the pre-allowed invite verbs | Fixed in `c88ce68`: only `prod invite create|list` are pre-allowed. |
-| NOTE: unbounded pre-login bodies | Fixed in `ea991f1`: 413 over 64 KiB; streamed bodies are truncated. |
-| NOTE: login throttling | Improved in `c88ce68`: argon2 runs off the event loop, and IPv6 keys on /64. The per-username lockout used against a friend remains (15-minute window). |
-| NOTE: shared capacity | Partly fixed in `c88ce68`: a reconnect replays at most 300 events. There are still no per-account limits on create/delete/leave (friends only). |
-| NOTE: box addresses in docs | Fixed in `8a55e42`. |
+| WARN 1: operator tooling follows service-planted paths | Fixed in `fd2acb9`. Every prod command that touches the data dir runs as the `daydream` user (sudoers `(daydream) NOPASSWD: ALL`, a privilege drop). The operator only receives bytes (keepsakes on stdout, streamed tarballs and pulls). Portraits are read with `O_NOFOLLOW` inside the cache root. Restores refuse symlinks. Graded art is staged in an operator-owned dir the service can only read. Tests: a symlinked portrait never exports; restore refuses a link. |
+| WARN 2: revocation missed idle sockets | Fixed in `1a71604`. A per-socket watchdog re-reads the session every 30 s, and the SPA's 25 s keepalive rides the per-frame check. |
+| WARN 3: command frames skipped the cap | Fixed in `1a71604`. Every frame is size-checked (2000 chars) before parsing, and prod's `--ws-max-size` is 16 KiB. |
+| WARN 4: anyone can pause invitations | Mitigated in `e0dd338`. The refusal names the operator, and `bin/game invite unblock` reopens invitations. The global cap stays, since it is the defense against distributed guessing (a residual, below). |
+| WARN 5: admin web sessions over friends' toons | Fixed in `3dc0849`. No admin bypass on claim/kick/delete; moderation is `bin/game world rest-toon\|delete-toon`. |
+| WARN 6: a real name in the repo | Fixed in `c48fbc3`: the fictional Robin Ash. The unpushed local history was rewritten the same day so no commit carries it. |
+| NOTE: Origin ignores the scheme | Fixed in `e0dd338`: scheme and host both. |
+| NOTE: `$`-patterns in the asleep template | Fixed in `e0dd338`: function replacements. |
+| NOTE: username squatting | Fixed in `e0dd338`: `cli-*`, `agent-*` and a few names are reserved from invites (the CLI may still create them), and keepsakes skip those accounts. |
+| NOTE: the pre-allowed invite verbs | Fixed in `e0dd338`: only `prod invite create|list` are pre-allowed. |
+| NOTE: unbounded pre-login bodies | Fixed in `1a71604`: 413 over 64 KiB; streamed bodies are truncated. |
+| NOTE: login throttling | Improved in `e0dd338`: argon2 runs off the event loop, and IPv6 keys on /64. The per-username lockout used against a friend remains (15-minute window). |
+| NOTE: shared capacity | Partly fixed in `e0dd338`: a reconnect replays at most 300 events. There are still no per-account limits on create/delete/leave (friends only). |
+| NOTE: box addresses in docs | Fixed in `c48fbc3`. |
 | NOTE: supply-chain pinning | Open: the lock has versions, not hashes; CI actions use tags. |
 
 Residual risks closed alongside, in the commit that records this table: the shared GPU-lock wait now times out (90 s), so a held lock file cannot stall another process's text forever; prod runs `--no-access-log`, so invite slugs never reach the journal; sessions end 180 days after sign-in however often they are used.
@@ -178,4 +178,4 @@ Retired this turn: tailscale-mode auth as tailnet membership (every mode now req
 ---
 *Prior review (2026-09-27, paths, commit `529398b`): the pivot turn's 111 files. 0 BLOCK / 3 WARN / 2 NOTE: uncapped toon names reaching other players' prompts and a persistent deed fact; the dream digest handing raw player text to the agent; raw digests committed to a public repo; LLM-origin narrate fields the banlist never read; uncapped WS input. The three WARNs and the narrate NOTE were fixed in `98cc8d0` (re-verified at this HEAD); the WS NOTE is fixed for typed input and continues as the command-frame WARN.*
 
-<!-- SECURITY_META: {"date":"2026-09-27","commit":"5557e2d1b7aa28778ac951f7bd20c5d583be1a55","scope":"full","block":0,"warn":6,"note":9} -->
+<!-- SECURITY_META: {"date":"2026-09-27","commit":"bb6e82eec20ecdc43f70968d8835185ce048916b","scope":"full","block":0,"warn":6,"note":9} -->
