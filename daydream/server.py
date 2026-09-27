@@ -5,6 +5,7 @@ root path serves it; before that, a minimal placeholder HTML lets a browser
 verify the auth flow end to end."""
 
 from contextlib import asynccontextmanager
+from html import escape as html_escape
 from urllib.parse import quote
 
 from fastapi import FastAPI, HTTPException, Request
@@ -170,14 +171,14 @@ async def login_form():
     # an agent-driven GET) home rather than rendering a password
     # prompt that wouldn't meaningfully gate anything.
     if config.access_mode() == "tailscale":
-        return RedirectResponse(url="/", status_code=302)
+        return RedirectResponse(url=config.public_base(), status_code=302)
     return HTMLResponse(_LOGIN_HTML)
 
 
 @app.get("/")
 async def root(request: Request):
     if not auth.is_authed(request.session):
-        return RedirectResponse(url="/login", status_code=302)
+        return RedirectResponse(url=config.public_base() + "login", status_code=302)
     index = config.WEB_DIR / "index.html"
     if index.exists():
         # Stamp the asset refs with the build SHA so a redeployed server serves
@@ -188,10 +189,14 @@ async def root(request: Request):
         # HTML attribute even if a future change ever sourced it from untrusted
         # input (today it is only git hex / -dirty / unknown / operator env).
         sha = quote(version.build_sha(), safe="")
+        # <base href> makes every relative URL in the shell and the SPA resolve
+        # under the public base ("/" in dev, "/daydream/" behind the edge).
+        base = html_escape(config.public_base(), quote=True)
         html = (
             index.read_text()
-            .replace("/assets/main.js", f"/assets/main.js?v={sha}")
-            .replace("/assets/style.css", f"/assets/style.css?v={sha}")
+            .replace('<base href="/">', f'<base href="{base}">', 1)
+            .replace('"assets/main.js"', f'"assets/main.js?v={sha}"')
+            .replace('"assets/style.css"', f'"assets/style.css?v={sha}"')
         )
         return HTMLResponse(html)
     # web/index.html ships in the repo; its absence means a broken deploy,
@@ -250,7 +255,7 @@ _LOGIN_HTML = """<!doctype html>
 </head>
 <body>
 <h1>daydream</h1>
-<form method="post" action="/api/login">
+<form method="post" action="api/login">
 <input type="password" name="password" autofocus autocomplete="current-password">
 <button type="submit">enter</button>
 </form>

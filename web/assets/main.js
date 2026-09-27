@@ -1,8 +1,24 @@
 "use strict";
 
-const wsUrl =
-  (location.protocol === "https:" ? "wss://" : "ws://") + location.host + "/ws";
-const PLACEHOLDER_BG = "/assets/placeholder-meadow.png";
+// Every URL here is relative to the document's <base href>: the server injects
+// "/" in dev and "/daydream/" behind the edge Worker, so one build serves both
+// (SPEC 2026-09-27 criterion 6). Never write a root-absolute path in this file;
+// tests/test_web_paths.py fails on one.
+function assetUrl(u) {
+  // Server-emitted asset URLs are origin paths (slash-cache-slash..., some
+  // persisted in old events); rebase them onto the document base so they stay
+  // inside it.
+  if (!u) return u;
+  if (/^[a-z][a-z0-9+.-]*:/i.test(u)) return u; // data:, blob:, https:
+  return new URL(u.replace(/^\/+/, ""), document.baseURI).href;
+}
+function wsUrlFor() {
+  const u = new URL("ws", document.baseURI);
+  u.protocol = u.protocol === "https:" ? "wss:" : "ws:";
+  return u.href;
+}
+const wsUrl = wsUrlFor();
+const PLACEHOLDER_BG = assetUrl("assets/placeholder-meadow.png");
 let ws = null;
 let lastSeq = 0;
 let actorNames = {};
@@ -387,7 +403,7 @@ function toonFace(imageUrl) {
   face.className = "toon-face" + (imageUrl ? "" : " toon-face-unpainted");
   if (imageUrl) {
     const img = document.createElement("img");
-    img.src = imageUrl;
+    img.src = assetUrl(imageUrl);
     img.alt = "";
     face.appendChild(img);
   }
@@ -748,7 +764,7 @@ function setRoomBackground(room) {
   // one loads — that cross-fade IS the painting reveal.
   const bg = document.getElementById("room-bg");
   const overlay = document.getElementById("painting-overlay");
-  const target = room && room.image_url ? room.image_url : PLACEHOLDER_BG;
+  const target = room && room.image_url ? assetUrl(room.image_url) : PLACEHOLDER_BG;
   const changedRoom = !room || room.id !== bgShownFor;
   bgShownFor = room ? room.id : null;
   if (changedRoom) bg.classList.add("bg-loading");
@@ -771,7 +787,7 @@ function handleRoomImageReady(event) {
   const overlay = document.getElementById("painting-overlay");
   overlay.classList.add("hidden");
   if (event.payload && event.payload.image_url) {
-    bg.src = event.payload.image_url;
+    bg.src = assetUrl(event.payload.image_url);
   }
   // image_url null means generation failed; leave the placeholder showing.
   // The error string is in event.payload.error if anything wants to surface it.
@@ -1192,7 +1208,7 @@ async function postRepaint(prompt) {
   // Show the painting overlay immediately; room_image_ready clears it.
   document.getElementById("painting-overlay").classList.remove("hidden");
   const body = prompt ? { prompt } : {};
-  const r = await fetch(`/api/rooms/${encodeURIComponent(bgShownFor)}/image`, {
+  const r = await fetch(`api/rooms/${encodeURIComponent(bgShownFor)}/image`, {
     method: "POST",
     headers: { "content-type": "application/json" },
     credentials: "same-origin",
@@ -1214,7 +1230,7 @@ async function openRepaintDialog() {
   input.value = "";
   document.getElementById("repaint-panel").classList.remove("hidden");
   try {
-    const r = await fetch(`/api/rooms/${encodeURIComponent(bgShownFor)}/image-prompt`,
+    const r = await fetch(`api/rooms/${encodeURIComponent(bgShownFor)}/image-prompt`,
       { credentials: "same-origin" });
     if (!r.ok) throw new Error(`${r.status}`);
     const j = await r.json();
@@ -1368,7 +1384,7 @@ function keepsakeGlyph(name) {
 // resolution picks up the new claim.
 
 async function fetchSlots() {
-  const r = await fetch("/api/slots", { credentials: "same-origin" });
+  const r = await fetch("api/slots", { credentials: "same-origin" });
   if (!r.ok) {
     systemLine(`(slots fetch failed: ${r.status})`);
     return null;
@@ -1377,7 +1393,7 @@ async function fetchSlots() {
 }
 
 async function postSlotAction(slot, action, body) {
-  const r = await fetch(`/api/slots/${slot}/${action}`, {
+  const r = await fetch(`api/slots/${slot}/${action}`, {
     method: "POST",
     headers: { "content-type": "application/json" },
     credentials: "same-origin",
@@ -1570,7 +1586,7 @@ document.getElementById("leave-dream").addEventListener("click", async () => {
   awaitingPick = true;
   systemLine("you wake...");
   try {
-    await fetch("/api/session/leave", { method: "POST", credentials: "same-origin" });
+    await fetch("api/session/leave", { method: "POST", credentials: "same-origin" });
   } catch (_) {}
   if (ws) { try { ws.close(); } catch (_) {} }
   enterPicker();

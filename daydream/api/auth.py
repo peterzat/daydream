@@ -47,7 +47,7 @@ async def login(request: Request):
     if config.access_mode() == "tailscale":
         request.session["authed"] = True
         _ensure_session_id(request.session)
-        return RedirectResponse(url="/", status_code=303)
+        return RedirectResponse(url=config.public_base(), status_code=303)
 
     data = await request.form()
     password = str(data.get("password", ""))
@@ -64,12 +64,12 @@ async def login(request: Request):
         # when scope['session'] has been modified, so a wrong password leaves
         # the browser with no daydream_session cookie set to authed=True.
         return HTMLResponse(
-            "wrong word. <a href='/login'>try again</a>",
+            "wrong word. <a href='login'>try again</a>",
             status_code=401,
         )
     request.session["authed"] = True
     _ensure_session_id(request.session)
-    return RedirectResponse(url="/", status_code=303)
+    return RedirectResponse(url=config.public_base(), status_code=303)
 
 
 @router.post("/api/logout")
@@ -81,8 +81,8 @@ async def logout(request: Request):
     # form the user wouldn't see anyway.
     request.session.pop("authed", None)
     if config.access_mode() == "tailscale":
-        return RedirectResponse(url="/", status_code=303)
-    return RedirectResponse(url="/login", status_code=303)
+        return RedirectResponse(url=config.public_base(), status_code=303)
+    return RedirectResponse(url=config.public_base() + "login", status_code=303)
 
 
 def is_authed(scope_session: dict) -> bool:

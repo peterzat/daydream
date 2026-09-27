@@ -35,9 +35,10 @@ def test_authed_root_serves_spa_shell():
         r = client.get("/")
     assert r.status_code == 200
     assert "<title>daydream</title>" in r.text
-    assert "/assets/main.js" in r.text
-    assert "/assets/style.css" in r.text
-    assert "/assets/placeholder-meadow.png" in r.text
+    # Base-relative since the going-live turn (SPEC 2026-09-27 criterion 6).
+    assert '"assets/main.js' in r.text
+    assert '"assets/style.css' in r.text
+    assert '"assets/placeholder-meadow.png"' in r.text
 
 
 def test_root_stamps_asset_urls_with_build_version():
@@ -48,8 +49,8 @@ def test_root_stamps_asset_urls_with_build_version():
     with TestClient(app) as client:
         _login(client)
         r = client.get("/")
-    assert f"/assets/main.js?v={version.build_sha()}" in r.text
-    assert f"/assets/style.css?v={version.build_sha()}" in r.text
+    assert f'"assets/main.js?v={version.build_sha()}"' in r.text
+    assert f'"assets/style.css?v={version.build_sha()}"' in r.text
 
 
 def test_root_escapes_build_sha_in_asset_url(monkeypatch):
@@ -66,7 +67,7 @@ def test_root_escapes_build_sha_in_asset_url(monkeypatch):
     finally:
         version.build_sha.cache_clear()
     assert "<script>x</script>" not in r.text  # not injected raw
-    assert "/assets/main.js?v=" in r.text       # still stamped (escaped value)
+    assert '"assets/main.js?v=' in r.text       # still stamped (escaped value)
 
 
 def test_placeholder_png_is_committed_and_substantial():
@@ -210,7 +211,7 @@ def test_main_js_wires_slot_picker_endpoints():
     with TestClient(app) as client:
         _login(client)
         r = client.get("/assets/main.js")
-    assert "/api/slots" in r.text
+    assert '"api/slots"' in r.text
     assert "create" in r.text
     assert "claim" in r.text
     assert "kick" in r.text
