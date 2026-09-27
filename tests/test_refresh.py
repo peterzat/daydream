@@ -87,6 +87,9 @@ async def test_refresh_carries_authored_fixes_and_keeps_play(tmp_path):
     assert story.rel(WORLD, "t-wynn", ada) == rel_before
     assert worldstate.get(WORLD, "refresh:last")["inserted"] == 1
     assert worldstate.get(WORLD, "config")["rest_returns_things"] is True   # authored config
+    from daydream import version
+    stamped = db.get_conn().execute("SELECT world_version FROM worlds WHERE id = ?", (WORLD,)).fetchone()[0]
+    assert stamped == version.WORLD_VERSION
 
 
 async def test_refresh_check_writes_nothing(tmp_path):

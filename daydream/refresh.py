@@ -15,6 +15,8 @@ DB:
 - authored objects new to the envelope are inserted where authored;
 - live-only objects (players, finds, keepsakes, grown rooms, dream
   furnishings) are untouched;
+- the world is stamped with the current WORLD_VERSION (its content is now
+  the code's);
 - every `def:*` story definition (and the world's config and voice) is
   replaced by the fresh one, and applied
   dreams' `live` facts and cast additions are re-applied on top; every other
@@ -212,6 +214,11 @@ def refresh(envelope_path: Path, *, check: bool = False) -> dict:
         if fresh_world["starting_room_id"]:
             conn.execute("UPDATE worlds SET starting_room_id = ? WHERE id = ?",
                          (fresh_world["starting_room_id"], world_id))
+        # The refreshed world's content is the current code's: stamp it so
+        # the boot gate stops warning about a MINOR bump the refresh carried.
+        from daydream import version
+        conn.execute("UPDATE worlds SET world_version = ? WHERE id = ?",
+                     (version.WORLD_VERSION, world_id))
         if check:
             conn.execute("ROLLBACK")
         else:

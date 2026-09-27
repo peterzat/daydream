@@ -785,7 +785,12 @@ def main(argv: list[str] | None = None) -> int:
         return 0 if why is None else 1
     if args.cmd == "rehearse":
         patch, pdir = _patch_arg(args.patch)
-        report = asyncio.run(rehearse(patch, db_path, pdir))
+        # The scratch databases (the pre-dream snapshot, the side copy, the
+        # fresh twin) are live state: they go under the data dir, never the
+        # repo tree; the report is copied next to the patch for the commit.
+        work = config.data_dir() / "dreams" / str(patch.get("id") or pdir.name)
+        report = asyncio.run(rehearse(patch, db_path, work))
+        shutil.copyfile(work / "rehearsal.json", pdir / "rehearsal.json")
         for s in report["steps"]:
             print(("ok   " if s["ok"] else "FAIL ") + s["step"]
                   + (f": {s['detail'][:300]}" if s["detail"] and not s["ok"] else ""))
