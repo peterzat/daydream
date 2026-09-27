@@ -329,3 +329,24 @@ def test_prebake_from_cache_is_staged_read_only_for_the_service(srv, monkeypatch
     (staged, data), = seen
     assert staged.parent == srv / "incoming-art" and data == b"png"
     assert not staged.exists()  # cleaned up after
+
+
+def test_deploy_tests_run_with_the_dev_venv_in_the_worktree(tmp_path, monkeypatch):
+    """bin/game (which the smoke test shells out to) needs the checkout's own
+    .venv; the throwaway worktree has none unless it borrows the dev venv."""
+    import subprocess
+    import tempfile
+
+    monkeypatch.setattr(tempfile, "mkdtemp", lambda prefix="": str(tmp_path))
+    monkeypatch.setattr(prodctl, "git", lambda *a, **k: (tmp_path / "tree").mkdir())
+    seen = {}
+
+    def fake_run(cmd, cwd=None, **kw):
+        if "pytest" in cmd:
+            venv = Path(cwd) / ".venv"
+            seen["venv"] = venv.is_symlink() and venv.resolve() == (prodctl.REPO / ".venv").resolve()
+        return subprocess.CompletedProcess(cmd, 0, stdout="1 passed\n", stderr="")
+
+    monkeypatch.setattr(prodctl.subprocess, "run", fake_run)
+    prodctl.run_tests_at("a" * 40)
+    assert seen["venv"]

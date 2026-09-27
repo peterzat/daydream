@@ -295,6 +295,9 @@ def run_tests_at(sha: str) -> None:
     tmp = Path(tempfile.mkdtemp(prefix="daydream-deploy-"))
     try:
         git("worktree", "add", "--detach", str(tmp / "tree"), sha)
+        # Tests that shell out to bin/game need the checkout's own .venv; a
+        # fresh worktree has none, so it borrows the dev venv.
+        (tmp / "tree" / ".venv").symlink_to(REPO / ".venv")
         env = {k: v for k, v in os.environ.items() if not k.startswith("DAYDREAM_")}
         env["PYTHONPATH"] = str(tmp / "tree")
         say(f"tests: short + medium at {sha[:12]} ...")
