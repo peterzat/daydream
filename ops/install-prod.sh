@@ -56,6 +56,11 @@ install -d -o root -g daydream -m 0750 "$SRV/etc"
 # every new file and dir, whoever creates it.
 setfacl -m "u:$OPERATOR:rwx,g:daydream:rwx" "$SRV/data"
 setfacl -d -m "u::rwx,u:$OPERATOR:rwx,g::rwx,g:daydream:rwx,o::---" "$SRV/data"
+# The GPU lock every daydream process on the box shares (the arbiter's
+# cross-process layer): dev, prod and a tier_long run take turns on the card.
+if [[ ! -e "$SRV/data/gpu.lock" ]]; then
+    install -o daydream -g daydream -m 0660 /dev/null "$SRV/data/gpu.lock"
+fi
 if [[ ! -f "$SRV/etc/prod.env" ]]; then
     install -o root -g daydream -m 0640 "$OPS/prod.env.example" "$SRV/etc/prod.env"
     echo "installed $SRV/etc/prod.env from ops/prod.env.example (review it)"

@@ -327,6 +327,12 @@ _refuse_gpu_work_while_prod_runs() {
     # overlap prod's inference on the one card (SPEC 2026-09-27 criterion 11).
     # Until a cross-process lock lands, GPU-heavy dev work waits for prod to
     # sleep. DAYDREAM_ALLOW_GPU_WITH_PROD=1 overrides (you accept the risk).
+    # With the shared GPU lock in place (installed with prod) the arbiter
+    # coordinates every process on its own (criterion 21); this refusal is
+    # only the fallback for a box without it.
+    if [[ -e /srv/daydream/data/gpu.lock && "${DAYDREAM_GPU_LOCK-x}" != "" ]]; then
+        return 0
+    fi
     if [[ "$ENV_NAME" != "prod" ]] && _prod_active \
             && [[ "${DAYDREAM_ALLOW_GPU_WITH_PROD:-0}" != "1" ]]; then
         echo "refusing: daydream prod is awake and shares the GPU." >&2

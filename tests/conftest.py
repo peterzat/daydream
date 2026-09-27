@@ -91,6 +91,10 @@ os.environ.setdefault("HOME", tempfile.mkdtemp(prefix="daydream-test-home-"))
 # own via monkeypatch still win.
 os.environ["DAYDREAM_DATA_DIR"] = tempfile.mkdtemp(prefix="daydream-test-data-")
 
+# No cross-process GPU lock in the suite (it would be the prod install's real
+# file); tests of that layer name their own lock path.
+os.environ["DAYDREAM_GPU_LOCK"] = ""
+
 
 @pytest.fixture(autouse=True)
 def _no_real_image_gen(request, monkeypatch):
@@ -219,6 +223,11 @@ def _check_required_engines(request):
     marker, this is a no-op."""
     from daydream import config
 
+    if (request.node.get_closest_marker("requires_vllm")
+            or request.node.get_closest_marker("requires_comfyui")):
+        # A real-GPU test must coordinate with any running daydream (prod,
+        # dev) through the shared cross-process lock (criterion 21).
+        request.getfixturevalue("monkeypatch").delenv("DAYDREAM_GPU_LOCK", raising=False)
     if request.node.get_closest_marker("requires_vllm"):
         if not request.getfixturevalue("_vllm_live"):
             pytest.skip(f"vLLM unreachable at {config.llm_base_url()}")

@@ -220,7 +220,7 @@ working exactly as it does now.
   - The GEX44 README records the exposure design and the vLLM finding; this
     edit stays uncommitted, for the operator.
 
-- [ ] **21. The GPU is safe across processes.** An image render in one
+- [x] **21. The GPU is safe across processes.** An image render in one
   daydream process never overlaps an LLM call or render in another. A
   two-process test shows it, and a cancelled waiter never leaves the lock
   held. This replaces criterion 11's prod-active guard. (May land after the
@@ -363,4 +363,4 @@ first dream) remains open. It is operator-paced and does not gate this turn.
 *Prior spec (2026-09-26): The Village of Lost Hours, the pivot turn. Closed
 21/22; criterion 22 (the operator playtest) stays open, operator-paced.*
 
-<!-- SPEC_META: {"date":"2026-09-27","title":"Going live: the village opens its doors","criteria_total":23,"criteria_met":9} -->
+<!-- SPEC_META: {"date":"2026-09-27","title":"Going live: the village opens its doors","criteria_total":23,"criteria_met":10} -->

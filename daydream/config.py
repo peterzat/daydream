@@ -213,6 +213,21 @@ def llm_concurrency() -> int:
         return 3
 
 
+PROD_GPU_LOCK = Path("/srv/daydream/data/gpu.lock")
+
+
+def gpu_lock_path() -> Path | None:
+    """The lock file every daydream process on this box shares for the GPU
+    (daydream/gpu/arbiter.py's cross-process layer, SPEC 2026-09-27 criterion
+    21). DAYDREAM_GPU_LOCK names it; empty turns the layer off (the test
+    suite). Unset, it is the prod install's file when that exists (so dev and
+    prod coordinate with no configuration), else none."""
+    raw = os.environ.get("DAYDREAM_GPU_LOCK")
+    if raw is not None:
+        return Path(raw) if raw.strip() else None
+    return PROD_GPU_LOCK if PROD_GPU_LOCK.exists() else None
+
+
 def regen_ui_enabled() -> bool:
     """Whether the dev room-repaint surface is live: the two
     /api/rooms/{id}/image* endpoints and the SPA's plate tools (the

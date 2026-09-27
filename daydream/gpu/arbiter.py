@@ -35,12 +35,28 @@ slot back; cancelled-while-queued waiters are removed eagerly so a ghost
 entry in the LLM queue can never block exclusives via the queue-empty
 check.
 
-asyncio-only because Daydream is one Python process with one event loop.
-flock would be needed only if a second process ever contended for the
-GPU; the pattern lives at ~/src/qwen-2.5-localreview/gpu_lock.py for
-that day."""
+Across processes (SPEC 2026-09-27 criterion 21): dev, prod, and a tier_long
+run each have their own in-process gate, so the same shared/exclusive rule is
+mirrored onto an flock on one lock file both users can open
+(`config.gpu_lock_path()`, set up by ops/install-prod.sh):
+
+- **Shared lock.** Held while THIS process has any LLM or background call in
+  flight (refcounted, taken on 0 -> 1 and dropped on -> 0).
+- **Exclusive lock.** Held for a render. In-process admission already
+  guarantees a process never holds its shared lock while asking for the
+  exclusive one, so it cannot deadlock against itself.
+- **Cancellable.** Taken by LOCK_NB polling, so a cancelled waiter never ends
+  up holding the lock.
+- **Bounded for renders.** A render that cannot get the exclusive lock within
+  XP_RENDER_WAIT_S gives up (GpuBusyElsewhere): its in-process slot would
+  otherwise stall this process's own text calls behind it. Renders are lazy
+  paint; the caller keeps the placeholder and paints later.
+
+No lock path means no cross-process layer (tests, CI, a box without prod)."""
 
 import asyncio
+import fcntl
+import os
 import time
 from collections import deque
 from collections.abc import AsyncIterator
@@ -57,6 +73,74 @@ _llm_q: deque[tuple[asyncio.Future, float]] = deque()
 _excl_q: deque[tuple[asyncio.Future, float]] = deque()
 _bg_q: deque[tuple[asyncio.Future, float]] = deque()
 _max_wait_ms = {"llm": 0, "exclusive": 0, "background": 0}
+
+
+# ---- the cross-process layer (flock) ------------------------------------------
+
+XP_POLL_S = 0.05
+XP_RENDER_WAIT_S = 20.0
+_xp_fd: int | None = None
+_xp_fd_path: str | None = None
+_xp_shared = 0
+_xp_mutex: asyncio.Lock | None = None
+
+
+class GpuBusyElsewhere(RuntimeError):
+    """Another daydream process held the GPU too long for this render."""
+
+
+def _xp_file() -> int | None:
+    global _xp_fd, _xp_fd_path
+    path = config.gpu_lock_path()
+    if path is None:
+        return None
+    if _xp_fd is None or _xp_fd_path != str(path):
+        if _xp_fd is not None:
+            os.close(_xp_fd)
+        _xp_fd = os.open(str(path), os.O_RDONLY | os.O_CREAT, 0o660)
+        _xp_fd_path = str(path)
+    return _xp_fd
+
+
+async def _xp_poll(fd: int, op: int, timeout: float | None) -> None:
+    deadline = None if timeout is None else time.monotonic() + timeout
+    while True:
+        try:
+            fcntl.flock(fd, op | fcntl.LOCK_NB)
+            return
+        except BlockingIOError:
+            if deadline is not None and time.monotonic() >= deadline:
+                raise GpuBusyElsewhere("another daydream process holds the GPU") from None
+            await asyncio.sleep(XP_POLL_S)
+
+
+async def _xp_enter(kind: str) -> None:
+    global _xp_shared, _xp_mutex
+    fd = _xp_file()
+    if fd is None:
+        return
+    if kind == "exclusive":
+        await _xp_poll(fd, fcntl.LOCK_EX, XP_RENDER_WAIT_S)
+        return
+    if _xp_mutex is None:
+        _xp_mutex = asyncio.Lock()
+    async with _xp_mutex:
+        if _xp_shared == 0:
+            await _xp_poll(fd, fcntl.LOCK_SH, None)
+        _xp_shared += 1
+
+
+def _xp_exit(kind: str) -> None:
+    """Synchronous (flock unlock never blocks), so safe in a `finally`."""
+    global _xp_shared
+    if _xp_fd is None or config.gpu_lock_path() is None:
+        return
+    if kind == "exclusive":
+        fcntl.flock(_xp_fd, fcntl.LOCK_UN)
+        return
+    _xp_shared = max(0, _xp_shared - 1)
+    if _xp_shared == 0:
+        fcntl.flock(_xp_fd, fcntl.LOCK_UN)
 
 
 def _live(q: deque) -> bool:
@@ -137,12 +221,21 @@ async def acquire(kind: str = "exclusive") -> AsyncIterator[None]:
             except ValueError:
                 pass
         raise
+    # In-process slot granted; now the same rule across processes. On any
+    # failure here (cancelled, or a render timing out) the in-process slot
+    # goes back before the exception leaves.
+    try:
+        await _xp_enter(kind)
+    except BaseException:
+        _release(kind)
+        raise
     waited_ms = int((time.monotonic() - t0) * 1000)
     if waited_ms > _max_wait_ms[kind]:
         _max_wait_ms[kind] = waited_ms
     try:
         yield
     finally:
+        _xp_exit(kind)
         _release(kind)
 
 
@@ -182,7 +275,16 @@ def stats() -> dict:
 def reset() -> None:
     """Test helper: drop all gate state so each test starts fresh.
     Not for production paths."""
-    global _active_llm, _active_exclusive, _active_bg
+    global _active_llm, _active_exclusive, _active_bg, _xp_fd, _xp_fd_path, _xp_shared, _xp_mutex
+    if _xp_fd is not None:
+        try:
+            fcntl.flock(_xp_fd, fcntl.LOCK_UN)
+            os.close(_xp_fd)
+        except OSError:
+            pass
+    _xp_fd = _xp_fd_path = None
+    _xp_shared = 0
+    _xp_mutex = None
     _active_llm = 0
     _active_exclusive = False
     _active_bg = 0
