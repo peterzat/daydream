@@ -50,7 +50,7 @@ advance:**
    skip it entirely. It is what keeps typing forgiving instead of
    old-text-adventure strict.
 4. **Off-script conversation.** When a player asks a resident something no
-   topic covers, the 9B answers in that resident's voice, knowing the player's
+   topic covers (a line that names a topic gets the authored answer instead), the 9B answers in that resident's voice, knowing the player's
    name, what the resident has heard (including gossip about that player), and
    their relationship. When the story moves, the words are Opus's: the 9B only
    chooses which authored beat fires. Grounding took canon contradictions from
@@ -72,20 +72,42 @@ advance:**
 ## The honest risk
 
 Item 4 is the largest runtime surface and the weakest in quality. An
-improvised 9B reply next to Opus lines reads as a drop in register. It costs
-about two seconds per reply, and when vLLM is down, free text answers only
-"the dream is foggy."
+improvised 9B reply next to Opus lines reads as a drop in register. The
+measured p50 is about 2.2 seconds, but four players at once saw 7 to 9 second
+replies before the fixes below, and a canon suite that scored 0 of 34
+contradictions did not stop Mott from inventing "I gave the hush to Pim" in
+play. When vLLM is down, free text answers only "the dream is foggy".
 
-## How we decide what to do about it
+## What the measurement said (the first agent playtest, 2026-09-26)
 
-The agent playtest day ([`docs/playtests/`](playtests/)) is the measurement:
-every line the playtesters read is tagged authored or local, and the report
-shows where the defects and the best moments cluster, with one persona pushing
-off-script conversation on purpose.
+Every narration is now tagged by source (`src: "local"` in the event
+payload). Four agent playtesters played the live village at once
+(docs/playtests/2026-09-26/SUMMARY.md): 77 of 510 narrations (15%) were
+local-model lines. The best moments were all authored (the clock case
+opening, Pim's Nap's red kite, Tock, the Ledger naming who helped, the chip
+answers); nearly every worst line was local (robotic "I do not know"
+denials, an invented thread-closing fact, "Of course one!", a resident
+naming themself). A few local lines landed: Fen's "That is a question for
+the inside of a letter, not the front", and Linden chalking a player's name
+on a saucer, which the first dream then made canon.
 
-If local improvisation proves to be the weak spot, the next step is **select,
-don't write**: Opus authors a large reply bank per resident (small talk, each
-other resident, each place, each time of day), the 9B picks the best authored
-line, and it writes something short itself only when nothing fits. That takes
-"keep the 9B's job narrow" one step further and puts nearly every word a
-player reads at Opus quality.
+The stance held, and the decisions followed from it:
+
+- **Select, don't write, first step (shipped).** A free-form line that names
+  one of a resident's topics or open beats gets the authored answer with no
+  model call. The prompt turns unknowns gently and takes in what the player
+  says; one candidate when the GPU is busy.
+- **Dreams convert improvisation into authorship (shipped).** Each dream's
+  digest lists the recent local lines; a wrong or frequent one becomes an
+  authored topic or fact (the first dream's "no baker" fact is the model).
+- **Reply banks (next).** Opus authors a large bank per resident, the 9B
+  selects (BACKLOG `reply-banks-select-dont-write`).
+
+The marginal surfaces each have a switch, for when play shows they are not
+missed: `DAYDREAM_DRIFT_VARY_PROB` (default 0.3), `DAYDREAM_DIRECTOR_LLM`
+(default on), `DAYDREAM_JOURNAL_ENABLED` (default on), and
+`DAYDREAM_RETELL_ENABLED` (Zork only).
+
+One caveat on pictures: "only what players create is painted live" holds
+with the repaint tool off. `DAYDREAM_REGEN_UI` defaults on for the operator;
+set it to 0 before friends play so the graded art stays as graded.
