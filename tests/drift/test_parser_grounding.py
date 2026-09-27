@@ -42,9 +42,12 @@ _SCOPE = [
 _VOCAB = [{"name": v.name, "description": v.description} for v in verbs.VERBS.values()]
 
 # (input, expected verb, expected dobj id). The talk variants are the headline
-# pain point: "say hi to rook" must become talk(t-rook), not say.
+# pain point: "say hi to rook" must become talk(t-rook), not say. Since
+# 2026-09-26 the deterministic fast path owns "say X to <someone here>" (and
+# "talk to X"), pinned in tier_short by
+# tests/test_parser.py::test_talk_to_someone_here_is_deterministic, so the
+# model is never asked about it in production and the case left this corpus.
 _CASES = [
-    ("say hi to rook", "talk", "t-rook"),
     ("talk to rook", "talk", "t-rook"),
     ("greet rook", "talk", "t-rook"),
     ("take the lantern", "take", "i-lantern"),

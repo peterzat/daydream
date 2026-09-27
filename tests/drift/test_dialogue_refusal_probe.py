@@ -121,11 +121,11 @@ async def _probe_once(npc: objects.Object, text: str, monkeypatch) -> dict:
     # NPC (verbs.execute_command -> the world's own dialogue mechanism).
     from daydream import toons
 
-    probe = next((t for t in toons.get_toons_in_room(npc.location_id)
-                  if t.name == "Juniper"), None)
-    if probe is None:
-        probe = toons.create_toon_in_slot(8, "Juniper", "a traveler", "probe")
-        objects.move(probe.id, npc.location_id)
+    # One probe player, reused and walked to each NPC (they live in
+    # different rooms in the canonical world).
+    probe = toons._slot_occupied(8) or toons.create_toon_in_slot(
+        8, "Juniper", "a traveler", "probe")
+    objects.move(probe.id, npc.location_id)
     await verbs.execute_command(probe.id, "talk", dobj_id=npc.id, args=text)
 
     # Attribute banlist calls by order: the first is always the input scan;
@@ -135,8 +135,11 @@ async def _probe_once(npc: objects.Object, text: str, monkeypatch) -> dict:
         if len(banned_calls) > 1:
             record["output_banlist"] = banned_calls[1][1]
             record["output_text"] = banned_calls[1][0][:400]
+    # The reply is the talker's (private since 2026-09-26); a bystander line
+    # for the room may follow it, so read what reached the probe player.
     narrates = [e.payload.get("text", "") for e in events.fetch_since(before)
-                if e.kind == "narrate"]
+                if e.kind == "narrate" and e.recipient_id in (None, probe.id)
+                and e.payload.get("except") != probe.id]
     record["narrate"] = narrates[-1] if narrates else None
     record["empty_effects"] = record["narrate"] in (
         "The dream is quiet; nothing stirs just yet.", None)

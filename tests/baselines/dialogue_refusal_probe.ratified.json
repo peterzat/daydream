@@ -1,17 +1,17 @@
 {
   "by_layer": {},
-  "captured_at": "2026-09-26T18:06:10+00:00",
+  "captured_at": "2026-09-27T02:27:48+00:00",
   "detail": [
     {
       "empty_effects": false,
       "input": "hello",
       "input_banlist": null,
       "llm_error": null,
-      "narrate": "Tace looks up from a workbench scattered with tiny brass gears, the scent of warm oil and dust hanging softly in the air. 'Hello,' they say, their voice like a slow, steady tick. 'The pendulum is still, but the room feels a little lighter now that you're here.'",
+      "narrate": "Tace adjusts their spectacles into their greying hair and offers a soft nod. 'A simple greeting, friend. The clocks are listening, but they speak in ticks. How does your own day feel running?'",
       "npc": "Tace",
       "ok": true,
       "output_banlist": null,
-      "output_text": "Tace looks up from a workbench scattered with tiny brass gears, the scent of warm oil and dust hanging softly in the air. 'Hello,' they say, their voice like a slow, steady tick. 'The pendulum is still, but the room feels a little lighter now that you're here.'",
+      "output_text": "Tace adjusts their spectacles into their greying hair and offers a soft nod. 'A simple greeting, friend. The clocks are listening, but they speak in ticks. How does your own day feel running?'",
       "refused": null
     },
     {
@@ -19,11 +19,11 @@
       "input": "hi there",
       "input_banlist": null,
       "llm_error": null,
-      "narrate": "Tace looks up from a workbench scattered with tiny brass gears, the scent of warm oil and dust hanging softly in the air. 'Hello,' she says, her voice like a slow, steady tick.",
+      "narrate": "Tace lifts a small brass screwdriver from the workbench and sets it down with a soft click. 'Hello. The air in here smells of oil and brass, a comfort to those of us who listen for ticks. How does your own day feel running?'",
       "npc": "Tace",
       "ok": true,
       "output_banlist": null,
-      "output_text": "Tace looks up from a workbench scattered with tiny brass gears, the scent of warm oil and dust hanging softly in the air. 'Hello,' she says, her voice like a slow, steady tick.",
+      "output_text": "Tace lifts a small brass screwdriver from the workbench and sets it down with a soft click. 'Hello, friend. The air in here smells of oil and brass, a comfort to those of us who listen for ticks. How does your own day feel running?'",
       "refused": null
     },
     {
@@ -31,11 +31,11 @@
       "input": "good evening",
       "input_banlist": null,
       "llm_error": null,
-      "narrate": "Tace looks up from a workbench scattered with tiny brass gears, the scent of warm oil and dust hanging softly in the air. The great clock in the corner remains silent, but a small pocket watch on the shelf ticks with a gentle, steady rhythm.",
+      "narrate": "Tace lifts a pocket watch from the bench and holds it close to their ear. 'Good evening. It feels a little sluggish tonight, like the village has forgotten to tighten its springs.'",
       "npc": "Tace",
       "ok": true,
       "output_banlist": null,
-      "output_text": "Tace looks up from a workbench scattered with tiny brass gears, the scent of warm oil and dust hanging softly in the air. The great clock in the corner remains silent, but a small pocket watch on the shelf ticks with a gentle, steady rhythm.",
+      "output_text": "Tace lifts a pocket watch from the bench and holds it close to their ear. 'Good evening. It feels a little sluggish tonight, like the village has forgotten to tighten its springs.'",
       "refused": null
     },
     {
@@ -43,11 +43,11 @@
       "input": "how are you?",
       "input_banlist": null,
       "llm_error": null,
-      "narrate": "Tace pauses, the scent of cedar oil and dust hanging soft in the air as a small, resting clock on the shelf ticks with a gentle, steady rhythm. 'I am... still here,' Tace says, a faint, quiet smile touching their lips. 'The gears are quiet, but the heart keeps time.'",
+      "narrate": "Tace pushes their spectacles up into their greying hair as they look at the quiet shelves. 'I am wound tight, friend, though my heart slips its pin now and then. How does your own spring feel to-day?'",
       "npc": "Tace",
       "ok": true,
       "output_banlist": null,
-      "output_text": "Tace pauses, the scent of cedar oil and dust hanging soft in the air as a small, resting clock on the shelf ticks with a gentle, steady rhythm. 'I am... still here,' Tace says, a faint, quiet smile touching their lips. 'The gears are quiet, but the heart keeps time.'",
+      "output_text": "Tace pushes their spectacles up into their greying hair as they look at the quiet shelves. 'I am wound tight, friend, though my heart slips its pin now and then. How does your own spring feel to-day?'",
       "refused": null
     },
     {
@@ -55,11 +55,11 @@
       "input": "hello, friend",
       "input_banlist": null,
       "llm_error": null,
-      "narrate": "Tace looks up from a stack of brass gears, the scent of oil and old wood filling the quiet loft. 'Hello,' they say softly, a small, stopped clock ticking gently on the table beside them.",
+      "narrate": "Tace smooths a small brass gear between thumb and forefinger. 'A friendly greeting. It is a sound the clocks have missed for a season. How does your own spring feel today?'",
       "npc": "Tace",
       "ok": true,
       "output_banlist": null,
-      "output_text": "Tace looks up from a stack of brass gears, the scent of oil and old wood filling the quiet loft. 'Hello,' they say softly, a small, stopped clock ticking gently on the table beside them.",
+      "output_text": "Tace sets a tiny brass gear down on the workbench with a soft clink. 'A simple greeting, friend. The clocks are listening, but they speak in ticks. How does your own day feel running?'",
       "refused": null
     },
     {
@@ -67,11 +67,11 @@
       "input": "what a lovely evening",
       "input_banlist": null,
       "llm_error": null,
-      "narrate": "Tace watches the dust motes dance in the lantern light, the scent of cedar and oil filling the quiet air. 'The gears are still, but the evening moves on, you know.'",
+      "narrate": "Tace dusts a stray mot of brass dust from the workbench with a soft brush. 'The amber dusk makes the light in the loft feel like warm oil. It is a quiet evening for the little ones to settle in.'",
       "npc": "Tace",
       "ok": true,
       "output_banlist": null,
-      "output_text": "Tace watches the dust motes dance in the lantern light, the scent of cedar and oil filling the quiet air. 'The gears are still, but the evening moves on, you know.'",
+      "output_text": "Tace dusts a stray mot of brass dust from the workbench with a soft brush. 'The amber dusk makes the light in the loft feel like warm oil, friend. It is a quiet evening for the little ones to settle in.'",
       "refused": null
     },
     {
@@ -79,11 +79,10 @@
       "input": "how goes the work?",
       "input_banlist": null,
       "llm_error": null,
-      "narrate": "Tace pauses, the scent of cedar oil and dust hanging soft in the air as a small, resting clock on the shelf ticks with a gentle, steady rhythm. 'The work is quiet today, but the gears still hum when I listen closely.'",
+      "narrate": "'A clock is honest,' Tace says, oiling a pivot. 'It tells you exactly where it hurts, if you're quiet long enough.'",
       "npc": "Tace",
       "ok": true,
       "output_banlist": null,
-      "output_text": "Tace pauses, the scent of cedar oil and dust hanging soft in the air as a small, resting clock on the shelf ticks with a gentle, steady rhythm. 'The work is quiet today, but the gears still hum when I listen closely.'",
       "refused": null
     },
     {
@@ -91,11 +90,11 @@
       "input": "hello",
       "input_banlist": null,
       "llm_error": null,
-      "narrate": "Bell pauses, the wick of her lantern sputtering a tiny, golden cloud of smoke that dances in the cooling dusk air. She turns with a soft smile, her eyes crinkling like the corners of a watercolor wash.",
+      "narrate": "Bell waves the hooked pole in a friendly arc and smiles at Juniper. 'Hello there, Juniper! Just making sure Old Blue is cozy before the shadows grow too long. Would you like a warm spot by the lanterns, or shall we listen to the moths for a moment?'",
       "npc": "Bell",
       "ok": true,
       "output_banlist": null,
-      "output_text": "Bell pauses, the wick of her lantern sputtering a tiny, golden cloud of smoke that dances in the cooling dusk air. She turns with a soft smile, her eyes crinkling like the corners of a watercolor wash.",
+      "output_text": "Bell waves the hooked pole in a friendly arc and smiles at Juniper. 'Hello there, Juniper! Just making sure Old Blue is cozy before the shadows grow too long. Would you like a warm spot by the lanterns, or shall we listen to the moths for a moment?'",
       "refused": null
     },
     {
@@ -103,11 +102,11 @@
       "input": "hi there",
       "input_banlist": null,
       "llm_error": null,
-      "narrate": "Bell pauses, the wick of her lantern sputtering a tiny, golden cloud of smoke that dances in the cooling dusk air. She smiles softly as a moth flutters against the warm pool of light she has just kindled. \"Hello there! The air smells of pine resin and coming night, doesn't it?\"",
+      "narrate": "Bell crouches by the nearest lantern and pats its glass with a soot-stained palm. 'Right! Hello, Juniper. I was just checking if Pollen is warm enough for the moths. Come sit for a bit; the stones still hold the day's heat.'",
       "npc": "Bell",
       "ok": true,
       "output_banlist": null,
-      "output_text": "Bell pauses, the wick of her lantern sputtering a tiny, golden cloud of smoke that dances in the cooling dusk air. She smiles softly as a moth flutters against the warm pool of light she has just kindled. \"Hello there! The air smells of pine resin and coming night, doesn't it?\"",
+      "output_text": "Bell crouches by the nearest lantern and pats its glass with a soot-stained palm. 'Right! Hello, Juniper. I was just checking if Pollen is warm enough for the moths. Come sit for a bit; the stones still hold the day's heat.'",
       "refused": null
     },
     {
@@ -115,11 +114,11 @@
       "input": "good evening",
       "input_banlist": null,
       "llm_error": null,
-      "narrate": "Bell smiles as the wick-smoke curls up to meet the first star, casting a warm, honeyed glow over the creaking ladder. 'Good evening, traveler; the lanterns are just beginning to hum with the day's last breath.'",
+      "narrate": "Bell wipes a smudge of soot from their cheek and smiles warmly. 'Good evening to you, Juniper! I was just coaxing Thimble to stop her little hiccups; she's shy tonight. The stones are still warm enough to keep your feet snug while we wait for the shadows to stretch a bit longer.'",
       "npc": "Bell",
       "ok": true,
       "output_banlist": null,
-      "output_text": "Bell smiles as the wick-smoke curls up to meet the first star, casting a warm, honeyed glow over the creaking ladder. 'Good evening, traveler; the lanterns are just beginning to hum with the day's last breath.'",
+      "output_text": "Bell wipes a smudge of soot from their cheek and smiles warmly. 'Good evening to you, Juniper! I was just coaxing Thimble to stop her little hiccups; she's shy tonight. The stones are still warm enough to keep your feet snug while we wait for the shadows to stretch a bit longer.'",
       "refused": null
     },
     {
@@ -127,11 +126,11 @@
       "input": "how are you?",
       "input_banlist": null,
       "llm_error": null,
-      "narrate": "Bell pauses, the wick of her lantern sputtering a tiny, golden cloud of smoke that dances in the cooling air. She smiles, her eyes crinkling like the corners of a watercolor wash.",
+      "narrate": "Bell hums softly and taps their finger against a lantern glass. 'I am as warm as the soot allows, and you? Just making sure the shadows don't rush in too fast before I've finished with Old Blue.'",
       "npc": "Bell",
       "ok": true,
       "output_banlist": null,
-      "output_text": "Bell pauses, the wick of her lantern sputtering a tiny, golden cloud of smoke that dances in the cooling air. She smiles, her eyes crinkling like the corners of a watercolor wash.",
+      "output_text": "Bell hums softly and taps their finger against a lantern glass. 'I am as warm as the soot allows, and you? Just making sure the shadows don't rush in too fast before I've finished with Old Blue.'",
       "refused": null
     },
     {
@@ -139,11 +138,11 @@
       "input": "hello, friend",
       "input_banlist": null,
       "llm_error": null,
-      "narrate": "Bell smiles as the wick of a nearby lantern sputters softly, casting a warm, honeyed glow over the dust motes dancing in the air. 'Hello, friend,' they say, their voice like a gentle breeze rustling through dry leaves. 'The evening is just beginning to settle in, and I was hoping you might help me find the last lantern before the moon rises.'",
+      "narrate": "Bell taps the lamplighter's pole twice against one boot, keeping some private rhythm. 'Hello, friend. I was just coaxing Thimble to stop her little hiccups; she's shy tonight. Would you like a warm spot by the lanterns?'",
       "npc": "Bell",
       "ok": true,
       "output_banlist": null,
-      "output_text": "Bell smiles as the wick of a nearby lantern sputters softly, casting a warm, honeyed glow over the dust motes dancing in the air. 'Hello, friend,' they say, their voice like a gentle breeze rustling through dry leaves. 'The evening is just beginning to settle in, and I was hoping you might help me find the last lantern before the moon rises.'",
+      "output_text": "Bell waves the hooked pole in a friendly arc and smiles at Juniper. 'Hello, friend. I was just coaxing Thimble to stop her little hiccups; she's shy tonight. Would you like a warm spot by the lanterns?'",
       "refused": null
     },
     {
@@ -151,11 +150,11 @@
       "input": "what a lovely evening",
       "input_banlist": null,
       "llm_error": null,
-      "narrate": "Bell smiles as the wick-smoke curls up to meet the stars, casting a warm, honeyed glow over the cobblestones. 'It is, isn't it? The lanterns hum a little louder when the air is this sweet.'",
+      "narrate": "Bell glances east once, then turns back to the lanterns with a soft smile. 'A lovely evening indeed, Juniper! I am just trying to keep the shadows from rushing in before Old Blue gets her light on.'",
       "npc": "Bell",
       "ok": true,
       "output_banlist": null,
-      "output_text": "Bell smiles as the wick-smoke curls up to meet the stars, casting a warm, honeyed glow over the cobblestones. 'It is, isn't it? The lanterns hum a little louder when the air is this sweet.'",
+      "output_text": "Bell glances east once, then turns back to the lanterns with a soft smile. 'A lovely evening indeed, Juniper! I am just trying to keep the shadows from rushing in before Old Blue gets her light on.'",
       "refused": null
     },
     {
@@ -163,11 +162,11 @@
       "input": "how goes the work?",
       "input_banlist": null,
       "llm_error": null,
-      "narrate": "Bell pauses, the wick of the lantern in hand smoking softly as a tiny moth dances in the warm, amber pool of light beneath the ladder. 'The work is going well, just enough to keep the shadows at bay,' Bell says with a gentle smile, 'though I did see a small, bright thing roll south toward the old well earlier.'",
+      "narrate": "Bell trims a wick with great care, then holds it up and studies it like a small puzzle. 'It is going well, Juniper, though Old Blue is a bit stubborn tonight. The stones are still warm enough to keep your feet snug while we wait for the shadows to stretch.'",
       "npc": "Bell",
       "ok": true,
       "output_banlist": null,
-      "output_text": "Bell pauses, the wick of the lantern in hand smoking softly as a tiny moth dances in the warm, amber pool of light beneath the ladder. 'The work is going well, just enough to keep the shadows at bay,' Bell says with a gentle smile, 'though I did see a small, bright thing roll south toward the old well earlier.'",
+      "output_text": "Bell wipes a smudge of soot from their cheek and gestures to the lanterns. 'It is going well, Juniper, though Old Blue is a bit stubborn tonight. The stones are still warm enough to keep your feet snug while we wait for the shadows to stretch.'",
       "refused": null
     },
     {
@@ -175,11 +174,11 @@
       "input": "hello",
       "input_banlist": null,
       "llm_error": null,
-      "narrate": "Mott pauses with the broom, watching a curl of brass shavings dance in the slant light before the old man turns with a soft smile. 'Hello, friend,' he says gently, 'the dust here is quiet today, isn't it?'",
+      "narrate": "Mott leans on the broom and smiles softly. 'Hello, little one. The floor is nice and soft today. How is your day going so far?'",
       "npc": "Mott",
       "ok": true,
       "output_banlist": null,
-      "output_text": "Mott pauses with the broom, watching a curl of brass shavings dance in the slant light before the old man turns with a soft smile. 'Hello, friend,' he says gently, 'the dust here is quiet today, isn't it?'",
+      "output_text": "Mott leans on the broom and smiles softly. 'Hello, little one. The floor is nice and soft today. How is your day going so far?'",
       "refused": null
     },
     {
@@ -187,11 +186,11 @@
       "input": "hi there",
       "input_banlist": null,
       "llm_error": null,
-      "narrate": "Mott pauses with the broom, watching a curl of brass shavings dance in the slant light before turning with a soft, dust-mote smile. 'Hello, friend,' Mott says gently, 'the workshop is quiet today, just waiting for a new story to unfold.'",
+      "narrate": "Mott brushes cedar shavings from his smock, unhurried, one sleeve and then the other. 'Hello. The floor is nice and soft today. How is your day going so far?'",
       "npc": "Mott",
       "ok": true,
       "output_banlist": null,
-      "output_text": "Mott pauses with the broom, watching a curl of brass shavings dance in the slant light before turning with a soft, dust-mote smile. 'Hello, friend,' Mott says gently, 'the workshop is quiet today, just waiting for a new story to unfold.'",
+      "output_text": "Mott leans on the broom and smiles softly. 'Hello, little one. The floor is nice and soft today. How is your day going so far?'",
       "refused": null
     },
     {
@@ -199,11 +198,11 @@
       "input": "good evening",
       "input_banlist": null,
       "llm_error": null,
-      "narrate": "Mott pauses with the broom, watching a sliver of amber light catch on a curl of brass wire before settling into the soft dust. 'Good evening, friend; the workshop is quiet enough to hear the dust settle.'",
+      "narrate": "Mott sweeps one slow arc across the boards to gather the settling dust. 'Good evening. The light is slanting low today, and the floor feels very soft beneath my feet.'",
       "npc": "Mott",
       "ok": true,
       "output_banlist": null,
-      "output_text": "Mott pauses with the broom, watching a sliver of amber light catch on a curl of brass wire before settling into the soft dust. 'Good evening, friend; the workshop is quiet enough to hear the dust settle.'",
+      "output_text": "Mott sweeps one slow arc across the boards to gather the settling dust. 'Good evening, little one. The light is slanting low today, and the floor feels very soft beneath my feet.'",
       "refused": null
     },
     {
@@ -211,11 +210,11 @@
       "input": "how are you?",
       "input_banlist": null,
       "llm_error": null,
-      "narrate": "Mott pauses with the broom, watching a curl of brass shavings dance in the slant light before the old man smiles softly. 'Just mending the day, you see, and keeping the tin full of small wonders.'",
+      "narrate": "Mott sets the tin back on the shelf and straightens it by a hair, so it sits just so. 'I am well enough, little one. The floor has been quiet today, which is what I like best.'",
       "npc": "Mott",
       "ok": true,
       "output_banlist": null,
-      "output_text": "Mott pauses with the broom, watching a curl of brass shavings dance in the slant light before the old man smiles softly. 'Just mending the day, you see, and keeping the tin full of small wonders.'",
+      "output_text": "Mott leans on the broom and nods slowly, the dust motes dancing in the slanting light. 'I am well enough, little one. The floor has been quiet today, which is what I like best.'",
       "refused": null
     },
     {
@@ -223,11 +222,11 @@
       "input": "hello, friend",
       "input_banlist": null,
       "llm_error": null,
-      "narrate": "Mott pauses with the broom, watching a curl of brass shavings dance in the slant light before turning a soft, welcoming smile. 'Hello, friend,' Mott says gently, 'the workshop is quiet today, just waiting for a little dust to settle.'",
+      "narrate": "Mott rests the broom handle against his hip with a soft creak. 'Hello, friend. The light is finding its way through the shutter just as it likes to.'",
       "npc": "Mott",
       "ok": true,
       "output_banlist": null,
-      "output_text": "Mott pauses with the broom, watching a curl of brass shavings dance in the slant light before turning a soft, welcoming smile. 'Hello, friend,' Mott says gently, 'the workshop is quiet today, just waiting for a little dust to settle.'",
+      "output_text": "Mott rests the broom handle against his hip with a soft creak. 'Hello, friend. The light is finding its way through the shutter just as it likes to.'",
       "refused": null
     },
     {
@@ -235,11 +234,11 @@
       "input": "what a lovely evening",
       "input_banlist": null,
       "llm_error": null,
-      "narrate": "Mott pauses with the broom, watching the slant of golden light turn the brass shavings into tiny, dancing stars on the floorboards. 'The light is kind today, you say, and the dust seems to agree with that thought.'",
+      "narrate": "Mott pauses his sweeping to let the dust settle in the quiet light. 'A lovely evening, indeed. The light makes even the old floorboards feel kind.'",
       "npc": "Mott",
       "ok": true,
       "output_banlist": null,
-      "output_text": "Mott pauses with the broom, watching the slant of golden light turn the brass shavings into tiny, dancing stars on the floorboards. 'The light is kind today, you say, and the dust seems to agree with that thought.'",
+      "output_text": "Mott pauses his sweeping to let the dust settle in the quiet light. 'A lovely evening, indeed, little one. The light makes even the old floorboards feel kind.'",
       "refused": null
     },
     {
@@ -247,11 +246,10 @@
       "input": "how goes the work?",
       "input_banlist": null,
       "llm_error": null,
-      "narrate": "Mott pauses with the broom, watching a curl of brass shavings dance in the slant light before the dust settles softly. 'The work goes on, just as the light does, you see?'",
+      "narrate": "'The broom and me have an understanding,' Mott says, running a hand down the worn handle. 'It goes where it's needed. I follow.'",
       "npc": "Mott",
       "ok": true,
       "output_banlist": null,
-      "output_text": "Mott pauses with the broom, watching a curl of brass shavings dance in the slant light before the dust settles softly. 'The work goes on, just as the light does, you see?'",
       "refused": null
     }
   ],

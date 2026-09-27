@@ -1,24 +1,26 @@
 {
-  "captured_at": "2026-09-26T18:09:06+00:00",
-  "description": "The air is warm and still, holding the quiet dust of a thousand folded hours. Moths with wings like stained glass cluster on the brass gears, keeping the time that never rushes. A single paper lantern glows low, casting long, soft shadows that move as slowly as a sleeping breath.",
-  "distinct_from_exemplars": true,
-  "latency_ms": 5469.138065000152,
+  "captured_at": "2026-09-27T02:30:26+00:00",
+  "distinct_from_exemplars": false,
+  "latency_ms": 5723.948737002502,
   "model": "hosted_vllm/cyankiwi/Qwen3.5-9B-AWQ-4bit",
-  "object_count": 2,
-  "objects": [
-    {
-      "name": "moth-wing hourglass",
-      "seed": "a small glass vessel filled with fine brass dust, where two moth wings rest on the sand to mark a pause in the day"
-    },
-    {
-      "name": "folded paper hour",
-      "seed": "a crisp square of cream paper tucked into a brass gear, holding a single written minute of rest for the village clock"
-    }
-  ],
+  "object_count": 0,
   "phrase": "an attic where the moths keep the hours",
-  "phrase_woven": true,
+  "phrase_woven": false,
+  "raw_result": {
+    "description": "The shelves are no taller than a child, and every book is small enough to hold in one hand. Moths rest on the spines like bookmarks, their wings folded gently against the paper. When the lantern flickers, they lift all at once and settle again, each on the book it loves.",
+    "objects": [
+      {
+        "name": "worn brass key",
+        "seed": "a small brass key with a paper tag tied to its bow, the tag reading 'for the hour of tea' in a careful hand"
+      },
+      {
+        "name": "mossy pebble",
+        "seed": "a smooth grey stone covered in soft green moss, sitting on a small wooden table next to a closed book"
+      }
+    ],
+    "room_seed": "a high attic room where soft grey moths rest on the spines of tiny books about the hours they once circled, lit by a single paper lantern",
+    "title": "The Attic of Resting Hours"
+  },
   "refused": false,
-  "room_seed": "a high attic room where soft-winged moths rest on shelves of brass gears, their dust forming gentle hours in the amber light",
-  "title": "The Moth Attic",
-  "valid": true
+  "valid": false
 }

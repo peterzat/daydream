@@ -212,6 +212,19 @@ def _check_len(value: object, lo: int, hi: int) -> str | None:
     return v if lo <= len(v) <= hi else None
 
 
+COMPOSE_ATTEMPTS = 2
+NEAR_COPY_OVERLAP = 0.6
+_WORD = re.compile(r"[a-z']+")
+
+
+def _overlap(text: str, exemplar: str) -> float:
+    """The share of `text`'s distinct words that also appear in `exemplar`."""
+    words = set(_WORD.findall((text or "").lower()))
+    if not words:
+        return 0.0
+    return len(words & set(_WORD.findall((exemplar or "").lower()))) / len(words)
+
+
 def validate_growth_output(result: object, growth: dict) -> dict | None:
     """Strict validation of the LLM's composition (SPEC 2026-07-02,
     criterion 2). Returns the cleaned {title, room_seed, description, objects}
@@ -269,6 +282,11 @@ def validate_growth_output(result: object, growth: dict) -> dict | None:
         if _norm(room_seed) == _norm(ex.get("seed", "")):
             return None
         if _norm(description) == _norm(ex.get("description", "")):
+            return None
+        # A near-copy is a copy (tier_long 2026-09-26: a "moth attic" phrase
+        # drew the moth exemplar back nearly word for word): most of the
+        # description's words taken from one exemplar's description.
+        if _overlap(description, ex.get("description", "")) >= NEAR_COPY_OVERLAP:
             return None
     return {
         "title": title, "room_seed": room_seed,
@@ -469,29 +487,36 @@ async def execute_plant(
         _narrate(room_id, _OFF_TONE)
         return False
 
-    # ---- compose: the single LLM call ----
-    try:
-        result = await client.acompletion_json(
-            system=GROWTH_SYSTEM,
-            user=_user_prompt(growth, room, phrase),
-            temperature=GROWTH_TEMPERATURE,
-            max_tokens=450,
-            timeout=30.0,
-            purpose="growth",
-        )
-    except client.LLMUnavailable as e:
-        logger.warning("plant: LLM unavailable: %s", e)
-        _narrate(room_id, _FOGGY)
-        return False
+    # ---- compose: one LLM call (a second only if the first is rejected) ----
+    composition = None
+    for attempt in range(COMPOSE_ATTEMPTS):
+        try:
+            result = await client.acompletion_json(
+                system=GROWTH_SYSTEM,
+                user=_user_prompt(growth, room, phrase),
+                temperature=GROWTH_TEMPERATURE,
+                max_tokens=450,
+                timeout=30.0,
+                purpose="growth",
+            )
+        except client.LLMUnavailable as e:
+            logger.warning("plant: LLM unavailable: %s", e)
+            _narrate(room_id, _FOGGY)
+            return False
 
-    refusal = safety.parse_refusal(result)
-    if refusal is not None:
-        _narrate(room_id, refusal.reason)
-        return False
+        refusal = safety.parse_refusal(result)
+        if refusal is not None:
+            _narrate(room_id, refusal.reason)
+            return False
 
-    composition = validate_growth_output(result, growth)
+        composition = validate_growth_output(result, growth)
+        if composition is not None:
+            break
+        # A rejected composition (most often a near-copy of an exemplar, the
+        # model's pull on a phrase that echoes one) gets one fresh try at the
+        # warm temperature before the seed waits for another day.
+        logger.info("plant: composition rejected by validation (attempt %d)", attempt + 1)
     if composition is None:
-        logger.info("plant: composition rejected by validation")
         _narrate(room_id, _WONT_HOLD_YET)
         return False
 

@@ -860,3 +860,30 @@ async def test_empty_vision_adds_the_authored_hint_for_the_player(monkeypatch):
     await _plant(seed, "")
     assert _last_narrate() == f"{GROWTH_BLOCK['question']} Plant it with a few words."
     assert spy.call_count == 0
+
+
+def test_a_near_copy_of_an_exemplar_is_rejected():
+    ex = GROWTH_BLOCK["exemplars"][0]
+    near = dict(VALID_COMPOSITION, description=ex["description"] + " Softly.")
+    assert growth.validate_growth_output(near, GROWTH_BLOCK) is None
+
+
+@pytest.mark.asyncio
+async def test_a_rejected_composition_gets_one_more_try(monkeypatch):
+    """The first composition is a near-copy; the second is fine: two calls,
+    one room. Two rejections leave the seed waiting (still two calls)."""
+    from unittest.mock import AsyncMock
+    ex = GROWTH_BLOCK["exemplars"][0]
+    near = dict(VALID_COMPOSITION, description=ex["description"] + " Softly.")
+    spy = AsyncMock(side_effect=[dict(near), dict(VALID_COMPOSITION)])
+    monkeypatch.setattr("daydream.llm.client.acompletion_json", spy)
+    seed = _seed()
+    await _plant(seed, "a mossy stair into green light")
+    assert spy.call_count == 2
+    assert rooms.get_room_by_slug("w-bunny", "the-moss-stair") is not None
+    spy2 = AsyncMock(side_effect=[dict(near), dict(near)])
+    monkeypatch.setattr("daydream.llm.client.acompletion_json", spy2)
+    seed2 = _seed()
+    await _plant(seed2, "another way somewhere")
+    assert spy2.call_count == 2
+    assert objects.get(seed2.id).properties.get("state") != "spent"
