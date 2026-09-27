@@ -452,11 +452,15 @@ async def execute_plant(
         # for the player's next input. No session state; the next `plant ...`
         # carries the answer.
         question = growth.get("question")
-        _narrate(
-            room_id,
-            question if isinstance(question, str) and question.strip()
-            else "Where does the new way lead?",
-        )
+        line = (question.strip() if isinstance(question, str) and question.strip()
+                else "Where does the new way lead?")
+        # `question_hint` says how to answer, for the player only (the
+        # gardener prompt quotes the bare question): playtest 2026-09-26,
+        # "It did not say how to answer."
+        hint = growth.get("question_hint")
+        if isinstance(hint, str) and hint.strip():
+            line = f"{line} {hint.strip()}"
+        _narrate(room_id, line)
         return False
     if len(phrase) > MAX_PHRASE_CHARS:
         _narrate(room_id, _PHRASE_TOO_LONG)

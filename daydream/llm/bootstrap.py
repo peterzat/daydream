@@ -400,6 +400,9 @@ def _validate_growth(growth: object, where: str) -> None:
         _validate_exemplar_rooms(growth["skeletons"], f"{where}.skeletons", 0, 3)
     if growth.get("propagation") is not None:
         _validate_propagation(growth["propagation"], f"{where}.propagation")
+    hint = growth.get("question_hint")
+    if hint is not None and not (isinstance(hint, str) and hint.strip()):
+        raise BootstrapValidationError(f"{where}.question_hint must be a non-empty string")
     never = growth.get("never_words")
     if never is not None and (
         not isinstance(never, list) or len(never) > 40

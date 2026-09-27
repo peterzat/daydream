@@ -848,3 +848,15 @@ def test_never_words_reject_a_composition_that_breaks_canon():
     assert growth.validate_growth_output(dict(VALID_COMPOSITION), g) is not None
     assert growth.validate_growth_output(bad, g) is None
     assert growth.validate_growth_output(bad, GROWTH_BLOCK) is not None  # the word, not the length
+
+
+
+@pytest.mark.asyncio
+async def test_empty_vision_adds_the_authored_hint_for_the_player(monkeypatch):
+    """`question_hint` tells the player how to answer (playtest 2026-09-26);
+    the gardener prompt quotes only the bare question."""
+    spy = _mock_llm(monkeypatch, dict(VALID_COMPOSITION))
+    seed = _seed(growth_block=dict(GROWTH_BLOCK, question_hint="Plant it with a few words."))
+    await _plant(seed, "")
+    assert _last_narrate() == f"{GROWTH_BLOCK['question']} Plant it with a few words."
+    assert spy.call_count == 0

@@ -50,7 +50,8 @@ async def test_the_dreamseed_grows_one_room(village, monkeypatch):
     seed = next(o for o in objects.contents(actor, kind="thing") if o.name == "dreamseed")
     assert "plant" in objects.verbs_for(seed)
     await verbs.execute_command(actor, "plant", dobj_id=seed.id)
-    assert _last_narrate() == "Where does the new way lead?"
+    # The seed's question, plus how to answer when the world authors a hint.
+    assert _last_narrate().startswith("Where does the new way lead?")
     grow = AsyncMock(return_value=dict(_PLANT))
     monkeypatch.setattr("daydream.llm.client.acompletion_json", grow)
     here = objects.get(actor).location_id
