@@ -180,8 +180,80 @@ def workflow_path(workflow_name: str) -> Path:
 
 
 def load_workflow_for(target: "PersistentTarget | EphemeralTarget") -> dict:
-    """The workflow dict a target renders (and hashes) with."""
-    return load_workflow(workflow_path(target.workflow_name))
+    """The workflow dict a target renders (and hashes) with. A non-default
+    image backend adds its identity under `backend`, so its renders get their
+    own cache keys (a plain key: the hash skips `_`-prefixed ones); the default
+    (ComfyUI) workflow is untouched, byte for
+    byte, and so are its keys (SPEC 2026-09-27 criterion 23)."""
+    wf = load_workflow(workflow_path(target.workflow_name))
+    backend = config.image_backend()
+    if backend != DEFAULT_IMAGE_BACKEND:
+        wf["backend"] = {"id": backend, "model": config.image_backend_model()}
+    return wf
+
+
+# ---- image backends (the seam for remote reflexes) ------------------------------
+#
+# ComfyUI on this box is the backend, and the only one implemented. Another
+# (Cloudflare Workers AI, say: docs/remote-reflexes.md) registers a coroutine
+# taking RenderParams and returning PNG bytes. Selecting it is configuration
+# (DAYDREAM_IMAGE_BACKEND); turning it on is a generation-policy change.
+
+DEFAULT_IMAGE_BACKEND = "comfyui"
+IMAGE_BACKENDS: dict = {}
+
+
+@dataclass(frozen=True)
+class RenderParams:
+    """A render, stated without ComfyUI: what any image backend needs."""
+
+    prompt: str
+    negative: str
+    width: int
+    height: int
+    seed: int
+    steps: int
+
+
+def render_params(workflow: dict) -> RenderParams:
+    """Read a built workflow into backend-neutral parameters."""
+    by_type: dict = {}
+    for key, node in workflow.items():
+        if isinstance(node, dict) and node.get("class_type"):
+            by_type.setdefault(node["class_type"], []).append((key, node.get("inputs", {})))
+    prompt = workflow.get(POSITIVE_PROMPT_NODE, {}).get("inputs", {}).get("text", "")
+    negative = next((i.get("text", "") for k, i in by_type.get("CLIPTextEncode", [])
+                     if k != POSITIVE_PROMPT_NODE), "")
+    latent = (by_type.get("EmptyLatentImage") or [(None, {})])[0][1]
+    sampler = (by_type.get("KSampler") or [(None, {})])[0][1]
+    return RenderParams(prompt=prompt, negative=negative,
+                        width=int(latent.get("width", 1024)), height=int(latent.get("height", 1024)),
+                        seed=int(sampler.get("seed", 0)), steps=int(sampler.get("steps", 20)))
+
+
+def image_backend_is_local() -> bool:
+    return config.image_backend() == DEFAULT_IMAGE_BACKEND
+
+
+def render_slot():
+    """What a render holds while it runs: the GPU arbiter's exclusive slot for
+    the local backend, nothing for a remote one (the arbiter gates only this
+    box's card). Callers: `async with image_client.render_slot(): ...`."""
+    from contextlib import nullcontext
+
+    from daydream.gpu import arbiter
+
+    return arbiter.acquire() if image_backend_is_local() else nullcontext()
+
+
+async def _render(workflow: dict, base_url: str | None) -> bytes:
+    backend = config.image_backend()
+    if backend == DEFAULT_IMAGE_BACKEND:
+        return await _execute_workflow(workflow, base_url=base_url)
+    impl = IMAGE_BACKENDS.get(backend)
+    if impl is None:
+        raise ComfyUIError(f"image backend {backend!r} is not available in this build")
+    return await impl(render_params(workflow))
 
 
 def build_prompt_workflow(workflow: dict, prompt_text: str, seed: int = 0) -> dict:
@@ -414,7 +486,7 @@ async def _generate_persistent(
         else int(cache.seed_hash(target.seed)[:8], 16)
     )
     wf_to_run = build_prompt_workflow(base_workflow, full_prompt, seed=ksampler_seed)
-    image_bytes = await _execute_workflow(wf_to_run, base_url=base_url)
+    image_bytes = await _render(wf_to_run, base_url)
     _atomic_write_with_prev(out, image_bytes)
     # Record against the CANONICAL seed (upsert hits the same row); a custom
     # prompt is logged as a fixed marker, never the user's text (it is not
@@ -437,7 +509,7 @@ async def _generate_ephemeral(
         full_prompt = (full_prompt + " " + WHIMSY_PROMPT_SUFFIX).strip()
     ksampler_seed = seed_override if seed_override is not None else 0
     wf_to_run = build_prompt_workflow(base_workflow, full_prompt, seed=ksampler_seed)
-    image_bytes = await _execute_workflow(wf_to_run, base_url=base_url)
+    image_bytes = await _render(wf_to_run, base_url)
     out = target.out_path or ephemeral_path(target.name, full_prompt)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_bytes(image_bytes)

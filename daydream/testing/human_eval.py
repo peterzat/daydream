@@ -37,7 +37,6 @@ from datetime import date
 from pathlib import Path
 
 from daydream import config
-from daydream.gpu import arbiter
 from daydream.images import cache as image_cache
 from daydream.images import client as image_client
 
@@ -63,7 +62,7 @@ async def _render_corpus(out_dir: Path) -> list[Path]:
             out_path=out_path,
         )
         print(f"  rendering {probe['name']}...", file=sys.stderr, flush=True)
-        async with arbiter.acquire():
+        async with image_client.render_slot():
             path = await image_client.generate_image(target)
         paths.append(path)
     return paths

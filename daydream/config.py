@@ -184,6 +184,35 @@ def llm_api_key() -> str:
     return os.environ.get("DAYDREAM_LLM_API_KEY", "unused")
 
 
+def llm_is_local() -> bool:
+    """Whether the LLM endpoint is this box's (or a tailnet) engine. Only a
+    local endpoint takes the GPU arbiter's slots; a remote one (the seam in
+    docs/remote-reflexes.md; off under the generation policy) gets its own
+    concurrency limit instead (SPEC 2026-09-27 criterion 23)."""
+    from urllib.parse import urlparse
+
+    host = (urlparse(llm_base_url()).hostname or "").lower()
+    return host in ("localhost", "127.0.0.1", "::1") or host.startswith("100.")
+
+
+def remote_llm_concurrency() -> int:
+    try:
+        return max(1, int(os.environ.get("DAYDREAM_REMOTE_LLM_CONCURRENCY", "3")))
+    except ValueError:
+        return 3
+
+
+def image_backend() -> str:
+    """Which image backend renders (DAYDREAM_IMAGE_BACKEND): "comfyui", the
+    local engine, is the default and the only one implemented; the seam and
+    the policy for another are in docs/remote-reflexes.md."""
+    return os.environ.get("DAYDREAM_IMAGE_BACKEND", "comfyui").strip().lower() or "comfyui"
+
+
+def image_backend_model() -> str:
+    return os.environ.get("DAYDREAM_IMAGE_BACKEND_MODEL", "").strip()
+
+
 def growth_max_rooms() -> int:
     """Cap on runtime-GROWN rooms per world (dreamseed plants, SPEC
     2026-07-02). Counts only grown rooms (`rooms.grown_room_count`), never

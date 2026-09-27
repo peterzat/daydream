@@ -230,7 +230,7 @@ working exactly as it does now.
   backups lands in a private Cloudflare R2 bucket, and a restore from it is
   demonstrated. (May land after the first friends.)
 
-- [ ] **23. A seam for remote reflexes.** Choosing the LLM backend or the
+- [x] **23. A seam for remote reflexes.** Choosing the LLM backend or the
   image backend is configuration. The local default changes no image cache
   key and no existing test, and the GPU arbiter gates only local backends.
   `docs/remote-reflexes.md` records the Cloudflare Workers AI path and the
@@ -363,4 +363,4 @@ first dream) remains open. It is operator-paced and does not gate this turn.
 *Prior spec (2026-09-26): The Village of Lost Hours, the pivot turn. Closed
 21/22; criterion 22 (the operator playtest) stays open, operator-paced.*
 
-<!-- SPEC_META: {"date":"2026-09-27","title":"Going live: the village opens its doors","criteria_total":23,"criteria_met":10} -->
+<!-- SPEC_META: {"date":"2026-09-27","title":"Going live: the village opens its doors","criteria_total":23,"criteria_met":11} -->

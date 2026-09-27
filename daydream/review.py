@@ -78,7 +78,6 @@ async def _render_anchors(out_dir: Path) -> list[dict]:
     """Render every aesthetic anchor into out_dir as <name>.png (so the sheet
     is self-contained). The agent grades each PNG against WHIMSY.md afterward
     by Reading it in the TUI; there is no in-process aesthetic scorer."""
-    from daydream.gpu import arbiter
     from daydream.images import client as image_client
 
     results: list[dict] = []
@@ -94,7 +93,7 @@ async def _render_anchors(out_dir: Path) -> list[dict]:
             # keep the default (same contract as the perceptual probe).
             workflow_name=spec.get("workflow", "painterly_room.json"),
         )
-        async with arbiter.acquire():
+        async with image_client.render_slot():
             path = await image_client.generate_image(target)
         results.append({
             "name": name,

@@ -49,7 +49,6 @@ from daydream import (
     worldstate,
 )
 from daydream.api import auth, csrf
-from daydream.gpu import arbiter
 from daydream.images import cache as image_cache
 from daydream.images import client as image_client
 from daydream.llm import client as llm_client
@@ -476,7 +475,7 @@ async def _generate_and_emit(
     repaint look different."""
     payload: dict = {}
     try:
-        async with arbiter.acquire():
+        async with image_client.render_slot():
             path = await image_client.generate_image(
                 target, force=force, prompt_override=prompt_override, seed=seed
             )

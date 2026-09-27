@@ -80,7 +80,6 @@ def _adopt_from_cache(target, workflow, path: Path, from_cache: Path) -> bool:
 async def prebake(db_path: Path, only: str | None = None, force: set[str] | None = None,
                   reseed: dict[str, int] | None = None,
                   from_cache: Path | None = None) -> list[dict]:
-    from daydream.gpu import arbiter
     from daydream.images import cache, client
 
     force, reseed = force or set(), reseed or {}
@@ -107,7 +106,7 @@ async def prebake(db_path: Path, only: str | None = None, force: set[str] | None
                 continue
             t0 = time.monotonic()
             try:
-                async with arbiter.acquire():
+                async with client.render_slot():
                     out = await client.generate_image(target, force=tid in force,
                                                       seed=reseed.get(tid))
                 rec.update(status="rendered", path=str(out),

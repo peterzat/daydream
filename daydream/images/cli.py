@@ -18,7 +18,6 @@ import sys
 from pathlib import Path
 
 from daydream import config
-from daydream.gpu import arbiter
 from daydream.images import client
 
 
@@ -59,7 +58,7 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     async def _run() -> Path:
-        async with arbiter.acquire():
+        async with client.render_slot():
             return await client.generate_image(
                 target,
                 model=args.model,

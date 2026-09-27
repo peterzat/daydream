@@ -12,6 +12,7 @@ Observability: every call is tagged with a caller-supplied `purpose`
 so prompt/latency analysis has a durable feed (plan 2026-07-02: prompt
 monitoring infra)."""
 
+import asyncio
 import contextvars
 import json
 import logging
@@ -66,6 +67,21 @@ def set_last_usage_for_tests(value: dict | None) -> None:
     _last_usage.set(value)
 
 
+_remote_sem: asyncio.Semaphore | None = None
+
+
+def _llm_slot(gate: str):
+    """The GPU arbiter's slot for a local endpoint; for a remote one (the
+    remote-reflexes seam, off by default) its own concurrency limit, since
+    the arbiter gates only this box's card (SPEC 2026-09-27 criterion 23)."""
+    global _remote_sem
+    if config.llm_is_local():
+        return arbiter.acquire(gate)
+    if _remote_sem is None:
+        _remote_sem = asyncio.Semaphore(config.remote_llm_concurrency())
+    return _remote_sem
+
+
 async def acompletion_json(
     system: str,
     user: str,
@@ -101,7 +117,7 @@ async def acompletion_json(
     # config.llm_concurrency()) but never overlap an exclusive image
     # render. See daydream/gpu/arbiter.py for the admission policy.
     try:
-        async with arbiter.acquire(gate):
+        async with _llm_slot(gate):
             t_start = time.monotonic()
             response = await litellm.acompletion(
                 model=resolved_model,
