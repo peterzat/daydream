@@ -4898,7 +4898,7 @@
         "room": "r-square",
         "earliest_day": 5,
         "weight": 1,
-        "text": "Down through the dusk drifts something warm and slow, trailing a thread of candle smoke. It settles on the cobbles by the lanterns: a small rosy figure in a crocheted shawl, a paper party hat slipping over one ear. It nods, dozes, and wakes with a little start, as if it has just missed something."
+        "text": "Sorrel comes up the lane slowly, the long net held low and careful, and in it something warm and sleepy trails a thread of candle smoke. Sorrel sets it on the cobbles by the lanterns: a small rosy figure in a crocheted shawl, a paper party hat slipping over one ear. It nods, dozes, and wakes with a little start, as if it has just missed something."
       },
       "beats": {
         "bell-notices": {
@@ -10664,9 +10664,33 @@
               "high shelf",
               "the jar up there"
             ],
+            "if": [
+              {
+                "ending": "tace-hour/within-reach"
+              }
+            ],
+            "variants": [
+              "Tock pads to the lowest shelf and sits beside the dusty jar, tail curled round the glass, as if keeping it company.",
+              "Tock looks up at the empty dark above the lantern, then down at the jar where it sits now, and seems satisfied with both."
+            ]
+          },
+          {
+            "label": "the highest shelf",
+            "aliases": [
+              "highest shelf",
+              "top shelf",
+              "high shelf",
+              "the jar up there"
+            ],
             "variants": [
               "Tock's gaze goes up, and up, to somewhere above the lantern's reach, and stays there a long while. Then it blinks, and is only a cat again.",
               "Tock wraps its tail round its paws and looks at nothing in particular with great care, the way a cat does not look at a closed door."
+            ],
+            "if": [
+              {
+                "ending": "tace-hour/within-reach",
+                "not": true
+              }
             ]
           },
           {
@@ -14116,6 +14140,27 @@
             {
               "kind": "narrate",
               "text": "Tace hears the song humming in your hands and goes still. 'You've cellar dust on your sleeve,' they say. 'What's standing down there, friend?'"
+            }
+          ]
+        },
+        {
+          "on": "give",
+          "if": [
+            {
+              "iobj": "t-tace"
+            },
+            {
+              "carried": "@self"
+            },
+            {
+              "arc": "tace-hour",
+              "eq": "closed"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "text": "Tace hums a bar of it, and the tune climbs on without them. 'Wend's ladder song. It's had its singing for this season, friend.' They fold it back into your hands."
             }
           ]
         },

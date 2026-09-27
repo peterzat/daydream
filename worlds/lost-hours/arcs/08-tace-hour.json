@@ -136,6 +136,9 @@
                              {"beat": "tace-hour/ladder-set"}],
         "do": [{"kind": "narrate",
                 "text": "Tace hears the song humming in your hands and goes still. 'You've cellar dust on your sleeve,' they say. 'What's standing down there, friend?'"}]},
+       {"on": "give", "if": [{"iobj": "t-tace"}, {"carried": "@self"}, {"arc": "tace-hour", "eq": "closed"}],
+        "do": [{"kind": "narrate",
+                "text": "Tace hums a bar of it, and the tune climbs on without them. 'Wend's ladder song. It's had its singing for this season, friend.' They fold it back into your hands."}]},
        {"on": "give", "if": [{"iobj": "t-tace"}, {"carried": "@self"}],
         "do": [{"kind": "narrate",
                 "text": "Tace listens to the folded song a moment and smiles, small and tired. 'Wend's ladder song,' they say. 'There's no ladder down there tall enough for it anymore.' They fold it back into your hands."}]}

@@ -1337,9 +1337,33 @@
             "high shelf",
             "the jar up there"
           ],
+          "if": [
+            {
+              "ending": "tace-hour/within-reach"
+            }
+          ],
+          "variants": [
+            "Tock pads to the lowest shelf and sits beside the dusty jar, tail curled round the glass, as if keeping it company.",
+            "Tock looks up at the empty dark above the lantern, then down at the jar where it sits now, and seems satisfied with both."
+          ]
+        },
+        {
+          "label": "the highest shelf",
+          "aliases": [
+            "highest shelf",
+            "top shelf",
+            "high shelf",
+            "the jar up there"
+          ],
           "variants": [
             "Tock's gaze goes up, and up, to somewhere above the lantern's reach, and stays there a long while. Then it blinks, and is only a cat again.",
             "Tock wraps its tail round its paws and looks at nothing in particular with great care, the way a cat does not look at a closed door."
+          ],
+          "if": [
+            {
+              "ending": "tace-hour/within-reach",
+              "not": true
+            }
           ]
         },
         {
