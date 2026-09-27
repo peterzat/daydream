@@ -22,7 +22,9 @@ Environment=LITELLM_LOCAL_MODEL_COST_MAP=True
 ExecStart=/srv/daydream/current/.venv/bin/python -m uvicorn daydream.server:app \
     --host ${DAYDREAM_BIND_HOST} --port ${DAYDREAM_PORT} \
     --no-proxy-headers --no-server-header --ws-max-size 16384 \
-    --timeout-graceful-shutdown 30
+    --timeout-graceful-shutdown 30 --no-access-log
+# No access log: invite links (GET /invite/<slug>) must not land in the
+# journal. Errors and the app's own logging still do.
 Restart=on-failure
 RestartSec=5
 TimeoutStopSec=45

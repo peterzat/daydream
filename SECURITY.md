@@ -107,6 +107,28 @@ Dev keeps its own boundary: tailnet-only (`tailscale` mode plus UFW), the same a
   Attack vector: a compromised or replaced PyPI artifact at a pinned version installs into the next prod venv; CI uses mutable action tags and the repository's default token permissions (carried from earlier reviews).
   Remediation: generate the lock with hashes and install with `--require-hashes`; pin actions to commit SHAs and add `permissions: contents: read`.
 
+### Resolution (same day, after the review)
+
+| Finding | Status |
+|---|---|
+| WARN 1: operator tooling follows service-planted paths | Fixed in `19ede3f`. Every prod command that touches the data dir runs as the `daydream` user (sudoers `(daydream) NOPASSWD: ALL`, a privilege drop). The operator only receives bytes (keepsakes on stdout, streamed tarballs and pulls). Portraits are read with `O_NOFOLLOW` inside the cache root. Restores refuse symlinks. Graded art is staged in an operator-owned dir the service can only read. Tests: a symlinked portrait never exports; restore refuses a link. |
+| WARN 2: revocation missed idle sockets | Fixed in `ea991f1`. A per-socket watchdog re-reads the session every 30 s, and the SPA's 25 s keepalive rides the per-frame check. |
+| WARN 3: command frames skipped the cap | Fixed in `ea991f1`. Every frame is size-checked (2000 chars) before parsing, and prod's `--ws-max-size` is 16 KiB. |
+| WARN 4: anyone can pause invitations | Mitigated in `c88ce68`. The refusal names the operator, and `bin/game invite unblock` reopens invitations. The global cap stays, since it is the defense against distributed guessing (a residual, below). |
+| WARN 5: admin web sessions over friends' toons | Fixed in `05ea503`. No admin bypass on claim/kick/delete; moderation is `bin/game world rest-toon\|delete-toon`. |
+| WARN 6: a real name in the repo | Fixed in `8a55e42`: the fictional Robin Ash. The name remains in unpushed local history; scrub before the first push (see the go-live notes). |
+| NOTE: Origin ignores the scheme | Fixed in `c88ce68`: scheme and host both. |
+| NOTE: `$`-patterns in the asleep template | Fixed in `c88ce68`: function replacements. |
+| NOTE: username squatting | Fixed in `c88ce68`: `cli-*`, `agent-*` and a few names are reserved from invites (the CLI may still create them), and keepsakes skip those accounts. |
+| NOTE: the pre-allowed invite verbs | Fixed in `c88ce68`: only `prod invite create|list` are pre-allowed. |
+| NOTE: unbounded pre-login bodies | Fixed in `ea991f1`: 413 over 64 KiB; streamed bodies are truncated. |
+| NOTE: login throttling | Improved in `c88ce68`: argon2 runs off the event loop, and IPv6 keys on /64. The per-username lockout used against a friend remains (15-minute window). |
+| NOTE: shared capacity | Partly fixed in `c88ce68`: a reconnect replays at most 300 events. There are still no per-account limits on create/delete/leave (friends only). |
+| NOTE: box addresses in docs | Fixed in `8a55e42`. |
+| NOTE: supply-chain pinning | Open: the lock has versions, not hashes; CI actions use tags. |
+
+Residual risks closed alongside, in the commit that records this table: the shared GPU-lock wait now times out (90 s), so a held lock file cannot stall another process's text forever; prod runs `--no-access-log`, so invite slugs never reach the journal; sessions end 180 days after sign-in however often they are used.
+
 Traced and cleared this run (not findings):
 
 - **The gate.** The allowlist is exactly `/`, `/login`, `/healthz`, `/api/login`, `/api/logout`, `/api/invite/peek`, `/api/invite/redeem` plus the `/assets/` and `/invite/` prefixes, and `tests/test_edge_access.py` walks every route, mount and socket. Encoded traversal (`/assets/..%2F...`, `/invite/..%2F...`) reaches the gate and the router as the same decoded path, so it lands in StaticFiles' confinement or a 404, never an unguarded route. `/status/*` is admin-only, `/cache/*` needs a session and validates each segment, the API docs routes are off, and the world swap does not exist in edge mode.
@@ -126,9 +148,9 @@ Traced and cleared this run (not findings):
 
 - **DNS and local sockets leave the sandbox.** `IPAddressAllow=localhost` admits the local resolver at 127.0.0.53, so a compromised service can still exfiltrate through DNS lookups; `AF_UNIX` reaches local services such as D-Bus.
 - **Loopback bypasses Access.** Any local process can call `127.0.0.1:54322` directly and set `X-Daydream-Client-IP` to anything, which only moves throttle keys; the gate still applies.
-- **`gpu.lock` is service-writable.** A compromised service can hold it and stall dev's LLM calls indefinitely (the shared-lock wait has no timeout) while dev renders give up after 20 s.
-- **Invite slugs are weakly hashed and logged.** Invite hashes are unsalted sha256 over about 983,000 phrases, so any copy of `accounts-prod.db` (the data dir, local backups) yields every open slug in seconds; uvicorn's access log also records `GET /invite/<slug>` in the journal.
-- **Sessions have no absolute lifetime.** A session used at least once every 30 days never expires.
+- **`gpu.lock` is service-writable.** A compromised service can hold it; dev's text calls now give up after 90 s (foggy) and renders after 20 s, so this is a nuisance, not a stall.
+- **Invite slugs are weakly hashed.** Invite hashes are unsalted sha256 over about 983,000 phrases, so any copy of `accounts-prod.db` (the data dir, local backups) yields every open slug in seconds. Anyone with that copy already holds prod's data; invites expire in 14 days.
+- **Invitations can be paused by strangers.** The global failed-redemption cap (20 an hour, 40 a day) is shared, so an attacker can keep invites closed; `bin/game invite unblock` reopens them, and the edge rate-limit rule slows a single address.
 - **Free-plan quotas.** If the zone is on the Workers Free plan, an anonymous client can spend the daily request quota (100,000) and take the route down until the next UTC day; the one WAF rule covers only the login and invite paths.
 - **The operator's token is account-wide.** Workers Scripts edit cannot be scoped to one Worker, so compromise of `peter` is compromise of every Worker on the account and of routes on eidolon.com.
 - **Toon names are not unique.** A player can take an NPC's or another friend's name and speak under it.

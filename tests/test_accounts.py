@@ -353,3 +353,13 @@ def test_cli_password_stdin(monkeypatch, capsys):
     assert accounts_cli.main(["account", "create", "wren", "--password-stdin"]) == 0
     accounts.init()
     assert accounts.authenticate("wren", PW) is not None
+
+
+def test_a_session_ends_after_180_days_however_often_it_is_used(monkeypatch):
+    row = accounts.create_account("wren", PW)
+    token, _ = accounts.create_session(row["id"])
+    for day in range(29, 179, 29):          # used every 29 days
+        _shift(monkeypatch, days=day)
+        assert accounts.resolve(token) is not None
+    _shift(monkeypatch, days=181)
+    assert accounts.resolve(token) is None

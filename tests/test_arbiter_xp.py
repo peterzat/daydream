@@ -117,3 +117,13 @@ def test_without_a_lock_path_there_is_no_cross_process_layer(monkeypatch):
     monkeypatch.delenv("DAYDREAM_GPU_LOCK")
     monkeypatch.setattr(config, "PROD_GPU_LOCK", Path("/nonexistent/gpu.lock"))
     assert config.gpu_lock_path() is None
+
+
+async def test_a_text_call_does_not_wait_forever_on_a_held_lock(lock, monkeypatch):
+    monkeypatch.setattr(arbiter, "XP_TEXT_WAIT_S", 0.3)
+    other = _holder(lock, "exclusive", 3.0)
+    with pytest.raises(arbiter.GpuBusyElsewhere):
+        async with arbiter.acquire("llm"):
+            pass
+    assert not arbiter.is_locked()
+    other.kill()

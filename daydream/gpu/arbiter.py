@@ -79,6 +79,10 @@ _max_wait_ms = {"llm": 0, "exclusive": 0, "background": 0}
 
 XP_POLL_S = 0.05
 XP_RENDER_WAIT_S = 20.0
+# A text call waits longer (a render elsewhere takes ~20 s) but not forever:
+# a process holding the lock file indefinitely must not stall this one's
+# players; past this the call reads as the usual "foggy" outage.
+XP_TEXT_WAIT_S = 90.0
 _xp_fd: int | None = None
 _xp_fd_path: str | None = None
 _xp_shared = 0
@@ -126,7 +130,7 @@ async def _xp_enter(kind: str) -> None:
         _xp_mutex = asyncio.Lock()
     async with _xp_mutex:
         if _xp_shared == 0:
-            await _xp_poll(fd, fcntl.LOCK_SH, None)
+            await _xp_poll(fd, fcntl.LOCK_SH, XP_TEXT_WAIT_S)
         _xp_shared += 1
 
 

@@ -104,7 +104,9 @@ def build() -> dict:
     people: dict[str, dict] = {}
     portraits: dict[str, str] = {}
     for acc in accounts.list_accounts():
-        if acc["disabled_at"]:
+        # Friends only: the CLI's own identities (cli-operator, agent-*) have
+        # nothing to read while the village sleeps.
+        if acc["disabled_at"] or accounts.reserved_username(acc["username"]):
             continue
         mine = toons.owned_toons(acc["id"])
         entry = {"display_name": acc["display_name"], "toons": [], "portrait": False}

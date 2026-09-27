@@ -40,7 +40,8 @@ from daydream import config, db
 MIGRATIONS_DIR = config.PROJECT_ROOT / "migrations_accounts"
 WORDS_DIR = Path(__file__).resolve().parent / "invite_words"
 
-SESSION_DAYS = 30
+SESSION_DAYS = 30          # sliding: unused this long, a session ends
+SESSION_MAX_DAYS = 180     # absolute: however much it is used
 INVITE_DAYS = 14
 MIN_PASSWORD = 10
 MAX_PASSWORD = 256
@@ -374,7 +375,8 @@ def resolve(token: str | None) -> Principal | None:
         return None
     conn = get_conn()
     row = conn.execute(
-        "SELECT s.id AS sid, s.expires_at, s.last_seen_at, s.left_at, a.id AS aid, a.username,"
+        "SELECT s.id AS sid, s.created_at, s.expires_at, s.last_seen_at, s.left_at, a.id AS aid,"
+        " a.username,"
         " a.display_name, a.role, a.disabled_at FROM sessions s JOIN accounts a"
         " ON a.id = s.account_id WHERE s.token_hash = ?",
         (_sha(token),),
@@ -382,7 +384,8 @@ def resolve(token: str | None) -> Principal | None:
     if row is None or row["disabled_at"]:
         return None
     now = _now()
-    if _parse(row["expires_at"]) <= now:
+    if (_parse(row["expires_at"]) <= now
+            or now - _parse(row["created_at"]) >= timedelta(days=SESSION_MAX_DAYS)):
         conn.execute("DELETE FROM sessions WHERE id = ?", (row["sid"],))
         return None
     if now - _parse(row["last_seen_at"]) >= SLIDE_EVERY:
