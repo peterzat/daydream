@@ -217,3 +217,57 @@ def test_the_lock_pins_what_the_dev_venv_tests_against():
         if have != pinned:
             drift.append(f"{name}: lock {pinned}, dev venv {have}")
     assert not drift, drift
+
+
+def test_age_recipients_take_bare_keys_from_authorized_keys(tmp_path, monkeypatch):
+    ssh = tmp_path / ".ssh"
+    ssh.mkdir()
+    (ssh / "authorized_keys").write_text(
+        'from="100.64.0.0/10",no-agent-forwarding ssh-ed25519 AAAAC3laptop peter@laptop\n'
+        "# a comment\n"
+        "ssh-rsa AAAAB3phone peter@phone\n")
+    (ssh / "id_ed25519.pub").write_text("ssh-ed25519 AAAAC3box peter@dev\n")
+    monkeypatch.setattr(prodctl, "SSH_DIR", ssh)
+    out = prodctl.age_recipients(tmp_path / "r")
+    assert out.read_text().splitlines() == [
+        "ssh-ed25519 AAAAC3box", "ssh-ed25519 AAAAC3laptop", "ssh-rsa AAAAB3phone"]
+
+
+def test_age_recipients_refuse_when_there_are_no_keys(tmp_path, monkeypatch):
+    monkeypatch.setattr(prodctl, "SSH_DIR", tmp_path)
+    with pytest.raises(prodctl.ProdError, match="no SSH public keys"):
+        prodctl.age_recipients(tmp_path / "r")
+
+
+def test_offsite_encrypts_before_anything_leaves(srv, monkeypatch, tmp_path):
+    """The upload only ever sees the age output; the plaintext tarball never
+    reaches wrangler."""
+    backup = srv / "data" / "backups" / "20261004-043000"
+    backup.mkdir(parents=True)
+    (backup / "live.db").write_bytes(b"sqlite")
+    rel = srv / "releases" / "aaaaaaaaaaaa"
+    rel.mkdir()
+    prodctl.point("current", rel)
+    ssh = tmp_path / ".ssh"
+    ssh.mkdir()
+    (ssh / "authorized_keys").write_text("ssh-ed25519 AAAAC3laptop x\n")
+    monkeypatch.setattr(prodctl, "SSH_DIR", ssh)
+    monkeypatch.setattr(prodctl, "_backup", lambda r: backup)
+    monkeypatch.setattr(prodctl.shutil, "which", lambda name: "/usr/bin/" + name)
+    calls = []
+
+    def fake_run(cmd, **kw):
+        calls.append(cmd)
+        if cmd[0] == "age":
+            Path(cmd[cmd.index("-o") + 1]).write_bytes(b"age-encryption.org/v1 ciphertext")
+        return __import__("subprocess").CompletedProcess(cmd, 0)
+
+    monkeypatch.setattr(prodctl.subprocess, "run", fake_run)
+    uploaded = []
+    monkeypatch.setattr(prodctl, "_wrangler", lambda args: uploaded.append(args))
+    assert prodctl.offsite() == 0
+    assert [c[0] for c in calls] == ["tar", "age"]
+    (put,) = uploaded
+    assert put[:3] == ["r2", "object", "put"]
+    assert put[3] == "daydream-backups/prod-20261004-043000.tar.gz.age"
+    assert put[put.index("--file") + 1].endswith(".tar.gz.age")

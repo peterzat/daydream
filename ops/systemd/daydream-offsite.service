@@ -1,0 +1,13 @@
+# Weekly: an age-encrypted copy of the prod backups into the private R2
+# bucket (SPEC 2026-09-27 criterion 22). Runs as the OPERATOR: the Cloudflare
+# token and the SSH recipients live in their home, never the service user's.
+# @OPERATOR@ and @REPO@ are filled in by ops/install-prod.sh.
+[Unit]
+Description=daydream prod offsite backup to R2
+
+[Service]
+Type=oneshot
+User=@OPERATOR@
+ExecStart=@REPO@/bin/game prod offsite
+NoNewPrivileges=yes
+PrivateTmp=yes

@@ -18,6 +18,7 @@ Dashboard: My Profile > API Tokens > Create Token > Custom token.
 - **Permissions:**
   - Account, Workers Scripts, Edit
   - Account, Workers KV Storage, Edit
+  - Account, Workers R2 Storage, Edit (the offsite backups)
   - Zone, Workers Routes, Edit
 - **Zone resources:** Include, Specific zone, `eidolon.com`
 - **Optional:** Client IP address filtering, limited to the box's public
@@ -143,6 +144,28 @@ bin/game edge deploy
 Then open https://www.eidolon.com/daydream/. It should show the storybook
 asleep page. That proves the Worker's route wins over the Pages site on the
 same host, before anything on the box is exposed.
+
+## 9b. The offsite backup bucket (criterion 22)
+
+R2 may ask you to enable it for the account (a payment method on file; the
+free tier covers 10 GB). Then:
+
+```sh
+cd edge && npx wrangler r2 bucket create daydream-backups && cd ..
+```
+
+In the dashboard (R2 > daydream-backups > Settings > Object lifecycle rules),
+add a rule to delete objects older than 60 days. The bucket stays private: no
+public access, no custom domain.
+
+Backups are encrypted with `age` to the SSH public keys in
+`~/.ssh/authorized_keys` and the box's own key before they leave, so R2 only
+ever holds ciphertext. Prove the round trip once:
+
+```sh
+bin/game prod offsite
+bin/game prod offsite-restore prod-<stamp>.tar.gz.age /tmp/daydream-restore-check
+```
 
 ## 10. Check the locks
 

@@ -173,8 +173,9 @@ while the box is down. The design needs no signing key and no new crypto:
 - **The engines are shared.** A second environment never double-launches
   them. Until a cross-process GPU lock lands, GPU-heavy dev commands refuse
   while prod is up.
-- **Backups.** Nightly online backups (14 days), and later a weekly
-  encrypted copy to R2.
+- **Backups.** Nightly online backups (14 days) on the box, and a weekly copy
+  encrypted with `age` to the operator's SSH keys in a private R2 bucket (60-day
+  lifecycle), so a dead box can be restored from any machine holding those keys.
 
 ## 8. Generation elsewhere, later
 

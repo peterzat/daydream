@@ -69,6 +69,9 @@ else
 fi
 
 # ---- cloudflared ------------------------------------------------------------
+say "age (encrypts the offsite backups to your SSH keys)"
+command -v age >/dev/null || apt-get install -y age
+
 say "cloudflared from Cloudflare's apt repo"
 if ! command -v cloudflared >/dev/null; then
     install -d -m 0755 /usr/share/keyrings
@@ -106,12 +109,15 @@ for u in daydream-prod.service cloudflared-daydream.service daydream-backup.serv
          daydream-backup.timer daydream-keepsakes.timer; do
     install -o root -g root -m 0644 "$OPS/systemd/$u" "/etc/systemd/system/$u"
 done
-sed -e "s|@OPERATOR@|$OPERATOR|g" -e "s|@REPO@|$REPO|g" "$OPS/systemd/daydream-keepsakes.service" \
-    > /etc/systemd/system/daydream-keepsakes.service
-chmod 0644 /etc/systemd/system/daydream-keepsakes.service
+install -o root -g root -m 0644 "$OPS/systemd/daydream-offsite.timer" /etc/systemd/system/
+for u in daydream-keepsakes.service daydream-offsite.service; do
+    sed -e "s|@OPERATOR@|$OPERATOR|g" -e "s|@REPO@|$REPO|g" "$OPS/systemd/$u" \
+        > "/etc/systemd/system/$u"
+    chmod 0644 "/etc/systemd/system/$u"
+done
 systemctl daemon-reload
-systemctl enable --now daydream-backup.timer daydream-keepsakes.timer >/dev/null
-echo "installed; only the backup and keepsakes timers are enabled at boot"
+systemctl enable --now daydream-backup.timer daydream-keepsakes.timer daydream-offsite.timer >/dev/null
+echo "installed; only the backup, keepsakes and offsite timers are enabled at boot"
 
 say "sudoers: start/stop/restart of the daydream units only"
 tmp="$(mktemp)"

@@ -1,0 +1,10 @@
+[Unit]
+Description=daydream prod offsite backup, weekly
+
+[Timer]
+OnCalendar=Sun *-*-* 05:15:00
+Persistent=true
+RandomizedDelaySec=20m
+
+[Install]
+WantedBy=timers.target

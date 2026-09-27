@@ -28,6 +28,7 @@ Verbs:
 - `sleep [--note TEXT] [--grace SECONDS] [--keep-engines]`
 - `backup`
 - `keepsakes` (sync keepsakes to the edge; hourly by timer)
+- `offsite` / `offsite-restore NAME DEST` (age-encrypted backups in R2; weekly)
 - `pull` (a prod backup into dev)
 - pass-throughs to the release's `bin/game`: `world`, `dream`, `account`,
   `invite`, `prebake`, `play`
@@ -501,6 +502,83 @@ def keepsakes() -> int:
     return 0
 
 
+# ---- offsite backups (criterion 22) --------------------------------------------------
+
+R2_BUCKET = os.environ.get("DAYDREAM_R2_BUCKET", "daydream-backups")
+SSH_DIR = Path.home() / ".ssh"
+
+
+def age_recipients(out: Path) -> Path:
+    """A recipients file for age: every SSH key allowed into this box (their
+    private halves live on the operator's own machines, so a backup survives
+    the box) plus the box's own key (so a restore can be proven here). Only
+    bare `ssh-ed25519`/`ssh-rsa` lines: authorized_keys options would trip age."""
+    keys = []
+    for src in (SSH_DIR / "authorized_keys", SSH_DIR / "id_ed25519.pub"):
+        if src.exists():
+            for line in src.read_text().splitlines():
+                line = line.strip()
+                for kind in ("ssh-ed25519 ", "ssh-rsa "):
+                    i = line.find(kind)
+                    if i >= 0:
+                        keys.append(" ".join(line[i:].split()[:2]))
+    if not keys:
+        raise ProdError("no SSH public keys to encrypt to (~/.ssh/authorized_keys)")
+    out.write_text("\n".join(sorted(set(keys))) + "\n")
+    return out
+
+
+def _wrangler(args: list[str]) -> None:
+    from daydream import edge
+
+    edge._ensure_node_modules()
+    r = subprocess.run(["npx", "--no-install", "wrangler", *args], cwd=edge.EDGE,
+                       env=edge._wrangler_env())
+    if r.returncode != 0:
+        raise ProdError("wrangler " + " ".join(args[:3]) + " failed")
+
+
+def offsite() -> int:
+    """A fresh consistent backup, tarred, age-encrypted to the operator's SSH
+    keys, uploaded to the private R2 bucket. Weekly by timer; retention is the
+    bucket's lifecycle rule (docs/CLOUDFLARE-SETUP.md)."""
+    if shutil.which("age") is None:
+        raise ProdError("age is not installed (sudo ops/install-prod.sh installs it)")
+    rel = _require_current()
+    backup = _backup(rel)
+    if backup is None:
+        raise ProdError("nothing to back up yet")
+    with tempfile.TemporaryDirectory(prefix="daydream-offsite-") as tmp:
+        tmpd = Path(tmp)
+        name = f"prod-{backup.name}.tar.gz"
+        subprocess.run(["tar", "-czf", str(tmpd / name), "-C", str(backup), "."], check=True)
+        sealed = tmpd / (name + ".age")
+        subprocess.run(["age", "-R", str(age_recipients(tmpd / "recipients")),
+                        "-o", str(sealed), str(tmpd / name)], check=True)
+        _wrangler(["r2", "object", "put", f"{R2_BUCKET}/{sealed.name}", "--file", str(sealed),
+                   "--remote"])
+    say(f"offsite: {sealed.name} -> r2://{R2_BUCKET}")
+    return 0
+
+
+def offsite_restore(name: str, dest: Path) -> int:
+    """Fetch one offsite backup and unpack it into `dest` (never over live
+    data): the restore half of criterion 22. Decrypts with the box's own key;
+    from another machine, `age -d -i <your key>` does the same."""
+    if shutil.which("age") is None:
+        raise ProdError("age is not installed")
+    dest.mkdir(parents=True, exist_ok=False)
+    with tempfile.TemporaryDirectory(prefix="daydream-offsite-") as tmp:
+        sealed = Path(tmp) / name
+        _wrangler(["r2", "object", "get", f"{R2_BUCKET}/{name}", "--file", str(sealed), "--remote"])
+        plain = Path(tmp) / "backup.tar.gz"
+        subprocess.run(["age", "-d", "-i", str(SSH_DIR / "id_ed25519"), "-o", str(plain),
+                        str(sealed)], check=True)
+        subprocess.run(["tar", "-xzf", str(plain), "-C", str(dest)], check=True)
+    say(f"restored {name} into {dest}: " + ", ".join(sorted(p.name for p in dest.iterdir())))
+    return 0
+
+
 # ---- status / logs / pull -------------------------------------------------------------
 
 
@@ -599,6 +677,10 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("backup")
     sub.add_parser("pull")
     sub.add_parser("keepsakes", help="sync keepsakes to the edge now (the hourly timer runs this)")
+    sub.add_parser("offsite", help="encrypted backup to R2 (weekly by timer)")
+    orr = sub.add_parser("offsite-restore", help="fetch + decrypt one offsite backup into a new dir")
+    orr.add_argument("name", help="object name, e.g. prod-20261004-043000.tar.gz.age")
+    orr.add_argument("dest", type=Path, help="a directory that does not exist yet")
     args = p.parse_args(argv)
     try:
         if args.cmd == "status":
@@ -620,6 +702,10 @@ def main(argv: list[str] | None = None) -> int:
             return pull()
         if args.cmd == "keepsakes":
             return keepsakes()
+        if args.cmd == "offsite":
+            return offsite()
+        if args.cmd == "offsite-restore":
+            return offsite_restore(args.name, args.dest)
     except (ProdError, subprocess.CalledProcessError) as e:
         print(f"error: {e}", file=sys.stderr)
         return 1
