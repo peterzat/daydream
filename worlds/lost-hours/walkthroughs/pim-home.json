@@ -176,6 +176,15 @@
               "hush"
             ]
           }
+        },
+        {
+          "cmd": "give cog to nap",
+          "expect": {
+            "carrying": [
+              "warm brass cog"
+            ],
+            "narrate_contains": "Something slow"
+          }
         }
       ]
     },
@@ -201,11 +210,23 @@
           }
         },
         {
+          "cmd": "ask tace about a lullaby clock",
+          "expect": {
+            "narrate_contains": "turns slow on its nail"
+          }
+        },
+        {
           "cmd": "take pendulum",
           "expect": {
             "carrying": [
               "brass pendulum"
             ]
+          }
+        },
+        {
+          "cmd": "ask tace about lullaby clocks",
+          "expect": {
+            "narrate_contains": "That's the one"
           }
         },
         {
@@ -220,12 +241,27 @@
           }
         },
         {
+          "cmd": "ask tace about the lullaby clock",
+          "expect": {
+            "narrate_contains": "The lullaby clock's made"
+          }
+        },
+        {
           "cmd": "down"
         },
         {
           "cmd": "east",
           "expect": {
             "room": "r-square"
+          }
+        },
+        {
+          "cmd": "give lullaby clock to nap",
+          "expect": {
+            "carrying": [
+              "lullaby clock"
+            ],
+            "narrate_contains": "It wants to hear it"
           }
         },
         {
@@ -251,6 +287,18 @@
           "cmd": "read ledger of returned hours",
           "expect": {
             "narrate_contains": "Wren sang Pim's missing nap home with a mended lullaby clock."
+          }
+        },
+        {
+          "cmd": "up",
+          "expect": {
+            "room": "r-loft"
+          }
+        },
+        {
+          "cmd": "ask tace about a lullaby clock",
+          "expect": {
+            "narrate_contains": "It sang the little nap home."
           }
         }
       ]

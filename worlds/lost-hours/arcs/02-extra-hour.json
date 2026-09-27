@@ -109,7 +109,8 @@
         "wind"
       ],
       "properties": {
-        "windable": true
+        "windable": true,
+        "home": "r-loft"
       },
       "rules": [
         {
@@ -399,6 +400,7 @@
         "sat-down": {
           "summary": "given to Linden, who sits down for the whole of it, on purpose",
           "text": "Linden turns the little clock over in her hands, then sits down in the softest armchair, slowly, as if remembering how, and winds it. For one whole hour she does nothing at all, on purpose. The kettle mutters on without her, her tea goes cold in her hands, and out in the square the Extra Hour is spent at last, and goes home. When the little clock has ticked its borrowed hour all the way through, Linden presses her cup into your hands. 'Stone cold,' she says, delighted. 'First one ever in this house. You keep it, pet.'",
+          "others": "Linden sits down in the softest armchair with {actor}'s little clock and, for one whole hour, does nothing at all, on purpose, until her tea goes cold.",
           "ledger": "{helpers} gave the Extra Hour to Linden, who sat down for the whole of it, on purpose.",
           "do": [
             {
@@ -463,6 +465,7 @@
         "hilltop": {
           "summary": "spent on purpose by the dreamer, on the bench at the top of the Hill of Long Shadows",
           "text": "You sit on the weathered bench, facing east, and wind the turned-back clock. The Extra Hour arrives the way someone sits down beside you: you feel it more than see it, two soft shadows settling in the grass. For one whole hour, on purpose, you watch the village keep its time below you, the lanterns and the river's slow shine and the patient face of the tower, and nobody needs anything from you at all. When the clock catches up with itself, the bench beside you is empty and warm, and a dreamseed lies in the grass where the two shadows were.",
+          "others": "{actor} sits on the weathered bench facing east and winds a small clock; for one whole hour two soft shadows keep them company, and then there is a dreamseed in the grass.",
           "ledger": "{helpers} spent the Extra Hour on purpose, on the bench at the top of the Hill of Long Shadows.",
           "do": [
             {

@@ -135,7 +135,8 @@
         "state": "sealed",
         "state_text": {
           "opened": "The seal is broken now. It has been read aloud, once, to the one it was meant for."
-        }
+        },
+        "home": "r-post"
       },
       "rules": [
         {
@@ -157,7 +158,8 @@
             },
             {
               "kind": "narrate",
-              "text": "You break the old seal and read it aloud, while the Rain-Wait holds its scrap of awning over you both. 'To the one under the awning. I'm sorry: the rain stopped, and I had somewhere to be. Here is the end. One wet night, something did come up the hill, following the light: not a ship at all, but someone small and soaked who had lost their way. The keeper let them in and put the kettle on, and after that she never minded the empty nights, because now she knew what the light was for. The end.'"
+              "text": "You break the old seal and read it aloud, while the Rain-Wait holds its scrap of awning over you both. 'To the one under the awning. I'm sorry: the rain stopped, and I had somewhere to be. Here is the end. One wet night, something did come up the hill, following the light: not a ship at all, but someone small and soaked who had lost their way. The keeper let them in and put the kettle on, and after that she never minded the empty nights, because now she knew what the light was for. The end.'",
+              "others": "{actor} breaks an old seal and reads a letter aloud to the Rain-Wait, while it holds its striped awning over them both."
             },
             {
               "kind": "close_arc",
@@ -292,6 +294,7 @@
           ],
           "hint": "the player asks Fen about the end of the Rain-Wait's story, which the stranger promised to write down",
           "text": "Fen is up the little ladder before you finish. 'Rain-spotted, sealed, never posted.' She sets it in your hands. 'First-class delivery: read it to them, not to me.'",
+          "others": "Fen is up the little ladder and back again, and sets a rain-spotted letter in {actor}'s hands.",
           "do": [
             {
               "kind": "move_object",
@@ -360,6 +363,7 @@
           ],
           "hint": "the player tells the Rain-Wait the ending Sorrel made up for its story",
           "text": "You tell it Sorrel's way, and the Rain-Wait listens with its whole damp self. 'That might not be the stranger's ending,' it says slowly, and then its face lights like a lantern. 'But I like it so much I'd like to tell it to somebody.'",
+          "others": "{actor} tells the Rain-Wait Sorrel's ending to its lighthouse story, and its face lights like a lantern.",
           "do": [
             {
               "kind": "close_arc",
@@ -418,6 +422,7 @@
         "stays": {
           "summary": "given Sorrel's made-up ending instead, the Rain-Wait chooses to stay at the Waiting House and tell it on rainy evenings",
           "text": "The Rain-Wait folds its scrap of awning and decides, then and there, not to go home just yet. It will take the window seat at the Waiting House, where the rain sounds best on the glass, and on wet evenings it will tell the lighthouse story to every new guest, all the way to the end, Sorrel's way. Before it goes, it tips one raindrop from the awning's edge into your palm, where it hangs, not quite falling.",
+          "others": "The Rain-Wait folds its striped awning, decides to stay and tell its story on rainy evenings, and tips one raindrop into {actor}'s palm.",
           "ledger": "The Rain-Wait heard Sorrel's ending from {helpers}, and chose to stay at the Waiting House to tell it on rainy evenings.",
           "do": [
             {

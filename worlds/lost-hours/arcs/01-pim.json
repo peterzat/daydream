@@ -155,7 +155,8 @@
             "your tin"
           ],
           "hint": "the player asks Mott for a hush, some quiet, or what is in his tin, for the nap",
-          "text": "Mott's thumb stays where it always does; with his other hand he lifts out something grey and soft as a moth's cocoon. 'A hush. Swept it up the night the clock stopped. Quietest thing I own.'",
+          "text": "Mott's thumb stays where it always does; with his other hand he lifts out something grey and soft as a moth's cocoon and sets it in your palm. 'A hush. Swept it up the night the clock stopped. Quietest thing I own.'",
+          "others": "Mott lifts something grey and soft from his tin and sets it in {actor}'s palm: a hush.",
           "do": [
             {
               "kind": "spawn_object",
@@ -169,7 +170,8 @@
               ],
               "generated_by": "pim:hush",
               "properties": {
-                "hush": true
+                "hush": true,
+                "home": "r-workshop"
               }
             },
             {
@@ -205,7 +207,7 @@
             "the stranger"
           ],
           "hint": "the player asks Tace about a lullaby clock or the nap",
-          "text": "Tace's eyes light, just a little. 'Wend made a lullaby clock once, for a colicky hour. Bring me that spare brass pendulum by the window, friend: a slow swing is most of a lullaby.'"
+          "text": "Tace's eyes light, just a little. 'Wend made a lullaby clock once, for a colicky hour. Bring me that spare brass pendulum from the nail by the window, friend, or from wherever it has wandered: a slow swing is most of a lullaby.'"
         },
         "pendulum-given": {
           "after": [
@@ -224,7 +226,12 @@
           "after": [
             "hushed"
           ],
-          "hint": "the player asks Linden to keep the hushed nap at the Waiting House, in the littlest armchair",
+          "if": [
+            {
+              "helped": "pim"
+            }
+          ],
+          "hint": "the player, who has helped the nap, asks Linden to keep the hushed nap at the Waiting House, in the littlest armchair",
           "text": "Linden's face goes soft. 'The little lamb's got its hush, has it? Then the littlest armchair is its own, for as long as it likes.'",
           "do": [
             {
@@ -239,6 +246,7 @@
         "home": {
           "summary": "the nap is sung home by the lullaby clock",
           "text": "The lullaby clock ticks, slow as breathing. The nap listens, yawns one last enormous yawn, curls up small, and is simply gone, the way a nap is gone when you wake. Somewhere in the waking world a boy named Pim finally sleeps, with a red kite leaning by his bed. In your hands is something soft: a small dent in a pillow, and a dreamseed, warm as thanks.",
+          "others": "{actor}'s lullaby clock ticks slow as breathing; Pim's Nap yawns one last enormous yawn, curls up small, and is simply gone, home at last.",
           "ledger": "{helpers} sang Pim's missing nap home with a mended lullaby clock.",
           "do": [
             {
@@ -289,7 +297,8 @@
             {
               "kind": "move_toon",
               "toon_id": "t-pims-nap",
-              "room_id": "r-waiting"
+              "room_id": "r-waiting",
+              "leave_text": "Linden comes bustling up from the lane with a soft shawl, gathers up the drowsy nap, and carries it off toward the Waiting House."
             },
             {
               "kind": "set_property",
@@ -437,7 +446,8 @@
         },
         {
           "kind": "narrate",
-          "text": "Tace takes the spare pendulum, fits it to a little walnut case from the shelf, and bends over the bench a long, quiet while. When they straighten, they hold out a small clock that ticks slower than any clock you have heard. 'A lullaby clock,' Tace says. 'Wind it where the little one can hear.'"
+          "text": "Tace takes the spare pendulum, fits it to a little walnut case from the shelf, and bends over the bench a long, quiet while. When they straighten, they hold out a small clock that ticks slower than any clock you have heard. 'A lullaby clock,' Tace says. 'Wind it where the little one can hear.'",
+          "others": "Tace fits the spare pendulum to a little walnut case and hands {actor} a clock that ticks slower than any other: a lullaby clock."
         },
         {
           "kind": "spawn_object",
@@ -454,7 +464,8 @@
           "generated_by": "pim:lullaby",
           "properties": {
             "windable": true,
-            "lullaby": true
+            "lullaby": true,
+            "home": "r-loft"
           }
         },
         {
@@ -523,6 +534,122 @@
             "The lullaby clock ticks slow and soft, a lullaby with no one sleepy enough to hear it.",
             "You wind the lullaby clock. It hums a tick so gentle you find yourself yawning."
           ]
+        }
+      ]
+    },
+    {
+      "on": "give",
+      "if": [
+        {
+          "dobj": "o-brass-pendulum"
+        },
+        {
+          "iobj": "t-tace"
+        },
+        {
+          "carried": "o-brass-pendulum"
+        }
+      ],
+      "do": [
+        {
+          "kind": "move_object",
+          "object_id": "o-brass-pendulum",
+          "dest_id": "r-loft"
+        },
+        {
+          "kind": "narrate",
+          "text": "Tace takes the spare pendulum and hangs it back on its nail by the window. 'That one lives here, friend, until something wants a slow swing.'"
+        }
+      ]
+    },
+    {
+      "on": "give",
+      "if": [
+        {
+          "iobj": "t-pims-nap"
+        },
+        {
+          "carried": "@dobj"
+        },
+        {
+          "ending": "pim/stays"
+        }
+      ],
+      "do": [
+        {
+          "kind": "narrate",
+          "to": "@actor",
+          "text": "Pim's Nap is fast asleep in the littlest armchair, the hush tucked under one cheek. You let it sleep."
+        }
+      ]
+    },
+    {
+      "on": "give",
+      "if": [
+        {
+          "iobj": "t-pims-nap"
+        },
+        {
+          "carried": "@dobj"
+        },
+        {
+          "ending": "pim/jar"
+        }
+      ],
+      "do": [
+        {
+          "kind": "narrate",
+          "to": "@actor",
+          "text": "The nap sleeps on in its little jar. DO NOT WAKE, says Umber's label, so you don't."
+        }
+      ]
+    },
+    {
+      "on": "give",
+      "if": [
+        {
+          "iobj": "t-pims-nap"
+        },
+        {
+          "carried": "@dobj"
+        },
+        {
+          "prop": "lullaby",
+          "of": "@dobj"
+        },
+        {
+          "arc": "pim"
+        }
+      ],
+      "do": [
+        {
+          "kind": "narrate",
+          "to": "@actor",
+          "text": "The nap reaches for the lullaby clock with both hands, then yawns and lets them drop. It doesn't want to hold it. It wants to hear it: wind it here, where it can listen."
+        }
+      ]
+    },
+    {
+      "on": "give",
+      "if": [
+        {
+          "iobj": "t-pims-nap"
+        },
+        {
+          "carried": "@dobj"
+        },
+        {
+          "beat": "pim/hushed"
+        },
+        {
+          "arc": "pim"
+        }
+      ],
+      "do": [
+        {
+          "kind": "narrate",
+          "to": "@actor",
+          "text": "The nap holds its hush to its cheek and shakes its head, drowsy. Not that. Something slow, to fall asleep to."
         }
       ]
     }

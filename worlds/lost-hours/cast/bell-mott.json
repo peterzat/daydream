@@ -344,6 +344,49 @@
           ]
         },
         {
+          "label": "the first winding",
+          "aliases": [
+            "first winding",
+            "winding",
+            "first clock",
+            "my first clock",
+            "new keeper",
+            "the new keeper",
+            "wound my clock",
+            "wound a clock",
+            "small clock",
+            "my small clock"
+          ],
+          "if": [
+            {
+              "pflag": "WOUND"
+            }
+          ],
+          "variants": [
+            "Bell grins and points the hooked pole at your pocket, where a small clock ticks. 'Tace gave you one! A clock of your own, wound by your own hand. The square's got one more keeper in it now.'",
+            "'I heard it the minute you came in,' Bell says, tapping one ear. 'A new tick, half a beat off all the others. That's how you know a keeper.'"
+          ]
+        },
+        {
+          "label": "the first winding",
+          "aliases": [
+            "first winding",
+            "winding",
+            "first clock",
+            "my first clock",
+            "new keeper",
+            "the new keeper",
+            "small clock",
+            "my small clock"
+          ],
+          "if": [
+            {
+              "flag": "CLOCK-STARTED"
+            }
+          ],
+          "text": "Bell points the hooked pole up at the tower. 'Been up to the loft yet? Tace keeps a small clock for every new keeper. Ask them about the first winding.'"
+        },
+        {
           "label": "Tace",
           "aliases": [
             "tace",
@@ -659,9 +702,45 @@
             {
               "pflag": "MET-BOOK",
               "not": true
+            },
+            {
+              "collected": {
+                "eq": 0
+              }
             }
           ],
           "text": "Mott props the broom against the wall and takes a small blue book from his smock pocket. 'Stray minutes. They glint about the place, a few for each dreamer each day. Pick them up and they go in here.' He tips something bright out of the tin into your palm, and it settles like a warm seed. 'Here's your first. Keep the book close.'",
+          "others": "Mott gives {actor} a small blue book and tips something bright from his tin into their palm.",
+          "do": [
+            {
+              "kind": "set_pflag",
+              "name": "MET-BOOK"
+            },
+            {
+              "kind": "grant_collectible"
+            }
+          ]
+        },
+        {
+          "label": "the book",
+          "aliases": [
+            "book",
+            "stray minutes",
+            "the book of stray minutes",
+            "minutes",
+            "a book"
+          ],
+          "if": [
+            {
+              "flag": "CLOCK-STARTED"
+            },
+            {
+              "pflag": "MET-BOOK",
+              "not": true
+            }
+          ],
+          "text": "Mott props the broom against the wall and takes a small blue book from his smock pocket. 'Stray minutes. Found a few already, I see, glinting about the place. Pick them up and they go in here.' He tips something bright out of the tin into your palm, and it settles like a warm seed. 'One more, to keep yours company. Keep the book close.'",
+          "others": "Mott gives {actor} a small blue book and tips something bright from his tin into their palm.",
           "do": [
             {
               "kind": "set_pflag",
@@ -744,6 +823,39 @@
             "Mott lifts the lid: button, bent key, thimble, blue chalk, and a small empty corner. 'The oldest one's at Fen's,' he says. 'Keeping, till I'm ready.'",
             "Mott rattles the tin, and it rattles a little lighter than it used to. 'Found things,' he says. 'Every one somebody's. Mine's in the post, in a manner of speaking.'"
           ]
+        },
+        {
+          "label": "the hush",
+          "aliases": [
+            "hush",
+            "a hush",
+            "your hush",
+            "the old quiet"
+          ],
+          "if": [
+            {
+              "beat": "pim/hushed"
+            }
+          ],
+          "variants": [
+            "Mott taps the tin's lid; there's a small gap in it now. 'The hush went to the little nap, by a dreamer's hand. Best place for it.'",
+            "'With the little nap now,' Mott says, and sweeps one slow arc. 'Quietest thing I owned. Quieter where it is.'"
+          ]
+        },
+        {
+          "label": "the hush",
+          "aliases": [
+            "hush",
+            "a hush",
+            "your hush",
+            "the old quiet"
+          ],
+          "if": [
+            {
+              "beat": "pim/mott-hush"
+            }
+          ],
+          "text": "'Gave it to a dreamer, for the little nap,' Mott says, and sweeps one slow arc. 'It'll get where it's going.'"
         },
         {
           "label": "the gear",

@@ -231,6 +231,15 @@
           }
         },
         {
+          "cmd": "sit on the bench",
+          "expect": {
+            "arc": {
+              "extra-hour": "open"
+            },
+            "narrate_contains": "hopeful tick"
+          }
+        },
+        {
           "cmd": "wind turned-back clock",
           "expect": {
             "ending": {

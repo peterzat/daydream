@@ -1,0 +1,302 @@
+{
+  "name": "keeper-welcome",
+  "comment": "Playtest 2026-09-26 fixes around a first session: Tace's gear and clock topics between the handover and the mending, a borrowed pendulum handed back, the loft's resting clocks leading a newcomer to the first winding, the W clock Tace will not talk about, and Bell meeting the new keeper once, as Tace promised.",
+  "clock": "2026-10-01T17:00:00+00:00",
+  "players": [
+    {
+      "as": "A",
+      "name": "Wren"
+    }
+  ],
+  "segments": [
+    {
+      "name": "the stopped clock, with a pendulum",
+      "commands": [
+        {
+          "cmd": "read ledger",
+          "expect": {
+            "narrate_contains": "escapement gear",
+            "beats": [
+              "prologue/read-ledger"
+            ],
+            "phase": "stopped"
+          }
+        },
+        {
+          "cmd": "east",
+          "expect": {
+            "room": "r-square"
+          }
+        },
+        {
+          "cmd": "south",
+          "expect": {
+            "room": "r-well"
+          }
+        },
+        {
+          "cmd": "take gear",
+          "expect": {
+            "carrying": [
+              "escapement gear"
+            ],
+            "beats": [
+              "prologue/found-gear"
+            ]
+          }
+        },
+        {
+          "cmd": "north"
+        },
+        {
+          "cmd": "west"
+        },
+        {
+          "cmd": "up",
+          "expect": {
+            "room": "r-loft"
+          }
+        },
+        {
+          "cmd": "take pendulum",
+          "expect": {
+            "carrying": [
+              "brass pendulum"
+            ]
+          }
+        },
+        {
+          "cmd": "give pendulum to tace",
+          "expect": {
+            "carrying": [
+              "brass pendulum"
+            ],
+            "narrate_contains": "little thing the clock is missing"
+          }
+        },
+        {
+          "cmd": "give gear to tace",
+          "expect": {
+            "carrying": [
+              "case key"
+            ],
+            "beats": [
+              "prologue/gave-gear"
+            ],
+            "narrate_contains": "You carried it all the way home."
+          }
+        },
+        {
+          "cmd": "ask tace about the gear",
+          "expect": {
+            "narrate_contains": "Home, and sound",
+            "narrate_lacks": "case-key would be yours"
+          }
+        },
+        {
+          "cmd": "ask tace about the great clock",
+          "expect": {
+            "narrate_contains": "ready but the case"
+          }
+        },
+        {
+          "cmd": "down",
+          "expect": {
+            "room": "r-clocktower"
+          }
+        },
+        {
+          "cmd": "use key on case",
+          "expect": {
+            "beats": [
+              "prologue/unlocked"
+            ],
+            "narrate_contains": "springs open"
+          }
+        },
+        {
+          "cmd": "open case",
+          "expect": {
+            "ending": {
+              "prologue": "mended"
+            },
+            "flag": {
+              "CLOCK-STARTED": true
+            },
+            "narrate_contains": "first slow tick",
+            "day": {
+              "eq": 1
+            }
+          }
+        },
+        {
+          "cmd": "up",
+          "expect": {
+            "room": "r-loft"
+          }
+        },
+        {
+          "cmd": "give pendulum to tace",
+          "expect": {
+            "not_carrying": [
+              "brass pendulum"
+            ],
+            "located": {
+              "o-brass-pendulum": "r-loft"
+            },
+            "narrate_contains": "hangs it back on its nail"
+          }
+        },
+        {
+          "cmd": "ask tace about the gear",
+          "expect": {
+            "narrate_lacks": "case-key would be yours"
+          }
+        }
+      ]
+    },
+    {
+      "name": "a newcomer finds the custom on the shelf",
+      "commands": [
+        {
+          "clock": "+1h"
+        },
+        {
+          "join": {
+            "as": "B",
+            "name": "Tamsin"
+          }
+        },
+        {
+          "as": "B",
+          "cmd": "up",
+          "expect": {
+            "room": "r-loft"
+          }
+        },
+        {
+          "as": "B",
+          "cmd": "ask tace about the little brass clock",
+          "expect": {
+            "narrate_contains": "top shelf",
+            "narrate_lacks": "cannot say"
+          }
+        },
+        {
+          "as": "B",
+          "cmd": "ask tace about the w clock",
+          "expect": {
+            "narrate_contains": "top shelf"
+          }
+        },
+        {
+          "as": "B",
+          "cmd": "wind resting clocks",
+          "expect": {
+            "carrying": [
+              "small clock"
+            ],
+            "pflag": {
+              "GIVEN-CLOCK": true
+            },
+            "narrate_contains": "This one has been waiting for you."
+          }
+        },
+        {
+          "as": "B",
+          "cmd": "wind resting clocks",
+          "expect": {
+            "pflag": {
+              "WOUND": false
+            },
+            "narrate_contains": "Yours is the one to wind"
+          }
+        },
+        {
+          "as": "B",
+          "cmd": "give small clock to tace",
+          "expect": {
+            "carrying": [
+              "small clock"
+            ],
+            "narrate_contains": "it stays with you"
+          }
+        },
+        {
+          "as": "B",
+          "cmd": "wind small clock",
+          "expect": {
+            "pflag": {
+              "WOUND": true
+            },
+            "narrate_contains": "Now there's an hour here that's yours."
+          }
+        },
+        {
+          "as": "B",
+          "cmd": "wind resting clocks",
+          "expect": {
+            "narrate_lacks": "waiting for you"
+          }
+        },
+        {
+          "as": "B",
+          "cmd": "examine forget-me-not clock",
+          "expect": {
+            "narrate_contains": "forget-me-nots"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Bell meets the new keeper",
+      "commands": [
+        {
+          "as": "B",
+          "cmd": "down",
+          "expect": {
+            "room": "r-clocktower"
+          }
+        },
+        {
+          "as": "B",
+          "cmd": "east",
+          "expect": {
+            "room": "r-square",
+            "pflag": {
+              "MET-BELL": true
+            },
+            "rel": {
+              "t-bell": {
+                "gte": 1
+              }
+            },
+            "narrate_contains": "You're Tace's new keeper!"
+          }
+        },
+        {
+          "as": "B",
+          "cmd": "ask bell about the first winding",
+          "expect": {
+            "narrate_contains": "keeper"
+          }
+        },
+        {
+          "as": "B",
+          "cmd": "west",
+          "expect": {
+            "room": "r-clocktower"
+          }
+        },
+        {
+          "as": "B",
+          "cmd": "east",
+          "expect": {
+            "room": "r-square",
+            "narrate_lacks": "new keeper"
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -173,6 +173,12 @@
           }
         },
         {
+          "cmd": "ask tace about the little brass clock",
+          "expect": {
+            "narrate_contains": "top shelf"
+          }
+        },
+        {
           "cmd": "ask tace about the frost",
           "expect": {
             "beats": [
@@ -182,6 +188,12 @@
               "little brass clock"
             ],
             "narrate_contains": "Umber keeps a lamp lit"
+          }
+        },
+        {
+          "cmd": "ask tace about the w clock",
+          "expect": {
+            "narrate_contains": "It's in good hands."
           }
         }
       ]
@@ -321,6 +333,12 @@
             "knows": {
               "t-umber": "tace-hour-past-eleven"
             }
+          }
+        },
+        {
+          "cmd": "ask tace about the little brass clock",
+          "expect": {
+            "narrate_contains": "Past eleven, at last."
           }
         },
         {

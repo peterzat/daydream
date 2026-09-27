@@ -96,7 +96,10 @@
         "salt evening",
         "summer evening",
         "salty evening"
-      ]
+      ],
+      "properties": {
+        "home": "r-orchard"
+      }
     },
     {
       "id": "o-summer-jar",
@@ -111,7 +114,10 @@
         "marram's jar",
         "label"
       ],
-      "text": "The label reads, in Umber's small square hand: 'THE SUMMER THE MARRAM GRASS SANG. Long days at the edge of the dunes. Salt, one striped towel, and a sea that came right up to the door to say good morning. Keep in the light.'"
+      "text": "The label reads, in Umber's small square hand: 'THE SUMMER THE MARRAM GRASS SANG. Long days at the edge of the dunes. Salt, one striped towel, and a sea that came right up to the door to say good morning. Keep in the light.'",
+      "properties": {
+        "home": "r-cellar"
+      }
     }
   ],
   "arcs": {
@@ -164,6 +170,7 @@
           ],
           "hint": "the player asks Marram about its summer or its name",
           "text": "Marram shakes a little sand from its cuff and presses a stalk of pale grass into your hand. 'Salt, a striped towel, and the grass singing whenever the wind came. That's my bit. The rest of my name blew away.'",
+          "others": "Marram shakes a little sand from its cuff and presses a stalk of pale grass into {actor}'s hand.",
           "do": [
             {
               "kind": "spawn_object",
@@ -251,6 +258,7 @@
         "home": {
           "summary": "Umber writes the rest of its name, and the summer goes home remembered",
           "text": "Marram turns the little jar to the lantern and reads the label slowly, lips moving. 'The summer the marram grass sang,' it says, and laughs, a sound like a wave going back out. A warm wind crosses the square; the drift of sand it stood in blows to nothing, and so does Marram. Miles off, on a windy step, someone long grown up shakes out an old striped towel, says 'marram' out loud, and remembers the whole summer at once. In your palm is a pinch of warm sand, and a dreamseed.",
+          "others": "Marram reads its whole name from {actor}'s little jar, laughs like a wave going back out, and blows away home on a warm wind.",
           "ledger": "{helpers} found the rest of Marram's name, and the summer the marram grass sang went home remembered.",
           "do": [
             {
@@ -296,6 +304,7 @@
         "downstream": {
           "summary": "given its last evening instead of its name, the summer settles at the Slow River's edge, facing downstream toward the sea",
           "text": "Marram cups the fallen evening in both sandy hands and breathes in, and its whole face goes gold. It looks at you as if to say a name is a great deal to carry, and an evening is just the right size. Then it follows the smell of water down the lane and past the bridge to the Slow River's edge, where the reeds whisper almost like dune grass, and sits facing downstream, the way water goes when it is going to the sea.",
+          "others": "Marram takes the fallen evening from {actor}, breathes it in until its face goes gold, and wanders off toward the Slow River's edge.",
           "ledger": "{helpers} gave Marram its last evening, and the summer chose to stay at the Slow River's edge, facing downstream toward the sea.",
           "do": [
             {
@@ -531,7 +540,8 @@
       "do": [
         {
           "kind": "narrate",
-          "text": "Marram tucks the stalk of grass behind your ear instead of its own, and pats it once. 'You keep that bit,' it says. 'It's the rest of me that blew away.'"
+          "text": "Marram tucks the stalk of grass behind your ear instead of its own, and pats it once. 'You keep that bit,' it says. 'It's the rest of me that blew away.'",
+          "others": "Marram tucks a stalk of grass behind {actor}'s ear, and pats it once."
         }
       ]
     },
@@ -551,7 +561,8 @@
       "do": [
         {
           "kind": "narrate",
-          "text": "Umber holds the fallen evening to her ear the way you'd listen to a shell, and her face goes soft. She tips it into a small clean jar, writes a label, reads it twice, and ties it on with string. 'Name, in full,' she says, handing it over. 'Keep in the light.'"
+          "text": "Umber holds the fallen evening to her ear the way you'd listen to a shell, and her face goes soft. She tips it into a small clean jar, writes a label, reads it twice, and ties it on with string. 'Name, in full,' she says, handing it over. 'Keep in the light.'",
+          "others": "Umber holds {actor}'s fallen evening to her ear like a shell, tips it into a jar, labels it, and hands it back."
         },
         {
           "kind": "move_object",

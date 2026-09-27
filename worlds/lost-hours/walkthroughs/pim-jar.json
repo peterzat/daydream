@@ -161,6 +161,15 @@
           }
         },
         {
+          "cmd": "give cog to nap",
+          "expect": {
+            "carrying": [
+              "warm brass cog"
+            ],
+            "narrate_contains": "DO NOT WAKE"
+          }
+        },
+        {
           "cmd": "up"
         },
         {

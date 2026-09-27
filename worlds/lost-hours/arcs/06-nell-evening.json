@@ -249,6 +249,7 @@
         "home": {
           "summary": "a dreamer sings the whole song, and the evening goes home",
           "text": "The evening listens with its eyes shut, smiling, and on the last soft word lets out one long, happy breath and is gone. Somewhere in the waking world an old woman wakes in her armchair to the end of the singing and asks who is cutting the cake. In your hand: a stub of birthday candle, still warm, and a dreamseed.",
+          "others": "Nell's Evening listens with its eyes shut, smiling, and on the last soft word lets out one long, happy breath and is gone home.",
           "ledger": "{helpers} sang Nell's early evening its birthday song, and it went home.",
           "do": [
             {
@@ -448,7 +449,8 @@
       "do": [
         {
           "kind": "narrate",
-          "text": "You sing it softly, the whole of it, the way it was sung in a warm room somewhere: here's to Nell, and her candles bright, here's to the kettle and the window light, doze if you like, love, we'll sing it soft tonight."
+          "text": "You sing it softly, the whole of it, the way it was sung in a warm room somewhere: here's to Nell, and her candles bright, here's to the kettle and the window light, doze if you like, love, we'll sing it soft tonight.",
+          "others": "{actor} sings Nell's birthday song softly, the whole of it, and the little evening listens with its eyes shut."
         },
         {
           "kind": "close_arc",
@@ -473,7 +475,8 @@
           "variants": [
             "You sing what you have of the song. The evening lifts its head at every word it knows, and when you run out it is still listening, patient as a lamp.",
             "You try the song, but it runs out partway, like a stair with a step missing. The evening waits for the rest with its eyes half closed."
-          ]
+          ],
+          "others": "{actor} sings what they have of a birthday song, and the little evening lifts its head at every word it knows."
         }
       ]
     },

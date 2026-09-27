@@ -64,11 +64,29 @@
           "never raises their voice or hurries anyone",
           "never names anyone in the village who is not a resident or a guest",
           "never talks about Wend's last days, or says when Wend died",
+          "never explains the little brass clock on the top shelf or where it came from, and never claims not to know: they turn back to the work and speak of something else",
           "never promises that a lost thing will certainly come home",
           "never speaks of anything modern: only clockwork, brass, oil, and lamplight"
         ]
       },
       "topics": [
+        {"label": "the little brass clock", "aliases": ["little brass clock", "the w clock", "w clock", "clock with the w", "the clock with the w", "brass clock", "stopped clock", "clock at eleven", "clock on the top shelf", "tace's clock"],
+         "if": [{"ending": "tace-hour/past-eleven"}],
+         "text": "Tace smiles toward the floorboards. 'Ticking, down on the bottom rung of Wend's ladder. Past eleven, at last.' They leave it at that."},
+        {"label": "the little brass clock", "aliases": ["little brass clock", "the w clock", "w clock", "clock with the w", "the clock with the w", "brass clock", "stopped clock", "clock at eleven", "clock on the top shelf", "tace's clock"],
+         "if": [{"carried": "o-tace-hour-clock"}],
+         "text": "Tace looks at the little clock in your hands, and then back at the bench. 'Keep it a while longer, friend. It's in good hands.'"},
+        {"label": "the little brass clock", "aliases": ["little brass clock", "the w clock", "w clock", "clock with the w", "the clock with the w", "brass clock", "stopped clock", "clock at eleven", "clock on the top shelf", "tace's clock"],
+         "if": [{"beat": "tace-hour/tace-frost"}, {"contains": "o-tace-hour-clock", "of": "r-loft", "not": true}],
+         "text": "'Someone's keeping it for me a while,' Tace says quietly, and turns back to the work."},
+        {"label": "the little brass clock", "aliases": ["little brass clock", "the w clock", "w clock", "clock with the w", "the clock with the w", "brass clock", "stopped clock", "clock at eleven", "clock on the top shelf", "tace's clock"],
+         "variants": [
+           "Tace glances up at the top shelf, and away, and fits a tiny screw with great care. 'That one's resting, friend. Tell me what brought you up the stairs.'",
+           "Tace takes the spectacles off and polishes them on the apron, slowly, without looking at the top shelf. 'Not that one,' they say, kindly enough, and ask whether the lanterns are lit yet."
+         ]},
+        {"label": "the great clock", "aliases": ["clock", "great clock", "the clock"],
+         "if": [{"flag": "CLOCK-STARTED", "not": true}, {"beat": "prologue/gave-gear"}],
+         "text": "Tace looks up toward the tower, and something like hope crosses their face. 'Everything's ready but the case, friend. Whoever holds the key, the clock is theirs to open.'"},
         {"label": "the great clock", "aliases": ["clock", "great clock", "the clock"],
          "if": [{"flag": "CLOCK-STARTED", "not": true}],
          "variants": [
@@ -84,6 +102,9 @@
            "Tace pauses, a tool in hand, and counts a few ticks under their breath. 'Right on time. Wend would be pleased with it.'"
          ]},
         {"label": "the gear", "aliases": ["gear", "escapement gear", "escapement", "the escapement"],
+         "if": [{"flag": "CLOCK-STARTED", "not": true}, {"beat": "prologue/gave-gear"}],
+         "text": "Tace pats the apron pocket where the little gear rests. 'Home, and sound. The key went with the one who carried it; once the case is open, the great clock can have its heart back.'"},
+        {"label": "the gear", "aliases": ["gear", "escapement gear", "escapement", "the escapement"],
          "if": [{"flag": "CLOCK-STARTED", "not": true}],
          "variants": [
            "Tace sets the tweezers down. 'It slipped its pin that night and rolled out across the square and away south, toward the old well-court, I think. My knees and the tower stairs don't agree these days. If you found it, friend, the case-key would be yours.'",
@@ -98,6 +119,7 @@
         {"label": "the first winding", "aliases": ["the custom", "first winding", "winding", "custom", "a clock of my own", "my own clock"],
          "if": [{"flag": "CLOCK-STARTED"}, {"pflag": "GIVEN-CLOCK", "not": true}],
          "text": "Tace takes a small resting clock down from the shelf and blows the dust from its face. 'By old custom, every new keeper winds one clock of their own, the first night they come. This one has been waiting for you.' They set it in your hands, warm from the shelf. 'Wind it when you're ready.'",
+         "others": "Tace takes a small resting clock down from the shelf and sets it in {actor}'s hands, by old custom.",
          "do": [{"kind": "spawn_template", "template": "small-clock", "location_id": "@actor", "private": true},
                 {"kind": "set_pflag", "name": "GIVEN-CLOCK"}]},
         {"label": "the first winding", "aliases": ["the custom", "first winding", "winding", "custom", "a clock of my own", "my own clock"],
@@ -106,6 +128,21 @@
            "Tace smiles at the question. 'You've had yours, friend, off that very shelf. Once is the custom. After that, the clock is simply yours.'",
            "Tace nods at the shelf of resting clocks, where one small gap has been left. 'Once is the custom. Wind it when you're ready, and keep it however you like.'"
          ]},
+        {"label": "a lullaby clock", "aliases": ["lullaby clock", "lullaby clocks", "lullaby", "the lullaby"],
+         "if": [{"arc": "pim"}, {"beat": "pim/tace-lullaby"}, {"beat": "pim/pendulum-given", "not": true}, {"carried": "o-brass-pendulum"}],
+         "text": "Tace's eyes go to the pendulum in your hands. 'That's the one, friend. Give it here, and I'll teach it to swing slow.'"},
+        {"label": "a lullaby clock", "aliases": ["lullaby clock", "lullaby clocks", "lullaby", "the lullaby"],
+         "if": [{"arc": "pim"}, {"beat": "pim/tace-lullaby"}, {"beat": "pim/pendulum-given", "not": true}, {"contains": "o-brass-pendulum", "of": "r-loft"}],
+         "text": "Tace nods at the window, where the spare brass pendulum turns slow on its nail. 'That one, friend. Bring it to the bench, and I'll do the rest.'"},
+        {"label": "a lullaby clock", "aliases": ["lullaby clock", "lullaby clocks", "lullaby", "the lullaby"],
+         "if": [{"arc": "pim"}, {"beat": "pim/tace-lullaby"}, {"beat": "pim/pendulum-given", "not": true}],
+         "text": "Tace glances at the empty nail by the window. 'Somebody's borrowed my spare pendulum. It'll find its way home; things here usually do. Bring it to the bench when it turns up.'"},
+        {"label": "a lullaby clock", "aliases": ["lullaby clock", "lullaby clocks", "lullaby", "the lullaby"],
+         "if": [{"arc": "pim"}, {"beat": "pim/pendulum-given"}],
+         "text": "'The lullaby clock's made,' Tace says, and taps the bench where it ticked. 'Wind it where the little one can hear, once it has its hush.'"},
+        {"label": "a lullaby clock", "aliases": ["lullaby clock", "lullaby clocks", "lullaby", "the lullaby"],
+         "if": [{"ending": "pim/home"}],
+         "text": "Tace smiles at the bench. 'It sang the little nap home. Wend's pattern still works, it seems.'"},
         {"label": "Wend", "aliases": ["wend", "your teacher", "the old clockmaker"],
          "variants": [
            "Tace's fingers pause on a hairspring. 'Wend built the great clock and taught me everything I know about patience. Most of what I know about kindness too.' They go back to the work.",

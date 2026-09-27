@@ -22,7 +22,39 @@
       "description": "Wooden pigeonholes climb every wall, and every pigeonhole holds letters: written, sealed, and never sent. A brass bell sits on the worn counter beside a basket of string. The little stove keeps the paper dry. The lane is south.",
       "exits": {
         "south": "r-lane"
-      }
+      },
+      "rules": [
+        {
+          "on": "ring",
+          "if": [
+            {
+              "present": "t-fen"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "variants": [
+                "You tap the brass bell on the counter. Ting! Fen looks up at once, pencil already out. 'Post, or only saying hello? Both are welcome at this counter.'",
+                "Ting. Fen finishes the address she is writing before she looks up. 'Heard you the first time,' she says, pleased. 'The bell likes being rung. Not many people think to.'"
+              ],
+              "others": "{actor} taps the brass bell on the counter. Ting!"
+            }
+          ]
+        },
+        {
+          "on": "ring",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "You tap the brass bell on the counter. Ting! It rings bright and small, the way it does when a letter finds its door.",
+              "others": "{actor} taps the brass bell on the counter. Ting!"
+            }
+          ]
+        }
+      ]
     },
     {
       "id": "r-waiting",
@@ -33,7 +65,54 @@
       "exits": {
         "west": "r-lane",
         "up": "r-lamphouse"
-      }
+      },
+      "rules": [
+        {
+          "on": "sit",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "variants": [
+                "You sink into one of the mismatched armchairs. It is exactly as soft as it looks, and the kettle mutters approvingly.",
+                "You take the armchair nearest the stair, and the room settles around you like a cat round a warm spot."
+              ],
+              "others": "{actor} sinks into one of the mismatched armchairs."
+            }
+          ]
+        },
+        {
+          "on": "eat",
+          "if": [
+            {
+              "present": "t-linden"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "Linden laughs. 'Nothing to eat, pet, I don't bake. But there's tea, and there's always tea.'"
+            }
+          ]
+        },
+        {
+          "on": "drink",
+          "if": [
+            {
+              "present": "t-linden"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "Linden has a cup in your hands before you've finished asking: bergamot, a little honey-coloured, and hot right through.",
+              "others": "Linden puts a cup of tea into {actor}'s hands."
+            }
+          ]
+        }
+      ]
     },
     {
       "id": "r-lamphouse",
@@ -43,7 +122,35 @@
       "description": "Spare wicks hang in bundles from the rafters, and folded paper lantern-skins lean in stacks like sleeping moths. A narrow bed faces the west window, where the sun goes down; nothing in the room faces east. The stair goes down to the Waiting House.",
       "exits": {
         "down": "r-waiting"
-      }
+      },
+      "rules": [
+        {
+          "on": "sleep",
+          "if": [
+            {
+              "contains": "t-bell",
+              "of": "r-lamphouse"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "Bell is already asleep in the narrow bed, one sooty hand trailing off the quilt. It isn't yours to sleep in, and there's no room besides."
+            }
+          ]
+        },
+        {
+          "on": "sleep",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "You sit on the edge of the narrow bed, and think better of it. This is Bell's bed, facing Bell's west window, and it isn't yours to sleep in."
+            }
+          ]
+        }
+      ]
     },
     {
       "id": "r-bridge",
@@ -92,7 +199,64 @@
       "exits": {
         "north": "r-bridge",
         "east": "r-hill"
-      }
+      },
+      "rules": [
+        {
+          "on": "wait",
+          "if": [
+            {
+              "phase": "dusk"
+            },
+            {
+              "pflag": "WAITED-DUSK",
+              "not": true
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "You stand still in the long grass and wait, the way Sorrel does. The small lights drift down around you like slow snow, and one of them turns aside, as if it had been looking for you.",
+              "others": "{actor} stands very still in the long grass, and a small light drifts down into their cupped hands."
+            },
+            {
+              "kind": "set_pflag",
+              "name": "WAITED-DUSK"
+            },
+            {
+              "kind": "grant_collectible"
+            }
+          ]
+        },
+        {
+          "on": "wait",
+          "if": [
+            {
+              "phase": "dusk"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "variants": [
+                "You stand still in the long grass. The small lights drift down around you like slow snow, and a few settle on the net by the fence post, softly, where Sorrel will find them.",
+                "You wait, and the lights come down, and every one of them takes its time. So do you."
+              ]
+            }
+          ]
+        },
+        {
+          "on": "wait",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "You wait in the long grass. The sky is only sky just now; the lights come down at dusk, Sorrel says, to anyone who stands still."
+            }
+          ]
+        }
+      ]
     },
     {
       "id": "r-hill",
@@ -102,7 +266,42 @@
       "description": "From the top of the hill you can see the whole village: the clocktower, the lanterns, the river's slow shine. One weathered bench faces east, toward a pale edge of sky that never quite decides to become morning while anyone is watching. The Dusk Road is back to the west.",
       "exits": {
         "west": "r-duskroad"
-      }
+      },
+      "rules": [
+        {
+          "on": "sit",
+          "if": [
+            {
+              "arc": "extra-hour"
+            },
+            {
+              "carried": "o-extra-hour-clock"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "You sit on the weathered bench, facing east, and the turned-back clock gives one hopeful tick in your pocket. This might be the place to spend an hour, on purpose.",
+              "others": "{actor} sits on the weathered bench, facing east."
+            }
+          ]
+        },
+        {
+          "on": "sit",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "variants": [
+                "You sit on the weathered bench, facing east. The pale edge of the sky considers you, and decides nothing yet.",
+                "You sit on the bench with the little sun carved in one arm and the lantern in the other. Below, the whole village keeps its time, and none of it needs you just now."
+              ],
+              "others": "{actor} sits on the weathered bench, facing east."
+            }
+          ]
+        }
+      ]
     }
   ],
   "things": [
@@ -117,7 +316,31 @@
       "aliases": [
         "letters",
         "pigeonhole",
-        "unsent letters"
+        "unsent letters",
+        "sealed letters",
+        "letters in the pigeonholes",
+        "letter in the pigeonhole",
+        "letter from the pigeonholes",
+        "letter from the pigeonhole",
+        "one of the letters"
+      ],
+      "verbs": [
+        "read"
+      ],
+      "rules": [
+        {
+          "on": "read",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "variants": [
+                "You ease one letter an inch out of the pigeonhole marked TO WHOEVER FINDS THIS: sealed, soft with handling, addressed in a careful round hand. Fen clears her throat, kindly, and you slide it back. Unsent letters are read by the ones they're meant for.",
+                "You run a finger along the letters in TO MY SISTER. Every one is sealed. 'Fronts only, in this office,' Fen says, not unkindly, and you let them be."
+              ]
+            }
+          ]
+        }
       ]
     },
     {
@@ -182,6 +405,21 @@
       "seed": "a weathered wooden bench facing east, its slats worn smooth; someone has carved a tiny sun into one arm, and a lantern into the other",
       "aliases": [
         "bench"
+      ]
+    },
+    {
+      "id": "o-lamphouse-window",
+      "name": "west window",
+      "location": {
+        "room": "r-lamphouse"
+      },
+      "fixture": true,
+      "seed": "a small window over the narrow bed, facing west; through it the sun goes down behind the rooftops, slow and gold, as if it were saying goodnight to this one room in particular",
+      "aliases": [
+        "window",
+        "small window",
+        "small west window",
+        "lamp house window"
       ]
     }
   ]

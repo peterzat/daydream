@@ -356,6 +356,45 @@
           ]
         },
         {
+          "label": "tea",
+          "aliases": [
+            "a cup",
+            "cup of tea",
+            "a cup of tea",
+            "some tea",
+            "umber's tea",
+            "pot of tea",
+            "tea please",
+            "cellar tea",
+            "love a cup",
+            "have a cup",
+            "take a cup"
+          ],
+          "variants": [
+            "Umber pours from a brown pot that was steeping all along, into a cup with a chip in its rim, and sets it at your elbow. 'Tea. Strong. Drink while warm,' she says, as if reading it off a label.",
+            "Umber fills a chipped cup without asking how you take it. 'Cellar tea. Brewed slow, served warm, no sugar,' she says. 'Keep away from the jars.'"
+          ],
+          "others": "Umber pours {actor} a cup of cellar tea from a brown pot that was steeping all along.",
+          "do": [
+            {
+              "kind": "spawn_object",
+              "name": "chipped cup",
+              "location_id": "@actor",
+              "seed": "a plain teacup with a chip in its rim, holding Umber's strong cellar tea, still warm; a paper label tied to the handle says, in a small square hand, DRINK WHILE WARM",
+              "aliases": [
+                "cup",
+                "chipped teacup",
+                "cellar tea",
+                "umber's tea"
+              ],
+              "generated_by": "umber:tea",
+              "properties": {
+                "cellar_tea": true
+              }
+            }
+          ]
+        },
+        {
           "label": "Wend",
           "aliases": [
             "wend",
@@ -413,7 +452,7 @@
           ],
           "variants": [
             "Umber lowers her voice, the way one does near sleeping things. 'Some hours don't go home. They stay, and I keep them. Kept is not lost, whatever anyone tells you.'",
-            "'A kept hour sleeps well down here,' Umber says. 'Cool, dark, and nobody asking it to be anything it isn't.'"
+            "'A kept guest sleeps well down here,' Umber says. 'Cool, dark, and nobody asking it to be anything it isn't. Label: do not wake.'"
           ]
         },
         {
@@ -818,7 +857,8 @@
             "Linden pours before you can answer. 'Bergamot, a little honey-coloured, nothing fancy. There. Now you're somewhere.'",
             "Linden has a cup poured before the word is even finished. 'Drink that, pet. Everything's easier on the far side of a cup of tea.'",
             "'Bergamot,' Linden says, sniffing the steam. 'Never anything fancy, and never a biscuit, because I don't bake. But the tea's good.'"
-          ]
+          ],
+          "others": "Linden pours {actor} a cup of bergamot tea before they can answer."
         },
         {
           "label": "the room keys",
@@ -834,6 +874,37 @@
             "Linden taps the board by the stair. 'A key for every hour that's waiting, and a chalk name over each hook. When one goes home, I wipe the slate and make the bed up fresh.'",
             "'Brass keys and chalk names,' Linden says fondly. 'A name in chalk means someone's waiting. A clean slate means someone's gone home.'"
           ]
+        },
+        {
+          "label": "keeping the nap here",
+          "aliases": [
+            "a bed for the nap",
+            "the littlest bed",
+            "the littlest armchair"
+          ],
+          "if": [
+            {
+              "arc": "pim"
+            },
+            {
+              "beat": "pim/hushed"
+            }
+          ],
+          "text": "Linden's face goes soft. 'The little lamb's got its hush, I hear. Whoever's been looking after it can bring it by, and the littlest armchair will be ready.'"
+        },
+        {
+          "label": "keeping the nap here",
+          "aliases": [
+            "a bed for the nap",
+            "the littlest bed",
+            "the littlest armchair"
+          ],
+          "if": [
+            {
+              "arc": "pim"
+            }
+          ],
+          "text": "Linden glances toward the square and lowers her voice. 'That little yawning one? Find it some quiet first, pet, and then the littlest armchair is its own.'"
         },
         {
           "label": "waiting",

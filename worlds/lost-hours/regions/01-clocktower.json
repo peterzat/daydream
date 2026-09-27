@@ -147,7 +147,7 @@
       "verbs": [
         "open"
       ],
-      "seed": "a tall glass-fronted clock case of dark oak, its little brass door held by a delicate lock",
+      "seed": "a tall glass-fronted clock case of dark oak, with a little brass door in front of the pendulum",
       "aliases": [
         "case",
         "glass case",
@@ -167,7 +167,7 @@
           "with": "case key",
           "from_state": "locked",
           "to_state": "unlocked",
-          "text": "The case-key turns with a soft, satisfying click, and the little brass lock springs open under your thumb."
+          "text": "The case-key turns with a soft, satisfying click, and the little brass lock springs open."
         },
         "contains": [
           {
@@ -195,12 +195,74 @@
       "aliases": [
         "clocks",
         "shelf of clocks",
-        "small clocks"
+        "small clocks",
+        "resting clock",
+        "painted clock",
+        "forget-me-not clock",
+        "clock painted with forget-me-nots",
+        "forget-me-nots",
+        "clocks on the shelves",
+        "clocks on the shelf",
+        "shelves of clocks"
       ],
       "properties": {
         "windable": true
       },
       "rules": [
+        {
+          "on": "wind",
+          "if": [
+            {
+              "flag": "CLOCK-STARTED"
+            },
+            {
+              "present": "t-tace"
+            },
+            {
+              "pflag": "GIVEN-CLOCK",
+              "not": true
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "text": "Tace sets down the tweezers before you reach the shelf. 'Not those, friend; those are resting. By old custom a new keeper winds a clock of their own.' They take a small clock down and set it in your hands, warm from the shelf. 'This one has been waiting for you. Wind it when you're ready.'",
+              "others": "Tace takes a small resting clock down from the shelf and sets it in {actor}'s hands, by old custom."
+            },
+            {
+              "kind": "spawn_template",
+              "template": "small-clock",
+              "location_id": "@actor",
+              "private": true
+            },
+            {
+              "kind": "set_pflag",
+              "name": "GIVEN-CLOCK"
+            }
+          ]
+        },
+        {
+          "on": "wind",
+          "if": [
+            {
+              "flag": "CLOCK-STARTED"
+            },
+            {
+              "present": "t-tace"
+            },
+            {
+              "pflag": "WOUND",
+              "not": true
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "Tace looks up from the bench. 'Those are resting, friend. Yours is the one to wind: the small clock in your pocket.'"
+            }
+          ]
+        },
         {
           "on": "wind",
           "do": [
@@ -251,7 +313,7 @@
         "room": "r-balcony"
       },
       "fixture": true,
-      "seed": "a gear-ribbed brass telescope leaning at the rail, pointed east; through it the far edge of the sky looks soft and undecided, like a page not yet turned",
+      "seed": "a gear-ribbed brass telescope leaning at the rail, pointed east. Put an eye to it and the far edge of the sky swims close, soft and pale and undecided, like a page not yet turned, with the Hill of Long Shadows dark against it and one small bench on top",
       "aliases": [
         "gear telescope",
         "spyglass"

@@ -108,7 +108,8 @@
         "state_text": {
           "unfinished": "The middle of the little garden is empty: a clean white space, left when the bell rang.",
           "finished": "In the middle of the little garden the littlest pendulum swings now, drawn in soft pencil, and the whole page looks as if it has let out a long breath."
-        }
+        },
+        "home": "r-square"
       }
     },
     {
@@ -177,6 +178,7 @@
           ],
           "hint": "the player asks the Margin Afternoon about its drawing",
           "text": "The Afternoon unfolds a soft page from its lap: spirals, a boat with no sail, and a little garden where pendulums hang from the trees like fruit, all around an empty middle. 'The bell rang,' it says, and holds the page out for you to keep a while.",
+          "others": "The Margin Afternoon unfolds a doodled page from its lap and holds it out for {actor} to keep a while.",
           "do": [
             {
               "kind": "move_object",
@@ -272,6 +274,7 @@
         "finished": {
           "summary": "the drawing is finished in the Pendulum Garden, and the afternoon goes home",
           "text": "The Afternoon takes the finished drawing in both hands and looks at it for a long, long time, smiling the slow smile of someone called on who, for once, knows the answer. Somewhere a bell rings, and this time it doesn't jump: it gets up, the way everyone does when the lesson is over, and goes. Far off, a grown-up leafing through an old sums book finds a little garden in the margin, finished, and cannot remember finishing it. In your hand is a curl of pencil shaving, and a dreamseed.",
+          "others": "The Margin Afternoon takes its finished drawing from {actor}, smiles like someone who knows the answer at last, and goes home at the sound of a far-off bell.",
           "ledger": "{helpers} finished the Margin Afternoon's drawing, and the afternoon went home with its garden whole.",
           "do": [
             {
@@ -739,7 +742,8 @@
         },
         {
           "kind": "narrate",
-          "text": "You sit on the moss by the lowest trellis and draw the littlest pendulum into the empty middle: one fine line, one round bob, a small curve to show it swinging. As you lift the pencil, the whole garden ticks once, all together, as if it approves. Now it only wants taking back to its owner."
+          "text": "You sit on the moss by the lowest trellis and draw the littlest pendulum into the empty middle: one fine line, one round bob, a small curve to show it swinging. As you lift the pencil, the whole garden ticks once, all together, as if it approves. Now it only wants taking back to its owner.",
+          "others": "{actor} sits on the moss by the lowest trellis and draws the littlest pendulum into a doodled page, and the whole garden ticks once, all together."
         },
         {
           "kind": "advance_beat",

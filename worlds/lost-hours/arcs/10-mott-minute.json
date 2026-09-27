@@ -4,6 +4,7 @@
     {"id": "o-mott-minute-loupe", "name": "spare loupe", "location": "offstage",
      "seed": "one of Tace's spare loupes, a little brass eyeglass on a faded ribbon; through it the smallest things look patient and enormous",
      "aliases": ["loupe", "eyeglass", "tace's loupe"],
+     "properties": {"home": "r-loft"},
      "rules": [
        {"on": "give", "if": [{"iobj": "t-mott"}, {"carried": "@self"}, {"arc": "mott-minute"},
                              {"beat": "mott-minute/mott-confides"},
@@ -18,7 +19,7 @@
      "seed": "a stiff cream envelope; across the front, in Fen's tidy hand, it says TO ME, LATER",
      "aliases": ["envelope", "sealed envelope"],
      "verbs": ["open"],
-     "properties": {"state": "empty", "state_text": {
+     "properties": {"home": "r-post", "state": "empty", "state_text": {
        "empty": "It's empty, and waiting for something small.",
        "sealed": "It's sealed now, and something very small and folded makes a soft bump in one corner."}},
      "rules": [
@@ -41,7 +42,8 @@
         "do": [
           {"kind": "close_arc", "arc": "mott-minute", "ending": "kept-for-later"},
           {"kind": "narrate",
-           "text": "Then Fen presses a spare stamp into your hand, printed with a tiny lantern. 'First class. For your trouble.'"},
+           "text": "Then Fen presses a spare stamp into your hand, printed with a tiny lantern. 'First class. For your trouble.'",
+           "others": "Fen presses a lantern stamp into {actor}'s hand: first class, for the trouble."},
           {"kind": "spawn_object", "name": "lantern stamp", "location_id": "@actor",
            "seed": "a small paper stamp printed with a tiny lantern, first class, its edges perforated like a row of stitches",
            "aliases": ["stamp", "first-class stamp"],
@@ -103,6 +105,7 @@
           "after": ["mott-confides"],
           "hint": "the player asks Tace for a loupe to help Mott look at his minute",
           "text": "Tace takes a spare loupe from the drawer, polishes it on their apron, and hangs it round your neck by its ribbon. 'For the smallest things,' they say. 'Old minutes fold very small. Tell Mott to open it along its own creases, never new ones, and in good light.'",
+          "others": "Tace polishes a spare loupe on their apron and hangs it round {actor}'s neck by its ribbon.",
           "do": [
             {"kind": "move_object", "object_id": "o-mott-minute-loupe", "dest_id": "@actor"},
             {"kind": "add_fact", "id": "mott-minute-loupe",
@@ -136,10 +139,12 @@
         "looked-together": {
           "summary": "with a dreamer beside him and Tace's loupe, Mott unfolds his oldest minute: the minute he was expected",
           "text": "You sit beside Mott on the sill while he unfolds the minute under Tace's loupe, along its own creases. Inside: a doorway full of evening, a broom leaning in the corner, and someone old and kind, smelling of clock oil, saying 'There you are,' as if he were only a little late. 'Somebody was waiting,' Mott says. 'I thought I'd only been swept in.'",
+          "others": "{actor} sits beside Mott on the sill while he unfolds his oldest minute under Tace's loupe, along its own creases.",
           "ledger": "{helpers} sat with Mott while he looked at his oldest minute at last: the minute he was expected.",
           "do": [
             {"kind": "narrate",
-             "text": "Mott writes it into a Book of Stray Minutes of his own, in his slow, square hand: the minute I was expected. Then he sweeps up a single pale curl of cedar shaving and presses it into your palm, as if it were the most ordinary thing in the world."},
+             "text": "Mott writes it into a Book of Stray Minutes of his own, in his slow, square hand: the minute I was expected. Then he sweeps up a single pale curl of cedar shaving and presses it into your palm, as if it were the most ordinary thing in the world.",
+             "others": "Mott writes the minute into a small book of his own, then sweeps up a pale curl of cedar shaving and presses it into {actor}'s palm."},
             {"kind": "set_property", "target_id": "o-tin", "key": "seed",
              "value": "a battered tea tin, its paint worn to the metal at the corners; inside, a button, a bent key, a thimble, a stub of blue chalk, and a small minute, unfolded at last and catalogued in Mott's slow, square hand"},
             {"kind": "spawn_object", "name": "curl of cedar shaving", "location_id": "@actor",

@@ -34,7 +34,8 @@
         "crayon envelope"
       ],
       "properties": {
-        "letter_for": "t-bell"
+        "letter_for": "t-bell",
+        "home": "r-post"
       },
       "rules": [
         {
@@ -252,7 +253,8 @@
         "marble envelope"
       ],
       "properties": {
-        "letter_for": "t-tace"
+        "letter_for": "t-tace",
+        "home": "r-post"
       },
       "rules": [
         {
@@ -442,7 +444,8 @@
         "buttoned letter"
       ],
       "properties": {
-        "letter_for": "t-mott"
+        "letter_for": "t-mott",
+        "home": "r-post"
       },
       "rules": [
         {
@@ -753,7 +756,8 @@
         "string letter"
       ],
       "properties": {
-        "letter_for": "t-umber"
+        "letter_for": "t-umber",
+        "home": "r-post"
       },
       "rules": [
         {
@@ -943,7 +947,8 @@
         "tea letter"
       ],
       "properties": {
-        "letter_for": "t-linden"
+        "letter_for": "t-linden",
+        "home": "r-post"
       },
       "rules": [
         {
@@ -1133,7 +1138,8 @@
         "grass letter"
       ],
       "properties": {
-        "letter_for": "t-sorrel"
+        "letter_for": "t-sorrel",
+        "home": "r-post"
       },
       "rules": [
         {
@@ -1323,7 +1329,8 @@
         "seed packet"
       ],
       "properties": {
-        "letter_for": "t-quill"
+        "letter_for": "t-quill",
+        "home": "r-post"
       },
       "rules": [
         {
@@ -1567,6 +1574,7 @@
         "found-letters": {
           "summary": "five stray letters found their doors; the village holds the Night of Found Letters",
           "text": "From across the village comes the post office bell, ringing and ringing, bright as a laugh: five letters home. When Bell next lights the lamps, there will be a Night of Found Letters. As this last letter changes hands, something small and warm drops out of the envelope into yours: a dreamseed, folded like a tiny letter.",
+          "others": "Across the village the post office bell rings and rings: five letters home, and {actor} carried the fifth.",
           "ledger": "{helpers} carried the unsent letters to their doors, and the village held the Night of Found Letters.",
           "do": [
             {

@@ -14,7 +14,9 @@
   "player_flags": [
     "GIVEN-CLOCK",
     "WOUND",
-    "MET-BOOK"
+    "MET-BOOK",
+    "MET-BELL",
+    "WAITED-DUSK"
   ],
   "player_counters": [],
   "time": {
@@ -39,6 +41,7 @@
       "max_open_guests": 2,
       "event_minutes": 40
     },
+    "rest_returns_things": true,
     "relationship_tiers": [
       {
         "min": 0,
@@ -103,6 +106,7 @@
         "properties": {
           "growth": {
             "question": "Where does the new way lead?",
+            "question_hint": "Plant it with a few words, like this: plant dreamseed: a place you'd like to find.",
             "theme": [
               "a clockmaker's village at the bottom of a dream, at dusk",
               "lost hours, kept and mended with patience",
@@ -117,6 +121,41 @@
               "moss in the seams of old stone",
               "the hush between one tick and the next",
               "things folded, kept, and labeled in a careful hand"
+            ],
+            "never_words": [
+              "baker",
+              "bakery",
+              "bread",
+              "miller",
+              "smith",
+              "blacksmith",
+              "innkeeper",
+              "tavern",
+              "mayor",
+              "farmer",
+              "fisherman",
+              "doctor",
+              "teacher",
+              "beekeeper",
+              "shop",
+              "shopkeeper",
+              "market",
+              "king",
+              "queen",
+              "prince",
+              "princess",
+              "war",
+              "sword",
+              "dragon",
+              "monster",
+              "phone",
+              "screen",
+              "computer",
+              "machine",
+              "car",
+              "train",
+              "robot",
+              "Wend"
             ],
             "exemplars": [
               {
@@ -190,6 +229,81 @@
       "description": "Sing a little, softly.",
       "needs_dobj": false,
       "fail_text": "You hum a few notes; the evening seems to lean in to listen."
+    },
+    "sit": {
+      "ui_hint": "Sit",
+      "description": "Sit down for a while.",
+      "aliases": [
+        "sit down",
+        "rest"
+      ],
+      "needs_dobj": false,
+      "fail_text": "You sit down for a moment right where you are. The dream doesn't mind."
+    },
+    "wait": {
+      "ui_hint": "Wait",
+      "description": "Stand still and wait a while.",
+      "aliases": [
+        "linger",
+        "stand still"
+      ],
+      "needs_dobj": false,
+      "fail_text": "You wait. Nothing here minds how long."
+    },
+    "ring": {
+      "ui_hint": "Ring",
+      "description": "Ring a bell.",
+      "aliases": [
+        "ding"
+      ],
+      "needs_dobj": false,
+      "fail_text": "There's no bell here to ring. The only one you know of sits on the counter of the Little Post Office, up Lamplight Lane."
+    },
+    "pet": {
+      "ui_hint": "Pet",
+      "description": "Pet someone small and furry, gently. Target: the animal.",
+      "aliases": [
+        "stroke",
+        "pat",
+        "scratch",
+        "cuddle"
+      ],
+      "needs_dobj": true,
+      "valid_dobj_kinds": [
+        "toon",
+        "thing"
+      ],
+      "fail_text": "There's nothing here that wants petting just now."
+    },
+    "eat": {
+      "ui_hint": "Eat",
+      "description": "Eat something.",
+      "aliases": [
+        "taste",
+        "nibble",
+        "bite"
+      ],
+      "needs_dobj": false,
+      "fail_text": "You find you aren't hungry at all. Nothing in the dream needs eating, only noticing."
+    },
+    "drink": {
+      "ui_hint": "Drink",
+      "description": "Drink something.",
+      "aliases": [
+        "sip"
+      ],
+      "needs_dobj": false,
+      "fail_text": "There's nothing here to drink, though somewhere in the village a kettle is surely on."
+    },
+    "sleep": {
+      "ui_hint": "Sleep",
+      "description": "Close your eyes for a while.",
+      "aliases": [
+        "doze",
+        "lie down"
+      ],
+      "needs_dobj": false,
+      "fail_text": "You close your eyes for a moment, and remember that you are already dreaming."
     }
   },
   "rules": [
@@ -204,6 +318,155 @@
             "You listen. Far off, a lantern hisses softly as its wick settles, and a moth taps once against paper.",
             "You listen to the village breathe: a door, a kettle, the long hush of moss growing in the seams of stone.",
             "You listen, and for a moment you could swear the air itself is ticking, very slowly, like a sleeping clock."
+          ]
+        }
+      ]
+    },
+    {
+      "on": "sit",
+      "do": [
+        {
+          "kind": "narrate",
+          "to": "@actor",
+          "variants": [
+            "You sit down for a moment right where you are. Nobody minds; the dream has time to spare.",
+            "You find a quiet spot and sit. The village goes on ticking softly around you, taking its time.",
+            "You sit and let your feet rest. Somewhere a clock ticks, patient as a cat."
+          ],
+          "others": "{actor} sits down for a moment."
+        }
+      ]
+    },
+    {
+      "on": "wait",
+      "do": [
+        {
+          "kind": "narrate",
+          "to": "@actor",
+          "variants": [
+            "You wait. Somewhere a clock ticks, and then another, and nothing needs you anywhere else.",
+            "You stand still a while and let the village go on without you. It is very good at that.",
+            "You wait, and the dream waits politely with you."
+          ]
+        }
+      ]
+    },
+    {
+      "on": "eat",
+      "if": [
+        {
+          "carried": "o-summer-evening"
+        }
+      ],
+      "do": [
+        {
+          "kind": "narrate",
+          "to": "@actor",
+          "text": "You lift the fallen evening to your lips, and stop. It smells of salt and the last of a long summer day, and it is far too lovely to eat."
+        }
+      ]
+    },
+    {
+      "on": "eat",
+      "if": [
+        {
+          "carried_filter": {
+            "key": "nell_windfall",
+            "eq": true
+          }
+        }
+      ],
+      "do": [
+        {
+          "kind": "narrate",
+          "to": "@actor",
+          "text": "You lift the windfall to your lips, and stop. It is warm as a lit window and smells of somebody calling everyone in for supper. It is far too lovely to eat."
+        }
+      ]
+    },
+    {
+      "on": "eat",
+      "do": [
+        {
+          "kind": "narrate",
+          "to": "@actor",
+          "variants": [
+            "You find you aren't hungry at all. Nothing in the dream needs eating, only noticing.",
+            "You think about a bite of something, and the thought turns out to be filling enough. Dreams are like that."
+          ]
+        }
+      ]
+    },
+    {
+      "on": "drink",
+      "if": [
+        {
+          "carried_filter": {
+            "key": "cellar_tea",
+            "eq": true
+          }
+        }
+      ],
+      "do": [
+        {
+          "kind": "narrate",
+          "to": "@actor",
+          "text": "You sip Umber's tea. It is strong and warm and tastes faintly of old paper and patience, exactly as the label promised."
+        }
+      ]
+    },
+    {
+      "on": "drink",
+      "if": [
+        {
+          "carried": "o-bell-dawn-flask"
+        }
+      ],
+      "do": [
+        {
+          "kind": "narrate",
+          "to": "@actor",
+          "text": "You unscrew the flask for one sip of the night tea, and your eyes go wide. It is strong enough to stand a spoon in, and it is meant for Bell. You screw the lid back on."
+        }
+      ]
+    },
+    {
+      "on": "drink",
+      "if": [
+        {
+          "carried_filter": {
+            "key": "generated_by",
+            "eq": "extra-hour:sat-down"
+          }
+        }
+      ],
+      "do": [
+        {
+          "kind": "narrate",
+          "to": "@actor",
+          "text": "You sip from Linden's cup. The tea is stone cold, and somehow that is the loveliest thing about it."
+        }
+      ]
+    },
+    {
+      "on": "drink",
+      "do": [
+        {
+          "kind": "narrate",
+          "to": "@actor",
+          "text": "There's nothing here to drink, though somewhere in the village a kettle is surely on."
+        }
+      ]
+    },
+    {
+      "on": "sleep",
+      "do": [
+        {
+          "kind": "narrate",
+          "to": "@actor",
+          "variants": [
+            "You close your eyes for a moment and remember that you are already dreaming. When you open them, the village is still here, patient as ever.",
+            "You let your eyes fall shut. The far-off clocks go soft and round, and then you are awake again, which is to say, still dreaming."
           ]
         }
       ]

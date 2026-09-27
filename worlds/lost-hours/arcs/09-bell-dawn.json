@@ -43,7 +43,7 @@
     {"id": "o-bell-dawn-lantern", "name": "sunrise lantern", "location": "offstage",
      "seed": "a paper lantern-skin stretched over a half-sun of fanned brass clock hands, bound at the hub with fine wire; unlit, it looks like a morning folded up small",
      "aliases": ["sunrise", "brass sunrise"],
-     "properties": {"state": "new", "state_text": {
+     "properties": {"home": "r-loft", "state": "new", "state_text": {
        "hung": "It hangs on the easternmost pole of the square now. Bell lights it last of all, every dusk, and for a while the cobbles glow rose and gold."}},
      "rules": [
        {"on": "give", "if": [{"iobj": "t-bell"}, {"carried": "@self"}, {"arc": "bell-dawn"},
@@ -90,6 +90,7 @@
           "per_player": true,
           "hint": "the player asks Linden for something to help Bell stay awake all night",
           "text": "Linden is already reaching for a dented flask at the back of the stove. 'Night tea, strong enough to stand a spoon in.' She screws the lid on tight and presses it into your hands. 'Bell will be asleep before the last lantern's cold, pet. Wake them up in the Lamp House at night, and put this in their hands.'",
+          "others": "Linden screws the lid onto a dented flask of night tea and presses it into {actor}'s hands.",
           "do": [
             {"kind": "move_object", "object_id": "o-bell-dawn-flask", "dest_id": "@actor"},
             {"kind": "add_fact", "id": "bell-dawn-helping",
@@ -151,6 +152,7 @@
         "dusk-enough": {
           "summary": "Bell lights a lantern shaped like a sunrise at dusk and decides dusk is enough",
           "text": "Bell hangs the sunrise lantern on the easternmost pole and tips the pole's little flame to the wick, and the whole square goes rose and gold, the way the sky must in the mornings. 'Huh,' Bell says softly. 'So that's what they look like.' Grinning, they dab a thumb of soot on your cheek for luck. 'Dusk is enough, I think. Dusk, and this.'",
+          "others": "Bell hangs the sunrise lantern on the easternmost pole and lights it, the whole square goes rose and gold, and Bell dabs a thumb of soot on {actor}'s cheek for luck.",
           "ledger": "{helpers} gave Bell a lantern shaped like a sunrise, and Bell lit it at dusk and decided dusk is enough.",
           "do": [
             {"kind": "move_object", "object_id": "o-bell-dawn-lantern", "dest_id": "r-square"},
@@ -224,7 +226,8 @@
             {"knows": "bell-dawn-told-helper", "who": "t-bell", "about": "@actor", "not": true}],
      "do": [
        {"kind": "narrate", "to": "@actor",
-        "text": "Bell spots you and skips over, scarf flying. 'Grey, then pearl, then pink,' they say, as if you might not believe it. 'I saw one. I really did.'"},
+        "text": "Bell spots you and skips over, scarf flying. 'Grey, then pearl, then pink,' they say, as if you might not believe it. 'I saw one. I really did.'",
+        "others": "Bell skips over to {actor}, scarf flying: 'Grey, then pearl, then pink!'"},
        {"kind": "add_fact", "id": "bell-dawn-told-helper",
         "text": "Bell told {actor} all about their first dawn: grey, then pearl, then pink.",
         "known_by": ["t-bell"]}
@@ -280,7 +283,7 @@
         "seed": "another of Bell's spare paper lantern-skins, folded flat among the wicks, thin as a moth's wing",
         "aliases": ["lantern-skin", "skin", "lantern skin", "paper skin"],
         "generated_by": "bell-dawn:spare-skin",
-        "properties": {"bell_skin": true}}
+        "properties": {"bell_skin": true, "home": "r-lamphouse"}}
      ]},
     {"id": "bell-dawn-sunrise-lit", "at": "dusk", "always": true, "room": "r-square",
      "summary": "Bell lights the sunrise lantern last of all",

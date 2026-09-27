@@ -7,7 +7,7 @@
       "slot": 100,
       "room": "r-loft",
       "mood": "wistful",
-      "seed": "the village clockmaker, patient and precise, gone a little quiet since the great clock stopped; warm underneath, and slow to hope",
+      "seed": "They work slow and exact at the bench, and now and then glance toward the tower as if listening for the great clock",
       "appearance_seed": "a slight person in a leather apron hung with fine brass tools, spectacles pushed up into greying hair, ink and oil worn into careful hands",
       "presence_text": "Tace looks up from a bench of small clocks, sets down a fine brass tool, and offers a tired, kind nod.",
       "aliases": [
@@ -29,7 +29,11 @@
         },
         "gives_text": "Tace turns the little gear over in the lamplight, and something long held eases out of their shoulders. 'You found it. You carried it all the way home.' They fold a small brass key into your hand, warm from their pocket. 'The case is yours to open now, friend.'",
         "gives_mood": "gladdened",
-        "declines_text": "Tace considers what you're holding out, and smiles a small, tired smile. 'That's kind of you. But it isn't the little thing the clock is missing.'"
+        "declines_text": [
+          "Tace turns the {item} over once in careful fingers and hands it back. 'Keep it, friend. It's happier in your pocket than on my bench.'",
+          "Tace looks at the {item} over their spectacles, then folds your fingers back around it. 'That one isn't for mending, friend. Hold on to it.'",
+          "Tace sets down the tweezers long enough to admire the {item}, and gives it back. 'Kind of you. But the bench has all it needs just now.'"
+        ]
       }
     },
     {
@@ -38,13 +42,20 @@
       "slot": 101,
       "room": "r-square",
       "mood": "cheerful",
-      "seed": "the one who lights the square's lanterns at dusk; bright, kind, and talkative in short warm bursts; notices small things; sleeps through the mornings",
+      "seed": "Their eyes keep flicking to the lanterns, checking each small flame the way someone counts friends",
       "appearance_seed": "a wiry young person with a lamplighter's hooked pole, soot smudged along one cheek, a scarf the color of butter-yellow lamplight",
       "presence_text": "Bell is up a small ladder coaxing a lantern alight, and lifts a sooty hand in greeting.",
       "aliases": [
         "the lamplighter",
         "lamplighter"
-      ]
+      ],
+      "properties": {
+        "declines_text": [
+          "Bell holds the {item} up to the nearest lantern, squints at it, and hands it back with a sooty thumbprint on it. 'Lovely! Not mine, though. Keep it safe.'",
+          "Bell laughs and tucks the {item} back into your hands. 'I'd only lose it up a ladder. You hang on to it.'",
+          "Bell's scarf swings as they shake their head. 'Oh, that's yours to carry. My hands are full of wicks.'"
+        ]
+      }
     },
     {
       "id": "t-mott",
@@ -52,13 +63,19 @@
       "slot": 102,
       "room": "r-workshop",
       "mood": "content",
-      "seed": "the one who sweeps the old workshop; quiet, unhurried, and fond of small found things kept in a tin; keeper of the Book of Stray Minutes",
+      "seed": "He moves unhurriedly, and his eyes follow the floor as if something small and bright might be lying there",
       "appearance_seed": "a broad, calm man in a dust-grey smock, sleeves rolled, a soft broom worn to a comfortable angle, a battered tin of oddments tucked under one arm",
       "presence_text": "Mott pauses mid-sweep, leans on the broom, and gives you an unhurried, friendly look.",
       "aliases": [
         "the sweeper",
         "sweeper"
-      ]
+      ],
+      "properties": {
+        "declines_text": [
+          "Mott weighs the {item} in one broad hand and gives it back. 'Not dropped, that. Just carried. Keep it.'",
+          "Mott looks at the {item}, then at the tin, and shakes his head slowly. 'Tin's for lost things. That one isn't lost. It's with you.'"
+        ]
+      }
     },
     {
       "id": "t-fen",
@@ -66,13 +83,19 @@
       "slot": 103,
       "room": "r-post",
       "mood": "brisk",
-      "seed": "the postmistress of unsent letters; brisk, bright-eyed, tidy to a fault, kind in a practical way",
+      "seed": "Her hands are never still, squaring a stack of letters or tucking a stray envelope into its pigeonhole",
       "appearance_seed": "a small quick woman with a pencil behind one ear, ink-stained cuffs, a blue postal cap worn at a tilt, reading glasses on a chain",
       "presence_text": "Fen glances up from a stack of letters, taps them square against the counter, and gives you a quick bright nod.",
       "aliases": [
         "the postmistress",
         "postmistress"
-      ]
+      ],
+      "properties": {
+        "declines_text": [
+          "Fen reads the {item} like an address and slides it back across the counter. 'No stamp, no name, not for the post. Return to sender, and that's you.'",
+          "Fen taps the {item} square against the counter and hands it back. 'Kind thought. Wrong pigeonhole.'"
+        ]
+      }
     },
     {
       "id": "t-umber",
@@ -80,14 +103,20 @@
       "slot": 104,
       "room": "r-cellar",
       "mood": "thoughtful",
-      "seed": "the old keeper of the Hour Cellar; deliberate and dry-humored, speaks the way labels are written; knew Wend best of anyone living",
+      "seed": "She does everything deliberately, and a pen and a stack of blank labels are never far from her hand",
       "appearance_seed": "a very old woman in a long moss-colored cardigan, silver hair in a loose knot, a ring of tiny labeled keys at her belt, eyes bright as jar-glass",
       "presence_text": "Umber looks up from a jar she is labeling, pen poised, and gives you a slow, measuring smile.",
       "aliases": [
         "the cellar keeper",
         "cellar keeper",
         "keeper of the cellar"
-      ]
+      ],
+      "properties": {
+        "declines_text": [
+          "Umber turns the {item} in the lantern light, considers a label, and hands it back. 'Not for keeping. Yours. Carry carefully.'",
+          "Umber looks at the {item} over her pen. 'Not saved. Not spent. Not mine,' she says, and returns it."
+        ]
+      }
     },
     {
       "id": "t-sorrel",
@@ -95,14 +124,20 @@
       "slot": 105,
       "room": "r-duskroad",
       "mood": "calm",
-      "seed": "the hour-catcher of the Dusk Road; gentle, weathered, never hurries; talks in weather",
+      "seed": "They stand very still, the way someone does who is used to waiting for things to drift down out of the sky",
       "appearance_seed": "a tall weathered person in a long grass-green coat, a wide net on an ash pole over one shoulder, a sprig of sorrel tucked in the hatband",
       "presence_text": "Sorrel lowers the long net, looks up at the sky as if checking on it, and then at you, warmly.",
       "aliases": [
         "the catcher",
         "hour-catcher",
         "catcher"
-      ]
+      ],
+      "properties": {
+        "declines_text": [
+          "Sorrel looks at the {item} the way they look at a cloud, and gives it back. 'Fair and settled where it is. I'd leave it with you.'",
+          "Sorrel shakes their head slowly under the hat brim. 'I only catch what falls, and that hasn't.'"
+        ]
+      }
     },
     {
       "id": "t-linden",
@@ -110,13 +145,19 @@
       "slot": 106,
       "room": "r-waiting",
       "mood": "busy",
-      "seed": "who keeps the Waiting House where guest hours rest; warm, a bustler, always has the kettle on; brews tea, never bakes",
+      "seed": "She is forever halfway through tidying something, and there is always a teacup somewhere within her reach",
       "appearance_seed": "a round rosy woman in a flowered apron, sleeves pushed up, a tea towel over one shoulder, flour-free hands smelling of bergamot",
-      "presence_text": "Linden bustles past with a tea tray, beams at you, and says there's a cup with your name on it somewhere.",
+      "presence_text": "Linden bustles past with a tea tray, beams at you, and nudges the kettle back onto the hob.",
       "aliases": [
         "the housekeeper",
         "housekeeper"
-      ]
+      ],
+      "properties": {
+        "declines_text": [
+          "Linden pats the {item} back into your hands. 'Keep it, pet. I've more than enough things to dust.'",
+          "Linden admires the {item} and gives it back with a squeeze. 'It's yours, lamb. Now, tea?'"
+        ]
+      }
     },
     {
       "id": "t-quill",
@@ -124,13 +165,19 @@
       "slot": 107,
       "room": "r-garden",
       "mood": "shy",
-      "seed": "the gardener of the Pendulum Garden; shy, green-fingered, speaks in the language of growing things",
+      "seed": "He keeps glancing at the swinging pendulums the way a gardener checks on seedlings, and ducks under his hat brim when anyone looks back",
       "appearance_seed": "a lanky young man with muddy knees, a straw hat, a pocket full of little brass bobs, and a watering can with a very long spout",
       "presence_text": "Quill straightens up from a trellis, tips his straw hat, and goes a little pink.",
       "aliases": [
         "the gardener",
         "gardener"
-      ]
+      ],
+      "properties": {
+        "declines_text": [
+          "Quill turns the {item} over, tips his hat brim, and gives it back. 'That won't take root here, I don't think. Better with you.'",
+          "Quill holds the {item} up beside a trellis as if to see how it might grow, then hands it back. 'Not a garden thing. Keep it.'"
+        ]
+      }
     },
     {
       "id": "t-tock",
@@ -138,13 +185,40 @@
       "slot": 108,
       "room": "r-balcony",
       "mood": "curious",
-      "seed": "a small grey cat who only exists between one tick and the next; never speaks; treated by the villagers as a colleague",
+      "seed": "Every so often it flickers, gone for one tick and back the next, as if it only half believes in the room",
       "appearance_seed": "a small smoke-grey cat with one white paw and clock-face eyes, half there and half not, like a drawing in pencil",
       "presence_text": "Between one tick and the next, a small grey cat is simply there, washing one white paw as if it had always been.",
       "aliases": [
         "cat",
         "the cat",
         "grey cat"
+      ],
+      "properties": {
+        "verbs": [
+          "pet"
+        ],
+        "declines_text": [
+          "Tock sniffs the {item} politely and looks away.",
+          "Tock regards the {item} for exactly one tick, then washes a paw instead.",
+          "Tock's clock-face eyes slide past the {item} to something more interesting, which is nothing at all."
+        ]
+      },
+      "rules": [
+        {
+          "on": "pet",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "variants": [
+                "You reach out, and Tock allows it: one slow stroke from ears to tail, and a purr that keeps perfect time. Then Tock is a tick away, washing a paw.",
+                "Tock leans into your hand for exactly one tick, purring, and then is somewhere else entirely.",
+                "Your hand passes through the place where Tock was. A tick later Tock is back, and bumps its head against your knuckles as if it meant to all along."
+              ],
+              "others": "{actor} strokes Tock, who purrs in perfect time and then is somewhere else."
+            }
+          ]
+        }
       ]
     }
   ],

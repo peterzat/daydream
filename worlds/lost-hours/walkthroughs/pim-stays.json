@@ -180,6 +180,69 @@
       ]
     },
     {
+      "name": "a dreamer who has not helped",
+      "commands": [
+        {
+          "join": {
+            "as": "B",
+            "name": "Tamsin"
+          }
+        },
+        {
+          "as": "B",
+          "cmd": "east",
+          "expect": {
+            "room": "r-square"
+          }
+        },
+        {
+          "as": "B",
+          "cmd": "north",
+          "expect": {
+            "room": "r-workshop"
+          }
+        },
+        {
+          "as": "B",
+          "cmd": "ask mott about the hush",
+          "expect": {
+            "narrate_contains": "little nap"
+          }
+        },
+        {
+          "as": "B",
+          "cmd": "south",
+          "expect": {
+            "room": "r-square"
+          }
+        },
+        {
+          "as": "B",
+          "cmd": "east",
+          "expect": {
+            "room": "r-lane"
+          }
+        },
+        {
+          "as": "B",
+          "cmd": "east",
+          "expect": {
+            "room": "r-waiting"
+          }
+        },
+        {
+          "as": "B",
+          "cmd": "ask linden about keeping the nap here",
+          "expect": {
+            "arc": {
+              "pim": "open"
+            },
+            "narrate_contains": "Whoever's been looking after it"
+          }
+        }
+      ]
+    },
+    {
       "name": "a bed at the Waiting House",
       "commands": [
         {
@@ -212,6 +275,15 @@
           "cmd": "look",
           "expect": {
             "narrate_contains": "kettle mutters"
+          }
+        },
+        {
+          "cmd": "give cog to nap",
+          "expect": {
+            "carrying": [
+              "warm brass cog"
+            ],
+            "narrate_contains": "fast asleep in the littlest armchair"
           }
         }
       ]

@@ -28,6 +28,55 @@
               ]
             }
           ]
+        },
+        {
+          "on": "enter",
+          "stop": false,
+          "if": [
+            {
+              "pflag": "WOUND"
+            },
+            {
+              "pflag": "MET-BELL",
+              "not": true
+            },
+            {
+              "present": "t-bell"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "Bell spots you from the top of the ladder and comes down two rungs at a time, scarf flying. 'You're Tace's new keeper! I can hear your clock from here.' They shake your hand with a sooty one. 'That's Pollen, that's Old Blue, and the little bright one is Thimble. Now you know the lanterns, and that's most of knowing me.'",
+              "others": "Bell hurries down the ladder to shake {actor}'s hand with a sooty one: a new keeper, by the tick in their pocket."
+            },
+            {
+              "kind": "set_pflag",
+              "name": "MET-BELL"
+            },
+            {
+              "kind": "adjust_rel",
+              "npc": "t-bell",
+              "delta": 1
+            }
+          ]
+        },
+        {
+          "on": "ring",
+          "if": [
+            {
+              "present": "t-bell"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "Bell looks down from the ladder and laughs. 'Not that kind of bell, I'm afraid. I just glow.'",
+              "others": "Bell laughs down from the ladder at {actor}: 'Not that kind of bell!'"
+            }
+          ]
         }
       ]
     },
@@ -88,7 +137,31 @@
       "description": "Crooked old trees stand in a loose ring, and their round fruit glow softly, each one a small lamplit evening. Here it is always six o'clock: the light is gold and low, the shadows long and kind. The garden is back through the arch to the west.",
       "exits": {
         "west": "r-garden"
-      }
+      },
+      "rules": [
+        {
+          "on": "sit",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "You sit in the long gold grass under the crooked trees. Here it is always six o'clock, so there is no reason ever to get up.",
+              "others": "{actor} sits down in the gold grass under the crooked trees."
+            }
+          ]
+        },
+        {
+          "on": "eat",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "You reach for one of the glowing fruit, and stop with your hand an inch away. It is warm as a lit window and smells of supper being called in, and it is far too lovely to eat.",
+              "others": "{actor} reaches for an evening fruit, and thinks better of it."
+            }
+          ]
+        }
+      ]
     }
   ],
   "things": [
@@ -98,9 +171,101 @@
       "location": {
         "room": "r-square"
       },
-      "seed": "a paper lantern on a hooked pole, its small flame warm and steady against the deepening blue",
+      "seed": "a paper lantern on a hooked pole, its small flame warm and steady against the deepening blue; Bell calls this one Pollen",
       "aliases": [
-        "lantern"
+        "lantern",
+        "pollen"
+      ],
+      "rules": [
+        {
+          "on": "give",
+          "if": [
+            {
+              "iobj": "t-bell"
+            },
+            {
+              "carried": "@self"
+            },
+            {
+              "contains": "t-bell",
+              "of": "r-lamphouse"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "Bell is fast asleep, one arm flung over their eyes. You hold on to the lantern; it can go back on its pole when the lamps want lighting."
+            }
+          ]
+        },
+        {
+          "on": "give",
+          "if": [
+            {
+              "iobj": "t-bell"
+            },
+            {
+              "carried": "@self"
+            },
+            {
+              "in": "r-square"
+            }
+          ],
+          "do": [
+            {
+              "kind": "move_object",
+              "object_id": "o-paper-lantern",
+              "dest_id": "r-square"
+            },
+            {
+              "kind": "narrate",
+              "text": "Bell takes the paper lantern in both sooty hands, like a kitten come home. 'Pollen! There you are.' Up the ladder they go, and a moment later Pollen hangs from her crooked pole again, glowing a little smugly."
+            }
+          ]
+        },
+        {
+          "on": "give",
+          "if": [
+            {
+              "iobj": "t-bell"
+            },
+            {
+              "carried": "@self"
+            }
+          ],
+          "do": [
+            {
+              "kind": "move_object",
+              "object_id": "o-paper-lantern",
+              "dest_id": "r-square"
+            },
+            {
+              "kind": "narrate",
+              "text": "Bell tucks the paper lantern under one arm, delighted. 'Pollen! I'll have her back on her pole in the square before the next dusk.'"
+            }
+          ]
+        },
+        {
+          "on": "take",
+          "after": true,
+          "if": [
+            {
+              "present": "t-bell"
+            },
+            {
+              "in": "r-square"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "Bell looks down from the ladder at the empty hook, then at you. 'Borrowing Pollen? She'll want to be home for dusk. She sulks if she's lit last.'",
+              "others": "Bell looks down from the ladder at the empty hook, then at {actor}, and laughs."
+            }
+          ]
+        }
       ]
     },
     {
