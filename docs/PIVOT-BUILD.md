@@ -183,3 +183,13 @@ are dropped. Room data skills dispatch under their declared allowlist.
   recording what it observes (criterion 18). Remaining: the observed.md
   record, the README/design-doc review (a fresh reviewer is critiquing
   first), tier_long with the server down, and the operator's morning play.
+- 2026-09-27 (late): returning agent session observed the first dream's
+  callbacks (observed.md; criterion 18, SPEC 21/22) and its follow-up fixes
+  landed (reclaim keeps location, greetings remembered on the toon, examine
+  never doubles a name, the `actor` condition). tier_long found and fixed an
+  exemplar near-copy in growth (rejected now, one warm retry) and two probe
+  bugs; full `bin/game test long` green (1471). README rewritten and the
+  design docs reviewed against the pivot and "reflexes, not voice" (a fresh
+  reviewer critiqued first). Final `world refresh` proved dreams and refresh
+  compose on the live world. **Waiting on the operator's playtest
+  (criterion 22)**; findings go to docs/playtests/2026-09-27/operator.md.
