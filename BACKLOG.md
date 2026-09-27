@@ -11,7 +11,8 @@ context for every entry below lives in `~/.claude/plans/let-s-design-a-fairly-gi
 - **Closure:** The envelope-carried option shipped (the better path): toon `properties.drift_pools` validated by the loader, `drift._pools_for` prefers authored pools over the legacy id-keyed dict, and `worlds/clockmakers-loft.json` authors WHIMSY-voice pools for Tace/Bell/Mott (own-mood + default buckets; Tace covers the post-quest `gladdened` mood). Any future world closes this for itself by authoring pools.
 - **Origin:** state audit 2026-07-02 (first Fable session sweep).
 
-### drift-variety-richer-beats
+### drift-variety-richer-beats — CLOSED 2026-09-26 (pivot, criterion 11)
+- **Closure:** Drift is authored-first now: NPCs with authored pools speak authored lines (per-mood, per-phase, and per-phase-in-a-room buckets such as `night@r-lamphouse`), never repeating a line within its recent tellings in a room (`daydream/variants.py`); the local model may only lightly vary an authored line (validated, `DAYDREAM_DRIFT_VARY_PROB`, 0.3) and every varied line is tagged `src: "local"`. The Lost Hours cast authors 12 to 25 drift lines per resident.
 - **One-line description:** Reduce NPC drift repetition beyond the v0 mitigation (laconic prompt + a "vary the beat" nudge in `_DRIFT_SYSTEM_PROMPT` + a consecutive-near-duplicate suppressor in `daydream/drift.py:_tick`). Options: per-NPC canned-pool rotation tracking recently-used beats, a "recently noticed" exclusion passed into the drift prompt, or richer hand-authored pools so Qwen 7B isn't leaned on for variety. The 7B reliably fixates on a seed's most salient image (Rook -> "hums softly, moving the bellows") regardless of mood/memory.
 - **Why deferred:** v0's de-dup suppresses the *visible* consecutive repeats (the player won't see them stacked), so this is variety polish, not a correctness fix. Wants the drift-samples golden + a "distinctness over N ticks" metric before tuning.
 - **Revisit criteria:** Playtesters report a room's NPC feeling samey across a session even with de-dup, or when adding NPCs whose seeds are similarly single-image.
@@ -76,13 +77,15 @@ Deferred depth from the objects + local-LLMs spec (plan `the-output-of-this-gree
 - **Origin:** plan the-output-of-this-greedy-hedgehog (§2); per-object-verbs slice shipped by plan this-plan-will-be-peppy-kay.
 
 ### user-authored-llm-driven-world-building-verbs
+- **2026-09-26 (pivot):** grown rooms now join the story through dreams: an in-session Opus dream furnishes every room players grew (a description pass, residents, hooks) while keeping the planter's phrase verbatim (`live.furnish`, daydream/dream.py); growth boundaries also accept world `never_words`. The player-authored verb surface below remains deferred.
 - **2026-07-02 narrowing (Dreamseeds spec, SHIPPED same day):** the effect-vocabulary half is built. The Dreamseeds increment implemented `spawn_room` + `link_exit` behind an ENGINE-authored verb (`plant`), gated by a quest-earned seed item whose Opus-authored `growth` boundaries constrain one local-LLM room composition; the kinds are per-verb opt-in (`effects.DEFAULT_KINDS` excludes them for every `allowed=None` caller). What remains in this entry is the player/admin-AUTHORED verb surface: a player authoring a verb whose LLM output builds rooms/objects, plus the authoring UI + safety story. (`destroy_object` SHIPPED 2026-07-02 in the Zork turn: rule-only kind, contents drop to the holder's location, combat's death path consumes it.)
 - **One-line description (remaining):** A player/admin authors a verb whose LLM output BUILDS new rooms and objects (MOO-style).
 - **Why deferred:** The authoring surface + the safety story for player-authored world-mutation are the work. Couples to `skills-authoring-and-security` and `player-authored-skills`.
 - **Revisit criteria:** Dreamseeds ships and feels good in play (the effect vocabulary + boundary model exercised on an authored verb first); appetite to hand authoring to players.
 - **Origin:** plan the-output-of-this-greedy-hedgehog (the explicit future direction; §5 future-prepared vocabulary); narrowed by the Dreamseeds spec 2026-07-02.
 
-### per-npc-event-log-visibility-filtering
+### per-npc-event-log-visibility-filtering — SUPERSEDED 2026-09-26 (pivot, criterion 7)
+- **Superseded by:** NPC knowledge is data now: authored facts plus deed facts that name the player and spread NPC to NPC on an authored real-time schedule (`daydream/knowledge.py`); the dialogue prompt carries only what that NPC knows. Visibility of raw events no longer drives dialogue.
 - **One-line description:** Filter which events an NPC "sees" so dialogue stays consistent (an NPC shouldn't reference an event that happened in another room or that it couldn't have witnessed). A research-suggested consistency guard for the LLM dialogue path.
 - **Why deferred:** Single-player, two-NPC scale; the room-filtered broadcast already keeps cross-room events off a player's stream. NPC-side visibility matters once dialogue starts citing world events.
 - **Revisit criteria:** Dialogue or memory starts surfacing events the NPC couldn't plausibly know about.
@@ -95,6 +98,47 @@ Deferred depth from the objects + local-LLMs spec (plan `the-output-of-this-gree
 - **Traded (2026-09-26):** the model swap to Qwen3.5 9B (docs/model-evals/2026-09-26-bakeoff.md) bought quality with latency: an LLM parse went from ~0.6 s to ~1.0 s p50 and a `talk` from ~1.6 s to ~2.7 s. Measured, not naive: decode is bandwidth-bound (~53 tok/s per 5.3 GiB of weights on this card), CUDA graphs are already on, and FP8 KV buys nothing at ~1k-token prompts, so the remaining levers are shorter outputs (the 9B's dialogue averages ~108 tokens vs the old 83) and the fast-path.
 - **Revisit criteria:** Natural-language input feels laggy in play (e.g. multiple humans, or NPC dialogue chains). First cheap lever: tighten `max_tokens` / brevity on dialogue and measure with `bin/game model-eval run --suites dialogue,parser`.
 - **Origin:** plan the-output-of-this-greedy-hedgehog (parser latency/arbiter contention note).
+
+## The Village of Lost Hours (captured 2026-09-26, agent playtest day)
+
+Defects the four agent playtests raised that were not fixed in the turn (the
+full disposition list is docs/playtests/2026-09-26/SUMMARY.md).
+
+### reply-banks-select-dont-write
+- **One-line description:** Opus authors a large reply bank per resident (small talk, each other resident, each place, each time of day, each open thread), and the local model selects the best authored line, writing something short only when nothing fits. The next step of docs/REFLEXES.md's "select, don't write".
+- **Why deferred:** The turn shipped the cheap half (a free-form line naming a topic gets the authored answer) and the measurement (every local line is tagged; the dream digest lists them). A bank needs authoring scale and a selection prompt measured against improvisation.
+- **Revisit criteria:** The next playtest or dream digests still show local lines as the weak spot (the first day: 15% of lines, nearly all the worst ones).
+- **Origin:** docs/REFLEXES.md; playtest 2026-09-26 (chatterbox: "free-form talk is a coin flip").
+
+### npc-memory-of-player-disclosures
+- **One-line description:** Residents remember what a player told them about themself (name, a keepsake, "I keep bees") across sessions and days, not only the last few exchanges; the dialogue context gets a short per-player "what they told me" list.
+- **Why deferred:** Keeping a line whole (the parser fix) and recent exchanges cover a session; durable disclosure memory needs extraction (deterministic or local) and a privacy story (a per-player, per-NPC note, never gossiped).
+- **Revisit criteria:** Being remembered stays the lowest rubric score (2.5 on the first day).
+- **Origin:** playtest 2026-09-26 (chatterbox, rule-breaker).
+
+### thinking-indicator
+- **One-line description:** While an improvised reply is coming (2 to 8 seconds), the SPA shows a quiet transient line ("Tace considers...") so a player knows it is on its way; a WS frame, never a logged event.
+- **Why deferred:** Client plus one WS frame; the turn cut latency instead (one candidate when busy, no parser call for say/talk).
+- **Revisit criteria:** The operator or a playtest still reads silence as a lost line.
+- **Origin:** playtest 2026-09-26 (explorer, chatterbox).
+
+### dusk-after-an-early-first-dusk
+- **One-line description:** Mending the clock brings an early first dusk (so the first guest arrives), which means the real 18:00 dusk on day one passes with nothing marking it. Consider a small real-dusk beat (lanterns relit, lights on the Dusk Road) whenever dusk begins, even on a day whose dusk events already fired.
+- **Why deferred:** The early dusk is the designed beat; the gap only shows on day one, for players still on at 18:00.
+- **Revisit criteria:** A player notices again, or the director gains a per-phase ambient hook.
+- **Origin:** playtest 2026-09-26 (explorer, rule-breaker).
+
+### shared-thread-contention
+- **One-line description:** Latecomers found both open threads finished by others ("both main threads were finished by others before I got to them"). More concurrent threads per day, per-player versions of small guest threads, or a director that brings the next guest sooner when a thread closes early.
+- **Why deferred:** One day, four players at once, is a heavy load for a village designed around one or two coffee-break visitors; the director already brings a guest each dusk.
+- **Revisit criteria:** The operator or a later playtest runs out of things to do on day one.
+- **Origin:** playtest 2026-09-26 (rule-breaker).
+
+### scenery-nouns
+- **One-line description:** Details named in room text should answer when touched, in general: an engine scenery map on rooms (noun to short text, examine only, never listed), so every described detail can say something without cluttering "Around you".
+- **Why deferred:** The world-data pass covered the details playtesters named with aliases and a few fixtures; a general map is an engine feature.
+- **Revisit criteria:** More "You don't see the X here" on things the prose describes.
+- **Origin:** playtest 2026-09-26 (explorer: "a prose detail that refuses to exist is the most deflating response").
 
 ## Quality and tooling (GPU/ML follow-ups)
 
@@ -241,11 +285,14 @@ Captured from the test-architecture landing (2026-04-23); scaffolding for these 
 - **Why deferred:** The Reading Room spec was explicitly client-only (no server/world change, no WORLD_VERSION bump); each of these is a deliberate server change weighed against that stance.
 - **Revisit criteria:** The next server-touching increment lands (cheap to ride along), or playtest feedback that the compass/keepsakes feel thin.
 - **Origin:** SPEC proposal block 2026-07-01 (Reading Room turn), preserved here when the Dreamseeds spec replaced that block.
+- **2026-09-26 (pivot):** snapshots gained the village time, per-NPC ask-about topics, the Book of Stray Minutes, and the once-only while-you-slept note; exit destination titles and a server-derived errand string are still open.
 - **Partial (2026-07-07, v1.0 turn):** the item-detail slice shipped — `_object_card` carries `detail` (examined/authored text) and the keepsake cards render it. Exit destination titles and the errand string remain open (see docs/ROADMAP.md v1.x).
 
 ## Closed
 
 ## Zork turn deferrals (captured 2026-07-02)
+
+**2026-09-26: Zork is frozen** (the pivot to The Village of Lost Hours). Zork I stays in tier_medium as the engine's regression net (its walkthrough still ends at 350); no edits under `worlds/zork1*` or its walkthrough. The entries below are parked, not abandoned; the retell layer is not enabled for the Lost Hours world.
 
 ### zork-oracle-ratification-run — DONE 2026-07-07
 - **Outcome:** GREEN against real Zork I (dfrotz 2.44 built from the on-box
