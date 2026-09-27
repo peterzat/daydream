@@ -17,6 +17,7 @@ from fastapi.testclient import TestClient
 
 from daydream import db, events
 from daydream.server import app
+from tests import authhelp
 
 pytestmark = pytest.mark.tier_medium
 
@@ -80,7 +81,7 @@ def test_full_play_scenario(tmp_path, monkeypatch):
 
     with TestClient(app) as client:
         # connect (unclaimed) -> picker.
-        assert client.post("/api/login", data={"password": "test-password"}).status_code in (200, 303)
+        authhelp.login(client)
         with client.websocket_connect("/ws") as ws:
             assert ws.receive_json() == {"kind": "needs_toon"}
 

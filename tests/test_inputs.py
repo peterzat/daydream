@@ -12,6 +12,7 @@ from fastapi.testclient import TestClient
 
 from daydream import db, events, inputs, worldclock
 from daydream.server import app
+from tests import authhelp
 
 pytestmark = pytest.mark.tier_medium
 
@@ -29,8 +30,7 @@ def fresh_state(tmp_path: Path, monkeypatch):
 
 
 def _claim_wren(client: TestClient) -> None:
-    r = client.post("/api/login", data={"password": "test-password"})
-    assert r.status_code in (200, 303)
+    authhelp.login(client)
     assert client.post("/api/slots/1/kick").status_code == 200
     assert client.post("/api/slots/1/claim").status_code == 200
 

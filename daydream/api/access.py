@@ -40,9 +40,18 @@ def is_tailscale_or_local(host: str) -> bool:
     return ip in LOCALHOST_V6
 
 
+def _is_loopback(host: str) -> bool:
+    try:
+        ip = ipaddress.ip_address(host)
+    except ValueError:
+        return False
+    return ip in LOCALHOST_V4 or ip in LOCALHOST_V6
+
+
 class AccessMiddleware:
-    """Reject HTTP/WS requests from clients outside the tailnet when
-    config.access_mode() == 'tailscale'. Pass-through when 'public'."""
+    """The network rule, layered under account sign-in: 'tailscale' admits
+    tailnet + loopback peers, 'edge' admits loopback peers only (cloudflared),
+    'public' admits everyone. No mode grants a session."""
 
     def __init__(self, app: Callable[..., Awaitable[None]]) -> None:
         self.app = app
@@ -58,20 +67,29 @@ class AccessMiddleware:
             await self.app(scope, receive, send)
             return
 
-        if config.access_mode() == "public":
+        mode = config.access_mode()
+        if mode == "public":
             await self.app(scope, receive, send)
             return
 
         client = scope.get("client")
         host = client[0] if client else ""
-        if is_tailscale_or_local(host):
+        if mode == "edge":
+            # Prod behind the Cloudflare tunnel: cloudflared on loopback is the
+            # only way in. Admitting only loopback peers is a transport rule
+            # (it catches an accidental non-loopback bind), never a privilege:
+            # every request still needs an account session (daydream/api/gate.py).
+            if _is_loopback(host):
+                await self.app(scope, receive, send)
+                return
+        elif is_tailscale_or_local(host):
             await self.app(scope, receive, send)
             return
 
         # Reject. Logger so operators see the rejection without cranking
         # the FastAPI access log.
         logger.info(
-            "access denied for %s (DAYDREAM_ACCESS=tailscale; not on tailnet)", host or "<unknown>"
+            "access denied for %s (DAYDREAM_ACCESS=%s)", host or "<unknown>", mode
         )
         if scope["type"] == "http":
             body = (

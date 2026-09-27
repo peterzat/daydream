@@ -17,6 +17,7 @@ from daydream import db, events
 from daydream.api import slots as slots_module
 from daydream.api import ws as ws_module
 from daydream.server import app
+from tests import authhelp
 
 pytestmark = pytest.mark.tier_medium
 
@@ -35,21 +36,21 @@ def fresh_state(tmp_path: Path, monkeypatch):
     ws_module._last_disconnect.clear()
 
 
-def _login(client: TestClient) -> None:
-    r = client.post("/api/login", data={"password": "test-password"})
-    assert r.status_code in (200, 303)
+def _login(client: TestClient, username: str = "rival") -> None:
+    authhelp.login(client, username)
 
 
 def _controller_session(client: TestClient) -> str:
-    """Claim slot 1 for this client and return its session id (the toon's
-    controller_session)."""
-    client.post("/api/slots/1/kick")
-    r = client.post("/api/slots/1/claim")
-    assert r.status_code == 200
+    """Since accounts (SPEC 2026-09-27 criterion 5) an OWNED toon is protected
+    by ownership outright; the delete grace window now guards an UNOWNED human
+    toon (seeded, or from before accounts) that some session is playing. Put
+    one in slot 1's place and return its controller session id."""
     from daydream import toons
 
-    t = toons.get_toon_in_slot(1)
-    assert t is not None and t.controller_session
+    client.post("/api/slots/1/kick")  # rest the seeded Wren out of the way
+    toons.delete_slot(1)
+    t = toons.create_toon_in_slot(1, "Legacy", "an old friend", "s-legacy-player")
+    assert t is not None and t.owner_account is None
     return t.controller_session
 
 
@@ -100,11 +101,14 @@ def test_delete_blocked_while_controller_connected():
 
 
 def test_own_delete_unaffected_by_grace():
-    """The controller deleting its OWN toon is never grace-blocked."""
+    """Deleting your OWN toon is never grace-blocked: with accounts, "own"
+    means the account owns it, whichever session last played it."""
     with TestClient(app) as owner:
-        _login(owner)
-        sid = _controller_session(owner)
+        _login(owner, "owner")
+        r = owner.post("/api/dreamer/create", json={"name": "Mira", "appearance_seed": "a fox"})
+        slot = r.json()["slot"]
+        from daydream import toons
+        sid = toons.get_toon_in_slot(slot).controller_session
         ws_module._mark_session_live(sid)
         ws_module._unmark_session_live(sid)
-        r = owner.post("/api/slots/1/delete")
-        assert r.status_code == 200
+        assert owner.post(f"/api/slots/{slot}/delete").status_code == 200

@@ -10,7 +10,7 @@ working exactly as it does now.
 
 ### Acceptance Criteria
 
-- [ ] **1. Prod fails closed.** With `DAYDREAM_ACCESS=edge`, no HTTP route,
+- [x] **1. Prod fails closed.** With `DAYDREAM_ACCESS=edge`, no HTTP route,
   WebSocket or mount answers without a valid account session. The only
   exceptions are an explicit public allowlist: the cover, login and redeem
   pages, static assets, login, invite redemption and a health check. This
@@ -22,7 +22,7 @@ working exactly as it does now.
   In edge mode the API docs routes are off and the world hot-swap endpoint
   does not exist.
 
-- [ ] **2. Accounts come from invites.**
+- [x] **2. Accounts come from invites.**
   - `invite create --for "<name>"` prints a single-use, two-word invite link
     that expires after 14 days. Redeeming it lets the invitee choose a
     username and a password of at least 10 characters, and signs them in.
@@ -37,18 +37,18 @@ working exactly as it does now.
     the next request, including reconnects.
   - The shared `DAYDREAM_PASSWORD` and the signed-cookie session are gone.
 
-- [ ] **3. Guessing is throttled.** Failed logins are limited per client
+- [x] **3. Guessing is throttled.** Failed logins are limited per client
   address and per username. Failed invite redemptions are capped globally per
   hour. No response distinguishes "no such user" from "wrong password" (tested).
 
-- [ ] **4. Two roles, and the shell governs.** Every account is `player` or
+- [x] **4. Two roles, and the shell governs.** Every account is `player` or
   `admin`, and only the CLI can change a role. The admin-only web
   capabilities are exactly three: repaint a room, read server status, and
   hold more than one toon. A player session is refused each of them. Every
   other admin operation (invites, accounts, world, dreams, deploys,
   sleep/wake) exists only in the CLI.
 
-- [ ] **5. Your dreamer is yours.** Each human toon belongs to exactly one
+- [x] **5. Your dreamer is yours.** Each human toon belongs to exactly one
   account. A player account can create one toon per world and can enter, rest
   or delete only its own; it cannot claim, kick or delete another account's
   toon. Opening the game in a second tab or device takes control, and the
@@ -56,7 +56,7 @@ working exactly as it does now.
   hold a toon in one world. Every existing walkthrough, including the
   latecomer, passes with account-owned toons.
 
-- [ ] **6. It works under a path prefix.** The same code serves correctly at
+- [x] **6. It works under a path prefix.** The same code serves correctly at
   `/` (dev) and behind a proxy that strips `/daydream/` (prod). No page,
   script, stylesheet, WebSocket, API call, redirect or image URL resolves
   outside the configured base, including image URLs persisted in old events.
@@ -64,7 +64,7 @@ working exactly as it does now.
   Cross-site POSTs and WebSockets are refused by comparing Origin to the
   configured public origin, not to Host.
 
-- [ ] **7. Sessions and transport are hardened.**
+- [x] **7. Sessions and transport are hardened.**
   - The session cookie is HttpOnly and SameSite=Lax, scoped to the public
     base path, Secure in prod, named per environment, and expires after 30
     days without use.
@@ -198,7 +198,7 @@ working exactly as it does now.
   - An idle WebSocket survives 5 minutes.
   - Ten rapid logins from one address are rate-limited at the edge.
 
-- [ ] **18. Operator skills.**
+- [x] **18. Operator skills.**
   - `/invite <name>` produces the link, its expiry and a message ready to
     paste, and records who it is for.
   - `/village status|wake|sleep "<note>"|deploy [ref]` wraps the prod verbs.
@@ -206,7 +206,7 @@ working exactly as it does now.
     and `prod invite`. Prod commands that drop sessions or mutate state still
     ask first.
 
-- [ ] **19. vLLM listens only on loopback.** After `bin/game vllm-up`, no vLLM
+- [x] **19. vLLM listens only on loopback.** After `bin/game vllm-up`, no vLLM
   process has a listening socket on a non-loopback address (checked with
   `ss`), and a tier_short test pins the launch setting that ensures it.
 
@@ -363,4 +363,4 @@ first dream) remains open. It is operator-paced and does not gate this turn.
 *Prior spec (2026-09-26): The Village of Lost Hours, the pivot turn. Closed
 21/22; criterion 22 (the operator playtest) stays open, operator-paced.*
 
-<!-- SPEC_META: {"date":"2026-09-27","title":"Going live: the village opens its doors","criteria_total":23,"criteria_met":0} -->
+<!-- SPEC_META: {"date":"2026-09-27","title":"Going live: the village opens its doors","criteria_total":23,"criteria_met":9} -->

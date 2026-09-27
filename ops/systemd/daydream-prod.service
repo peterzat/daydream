@@ -1,0 +1,69 @@
+# daydream prod: the village behind the Cloudflare edge (docs/GOING-LIVE.md).
+# Installed by ops/install-prod.sh. Deliberately NOT enabled at boot: the
+# village wakes with `bin/game prod wake` (engines first), so a sleeping or
+# rebooted box exposes nothing.
+[Unit]
+Description=daydream prod (the village behind the edge)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=daydream
+Group=daydream
+WorkingDirectory=/srv/daydream/current
+EnvironmentFile=/srv/daydream/etc/prod.env
+EnvironmentFile=/srv/daydream/current/.release.env
+Environment=HOME=/srv/daydream/data
+Environment=XDG_CACHE_HOME=/srv/daydream/data/.cache
+Environment=PYTHONDONTWRITEBYTECODE=1
+Environment=HF_HUB_OFFLINE=1
+Environment=LITELLM_LOCAL_MODEL_COST_MAP=True
+ExecStart=/srv/daydream/current/.venv/bin/python -m uvicorn daydream.server:app \
+    --host ${DAYDREAM_BIND_HOST} --port ${DAYDREAM_PORT} \
+    --no-proxy-headers --no-server-header --ws-max-size 65536 \
+    --timeout-graceful-shutdown 30
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=45
+UMask=0007
+
+# ---- sandbox (SPEC 2026-09-27 criterion 9) ----
+# No privileges, no devices (the GPU belongs to the engines, reached over
+# loopback HTTP), read-only everything except the data dir, no home dirs.
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/srv/daydream/data
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectProc=invisible
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+# Loopback only: cloudflared, vLLM and ComfyUI are all on 127.0.0.1. This is
+# the generation policy ("no cloud calls at runtime") enforced by the kernel,
+# and it leaves an exploit nowhere to send data.
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+IPAddressDeny=any
+IPAddressAllow=localhost
+MemoryMax=4G
+TasksMax=256
+# Not used (they break this app): MemoryDenyWriteExecute (libffi/ctypes),
+# PrivateUsers (group sharing with the operator's CLI), PrivateNetwork (the
+# engines on host loopback).
+
+[Install]
+WantedBy=multi-user.target

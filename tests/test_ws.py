@@ -12,6 +12,7 @@ from starlette.websockets import WebSocketDisconnect
 
 from daydream import db, events, toons
 from daydream.server import app
+from tests import authhelp
 
 pytestmark = pytest.mark.tier_medium
 
@@ -26,10 +27,8 @@ def fresh_state(tmp_path: Path, monkeypatch):
     events.reset_subscribers()
 
 
-def _login_only(client: TestClient) -> None:
-    # TestClient follows the 303 to / by default, so accept either status.
-    r = client.post("/api/login", data={"password": "test-password"})
-    assert r.status_code in (200, 303), f"login failed: {r.status_code} {r.text}"
+def _login_only(client: TestClient, username: str = "tester") -> None:
+    authhelp.login(client, username)
 
 
 def _claim_wren(client: TestClient) -> None:
@@ -121,17 +120,20 @@ def _two_sessions(client: TestClient) -> tuple[str, str]:
     in-process pub-sub requires it): session A claims the seeded Wren, session
     B creates Pip in slot 2. Returns their raw session-cookie values; pass
     them as explicit Cookie headers on websocket_connect."""
-    _login(client)  # session A claims Wren
-    wren_cookie = client.cookies["daydream_session"]
-    client.cookies.delete("daydream_session")
-    _login_only(client)  # fresh session B
+    from daydream import config
+
+    name = config.cookie_name()
+    _login(client)  # session A (account "tester") claims Wren
+    wren_cookie = client.cookies[name]
+    client.cookies.delete(name)
+    _login_only(client, "pip-player")  # fresh session B, a second account
     r = client.post(
         "/api/slots/2/create",
         json={"name": "Pip", "appearance_seed": "a quiet second dreamer"},
     )
     assert r.status_code == 200, r.text
-    pip_cookie = client.cookies["daydream_session"]
-    client.cookies.delete("daydream_session")  # sockets carry cookies explicitly
+    pip_cookie = client.cookies[name]
+    client.cookies.delete(name)  # sockets carry cookies explicitly
     return wren_cookie, pip_cookie
 
 
@@ -142,9 +144,9 @@ def test_ws_private_events_reach_only_the_actor():
     with TestClient(app) as client:
         wren_cookie, pip_cookie = _two_sessions(client)
         with client.websocket_connect(
-            "/ws", headers={"cookie": f"daydream_session={wren_cookie}"}
+            "/ws", headers={"cookie": f"{__import__('daydream.config', fromlist=['x']).cookie_name()}={wren_cookie}"}
         ) as wren_ws, client.websocket_connect(
-            "/ws", headers={"cookie": f"daydream_session={pip_cookie}"}
+            "/ws", headers={"cookie": f"{__import__('daydream.config', fromlist=['x']).cookie_name()}={pip_cookie}"}
         ) as pip_ws:
             assert wren_ws.receive_json()["kind"] == "state_snapshot"
             assert pip_ws.receive_json()["kind"] == "state_snapshot"
@@ -169,7 +171,7 @@ def test_ws_reconnect_replay_excludes_others_private_events():
     with TestClient(app) as client:
         wren_cookie, pip_cookie = _two_sessions(client)
         with client.websocket_connect(
-            "/ws", headers={"cookie": f"daydream_session={wren_cookie}"}
+            "/ws", headers={"cookie": f"{__import__('daydream.config', fromlist=['x']).cookie_name()}={wren_cookie}"}
         ) as wren_ws:
             assert wren_ws.receive_json()["kind"] == "state_snapshot"
             wren_ws.send_json({"kind": "command", "verb": "look"})
@@ -178,7 +180,7 @@ def test_ws_reconnect_replay_excludes_others_private_events():
             assert wren_ws.receive_json()["event"]["kind"] == "say"
         # Pip reconnects with since=0: replay carries the say, not the look.
         with client.websocket_connect(
-            "/ws?since=0", headers={"cookie": f"daydream_session={pip_cookie}"}
+            "/ws?since=0", headers={"cookie": f"{__import__('daydream.config', fromlist=['x']).cookie_name()}={pip_cookie}"}
         ) as pip_ws:
             snap = pip_ws.receive_json()
         kinds = [e["kind"] for e in snap["events"]]

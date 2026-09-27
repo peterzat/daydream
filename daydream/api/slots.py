@@ -1,19 +1,28 @@
-"""Slot-picker API: GET /api/slots, POST /api/slots/{slot}/{create|claim|kick}.
+"""Toons and who may hold them: "your dreamer" for players, the slot view for
+admins (SPEC 2026-09-27 criterion 5; SPEC 2026-05-07 for the slot model).
 
-Implements the v1 toon-slot-management surface (SPEC 2026-05-07). The
-slot system is for HUMAN-controllable toons in slots 1..5 only;
-hand-authored NPCs in slots 100+ are excluded from every endpoint.
+A human toon belongs to one account (`owner_account`, migration 018):
 
-Auth: AccessMiddleware (loopback / tailnet) is the outer gate; the
-endpoints additionally require an authenticated session via the
-existing SessionMiddleware machinery (mirrors `/api/login` and
-`/api/logout`'s implicit posture). v1 friend-scope: any authed
-session can create / claim / kick any slot — multi-user differentiation
-lands with v2.
+- **Players.** A player account may create one toon per world and may enter,
+  rest (kick) or delete only its own. It may adopt an unowned toon (a seeded
+  or pre-accounts one) when it has none.
+- **Admins.** An admin account may hold several and may act on any toon. The
+  shell is still the real admin console.
+- **Another tab.** Opening the game in a second tab or device of the same
+  account takes control; the earlier socket is told quietly (daydream/api/ws.py).
 
-Errors are JSON `{"error": "<reason>"}` bodies with the documented
-status codes. The four endpoints share a small `_session_id` helper
-that pulls the per-session UUID stamped by `daydream.api.auth.login`."""
+Endpoints:
+
+- `GET /api/dreamer`: the caller's own toons plus whether they may create
+  one (the SPA's "your dreamer" panel).
+- `POST /api/dreamer/create`: make the caller's toon in the next free slot.
+- `GET /api/slots`: every populated human slot. Admins only.
+- `POST /api/slots/{slot}/create|claim|kick|delete`: slot-addressed forms,
+  kept for tools and tests. Same ownership rules.
+- `POST /api/session/leave`: rest this session's toon and write its journal.
+
+Errors are JSON `{"detail": "<reason>"}` with the documented status codes.
+"""
 
 from __future__ import annotations
 
@@ -21,7 +30,7 @@ import asyncio
 
 from fastapi import APIRouter, HTTPException, Request
 
-from daydream import journal, toons
+from daydream import accounts, journal, toons
 from daydream.api import auth as auth_mod
 from daydream.images import client as image_client
 from daydream.llm import safety
@@ -29,130 +38,69 @@ from daydream.llm import safety
 router = APIRouter()
 
 # appearance_seed is rendered through SDXL into portraits shown to
-# co-located players and every picker viewer, so player input gets the
-# same gates as the growth phrase (length cap + WHIMSY input banlist).
-# Loader-authored NPC seeds are design-time and do not pass through here.
+# co-located players, so player input gets the same gates as the growth
+# phrase (length cap + WHIMSY input banlist). Loader-authored NPC seeds are
+# design-time and do not pass through here.
 MAX_APPEARANCE_SEED_CHARS = 300
+
+# How long after a controller's last WS drop an UNOWNED toon it holds stays
+# protected from another account's delete. (Owned toons are protected by
+# ownership outright.)
+DELETE_GRACE_SECONDS = 120.0
+
+
+def _require_authed(request: Request) -> accounts.Principal:
+    """The signed-in person, or 401. The gate middleware already refuses an
+    unauthenticated request; this keeps every endpoint explicit."""
+    who = auth_mod.principal(request)
+    if who is None:
+        raise HTTPException(status_code=401, detail="not authenticated")
+    return who
 
 
 def _session_id(request: Request) -> str:
-    """Return the requester's session UUID, stamping a fresh one if
-    missing. The slot endpoints all require a session-bound caller —
-    the create endpoint records the session as the controller, claim
-    rebinds the toon to the caller, and kick clears whatever session
-    held the slot. Stamping on read keeps the client coherent across
-    legitimate-but-cookie-less first hits (e.g., a TestClient that
-    didn't go through /api/login)."""
-    return auth_mod._ensure_session_id(request.session)
-
-
-def _require_authed(request: Request) -> None:
-    """Reject if the caller's session isn't authed. Mirrors the bar
-    `/api/logout` and the WS endpoint use; centralized here so all
-    four slot endpoints share one gate."""
-    if not auth_mod.is_authed(request.session):
-        raise HTTPException(status_code=401, detail="not authenticated")
+    return _require_authed(request).session_id
 
 
 def _validate_slot(slot: int) -> None:
     if slot not in toons.HUMAN_SLOT_RANGE:
-        raise HTTPException(status_code=404, detail="slot out of range (1-5)")
+        raise HTTPException(status_code=404, detail="slot out of range")
 
 
-# How long after a controller's last WS drop its toon stays protected from
-# DELETE by other sessions. A reconnecting tab (the "dream is sleeping"
-# overlay) is back well inside this window; an abandoned toon outlives it.
-DELETE_GRACE_SECONDS = 120.0
+def _portrait(t: toons.Toon) -> str | None:
+    """Cached-only by contract: listing toons NEVER triggers a render."""
+    return image_client.cached_portrait_url(toons.live_world_id(), t.id, t.appearance_seed)
 
 
-def _require_slot_actionable(
-    slot: int, sid: str, *, for_delete: bool = False
-) -> toons.Toon:
-    """Ownership gate shared by kick and delete. Returns the slot's toon if
-    the caller may act on it, else raises. A caller MAY act when the toon is
-    their own, uncontrolled (already kicked), or held by a session with no
-    live WS connection (abandoned) -- the same takeover rule `claim` uses.
-    It refuses (403) only when ANOTHER, currently-LIVE session controls the
-    toon: the one grief case worth stopping now that two friends can be in
-    the world at once (before this, any session could kick/delete an active
-    player's toon out from under them). 404 when the slot is empty.
+def _may_hold_another(who: accounts.Principal) -> bool:
+    return who.is_admin or not toons.owned_toons(who.account_id)
 
-    DELETE is irreversible, so `for_delete=True` widens "currently live" to
-    "live within DELETE_GRACE_SECONDS": a transient socket drop must not
-    open a window where someone else can permanently delete a live player's
-    toon. Kick stays on plain liveness (it is recoverable by design).
 
-    Claiming intentionally does NOT route through here -- its takeover of a
-    dead session's toon is unchanged (slots.py:claim_slot)."""
-    t = toons.get_toon_in_slot(slot)
-    if t is None:
-        raise HTTPException(status_code=404, detail="slot is empty")
-    # Import lazily to avoid a module-load cycle (mirrors claim_slot).
+def _require_actionable(t: toons.Toon, who: accounts.Principal, *, for_delete: bool = False) -> None:
+    """Ownership gate for kick/delete. A toon owned by another account is off
+    limits to a player (403). An unowned toon keeps the old liveness rule:
+    refuse only while another session is live on it (for delete, within
+    DELETE_GRACE_SECONDS of its last drop, since deletion is irreversible)."""
+    if who.is_admin or t.owner_account == who.account_id:
+        return
+    if t.owner_account is not None:
+        raise HTTPException(status_code=403, detail="that dreamer belongs to someone else")
     from daydream.api import ws as ws_mod
 
     controller = t.controller_session
-    if for_delete:
-        controller_present = ws_mod.is_session_recently_live(
-            controller, DELETE_GRACE_SECONDS
-        )
-    else:
-        controller_present = ws_mod.is_session_live(controller)
-    protected = (
-        t.is_human_controlled
-        and t.kicked_at is None
-        and controller is not None
-        and controller != sid
-        and controller_present
-    )
-    if protected:
-        raise HTTPException(
-            status_code=403, detail="slot is held by another active player"
-        )
-    return t
+    present = (ws_mod.is_session_recently_live(controller, DELETE_GRACE_SECONDS) if for_delete
+               else ws_mod.is_session_live(controller))
+    if (t.is_human_controlled and t.kicked_at is None and controller is not None
+            and controller != who.session_id and present):
+        raise HTTPException(status_code=403, detail="slot is held by another active player")
 
 
-@router.get("/api/slots")
-async def list_slots(request: Request) -> dict:
-    """List the 5 human slots and their current state. Empty slots
-    return `{"slot": N, "toon": null}`. Populated slots return the
-    toon's id/name/appearance + a `claimed_by_me` boolean derived
-    against the requester's session id, plus `portrait_url` — the
-    cached painted face or null (cached-only by contract: the picker
-    NEVER triggers a render; portraits fill in as people play). Hand-
-    authored NPCs in slots 100+ are excluded."""
-    _require_authed(request)
-    sid = _session_id(request)
-    slots = toons.get_human_slots(sid)
-    world_id = toons.live_world_id()
-    for entry in slots:
-        t = entry["toon"]
-        if t is not None:
-            t["portrait_url"] = image_client.cached_portrait_url(
-                world_id, t["id"], t.get("appearance_seed", "")
-            )
-    return {"slots": slots}
-
-
-@router.post("/api/slots/{slot}/create")
-async def create_slot(slot: int, request: Request) -> dict:
-    """Create a new human-controlled toon in `slot` for this session.
-    Body JSON: `{"name": str, "appearance_seed": str}`. Returns the
-    created toon. Errors:
-    - 400 missing / non-string / whitespace-only `name` or
-      `appearance_seed`; `name` longer than toons.MAX_NAME_CHARS, not one
-      printable line, or tripping the banlist; `appearance_seed` longer than
-      MAX_APPEARANCE_SEED_CHARS or tripping the WHIMSY input banlist.
-    - 404 slot not in 1..5.
-    - 409 slot already populated by an existing toon (claim or kick
-      first if you want a fresh one)."""
-    _require_authed(request)
-    _validate_slot(slot)
+async def _toon_request(request: Request) -> tuple[str, str]:
+    """Validate a create body; returns (name, appearance_seed)."""
     try:
         body = await request.json()
     except Exception:
-        raise HTTPException(
-            status_code=400, detail="body must be JSON"
-        ) from None
+        raise HTTPException(status_code=400, detail="body must be JSON") from None
     if not isinstance(body, dict):
         raise HTTPException(status_code=400, detail="body must be a JSON object")
     name = body.get("name")
@@ -165,95 +113,146 @@ async def create_slot(slot: int, request: Request) -> dict:
     if safety.first_banned(name) is not None:
         raise HTTPException(status_code=400, detail="name doesn't fit the dream's tone")
     if not isinstance(appearance, str) or not appearance.strip():
-        raise HTTPException(
-            status_code=400, detail="appearance_seed must be a non-empty string"
-        )
+        raise HTTPException(status_code=400, detail="appearance_seed must be a non-empty string")
     appearance = appearance.strip()
     if len(appearance) > MAX_APPEARANCE_SEED_CHARS:
-        raise HTTPException(
-            status_code=400,
-            detail=(
-                "appearance_seed must be at most "
-                f"{MAX_APPEARANCE_SEED_CHARS} characters"
-            ),
-        )
+        raise HTTPException(status_code=400, detail=(
+            f"appearance_seed must be at most {MAX_APPEARANCE_SEED_CHARS} characters"))
     if safety.first_banned(appearance) is not None:
-        raise HTTPException(
-            status_code=400,
-            detail="appearance_seed doesn't fit the dream's tone",
-        )
-    sid = _session_id(request)
-    new_toon = toons.create_toon_in_slot(slot, name.strip(), appearance, sid)
+        raise HTTPException(status_code=400, detail="appearance_seed doesn't fit the dream's tone")
+    return name.strip(), appearance
+
+
+def _create(slot: int, name: str, appearance: str, who: accounts.Principal) -> dict:
+    if not _may_hold_another(who):
+        raise HTTPException(status_code=409, detail="you already have a dreamer here")
+    new_toon = toons.create_toon_in_slot(slot, name, appearance, who.session_id,
+                                         owner_account=who.account_id)
     if new_toon is None:
         raise HTTPException(status_code=409, detail="slot already populated")
-    request.session.pop("left", None)  # picking a toon re-enters the dream
-    return _toon_to_dict(new_toon, sid)
+    accounts.set_left(who.session_id, False)  # picking a toon re-enters the dream
+    return _toon_to_dict(new_toon, who.session_id)
+
+
+# ---- your dreamer ---------------------------------------------------------------
+
+
+@router.get("/api/dreamer")
+async def my_dreamer(request: Request) -> dict:
+    who = _require_authed(request)
+    mine = []
+    for t in toons.owned_toons(who.account_id):
+        card = toons.toon_card(t, who.session_id)
+        card["portrait_url"] = _portrait(t)
+        mine.append(card)
+    return {"toons": mine,
+            "can_create": _may_hold_another(who) and toons.next_free_slot() is not None,
+            "display_name": who.display_name, "is_admin": who.is_admin}
+
+
+@router.post("/api/dreamer/create")
+async def create_dreamer(request: Request) -> dict:
+    who = _require_authed(request)
+    name, appearance = await _toon_request(request)
+    slot = toons.next_free_slot()
+    if slot is None:
+        raise HTTPException(status_code=409, detail="the village is full just now")
+    return _create(slot, name, appearance, who)
+
+
+# ---- slot-addressed forms (tools, tests, admins) ---------------------------------
+
+
+@router.get("/api/slots")
+async def list_slots(request: Request) -> dict:
+    """Every populated human slot, with cached-only portraits. Admins only;
+    a player sees their own toons at /api/dreamer."""
+    who = _require_authed(request)
+    if not who.is_admin:
+        raise HTTPException(status_code=403, detail="the slot list is for admins")
+    slots = toons.get_human_slots(who.session_id)
+    for entry in slots:
+        t = toons.get_toon(entry["toon"]["id"])
+        entry["toon"]["portrait_url"] = _portrait(t) if t else None
+    return {"slots": slots}
+
+
+@router.post("/api/slots/{slot}/create")
+async def create_slot(slot: int, request: Request) -> dict:
+    """Create the caller's toon in `slot`. 400 bad body; 404 slot out of
+    range; 409 slot populated or the player already has a dreamer here."""
+    who = _require_authed(request)
+    _validate_slot(slot)
+    name, appearance = await _toon_request(request)
+    return _create(slot, name, appearance, who)
 
 
 @router.post("/api/slots/{slot}/claim")
 async def claim_slot(slot: int, request: Request) -> dict:
-    """Adopt a toon as the requester's controlled toon. A kicked/uncontrolled
-    toon is always claimable; a toon controlled by ANOTHER session is claimable
-    only when that session has no live WS connection (an abandoned claim) -- an
-    active player's toon is protected. Errors:
-    - 404 slot empty or not in 1..5.
-    - 409 slot's toon is held by an active player (kick it first)."""
-    _require_authed(request)
+    """Enter as the toon in `slot`. Your own toon: always (a second tab or
+    device takes over). An unowned toon: adopted, if you have none and no
+    other live session holds it. Another account's toon: 403 (admins
+    excepted). 404 empty slot; 409 held by an active player or you already
+    have a dreamer."""
+    who = _require_authed(request)
     _validate_slot(slot)
-    sid = _session_id(request)
-    # Import lazily to avoid a module-load import cycle; ws imports nothing here.
+    t = toons.get_toon_in_slot(slot)
+    if t is None:
+        raise HTTPException(status_code=404, detail="slot is empty")
+    if t.owner_account not in (None, who.account_id) and not who.is_admin:
+        raise HTTPException(status_code=403, detail="that dreamer belongs to someone else")
+    if t.owner_account is None and not _may_hold_another(who):
+        raise HTTPException(status_code=409, detail="you already have a dreamer here")
     from daydream.api import ws as ws_mod
 
+    own = t.owner_account == who.account_id
     toon, reason = toons.claim_slot(
-        slot, sid, can_take_over=lambda cs: not ws_mod.is_session_live(cs)
-    )
+        slot, who.session_id,
+        can_take_over=lambda cs: own or who.is_admin or not ws_mod.is_session_live(cs))
     if reason == "empty":
         raise HTTPException(status_code=404, detail="slot is empty")
     if reason == "controlled":
-        raise HTTPException(
-            status_code=409,
-            detail="slot is held by an active player; kick first",
-        )
+        raise HTTPException(status_code=409, detail="slot is held by an active player; kick first")
     assert toon is not None
-    request.session.pop("left", None)  # picking a toon re-enters the dream
-    return _toon_to_dict(toon, sid)
+    if toon.owner_account is None:
+        toons.adopt(toon.id, who.account_id)
+        toon = toons.get_toon(toon.id)
+    accounts.set_left(who.session_id, False)  # picking a toon re-enters the dream
+    return _toon_to_dict(toon, who.session_id)
 
 
 @router.post("/api/slots/{slot}/kick")
 async def kick_slot(slot: int, request: Request) -> dict:
-    """Release `slot` to a non-drifting NPC. Sets controller_session
-    NULL, is_human_controlled 0, kicked_at <UTC ISO>. The toon stays
-    in its current room carrying its inventory + memories.
-    Errors: 404 slot empty or not in 1..5; 403 slot held by another
-    active player (kicking your own, an abandoned, or an already-kicked
-    toon is allowed)."""
-    _require_authed(request)
+    """Rest the toon in `slot` (controller cleared, kicked_at stamped; it
+    keeps its room, inventory and memories). Your own, or any as an admin.
+    404 empty; 403 someone else's."""
+    who = _require_authed(request)
     _validate_slot(slot)
-    sid = _session_id(request)
-    _require_slot_actionable(slot, sid)
+    t = toons.get_toon_in_slot(slot)
+    if t is None:
+        raise HTTPException(status_code=404, detail="slot is empty")
+    _require_actionable(t, who)
     toon = toons.kick_slot(slot)
     if toon is None:
         raise HTTPException(status_code=404, detail="slot is empty")
-    return _toon_to_dict(toon, sid)
+    return _toon_to_dict(toon, who.session_id)
 
 
 @router.post("/api/session/leave")
 async def leave_session(request: Request) -> dict:
     """Leave the dream: rest this session's controlled toon (if any) and mark
-    the session 'left' so the next WS connect routes to the character picker
-    instead of silently auto-controlling a toon. Idempotent (a session with no
-    toon just gets marked).
+    the session 'left' so the next connect shows "your dreamer" instead of
+    walking straight back in. Idempotent.
 
     Leaving also fires the dream-journal recap for the released toon as a
     fire-and-forget background task (SPEC 2026-07-07 criterion 3):
     journal.write_entry is fail-closed end-to-end, so this endpoint ALWAYS
     succeeds regardless of LLM state and never waits on the write. The WS
-    disconnect is deliberately NOT a trigger — the reconnect overlay rides
+    disconnect is deliberately NOT a trigger: the reconnect overlay rides
     out transient drops all the time and would double-write."""
-    _require_authed(request)
     sid = _session_id(request)
     released = toons.release_session_toon(sid)
-    request.session["left"] = True
+    accounts.set_left(sid, True)
     if released is not None:
         if released.current_room_id:
             # The room sees a dreamer go (playtest 2026-09-26: players
@@ -269,16 +268,15 @@ async def leave_session(request: Request) -> dict:
 
 @router.post("/api/slots/{slot}/delete")
 async def delete_toon(slot: int, request: Request) -> dict:
-    """Permanently delete the toon in `slot`, freeing it — distinct from kick,
-    which rests a recoverable toon. Errors: 404 slot empty or out of range;
-    403 slot held by another active player, including one whose connection
-    dropped less than DELETE_GRACE_SECONDS ago (deletion is irreversible;
-    kick keeps the plain-liveness rule). Deleting your own, an abandoned,
-    or an already-kicked toon is allowed."""
-    _require_authed(request)
+    """Permanently delete the toon in `slot` (distinct from kick, which rests
+    a recoverable toon). Your own, or any as an admin; an unowned toon keeps
+    the delete grace window. 404 empty; 403 someone else's."""
+    who = _require_authed(request)
     _validate_slot(slot)
-    sid = _session_id(request)
-    _require_slot_actionable(slot, sid, for_delete=True)
+    t = toons.get_toon_in_slot(slot)
+    if t is None:
+        raise HTTPException(status_code=404, detail="slot is empty")
+    _require_actionable(t, who, for_delete=True)
     deleted = toons.delete_slot(slot)
     if deleted is None:
         raise HTTPException(status_code=404, detail="slot is empty")
@@ -286,21 +284,4 @@ async def delete_toon(slot: int, request: Request) -> dict:
 
 
 def _toon_to_dict(t: toons.Toon, session_id: str) -> dict:
-    """Serialize a Toon for the JSON response. Mirrors the shape used by
-    `get_human_slots` so a client can stitch list+create responses
-    without two parsers."""
-    return {
-        "id": t.id,
-        "slot": t.slot,
-        "name": t.name,
-        "appearance_seed": t.appearance_seed,
-        "current_room_id": t.current_room_id,
-        "is_human_controlled": t.is_human_controlled,
-        "kicked_at": t.kicked_at,
-        "mood": t.mood,
-        "claimed_by_me": (
-            t.controller_session == session_id
-            and t.kicked_at is None
-            and t.is_human_controlled
-        ),
-    }
+    return toons.toon_card(t, session_id)

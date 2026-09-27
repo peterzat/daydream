@@ -55,3 +55,29 @@ async def test_prebake_paints_every_room_and_face_once(lost_hours_db):
     assert all(r["status"] == "cached" for r in again)
     forced = await prebake.prebake(path, force={"r-loft"})
     assert [r["id"] for r in forced if r["status"] == "rendered"] == ["r-loft"]
+
+
+async def test_prebake_from_cache_copies_graded_art_and_renders_nothing(lost_hours_db, tmp_path):
+    """Prod's art is the graded dev art, copied, never re-rendered (SPEC
+    2026-09-27 criterion 12): a file at the same seed+workflow path in the
+    other cache is copied and recorded; one missing there is reported, not
+    painted."""
+    path, render = lost_hours_db
+    await prebake.prebake(path)                    # "dev": render + grade
+    rendered = render.await_count
+    graded = tmp_path / "graded-cache"
+    import shutil
+
+    shutil.copytree(cache.cache_dir(), graded)
+    shutil.rmtree(cache.cache_dir())               # "prod": an empty cache
+    missing_id = "r-clocktower"
+    for p in (graded / "w-lost-hours" / "room" / missing_id).glob("*.png"):
+        p.unlink()
+    db.close_db()
+    results = await prebake.prebake(path, from_cache=graded)
+    assert render.await_count == rendered          # nothing painted
+    by_id = {r["id"]: r["status"] for r in results}
+    assert by_id[missing_id] == "missing"
+    assert {s for i, s in by_id.items() if i != missing_id} == {"copied"}
+    loft = next(r for r in results if r["id"] == "r-loft")
+    assert Path(loft["path"]).read_bytes() == PNG

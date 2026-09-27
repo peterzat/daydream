@@ -30,6 +30,7 @@ from collections import Counter
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, status
 
 from daydream import (
+    accounts,
     collect,
     config,
     dream,
@@ -109,6 +110,32 @@ def _resolve_controlled_toon_id(session_id: str | None) -> str | None:
         if t is not None:
             return t.id
     return None
+
+
+def _auto_enter(who) -> str | None:
+    """A returning player lands straight in their toon (SPEC 2026-09-27
+    criterion 8): with no toon under this session, a session that has not
+    left the dream takes the account's one toon, even from another tab of the
+    same account (that tab is told it is dreaming elsewhere). An account with
+    no toon, or several (an admin), goes to "your dreamer" instead."""
+    if who.left:
+        return None
+    mine = toons.owned_toons(who.account_id)
+    if len(mine) != 1:
+        return None
+    toon, _ = toons.claim_slot(mine[0].slot, who.session_id, can_take_over=lambda cs: True)
+    return toon.id if toon is not None else None
+
+
+def _still_mine(toon_id: str, session_id: str) -> bool:
+    """False only once ANOTHER session controls this toon (a second tab of
+    the same account took it). A missing toon (a world swap, a delete) or a
+    rested one is not "elsewhere": those flows keep their own handling."""
+    t = toons.get_toon(toon_id)
+    return t is None or t.controller_session in (None, session_id)
+
+
+ELSEWHERE = 4409  # close code: this toon is being dreamed in another window
 
 
 def _current_room_id(toon_id: str) -> str:
@@ -304,7 +331,10 @@ def _state_snapshot(
         "world_version": version.WORLD_VERSION,
         # Feature flags the SPA gates optional surfaces on. regen_ui: the
         # dev plate tools (click-to-repaint); off on shared deployments.
-        "features": {"regen_ui": config.regen_ui_enabled()},
+        # Admin-only since the going-live turn (SPEC 2026-09-27 criterion 4):
+        # the flag stays the kill switch, and the connection must be an admin's.
+        "features": {"regen_ui": config.regen_ui_enabled()
+                     and bool((view or {}).get("is_admin"))},
         # World-shared status (score / rank / moves / deaths / lit) from the
         # world_state KV. Present on every snapshot; a world that authors no
         # scoring simply reports zeros and a null rank, and the SPA decides
@@ -754,9 +784,9 @@ def is_session_recently_live(session_id: str | None, grace_s: float) -> bool:
 
 @router.websocket("/ws")
 async def ws_endpoint(ws: WebSocket):
-    session = ws.scope.get("session", {})
-    if not auth.is_authed(session):
-        await ws.close(code=status.WS_1008_POLICY_VIOLATION)
+    who = auth.principal(ws)
+    if who is None:  # the gate refuses these before accept; belt and braces
+        await ws.close(code=4401)
         return
     # The /ws handshake is a GET, so the HTTP-only CsrfOriginMiddleware does not
     # gate it, yet the socket carries state-changing frames (take/drop/go/talk/
@@ -768,8 +798,8 @@ async def ws_endpoint(ws: WebSocket):
         return
     # Resolve the controlled toon for this connection. Slot picker's
     # create / claim endpoints set controller_session = <session id>.
-    session_id = session.get("id") if isinstance(session, dict) else None
-    toon_id = _resolve_controlled_toon_id(session_id)
+    session_id = who.session_id
+    toon_id = _resolve_controlled_toon_id(session_id) or _auto_enter(who)
     if toon_id is None:
         # No claimed/controllable toon (a fresh connect, a session that left
         # the dream, or one whose toon was kicked/deleted): route to the
@@ -788,7 +818,8 @@ async def ws_endpoint(ws: WebSocket):
     # Per-connection room-view memory: which rooms this session has entered
     # (drives full-vs-abbreviated room descriptions) plus the current room and
     # its first-visit verdict (sticky so mid-visit re-snapshots don't shrink).
-    view = {"visited": set(), "room_id": None, "first_visit": True, "greeted": set()}
+    view = {"visited": set(), "room_id": None, "first_visit": True, "greeted": set(),
+            "is_admin": who.is_admin}
     # A fresh page load omits `since` and starts with an empty event log; a
     # reconnect sends its last-rendered seq and resumes from there.
     since_raw = ws.query_params.get("since")
@@ -810,9 +841,10 @@ async def ws_endpoint(ws: WebSocket):
         if room is not None:
             _maybe_enqueue_image_gen(room.world_id, room.id, room.seed)
             _maybe_enqueue_toon_portraits(room.id)
-        receive_task = asyncio.create_task(_receive_loop(ws, toon_id))
+        token = auth.token_from_cookie_header(ws.headers.get("cookie"))
+        receive_task = asyncio.create_task(_receive_loop(ws, toon_id, token, session_id))
         broadcast_task = asyncio.create_task(
-            _broadcast_loop(ws, queue, last_seq, toon_id, view)
+            _broadcast_loop(ws, queue, last_seq, toon_id, view, session_id)
         )
         done, pending = await asyncio.wait(
             [receive_task, broadcast_task],
@@ -849,16 +881,67 @@ async def _handle_command(msg: dict, toon_id: str) -> None:
     )
 
 
-async def _receive_loop(ws: WebSocket, toon_id: str) -> None:
+# Per-connection input limits (SPEC 2026-09-27 criterion 7). The WAF cannot
+# see WebSocket frames, and a free-text frame can cost a local-LLM call, so
+# the socket carries its own: a typed line is capped, and commands flow
+# through a small token bucket (a quick typist or a flurry of clicks fits;
+# a script does not). Over either limit a frame is refused with no effect.
+MAX_INPUT_CHARS = 500
+RATE_BURST = 12          # frames available at once
+RATE_PER_SECOND = 3.0    # refill
+
+
+class _Bucket:
+    def __init__(self) -> None:
+        self.tokens = float(RATE_BURST)
+        self.at = time.monotonic()
+        self.warned_at = 0.0
+
+    def take(self) -> bool:
+        now = time.monotonic()
+        self.tokens = min(RATE_BURST, self.tokens + (now - self.at) * RATE_PER_SECOND)
+        self.at = now
+        if self.tokens >= 1.0:
+            self.tokens -= 1.0
+            return True
+        return False
+
+
+async def _receive_loop(ws: WebSocket, toon_id: str, token: str | None = None,
+                        session_id: str | None = None) -> None:
     # Per-connection parser state: the pending clarify question, if any. A
     # click (command frame) resolves or abandons it just like a typed reply.
     conn: dict = {"clarify": None}
+    bucket = _Bucket()
     try:
         while True:
             msg = await ws.receive_json()
+            if not isinstance(msg, dict):
+                continue
+            # The session is re-read on every frame, so disabling an account
+            # or revoking its sessions also ends an open socket (criterion 2).
+            if accounts.resolve(token) is None:
+                await ws.close(code=4401)
+                return
+            if session_id is not None and not _still_mine(toon_id, session_id):
+                await ws.send_json({"kind": "elsewhere"})
+                await ws.close(code=ELSEWHERE)
+                return
+            if not bucket.take():
+                now = time.monotonic()
+                if now - bucket.warned_at > 5:
+                    bucket.warned_at = now
+                    await ws.send_json({"kind": "notice",
+                                        "text": "slow down a little; the dream is still catching up"})
+                continue
             kind = msg.get("kind")
             if kind == "input":
-                frame = await _handle_input(str(msg.get("text", "")), toon_id, conn)
+                text = str(msg.get("text", ""))
+                if len(text) > MAX_INPUT_CHARS:
+                    await ws.send_json({"kind": "notice", "text": (
+                        f"that's a lot to say at once; keep it under {MAX_INPUT_CHARS} characters")})
+                    continue
+                frame = await _handle_input(text, toon_id, conn)
                 if frame is not None:
                     await ws.send_json(frame)
             elif kind == "command":
@@ -869,7 +952,8 @@ async def _receive_loop(ws: WebSocket, toon_id: str) -> None:
 
 
 async def _broadcast_loop(
-    ws: WebSocket, queue: asyncio.Queue, snapshot_seq: int, toon_id: str, view: dict
+    ws: WebSocket, queue: asyncio.Queue, snapshot_seq: int, toon_id: str, view: dict,
+    session_id: str | None = None,
 ) -> None:
     try:
         while True:
@@ -887,6 +971,12 @@ async def _broadcast_loop(
             # from the subscribe-before-snapshot ordering.
             if event.seq <= snapshot_seq:
                 continue
+            # Another tab of this account took the toon: say so once and stop
+            # (the SPA shows a calm "dreaming elsewhere" note, no reconnect loop).
+            if session_id is not None and not _still_mine(toon_id, session_id):
+                await ws.send_json({"kind": "elsewhere"})
+                await ws.close(code=ELSEWHERE)
+                return
             # Private events (migration 014): addressed to this toon, always
             # delivered — even across a room change (a death respawn's message
             # lands in the old room while the toon is already in the new one).

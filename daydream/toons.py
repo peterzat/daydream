@@ -33,6 +33,8 @@ class Toon:
     # One-line greeting fired by the WS broadcast loop when the controlled
     # toon walks into this toon's room. NULL / empty / whitespace = silent.
     presence_text: str | None = None
+    # The account this human toon belongs to (migration 018); None = unowned.
+    owner_account: str | None = None
 
     @classmethod
     def from_object(cls, obj: "objects.Object", inventory: list | None = None) -> "Toon":
@@ -55,6 +57,7 @@ class Toon:
             mood=p.get("mood", "curious"),
             kicked_at=obj.kicked_at,
             presence_text=p.get("presence_text"),
+            owner_account=obj.owner_account,
         )
 
 
@@ -115,11 +118,13 @@ def set_mood(toon_id: str, mood: str) -> None:
 
 # ---- slot-picker helpers ----------------------------------------------
 #
-# The slot system is for HUMAN-controllable toons in slots 1-5 only.
-# Hand-authored NPCs in slots 100+ are excluded from every slot-picker query
-# so they never appear in the UI's slot list nor get claimed/kicked.
+# Human-controllable toons live in slots 1-99; hand-authored NPCs in slots
+# 100+ are excluded from every slot query so they are never claimed or
+# kicked. Since accounts (SPEC 2026-09-27 criterion 5) the slot number is
+# internal bookkeeping: a toon belongs to an account (`owner_account`), and a
+# player sees "your dreamer", not a row of slots.
 
-HUMAN_SLOT_RANGE = range(1, 6)  # slots 1..5 inclusive
+HUMAN_SLOT_RANGE = range(1, 100)  # slots 1..99 inclusive
 # The v1 world loader stamps every world it builds with this id (one world
 # per DB file), so it doubles as the safe fallback when the worlds table is
 # empty or unreadable. It is loader-canonical, not a leftover of the old
@@ -152,42 +157,74 @@ def get_toon_by_session(session_id: str) -> Toon | None:
     return rows[0] if rows else None
 
 
+def toon_card(t: Toon, session_id: str | None = None) -> dict:
+    """The JSON shape the slot and dreamer endpoints share."""
+    return {
+        "id": t.id,
+        "slot": t.slot,
+        "name": t.name,
+        "appearance_seed": t.appearance_seed,
+        "current_room_id": t.current_room_id,
+        "is_human_controlled": t.is_human_controlled,
+        "kicked_at": t.kicked_at,
+        "mood": t.mood,
+        "owner_account": t.owner_account,
+        "claimed_by_me": (
+            bool(session_id)
+            and t.controller_session == session_id
+            and t.kicked_at is None
+            and t.is_human_controlled
+        ),
+    }
+
+
 def get_human_slots(session_id: str | None = None) -> list[dict]:
-    """Return 5 slot descriptors for slots 1..5. Each entry is
-    `{"slot": N, "toon": <toon-dict>|None}` with `claimed_by_me` derived
-    against `session_id`. Slot 100+ NPCs are excluded."""
+    """Every populated human slot (1..99) of the live world, in slot order:
+    `{"slot": N, "toon": <card>}`. The admin's view of who exists; a player
+    sees only their own toons (`owned_toons`). Slot 100+ NPCs are excluded."""
+    lo, hi = HUMAN_SLOT_RANGE.start, HUMAN_SLOT_RANGE.stop - 1
     found = _query(
-        "slot BETWEEN 1 AND 5 AND world_id = ? ORDER BY slot, id",
-        (live_world_id(),),
+        "slot BETWEEN ? AND ? AND world_id = ? ORDER BY slot, id",
+        (lo, hi, live_world_id()),
     )
-    by_slot: dict[int, Toon] = {}
-    for t in found:
-        by_slot.setdefault(t.slot, t)
+    seen: set[int] = set()
     out: list[dict] = []
-    for n in HUMAN_SLOT_RANGE:
-        t = by_slot.get(n)
-        if t is None:
-            out.append({"slot": n, "toon": None})
+    for t in found:
+        if t.slot in seen:
             continue
-        out.append({
-            "slot": n,
-            "toon": {
-                "id": t.id,
-                "name": t.name,
-                "appearance_seed": t.appearance_seed,
-                "current_room_id": t.current_room_id,
-                "is_human_controlled": t.is_human_controlled,
-                "kicked_at": t.kicked_at,
-                "mood": t.mood,
-                "claimed_by_me": (
-                    bool(session_id)
-                    and t.controller_session == session_id
-                    and t.kicked_at is None
-                    and t.is_human_controlled
-                ),
-            },
-        })
+        seen.add(t.slot)
+        out.append({"slot": t.slot, "toon": toon_card(t, session_id)})
     return out
+
+
+def playing() -> list[Toon]:
+    """Human toons someone is playing right now (controlled, not resting) in
+    the live world."""
+    lo, hi = HUMAN_SLOT_RANGE.start, HUMAN_SLOT_RANGE.stop - 1
+    return _query("world_id = ? AND is_human_controlled = 1 AND kicked_at IS NULL "
+                  "AND slot BETWEEN ? AND ? ORDER BY slot", (live_world_id(), lo, hi))
+
+
+def owned_toons(account_id: str) -> list[Toon]:
+    """The live world's toons that belong to `account_id`, in slot order."""
+    return _query("world_id = ? AND owner_account = ? ORDER BY slot, id",
+                  (live_world_id(), account_id))
+
+
+def next_free_slot() -> int | None:
+    """The lowest unoccupied human slot in the live world, or None if full."""
+    taken = {r["slot"] for r in db.get_conn().execute(
+        "SELECT slot FROM objects WHERE kind = 'toon' AND world_id = ? AND slot IS NOT NULL",
+        (live_world_id(),))}
+    return next((n for n in HUMAN_SLOT_RANGE if n not in taken), None)
+
+
+def adopt(toon_id: str, account_id: str) -> None:
+    """Give an unowned toon (a seeded or pre-accounts human toon) to an
+    account. Never takes a toon from its owner."""
+    db.get_conn().execute(
+        "UPDATE objects SET owner_account = ? WHERE id = ? AND kind = 'toon' "
+        "AND owner_account IS NULL", (account_id, toon_id))
 
 
 def _slot_occupied(slot: int) -> Toon | None:
@@ -207,11 +244,13 @@ def get_toon_in_slot(slot: int) -> Toon | None:
 
 
 def create_toon_in_slot(
-    slot: int, name: str, appearance_seed: str, session_id: str
+    slot: int, name: str, appearance_seed: str, session_id: str,
+    owner_account: str | None = None,
 ) -> Toon | None:
-    """Create a new human-controlled toon in `slot` claimed by `session_id`.
-    Returns the new Toon, or None if the slot is already occupied. Spawns in
-    the world's starting room. Caller range-checks `slot` first."""
+    """Create a new human-controlled toon in `slot` claimed by `session_id`
+    and owned by `owner_account`. Returns the new Toon, or None if the slot is
+    already occupied. Spawns in the world's starting room. Caller range-checks
+    `slot` first."""
     if _slot_occupied(slot) is not None:
         return None
     from daydream import rooms
@@ -227,8 +266,8 @@ def create_toon_in_slot(
     db.get_conn().execute(
         "INSERT INTO objects (id, world_id, kind, name, aliases_json, "
         "location_id, prototype_id, properties_json, slot, controller_session, "
-        "is_human_controlled, kicked_at) "
-        "VALUES (?, ?, 'toon', ?, '[]', ?, ?, ?, ?, ?, 1, NULL)",
+        "is_human_controlled, kicked_at, owner_account) "
+        "VALUES (?, ?, 'toon', ?, '[]', ?, ?, ?, ?, ?, 1, NULL, ?)",
         (
             toon_id,
             world_id,
@@ -238,6 +277,7 @@ def create_toon_in_slot(
             _toon_properties(appearance_seed=appearance_seed),
             slot,
             session_id,
+            owner_account,
         ),
     )
     return get_toon(toon_id)

@@ -4,6 +4,7 @@ Static SPA serving: when web/dist/ exists (built by Inc 7's Vite step), the
 root path serves it; before that, a minimal placeholder HTML lets a browser
 verify the auth flow end to end."""
 
+import re
 from contextlib import asynccontextmanager
 from html import escape as html_escape
 from urllib.parse import quote
@@ -13,16 +14,16 @@ from fastapi.responses import (
     FileResponse,
     HTMLResponse,
     PlainTextResponse,
-    RedirectResponse,
 )
 from fastapi.staticfiles import StaticFiles
-from starlette.middleware.sessions import SessionMiddleware
 
-from daydream import config, db, drift, version, village
+from daydream import accounts, announce, config, db, drift, version, village
 from daydream.api import auth, slots, world, ws
 from daydream.api import rooms as rooms_api
 from daydream.api.access import AccessMiddleware
 from daydream.api.csrf import CsrfOriginMiddleware
+from daydream.api.gate import GateMiddleware
+from daydream.api.headers import SecurityHeadersMiddleware
 from daydream.api.nocache import NoCacheAssetsMiddleware
 from daydream.images import cache as image_cache
 
@@ -40,6 +41,7 @@ async def lifespan(app: FastAPI):
     if problems:
         raise RuntimeError("daydream refuses to boot: " + "; ".join(problems))
     config.ensure_dirs()
+    accounts.init()
     db.init_live()
     # Refuse to boot on an incompatible live world (a MAJOR world_version gap);
     # warn on a minor/legacy gap. This is the server-only boot path: the gate
@@ -52,27 +54,25 @@ async def lifespan(app: FastAPI):
     # (catching up any missed while the server was down) and let the
     # director pick small events, even with no one connected.
     village.start_loop()
+    # Shell-to-village announcements (daydream/announce.py): no web endpoint.
+    announce.start()
     try:
         yield
     finally:
+        await announce.stop()
         # No-argument stop targets the module-tracked live task. A world
         # hot-swap replaces that task mid-run, so stopping via a startup-time
         # handle would miss the post-swap task and leak it to loop teardown.
         await village.stop_loop()
         await drift.stop_drift_loop()
         db.close_db()
+        accounts.close()
 
 
 # No interactive API docs anywhere: nothing uses them, and in prod they would
 # be a pre-login map of every route.
 app = FastAPI(lifespan=lifespan, title="daydream", docs_url=None, redoc_url=None,
               openapi_url=None)
-app.add_middleware(
-    SessionMiddleware,
-    secret_key=config.session_secret(),
-    session_cookie="daydream_session",
-    https_only=False,  # friend-scope; box is on a private LAN/Tailscale only
-)
 # NoCacheAssetsMiddleware stamps Cache-Control: no-store on /assets/*
 # responses so browser hard-refresh stops being required after web/
 # edits. See daydream/api/nocache.py for why the scope is narrow.
@@ -80,17 +80,24 @@ app.add_middleware(
 # placing it before AccessMiddleware keeps the Access rejection path
 # clean of unnecessary header rewrites on 403s.
 app.add_middleware(NoCacheAssetsMiddleware)
-# CsrfOriginMiddleware rejects cross-origin state-changing POSTs (the
-# confused-deputy vector against the friend-scope slot/session endpoints,
-# which in tailscale mode have no cookie check). Added before AccessMiddleware
-# so the IP gate stays outermost; this layer only acts on unsafe methods whose
-# Origin/Referer mismatches Host (non-browser clients with no Origin pass).
+# CsrfOriginMiddleware (runs before the gate) rejects cross-origin
+# state-changing requests before any session lookup; it only acts on unsafe
+# methods whose Origin/Referer mismatches (non-browser clients with no Origin
+# pass). Runtime order: Access (network) -> CSRF -> Gate (account) -> app.
+# GateMiddleware: every request needs an account session except the public
+# allowlist (the front door, static assets, login, invite redemption, health),
+# so no handler ever sees an unauthenticated request it did not opt into.
+app.add_middleware(GateMiddleware)
 app.add_middleware(CsrfOriginMiddleware)
 # AccessMiddleware added LAST so it sits at the outer edge of the stack
 # (middleware added later runs earlier per request). When DAYDREAM_ACCESS
 # is 'tailscale' (default), non-tailnet clients see 403 / WS close 1008
 # before any session or auth machinery runs.
 app.add_middleware(AccessMiddleware)
+# Security headers (CSP, nosniff, no framing, noindex) on every HTTP response,
+# the network rule's and the gate's refusals included: added after everything
+# else, so it is the outermost layer (daydream/api/headers.py).
+app.add_middleware(SecurityHeadersMiddleware)
 app.include_router(auth.router)
 app.include_router(slots.router)
 app.include_router(world.router)
@@ -98,15 +105,25 @@ app.include_router(rooms_api.router)
 app.include_router(ws.router)
 
 
+def _require_admin(request: Request) -> None:
+    """The /status endpoints are operator observability: admin accounts only
+    (SPEC 2026-09-27 criterion 4). `bin/game status` reads them with the
+    CLI's own admin session."""
+    who = auth.principal(request)
+    if who is None or not who.is_admin:
+        raise HTTPException(status_code=403, detail="status is for admins")
+
+
 @app.get("/status/drift")
-async def status_drift():
+async def status_drift(request: Request):
     """Internal observability endpoint for `bin/game status`. Returns
     a one-line summary of drift outcome counters when any are non-zero;
     empty body (200 OK with empty payload) when drift hasn't ticked yet.
 
     Plain-text rather than JSON so `bin/game cmd_status` can interpolate
     the response directly without a JSON parser dependency. Loopback /
-    tailnet-only via AccessMiddleware (no session auth needed)."""
+    admin-only (an admin account session, SPEC 2026-09-27)."""
+    _require_admin(request)
     from fastapi.responses import PlainTextResponse
 
     from daydream import drift
@@ -122,11 +139,12 @@ async def status_drift():
 
 
 @app.get("/status/arbiter")
-async def status_arbiter():
+async def status_arbiter(request: Request):
     """GPU-gate observability for `bin/game status` and the swarm harness.
-    Plain-text one-liner (no JSON parser dependency in bin/game), loopback/
-    tailnet-only via AccessMiddleware. Always non-empty: an idle gate is
+    Plain-text one-liner (no JSON parser dependency in bin/game), admin
+    accounts only. Always non-empty: an idle gate is
     still worth a line, unlike drift's silent-until-first-tick counters."""
+    _require_admin(request)
     from fastapi.responses import PlainTextResponse
 
     from daydream import events
@@ -145,13 +163,28 @@ async def status_arbiter():
     )
 
 
+@app.get("/status/who")
+async def status_who(request: Request):
+    """Who is in the village right now (for `bin/game prod status`): the
+    toons being played and whether their socket is live. Admins only."""
+    _require_admin(request)
+    from daydream import toons
+
+    lines = []
+    for t in toons.playing():
+        live = ws.is_session_live(t.controller_session)
+        lines.append(f"{t.name}{'' if live else ' (away)'}")
+    return PlainTextResponse("playing: " + (", ".join(lines) if lines else "no one") + "\n")
+
+
 @app.get("/status/build")
-async def status_build():
+async def status_build(request: Request):
     """Build + version observability for `bin/game status`. Plain-text, one
-    key:value per line (no JSON dependency in bin/game), loopback/tailnet-only
-    via AccessMiddleware. `build` is the commit the running process started
+    key:value per line (no JSON dependency in bin/game), admin accounts
+    only. `build` is the commit the running process started
     from; `world_version` + `migration` are this code's expectations, so
     `bin/game status` can compare the live server against HEAD."""
+    _require_admin(request)
     from fastapi.responses import PlainTextResponse
 
     from daydream import db, version
@@ -164,46 +197,57 @@ async def status_build():
     )
 
 
+def _page(name: str) -> HTMLResponse:
+    """Serve a shell page from web/ with the public base injected and the
+    asset URLs stamped with the build (belt-and-suspenders with the no-store
+    middleware; the client's build-mismatch reload is the primary stale-tab
+    fix). StaticFiles ignores the query string, so the files still resolve.
+    The build id is URL-quoted so it is safe in the query string and the
+    attribute even if a future change sourced it from untrusted input."""
+    page = config.WEB_DIR / name
+    if not page.exists():
+        # web/ ships in the repo; a missing page means a broken deploy.
+        return PlainTextResponse(f"daydream: web/{name} is missing from this deploy",
+                                 status_code=503)
+    sha = quote(version.build_sha(), safe="")
+    base = html_escape(config.public_base(), quote=True)
+    html = page.read_text().replace('<base href="/">', f'<base href="{base}">', 1)
+    html = re.sub(r'"(assets/[a-z0-9_-]+\.(?:js|css))"', rf'"\1?v={sha}"', html)
+    return HTMLResponse(html, headers={"Cache-Control": "no-store"})
+
+
+@app.get("/healthz")
+async def healthz():
+    """Liveness for the edge Worker and `bin/game prod status`. Public, so it
+    says nothing else (no build id, no counts)."""
+    return {"ok": True}
+
+
 @app.get("/login")
-async def login_form():
-    # Tailscale-mode clients never need to see this form — tailnet
-    # membership is the auth boundary. Redirect a stale bookmark (or
-    # an agent-driven GET) home rather than rendering a password
-    # prompt that wouldn't meaningfully gate anything.
-    if config.access_mode() == "tailscale":
-        return RedirectResponse(url=config.public_base(), status_code=302)
-    return HTMLResponse(_LOGIN_HTML)
+async def login_page():
+    return _page("door.html")
+
+
+@app.get("/invite/{slug}")
+async def invite_page(slug: str):
+    # The slug is only ever checked by the peek/redeem POSTs (throttled);
+    # this GET serves the same static card for any path.
+    return _page("door.html")
 
 
 @app.get("/")
 async def root(request: Request):
-    if not auth.is_authed(request.session):
-        return RedirectResponse(url=config.public_base() + "login", status_code=302)
-    index = config.WEB_DIR / "index.html"
-    if index.exists():
-        # Stamp the asset refs with the build SHA so a redeployed server serves
-        # fresh-URL'd main.js/style.css (belt-and-suspenders with the no-store
-        # middleware; the client mismatch-reload is the primary stale-tab fix).
-        # StaticFiles ignores the query string, so the files still resolve.
-        # URL-quote the build id so it is safe in both the query string and the
-        # HTML attribute even if a future change ever sourced it from untrusted
-        # input (today it is only git hex / -dirty / unknown / operator env).
-        sha = quote(version.build_sha(), safe="")
-        # <base href> makes every relative URL in the shell and the SPA resolve
-        # under the public base ("/" in dev, "/daydream/" behind the edge).
-        base = html_escape(config.public_base(), quote=True)
-        html = (
-            index.read_text()
-            .replace('<base href="/">', f'<base href="{base}">', 1)
-            .replace('"assets/main.js"', f'"assets/main.js?v={sha}"')
-            .replace('"assets/style.css"', f'"assets/style.css?v={sha}"')
-        )
-        return HTMLResponse(html)
-    # web/index.html ships in the repo; its absence means a broken deploy,
-    # not a pre-frontend install. Fail loudly rather than serve a stub.
-    return PlainTextResponse(
-        "daydream: web/index.html is missing from this deploy", status_code=503
-    )
+    """The game for a signed-in person, the front door for anyone else. Each
+    game load re-issues the session cookie so its 30-day life slides with
+    use."""
+    who = auth.principal(request)
+    if who is None:
+        return _page("door.html")
+    resp = _page("index.html")
+    token = auth.token_from_cookie_header(request.headers.get("cookie"))
+    if token:
+        auth.set_session_cookie(resp, token)
+    return resp
 
 
 # Serve frontend static assets if a build exists (Inc 7+).
@@ -232,34 +276,7 @@ async def serve_cached_image(
     p = image_cache.cache_dir() / world / target_kind / target_id / filename
     if not p.is_file():
         raise HTTPException(status_code=404)
-    return FileResponse(p, media_type="image/png")
-
-
-_LOGIN_HTML = """<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>daydream</title>
-<style>
-  body { font-family: Georgia, serif; max-width: 480px; margin: 6em auto;
-         text-align: center; color: #3a4a44; background: #f6f3ec; }
-  h1 { font-weight: normal; color: #5a7a6a; letter-spacing: 0.05em; }
-  input { font-size: 1.1em; padding: 0.5em 0.7em; border: 1px solid #b9b3a5;
-          border-radius: 4px; background: #fbf9f3; color: #3a4a44; }
-  button { font-size: 1em; padding: 0.55em 1.1em; margin-left: 0.4em;
-           border: 1px solid #5a7a6a; background: #5a7a6a; color: #fbf9f3;
-           border-radius: 4px; cursor: pointer; }
-  button:hover { background: #4a6a5a; }
-</style>
-</head>
-<body>
-<h1>daydream</h1>
-<form method="post" action="api/login">
-<input type="password" name="password" autofocus autocomplete="current-password">
-<button type="submit">enter</button>
-</form>
-</body>
-</html>
-"""
-
+    # Session-gated and content-addressed: the browser may keep it, but no
+    # shared cache (Cloudflare included) ever should (criterion 7).
+    return FileResponse(p, media_type="image/png",
+                        headers={"Cache-Control": "private, max-age=86400"})

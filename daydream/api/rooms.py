@@ -16,10 +16,9 @@ room background, without any prompt being remembered:
        generated_assets row records a fixed marker). 202 on start, 409 if a
        paint for that room is already in flight, 404 if the room is unknown.
 
-This is a dev tool: per the plan we do minimal input hygiene (a length cap
-to avoid an absurd prompt) and no content filtering. Auth mirrors the other
-mutating endpoints (an authenticated session behind the tailnet gate); the
-CSRF-origin middleware already covers POSTs. The off-switch is
+This is an operator tool: minimal input hygiene (a length cap to avoid an
+absurd prompt) and no content filtering. Only an admin account may use it
+(SPEC 2026-09-27 criterion 4); the CSRF-origin middleware covers POSTs. The off-switch is
 DAYDREAM_REGEN_UI=0 (config.regen_ui_enabled): both endpoints 404 as if
 they were never mounted, and the snapshot's features flag tells the SPA to
 keep the plate tools unbound. Default ON in dev; flip it off on any shared
@@ -50,8 +49,13 @@ MAX_PROMPT_CHARS = 2000
 
 
 def _require_authed(request: Request) -> None:
-    if not auth_mod.is_authed(request.session):
+    """Repainting shared room art is an admin capability (SPEC 2026-09-27
+    criterion 4): a player session is refused with 403."""
+    who = auth_mod.principal(request)
+    if who is None:
         raise HTTPException(status_code=401, detail="not authenticated")
+    if not who.is_admin:
+        raise HTTPException(status_code=403, detail="repainting is for admins")
 
 
 @router.get("/api/rooms/{room_id}/image-prompt")

@@ -9,6 +9,8 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
+from tests import authhelp
+
 pytestmark = pytest.mark.tier_short
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -44,8 +46,7 @@ def test_every_image_sink_rebases_through_asset_url():
 
 
 def _login(client):
-    r = client.post("/api/login", data={"password": "test-password"}, follow_redirects=False)
-    assert r.status_code in (200, 303)
+    authhelp.login(client)
 
 
 @pytest.mark.parametrize("base", ["/", "/daydream/"])
@@ -63,11 +64,16 @@ def test_the_shell_carries_the_configured_base(monkeypatch, tmp_path, base):
 
 
 def test_redirects_stay_inside_the_base(monkeypatch, tmp_path):
+    """A signed-out HTML navigation to a guarded page goes to the front door
+    at the public base, never to an origin path outside it."""
     from daydream.server import app
 
     monkeypatch.setenv("DAYDREAM_DATA_DIR", str(tmp_path))
     monkeypatch.setenv("DAYDREAM_PUBLIC_BASE", "/daydream/")
     with TestClient(app) as client:
-        r = client.get("/", follow_redirects=False)
-    assert r.status_code in (302, 303)
-    assert r.headers["location"].startswith("/daydream/")
+        r = client.get("/status/build", headers={"accept": "text/html"}, follow_redirects=False)
+        assert r.status_code == 303
+        assert r.headers["location"] == "/daydream/"
+        door = client.get("/")
+    assert door.status_code == 200 and '<base href="/daydream/">' in door.text
+    assert 'id="login-form"' in door.text

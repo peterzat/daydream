@@ -10,6 +10,7 @@ from fastapi.testclient import TestClient
 
 from daydream import db, events, toons
 from daydream.server import app
+from tests import authhelp
 
 pytestmark = pytest.mark.tier_medium
 
@@ -24,262 +25,250 @@ def fresh_state(tmp_path: Path, monkeypatch):
     events.reset_subscribers()
 
 
-def _login(client: TestClient) -> None:
-    """Push the session through /api/login so the cookie is set and the
-    session has the per-session UUID stamped by `_ensure_session_id`."""
-    r = client.post("/api/login", data={"password": "test-password"})
-    assert r.status_code in (200, 303)
+def _login(client: TestClient, username: str = "tester", role: str = "player") -> None:
+    authhelp.login(client, username, role=role)
 
 
-def test_list_slots_returns_5_entries():
-    """The seeded world has Wren at slot 1; the listing returns 5 slot
-    entries with Wren in slot 1 and the rest empty."""
+MIRA = {"name": "Mira", "appearance_seed": "a fox in a wool hat"}
+IVO = {"name": "Ivo", "appearance_seed": "a tall heron"}
+
+
+# ---- the admin's slot view -------------------------------------------------------
+
+
+def test_list_slots_is_the_admins_view_of_populated_slots():
+    """Since accounts (SPEC 2026-09-27 criterion 5) the slot list is an admin
+    view of who exists; a player sees only their own toons at /api/dreamer.
+    The seeded world has Wren at slot 1 (unowned, resting)."""
     with TestClient(app) as client:
         _login(client)
-        r = client.get("/api/slots")
-        assert r.status_code == 200
-        body = r.json()
-        slots = body["slots"]
-        assert len(slots) == 5
-        assert [s["slot"] for s in slots] == [1, 2, 3, 4, 5]
-        wren = slots[0]["toon"]
-        assert wren is not None
-        assert wren["name"] == "Wren"
-        assert wren["claimed_by_me"] is False  # seeded as is_human_controlled=0
-        for s in slots[1:]:
-            assert s["toon"] is None
+        assert client.get("/api/slots").status_code == 403
+    with TestClient(app) as admin:
+        _login(admin, "keeper", role="admin")
+        slots = admin.get("/api/slots").json()["slots"]
+    assert [s["slot"] for s in slots] == [1]
+    wren = slots[0]["toon"]
+    assert wren["name"] == "Wren" and wren["owner_account"] is None
+    assert wren["claimed_by_me"] is False  # seeded as is_human_controlled=0
 
 
-def test_create_in_empty_slot_creates_toon_and_claims_session():
-    """POST /api/slots/3/create with valid body creates the toon and
-    sets the requester's session as the controller."""
+# ---- create ---------------------------------------------------------------------------
+
+
+def test_create_in_empty_slot_creates_an_owned_toon_and_claims_it():
     with TestClient(app) as client:
         _login(client)
-        r = client.post(
-            "/api/slots/3/create",
-            json={"name": "Mira", "appearance_seed": "a fox in a wool hat"},
-        )
+        r = client.post("/api/slots/3/create", json=MIRA)
         assert r.status_code == 200, r.text
         body = r.json()
-        assert body["name"] == "Mira"
-        assert body["slot"] == 3
-        assert body["is_human_controlled"] is True
-        assert body["claimed_by_me"] is True
+        assert body["name"] == "Mira" and body["slot"] == 3
+        assert body["is_human_controlled"] is True and body["claimed_by_me"] is True
         assert body["kicked_at"] is None
+        from daydream import accounts
+        assert body["owner_account"] == accounts.get_account("tester")["id"]
+        mine = client.get("/api/dreamer").json()
+        assert [t["name"] for t in mine["toons"]] == ["Mira"]
+        assert mine["can_create"] is False and mine["toons"][0]["claimed_by_me"] is True
 
-        # And it shows up in the listing.
-        r = client.get("/api/slots")
-        slots = r.json()["slots"]
-        assert slots[2]["toon"]["name"] == "Mira"
-        assert slots[2]["toon"]["claimed_by_me"] is True
+
+def test_dreamer_create_picks_the_next_free_slot():
+    with TestClient(app) as client:
+        _login(client)
+        assert client.get("/api/dreamer").json() == {
+            "toons": [], "can_create": True, "display_name": "tester", "is_admin": False}
+        r = client.post("/api/dreamer/create", json=MIRA)
+        assert r.status_code == 200 and r.json()["slot"] == 2  # Wren holds 1
+
+
+def test_a_player_holds_one_dreamer_per_world_an_admin_several():
+    with TestClient(app) as client:
+        _login(client)
+        assert client.post("/api/dreamer/create", json=MIRA).status_code == 200
+        r = client.post("/api/dreamer/create", json=IVO)
+        assert r.status_code == 409 and "already" in r.json()["detail"]
+        assert client.post("/api/slots/5/create", json=IVO).status_code == 409
+    with TestClient(app) as admin:
+        _login(admin, "keeper", role="admin")
+        assert admin.post("/api/dreamer/create", json=MIRA).status_code == 200
+        assert admin.post("/api/dreamer/create", json=IVO).status_code == 200
+
+
+def test_twelve_friends_each_hold_a_toon():
+    with TestClient(app) as client:
+        for i in range(12):
+            client.cookies.clear()
+            _login(client, f"friend{i:02d}")
+            r = client.post("/api/dreamer/create",
+                            json={"name": f"Dreamer{i}", "appearance_seed": "a kind face"})
+            assert r.status_code == 200, r.text
+        owners = {t.owner_account for t in toons._query("owner_account IS NOT NULL", ())}
+    assert len(owners) == 12
 
 
 def test_create_on_populated_slot_returns_409():
     """Creating in slot 1 fails because Wren is already there."""
     with TestClient(app) as client:
         _login(client)
-        r = client.post(
-            "/api/slots/1/create",
-            json={"name": "Stowaway", "appearance_seed": "a quiet stranger"},
-        )
+        r = client.post("/api/slots/1/create", json={"name": "Stowaway",
+                                                    "appearance_seed": "a quiet stranger"})
         assert r.status_code == 409
 
 
 def test_create_with_invalid_input_returns_400():
-    """Empty / missing / non-string name or appearance_seed → 400."""
+    """Empty / missing / non-string name or appearance_seed -> 400."""
     with TestClient(app) as client:
         _login(client)
-        # Missing name.
-        r = client.post(
-            "/api/slots/2/create",
-            json={"appearance_seed": "a friend"},
-        )
-        assert r.status_code == 400
-        # Whitespace-only name.
-        r = client.post(
-            "/api/slots/2/create",
-            json={"name": "   ", "appearance_seed": "x"},
-        )
-        assert r.status_code == 400
-        # Empty appearance.
-        r = client.post(
-            "/api/slots/2/create",
-            json={"name": "Mira", "appearance_seed": ""},
-        )
-        assert r.status_code == 400
+        assert client.post("/api/slots/2/create", json={"appearance_seed": "a friend"}).status_code == 400
+        assert client.post("/api/slots/2/create", json={"name": "   ", "appearance_seed": "x"}).status_code == 400
+        assert client.post("/api/slots/2/create", json={"name": "Mira", "appearance_seed": ""}).status_code == 400
+        assert client.post("/api/dreamer/create", json={"name": "Mira"}).status_code == 400
 
 
 def test_create_with_out_of_range_slot_returns_404():
-    """Slot 0 / 6 / 100 are out of the human range; 404."""
+    """Slot 0 and 100+ are outside the human range (1-99): 404."""
     with TestClient(app) as client:
         _login(client)
-        for bad in (0, 6, 100):
-            r = client.post(
-                f"/api/slots/{bad}/create",
-                json={"name": "X", "appearance_seed": "y"},
-            )
+        for bad in (0, 100, 150):
+            r = client.post(f"/api/slots/{bad}/create", json={"name": "X", "appearance_seed": "y"})
             assert r.status_code == 404, f"slot {bad} should 404"
 
 
+# ---- kick / claim of your own ----------------------------------------------------------
+
+
 def test_kick_clears_claim_and_sets_kicked_at():
-    """Kick a slot's toon → controller_session NULL, is_human_controlled
-    0, kicked_at set. Subsequent listing reflects the new state."""
     with TestClient(app) as client:
         _login(client)
-        # Create at slot 4, then kick.
-        client.post(
-            "/api/slots/4/create",
-            json={"name": "Mira", "appearance_seed": "a small fox"},
-        )
+        client.post("/api/slots/4/create", json=MIRA)
         r = client.post("/api/slots/4/kick")
         assert r.status_code == 200
         body = r.json()
         assert body["is_human_controlled"] is False
         assert body["kicked_at"] is not None
         assert body["claimed_by_me"] is False
-        # Inventory + room preserved.
         assert body["current_room_id"] == "r-meadow"
 
 
 def test_kick_on_empty_slot_returns_404():
     with TestClient(app) as client:
         _login(client)
-        r = client.post("/api/slots/2/kick")
-        assert r.status_code == 404
+        assert client.post("/api/slots/2/kick").status_code == 404
 
 
-def test_claim_on_kicked_npc_re_adopts():
-    """Kick a created toon, then claim it again — the toon's
-    kicked_at is cleared and is_human_controlled flips back to 1."""
+def test_claim_on_your_rested_toon_re_adopts():
     with TestClient(app) as client:
         _login(client)
-        client.post(
-            "/api/slots/2/create",
-            json={"name": "Mira", "appearance_seed": "a small fox"},
-        )
+        client.post("/api/slots/2/create", json=MIRA)
         client.post("/api/slots/2/kick")
         r = client.post("/api/slots/2/claim")
         assert r.status_code == 200, r.text
         body = r.json()
-        assert body["kicked_at"] is None
-        assert body["is_human_controlled"] is True
+        assert body["kicked_at"] is None and body["is_human_controlled"] is True
         assert body["claimed_by_me"] is True
 
 
 def test_claim_on_empty_slot_returns_404():
     with TestClient(app) as client:
         _login(client)
-        r = client.post("/api/slots/3/claim")
-        assert r.status_code == 404
+        assert client.post("/api/slots/3/claim").status_code == 404
 
 
-def test_claim_controlled_by_live_session_returns_409(monkeypatch):
-    """A toon held by a session with a LIVE WS connection is protected: a claim
-    from another session is refused with 409 (kick first)."""
+def test_your_second_tab_takes_over_your_own_live_toon(monkeypatch):
+    """The same account opening a second tab or device takes control of its
+    own toon even while the first is live (criterion 5)."""
     from daydream.api import ws as ws_mod
 
-    with TestClient(app) as client:
-        _login(client)
-        client.post(
-            "/api/slots/2/create",
-            json={"name": "Mira", "appearance_seed": "a small fox"},
-        )
+    with TestClient(app) as tab1:
+        _login(tab1)
+        tab1.post("/api/slots/2/create", json=MIRA)
         monkeypatch.setattr(ws_mod, "is_session_live", lambda sid: True)
-        r = client.post("/api/slots/2/claim")
-        assert r.status_code == 409
-
-
-def test_claim_takes_over_when_controller_not_live(monkeypatch):
-    """A toon whose controlling session has NO live WS connection (an abandoned
-    claim, e.g. the tab was closed) is reclaimable: the claim succeeds
-    (takeover) rather than 409."""
-    from daydream.api import ws as ws_mod
-
-    with TestClient(app) as client:
-        _login(client)
-        client.post(
-            "/api/slots/2/create",
-            json={"name": "Mira", "appearance_seed": "a small fox"},
-        )
-        monkeypatch.setattr(ws_mod, "is_session_live", lambda sid: False)
-        r = client.post("/api/slots/2/claim")
-        assert r.status_code == 200, r.text
-        assert r.json()["claimed_by_me"] is True
+        with TestClient(app) as tab2:
+            _login(tab2)
+            r = tab2.post("/api/slots/2/claim")
+            assert r.status_code == 200 and r.json()["claimed_by_me"] is True
 
 
 def test_kick_own_toon_allowed_even_when_live(monkeypatch):
-    """You can always kick your OWN toon, even while your session is live —
-    the ownership guard only protects OTHER sessions' toons."""
     from daydream.api import ws as ws_mod
 
     with TestClient(app) as client:
         _login(client)
-        client.post(
-            "/api/slots/4/create",
-            json={"name": "Mira", "appearance_seed": "a small fox"},
-        )
+        client.post("/api/slots/4/create", json=MIRA)
         monkeypatch.setattr(ws_mod, "is_session_live", lambda sid: True)
-        r = client.post("/api/slots/4/kick")
+        assert client.post("/api/slots/4/kick").status_code == 200
+
+
+# ---- another account's toon ------------------------------------------------------------
+
+
+@pytest.mark.parametrize("live", [True, False])
+def test_another_accounts_toon_is_off_limits(monkeypatch, live):
+    """Ownership, not liveness: another player's toon cannot be claimed,
+    kicked or deleted, live or not. It is left untouched."""
+    from daydream.api import ws as ws_mod
+
+    with TestClient(app) as c1, TestClient(app) as c2:
+        _login(c1, "ivo-player")
+        _login(c2, "someone-else")
+        c1.post("/api/slots/3/create", json=IVO)
+        monkeypatch.setattr(ws_mod, "is_session_live", lambda sid: live)
+        assert c2.post("/api/slots/3/claim").status_code == 403
+        assert c2.post("/api/slots/3/kick").status_code == 403
+        assert c2.post("/api/slots/3/delete").status_code == 403
+        t = toons.get_toon_in_slot(3)
+        assert t is not None and t.is_human_controlled and t.kicked_at is None
+
+
+def test_an_admin_may_act_on_any_toon(monkeypatch):
+    from daydream.api import ws as ws_mod
+
+    with TestClient(app) as c1, TestClient(app) as admin:
+        _login(c1, "ivo-player")
+        _login(admin, "keeper", role="admin")
+        c1.post("/api/slots/3/create", json=IVO)
+        monkeypatch.setattr(ws_mod, "is_session_live", lambda sid: True)
+        assert admin.post("/api/slots/3/kick").status_code == 200
+        assert admin.post("/api/slots/3/delete").status_code == 200
+
+
+# ---- unowned toons (seeded or from before accounts) -------------------------------------
+
+
+def test_claiming_an_unowned_toon_adopts_it():
+    from daydream import accounts
+
+    with TestClient(app) as client:
+        _login(client)
+        assert client.post("/api/slots/1/kick").status_code == 200  # Wren, unowned
+        r = client.post("/api/slots/1/claim")
         assert r.status_code == 200
+        assert r.json()["owner_account"] == accounts.get_account("tester")["id"]
+        # ...and now it is theirs: a second player may not take it.
+    with TestClient(app) as other:
+        _login(other, "someone-else")
+        assert other.post("/api/slots/1/claim").status_code == 403
 
 
-def test_kick_other_live_players_toon_refused(monkeypatch):
-    """A second session cannot kick a toon a DIFFERENT, live session controls
-    (the grief case). 403, and the toon is left untouched."""
+def test_an_unowned_toon_held_by_a_live_session_is_protected(monkeypatch):
     from daydream.api import ws as ws_mod
 
-    with TestClient(app) as c1, TestClient(app) as c2:
+    with TestClient(app) as c1:
         _login(c1)
-        _login(c2)
-        c1.post(
-            "/api/slots/3/create",
-            json={"name": "Ivo", "appearance_seed": "a tall heron"},
-        )
-        monkeypatch.setattr(ws_mod, "is_session_live", lambda sid: True)
-        r = c2.post("/api/slots/3/kick")
-        assert r.status_code == 403
-        # Untouched: still human-controlled, not kicked.
-        slot3 = next(s for s in c1.get("/api/slots").json()["slots"] if s["slot"] == 3)
-        assert slot3["toon"] is not None
-        assert slot3["toon"]["is_human_controlled"] is True
-        assert slot3["toon"]["kicked_at"] is None
-
-
-def test_kick_abandoned_toon_allowed(monkeypatch):
-    """A toon whose controlling session has NO live WS (tab closed) is not
-    protected: another session may kick it — mirrors claim's takeover rule."""
-    from daydream.api import ws as ws_mod
-
-    with TestClient(app) as c1, TestClient(app) as c2:
-        _login(c1)
-        _login(c2)
-        c1.post(
-            "/api/slots/3/create",
-            json={"name": "Ivo", "appearance_seed": "a tall heron"},
-        )
+        # An unowned human toon controlled by some other live session.
+        toons.create_toon_in_slot(2, "Legacy", "an old friend", "s-someone")
+        monkeypatch.setattr(ws_mod, "is_session_live", lambda sid: sid == "s-someone")
+        assert c1.post("/api/slots/2/claim").status_code == 409
+        assert c1.post("/api/slots/2/kick").status_code == 403
         monkeypatch.setattr(ws_mod, "is_session_live", lambda sid: False)
-        r = c2.post("/api/slots/3/kick")
-        assert r.status_code == 200
+        assert c1.post("/api/slots/2/kick").status_code == 200
 
 
-def test_delete_other_live_players_toon_refused(monkeypatch):
-    """Delete is guarded identically to kick: a different live session's toon
-    is protected (403) and survives the attempt."""
-    from daydream.api import ws as ws_mod
-
-    with TestClient(app) as c1, TestClient(app) as c2:
-        _login(c1)
-        _login(c2)
-        c1.post(
-            "/api/slots/5/create",
-            json={"name": "Ivo", "appearance_seed": "a tall heron"},
-        )
-        monkeypatch.setattr(ws_mod, "is_session_live", lambda sid: True)
-        r = c2.post("/api/slots/5/delete")
-        assert r.status_code == 403
-        # Survives: still listed.
-        slot5 = next(s for s in c1.get("/api/slots").json()["slots"] if s["slot"] == 5)
-        assert slot5["toon"] is not None
+def test_a_player_with_a_dreamer_cannot_adopt_another():
+    with TestClient(app) as client:
+        _login(client)
+        client.post("/api/dreamer/create", json=MIRA)
+        client.post("/api/slots/1/kick")
+        assert client.post("/api/slots/1/claim").status_code == 409
 
 
 def test_kicked_toon_keeps_inventory_and_memories():
@@ -293,8 +282,7 @@ def test_kicked_toon_keeps_inventory_and_memories():
             json={"name": "Mira", "appearance_seed": "a small fox"},
         )
         # Inspect via the toons module directly (bypass the API).
-        slots = toons.get_human_slots(session_id=None)
-        before = slots[2]["toon"]
+        before = toons.toon_card(toons.get_toon_in_slot(3))
         before_id = before["id"]
         before_room = before["current_room_id"]
         before_mood = before["mood"]
@@ -307,9 +295,9 @@ def test_kicked_toon_keeps_inventory_and_memories():
         assert after.mood == before_mood
         assert after.inventory == []  # what we created with
         # And the row is still findable in the slot listing.
-        slots_after = toons.get_human_slots(session_id=None)
-        assert slots_after[2]["toon"]["id"] == before_id
-        assert slots_after[2]["toon"]["kicked_at"] is not None
+        by_slot = {s["slot"]: s["toon"] for s in toons.get_human_slots(session_id=None)}
+        assert by_slot[3]["id"] == before_id
+        assert by_slot[3]["kicked_at"] is not None
 
 
 def test_npc_slots_100_plus_excluded_from_picker():
@@ -317,7 +305,7 @@ def test_npc_slots_100_plus_excluded_from_picker():
     in the slot listing, can't be created in (would 404), can't be
     claimed/kicked through the API."""
     with TestClient(app) as client:
-        _login(client)
+        _login(client, "keeper", role="admin")
         body = client.get("/api/slots").json()
         # No slot 100 in the listing.
         slot_nums = [s["slot"] for s in body["slots"]]
@@ -343,9 +331,9 @@ def test_session_isolation_for_claimed_by_me():
         )
 
         with TestClient(app) as client_b:
-            _login(client_b)
+            _login(client_b, "keeper", role="admin")
             slots = client_b.get("/api/slots").json()["slots"]
-            entry = slots[1]
+            entry = next(s for s in slots if s["slot"] == 2)
             assert entry["toon"]["name"] == "Mira"
             assert entry["toon"]["claimed_by_me"] is False
 
@@ -385,5 +373,5 @@ def test_toon_creation_follows_the_live_world(tmp_path):
     assert created.world_id == "w-elsewhere"
     assert created.current_room_id == "r-first"
     slots = toons.get_human_slots("sess-x")
-    assert slots[1]["toon"]["name"] == "Visitor"
+    assert [s["toon"]["name"] for s in slots] == ["Visitor"]
     ddb.close_db()

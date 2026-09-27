@@ -32,29 +32,24 @@ import httpx
 import websockets
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
+from daydream.play import agent_cookie, enter_as  # noqa: E402
+
 DATASET = json.loads((ROOT / "tests/data/zork1_walkthrough.json").read_text())
 
 
 async def drive(base: str, slot: int, delay: float, transcript_path: Path,
                 verify: bool = False) -> int:
-    async with httpx.AsyncClient(base_url=base, timeout=30.0) as http:
-        r = await http.post("/api/login", data={"password": ""})
-        if r.status_code not in (200, 303):
-            print(f"login failed: {r.status_code} {r.text[:200]}")
-            return 2
-        slots = (await http.get("/api/slots")).json()
-        mine = next((s for s in slots.get("slots", []) if s.get("slot") == slot), None)
-        if mine and mine.get("toon"):
-            r = await http.post(f"/api/slots/{slot}/claim")
-        else:
-            r = await http.post(f"/api/slots/{slot}/create", json={
-                "name": "Rehearsal",
-                "appearance_seed": "a walkthrough made flesh, moving with unnatural certainty",
-            })
+    # Sign in as an agent account minted in-process (the shell is the admin
+    # console; see daydream/play.py agent_cookie).
+    cookies = agent_cookie("rehearsal")
+    async with httpx.AsyncClient(base_url=base, timeout=30.0,
+                                 headers={"Cookie": cookies}) as http:
+        r = await enter_as(http, "Rehearsal",
+                           "a walkthrough made flesh, moving with unnatural certainty", slot)
         if r.status_code != 200:
             print(f"slot {slot} claim/create failed: {r.status_code} {r.text[:200]}")
             return 2
-        cookies = "; ".join(f"{k}={v}" for k, v in http.cookies.items())
 
     ws_url = base.replace("http", "ws", 1) + "/ws"
     state = {"room": None, "room_id": None, "score": None, "rank": None,

@@ -2,7 +2,6 @@
 so tests can monkeypatch env vars and re-read."""
 
 import os
-import secrets
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -91,6 +90,34 @@ def bind_host() -> str:
     return os.environ.get("DAYDREAM_BIND_HOST", "0.0.0.0").strip()
 
 
+def public_url(path: str = "") -> str:
+    """An absolute browser-facing URL for `path` (an invite link, say): the
+    public origin + base in prod; the box's own tailnet name in dev."""
+    import socket
+
+    origin = public_origin() or f"http://{socket.gethostname()}:{port()}"
+    return origin + public_base() + path.lstrip("/")
+
+
+def cookie_name() -> str:
+    """The session cookie's name, per env, so a dev cookie and a prod cookie
+    on the same browser never collide."""
+    return f"dd_session_{env()}"
+
+
+def cookie_secure() -> bool:
+    """Mark the session cookie Secure whenever the browser reaches us over
+    https (prod always)."""
+    return public_origin().startswith("https://")
+
+
+def operator_name() -> str:
+    """Who friends ask for help (an invite that won't work, a sleeping
+    village). Set DAYDREAM_OPERATOR_NAME in the deployment's env; the default
+    stays generic because this repo is public."""
+    return os.environ.get("DAYDREAM_OPERATOR_NAME", "").strip() or "the person who invited you"
+
+
 LOOPBACK_HOSTS = ("127.0.0.1", "::1", "localhost")
 
 
@@ -126,6 +153,13 @@ def worlds_dir() -> Path:
 
 def live_db_path() -> Path:
     return worlds_dir() / "live.db"
+
+
+def accounts_db_path() -> Path:
+    """Who may play: accounts, sessions, invites (daydream/accounts.py). One
+    per env, beside the worlds dir and never inside it, so `world reset`,
+    swap and refresh cannot touch it."""
+    return data_dir() / f"accounts-{env()}.db"
 
 
 def llm_base_url() -> str:
@@ -179,14 +213,6 @@ def llm_concurrency() -> int:
         return 3
 
 
-def password() -> str:
-    """Source the shared site password from DAYDREAM_PASSWORD. Empty string
-    means no password is configured; the auth endpoint refuses logins in
-    that state. Set in .env at the project root (sourced by bin/game) or
-    in ~/.config/daydream/secrets.env."""
-    return os.environ.get("DAYDREAM_PASSWORD", "")
-
-
 def regen_ui_enabled() -> bool:
     """Whether the dev room-repaint surface is live: the two
     /api/rooms/{id}/image* endpoints and the SPA's plate tools (the
@@ -208,27 +234,6 @@ def journal_enabled() -> bool:
     return os.environ.get("DAYDREAM_JOURNAL_ENABLED", "1").strip().lower() not in (
         "0", "false", "no", "off",
     )
-
-
-def session_secret() -> str:
-    """Source the session-cookie signing secret. Env var wins; otherwise fall
-    back to a per-install random secret persisted under ~/.config/daydream/.
-    Mirrors the password-source pattern (~/.config/daydream/secrets.env) so
-    the published default never signs real cookies, even if an operator forgets
-    to set DAYDREAM_SESSION_SECRET."""
-    env_val = os.environ.get("DAYDREAM_SESSION_SECRET")
-    if env_val:
-        return env_val
-    secret_path = Path.home() / ".config" / "daydream" / "session_secret"
-    if secret_path.exists():
-        existing = secret_path.read_text().strip()
-        if existing:
-            return existing
-    secret_path.parent.mkdir(parents=True, exist_ok=True)
-    new_secret = secrets.token_urlsafe(48)
-    secret_path.write_text(new_secret + "\n")
-    secret_path.chmod(0o600)
-    return new_secret
 
 
 def ensure_dirs() -> None:

@@ -38,12 +38,16 @@ LIVE_DB="${DAYDREAM_DATA_DIR:-$HOME/data/daydream}/worlds-${ENV_NAME}/live.db"
 # External engines (see CLAUDE.md "External engines" pattern). Each engine
 # lives at external/<name>/ with its own venv; bin/<name>-bootstrap installs
 # it; bin/game <name>-up/down owns the daemon lifecycle.
-COMFY_DIR="$PROJECT_ROOT/external/ComfyUI"
+# The engines' install lives in ONE checkout (the operator's dev tree); a prod
+# release (a git archive under /srv/daydream) points here via
+# DAYDREAM_ENGINES_ROOT instead of carrying its own external/.
+ENGINES_ROOT="${DAYDREAM_ENGINES_ROOT:-$PROJECT_ROOT}"
+COMFY_DIR="$ENGINES_ROOT/external/ComfyUI"
 COMFY_PY="$COMFY_DIR/.venv/bin/python"
 COMFY_PORT="${DAYDREAM_COMFYUI_PORT:-8188}"
 COMFY_URL="${DAYDREAM_COMFYUI_BASE_URL:-http://localhost:$COMFY_PORT}"
 
-VLLM_DIR="$PROJECT_ROOT/external/vLLM"
+VLLM_DIR="$ENGINES_ROOT/external/vLLM"
 VLLM_BIN="$VLLM_DIR/.venv/bin/vllm"
 VLLM_PORT="${DAYDREAM_VLLM_PORT:-8000}"
 # vLLM binds 127.0.0.1 by default — daydream is the only consumer, no
@@ -82,6 +86,12 @@ COMFY_HOST="${DAYDREAM_COMFYUI_HOST:-127.0.0.1}"
 
 # Load env vars from the project .env (gitignored) first, then any per-host
 # secrets file. The host file wins so an operator can override per machine.
+# Prod never reads either: its whole environment is /srv/daydream/etc/prod.env,
+# handed over by `bin/game prod` (daydream/prodctl.py) on a clean slate.
+if [[ "$ENV_NAME" == "prod" ]]; then
+    PROJECT_ENV=/dev/null
+    SECRETS_FILE=/dev/null
+fi
 if [[ -f "$PROJECT_ENV" ]]; then
     set -a
     # shellcheck disable=SC1090
@@ -95,8 +105,24 @@ if [[ -f "$SECRETS_FILE" ]]; then
     set +a
 fi
 
-_pid_file()  { printf '%s/%s.pid'  "$RUNDIR" "$1"; }
-_log_file()  { printf '%s/%s.log'  "$RUNDIR" "$1"; }
+# The GPU engines are shared by every env (dev and prod talk to the same vLLM
+# and ComfyUI on loopback), so their PID + log files live in one per-user
+# state dir that survives logout ($XDG_RUNTIME_DIR does not), never a per-env
+# rundir: a second env must find the running engines, not launch duplicates.
+ENGINE_STATE="${DAYDREAM_ENGINE_STATE:-$HOME/.local/state/daydream/engines}"
+mkdir -p "$ENGINE_STATE"
+_state_dir_for() { case "$1" in vllm|comfyui) printf '%s' "$ENGINE_STATE" ;; *) printf '%s' "$RUNDIR" ;; esac; }
+# One-time move of engine files from the old per-env rundir (before 2026-09-27).
+for _eng in vllm comfyui; do
+    for _ext in pid log; do
+        if [[ -f "$RUNDIR/$_eng.$_ext" && ! -f "$ENGINE_STATE/$_eng.$_ext" ]]; then
+            mv "$RUNDIR/$_eng.$_ext" "$ENGINE_STATE/$_eng.$_ext" 2>/dev/null || true
+        fi
+    done
+done
+unset _eng _ext
+_pid_file()  { printf '%s/%s.pid'  "$(_state_dir_for "$1")" "$1"; }
+_log_file()  { printf '%s/%s.log'  "$(_state_dir_for "$1")" "$1"; }
 
 _is_running() {
     local pidf; pidf="$(_pid_file "$1")"
@@ -164,7 +190,7 @@ _print_build_staleness() {
     # guarded so `set -euo pipefail` never aborts off-git or when unreachable.
     command -v curl >/dev/null 2>&1 || return 0
     local body app_ver server_sha server_rev head_sha behind
-    body="$(curl -s --max-time 1 "http://0.0.0.0:${PORT}/status/build" 2>/dev/null)" || return 0
+    body="$(_status_curl /status/build)" || return 0
     [[ -n "$body" ]] || return 0
     app_ver="$(printf '%s\n' "$body" | awk -F': ' '/^app:/{print $2; exit}')"
     [[ -n "$app_ver" ]] && echo "app: $app_ver"
@@ -198,6 +224,17 @@ _require_venv() {
         echo "run: python3 -m venv .venv && .venv/bin/pip install -e .[dev]"
         exit 2
     }
+}
+
+_status_curl() {
+    # GET an admin-only /status endpoint of the running server. Every route
+    # but the public allowlist needs an account session (SPEC 2026-09-27), so
+    # the CLI signs in as its own admin account; the token is cached,
+    # owner-only, in the rundir and reused while it still resolves.
+    local path="$1" cookie
+    cookie="$("$VENV_PY" -m daydream.accounts_cli account cli-cookie \
+        --cache "$RUNDIR/cli-cookie" 2>/dev/null)" || return 1
+    curl -s --max-time 1 -H "Cookie: $cookie" "http://127.0.0.1:${PORT}${path}" 2>/dev/null
 }
 
 _start_fastapi() {
@@ -280,7 +317,46 @@ _start_engines() {
     echo "Engines load over ~30-60 s. Run 'bin/game status' to track readiness."
 }
 
+_prod_active() {
+    command -v systemctl >/dev/null 2>&1 \
+        && systemctl is-active --quiet daydream-prod.service 2>/dev/null
+}
+
+_refuse_gpu_work_while_prod_runs() {
+    # The GPU arbiter is per process, so a dev render or tier_long run could
+    # overlap prod's inference on the one card (SPEC 2026-09-27 criterion 11).
+    # Until a cross-process lock lands, GPU-heavy dev work waits for prod to
+    # sleep. DAYDREAM_ALLOW_GPU_WITH_PROD=1 overrides (you accept the risk).
+    if [[ "$ENV_NAME" != "prod" ]] && _prod_active \
+            && [[ "${DAYDREAM_ALLOW_GPU_WITH_PROD:-0}" != "1" ]]; then
+        echo "refusing: daydream prod is awake and shares the GPU." >&2
+        echo "  put it to sleep first (bin/game prod sleep), or set DAYDREAM_ALLOW_GPU_WITH_PROD=1" >&2
+        exit 3
+    fi
+}
+
+_systemd_up() {
+    # Prod (DAYDREAM_LIFECYCLE=systemd, set by daydream/prodctl.py): the
+    # sandboxed unit owns the process; the operator's sudoers entry permits
+    # exactly this start/stop. Engines are not started here (`prod wake` does).
+    sudo -n /usr/bin/systemctl start daydream-prod.service
+    local i
+    for i in $(seq 1 60); do
+        if curl -s -o /dev/null --max-time 1 "http://127.0.0.1:${PORT}/healthz"; then
+            echo "daydream-prod: up (port $PORT)"
+            return 0
+        fi
+        sleep 0.5
+    done
+    echo "daydream-prod: started but /healthz did not answer in 30 s" >&2
+    return 1
+}
+
 cmd_up() {
+    if [[ "${DAYDREAM_LIFECYCLE:-}" == "systemd" ]]; then
+        _systemd_up
+        return
+    fi
     # Default assumes the GPU (vLLM + ComfyUI). `--no-gpu` brings up FastAPI
     # only (CPU-only / docs / tests). The GPU path preflights so an
     # unavailable GPU fails fast with a clear message instead of obscure
@@ -293,7 +369,7 @@ cmd_up() {
     # Probe what is already serving. In GPU mode the engines count toward
     # "is the game already up"; with --no-gpu only FastAPI does.
     local fastapi_up=0 vllm_up=0 comfy_up=0
-    if _reachable "http://127.0.0.1:${PORT}/login"; then fastapi_up=1; fi
+    if _reachable "http://127.0.0.1:${PORT}/healthz"; then fastapi_up=1; fi
     if (( use_gpu )); then
         if _reachable "${VLLM_URL}/models";        then vllm_up=1;  fi
         if _reachable "${COMFY_URL}/system_stats"; then comfy_up=1; fi
@@ -334,7 +410,7 @@ cmd_up() {
     # reports whatever state we end up in (stuck/crashed still surfaces).
     local i
     for i in 1 2 3 4 5 6 7 8 9 10; do
-        if curl -s -o /dev/null --max-time 1 "http://127.0.0.1:${PORT}/login"; then
+        if curl -s -o /dev/null --max-time 1 "http://127.0.0.1:${PORT}/healthz"; then
             break
         fi
         sleep 0.3
@@ -356,6 +432,11 @@ cmd_up_all() {
 }
 
 cmd_down() {
+    if [[ "${DAYDREAM_LIFECYCLE:-}" == "systemd" ]]; then
+        sudo -n /usr/bin/systemctl stop daydream-prod.service
+        echo "daydream-prod: stopped"
+        return
+    fi
     _stop_one fastapi
 }
 
@@ -368,7 +449,7 @@ cmd_deploy() {
     # arrives (see web/assets/main.js). Engines are left running.
     local before=""
     if _is_running "fastapi" && command -v curl >/dev/null 2>&1; then
-        before="$(curl -s --max-time 1 "http://0.0.0.0:${PORT}/status/build" 2>/dev/null \
+        before="$(_status_curl /status/build \
             | awk -F': ' '/^build:/{print $2; exit}')" || true
     fi
     local head=""
@@ -385,7 +466,7 @@ cmd_status() {
         local pid; pid="$(cat "$(_pid_file fastapi)")"
         local reach="unreachable"
         if command -v curl >/dev/null 2>&1 \
-            && curl -s -o /dev/null --max-time 1 "http://0.0.0.0:${PORT}/login"; then
+            && curl -s -o /dev/null --max-time 1 "http://127.0.0.1:${PORT}/healthz"; then
             reach="reachable"
         fi
         echo "fastapi: running (pid $pid, port $PORT, $reach)"
@@ -396,12 +477,12 @@ cmd_status() {
             # $(...) strips the endpoints' trailing newline, so re-add one
             # with printf "%s\n" or these status lines butt together.
             local drift_line
-            drift_line="$(curl -s --max-time 1 "http://0.0.0.0:${PORT}/status/drift" 2>/dev/null)"
+            drift_line="$(_status_curl /status/drift)"
             if [[ -n "$drift_line" ]]; then
                 printf "%s\n" "$drift_line"
             fi
             local arbiter_line
-            arbiter_line="$(curl -s --max-time 1 "http://0.0.0.0:${PORT}/status/arbiter" 2>/dev/null)"
+            arbiter_line="$(_status_curl /status/arbiter)"
             # Guard on the known prefix so a stale server that predates the
             # endpoint (404 JSON body) doesn't leak into the status line.
             if [[ "$arbiter_line" == arbiter:* ]]; then
@@ -467,6 +548,7 @@ cmd_logs() {
 }
 
 cmd_image_test() {
+    _refuse_gpu_work_while_prod_runs
     _require_venv
     "$VENV_PY" -m daydream.images.cli "$@"
 }
@@ -474,6 +556,10 @@ cmd_image_test() {
 cmd_comfyui_up() {
     if _is_running "comfyui"; then
         echo "comfyui: already running (pid $(cat "$(_pid_file comfyui)"))"
+        return 0
+    fi
+    if _reachable "${COMFY_URL}/system_stats"; then
+        echo "comfyui: already serving at ${COMFY_URL}"
         return 0
     fi
     if [[ ! -x "$COMFY_PY" ]]; then
@@ -496,6 +582,12 @@ cmd_comfyui_down() {
 cmd_vllm_up() {
     if _is_running "vllm"; then
         echo "vllm: already running (pid $(cat "$(_pid_file vllm)"))"
+        return 0
+    fi
+    if _reachable "${VLLM_URL}/models"; then
+        # Serving already (started by another env or by hand): launching a
+        # second engine would grab ~9 GB before failing on the port.
+        echo "vllm: already serving at ${VLLM_URL}"
         return 0
     fi
     if [[ ! -x "$VLLM_BIN" ]]; then
@@ -748,6 +840,9 @@ cmd_test() {
     # Thin shell over python -m daydream.testing for tiered test dispatch.
     # Subcommands: short | medium | long | ci (human lands via commit 4).
     # See TESTING.md for the tier contract; --help is forwarded.
+    if [[ "${1:-}" == "long" || "${1:-}" == "human" ]]; then
+        _refuse_gpu_work_while_prod_runs
+    fi
     _require_venv
     "$VENV_PY" -m daydream.testing "$@"
 }
@@ -774,6 +869,7 @@ cmd_drift_samples() {
 }
 
 cmd_model_eval() {
+    _refuse_gpu_work_while_prod_runs
     # Model bake-off harness: every runtime LLM surface (parser, dialogue,
     # growth, journal, retell, examine, drift, JSON) through the production
     # prompts + validators against the configured endpoint, plus `compare`
@@ -792,6 +888,7 @@ cmd_play() {
 }
 
 cmd_prebake() {
+    _refuse_gpu_work_while_prod_runs
     # Design-time art pre-bake (SPEC 2026-09-26 criterion 20): render every
     # room + portrait of the live world through the production pipeline so no
     # first entry waits on a render. Run with the server DOWN and ComfyUI up,
@@ -800,7 +897,16 @@ cmd_prebake() {
     "$VENV_PY" -m daydream.prebake "$@"
 }
 
+cmd_accounts() {
+    # Who may play (SPEC 2026-09-27 criteria 2 and 4): `account ...` and
+    # `invite ...`. The shell is the admin console; nothing here is on the web.
+    # See daydream/accounts_cli.py.
+    _require_venv
+    "$VENV_PY" -m daydream.accounts_cli "$@"
+}
+
 cmd_review() {
+    _refuse_gpu_work_while_prod_runs
     # Build ONE offline review artifact (an index.html contact sheet) from
     # worlds/bunny.json: every aesthetic anchor render (incl. the forge) plus a
     # fresh talk sample per authored NPC, so all the qualitative checks land in
@@ -831,7 +937,11 @@ case "${1:-}" in
     voice-samples) shift; cmd_voice_samples "$@" ;;
     drift-samples) shift; cmd_drift_samples "$@" ;;
     review)        shift; cmd_review "$@" ;;
+    prod)          shift; _require_venv; exec "$VENV_PY" -m daydream.prodctl "$@" ;;
+    edge)          shift; _require_venv; exec "$VENV_PY" -m daydream.edge "$@" ;;
+    account)       cmd_accounts "$@" ;;
+    invite)        cmd_accounts "$@" ;;
     model-eval)    shift; cmd_model_eval "$@" ;;
-    "")            echo "usage: bin/game {up|up-all|deploy|down|status|logs|image-test|comfyui-up|comfyui-down|vllm-up|vllm-down|world|dream|play|prebake|test|voice-samples|drift-samples|review|model-eval}" >&2; exit 2 ;;
-    *)             echo "usage: bin/game {up|up-all|deploy|down|status|logs|image-test|comfyui-up|comfyui-down|vllm-up|vllm-down|world|dream|play|prebake|test|voice-samples|drift-samples|review|model-eval} (got: $1)" >&2; exit 2 ;;
+    "")            echo "usage: bin/game {up|up-all|deploy|down|status|logs|image-test|comfyui-up|comfyui-down|vllm-up|vllm-down|world|dream|play|prebake|account|invite|prod|edge|test|voice-samples|drift-samples|review|model-eval}" >&2; exit 2 ;;
+    *)             echo "usage: bin/game {up|up-all|deploy|down|status|logs|image-test|comfyui-up|comfyui-down|vllm-up|vllm-down|world|dream|play|prebake|account|invite|prod|edge|test|voice-samples|drift-samples|review|model-eval} (got: $1)" >&2; exit 2 ;;
 esac

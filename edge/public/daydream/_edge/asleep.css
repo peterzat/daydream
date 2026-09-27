@@ -1,0 +1,43 @@
+/* The asleep page: the same storybook as the game (DESIGN.md "The Reading
+   Room"). These tokens mirror web/assets/style.css :root and DESIGN.md's
+   token table; tests/drift/test_design_tokens.py checks all three. */
+:root {
+  --bg: #f6f3ec;
+  --paper: #fbf9f3;
+  --ink: #3a4a44;
+  --sage: #5a7a6a;
+  --sage-deep: #4a6a5a;
+  --amber: #c8a06e;
+  --line: #d8d2c2;
+  --parch: #f4ecd7;
+  --serif: Georgia, "Iowan Old Style", Palatino, "Book Antiqua", serif;
+  --hand: "Caveat", "Segoe Print", "Bradley Hand", cursive;
+  --radius: 12px;
+  --page-shadow: 0 34px 64px -26px rgba(74,106,90,.42), 0 12px 30px -14px rgba(78,84,120,.20);
+}
+@font-face {
+  font-family: "Caveat";
+  src: url("fonts/caveat-latin-var.woff2") format("woff2");
+  font-weight: 400 700;
+  font-display: swap;
+}
+html, body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--serif); }
+.page { max-width: 620px; margin: 6vh auto; padding: 22px 30px 34px; background: var(--paper);
+  border-radius: var(--radius); box-shadow: var(--page-shadow); text-align: center; }
+.plate { margin: 0; border-radius: 8px; overflow: hidden; }
+.plate img { width: 100%; height: 220px; object-fit: cover; display: block; }
+.title { font-family: var(--hand); font-weight: 600; font-size: 2.6rem; color: var(--sage-deep);
+  margin: 16px 0 6px; }
+.note { font-size: 1.1rem; margin: 6px 0; }
+.since { font-style: italic; color: var(--sage); margin: 4px 0 14px; }
+.ask { line-height: 1.6; }
+.keepsakes { text-align: left; margin-top: 24px; padding-top: 12px; border-top: 1px solid var(--line); }
+.keepsakes h2 { font-family: var(--hand); font-size: 1.8rem; color: var(--sage-deep); margin: 8px 0; }
+.keepsakes .entry { background: var(--parch); border-radius: 8px; padding: 10px 14px; margin: 8px 0; }
+[hidden] { display: none; }
+.keepsakes h3 { font-family: var(--hand); font-size: 1.5rem; color: var(--sage-deep); margin: 16px 0 4px; }
+.keepsakes h4 { margin: 10px 0 2px; font-style: italic; color: var(--sage); }
+.keepsakes .portrait { width: 140px; height: 168px; object-fit: cover; border-radius: 50%;
+  display: block; margin: 8px auto; }
+.keepsakes .count { font-style: italic; color: var(--sage); margin: 0; }
+.keepsakes-none { font-size: .9rem; font-style: italic; color: var(--sage); margin-top: 22px; }

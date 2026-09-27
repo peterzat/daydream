@@ -6,6 +6,7 @@ import sqlite3
 import pytest
 
 from daydream import config, version
+from tests import authhelp
 
 pytestmark = pytest.mark.tier_short
 
@@ -132,6 +133,7 @@ def test_status_build_serves_app_version():
     from daydream.server import app
 
     with TestClient(app) as client:
+        authhelp.login(client, "keeper", role="admin")
         r = client.get("/status/build")
     assert r.status_code == 200
     lines = dict(

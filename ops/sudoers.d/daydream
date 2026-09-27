@@ -1,0 +1,13 @@
+# /etc/sudoers.d/daydream, installed by ops/install-prod.sh (visudo -cf checked).
+# Lets the operator (and a Claude Code session running as the operator) start,
+# stop, restart and inspect exactly the daydream prod units, nothing else.
+# Every other root action on this box still needs a typed password.
+Cmnd_Alias DAYDREAM_UNITS = \
+    /usr/bin/systemctl start daydream-prod.service, \
+    /usr/bin/systemctl stop daydream-prod.service, \
+    /usr/bin/systemctl restart daydream-prod.service, \
+    /usr/bin/systemctl start cloudflared-daydream.service, \
+    /usr/bin/systemctl stop cloudflared-daydream.service, \
+    /usr/bin/systemctl restart cloudflared-daydream.service, \
+    /usr/bin/systemctl start daydream-backup.service
+peter ALL=(root) NOPASSWD: DAYDREAM_UNITS

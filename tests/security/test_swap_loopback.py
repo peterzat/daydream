@@ -15,6 +15,7 @@ from fastapi.testclient import TestClient
 
 from daydream import db, events
 from daydream.server import app
+from tests import authhelp
 
 pytestmark = pytest.mark.tier_medium
 
@@ -30,8 +31,9 @@ def fresh_state(tmp_path: Path, monkeypatch):
 
 
 def _login(client: TestClient) -> None:
-    r = client.post("/api/login", data={"password": "test-password"})
-    assert r.status_code in (200, 303)
+    # World swap is an admin operation since the going-live turn (SPEC
+    # 2026-09-27 criterion 4); the player refusal is in tests/test_edge_access.py.
+    authhelp.login(client, "keeper", role="admin")
 
 
 def test_non_loopback_peer_gets_403():

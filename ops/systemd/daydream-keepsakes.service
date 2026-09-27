@@ -1,0 +1,14 @@
+# Hourly while the village is awake: push keepsakes and the session pass list
+# to the edge (SPEC 2026-09-27 criterion 16), so even an unplanned outage leaves
+# friends a recent copy. Runs as the OPERATOR (the Cloudflare token lives in
+# their home, never readable by the service user); a no-op while asleep.
+# @OPERATOR@ and @REPO@ are filled in by ops/install-prod.sh.
+[Unit]
+Description=daydream prod keepsakes sync to the edge
+
+[Service]
+Type=oneshot
+User=@OPERATOR@
+ExecStart=@REPO@/bin/game prod keepsakes
+NoNewPrivileges=yes
+PrivateTmp=yes

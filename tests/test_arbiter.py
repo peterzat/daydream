@@ -6,6 +6,7 @@ import asyncio
 import pytest
 
 from daydream.gpu import arbiter
+from tests import authhelp
 
 pytestmark = pytest.mark.tier_short
 
@@ -286,6 +287,7 @@ def test_status_arbiter_endpoint():
     from daydream.server import app
 
     with TestClient(app) as client:
+        authhelp.login(client, "keeper", role="admin")
         r = client.get("/status/arbiter")
         assert r.status_code == 200
         assert r.text.startswith("arbiter: llm 0/")

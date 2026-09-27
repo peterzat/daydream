@@ -123,8 +123,12 @@ def join(run: Run, who: str, name: str, slot: int | None = None) -> str:
     slots = [slot] if slot else list(range(1, 9))
     for s in slots:
         if toons.get_toon_in_slot(s) is None:
+            # Owned by an account, as every live player's toon is since the
+            # going-live turn (SPEC 2026-09-27 criterion 5), so each replay
+            # proves the story layer with account-owned toons.
             t = toons.create_toon_in_slot(s, name, f"{name}, a dreamer",
-                                          f"walkthrough-{run.name}-{who}")
+                                          f"walkthrough-{run.name}-{who}",
+                                          owner_account=f"a-walkthrough-{who}")
             if t is not None:
                 run.actors[who] = t.id
                 return t.id

@@ -109,7 +109,7 @@
     </div>
 
     <footer>
-      <button id="slots-toggle" type="button" class="slots-toggle">switch toon</button>
+      <button id="slots-toggle" type="button" class="slots-toggle">your dreamer</button>
       <button id="leave-dream" type="button" class="logout">leave the dream</button>
       <button id="help-toggle" type="button" class="help-toggle"
               title="how to dream" aria-label="how to dream">?</button>
@@ -117,9 +117,42 @@
   </main>
 
   <!-- slot picker (fixed overlay) -->
-  <section id="slots-panel" class="slots-panel hidden" aria-label="toon slots">
-    <h2>toon slots</h2>
+  <section id="slots-panel" class="slots-panel hidden" aria-label="your dreamer">
+    <h2 id="slots-title">your dreamer</h2>
     <ul id="slots-list"></ul>
+    <!-- "your dreamer" (SPEC 2026-09-27 criteria 5 and 8): a real form, no
+         browser prompt dialogs. Shown when the account may make a dreamer. -->
+    <form id="dreamer-form" class="dreamer-form hidden" autocomplete="off">
+      <p class="dreamer-lede">Who will you be in the village?</p>
+      <label class="door-field">a name
+        <input name="name" maxlength="24" required>
+      </label>
+      <label class="door-field">how you look, in a few words
+        <input name="appearance_seed" maxlength="300" required
+               placeholder="a tall heron in a patched blue coat">
+      </label>
+      <button type="submit" class="door-button">begin dreaming</button>
+      <p class="door-error" role="alert" hidden></p>
+    </form>
+    <details class="account-box">
+      <summary>your account</summary>
+      <form id="password-form" class="dreamer-form" autocomplete="on">
+        <label class="door-field">current password
+          <input type="password" name="old" autocomplete="current-password" required>
+        </label>
+        <label class="door-field">new password
+          <input type="password" name="new" autocomplete="new-password" minlength="10" required>
+        </label>
+        <button type="submit" class="door-button">change password</button>
+        <p class="door-error" role="alert" hidden></p>
+      </form>
+      <button id="sign-out" type="button">sign out</button>
+    </details>
+    <div id="delete-confirm" class="delete-confirm hidden" role="alertdialog">
+      <p id="delete-confirm-text"></p>
+      <button id="delete-yes" type="button" class="slot-delete">let them go</button>
+      <button id="delete-no" type="button">keep them</button>
+    </div>
     <button id="slots-close" type="button">close</button>
   </section>
 

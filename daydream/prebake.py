@@ -57,8 +57,29 @@ def _targets(world_id: str, only: str | None):
     return out
 
 
+def _adopt_from_cache(target, workflow, path: Path, from_cache: Path) -> bool:
+    """Copy an already-graded image for exactly this target from another
+    env's image cache (prod from the dev cache, SPEC 2026-09-27 criterion
+    12). The cache path is keyed by the seed text and the workflow hash, so a
+    file at the same relative path IS the graded render; nothing is re-rendered.
+    Records the asset like a render would. False when the other cache lacks it."""
+    import shutil
+
+    from daydream.images import cache, client
+
+    src = from_cache / path.relative_to(cache.cache_dir())
+    if not src.is_file():
+        return False
+    path.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(src, path)
+    client._record_persistent(target, client.canonical_prompt(target.seed, target.prompt_suffix),
+                              workflow, path)
+    return True
+
+
 async def prebake(db_path: Path, only: str | None = None, force: set[str] | None = None,
-                  reseed: dict[str, int] | None = None) -> list[dict]:
+                  reseed: dict[str, int] | None = None,
+                  from_cache: Path | None = None) -> list[dict]:
     from daydream.gpu import arbiter
     from daydream.images import cache, client
 
@@ -74,6 +95,14 @@ async def prebake(db_path: Path, only: str | None = None, force: set[str] | None
                    "prompt": client.canonical_prompt(target.seed, target.prompt_suffix)}
             if path.exists() and tid not in force:
                 rec["status"] = "cached"
+                results.append(rec)
+                continue
+            if from_cache is not None and tid not in force:
+                if _adopt_from_cache(target, workflow, path, from_cache):
+                    rec["status"] = "copied"
+                else:
+                    rec["status"] = "missing"  # not in the graded cache: render it deliberately
+                print(f"{rec['status']:8s} {kind:4s} {tid:24s}", flush=True)
                 results.append(rec)
                 continue
             t0 = time.monotonic()
@@ -117,7 +146,7 @@ def _server_up() -> bool:
     import httpx
 
     try:
-        return httpx.get(f"http://127.0.0.1:{config.port()}/status/build", timeout=1.5).is_success
+        return httpx.get(f"http://127.0.0.1:{config.port()}/healthz", timeout=1.5).is_success
     except Exception:
         return False
 
@@ -130,6 +159,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--force", default="", help="comma list of ids to re-render")
     ap.add_argument("--reseed", default="", help="comma list of id=N sampler seeds")
     ap.add_argument("--allow-server-up", action="store_true")
+    ap.add_argument("--from-cache", help="copy graded images from another env's image cache "
+                    "(e.g. ~/data/daydream/images/cache) instead of rendering; renders nothing")
     args = ap.parse_args(argv)
     if _server_up() and not args.allow_server_up:
         print("the game server is up; stop it first (bin/game down): its renders "
@@ -141,11 +172,16 @@ def main(argv: list[str] | None = None) -> int:
         reseed[k.strip()] = int(v)
     force = {x.strip() for x in args.force.split(",") if x.strip()} | set(reseed)
     db_path = Path(args.db or config.live_db_path()).expanduser()
-    results = asyncio.run(prebake(db_path, args.only, force, reseed))
+    from_cache = Path(args.from_cache).expanduser() if args.from_cache else None
+    results = asyncio.run(prebake(db_path, args.only, force, reseed, from_cache))
     stamp = time.strftime("%Y%m%d-%H%M%S")
     sheet = contact_sheet(results, config.data_dir() / "prebake" / stamp)
     failed = [r for r in results if r["status"] == "failed"]
+    missing = [r for r in results if r["status"] == "missing"]
     print(f"{len(results)} targets ({len(failed)} failed); contact sheet: {sheet}")
+    if missing:
+        print(f"{len(missing)} not in the graded cache (render them in dev, grade, then copy again): "
+              + ", ".join(r["id"] for r in missing))
     return 1 if failed else 0
 
 

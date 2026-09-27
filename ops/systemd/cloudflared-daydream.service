@@ -1,0 +1,39 @@
+# The Cloudflare Tunnel for daydream prod (docs/CLOUDFLARE-SETUP.md). A
+# remotely managed tunnel: its ingress (daydream-origin.eidolon.com ->
+# http://127.0.0.1:54322, "Protect with Access") lives in the Cloudflare
+# dashboard; the token lives in a root-only env file that systemd reads before
+# dropping to a throwaway user. Outbound only. NOT enabled at boot: it starts
+# and stops with the village (`bin/game prod wake|sleep`).
+[Unit]
+Description=cloudflared tunnel for daydream prod
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+DynamicUser=yes
+EnvironmentFile=/etc/cloudflared/daydream.env
+ExecStart=/usr/bin/cloudflared --no-autoupdate tunnel run
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=20
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+RestrictNamespaces=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX AF_NETLINK
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+
+[Install]
+WantedBy=multi-user.target

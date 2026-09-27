@@ -97,3 +97,21 @@ def test_design_tokens_cover_the_core_set():
         assert required in tokens, f"design token {required} missing from :root"
     # The legacy alias was renamed; it must not linger.
     assert "--warm" not in tokens, "--warm was renamed to --amber; drop the alias"
+
+
+def test_the_edge_asleep_page_uses_the_same_tokens():
+    """The asleep page (edge/public/daydream/_edge/asleep.css, SPEC 2026-09-27
+    criterion 15) carries a subset of the tokens; every one it declares must
+    match DESIGN.md exactly, so the sleeping village looks like the waking one."""
+    edge_css = PROJECT_ROOT / "edge" / "public" / "daydream" / "_edge" / "asleep.css"
+    m = re.search(r":root\s*\{(.*?)\}", edge_css.read_text(), flags=re.S)
+    assert m, "the asleep page has no :root block"
+    edge: dict[str, str] = {}
+    for line in m.group(1).splitlines():
+        lm = re.match(r"\s*(--[a-z0-9-]+)\s*:\s*(.+?);\s*(?:/\*.*)?$", line)
+        if lm:
+            edge[lm.group(1)] = _normalize(lm.group(2))
+    design = _tokens_from_design()
+    assert edge and set(edge) <= set(design), sorted(set(edge) - set(design))
+    drift = {k: (v, design[k]) for k, v in edge.items() if v != design[k]}
+    assert not drift, drift

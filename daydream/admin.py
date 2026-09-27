@@ -360,12 +360,6 @@ def cmd_snapshot(world_id: str) -> int:
         print(f"error: no world with id {world_id} in live DB", file=sys.stderr)
         return 2
 
-    # Checkpoint the WAL so the on-disk live.db reflects all committed writes
-    # before the copy. Without this, recent transactions live only in
-    # live.db-wal and a bare-.db snapshot would silently miss them. Same
-    # reasoning as cmd_archive.
-    conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
-
     out_dir = _snapshots_dir()
     out_dir.mkdir(parents=True, exist_ok=True)
     ts = datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -378,10 +372,129 @@ def cmd_snapshot(world_id: str) -> int:
         )
         return 2
 
-    shutil.copyfile(config.live_db_path(), out)
+    # The sqlite online-backup API: a consistent copy even while a running
+    # server (prod) keeps writing, WAL contents included. A checkpoint + file
+    # copy was not safe against a concurrent writer (SPEC 2026-09-27).
+    _online_copy(config.live_db_path(), out)
     size = out.stat().st_size
     print(f"snapshot {world_id} -> {out} ({_format_bytes(size)})")
     return 0
+
+
+def _online_copy(src: Path, dest: Path) -> None:
+    """Copy a live SQLite DB with the online-backup API (consistent under a
+    concurrent writer; no migrations run on the source)."""
+    s = sqlite3.connect(str(src), timeout=30)
+    d = sqlite3.connect(str(dest))
+    try:
+        s.backup(d)
+    finally:
+        d.close()
+        s.close()
+
+
+def cmd_backup(keep: int) -> int:
+    """A consistent online copy of this env's live world DB and accounts DB
+    into backups/<ts>/, keeping the newest `keep` (SPEC 2026-09-27 criterion
+    13). Safe while the server runs; the nightly prod timer calls it, and
+    `bin/game prod deploy` calls it before switching releases."""
+    root = config.data_dir() / "backups"
+    ts = datetime.now().strftime("%Y%m%d-%H%M%S")
+    out = root / ts
+    out.mkdir(parents=True, exist_ok=False)
+    copied = []
+    for src in (config.live_db_path(), config.accounts_db_path()):
+        if src.exists():
+            _online_copy(src, out / src.name)
+            copied.append(f"{src.name} ({_format_bytes((out / src.name).stat().st_size)})")
+    if not copied:
+        out.rmdir()
+        print("backup: nothing to back up yet (no live world, no accounts)")
+        return 0
+    print(f"backup -> {out}: " + ", ".join(copied))
+    olds = sorted((d for d in root.iterdir() if d.is_dir()), key=lambda d: d.name)
+    for d in olds[:-keep] if keep > 0 else []:
+        shutil.rmtree(d)
+        print(f"  pruned {d.name}")
+    return 0
+
+
+def cmd_rest_all(journal_too: bool) -> int:
+    """Rest every player (their things go home, their toon waits) and, with
+    --journal, write each one's journal entry. `bin/game prod sleep` runs this
+    with the server stopped and the engines still up, so everyone who was in
+    the village when it fell asleep finds a page about it next time."""
+    rc = _require_live_db()
+    if rc is not None:
+        return rc
+    db.init_live()
+    from daydream import journal, toons
+
+    rested = []
+    for t in toons.playing():
+        toons.kick_slot(t.slot)
+        rested.append(t)
+    written = 0
+    if journal_too and rested:
+        import asyncio
+
+        async def _write_all() -> None:
+            await asyncio.gather(*(journal.write_entry(t.id) for t in rested))
+
+        try:
+            asyncio.run(asyncio.wait_for(_write_all(), timeout=240))
+            written = len(rested)
+        except asyncio.TimeoutError:
+            print("rest-all: some journal entries timed out (the rest were written)")
+    names = ", ".join(t.name for t in rested) or "no one"
+    print(f"rest-all: rested {names}" + (f"; journals attempted for {written}" if journal_too else ""))
+    return 0
+
+
+def cmd_preflight() -> int:
+    """Read-only checks `bin/game prod deploy` runs with the NEW release's
+    code against the prod data before switching: key: value lines, exit 3 on
+    a WORLD_VERSION MAJOR mismatch (the live world can't be carried forward).
+    Never runs migrations; reports how many are pending."""
+    from daydream import accounts, version
+
+    print(f"code_world_version: {version.WORLD_VERSION}")
+    live = config.live_db_path()
+    rc = 0
+    if not live.exists():
+        print("live_world: missing")
+    else:
+        conn = sqlite3.connect(str(live), timeout=30)
+        conn.row_factory = sqlite3.Row
+        try:
+            applied = db.applied_migration_max(conn)
+            rows = conn.execute("SELECT id, world_version FROM worlds").fetchall()
+        finally:
+            conn.close()
+        print(f"world_migrations_pending: {max(0, db.max_known_migration() - applied)}")
+        code_major, _ = version.parse_version(version.WORLD_VERSION)
+        for r in rows:
+            print(f"live_world: {r['id']} {r['world_version']}")
+            major, _ = version.parse_version(r["world_version"])
+            if major and major != code_major:
+                print(f"refuse: world {r['id']} is major {major}; this code needs {code_major}")
+                rc = 3
+    acc = config.accounts_db_path()
+    known = max((int(f.name[:3]) for f in accounts.MIGRATIONS_DIR.glob("[0-9][0-9][0-9]_*.sql")),
+                default=0)
+    if acc.exists():
+        conn = sqlite3.connect(str(acc), timeout=30)
+        conn.row_factory = sqlite3.Row
+        try:
+            applied = db.applied_migration_max(conn)
+        except sqlite3.Error:
+            applied = 0
+        finally:
+            conn.close()
+        print(f"accounts_migrations_pending: {max(0, known - applied)}")
+    else:
+        print("accounts: missing")
+    return rc
 
 
 def cmd_snapshot_restore(snapshot_path: Path, yes: bool) -> int:
@@ -482,37 +595,21 @@ def cmd_swap(target: Path) -> int:
         urllib.request.HTTPCookieProcessor(CookieJar())
     )
 
-    # Public access mode gates the endpoint on a session cookie, so log in
-    # with the shared password first. Tailscale mode treats loopback as authed
-    # (the login would only redirect), so it is skipped.
-    if config.access_mode() != "tailscale":
-        try:
-            opener.open(
-                urllib.request.Request(
-                    f"{base}/api/login",
-                    data=urllib.parse.urlencode(
-                        {"password": config.password()}
-                    ).encode(),
-                    method="POST",
-                )
-            )
-        except urllib.error.HTTPError as e:
-            print(
-                f"error: login failed ({e.code}); is DAYDREAM_PASSWORD set for "
-                "public access mode?",
-                file=sys.stderr,
-            )
-            return 2
-        except urllib.error.URLError:
-            print(unreachable, file=sys.stderr)
-            return 2
+    # The endpoint needs an admin session. The shell is the admin console, so
+    # mint one in-process for the CLI's own admin account (SPEC 2026-09-27).
+    from daydream import accounts
+
+    accounts.init()
+    token, _ = accounts.mint_session("cli-operator", role="admin",
+                                     display_name="the command line")
+    cookie = f"{config.cookie_name()}={token}"
 
     try:
         resp = opener.open(
             urllib.request.Request(
                 f"{base}/api/world/swap",
                 data=json.dumps({"target": str(target)}).encode(),
-                headers={"Content-Type": "application/json"},
+                headers={"Content-Type": "application/json", "Cookie": cookie},
                 method="POST",
             )
         )
@@ -865,9 +962,17 @@ def main(argv: list[str] | None = None) -> int:
     p_rest.add_argument("--yes", action="store_true", help="confirm restore")
 
     p_snap = sub.add_parser(
-        "snapshot", help="WAL-checkpointed DB-only copy to snapshots/{world}-{ts}.db"
+        "snapshot", help="consistent DB-only copy to snapshots/{world}-{ts}.db"
     )
     p_snap.add_argument("world_id")
+
+    p_backup = sub.add_parser(
+        "backup", help="online copy of the live world + accounts DBs to backups/<ts>/"
+    )
+    p_backup.add_argument("--keep", type=int, default=14, help="how many backups to keep")
+    sub.add_parser("preflight", help="read-only deploy checks (world version, pending migrations)")
+    p_rest_all = sub.add_parser("rest-all", help="rest every player (server stopped); --journal writes journals")
+    p_rest_all.add_argument("--journal", action="store_true")
 
     p_snaprest = sub.add_parser(
         "snapshot-restore",
@@ -952,6 +1057,12 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_restore(args.archive_path, args.yes)
     if args.cmd == "snapshot":
         return cmd_snapshot(args.world_id)
+    if args.cmd == "backup":
+        return cmd_backup(args.keep)
+    if args.cmd == "preflight":
+        return cmd_preflight()
+    if args.cmd == "rest-all":
+        return cmd_rest_all(args.journal)
     if args.cmd == "snapshot-restore":
         return cmd_snapshot_restore(args.snapshot_path, args.yes)
     if args.cmd == "swap":

@@ -1,0 +1,10 @@
+[Unit]
+Description=daydream prod keepsakes sync, hourly
+
+[Timer]
+OnCalendar=hourly
+RandomizedDelaySec=5m
+Persistent=false
+
+[Install]
+WantedBy=timers.target

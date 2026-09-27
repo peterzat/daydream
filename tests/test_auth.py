@@ -1,192 +1,271 @@
-"""Auth: password gate, session cookie, redirect behavior. SPEC criterion 2."""
+"""Sign-in over HTTP (SPEC 2026-09-27 criteria 2, 3, 7, 8): the front door,
+login/logout, the session cookie, throttles, and invite redemption.
 
-from pathlib import Path
+Rewritten for accounts. The shared-password tests, and the tailscale-mode
+"the tailnet is the login" tests, encoded the retired trust model; their
+replacement is test_no_location_grants_a_session below. No network location
+grants anything now; every mode needs an account."""
 
 import pytest
 from fastapi.testclient import TestClient
+from starlette.websockets import WebSocketDisconnect
 
-from daydream import db, events
+from daydream import accounts, config
 from daydream.server import app
+from tests import authhelp
 
 pytestmark = pytest.mark.tier_medium
 
+PW = authhelp.PASSWORD
+
 
 @pytest.fixture(autouse=True)
-def fresh_state(tmp_path: Path, monkeypatch):
-    db.close_db()
-    events.reset_subscribers()
+def fresh(tmp_path, monkeypatch):
     monkeypatch.setenv("DAYDREAM_DATA_DIR", str(tmp_path))
     yield
-    db.close_db()
-    events.reset_subscribers()
 
 
-def test_root_unauthed_redirects_to_login():
-    with TestClient(app, follow_redirects=False) as client:
-        r = client.get("/")
-    assert r.status_code == 302
-    assert r.headers["location"] == "/login"
+def _account(username="wren", role="player"):
+    accounts.init()
+    return accounts.create_account(username, PW, role=role)
 
 
-def test_login_form_renders():
+def _cookie_header(r) -> str:
+    return next(v for k, v in r.headers.multi_items()
+                if k == "set-cookie" and v.startswith(config.cookie_name() + "="))
+
+
+# ---- the front door -----------------------------------------------------------
+
+
+def test_signed_out_root_is_the_front_door():
     with TestClient(app) as client:
-        r = client.get("/login")
-    assert r.status_code == 200
-    assert '<title>daydream</title>' in r.text
-    assert 'name="password"' in r.text
-    assert '>enter</button>' in r.text
-
-
-def test_login_with_correct_password_redirects_and_authes():
-    with TestClient(app, follow_redirects=False) as client:
-        r = client.post("/api/login", data={"password": "test-password"})
-        assert r.status_code == 303
-        assert r.headers["location"] == "/"
-        # Same client (cookies persisted) can now reach root:
-        r2 = client.get("/")
-        assert r2.status_code == 200
-        assert "daydream" in r2.text.lower()
-
-
-def test_login_with_wrong_password_does_not_grant_access():
-    with TestClient(app, follow_redirects=False) as client:
-        r = client.post("/api/login", data={"password": "wrong-password"})
-        assert r.status_code == 401
-        # Subsequent root request still redirects to login: cookie did not auth.
-        r2 = client.get("/")
-        assert r2.status_code == 302
-        assert r2.headers["location"] == "/login"
-
-
-def test_no_password_configured_returns_503(monkeypatch):
-    """When DAYDREAM_PASSWORD is unset/empty, the auth endpoint refuses every
-    login (including an empty form value) so the published source default
-    cannot grant access."""
-    monkeypatch.setenv("DAYDREAM_PASSWORD", "")
-    with TestClient(app, follow_redirects=False) as client:
-        r1 = client.post("/api/login", data={"password": ""})
-        r2 = client.post("/api/login", data={"password": "anything"})
-    assert r1.status_code == 503
-    assert r2.status_code == 503
-
-
-def test_logout_clears_session():
-    with TestClient(app, follow_redirects=False) as client:
-        client.post("/api/login", data={"password": "test-password"})
-        r = client.post("/api/logout")
-        assert r.status_code == 303
-        r2 = client.get("/")
-        assert r2.status_code == 302
-        assert r2.headers["location"] == "/login"
-
-
-# ---- tailscale mode: password bypassed ----------------------------------
-#
-# In DAYDREAM_ACCESS=tailscale (the default), tailnet membership IS the
-# auth: the AccessMiddleware rejects any non-tailnet source IP at the
-# outer edge, so by the time a request reaches the auth layer the
-# password would be belt-and-suspenders that costs UX every login.
-#
-# These tests exercise the full TestClient integration path in
-# tailscale mode by monkey-patching daydream.api.access.is_tailscale_or_local
-# to always return True. That's what simulates "TestClient came in from
-# the tailnet" without having to forge ASGI client tuples; the middleware
-# contract itself is covered by tests/test_access_middleware.py.
-
-
-def _make_tailnet(monkeypatch):
-    from daydream.api import access
-    monkeypatch.setenv("DAYDREAM_ACCESS", "tailscale")
-    # AccessMiddleware caches nothing; each request re-reads access_mode.
-    # Flip the CGNAT check so TestClient's synthetic source IP passes.
-    monkeypatch.setattr(access, "is_tailscale_or_local", lambda host: True)
-
-
-def test_is_authed_returns_true_in_tailscale_regardless_of_session(monkeypatch):
-    """The unit-level contract: tailscale mode skips the session check."""
-    from daydream.api.auth import is_authed
-    monkeypatch.setenv("DAYDREAM_ACCESS", "tailscale")
-    assert is_authed({}) is True
-    assert is_authed({"authed": False}) is True
-    assert is_authed({"authed": True}) is True
-
-
-def test_is_authed_requires_session_in_public_mode(monkeypatch):
-    from daydream.api.auth import is_authed
-    monkeypatch.setenv("DAYDREAM_ACCESS", "public")
-    assert is_authed({}) is False
-    assert is_authed({"authed": False}) is False
-    assert is_authed({"authed": True}) is True
-
-
-def test_tailscale_root_serves_spa_without_login(monkeypatch):
-    """GET / in tailscale mode serves the SPA directly — no redirect to
-    /login. The user's main request: don't show the 'mellon' prompt."""
-    _make_tailnet(monkeypatch)
-    with TestClient(app, follow_redirects=False) as client:
         r = client.get("/")
     assert r.status_code == 200
-    assert "daydream" in r.text.lower()
+    assert 'id="login-form"' in r.text and "assets/door.js" in r.text
+    assert 'id="room-bg"' not in r.text  # not the game shell
 
 
-def test_tailscale_login_form_redirects_home(monkeypatch):
-    """GET /login in tailscale mode redirects to / rather than rendering
-    a password form a tailnet user can't usefully submit. Covers stale
-    bookmarks and any cached link."""
-    _make_tailnet(monkeypatch)
-    with TestClient(app, follow_redirects=False) as client:
-        r = client.get("/login")
-    assert r.status_code == 302
-    assert r.headers["location"] == "/"
-
-
-def test_tailscale_login_post_succeeds_regardless_of_password(monkeypatch):
-    """A cached login form that somehow still gets submitted must not
-    bounce the user with 401 — the auth model has changed under them.
-    Tailscale mode accepts any POST to /api/login and hands back a
-    session + redirect home."""
-    _make_tailnet(monkeypatch)
-    with TestClient(app, follow_redirects=False) as client:
-        r = client.post("/api/login", data={"password": "anything-or-nothing"})
-        assert r.status_code == 303
-        assert r.headers["location"] == "/"
-
-
-def test_tailscale_ws_accepts_without_prior_login(monkeypatch):
-    """WebSocket endpoint uses the same is_authed helper; tailscale mode
-    means no session cookie is required. The connection is ACCEPTED (not
-    closed 1008); with no claimed toon it routes to the character picker
-    (a `needs_toon` frame) under picker-first entry (SPEC 2026-06-30),
-    rather than auto-controlling a default toon."""
-    from starlette.websockets import WebSocketDisconnect
-    _make_tailnet(monkeypatch)
+def test_signed_in_root_is_the_game():
     with TestClient(app) as client:
-        try:
-            with client.websocket_connect("/ws") as ws:
-                frame = ws.receive_json()
-            assert frame == {"kind": "needs_toon"}
-        except WebSocketDisconnect as e:
-            raise AssertionError(
-                f"tailscale WS should accept without login, got disconnect {e}"
-            ) from e
+        authhelp.login(client)
+        r = client.get("/")
+    assert r.status_code == 200 and 'id="room-bg"' in r.text
 
 
-def test_tailscale_logout_redirects_home_not_to_login(monkeypatch):
-    """POST /api/logout in tailscale mode is a de-facto no-op (the very
-    next request re-authes), so the redirect should go home rather
-    than to a login form that will itself bounce home."""
-    _make_tailnet(monkeypatch)
-    with TestClient(app, follow_redirects=False) as client:
+def test_invite_path_serves_the_same_door_for_any_slug():
+    with TestClient(app) as client:
+        a = client.get("/invite/amber-thimble")
+        b = client.get("/invite/zzz")
+    assert a.status_code == b.status_code == 200 and a.text == b.text
+    assert 'id="door-invite"' in a.text
+
+
+# ---- login / logout / me ------------------------------------------------------
+
+
+def test_login_sets_a_hardened_session_cookie(monkeypatch):
+    monkeypatch.setenv("DAYDREAM_PUBLIC_BASE", "/daydream/")
+    monkeypatch.setenv("DAYDREAM_PUBLIC_ORIGIN", "https://www.eidolon.com")
+    _account()
+    with TestClient(app) as client:
+        r = client.post("/api/login", json={"username": "Wren", "password": PW},
+                        headers={"origin": "https://www.eidolon.com"})
+    assert r.status_code == 200 and r.json()["next"] == "/daydream/"
+    c = _cookie_header(r).lower()
+    assert "httponly" in c and "samesite=lax" in c and "secure" in c
+    assert "path=/daydream/" in c and f"max-age={30 * 24 * 3600}" in c
+    token = _cookie_header(r).split(";")[0].split("=", 1)[1]
+    stored = accounts.get_conn().execute("SELECT token_hash FROM sessions").fetchall()
+    assert [s["token_hash"] for s in stored] == [accounts._sha(token)]
+
+
+def test_dev_cookie_is_not_secure_and_named_per_env():
+    _account()
+    with TestClient(app) as client:
+        r = client.post("/api/login", json={"username": "wren", "password": PW})
+    c = _cookie_header(r)
+    assert c.startswith("dd_session_dev=") and "secure" not in c.lower()
+
+
+def test_login_accepts_a_plain_form_post_too():
+    _account()
+    with TestClient(app) as client:
+        r = client.post("/api/login", data={"username": "wren", "password": PW})
+        assert r.status_code == 200
+        assert client.get("/api/me").json()["username"] == "wren"
+
+
+def test_wrong_password_and_unknown_user_answer_identically():
+    _account()
+    with TestClient(app) as client:
+        a = client.post("/api/login", json={"username": "wren", "password": "not the password"})
+        b = client.post("/api/login", json={"username": "nobody", "password": PW})
+        assert a.status_code == b.status_code == 401
+        assert a.json() == b.json()
+        assert config.cookie_name() not in client.cookies
+        assert client.get("/api/me").status_code == 401
+
+
+def test_me_and_logout():
+    _account("keeper", role="admin")
+    with TestClient(app) as client:
+        authhelp.login(client, "keeper")
+        me = client.get("/api/me").json()
+        assert me == {"username": "keeper", "display_name": "keeper", "role": "admin",
+                      "is_admin": True}
         r = client.post("/api/logout")
-    assert r.status_code == 303
-    assert r.headers["location"] == "/"
+        assert r.status_code == 200
+        assert client.get("/api/me").status_code == 401
+    assert accounts.get_conn().execute("SELECT COUNT(*) FROM sessions").fetchone()[0] == 0
 
 
-def test_public_mode_still_requires_login(monkeypatch):
-    """Belt-and-suspenders for the public-mode contract: nothing the
-    tailscale branch does should leak into the public-mode password
-    gate. Explicit public mode + wrong password still 401s."""
-    monkeypatch.setenv("DAYDREAM_ACCESS", "public")
-    with TestClient(app, follow_redirects=False) as client:
-        r = client.post("/api/login", data={"password": "wrong"})
-    assert r.status_code == 401
+def test_disabling_an_account_ends_access_on_the_next_request():
+    _account()
+    with TestClient(app) as client:
+        authhelp.login(client, "wren")
+        assert client.get("/api/me").status_code == 200
+        accounts.set_disabled("wren", True)
+        assert client.get("/api/me").status_code == 401
+        with pytest.raises(WebSocketDisconnect) as refused:
+            with client.websocket_connect("/ws"):
+                pass
+        assert refused.value.code == 4401
+
+
+def test_change_password():
+    _account()
+    with TestClient(app) as client:
+        authhelp.login(client, "wren")
+        bad = client.post("/api/account/password", json={"old": "nope nope nope", "new": "x" * 12})
+        assert bad.status_code == 400
+        ok = client.post("/api/account/password", json={"old": PW, "new": "a fresh new password"})
+        assert ok.status_code == 200
+        assert client.get("/api/me").status_code == 200  # this session survives
+    assert accounts.authenticate("wren", "a fresh new password") is not None
+
+
+# ---- throttles ----------------------------------------------------------------
+
+
+def test_repeated_failures_for_one_username_are_throttled():
+    _account()
+    with TestClient(app) as client:
+        for _ in range(accounts.LOGIN_PER_USERNAME[0]):
+            assert client.post("/api/login", json={"username": "wren",
+                                                  "password": "wrong wrong"}).status_code == 401
+        r = client.post("/api/login", json={"username": "wren", "password": PW})
+    assert r.status_code == 429  # even the right password waits out the window
+
+
+def test_repeated_failures_from_one_address_are_throttled():
+    with TestClient(app) as client:
+        for i in range(accounts.LOGIN_PER_ADDRESS[0]):
+            client.post("/api/login", json={"username": f"guess{i}", "password": "x" * 12})
+        r = client.post("/api/login", json={"username": "another", "password": "x" * 12})
+    assert r.status_code == 429
+
+
+def test_edge_mode_throttles_by_the_workers_client_ip_header(monkeypatch):
+    """Behind the Worker every request arrives from cloudflared on loopback;
+    the throttle keys on X-Daydream-Client-IP, so one abuser does not lock
+    out everyone else."""
+    monkeypatch.setenv("DAYDREAM_ACCESS", "edge")
+    monkeypatch.setenv("DAYDREAM_PUBLIC_ORIGIN", "https://www.eidolon.com")
+    _account()
+    with TestClient(app, client=("127.0.0.1", 5000)) as client:  # cloudflared's peer
+        for i in range(accounts.LOGIN_PER_ADDRESS[0]):
+            client.post("/api/login", json={"username": f"guess{i}", "password": "x" * 12},
+                        headers={"x-daydream-client-ip": "203.0.113.9"})
+        blocked = client.post("/api/login", json={"username": "wren", "password": PW},
+                              headers={"x-daydream-client-ip": "203.0.113.9"})
+        fine = client.post("/api/login", json={"username": "wren", "password": PW},
+                           headers={"x-daydream-client-ip": "198.51.100.4"})
+    assert blocked.status_code == 429 and fine.status_code == 200
+
+
+# ---- invites over HTTP -------------------------------------------------------------
+
+
+@pytest.fixture
+def words(monkeypatch):
+    monkeypatch.setattr(accounts, "_words_cache", {
+        "adjectives": [f"adj{i:03d}" for i in range(300)],
+        "nouns": [f"noun{i:03d}" for i in range(300)],
+    })
+
+
+def test_invite_peek_and_redeem_sign_the_invitee_in(words, monkeypatch):
+    monkeypatch.setenv("DAYDREAM_OPERATOR_NAME", "Peter")
+    accounts.init()
+    slug, _ = accounts.create_invite("Robin Ash")
+    with TestClient(app) as client:
+        peek = client.post("/api/invite/peek", json={"slug": slug})
+        assert peek.json() == {"for": "Robin Ash", "kind": "join", "operator": "Peter"}
+        r = client.post("/api/invite/redeem",
+                        json={"slug": slug, "username": "robin", "password": PW})
+        assert r.status_code == 200
+        assert client.get("/api/me").json()["display_name"] == "Robin Ash"
+        again = client.post("/api/invite/redeem",
+                            json={"slug": slug, "username": "robin2", "password": PW})
+        assert again.status_code == 404 and "Peter" in again.json()["error"]
+
+
+def test_a_taken_username_or_short_password_keeps_the_invite(words):
+    accounts.init()
+    accounts.create_account("robin", PW)
+    slug, _ = accounts.create_invite("Robin Ash")
+    with TestClient(app) as client:
+        r = client.post("/api/invite/redeem", json={"slug": slug, "username": "robin",
+                                                    "password": PW})
+        assert r.status_code == 400 and "taken" in r.json()["error"]
+        r = client.post("/api/invite/redeem", json={"slug": slug, "username": "robin-a",
+                                                    "password": "short"})
+        assert r.status_code == 400
+        r = client.post("/api/invite/redeem", json={"slug": slug, "username": "robin-a",
+                                                    "password": PW})
+        assert r.status_code == 200
+
+
+def test_reset_invite_over_http(words):
+    _account()
+    slug, _ = accounts.create_invite("", kind="reset", account="wren")
+    with TestClient(app) as client:
+        assert client.post("/api/invite/peek", json={"slug": slug}).json()["kind"] == "reset"
+        r = client.post("/api/invite/redeem", json={"slug": slug, "password": "brand new password"})
+        assert r.status_code == 200
+        assert client.get("/api/me").json()["username"] == "wren"
+    assert accounts.authenticate("wren", "brand new password") is not None
+
+
+def test_failed_redemptions_hit_a_global_cap(words):
+    with TestClient(app) as client:
+        n = accounts.REDEEM_PER_ADDRESS[0]
+        for i in range(n):
+            assert client.post("/api/invite/peek", json={"slug": f"nope-{i}"}).status_code == 404
+        assert client.post("/api/invite/peek", json={"slug": "nope-x"}).status_code == 429
+    # The global hourly budget counts every address's failures.
+    accounts.init()
+    for _ in range(accounts.REDEEM_GLOBAL_HOUR[0]):
+        accounts.record_failure("redeem-hour", accounts.REDEEM_GLOBAL_HOUR)
+    slug, _ = accounts.create_invite("Robin Ash")
+    with TestClient(app, client=("198.51.100.7", 4000)) as other:
+        assert other.post("/api/invite/peek", json={"slug": slug}).status_code == 429
+
+
+# ---- no network location grants a session ------------------------------------
+
+
+@pytest.mark.parametrize("mode", ["tailscale", "public"])
+@pytest.mark.parametrize("peer", ["127.0.0.1", "100.64.1.2"])
+def test_no_location_grants_a_session(monkeypatch, mode, peer):
+    """The retired model let the tailnet stand in for a login. Now loopback
+    and tailnet peers without a session get the gate's 401, in every mode."""
+    monkeypatch.setenv("DAYDREAM_ACCESS", mode)
+    with TestClient(app, client=(peer, 5000)) as client:
+        assert client.get("/api/slots").status_code == 401
+        assert client.get("/api/me").status_code == 401
+        with pytest.raises(WebSocketDisconnect) as refused:
+            with client.websocket_connect("/ws"):
+                pass
+        assert refused.value.code == 4401

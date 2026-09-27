@@ -1,12 +1,6 @@
 """Project-wide pytest configuration. Loaded before any test module is
 collected, so env vars set here are visible to module-level imports such as
-`daydream.server.app` (which calls `config.session_secret()` at import time
-to seed SessionMiddleware).
-
-Without this, a clean `pytest` run would materialize
-`~/.config/daydream/session_secret` in the developer's real home directory,
-because `session_secret()` falls back to writing there when no env var is set.
-"""
+`daydream.server.app`."""
 
 import os
 import tempfile
@@ -14,18 +8,6 @@ from unittest.mock import AsyncMock
 
 import httpx
 import pytest
-
-# Stable test value for the session-cookie signing secret. Set before any
-# `from daydream.server import app` runs, so SessionMiddleware never triggers
-# the on-disk fallback during tests.
-os.environ.setdefault("DAYDREAM_SESSION_SECRET", "test-session-secret-not-for-production")
-
-# Stable test value for the shared site password. Decoupled from whatever
-# .env holds in production so tests never depend on or leak the real value.
-# Force-override for the same reason DAYDREAM_ACCESS does: a developer
-# .env sourced by `bin/game test` would otherwise set DAYDREAM_PASSWORD
-# to the real value and tests' hardcoded "test-password" would fail auth.
-os.environ["DAYDREAM_PASSWORD"] = "test-password"
 
 # TestClient connects from "testclient" (not a real IP). Bypass the
 # AccessMiddleware in tests so we don't have to forge a tailnet IP for
@@ -90,11 +72,24 @@ os.environ["DAYDREAM_JOURNAL_ENABLED"] = "0"
 os.environ["DAYDREAM_VILLAGE_ENABLED"] = "0"
 os.environ["DAYDREAM_DIRECTOR_LLM"] = "0"
 
+# Accounts (SPEC 2026-09-27): argon2id's production profile costs 64 MiB and
+# tens of milliseconds per hash; the suite uses a cheap profile. Hashes encode
+# their own parameters, so nothing else changes.
+os.environ["DAYDREAM_PASSWORD_HASH_PROFILE"] = "test"
+
 # Redirect HOME to a session-scoped temp dir as a belt-and-suspenders measure:
 # any other code that resolves `~/...` during tests writes under this dir,
 # which the OS reaps. Use mkdtemp (not TemporaryDirectory) so the dir lives
 # for the whole pytest process; pytest's own tmp_path fixture is unaffected.
 os.environ.setdefault("HOME", tempfile.mkdtemp(prefix="daydream-test-home-"))
+
+# Never the real data dir. HOME above is only a default (it is already set in
+# a normal shell), so a test that boots the app without its own
+# DAYDREAM_DATA_DIR used to open the operator's real ~/data/daydream live world
+# and accounts DB (found 2026-09-27: a test admin account appeared in the dev
+# accounts DB). Force a throwaway dir for the whole run; tests that set their
+# own via monkeypatch still win.
+os.environ["DAYDREAM_DATA_DIR"] = tempfile.mkdtemp(prefix="daydream-test-data-")
 
 
 @pytest.fixture(autouse=True)
@@ -135,6 +130,18 @@ def _reset_arbiter():
     arbiter.reset()
     yield
     arbiter.reset()
+
+
+@pytest.fixture(autouse=True)
+def _reset_accounts():
+    """The accounts DB connection is a process-wide singleton bound to the
+    data dir current when it opened; close it around every test so each test's
+    DAYDREAM_DATA_DIR gets its own accounts database."""
+    from daydream import accounts
+
+    accounts.close()
+    yield
+    accounts.close()
 
 
 @pytest.fixture(autouse=True)

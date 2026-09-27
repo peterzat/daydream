@@ -21,7 +21,7 @@ overlay — so the socket-liveness assertion still means something):
     .venv/bin/python tools/ws_swarm.py [--base http://127.0.0.1:54321]
         [--bots 5] [--seconds 60] [--delay 0.2]
 
-Password comes from DAYDREAM_PASSWORD (same as the server); loopback is
+Each bot signs in as an agent account minted in-process; loopback is
 tailnet-trusted so an empty password works when the server has none set.
 There are only 5 human slots, so --bots is clamped to 5.
 """
@@ -31,13 +31,15 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
-import os
 import random
 import sys
 import time
 
 import httpx
 import websockets
+
+sys.path.insert(0, str(__import__('pathlib').Path(__file__).resolve().parent.parent))
+from daydream.play import agent_cookie, enter_as  # noqa: E402
 
 MOVES = ["north", "south", "east", "west", "up", "down"]
 CHATTER = [
@@ -54,21 +56,10 @@ MAX_HUMAN_SLOTS = 5
 
 
 async def _login_and_slot(http: httpx.AsyncClient, slot: int, password: str) -> bool:
-    r = await http.post("/api/login", data={"password": password})
-    if r.status_code not in (200, 303):
-        print(f"  bot slot {slot}: login failed {r.status_code} {r.text[:120]}")
-        return False
-    slots = (await http.get("/api/slots")).json().get("slots", [])
-    mine = next((s for s in slots if s.get("slot") == slot), None)
-    if mine and mine.get("toon"):
-        r = await http.post(f"/api/slots/{slot}/claim")
-        # A live peer already holds it (409) — fall through to a different slot
-        # is out of scope; just report and let this bot idle-fail loudly.
-    else:
-        r = await http.post(f"/api/slots/{slot}/create", json={
-            "name": f"Swarm{slot}",
-            "appearance_seed": "a curious wanderer, half-remembered",
-        })
+    # Signed in already: the client carries an agent account's session cookie
+    # minted in-process (daydream/play.py agent_cookie). `password` is unused
+    # since accounts replaced the shared password (SPEC 2026-09-27).
+    r = await enter_as(http, f"Swarm{slot}", "a curious wanderer, half-remembered")
     if r.status_code != 200:
         print(f"  bot slot {slot}: claim/create failed {r.status_code} {r.text[:120]}")
         return False
@@ -82,11 +73,12 @@ async def _bot(base: str, slot: int, seconds: float, delay: float,
     dropped mid-run (the failure the swarm exists to catch)."""
     result = {"slot": slot, "alive": False, "actions": 0,
               "max_ack_ms": 0.0, "error": None}
-    async with httpx.AsyncClient(base_url=base, timeout=30.0) as http:
+    cookies = agent_cookie(f"swarm{slot}")
+    async with httpx.AsyncClient(base_url=base, timeout=30.0,
+                                 headers={"Cookie": cookies}) as http:
         if not await _login_and_slot(http, slot, password):
             result["error"] = "login/slot"
             return result
-        cookies = "; ".join(f"{k}={v}" for k, v in http.cookies.items())
 
     ws_url = base.replace("http", "ws", 1) + "/ws"
     try:
@@ -198,7 +190,7 @@ def main() -> int:
     ap.add_argument("--delay", type=float, default=0.2,
                     help="quiet-period drained after each command (seconds)")
     args = ap.parse_args()
-    password = os.environ.get("DAYDREAM_PASSWORD", "")
+    password = ""  # unused since accounts (SPEC 2026-09-27)
     return asyncio.run(run(args.base, args.bots, args.seconds, args.delay, password))
 
 

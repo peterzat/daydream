@@ -10,6 +10,7 @@ from fastapi.testclient import TestClient
 
 from daydream import db, events, toons
 from daydream.server import app
+from tests import authhelp
 
 pytestmark = pytest.mark.tier_medium
 
@@ -25,8 +26,7 @@ def fresh_state(tmp_path: Path, monkeypatch):
 
 
 def _login(client: TestClient) -> None:
-    r = client.post("/api/login", data={"password": "test-password"})
-    assert r.status_code in (200, 303), f"login failed: {r.status_code} {r.text}"
+    authhelp.login(client)
 
 
 def test_delete_removes_toon_and_frees_slot():
@@ -43,8 +43,8 @@ def test_delete_removes_toon_and_frees_slot():
         assert r.json()["deleted"] == toon_id
 
         # Slot reads empty (distinct from kick, which leaves a resting row).
-        slot3 = next(s for s in client.get("/api/slots").json()["slots"] if s["slot"] == 3)
-        assert slot3["toon"] is None
+        assert toons.get_toon_in_slot(3) is None
+        assert client.get("/api/dreamer").json()["toons"] == []
         assert toons.get_toon(toon_id) is None  # row gone
 
 
@@ -52,7 +52,7 @@ def test_delete_refuses_empty_and_out_of_range_slots():
     with TestClient(app) as client:
         _login(client)
         assert client.post("/api/slots/4/delete").status_code == 404  # empty
-        assert client.post("/api/slots/9/delete").status_code == 404  # out of range
+        assert client.post("/api/slots/100/delete").status_code == 404  # out of range
 
 
 def test_delete_handles_carried_items_without_fk_error():

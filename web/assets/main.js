@@ -48,6 +48,27 @@ let wonState = null; // the world's won-moment ({score, rank, text?}) from snaps
 let reconnectDelay = 0;
 const RECONNECT_MIN = 1000;
 const RECONNECT_MAX = 20000;
+const ASLEEP_RETRY = 30000; // a sleeping village is checked gently
+let dreamingElsewhere = false; // another window of this account has the toon
+
+async function whyClosed() {
+  // "signed-out", {asleep, note, since, operator}, or null (a transient drop).
+  try {
+    const r = await fetch("api/me", { credentials: "same-origin", cache: "no-store" });
+    if (r.status === 401) return "signed-out";
+    if (r.status === 503) {
+      const j = await r.json();
+      if (j && j.asleep) return { asleep: true, note: j.note, since: j.since, operator: j.operator };
+    }
+  } catch (_) {}
+  return null;
+}
+
+function asleepText(why) {
+  const who = why.operator || "the person who invited you";
+  const note = why.note ? " " + why.note : "";
+  return `The village is asleep.${note} Send ${who} a note to light the lamps; this page will wake with it.`;
+}
 
 function showDreamOverlay(text) {
   const o = document.getElementById("dream-overlay");
@@ -90,13 +111,26 @@ function connect(isReconnect) {
     reconnectDelay = 0; // the dream wakes: reset the backoff
     hideDreamOverlay();
   };
-  ws.onclose = () => {
-    if (awaitingPick) return; // left the dream: wait for a toon pick
+  ws.onclose = async (ev) => {
+    if (awaitingPick || dreamingElsewhere) return; // left, or another window has us
+    if (ev.code === 4409) {
+      dreamingElsewhere = true;
+      showDreamOverlay("you're dreaming in another window");
+      return;
+    }
+    // Why did it close? A refused handshake reads as 1006 in the browser, so
+    // ask: a lapsed session goes to the front door; a sleeping village (the
+    // edge answers 503 while the box is down) shows its note and waits.
+    const why = await whyClosed();
+    if (why === "signed-out") {
+      location.replace(document.baseURI);
+      return;
+    }
     // One calm state, not a growing pile of disconnect lines. Keep retrying on
     // a gentle, capped backoff; onopen hides the overlay when the server is
     // back, so a tab left open across a restart recovers with no manual reload.
-    showDreamOverlay("the dream is sleeping...");
-    reconnectDelay = Math.min(
+    showDreamOverlay(why && why.asleep ? asleepText(why) : "the dream is sleeping...");
+    reconnectDelay = why && why.asleep ? ASLEEP_RETRY : Math.min(
       reconnectDelay ? reconnectDelay * 2 : RECONNECT_MIN,
       RECONNECT_MAX
     );
@@ -112,6 +146,11 @@ function connect(isReconnect) {
       renderEvent(data.event);
     } else if (data.kind === "clarify") {
       renderClarify(data);
+    } else if (data.kind === "elsewhere") {
+      dreamingElsewhere = true;
+      showDreamOverlay("you're dreaming in another window");
+    } else if (data.kind === "notice") {
+      systemLine(data.text); // a gentle limit note (too long, too fast)
     } else if (data.kind === "needs_toon") {
       enterPicker();
     } else if (data.kind === "world_changed") {
@@ -1383,10 +1422,10 @@ function keepsakeGlyph(name) {
 // player reconnects the WS so the new connection's session→toon
 // resolution picks up the new claim.
 
-async function fetchSlots() {
-  const r = await fetch("api/slots", { credentials: "same-origin" });
+async function fetchDreamer() {
+  const r = await fetch("api/dreamer", { credentials: "same-origin" });
   if (!r.ok) {
-    systemLine(`(slots fetch failed: ${r.status})`);
+    systemLine(`(could not open your dreamer: ${r.status})`);
     return null;
   }
   return r.json();
@@ -1403,93 +1442,78 @@ async function postSlotAction(slot, action, body) {
     let detail = `${r.status}`;
     try {
       const j = await r.json();
-      if (j.detail) detail = `${r.status} ${j.detail}`;
+      if (j.detail) detail = j.detail;
     } catch (_) {}
-    systemLine(`(slot ${action} failed: ${detail})`);
+    systemLine(`(${detail})`);
     return null;
   }
   return r.json();
 }
 
+// "Your dreamer" (SPEC 2026-09-27 criterion 5): an account's own toon(s),
+// with enter / rest / delete, and a create form when it may make one.
 async function renderSlots() {
-  const data = await fetchSlots();
+  const data = await fetchDreamer();
   const list = document.getElementById("slots-list");
+  const form = document.getElementById("dreamer-form");
   list.innerHTML = "";
   if (!data) return;
-  for (const entry of data.slots) {
+  for (const t of data.toons) {
     const li = document.createElement("li");
     li.className = "slot-row";
-    const t = entry.toon;
-    if (!t) {
-      li.innerHTML = `<span class="slot-num">slot ${entry.slot}</span> <span class="slot-empty">empty</span>`;
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.textContent = "create";
-      btn.onclick = () => createInSlot(entry.slot);
-      li.appendChild(btn);
-    } else if (t.claimed_by_me) {
-      li.innerHTML = `<span class="slot-num">slot ${entry.slot}</span> <strong>${escape(t.name)}</strong> <em>(yours)</em>`;
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.textContent = "kick";
-      btn.onclick = () => kickSlot(entry.slot);
-      li.appendChild(btn);
-    } else if (t.kicked_at) {
-      li.innerHTML = `<span class="slot-num">slot ${entry.slot}</span> ${escape(t.name)} <em>(resting)</em>`;
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.textContent = "claim";
-      btn.onclick = () => claimSlot(entry.slot);
-      li.appendChild(btn);
-    } else if (!t.is_human_controlled) {
-      // An uncontrolled toon (e.g. a seed character no one is playing): the
-      // server allows claiming it, so offer claim here too (not just delete).
-      li.innerHTML = `<span class="slot-num">slot ${entry.slot}</span> ${escape(t.name)} <em>(available)</em>`;
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.textContent = "claim";
-      btn.onclick = () => claimSlot(entry.slot);
-      li.appendChild(btn);
+    li.appendChild(toonFace(t.portrait_url));
+    const name = document.createElement("strong");
+    name.textContent = t.name;
+    li.appendChild(name);
+    const state = document.createElement("em");
+    state.textContent = t.claimed_by_me ? " (here now)" : t.kicked_at ? " (resting)" : "";
+    li.appendChild(state);
+    const main = document.createElement("button");
+    main.type = "button";
+    if (t.claimed_by_me) {
+      main.textContent = "rest";
+      main.onclick = () => kickSlot(t.slot);
     } else {
-      // Controlled by another session. Offer claim anyway: the server takes it
-      // over when that session has no live WS connection (an abandoned claim),
-      // or refuses with 409 when an active player holds it.
-      li.innerHTML = `<span class="slot-num">slot ${entry.slot}</span> ${escape(t.name)} <em>(taken)</em>`;
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.textContent = "claim";
-      btn.onclick = () => claimSlot(entry.slot);
-      li.appendChild(btn);
+      main.textContent = "enter";
+      main.onclick = () => claimSlot(t.slot);
     }
-    if (t) {
-      // The painted face (or quiet placeholder) leads the row. Cached-only
-      // on the server side: the picker never triggers a render.
-      li.prepend(toonFace(t.portrait_url));
-      // A permanent delete sits alongside the slot's primary action.
-      const del = document.createElement("button");
-      del.type = "button";
-      del.textContent = "delete";
-      del.className = "slot-delete";
-      del.onclick = () => deleteSlot(entry.slot);
-      li.appendChild(del);
-    }
+    li.appendChild(main);
+    const del = document.createElement("button");
+    del.type = "button";
+    del.textContent = "delete";
+    del.className = "slot-delete";
+    del.onclick = () => askDelete(t);
+    li.appendChild(del);
     list.appendChild(li);
   }
+  form.classList.toggle("hidden", !data.can_create);
+  document.getElementById("slots-title").textContent =
+    data.toons.length > 1 ? "your dreamers" : "your dreamer";
 }
 
-async function createInSlot(slot) {
-  const name = (window.prompt("name for the new toon?") || "").trim();
-  if (!name) return;
-  const appearance = (
-    window.prompt("a few words of appearance?") || ""
-  ).trim();
-  if (!appearance) return;
-  const result = await postSlotAction(slot, "create", {
-    name,
-    appearance_seed: appearance,
+document.getElementById("dreamer-form").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  const form = ev.target;
+  const err = form.querySelector(".door-error");
+  err.hidden = true;
+  const f = new FormData(form);
+  const r = await fetch("api/dreamer/create", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    credentials: "same-origin",
+    body: JSON.stringify({ name: (f.get("name") || "").trim(),
+                           appearance_seed: (f.get("appearance_seed") || "").trim() }),
   });
-  if (result) reconnectAfterSlotChange();
-}
+  if (!r.ok) {
+    let detail = "that didn't work";
+    try { detail = (await r.json()).detail || detail; } catch (_) {}
+    err.textContent = detail;
+    err.hidden = false;
+    return;
+  }
+  form.reset();
+  reconnectAfterSlotChange();
+});
 
 async function claimSlot(slot) {
   const result = await postSlotAction(slot, "claim", null);
@@ -1500,18 +1524,61 @@ async function kickSlot(slot) {
   const result = await postSlotAction(slot, "kick", null);
   if (result) {
     await renderSlots();
-    // After kicking yourself, the WS still holds the old toon for the
-    // current session until reconnect; reconnect so subsequent input
-    // routes to the legacy fallback (or whatever new claim follows).
     reconnectAfterSlotChange();
   }
 }
 
-async function deleteSlot(slot) {
-  if (!window.confirm("permanently delete this toon? this cannot be undone.")) return;
-  const result = await postSlotAction(slot, "delete", null);
-  if (result) await renderSlots();
+// Your account (criterion 2): change password, sign out.
+document.getElementById("password-form").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  const form = ev.target;
+  const err = form.querySelector(".door-error");
+  const f = new FormData(form);
+  const r = await fetch("api/account/password", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    credentials: "same-origin",
+    body: JSON.stringify({ old: f.get("old"), new: f.get("new") }),
+  });
+  let msg = "your password is changed";
+  if (!r.ok) {
+    msg = "that didn't work";
+    try { msg = (await r.json()).error || msg; } catch (_) {}
+  } else {
+    form.reset();
+  }
+  err.textContent = msg;
+  err.hidden = false;
+});
+
+document.getElementById("sign-out").addEventListener("click", async () => {
+  // Rest the toon first (so its journal is written), then end the session.
+  awaitingPick = true; // no reconnect while we go
+  try { await fetch("api/session/leave", { method: "POST", credentials: "same-origin" }); } catch (_) {}
+  try { await fetch("api/logout", { method: "POST", credentials: "same-origin" }); } catch (_) {}
+  location.replace(document.baseURI);
+});
+
+let pendingDelete = null;
+function askDelete(t) {
+  // A storybook confirm, not a browser dialog (criterion 8).
+  pendingDelete = t;
+  document.getElementById("delete-confirm-text").textContent =
+    `Let ${t.name} go for good? This cannot be undone.`;
+  document.getElementById("delete-confirm").classList.remove("hidden");
 }
+document.getElementById("delete-no").addEventListener("click", () => {
+  pendingDelete = null;
+  document.getElementById("delete-confirm").classList.add("hidden");
+});
+document.getElementById("delete-yes").addEventListener("click", async () => {
+  const t = pendingDelete;
+  pendingDelete = null;
+  document.getElementById("delete-confirm").classList.add("hidden");
+  if (!t) return;
+  const result = await postSlotAction(t.slot, "delete", null);
+  if (result) await renderSlots();
+});
 
 function reconnectAfterSlotChange() {
   // Any slot change (claim / create / switch / wake) re-enters as the new toon

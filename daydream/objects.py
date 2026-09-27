@@ -41,8 +41,8 @@ class Object:
     """One row of the `objects` table, with JSON columns parsed.
 
     `seed` and the kind-specific fields live in `properties`; the promoted
-    columns (slot / controller_session / is_human_controlled / kicked_at) are
-    surfaced as attributes for the toon auth/slot paths."""
+    columns (slot / controller_session / is_human_controlled / kicked_at /
+    owner_account) are surfaced as attributes for the toon auth/slot paths."""
 
     id: str
     world_id: str
@@ -56,6 +56,7 @@ class Object:
     controller_session: str | None = None
     is_human_controlled: bool = False
     kicked_at: str | None = None
+    owner_account: str | None = None  # the account a human toon belongs to
 
     @property
     def is_player(self) -> bool:
@@ -85,6 +86,9 @@ class Object:
             controller_session=row["controller_session"],
             is_human_controlled=bool(row["is_human_controlled"]),
             kicked_at=row["kicked_at"],
+            # Migration 018; a DB read before it (a swap/restore candidate)
+            # simply has no owners.
+            owner_account=row["owner_account"] if "owner_account" in row.keys() else None,
         )
 
 

@@ -18,6 +18,7 @@ import pytest
 
 from daydream import db, drift, events
 from daydream.llm import client as llm_client
+from tests import authhelp
 
 
 @pytest.fixture(autouse=True)
@@ -1049,6 +1050,7 @@ def test_status_drift_returns_empty_when_no_ticks():
 
     drift.reset_tick_counts()
     with TestClient(app) as client:
+        authhelp.login(client, "keeper", role="admin")
         r = client.get("/status/drift")
         assert r.status_code == 200
         assert r.text == ""
@@ -1067,6 +1069,7 @@ def test_status_drift_returns_summary_when_counters_nonzero():
     drift._TICK_COUNTS["noop"] = 1
     try:
         with TestClient(app) as client:
+            authhelp.login(client, "keeper", role="admin")
             r = client.get("/status/drift")
             assert r.status_code == 200
             assert "12 emits" in r.text

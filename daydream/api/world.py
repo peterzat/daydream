@@ -11,12 +11,11 @@ and the drift task (`daydream.drift`) live in this process's memory, so the
 offline admin CLI cannot perform a live swap. `bin/game world swap` is a thin
 HTTP client to this endpoint.
 
-Auth: gated by `auth.is_authed` PLUS a loopback-peer requirement. Swapping
-the whole live world is an operator action whose only real client is
-`bin/game world swap` running on the box, so the endpoint refuses any
-non-loopback caller (403) — tailnet membership alone is not enough. There
-is still no separate admin role; loopback IS the admin boundary
-(documented in SECURITY.md).
+Auth: an admin account session AND a loopback peer (the real client is
+`bin/game world swap` on the box, signed in as the CLI's admin account). In
+edge mode (prod behind the tunnel) the endpoint does not exist: there every
+request arrives from loopback, and prod swaps worlds offline (SPEC
+2026-09-27 criterion 1).
 """
 
 import logging
@@ -117,11 +116,20 @@ async def perform_world_swap(target: Path) -> dict:
 
 @router.post("/api/world/swap")
 async def swap_world(request: Request):
-    if not auth.is_authed(request.session):
+    # Not in edge mode at all: behind the tunnel every request arrives from
+    # loopback, so the loopback rule below would mean nothing there. Prod
+    # swaps worlds offline (SPEC 2026-09-27 criterion 1).
+    if config.access_mode() == "edge":
+        return JSONResponse({"error": "not found"}, status_code=404)
+    who = auth.principal(request)
+    if who is None:
         return JSONResponse({"error": "not authenticated"}, status_code=401)
+    if not who.is_admin:
+        return JSONResponse({"error": "world swap is for admins"}, status_code=403)
     # Operator surface: only the box itself may swap the live world. The
-    # real client is `bin/game world swap` talking to 127.0.0.1; a tailnet
-    # friend has no business hot-swapping everyone's world.
+    # real client is `bin/game world swap` talking to 127.0.0.1 with the
+    # CLI's admin session; a tailnet friend has no business hot-swapping
+    # everyone's world.
     client_host = request.client.host if request.client else ""
     if not (client_host == "::1" or client_host.startswith("127.")):
         return JSONResponse(

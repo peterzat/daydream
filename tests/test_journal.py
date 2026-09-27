@@ -16,6 +16,7 @@ from fastapi.testclient import TestClient
 from daydream import config, db, events, journal, objects
 from daydream.llm import client
 from daydream.server import app
+from tests import authhelp
 
 pytestmark = pytest.mark.tier_short
 
@@ -178,8 +179,7 @@ def test_entries_for_snapshot_caps_at_eight():
 
 
 def _login(c: TestClient) -> None:
-    r = c.post("/api/login", data={"password": "test-password"})
-    assert r.status_code in (200, 303)
+    authhelp.login(c)
     assert c.post("/api/slots/1/kick").status_code == 200
     assert c.post("/api/slots/1/claim").status_code == 200
 
@@ -201,7 +201,7 @@ def test_leave_fires_journal_task_and_always_succeeds(tmp_path, monkeypatch):
     assert called == ["t-wren"]
     # Leaving with no toon fires nothing and still succeeds.
     with TestClient(app) as c:
-        r = c.post("/api/login", data={"password": "test-password"})
+        authhelp.login(c)
         r = c.post("/api/session/leave")
         assert r.status_code == 200 and r.json()["released"] is None
     assert called == ["t-wren"]

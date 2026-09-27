@@ -15,6 +15,7 @@ from fastapi.testclient import TestClient
 from daydream import db, events
 from daydream.api.csrf import origin_allows
 from daydream.server import app
+from tests import authhelp
 
 pytestmark = pytest.mark.tier_medium
 
@@ -30,8 +31,7 @@ def fresh_state(tmp_path: Path, monkeypatch):
 
 
 def _login(client: TestClient) -> None:
-    r = client.post("/api/login", data={"password": "test-password"})
-    assert r.status_code in (200, 303), f"login failed: {r.status_code} {r.text}"
+    authhelp.login(client)
 
 
 def test_cross_origin_post_is_rejected():
@@ -69,7 +69,7 @@ def test_safe_method_with_foreign_origin_is_allowed():
     # GET is never gated (the WS upgrade is a GET; reads are safe).
     with TestClient(app) as client:
         _login(client)
-        r = client.get("/api/slots", headers={"origin": "http://evil.example"})
+        r = client.get("/api/dreamer", headers={"origin": "http://evil.example"})
         assert r.status_code == 200
 
 

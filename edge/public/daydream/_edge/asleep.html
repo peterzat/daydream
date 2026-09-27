@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>daydream is asleep</title>
+  <link rel="stylesheet" href="{{BASE}}_edge/asleep.css">
+</head>
+<body>
+  <!-- Served by the edge Worker whenever the village sleeps (SPEC 2026-09-27
+       criteria 15-16). The Worker fills the placeholders, HTML-escaped. -->
+  <main class="page">
+    <figure class="plate"><img src="{{BASE}}_edge/night.png" alt=""></figure>
+    <h1 class="title">The village is asleep</h1>
+    <p class="note" data-note="{{NOTE}}">{{NOTE}}</p>
+    <p class="since" data-since="{{SINCE}}"></p>
+    <p class="ask">Want to visit? Send {{OPERATOR}} a note and the lamps will be lit.
+      This page wakes up by itself when the village does.</p>
+    {{KEEPSAKES}}
+  </main>
+  <script src="{{BASE}}_edge/asleep.js"></script>
+</body>
+</html>

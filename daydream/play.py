@@ -27,6 +27,7 @@ import argparse
 import asyncio
 import json
 import os
+import re
 import sys
 import time
 from pathlib import Path
@@ -52,7 +53,12 @@ def _load(name: str) -> dict:
 
 
 def _save(name: str, st: dict) -> None:
-    (_state_dir() / f"{name}.json").write_text(json.dumps(st, indent=2))
+    # The state file holds a live account session cookie: owner-only.
+    path = _state_dir() / f"{name}.json"
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w") as f:
+        f.write(json.dumps(st, indent=2))
+    os.chmod(path, 0o600)
 
 
 # ---- rendering ---------------------------------------------------------------
@@ -214,31 +220,41 @@ def _resolve(st: dict, name: str | None) -> str | None:
     return None
 
 
+def agent_cookie(name: str) -> str:
+    """A session cookie for the agent account behind play session `name`,
+    minted in-process against this env's accounts DB (the shell is the admin
+    console, so agents need no password). One `agent-<name>` player account
+    per play name."""
+    from daydream import accounts, config
+
+    accounts.init()
+    handle = re.sub(r"[^a-z0-9_-]", "", name.lower())[:18] or "player"
+    token, _ = accounts.mint_session(f"agent-{handle}", display_name=f"agent {name}")
+    return f"{config.cookie_name()}={token}"
+
+
+async def enter_as(http, name: str, look: str | None = None, slot: int | None = None):
+    """Enter the dream as this account's toon: its own if it has one ("your
+    dreamer"), else a new one named `name` (in `slot` if given). Returns the
+    claim/create response."""
+    mine = (await http.get("/api/dreamer")).json().get("toons", [])
+    if mine:
+        return await http.post(f"/api/slots/{mine[0]['slot']}/claim")
+    body = {"name": name,
+            "appearance_seed": look or f"{name}, a traveler with a curious, kind face"}
+    if slot is not None:
+        return await http.post(f"/api/slots/{slot}/create", json=body)
+    return await http.post("/api/dreamer/create", json=body)
+
+
 async def _start(name: str, base: str, slot: int | None, look: str | None) -> int:
-    async with httpx.AsyncClient(base_url=base, timeout=30.0) as http:
-        r = await http.post("/api/login",
-                            data={"password": os.environ.get("DAYDREAM_PASSWORD", "")})
-        if r.status_code not in (200, 303):
-            print(f"login failed: {r.status_code} {r.text[:200]}")
-            return 2
-        slots = (await http.get("/api/slots")).json().get("slots", [])
-        mine = next((s for s in slots if (s.get("toon") or {}).get("name") == name), None)
-        if mine is not None:
-            r = await http.post(f"/api/slots/{mine['slot']}/claim")
-        else:
-            free = [s["slot"] for s in slots if not s.get("toon")]
-            use = slot if slot is not None else (free[0] if free else None)
-            if use is None:
-                print("no free slot")
-                return 2
-            r = await http.post(f"/api/slots/{use}/create", json={
-                "name": name,
-                "appearance_seed": look or f"{name}, a traveler with a curious, kind face",
-            })
+    cookie = agent_cookie(name)
+    async with httpx.AsyncClient(base_url=base, timeout=30.0,
+                                 headers={"Cookie": cookie}) as http:
+        r = await enter_as(http, name, look, slot)
         if r.status_code != 200:
             print(f"claim/create failed: {r.status_code} {r.text[:200]}")
             return 2
-        cookie = "; ".join(f"{k}={v}" for k, v in http.cookies.items())
     st = {"name": name, "base": base, "cookie": cookie, "last_seq": 0}
     snap, _, _ = await _session(st, None)
     st["started"] = True

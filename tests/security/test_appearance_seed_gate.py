@@ -19,6 +19,7 @@ from daydream import db, events, toons
 from daydream.api import slots as slots_module
 from daydream.api import ws as ws_module
 from daydream.server import app
+from tests import authhelp
 
 pytestmark = pytest.mark.tier_medium
 
@@ -36,8 +37,7 @@ def fresh_state(tmp_path: Path, monkeypatch):
 
 
 def _login(client: TestClient) -> None:
-    r = client.post("/api/login", data={"password": "test-password"})
-    assert r.status_code in (200, 303)
+    authhelp.login(client)
 
 
 def test_over_cap_seed_rejected_400():
@@ -97,7 +97,7 @@ def test_non_string_seed_from_set_property_does_not_break_the_picker(value):
         victim = toons.get_toon_in_slot(2)
         assert objects.set_property(victim.id, "appearance_seed", value)
         assert toons.get_toon_in_slot(2).appearance_seed == ""
-        r = client.get("/api/slots")
+        r = client.get("/api/dreamer")  # the player's own listing
         assert r.status_code == 200
-        fern = next(s["toon"] for s in r.json()["slots"] if s["slot"] == 2)
+        (fern,) = r.json()["toons"]
         assert fern["portrait_url"] is None

@@ -1,0 +1,339 @@
+"""`bin/game edge ...`: the Cloudflare side of daydream prod (SPEC 2026-09-27
+criteria 14-16; docs/CLOUDFLARE-SETUP.md).
+
+Runs as the operator with the dev venv, standard library only. Credentials
+come from `~/.config/daydream/cloudflare.env` (0600, never in the repo, never
+readable by the prod service user):
+
+    CLOUDFLARE_API_TOKEN=...   Workers Scripts:Edit, Workers KV Storage:Edit,
+                               Workers Routes:Edit on eidolon.com
+    CLOUDFLARE_ACCOUNT_ID=...
+
+The KV namespace id is not secret; it lives in edge/wrangler.toml.
+
+Verbs:
+
+- `status`: the flag and what the public URL says right now
+- `sleep [NOTE]` / `wake`: just the edge flag; `bin/game prod sleep|wake`
+  also stop and start the box
+- `deploy`: `wrangler deploy` of edge/
+- `secrets`: set the Access service token on the Worker, typed by you
+- `kv-create`: make the KV namespace and print the id for wrangler.toml
+- `tail`: live Worker logs
+- `test`: the Worker's unit tests
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import re
+import subprocess
+import sys
+import urllib.error
+import urllib.request
+from datetime import datetime, timezone
+from pathlib import Path
+
+REPO = Path(__file__).resolve().parent.parent
+EDGE = REPO / "edge"
+CREDENTIALS = Path.home() / ".config" / "daydream" / "cloudflare.env"
+API = "https://api.cloudflare.com/client/v4"
+PUBLIC_STATUS = "https://www.eidolon.com/daydream/edge/status"
+
+
+class EdgeError(RuntimeError):
+    pass
+
+
+def _creds() -> dict[str, str]:
+    out: dict[str, str] = {}
+    if CREDENTIALS.exists():
+        for line in CREDENTIALS.read_text().splitlines():
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                k, _, v = line.partition("=")
+                out[k.strip()] = v.strip().strip("'\"")
+    for k in ("CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ACCOUNT_ID"):
+        if os.environ.get(k):
+            out[k] = os.environ[k]
+    return out
+
+
+def kv_namespace_id() -> str | None:
+    text = (EDGE / "wrangler.toml").read_text()
+    m = re.search(r'\[\[kv_namespaces\]\][^\[]*?\bid\s*=\s*"([^"]+)"', text, flags=re.S)
+    if not m or m.group(1).startswith("REPLACE"):
+        return None
+    return m.group(1)
+
+
+def configured() -> bool:
+    c = _creds()
+    return bool(c.get("CLOUDFLARE_API_TOKEN") and c.get("CLOUDFLARE_ACCOUNT_ID")
+                and kv_namespace_id())
+
+
+def _api(method: str, path: str, body: bytes | None = None,
+         content_type: str = "application/json") -> bytes:
+    c = _creds()
+    if not c.get("CLOUDFLARE_API_TOKEN"):
+        raise EdgeError(f"no CLOUDFLARE_API_TOKEN in {CREDENTIALS}")
+    req = urllib.request.Request(API + path, data=body, method=method, headers={
+        "Authorization": f"Bearer {c['CLOUDFLARE_API_TOKEN']}", "Content-Type": content_type})
+    try:
+        with urllib.request.urlopen(req, timeout=20) as r:
+            return r.read()
+    except urllib.error.HTTPError as e:
+        raise EdgeError(f"Cloudflare API {method} {path}: {e.code} "
+                        f"{e.read().decode('utf-8', 'replace')[:300]}") from None
+    except urllib.error.URLError as e:
+        raise EdgeError(f"Cloudflare API unreachable: {e.reason}") from None
+
+
+def _kv_path(key: str) -> str:
+    acct = _creds().get("CLOUDFLARE_ACCOUNT_ID")
+    ns = kv_namespace_id()
+    if not acct or not ns:
+        raise EdgeError("the edge is not configured (docs/CLOUDFLARE-SETUP.md)")
+    return f"/accounts/{acct}/storage/kv/namespaces/{ns}/values/{urllib.request.quote(key, safe='')}"
+
+
+def kv_put(key: str, value: str) -> None:
+    _api("PUT", _kv_path(key), value.encode("utf-8"), content_type="text/plain")
+
+
+def kv_get(key: str) -> str | None:
+    try:
+        return _api("GET", _kv_path(key)).decode("utf-8")
+    except EdgeError as e:
+        if ": 404 " in str(e):
+            return None
+        raise
+
+
+def kv_delete(key: str) -> None:
+    try:
+        _api("DELETE", _kv_path(key))
+    except EdgeError as e:
+        if ": 404 " not in str(e):
+            raise
+
+
+def _now() -> str:
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def set_state(state: str, note: str = "") -> dict:
+    """Flip the edge's flag. The Worker reads it on every request; KV
+    propagates worldwide within about a minute."""
+    if state not in ("awake", "asleep"):
+        raise EdgeError("state is 'awake' or 'asleep'")
+    body = {"state": state, "note": (note or "")[:280], "since": _now()}
+    kv_put("state", json.dumps(body))
+    return body
+
+
+def get_state() -> dict:
+    raw = kv_get("state")
+    try:
+        s = json.loads(raw) if raw else None
+    except json.JSONDecodeError:
+        s = None
+    return s if isinstance(s, dict) else {"state": "awake", "note": "", "since": None}
+
+
+def describe_state() -> str:
+    s = get_state()
+    out = s.get("state", "?")
+    if s.get("note"):
+        out += f" ({s['note']})"
+    if s.get("since"):
+        out += f" since {s['since']}"
+    return out
+
+
+def public_status() -> dict | None:
+    try:
+        with urllib.request.urlopen(PUBLIC_STATUS, timeout=10) as r:
+            return json.loads(r.read())
+    except (urllib.error.URLError, OSError, ValueError):
+        return None
+
+
+MANIFEST = Path.home() / ".local" / "state" / "daydream" / "keepsakes-manifest.json"
+KEEPSAKE_PREFIXES = ("keepsakes:", "portrait:")
+
+
+def _kv_bulk_put(items: list[dict]) -> None:
+    acct = _creds().get("CLOUDFLARE_ACCOUNT_ID")
+    ns = kv_namespace_id()
+    for i in range(0, len(items), 1000):
+        _api("PUT", f"/accounts/{acct}/storage/kv/namespaces/{ns}/bulk",
+             json.dumps(items[i:i + 1000]).encode())
+
+
+def desired_keys(export_dir: Path) -> dict[str, tuple[str, bool]]:
+    """The KV keys a keepsakes export maps to: key -> (value, is_base64)."""
+    import base64
+
+    doc = json.loads((export_dir / "keepsakes.json").read_text())
+    out: dict[str, tuple[str, bool]] = {
+        "passes": (json.dumps(doc["passes"], sort_keys=True), False),
+        "chronicle": (json.dumps(doc["chronicle"]), False),
+    }
+    for acct, entry in doc["accounts"].items():
+        out[f"keepsakes:{acct}"] = (json.dumps(entry, sort_keys=True), False)
+        png = export_dir / "portraits" / f"{acct}.png"
+        if entry.get("portrait") and png.exists():
+            out[f"portrait:{acct}"] = (base64.b64encode(png.read_bytes()).decode(), True)
+    return out
+
+
+def plan_sync(desired: dict[str, tuple[str, bool]],
+              manifest: dict[str, str]) -> tuple[dict[str, str], list[str], list[str]]:
+    """(new manifest, keys to write, keys to delete). Only changed values are
+    written: KV's free tier allows 1000 writes a day, and an hourly sync of
+    unchanged keepsakes should cost none."""
+    import hashlib
+
+    new = {k: hashlib.sha256(v.encode()).hexdigest() for k, (v, _) in desired.items()}
+    write = sorted(k for k, h in new.items() if manifest.get(k) != h)
+    delete = sorted(k for k in manifest if k not in new and k.startswith(KEEPSAKE_PREFIXES))
+    return new, write, delete
+
+
+def sync_keepsakes(release: Path) -> dict:
+    """Export keepsakes with the prod release's code and push the changes to
+    KV (criterion 16). A revoked or disabled account's keepsakes and passes
+    disappear here."""
+    import tempfile
+
+    from daydream import prodctl
+
+    if not configured():
+        raise EdgeError("the edge is not configured (docs/CLOUDFLARE-SETUP.md)")
+    with tempfile.TemporaryDirectory(prefix="daydream-keepsakes-") as tmp:
+        r = prodctl.run_release_python(release, ["-m", "daydream.keepsakes", "export",
+                                                 "--out", tmp], check=False, capture=True)
+        if r.returncode != 0:
+            raise EdgeError("keepsakes export failed: " + (r.stderr or r.stdout)[-500:])
+        desired = desired_keys(Path(tmp))
+    manifest = json.loads(MANIFEST.read_text()) if MANIFEST.exists() else {}
+    new, write, delete = plan_sync(desired, manifest)
+    if write:
+        _kv_bulk_put([{"key": k, "value": desired[k][0], "base64": desired[k][1]} for k in write])
+    for k in delete:
+        kv_delete(k)
+    MANIFEST.parent.mkdir(parents=True, exist_ok=True)
+    MANIFEST.write_text(json.dumps(new, indent=1))
+    summary = {"written": len(write), "deleted": len(delete), "keys": len(new)}
+    print(f"keepsakes: {summary['written']} written, {summary['deleted']} removed, "
+          f"{summary['keys']} in all")
+    return summary
+
+
+# ---- wrangler ------------------------------------------------------------------------
+
+
+def _wrangler_env() -> dict[str, str]:
+    c = _creds()
+    if not c.get("CLOUDFLARE_API_TOKEN"):
+        raise EdgeError(f"no CLOUDFLARE_API_TOKEN in {CREDENTIALS}")
+    env = dict(os.environ)
+    env["CLOUDFLARE_API_TOKEN"] = c["CLOUDFLARE_API_TOKEN"]
+    if c.get("CLOUDFLARE_ACCOUNT_ID"):
+        env["CLOUDFLARE_ACCOUNT_ID"] = c["CLOUDFLARE_ACCOUNT_ID"]
+    env["WRANGLER_SEND_METRICS"] = "false"
+    return env
+
+
+def _ensure_node_modules() -> None:
+    if not (EDGE / "node_modules" / ".bin" / "wrangler").exists():
+        subprocess.run(["npm", "ci", "--no-audit", "--no-fund"], cwd=EDGE, check=True)
+
+
+def deploy() -> int:
+    if not kv_namespace_id():
+        raise EdgeError("edge/wrangler.toml has no KV namespace id yet: run `bin/game edge kv-create`")
+    test()
+    _ensure_node_modules()
+    return subprocess.run(["npx", "--no-install", "wrangler", "deploy"], cwd=EDGE,
+                          env=_wrangler_env()).returncode
+
+
+def secrets() -> int:
+    _ensure_node_modules()
+    print("Paste each value when wrangler asks (Zero Trust > Access > Service Auth > "
+          "the daydream-edge token). They go straight to Cloudflare.")
+    for name in ("ACCESS_CLIENT_ID", "ACCESS_CLIENT_SECRET"):
+        r = subprocess.run(["npx", "--no-install", "wrangler", "secret", "put", name], cwd=EDGE,
+                           env=_wrangler_env())
+        if r.returncode != 0:
+            return r.returncode
+    return 0
+
+
+def kv_create() -> int:
+    acct = _creds().get("CLOUDFLARE_ACCOUNT_ID")
+    if not acct:
+        raise EdgeError(f"no CLOUDFLARE_ACCOUNT_ID in {CREDENTIALS}")
+    data = json.loads(_api("POST", f"/accounts/{acct}/storage/kv/namespaces",
+                           json.dumps({"title": "daydream-edge-state"}).encode()))
+    ns = data["result"]["id"]
+    print(f"KV namespace id: {ns}")
+    print('put it in edge/wrangler.toml ([[kv_namespaces]] id = "...") and commit')
+    return 0
+
+
+def tail() -> int:
+    _ensure_node_modules()
+    return subprocess.run(["npx", "--no-install", "wrangler", "tail", "daydream-edge"], cwd=EDGE,
+                          env=_wrangler_env()).returncode
+
+
+def test() -> int:
+    files = sorted(str(p) for p in (EDGE / "test").glob("*.test.js"))
+    r = subprocess.run(["node", "--test", *files], cwd=EDGE)
+    if r.returncode != 0:
+        raise EdgeError("the edge Worker's tests failed")
+    return 0
+
+
+def status() -> int:
+    if configured():
+        print("edge flag: " + describe_state())
+    else:
+        print(f"edge flag: not configured ({CREDENTIALS} and the KV id in edge/wrangler.toml)")
+    pub = public_status()
+    print("public:    " + (json.dumps(pub) if pub else f"no answer from {PUBLIC_STATUS}"))
+    return 0
+
+
+def main(argv: list[str] | None = None) -> int:
+    p = argparse.ArgumentParser(prog="bin/game edge", description=__doc__.split("\n")[0])
+    sub = p.add_subparsers(dest="cmd", required=True)
+    for name in ("status", "wake", "deploy", "secrets", "kv-create", "tail", "test"):
+        sub.add_parser(name)
+    s = sub.add_parser("sleep")
+    s.add_argument("note", nargs="?", default="")
+    args = p.parse_args(argv)
+    try:
+        if args.cmd == "status":
+            return status()
+        if args.cmd == "sleep":
+            print("edge: asleep " + json.dumps(set_state("asleep", args.note)))
+            return 0
+        if args.cmd == "wake":
+            print("edge: awake " + json.dumps(set_state("awake")))
+            return 0
+        return {"deploy": deploy, "secrets": secrets, "kv-create": kv_create,
+                "tail": tail, "test": test}[args.cmd]()
+    except (EdgeError, subprocess.CalledProcessError) as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

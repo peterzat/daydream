@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <base href="/">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>daydream</title>
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body class="door-body">
+  <!-- The front door (SPEC 2026-09-27 criteria 2 and 8): sign in, or redeem
+       an invitation. Served for the base path when signed out, for login,
+       and for invite/<slug>. No inline script: door.js does the work. -->
+  <main class="page door">
+    <span class="leaf l1" aria-hidden="true"></span>
+    <span class="leaf l2" aria-hidden="true"></span>
+    <figure class="plate-figure door-plate">
+      <img src="assets/door-village.png" alt="">
+    </figure>
+    <h1 class="chapter-title door-title">daydream</h1>
+
+    <section id="door-login" class="door-panel">
+      <p class="door-lede">A small storybook village, kept for friends.</p>
+      <form id="login-form" class="door-form" autocomplete="on">
+        <label class="door-field">username
+          <input name="username" autocomplete="username" autocapitalize="none"
+                 spellcheck="false" required>
+        </label>
+        <label class="door-field">password
+          <input name="password" type="password" autocomplete="current-password" required>
+        </label>
+        <button type="submit" class="door-button">step inside</button>
+        <p class="door-error" role="alert" hidden></p>
+      </form>
+      <p class="door-note">Have an invitation? Open the link it came with.</p>
+    </section>
+
+    <section id="door-invite" class="door-panel" hidden>
+      <p class="door-lede" id="invite-greeting">Opening your invitation&hellip;</p>
+      <form id="invite-form" class="door-form" hidden>
+        <label class="door-field" id="invite-username-field">choose a username
+          <input name="username" autocomplete="username" autocapitalize="none"
+                 spellcheck="false" minlength="3" maxlength="24">
+          <span class="door-hint">3 to 24 lowercase letters, digits, - or _</span>
+        </label>
+        <label class="door-field">choose a password
+          <input name="password" type="password" autocomplete="new-password"
+                 minlength="10" required>
+          <span class="door-hint">at least 10 characters</span>
+        </label>
+        <button type="submit" class="door-button" id="invite-button">begin</button>
+        <p class="door-error" role="alert" hidden></p>
+      </form>
+      <p class="door-note" id="invite-note" hidden></p>
+    </section>
+  </main>
+  <script src="assets/door.js"></script>
+</body>
+</html>

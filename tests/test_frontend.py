@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 
 from daydream import db, events
 from daydream.server import app
+from tests import authhelp
 
 WEB = Path(__file__).resolve().parent.parent / "web"
 
@@ -25,8 +26,7 @@ def fresh_state(tmp_path: Path, monkeypatch):
 
 
 def _login(client: TestClient) -> None:
-    r = client.post("/api/login", data={"password": "test-password"})
-    assert r.status_code in (200, 303)
+    authhelp.login(client)
 
 
 def test_authed_root_serves_spa_shell():
@@ -194,27 +194,32 @@ def test_index_html_has_slot_picker_elements():
     assert 'id="slots-close"' in r.text
 
 
-def test_main_js_picker_offers_claim_on_taken_slot():
-    """Liveness claim (UI half): the picker offers a claim button even for a
-    '(taken)' toon, so an abandoned claim (the controller's session is gone) is
-    reclaimable -- the server takes over a dead session or refuses with 409."""
+def test_main_js_dreamer_panel_shows_only_your_own_toons():
+    """Since accounts (SPEC 2026-09-27 criterion 5) the picker is "your
+    dreamer": a player sees only their own toons, so the retired '(taken)'
+    claim-anyway branch is gone (another account's toon is off limits)."""
     with TestClient(app) as client:
         _login(client)
         r = client.get("/assets/main.js")
-    assert "(taken)" in r.text
-    assert "Offer claim anyway" in r.text  # the taken-branch claim affordance
+    assert "(taken)" not in r.text
+    assert '"api/dreamer"' in r.text
 
 
-def test_main_js_wires_slot_picker_endpoints():
-    """SPA's slot picker JS calls the four endpoints
-    (/api/slots, create, claim, kick)."""
+def test_main_js_wires_the_dreamer_endpoints_without_prompt_dialogs():
+    """The dreamer panel lists (api/dreamer), creates (api/dreamer/create)
+    through a real form, and enters / rests / deletes by slot, with a
+    storybook confirm instead of window.confirm (criterion 8)."""
     with TestClient(app) as client:
         _login(client)
-        r = client.get("/assets/main.js")
-    assert '"api/slots"' in r.text
-    assert "create" in r.text
-    assert "claim" in r.text
-    assert "kick" in r.text
+        js = client.get("/assets/main.js").text
+        html = client.get("/").text
+    assert '"api/dreamer"' in js and '"api/dreamer/create"' in js
+    assert 'postSlotAction(slot, "claim"' in js and 'postSlotAction(slot, "kick"' in js
+    assert '"delete"' in js
+    assert "window.confirm" not in js
+    body = js[js.index("async function renderSlots"):js.index("function reconnectAfterSlotChange")]
+    assert "window.prompt" not in body
+    assert 'id="dreamer-form"' in html and 'id="delete-confirm"' in html
 
 
 def test_style_css_has_slot_panel():
@@ -789,23 +794,21 @@ def test_assets_served_with_no_store_cache_control():
 
 
 def test_non_assets_paths_unaffected_by_nocache_middleware():
-    """The middleware must NOT touch /, /login, /api/*, or /cache/. Those
-    follow FastAPI's default header behavior (no Cache-Control set by
-    us). A bug in the path filter that stamped no-store broadly would
-    degrade the SPA shell and, in future, cacheability of content-
-    addressed generated images."""
+    """The /assets middleware must NOT stamp /api/* (or /cache/, whose
+    content-addressed images stay cacheable by the browser). The shell pages
+    are a different matter since the going-live turn: "/" serves the front
+    door to a signed-out visitor and the game to a signed-in one, and
+    re-issues the session cookie, so the page handler (not the middleware)
+    marks "/" and "/login" no-store so no intermediary ever caches one
+    person's page for another (SPEC 2026-09-27 criterion 7)."""
     with TestClient(app) as client:
         r = client.get("/login")
-        # The login form is a small HTML blob; no Cache-Control from us.
-        assert r.headers.get("cache-control") is None
+        assert r.headers.get("cache-control") == "no-store"
         _login(client)
         r = client.get("/")
-        # The SPA shell should also be un-stamped: it's already cheap to
-        # fetch (re-pulls /assets/main.js as a child request), and
-        # stamping here would fight the OS-level file cache on the box
-        # for no benefit.
+        assert r.headers.get("cache-control") == "no-store"
+        r = client.get("/api/slots")
         assert r.headers.get("cache-control") is None
-
 
 # ---- dev room-image repaint UI (plan 2026-07-02) -----------------------
 

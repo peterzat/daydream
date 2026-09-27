@@ -10,6 +10,7 @@ from fastapi.testclient import TestClient
 
 from daydream import db, events
 from daydream.server import app
+from tests import authhelp
 
 pytestmark = pytest.mark.tier_medium
 
@@ -25,8 +26,7 @@ def fresh_state(tmp_path: Path, monkeypatch):
 
 
 def _login(client: TestClient) -> None:
-    r = client.post("/api/login", data={"password": "test-password"})
-    assert r.status_code in (200, 303), f"login failed: {r.status_code} {r.text}"
+    authhelp.login(client)
 
 
 def _claim_wren(client: TestClient) -> None:
@@ -80,10 +80,10 @@ def test_leave_releases_toon_and_routes_next_connect_to_picker():
         r = client.post("/api/session/leave")
         assert r.status_code == 200, r.text
         assert r.json()["ok"] is True
-        slot2 = next(s for s in client.get("/api/slots").json()["slots"] if s["slot"] == 2)
-        assert slot2["toon"] is not None
-        assert slot2["toon"]["claimed_by_me"] is False  # released
-        assert slot2["toon"]["kicked_at"] is not None  # rested, claimable
+        (mine,) = client.get("/api/dreamer").json()["toons"]
+        assert mine["slot"] == 2
+        assert mine["claimed_by_me"] is False  # released
+        assert mine["kicked_at"] is not None  # rested, claimable
         # The room sees the dreamer go; the leaver never reads it.
         from daydream import events
         gone = [e for e in events.fetch_since(0) if e.kind == "narrate"

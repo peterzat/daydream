@@ -15,6 +15,7 @@ from fastapi.testclient import TestClient
 from daydream import db, events
 from daydream.api import ws as ws_module
 from daydream.server import app
+from tests import authhelp
 
 pytestmark = pytest.mark.tier_medium
 
@@ -32,8 +33,9 @@ def fresh_state(tmp_path: Path, monkeypatch):
 
 
 def _login(client: TestClient) -> None:
-    r = client.post("/api/login", data={"password": "test-password"})
-    assert r.status_code in (200, 303)
+    # Repainting is admin-only since the going-live turn; these tests are
+    # about the kill switch, so they sign in as an admin.
+    authhelp.login(client, "keeper", role="admin")
 
 
 def test_endpoints_404_when_flag_off(monkeypatch):
@@ -46,13 +48,17 @@ def test_endpoints_404_when_flag_off(monkeypatch):
         assert r.status_code == 404
 
 
-def test_gate_checks_before_auth(monkeypatch):
-    """An unauthenticated caller sees the same 404 as an authed one: the
-    switched-off surface leaks nothing, not even that auth exists."""
+def test_signed_out_caller_learns_nothing_about_the_surface(monkeypatch):
+    """A signed-out caller gets the sign-in gate's one answer for every
+    guarded path, the switched-off surface and a nonexistent path alike, so
+    nothing distinguishes them (SPEC 2026-09-27: the account gate runs before
+    every handler; this replaced the old 404-before-auth ordering)."""
     monkeypatch.setenv("DAYDREAM_REGEN_UI", "0")
     with TestClient(app) as client:
-        r = client.get("/api/rooms/r-meadow/image-prompt")
-        assert r.status_code == 404
+        a = client.get("/api/rooms/r-meadow/image-prompt")
+        b = client.get("/api/rooms/r-meadow/no-such-surface")
+    assert a.status_code == b.status_code == 401
+    assert a.json() == b.json()
 
 
 def test_snapshot_features_flag_follows_env(monkeypatch):
@@ -83,3 +89,17 @@ def test_spa_gates_plate_tools_on_the_feature_flag():
     src = (Path(__file__).resolve().parents[2] / "web/assets/main.js").read_text()
     assert "featureRegenUi = !!(snap.features && snap.features.regen_ui)" in src
     assert "if (!featureRegenUi) return;" in src
+
+
+def test_a_player_never_gets_the_repaint_surface():
+    """Admin-only (SPEC 2026-09-27 criterion 4): with the flag ON, a player's
+    snapshot keeps the tools off and both endpoints refuse with 403."""
+    with TestClient(app) as client:
+        authhelp.login(client, "wren")
+        client.post("/api/slots/1/kick")
+        assert client.post("/api/slots/1/claim").status_code == 200
+        with client.websocket_connect("/ws") as ws:
+            snap = ws.receive_json()
+        assert snap["features"] == {"regen_ui": False}
+        assert client.get("/api/rooms/r-meadow/image-prompt").status_code == 403
+        assert client.post("/api/rooms/r-meadow/image", json={}).status_code == 403

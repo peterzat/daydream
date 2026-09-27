@@ -1,0 +1,24 @@
+# Nightly online backup of the prod world and accounts databases, 14 kept
+# (SPEC 2026-09-27 criterion 13). Runs as the service user with prod's env and
+# the release's own code; safe while the village is awake (sqlite backup API).
+[Unit]
+Description=daydream prod nightly backup
+
+[Service]
+Type=oneshot
+User=daydream
+Group=daydream
+WorkingDirectory=/srv/daydream/current
+EnvironmentFile=/srv/daydream/etc/prod.env
+Environment=HOME=/srv/daydream/data
+Environment=PYTHONDONTWRITEBYTECODE=1
+ExecStart=/srv/daydream/current/.venv/bin/python -m daydream.admin backup --keep 14
+UMask=0007
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/srv/daydream/data
+PrivateTmp=yes
+PrivateDevices=yes
+PrivateNetwork=yes
+CapabilityBoundingSet=

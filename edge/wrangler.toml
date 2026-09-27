@@ -1,0 +1,33 @@
+# The daydream edge Worker (docs/GOING-LIVE.md section 3; setup in
+# docs/CLOUDFLARE-SETUP.md). Deployed with `bin/game edge deploy`.
+# Nothing here is secret: the Access service token is set with
+# `wrangler secret put ACCESS_CLIENT_ID` / `ACCESS_CLIENT_SECRET`.
+name = "daydream-edge"
+main = "src/worker.js"
+compatibility_date = "2026-09-01"
+# Only the routes below reach this Worker: no *.workers.dev URL, no preview
+# URLs, so nothing skips the zone's rules.
+workers_dev = false
+preview_urls = false
+routes = [
+  { pattern = "www.eidolon.com/daydream*", zone_name = "eidolon.com" },
+  { pattern = "eidolon.com/daydream*", zone_name = "eidolon.com" },
+]
+
+[vars]
+ORIGIN = "https://daydream-origin.eidolon.com"
+PUBLIC_HOST = "www.eidolon.com"
+BASE = "/daydream/"
+OPERATOR = "Peter"
+COOKIE_NAME = "dd_session_prod"
+
+# {state: "awake"|"asleep", note, since}, plus (criterion 16) keepsakes and
+# the pass list. The id comes from `bin/game edge kv-create`.
+[[kv_namespaces]]
+binding = "STATE"
+id = "REPLACE_WITH_KV_NAMESPACE_ID"
+
+[assets]
+directory = "./public"
+binding = "ASSETS"
+run_worker_first = true

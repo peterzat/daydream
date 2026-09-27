@@ -9,7 +9,9 @@ made to POST to a state-changing endpoint (toon delete, kick, leave) with their
 own tailnet source IP, which `AccessMiddleware` then waves through.
 
 This closes that vector: IF the browser sends an `Origin` (or, lacking it,
-`Referer`) header, its `host[:port]` must equal the request's `Host`. Requests
+`Referer`) header, its `host[:port]` must equal the configured public origin
+(`DAYDREAM_PUBLIC_ORIGIN`, prod behind the edge Worker) or, without one, the
+request's `Host`. Requests
 with NO `Origin`/`Referer` pass through untouched, so non-browser clients (the
 `bin/game world swap` CLI over urllib, the test suite, curl) are unaffected.
 
@@ -27,6 +29,8 @@ import logging
 from collections.abc import Awaitable, Callable
 from typing import Any
 from urllib.parse import urlparse
+
+from daydream import config
 
 logger = logging.getLogger(__name__)
 
@@ -49,13 +53,18 @@ def origin_allows(headers: list[tuple[bytes, bytes]]) -> bool:
     Origin/Referer was sent (a non-browser client) or its netloc matches the
     request's Host. False only when a browser sent a cross-origin Origin (or
     Referer fallback)."""
-    host = _header(headers, b"host") or ""
     source = _header(headers, b"origin")
     if source is None:
         source = _header(headers, b"referer")
         if source is None:
             return True  # non-browser client (CLI / tests / curl): allow
-    return urlparse(source).netloc == host
+    # Behind the edge Worker, Host is the tunnel hostname while the browser's
+    # Origin is the public one, so a configured public origin is the thing to
+    # match (SPEC 2026-09-27 criterion 6). Without one (dev), the request's
+    # own Host is.
+    public = config.public_origin()
+    expected = urlparse(public).netloc if public else (_header(headers, b"host") or "")
+    return urlparse(source).netloc == expected
 
 
 class CsrfOriginMiddleware:

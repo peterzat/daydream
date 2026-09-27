@@ -10,6 +10,7 @@ from fastapi.testclient import TestClient
 
 from daydream import db, events, rooms, toons
 from daydream.server import app
+from tests import authhelp
 
 pytestmark = pytest.mark.tier_medium
 
@@ -25,8 +26,7 @@ def fresh_state(tmp_path: Path, monkeypatch):
 
 
 def _login(client: TestClient) -> None:
-    r = client.post("/api/login", data={"password": "test-password"})
-    assert r.status_code in (200, 303)
+    authhelp.login(client)
 
 
 def test_claim_wakes_toon_in_starting_room():

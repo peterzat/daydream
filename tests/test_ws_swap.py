@@ -16,6 +16,7 @@ from fastapi.testclient import TestClient
 from daydream import admin, config, db, drift, events
 from daydream.api import world
 from daydream.server import app
+from tests import authhelp
 
 # The swap endpoint is loopback-gated (operator surface); these tests ARE
 # the operator, so every client presents a loopback peer.
@@ -40,8 +41,9 @@ def fresh_state(tmp_path, monkeypatch):
 
 
 def _login(client: TestClient) -> None:
-    r = client.post("/api/login", data={"password": "test-password"})
-    assert r.status_code in (200, 303), f"login failed: {r.status_code} {r.text}"
+    # World swap is an admin operation since the going-live turn (SPEC
+    # 2026-09-27 criterion 4); the player refusal is in tests/test_edge_access.py.
+    authhelp.login(client, "keeper", role="admin")
 
 
 def _claim_wren(client: TestClient) -> None:

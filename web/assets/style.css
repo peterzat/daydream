@@ -773,3 +773,32 @@ footer .slots-toggle:hover, footer .logout:hover { text-decoration: underline; }
 /* While you slept: the once-only leaf after a dream (shares the ending page). */
 .slept-title { font-size: 2.6rem; }
 .slept-text { white-space: pre-line; }
+
+/* ---- the front door (web/door.html; SPEC 2026-09-27 criteria 2, 8) ---- */
+.door { max-width: 560px; margin: 6vh auto; padding: 22px 30px 30px; }
+.door-plate img { width: 100%; height: 190px; object-fit: cover; display: block; }
+.door-title { margin: 14px 0 4px; }
+.door-lede { text-align: center; font-style: italic; color: var(--sage-deep); margin: 0 0 14px; }
+.door-form { display: flex; flex-direction: column; gap: 12px; }
+.door-field { display: flex; flex-direction: column; gap: 4px; font-family: var(--serif);
+  color: var(--sage-deep); font-size: .95rem; }
+.door-field input { font: inherit; font-size: 1.05rem; padding: .5em .7em; color: var(--ink);
+  border: 1px solid var(--line); border-radius: 8px; background: var(--paper); }
+.door-field input:focus { outline: 2px solid var(--amber); outline-offset: 1px; }
+.door-hint { font-size: .8rem; font-style: italic; color: var(--sage); opacity: .85; }
+.door-button { align-self: center; font-family: var(--hand); font-size: 1.5rem; padding: .15em 1.1em;
+  color: var(--paper); background: var(--sage); border: 0; border-radius: var(--radius); cursor: pointer; }
+.door-button:hover { background: var(--sage-deep); }
+.door-button:disabled { opacity: .6; cursor: default; }
+.door-error { color: var(--quest); font-style: italic; text-align: center; margin: 0; }
+.door-note { text-align: center; font-size: .88rem; font-style: italic; color: var(--sage); margin: 16px 0 0; }
+
+/* ---- your dreamer (SPEC 2026-09-27 criterion 5) ---- */
+.dreamer-form { display: flex; flex-direction: column; gap: 10px; margin: 12px 0; }
+.dreamer-lede { font-style: italic; color: var(--sage-deep); margin: 0; }
+.delete-confirm { margin: 12px 0; padding: 10px 12px; border: 1px solid var(--line);
+  border-radius: 8px; background: var(--parch); }
+.delete-confirm p { margin: 0 0 8px; }
+.dreamer-form.hidden, .delete-confirm.hidden { display: none; }
+.account-box { margin: 14px 0 6px; font-size: .92rem; }
+.account-box summary { cursor: pointer; color: var(--sage-deep); font-style: italic; }

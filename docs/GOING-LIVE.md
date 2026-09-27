@@ -71,9 +71,9 @@ Tunnel hostname (Access: service token only; cloudflared validates the JWT)
 ## 4. Accounts, invites, and what "admin" means
 
 - **Invites.** `/invite Robin Ash` mints a single-use two-word slug
-  (`amber-thimble`, about 24 bits from two 4096-word lists). It is stored
-  hashed and expires in 14 days, and there is a global cap on failed
-  redemptions. The friend gets a link, picks a username and a password, and
+  (`dewy-pleat`: 768 gentle adjectives × 1280 nouns, about 983k phrases, curated for reading aloud). It is stored
+  hashed and expires in 14 days. A global cap of 40 failed redemptions a
+  day keeps worst-case guessing odds under 0.2% with three invites open. The friend gets a link, picks a username and a password, and
   the account is recorded against the name the operator gave. A forgotten
   password gets a reset invite, minted the same way.
 - **Accounts live in `accounts.db`, separate from the world.** A world
