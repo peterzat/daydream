@@ -169,3 +169,10 @@ test("paths that only share the prefix are not ours", async () => {
 test("escapeHtml", () => {
   assert.equal(escapeHtml(`<a href="x">'&`), "&lt;a href=&quot;x&quot;&gt;&#39;&amp;");
 });
+
+test("player text with $-patterns renders literally on the asleep page", async () => {
+  const r = await handle(req("/daydream/"), env({ state: "asleep", note: "back $& $` $' soon" }));
+  const html = await r.text();
+  assert.match(html, /back \$&amp; \$` \$&#39; soon/);
+  assert.doesNotMatch(html, /\{\{NOTE\}\}/);
+});

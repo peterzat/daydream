@@ -191,6 +191,19 @@ def username_problem(username: str) -> str | None:
     return None
 
 
+# Usernames an invitee may not take: the CLI's own identities (cli-operator,
+# agent-<name>) are found by username, so a squatted one would be a friend
+# holding the operator's tools (SECURITY NOTE 2026-09-27). The CLI itself may
+# still create them.
+RESERVED_PREFIXES = ("cli-", "agent-")
+RESERVED_NAMES = {"admin", "root", "operator", "system", "daydream", "keeper"}
+
+
+def reserved_username(username: str) -> bool:
+    u = normalize_username(username)
+    return u in RESERVED_NAMES or u.startswith(RESERVED_PREFIXES)
+
+
 def password_problem(pw: str) -> str | None:
     if len(pw or "") < MIN_PASSWORD:
         return f"a password needs at least {MIN_PASSWORD} characters"
@@ -507,6 +520,8 @@ def redeem_join(slug: str, username: str, password: str) -> sqlite3.Row:
         inv = _open_invite(conn, slug)
         if inv is None or inv["kind"] != "join":
             raise AccountError(invite_refused())
+        if reserved_username(username):
+            raise AccountError("that username is taken")
         account_id = _insert_account(conn, username, password, inv["for_name"], "player",
                                      inv["id"])
         conn.execute("UPDATE invites SET redeemed_at = ?, account_id = ? WHERE id = ?",
@@ -588,3 +603,12 @@ def record_failure(key: str, budget: tuple[int, int]) -> None:
 
 def clear_failures(key: str) -> None:
     get_conn().execute("DELETE FROM throttle WHERE key = ?", (key,))
+
+
+def clear_redeem_throttles() -> int:
+    """The operator's lever when strangers' guesses have paused invitations
+    for everyone (`bin/game invite unblock`)."""
+    cur = get_conn().execute(
+        "DELETE FROM throttle WHERE key IN ('redeem-hour', 'redeem-day') "
+        "OR key LIKE 'redeem-addr:%'")
+    return cur.rowcount

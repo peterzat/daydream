@@ -19,6 +19,8 @@ Failures never say whether a username exists.
 
 from __future__ import annotations
 
+import asyncio
+
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 
@@ -50,6 +52,20 @@ def token_from_cookie_header(raw: str | None) -> str | None:
         return None
     morsel = jar.get(config.cookie_name())
     return morsel.value if morsel is not None else None
+
+
+def throttle_address(addr: str) -> str:
+    """The throttle key for an address: IPv6 by its /64 (one household or
+    host), so rotating through a prefix does not reset the count."""
+    import ipaddress
+
+    try:
+        ip = ipaddress.ip_address(addr)
+    except ValueError:
+        return addr
+    if ip.version == 6:
+        return str(ipaddress.ip_network(f"{ip}/64", strict=False))
+    return str(ip)
 
 
 def client_address(scope) -> str:
@@ -124,12 +140,14 @@ async def login(request: Request):
     body = await _body(request)
     username = accounts.normalize_username(body.get("username", ""))
     password = body.get("password", "")
-    addr_key = "login-addr:" + client_address(request.scope)
+    addr_key = "login-addr:" + throttle_address(client_address(request.scope))
     user_key = "login-user:" + username
     if (accounts.throttled(addr_key, accounts.LOGIN_PER_ADDRESS)
             or accounts.throttled(user_key, accounts.LOGIN_PER_USERNAME)):
         return _deny(429, SLOW_DOWN)
-    row = accounts.authenticate(username, password)
+    # argon2 is ~30-60 ms of CPU: off the event loop, so a burst of logins
+    # never stalls everyone's game (SECURITY NOTE 2026-09-27).
+    row = await asyncio.to_thread(accounts.authenticate, username, password)
     if row is None:
         accounts.record_failure(addr_key, accounts.LOGIN_PER_ADDRESS)
         if username:
@@ -174,6 +192,11 @@ async def change_password(request: Request):
     return {"ok": True}
 
 
+def invites_resting() -> str:
+    return (f"invitations are resting for a little while; try again later, or ask "
+            f"{config.operator_name()}")
+
+
 def _redeem_blocked(addr: str) -> bool:
     return (accounts.throttled("redeem-addr:" + addr, accounts.REDEEM_PER_ADDRESS)
             or accounts.throttled("redeem-hour", accounts.REDEEM_GLOBAL_HOUR)
@@ -192,9 +215,9 @@ async def invite_peek(request: Request):
     expired, revoked or unknown slug all answer the same 404, and each
     counts against the redemption throttles."""
     body = await _body(request)
-    addr = client_address(request.scope)
+    addr = throttle_address(client_address(request.scope))
     if _redeem_blocked(addr):
-        return _deny(429, SLOW_DOWN)
+        return _deny(429, invites_resting())
     inv = accounts.peek_invite(body.get("slug", ""))
     if inv is None:
         _redeem_failed(addr)
@@ -208,9 +231,9 @@ async def invite_redeem(request: Request):
     """Redeem an invitation: a `join` creates the account and signs it in; a
     `reset` sets a new password (ending every old session) and signs in."""
     body = await _body(request)
-    addr = client_address(request.scope)
+    addr = throttle_address(client_address(request.scope))
     if _redeem_blocked(addr):
-        return _deny(429, SLOW_DOWN)
+        return _deny(429, invites_resting())
     slug = body.get("slug", "")
     inv = accounts.peek_invite(slug)
     if inv is None:

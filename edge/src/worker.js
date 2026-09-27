@@ -210,13 +210,16 @@ async function asleep(request, env, state, rest, isWS) {
   const tpl = await env.ASSETS.fetch(new Request(new URL((env.BASE || "/daydream/") +
     "_edge/asleep.html", request.url)));
   let html = await tpl.text();
-  html = html
-    .replaceAll("{{NOTE}}", escapeHtml(body.note))
-    .replaceAll("{{OPERATOR}}", escapeHtml(body.operator || "the person who invited you"))
-    .replaceAll("{{SINCE}}", escapeHtml(body.since || ""))
-    .replaceAll("{{KEEPSAKES}}", keepsakesHtml(await keepsakesFor(request, env),
-                                               env.BASE || "/daydream/"))
-    .replaceAll("{{BASE}}", escapeHtml(env.BASE || "/daydream/"));
+  // Function replacements: a string replacement would read `$&`, `` $` ``
+  // and `$'` in player text as substitution patterns.
+  const fill = {
+    "{{NOTE}}": escapeHtml(body.note),
+    "{{OPERATOR}}": escapeHtml(body.operator || "the person who invited you"),
+    "{{SINCE}}": escapeHtml(body.since || ""),
+    "{{KEEPSAKES}}": keepsakesHtml(await keepsakesFor(request, env), env.BASE || "/daydream/"),
+    "{{BASE}}": escapeHtml(env.BASE || "/daydream/"),
+  };
+  for (const [k, v] of Object.entries(fill)) html = html.replaceAll(k, () => v);
   return new Response(html, {
     status: 503,
     headers: { ...noStore(), "content-type": "text/html; charset=utf-8", "retry-after": "300",

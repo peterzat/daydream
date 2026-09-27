@@ -148,6 +148,10 @@ def cmd_invite(args) -> int:
                      else "revoked" if r["revoked_at"] else "expires " + _fmt_when(r["expires_at"]))
             print(f"{r['id']}  {r['kind']:<5} {r['for_name']:<24} {state}")
         return 0
+    if args.icmd == "unblock":
+        n = accounts.clear_redeem_throttles()
+        print(f"invitations reopened ({n} throttle counter(s) cleared)")
+        return 0
     if args.icmd == "revoke":
         row = accounts.revoke_invite(args.key)
         print(f"revoked {row['id']} ({row['for_name']})")
@@ -198,6 +202,7 @@ def build_parser() -> argparse.ArgumentParser:
     ir.add_argument("--json", action="store_true")
     il = i.add_parser("list", help="list open invites (--all includes used/expired/revoked)")
     il.add_argument("--all", action="store_true")
+    i.add_parser("unblock", help="reopen invitations after strangers' guesses paused them")
     iv = i.add_parser("revoke", help="revoke an invite by id (i-...) or slug")
     iv.add_argument("key")
     return p

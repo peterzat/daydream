@@ -269,3 +269,48 @@ def test_no_location_grants_a_session(monkeypatch, mode, peer):
             with client.websocket_connect("/ws"):
                 pass
         assert refused.value.code == 4401
+
+
+# ---- review fixes (SECURITY 2026-09-27) ---------------------------------------------
+
+
+def test_the_cli_identities_cannot_be_taken_through_an_invite(words):
+    accounts.init()
+    for name in ("cli-operator", "agent-probe", "admin", "Keeper"):
+        slug, _ = accounts.create_invite("Squatter")
+        with pytest.raises(accounts.AccountError, match="taken"):
+            accounts.redeem_join(slug, name, PW)
+        assert accounts.peek_invite(slug) is not None  # the invite survives
+
+
+def test_a_global_pause_says_so_and_the_operator_can_reopen(words, monkeypatch):
+    monkeypatch.setenv("DAYDREAM_OPERATOR_NAME", "Peter")
+    accounts.init()
+    for _ in range(accounts.REDEEM_GLOBAL_HOUR[0]):
+        accounts.record_failure("redeem-hour", accounts.REDEEM_GLOBAL_HOUR)
+    slug, _ = accounts.create_invite("Robin Ash")
+    with TestClient(app) as client:
+        r = client.post("/api/invite/peek", json={"slug": slug})
+        assert r.status_code == 429 and "ask Peter" in r.json()["error"]
+        from daydream import accounts_cli
+        assert accounts_cli.main(["invite", "unblock"]) == 0
+        accounts.init()
+        assert client.post("/api/invite/peek", json={"slug": slug}).status_code == 200
+
+
+def test_ipv6_throttles_key_on_the_64():
+    from daydream.api import auth as auth_mod
+
+    a = auth_mod.throttle_address("2001:db8:1:2:aaaa::1")
+    b = auth_mod.throttle_address("2001:db8:1:2:ffff::9")
+    assert a == b == "2001:db8:1:2::/64"
+    assert auth_mod.throttle_address("203.0.113.9") == "203.0.113.9"
+
+
+def test_edge_csrf_checks_the_scheme_too(monkeypatch):
+    from daydream.api.csrf import origin_allows
+
+    monkeypatch.setenv("DAYDREAM_PUBLIC_ORIGIN", "https://www.eidolon.com")
+    assert origin_allows([(b"origin", b"https://www.eidolon.com")])
+    assert not origin_allows([(b"origin", b"http://www.eidolon.com")])
+    assert not origin_allows([(b"origin", b"https://eidolon.com")])

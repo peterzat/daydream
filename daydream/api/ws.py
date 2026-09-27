@@ -91,6 +91,7 @@ SNAPSHOT_HISTORY_DEPTH = 50
 # (the default, used by move/effect re-snapshots). None = a fresh session
 # (empty log); an int = resume from that seq (a reconnect).
 _REPLAY_RECENT = object()
+RESUME_DEPTH = 300  # most events a reconnect replays
 
 
 def _resolve_controlled_toon_id(session_id: str | None) -> str | None:
@@ -232,9 +233,12 @@ def _state_snapshot(
     elif resume_since is None:
         recent = []  # fresh session: empty log, only new events stream in
     else:
+        # Reconnect resume, clamped: `?since=0` must not replay a room's
+        # whole history (SECURITY NOTE 2026-09-27).
         recent = events.fetch_since(
-            resume_since, room_id=room_id, recipient_for=toon_id
-        )  # reconnect resume
+            max(resume_since, last_seq - RESUME_DEPTH), room_id=room_id,
+            recipient_for=toon_id,
+        )
     available = registry.list_available_for_room(room_id)
 
     image_url: str | None = None

@@ -130,3 +130,14 @@ def test_an_idle_socket_of_a_revoked_account_is_closed(monkeypatch):
 def test_the_spa_sends_a_keepalive_ping():
     js = (Path(__file__).resolve().parent.parent / "web" / "assets" / "main.js").read_text()
     assert 'JSON.stringify({ kind: "ping" })' in js and "clearInterval(pingTimer)" in js
+
+
+def test_a_reconnect_replays_a_bounded_history(monkeypatch):
+    monkeypatch.setattr(ws_module, "RESUME_DEPTH", 5)
+    with TestClient(app) as client:
+        _enter(client)
+        for i in range(20):
+            events.append("system", None, "narrate", {"text": f"old {i}"}, room_id="r-meadow")
+        with client.websocket_connect("/ws?since=0") as ws:
+            snap = ws.receive_json()
+    assert len(snap["events"]) <= 5

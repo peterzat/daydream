@@ -63,8 +63,13 @@ def origin_allows(headers: list[tuple[bytes, bytes]]) -> bool:
     # match (SPEC 2026-09-27 criterion 6). Without one (dev), the request's
     # own Host is.
     public = config.public_origin()
-    expected = urlparse(public).netloc if public else (_header(headers, b"host") or "")
-    return urlparse(source).netloc == expected
+    got = urlparse(source)
+    if public:
+        # Scheme and host both: http://www.eidolon.com is not the public
+        # origin (SECURITY NOTE 2026-09-27).
+        want = urlparse(public)
+        return (got.scheme, got.netloc) == (want.scheme, want.netloc)
+    return got.netloc == (_header(headers, b"host") or "")
 
 
 class CsrfOriginMiddleware:
