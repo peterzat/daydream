@@ -264,14 +264,34 @@ def _sentence_at(text: str, pos: int) -> str:
     return text[start:(min(ends) + 1) if ends else len(text)]
 
 
+def authored_lines(name: str, world: Path | None = None) -> list[str]:
+    """The NPC's authored drift lines ({name} filled), which the dialogue's
+    gesture swap may substitute for the model's own gesture. They are canon
+    by construction, so the canon scorer judges only what the model wrote."""
+    try:
+        env = json.loads(Path(world or WORLD).read_text())
+    except (OSError, ValueError):
+        return []
+    for t in env.get("toons") or []:
+        if t.get("name") == name:
+            pools = t.get("drift_pools") or (t.get("properties") or {}).get("drift_pools") or {}
+            return [ln.replace("{name}", name) for v in pools.values() if isinstance(v, list)
+                    for ln in v if isinstance(ln, str) and ln.strip()]
+    return []
+
+
 def canon_contradictions(reply: str, patterns: list[str],
                          pronoun: str | None = None,
-                         sentence_must: str | None = None) -> list[str]:
+                         sentence_must: str | None = None,
+                         authored: list[str] | None = None) -> list[str]:
     """The canon rules a reply breaks: each `patterns` regex that matches
     outside a negation window (and, with `sentence_must`, inside a sentence
     that refers to the thing asked about), plus a pronoun break when the
     NPC's canon is they/them and the narration OUTSIDE quoted speech genders
-    them."""
+    them. Sentences in `authored` (the NPC's own authored lines, spliced in
+    by the gesture swap) are removed first: the scorer judges the model."""
+    for line in authored or []:
+        reply = reply.replace(line, " ")
     hits: list[str] = []
     for pat in patterns:
         for m in re.finditer(pat, reply, re.I):
@@ -525,7 +545,8 @@ async def suite_canon(tmp: Path) -> dict:
                 reply = await _talk(npc, item["ask"])
                 hits = canon_contradictions(reply or "", item["contradicts"],
                                             pronouns.get(name),
-                                            item.get("sentence_must"))
+                                            item.get("sentence_must"),
+                                            authored_lines(name))
                 runs.append({"item": item["id"], "npc": name, "sample": i,
                              "ask": item["ask"], "reply": reply,
                              "contradictions": hits})
@@ -560,7 +581,8 @@ def _rescore(args) -> int:
                 continue
             run["contradictions"] = canon_contradictions(
                 run.get("reply") or "", item["contradicts"],
-                pronouns.get(run["npc"]), item.get("sentence_must"))
+                pronouns.get(run["npc"]), item.get("sentence_must"),
+                authored_lines(run["npc"]))
         wall = c.get("wall_s")
         r["suites"]["canon"] = _canon_summary(c["runs"])
         if wall is not None:

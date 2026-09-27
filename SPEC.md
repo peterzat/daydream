@@ -75,7 +75,7 @@ after its first dream.
   ends at exactly 350 in tier_medium, and Zork is frozen: no edits under
   `worlds/zork1*` or `tests/data/zork1_walkthrough.json` this turn.
 
-- [ ] **10. Dialogue is grounded (measured).** The dialogue prompt carries the
+- [x] **10. Dialogue is grounded (measured).** The dialogue prompt carries the
   NPC's authored voice sheet (including pronouns), the player's name, what the
   NPC knows, its relationship with this player, its current wants, and its
   recent exchanges with this player. `bin/game model-eval` gains a canon suite

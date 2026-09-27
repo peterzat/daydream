@@ -179,3 +179,23 @@ def test_opener_max_share():
     assert model_eval.opener_key(same) == "tace pauses the scent of cedar"
     assert model_eval.opener_max_share(texts) == 3
     assert model_eval.opener_max_share(["short one"]) == 0
+
+
+def test_canon_scorer_judges_the_model_not_the_authored_gesture():
+    """The gesture swap may splice in one of the NPC's authored drift lines;
+    authored text is canon by construction and is not scored (the real
+    2026-09-26 AFTER-run false positive), while the model's own words are."""
+    item = _item("gear-seen")
+    reply = ("Mott sets the tin back on the shelf and straightens it by a hair, so it "
+             "sits just so. 'I have never seen the escapement gear at all.'")
+    authored = model_eval.authored_lines("Mott")
+    assert "Mott sets the tin back on the shelf and straightens it by a hair, so it sits just so." in authored
+    assert model_eval.canon_contradictions(
+        reply, item["contradicts"], sentence_must=item.get("sentence_must"))
+    assert not model_eval.canon_contradictions(
+        reply, item["contradicts"], sentence_must=item.get("sentence_must"), authored=authored)
+    # A model-written claim still counts even beside an authored gesture.
+    bad = ("Mott sets the tin back on the shelf and straightens it by a hair, so it "
+           "sits just so. 'I found one tucked in my pocket.'")
+    assert model_eval.canon_contradictions(
+        bad, item["contradicts"], sentence_must=item.get("sentence_must"), authored=authored)
