@@ -192,7 +192,7 @@ All reachable from the Clocktower (the start room). Compass-consistent.
 | The Clocktower | r-clocktower | up loft, east square, down cellar | the base of the great clock; the tall oak clock case; the repair ledger; the Ledger of Returned Hours |
 | The Clockmaker's Loft | r-loft | down clocktower, up balcony | Tace's workbench; shelves of small resting clocks |
 | The Winding Balcony | r-balcony | down loft | a small oak balcony above the clock face; faces east, toward where dawn would come |
-| The Hour Cellar | r-cellar | up clocktower | Umber's jars of saved hours |
+| The Hour Cellar | r-cellar | up clocktower | Umber's jars of saved hours; Umber's cellar tea, poured into a chipped cup labelled DRINK WHILE WARM |
 | The Lantern Square | r-square | west clocktower, north workshop, south well, east lane | paper lanterns, cobbles; guests arrive here at dusk |
 | The Old Workshop | r-workshop | south square | Mott's sweeping; the tin |
 | The Mossy Well-Court | r-well | north square, south garden | the old well; where the gear rolled |
@@ -201,10 +201,10 @@ All reachable from the Clocktower (the start room). Compass-consistent.
 | Lamplight Lane | r-lane | west square, north post, east waiting, south bridge | a narrow lane of lanterns |
 | The Little Post Office | r-post | south lane | Fen's pigeonholes of unsent letters |
 | The Waiting House | r-waiting | west lane, up lamphouse | Linden's; guest rooms |
-| The Lamp House | r-lamphouse | down waiting | Bell's little room of spare wicks, above the Waiting House |
+| The Lamp House | r-lamphouse | down waiting | Bell's little room of spare wicks, above the Waiting House; one west window over the narrow bed (the sunset view), nothing facing east |
 | The Lantern Bridge | r-bridge | north lane, south duskroad, down river | a bridge hung with lanterns over the slow river |
 | The Slow River's Edge | r-river | up bridge | reeds; a river that moves like an afternoon |
-| The Dusk Road | r-duskroad | north bridge, east hill | a long meadow road where hours drift down at dusk |
+| The Dusk Road | r-duskroad | north bridge, east hill | a long meadow road where hours drift down at dusk; a dreamer who stands still there at dusk is given one stray minute, once |
 | The Hill of Long Shadows | r-hill | west duskroad | the highest place; the one spot you might see a dawn from |
 
 ## 5. Time in the village
@@ -732,7 +732,9 @@ In the order a dreamer meets it:
 
 - Bell's lanterns have names: Pollen (sulks if lit last), Old Blue (burns
   steady), Thimble (the smallest, brightest for her size), and the one that
-  hiccups. There are forty-one lanterns in the square and the lane.
+  hiccups. There are forty-one lanterns in the square and the lane. Pollen
+  is the square's paper lantern on its hooked pole, the one a dreamer can
+  lift down; Bell is glad to have her back and hangs her again.
 - On the hill, Bell names stars like lanterns: "Pollen's cousin", "Old Blue,
   gone up in the world", and Thimble, "the little one".
 - What Bell saw at `first-dawn`: the sky went grey, then pearl, then the

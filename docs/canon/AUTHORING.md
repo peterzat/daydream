@@ -51,11 +51,44 @@ Bell is at r-square by day and dusk and ASLEEP in r-lamphouse at night and
 dawn; Sorrel is at r-duskroad by day/dusk and r-bridge at night/dawn; Tock
 wanders; everyone else stays home.
 
-World flag: CLOCK-STARTED (set when the prologue ends). Templates:
-`dreamseed`, `small-clock`. World verbs: `wind` (windable things),
-`listen`, `sing`. Engine verbs: look, examine, take, drop, give X to Y,
-use X on Y, open, close, put X in Y, read, plant, say, go (directions),
-inventory, talk to X, ask X about TOPIC (alias: tell X about TOPIC).
+World flag: CLOCK-STARTED (set when the prologue ends). Player flags
+include MET-BELL (Bell's once-only welcome) and WAITED-DUSK (the Dusk Road's
+minute). Templates: `dreamseed`, `small-clock`. World verbs: `wind`
+(windable things), `listen`, `sing`, `sit`, `wait`, `ring`, `pet`, `eat`,
+`drink`, `sleep` (each with gentle defaults; room and object rules give the
+specific moments). Engine verbs: look (also "look through / out of / into
+X", which examines X), examine, take, drop, give X to Y, use X on Y, open,
+close, put X in Y, read, plant, say, go (directions), inventory, talk to X,
+ask X about TOPIC (alias: tell X about TOPIC). A free-form line to an NPC
+that names one of its topics or open beats (whole words, plural-tolerant)
+gets that authored answer, so name topics the way players will say them.
+
+Who reads a line (2026-09-26). A line whose narration addresses "you" (opens
+"You ..." or says "your hand" outside quoted speech) reaches only the acting
+player. Give such a moment an `others` line (third person, `{actor}` for the
+player's name) so everyone else in the room sees it; `"to": "everyone"`
+forces a broadcast. Both work on narrate effects, beats, endings, and topics.
+Topic answers and improvised replies are the asker's alone (bystanders see a
+short "X and Y talk quietly" line). An NPC's `declines_text` (a refused gift)
+may be a list of variants with `{item}`; it reaches only the giver.
+
+Things that go home. The world sets `config.rest_returns_things`, so every
+authored non-fixture thing remembers its authored room, and a player who
+leaves the dream leaves world objects there. Spawned quest items carry
+`"properties": {"home": "<room>"}` for the same; `"home": null` opts a
+keepsake out. Keepsakes and stray minutes have no home and stay with the
+player.
+
+Dreamseed growth boundaries (the `dreamseed` template) also take
+`never_words` (canon-breakers the gardener must never write; a composition
+with one is rejected, seed kept) and `question_hint` (how to answer, added
+to the question when a player plants with no words).
+
+Changing authored content after launch: edit the sources, re-assemble, and
+`bin/game world refresh` carries it into the live world without losing play
+(players, positions, object state, arc progress, relationships, finds,
+deeds, grown rooms, and anything play wrote are kept). A reset is a new
+village; a dream patch is additive only.
 
 ## 3. An arc
 
