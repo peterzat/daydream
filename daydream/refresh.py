@@ -15,7 +15,8 @@ DB:
 - authored objects new to the envelope are inserted where authored;
 - live-only objects (players, finds, keepsakes, grown rooms, dream
   furnishings) are untouched;
-- every `def:*` story definition is replaced by the fresh one, and applied
+- every `def:*` story definition (and the world's config and voice) is
+  replaced by the fresh one, and applied
   dreams' `live` facts and cast additions are re-applied on top; every other
   world-state key (arc progress, relationships, per-player state, deeds,
   flags, the clock) is kept.
@@ -47,6 +48,9 @@ RUNTIME_KEYS = frozenset({
     "lit", "burned_out", "flame", "glow_level", "combat_strength",
 })
 _NEW_WAY = re.compile(r"\s*A new way opens [^.]*\.")
+# Authored world-state rows outside the def: prefix (the world's config and
+# voice); every other non-def row (arc progress, the rng seed, flags) is play.
+AUTHORED_STATE_KEYS = frozenset({"config", "voice"})
 
 
 def _played_keys(conn) -> dict[str, set[str]]:
@@ -182,7 +186,7 @@ def refresh(envelope_path: Path, *, check: bool = False) -> dict:
         # Story definitions: the fresh ones, with applied dreams' live
         # additions on top; every other key is play and stays.
         for key, value in fresh_state.items():
-            if key.startswith("def:"):
+            if key.startswith("def:") or key in AUTHORED_STATE_KEYS:
                 if worldstate.get(world_id, key) != value:
                     report["defs"].append(key)
                 worldstate.set(world_id, key, value)
@@ -197,6 +201,14 @@ def refresh(envelope_path: Path, *, check: bool = False) -> dict:
             for tid, spec in (live_part.get("cast_add") or {}).items():
                 if row_ok := objects.get(tid):
                     dream.cast_add(row_ok, spec)
+        # Players who left before this deploy still hold world objects that
+        # now have a home (the rest-return rule arrived after they rested).
+        from daydream import toons
+        report["sent_home"] = []
+        for (tid,) in conn.execute(
+                "SELECT id FROM objects WHERE world_id = ? AND kind = 'toon' "
+                "AND is_human_controlled = 0 AND kicked_at IS NOT NULL", (world_id,)).fetchall():
+            report["sent_home"] += toons.send_home_things(tid)
         if fresh_world["starting_room_id"]:
             conn.execute("UPDATE worlds SET starting_room_id = ? WHERE id = ?",
                          (fresh_world["starting_room_id"], world_id))
@@ -234,6 +246,8 @@ def main(argv: list[str] | None = None) -> int:
           f"{len(report['defs'])} story definitions changed")
     if report["inserted"]:
         print("  new: " + ", ".join(report["inserted"]))
+    if report.get("sent_home"):
+        print("  sent home from resting players: " + ", ".join(report["sent_home"]))
     if report["defs"]:
         print("  defs: " + ", ".join(report["defs"]))
     held = {k: v for k, v in report["kept_keys"].items() if v}

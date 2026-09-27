@@ -66,6 +66,7 @@ async def test_refresh_carries_authored_fixes_and_keeps_play(tmp_path):
         hob = next(t for t in env["toons"] if t["id"] == "t-hob")
         hob["presence_text"] = "Hob waves from the ladder."
         hob["properties"]["declines_text"] = ["Hob shakes their head at the {item}."]
+        env.setdefault("config", {})["rest_returns_things"] = True
 
     report = refresh.refresh(_envelope(tmp_path, fix))
     hob = objects.get("t-hob")
@@ -85,6 +86,7 @@ async def test_refresh_carries_authored_fixes_and_keeps_play(tmp_path):
     assert lane.properties["description_cached"].endswith("A new way opens to the east, toward Moss Stair.")
     assert story.rel(WORLD, "t-wynn", ada) == rel_before
     assert worldstate.get(WORLD, "refresh:last")["inserted"] == 1
+    assert worldstate.get(WORLD, "config")["rest_returns_things"] is True   # authored config
 
 
 async def test_refresh_check_writes_nothing(tmp_path):
@@ -105,3 +107,22 @@ async def test_refresh_refuses_another_world(tmp_path):
 
     with pytest.raises(SystemExit):
         refresh.refresh(_envelope(tmp_path, other))
+
+
+
+async def test_refresh_sends_home_what_resting_players_hold(tmp_path):
+    """A player who left before the rest-return rule arrived still holds a
+    world object; the refresh that brings `home` sends it back."""
+    from daydream import toons
+    ada = player(1, "Ada", "r-lane")
+    await say(ada, "take oats")
+    objects.move(ada, "r-mill")
+    toons.kick_slot(1)                      # no home yet: the oats stay carried
+    assert objects.get("o-oats").location_id == ada
+
+    def enable(env):
+        env.setdefault("config", {})["rest_returns_things"] = True
+
+    report = refresh.refresh(_envelope(tmp_path, enable))
+    assert "o-oats" in report["sent_home"]
+    assert objects.get("o-oats").location_id == "r-lane"
