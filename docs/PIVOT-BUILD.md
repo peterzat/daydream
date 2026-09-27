@@ -7,6 +7,13 @@ state, so a fresh context can resume. Newest state at the bottom.
 
 ## Engine design decisions
 
+Naming note (read first): several identifiers below changed during the
+build. Story sections are validated in `daydream/llm/story_format.py` (not
+`format2.py`); `minutes` became `collectibles`, `grant_minute` became
+`grant_collectible`, `pq:<toon>:minutes` became `pq:<toon>:collected`, and
+the `minutes_found` condition became `collected`. The code and
+docs/canon/AUTHORING.md are authoritative.
+
 **Where story data lives.** Format 2 gains authored sections, validated
 fail-loud by `daydream/llm/format2.py` and stored as worldstate `def:*` rows:
 `arcs`, `facts`, `storylets`, `minutes`, `pages`, `time`. Per-NPC story data

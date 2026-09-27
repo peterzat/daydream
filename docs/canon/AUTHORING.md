@@ -84,11 +84,14 @@ Dreamseed growth boundaries (the `dreamseed` template) also take
 with one is rejected, seed kept) and `question_hint` (how to answer, added
 to the question when a player plants with no words).
 
-Changing authored content after launch: edit the sources, re-assemble, and
-`bin/game world refresh` carries it into the live world without losing play
+Changing authored content after launch: edit the sources, re-assemble, run
+`bin/game world refresh --check` (writes nothing), then `bin/game world
+refresh`, which carries it into the live world without losing play
 (players, positions, object state, arc progress, relationships, finds,
 deeds, grown rooms, and anything play wrote are kept). A reset is a new
-village; a dream patch is additive only.
+village; a dream patch is additive only. Anything players say often enough
+to reach the local model is a candidate topic: each dream digest lists the
+recent local lines for exactly this.
 
 ## 3. An arc
 

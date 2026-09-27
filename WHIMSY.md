@@ -80,7 +80,9 @@ unexplained mystery (the bell, the wildflowers), and no urgency.
 
 ## Stories: soft stakes (SPEC 2026-09-26)
 
-The first five hundred lines of this file taught gentleness, and the world
+Who writes what: every line that carries story is authored and must pass this file read aloud; local-model lines are reflexes held to the speaker's voice sheet, kept short, and never state a fact the speaker was not given (docs/REFLEXES.md).
+
+The sections above taught gentleness, and the world
 learned it too well: every surface banned wanting, and nothing ever changed
 (docs/PIVOT.md section 2.5). Gentle is not wantless. The touchstones have
 stakes: Spiritfarer is about death and letting go; A Short Hike has a goal
@@ -88,7 +90,7 @@ and a climb. Cozy stories carry tension through **soft stakes**:
 
 - **Wants.** Every guest and keeper wants one thing: a lost nap wants the
   quiet it came from, a lamplighter wants to see a dawn. Say so plainly.
-- **Something lost, missed, or not yet.** A hour that never came home, a
+- **Something lost, missed, or not yet.** An hour that never came home, a
   letter never sent, a song someone slept through, a goodbye that came too
   soon. These are the engine of every arc.
 - **Gentle time.** Things take days. A guest can wait, and if no one helps,

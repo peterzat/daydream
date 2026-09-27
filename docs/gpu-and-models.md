@@ -2,6 +2,8 @@
 
 The durable home for *why* daydream uses the GPU the way it does, *what* we picked, *what we tried and rejected*, and *what we should consider trying later*. Read this before bumping a model, swapping an engine, or adding a tuning flag.
 
+Since the pivot (2026-09-26), models are chosen for reflexes: grounding, selection among authored options, JSON validity, and latency with several players at once. Prose voice matters only for off-script replies, which dreams steadily replace with authored topics, so the creative-finetune items are deprioritized. SDXL's runtime job is player portraits and grown rooms; the village's art is prebaked and graded (`bin/game prebake`, docs/art/). See docs/REFLEXES.md.
+
 If you only read one section, read [September 2026 re-evaluation](#september-2026-re-evaluation), [The fp8-KV story](#the-fp8-kv-story) and [Things we have not tried yet](#things-we-have-not-tried-yet). Choosing a model? Run `bin/game model-eval` (the bake-off harness) before arguing from benchmarks.
 
 ## The box
@@ -176,7 +178,7 @@ The smoke harness's strict-JSON probe was specifically chosen because it surface
 
 ### Latency on this box
 
-5.7-6 seconds per 1024×384 at 22 steps, models warm. First-call cold start is +3-5 s for VAE/CLIP/sampler initialization. Well under the 30 s budget the SPEC criterion sets. Not a current bottleneck.
+5.7-6 seconds per 1024×384 at 22 steps, models warm. First-call cold start is +3-5 s for VAE/CLIP/sampler initialization. Well under any budget a player would notice behind the painting overlay. Not a current bottleneck.
 
 ### Image-gen alternatives we considered and did not test
 
@@ -197,7 +199,7 @@ Swapping is config, not code, by design. The places it touches:
 | Swap | Where to change |
 |---|---|
 | LLM model name | `DAYDREAM_VLLM_MODEL` env var (sets bootstrap default) AND `DAYDREAM_LLM_MODEL` env var (sets daydream's litellm call). Defaults match in `daydream/config.py:llm_model()` and `bin/vllm-bootstrap`. |
-| LLM endpoint (e.g. swap to OpenAI / Cloudflare) | `DAYDREAM_LLM_BASE_URL` + `DAYDREAM_LLM_MODEL` env vars. litellm picks the right backend from the model prefix (`openai/`, `anthropic/`, `cloudflare/`, `hosted_vllm/`). |
+| LLM endpoint (another local OpenAI-compatible server) | `DAYDREAM_LLM_BASE_URL` + `DAYDREAM_LLM_MODEL` env vars, `hosted_vllm/` prefix. The runtime never calls a cloud model (CLAUDE.md, generation policy). |
 | Image-gen LoRA | Edit `lora_name` in `daydream/images/workflows/painterly_room.json`. Both `bin/game image-test` and the room-bg generator pick it up. Drop the new LoRA file into `external/ComfyUI/models/loras/`. |
 | Image-gen base model | Edit `ckpt_name` in the same workflow JSON. Drop the safetensors into `external/ComfyUI/models/checkpoints/`. |
 | vLLM tuning flag | `bin/game cmd_vllm_up` in `bin/game`. Re-run `tools/arbiter-smoke.py` to validate. |

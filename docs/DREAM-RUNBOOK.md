@@ -57,7 +57,11 @@ order of importance:
 3. **Moves threads**: new facts that advance open arcs' soft stakes, a
    keeper's small change of heart, a new guest arc when the village is
    quiet (`add.arcs` + its guest in `add.toons`, with walkthroughs).
-4. **The note**: `while_you_slept`, the leaf every returning player sees
+4. **Turn improvisation into authorship.** The digest's "Voice (authored vs
+   local)" section lists the local model's recent lines. For each wrong or
+   frequent one, add a topic (`live.cast_add`) or a fact so the next ask gets
+   an authored answer (the first dream's `no-baker` fact is the model).
+5. **The note**: `while_you_slept`, the leaf every returning player sees
    once. Two to five short sentences in the village's voice: who arrived,
    what someone did (by name), what changed. Warm, specific, no urgency.
 
@@ -102,9 +106,11 @@ bin/game dream rehearse worlds/lost-hours/dreams/<id>/patch.json
 Snapshots the live world, applies the patch to a side copy, replays the
 patch's `live` walkthroughs there, then builds a fresh twin (the canonical
 world plus every applied dream's `add` plus this one) and replays EVERY
-committed walkthrough and the patch's `fresh` ones. Zero LLM calls. Writes
-`rehearsal.json` next to the patch. A failed rehearsal installs nothing:
-fix the patch and rehearse again.
+committed walkthrough and the patch's `fresh` ones. Zero LLM calls. The
+scratch databases (the snapshot, the side copy, the fresh twin) live under
+`~/data/daydream/dreams/<id>/`; `rehearsal.json` is copied next to the patch
+for the commit. A failed rehearsal installs nothing: fix the patch and
+rehearse again.
 
 ## 5. Install
 
@@ -139,3 +145,13 @@ render and grade it against WHIMSY.md as for the base world
   the dream's folder (`observed.md`).
 - Tell the operator: the callbacks, what was furnished, the note's text,
   and anything left for the next dream.
+
+## Dreams and refresh
+
+A content fix to the canonical world (`bin/game world refresh`) and dreams
+compose: a refresh rebuilds the authored definitions from the canonical
+envelope plus every applied dream's `add`, then re-applies each dream's
+`live` facts and cast additions, so a dream never has to be re-installed
+after a refresh. A dream can land inside the same village day it digests (the
+first one did): no new daily finds appear, and the note still says "while you
+slept".

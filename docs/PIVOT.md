@@ -1,7 +1,10 @@
 # The pivot: from platform to story (2026-09-26)
 
 Status: direction approved by the operator 2026-09-26 ("lock in what you
-want"); decisions recorded in section 8. Nothing built yet. Baseline for
+want"); decisions recorded in section 8. Built 2026-09-26 (SPEC.md 21 of 22;
+the operator's playtest is the last); this file is now the historical design
+record, and where it differs from SPEC.md the spec wins. Unbuilt promises are
+tracked in docs/ROADMAP.md ("Next"). Baseline for
 diffs and reverts is the `pre-pivot` tag. Written after a full read of the docs, the engine, the model
 bake-off, and the archived play data (three research passes: play forensics,
 local-model capability, engine authoring surface). Every claim below about

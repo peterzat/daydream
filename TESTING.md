@@ -15,6 +15,10 @@
 - **Canon is measured, not graded.** `bin/game model-eval` gained a canon suite (`tests/model_eval/canon.json`: contradiction regexes against authored facts) and an opener-distinctness metric; the before/after runs are committed under `docs/model-eval/`.
 - Retired with the loft: `tests/test_quest_playthrough.py` (replaced by `worlds/lost-hours/walkthroughs/prologue.json`) and `tests/test_world_integrity.py` (replaced by the analyzer).
 
+**Current (2026-09-26, the pivot):** `bin/game test short` collects ~975 tests (~8 s), short+medium ~1430 (~28 s), long adds the real-GPU drift probes (~3 min with vLLM and ComfyUI up). Pre-commit and pre-push hooks and GitHub Actions CI are installed (`bin/install-hooks`). The dated review below is history.
+
+## History: the 2026-04-23 review
+
 **Summary:** Test architecture just shipped in commits C1-C5 (`4d606e6`..`844884e`). Three-tier dispatcher (`bin/game test short|medium|long|ci|human`) with 156/211/220 tests respectively; short in 2.06s, medium in 2.65s — well under budget. Drift loop is fully implemented with in-tree golden baselines, a perceptual-hash image corpus, a JSON-adherence LLM corpus, and an arbiter-held tripwire for real-GPU tests. The strategy is appropriate and proportionate for a single-contributor project at v1.
 
 **Test infrastructure found:**

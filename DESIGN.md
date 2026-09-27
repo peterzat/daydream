@@ -118,13 +118,22 @@ of room narration takes a **drop cap** in `--amber`.
   soft dotted-underline click targets; the staged/active target is emphasized.
 - **Detail / ledger inset** (`.detail-inset`): the storybook expression of
   `examine` / `read`, a revealed parchment card with a tab label.
-- **Marginalia groups:** `you` / `here with you` / `you carry` / an optional
-  `a small errand`. Chips stay clickable.
+- **Marginalia groups:** `you` / `here with you` / `around you` / `you carry`.
+  Chips stay clickable. Each resident carries **ask-about topic chips**
+  (`#topics`): authored answers are the default path, and the text box is for
+  the unanticipated.
+- **Story panels:** the folio shows the village day and phase ("day 2 · dusk");
+  the satchel opens the keepsakes spread, the journal, and the **Book of Stray
+  Minutes** (`#book-panel`); a returning player sees the once-only **while you
+  slept** leaf (`#slept-panel`); **How to Dream** (`#help-panel`) and the
+  ending page (`#ending-panel`, `#end-marker`) are storybook leaves too.
+  Addressed speech shows its listener ("Ada to Bo").
 - **Ink-tab verb ribbon** (`#verb-bar`): "what you might do" chips; the staged verb
   gets a pip and a one-line hint (`#verb-hint`).
 - **Affordance ribbon** (`#skill-bar`): a quieter, italic second row beneath the verb
-  ribbon for room-anchored data skills (`wind`, `listen`); present only when the room
-  offers them, styled as whispers rather than tabs.
+  ribbon for room-anchored data skills (format-1 worlds only; the Lost Hours'
+  `wind`, `listen`, `sit`, `pet` and the rest are world verbs on the main ribbon),
+  styled as whispers rather than tabs.
 - **Compass footer** (`#exit-bar`): "ways from here", one route per exit.
 - **Keepsakes backpack** (`#backpack-panel`): a two-page foldout spread of the
   carried inventory as specimen cards plus empty collection slots.
@@ -189,7 +198,7 @@ durable source.**
    CSS `:root`. A one-sided edit fails the pre-commit gate with a pointer to both
    sides. This is the mechanical half.
 2. **Eyeball pass against the reference.** After a UI change, deploy and compare
-   the live Stopped Clock room against `docs/mockups/01-reading-room/`: chapter
+   the live Clocktower against `docs/mockups/01-reading-room/`: chapter
    plate shows the room image; drop-cap prose reads as a page; in-prose
    affordances stage and reveal an inset; marginalia shows you / here / carry;
    the verb ribbon stages with a pip and hint; the compass exits navigate; the
