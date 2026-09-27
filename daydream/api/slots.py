@@ -249,6 +249,14 @@ async def leave_session(request: Request) -> dict:
     released = toons.release_session_toon(sid)
     request.session["left"] = True
     if released is not None:
+        if released.current_room_id:
+            # The room sees a dreamer go (playtest 2026-09-26: players
+            # vanished mid-conversation with no line at all).
+            from daydream import events
+            events.append("system", None, "narrate",
+                          {"text": f"{released.name} drifts out of the dream for now.",
+                           "except": released.id},
+                          room_id=released.current_room_id)
         asyncio.create_task(journal.write_entry(released.id))
     return {"ok": True, "released": released.id if released else None}
 

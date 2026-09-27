@@ -173,6 +173,9 @@ async def test_plant_happy_path_full_atomic_batch(monkeypatch):
     # The final in-character narrate names the direction and the title.
     line = _last_narrate()
     assert "south" in line and "The Moss Stair" in line
+    # The room it grew from now mentions the new way (playtest 2026-09-26).
+    meadow = rooms.get_room("r-meadow").description_cached or ""
+    assert "toward The Moss Stair" in meadow
 
 
 @pytest.mark.asyncio
@@ -834,3 +837,14 @@ async def test_no_first_planting_text_no_beat(monkeypatch):
     await _plant(seed)
     assert worldstate.get("w-bunny", "first_bloom") is None
     assert (objects.get_property("t-wren", "journal") or []) == []
+
+
+def test_never_words_reject_a_composition_that_breaks_canon():
+    """A world's growth boundaries can name words it must never introduce
+    (playtest 2026-09-26: a grown note mentioned a baker in a village with
+    no bakery). A composition using one is rejected: seed kept, nothing built."""
+    g = dict(GROWTH_BLOCK, never_words=["baker", "bakery"])
+    bad = dict(VALID_COMPOSITION, description=VALID_COMPOSITION["description"] + " A note says it was fixed for the baker.")
+    assert growth.validate_growth_output(dict(VALID_COMPOSITION), g) is not None
+    assert growth.validate_growth_output(bad, g) is None
+    assert growth.validate_growth_output(bad, GROWTH_BLOCK) is not None  # the word, not the length

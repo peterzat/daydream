@@ -299,3 +299,10 @@ async def test_take_from_and_drop_into():
     spawn_ground_items()
     lp = await line("take sword from the floor")
     assert cmds(lp) == [("take", "o-sword", None, "")]
+
+
+async def test_look_through_and_look_out_examine_the_thing():
+    lp = await line("look through the lantern")
+    assert cmds(lp) == [("examine", "i-lantern", None, "")]
+    lp = await line("look out of the lantern toward the west")
+    assert cmds(lp) == [("examine", "i-lantern", None, "")]

@@ -147,8 +147,15 @@ async def _session(st: dict, frame: dict | None, quiet: float = 1.2,
         if frame is not None:
             sent_at = first.get("last_seq", 0)
             seen: set[int] = {e.get("seq") for e in first.get("events") or []}
+            me = (first.get("self") or {}).get("id")
             await ws.send(json.dumps(frame))
-            deadline = time.monotonic() + ack_timeout
+            # Until something addressed to this player arrives (their own
+            # move or speech, a private line), keep waiting: an improvised
+            # reply takes seconds, and an early frame (a refresh, a bystander
+            # line) must not end the wait (playtest 2026-09-26: replies landed
+            # a command late, under "meanwhile").
+            answered = {"yes": False}
+            deadline = time.monotonic() + min(ack_timeout, 25.0)
 
             def take(e: dict) -> None:
                 # Events arrive live OR inside a re-snapshot's replayed
@@ -157,6 +164,8 @@ async def _session(st: dict, frame: dict | None, quiet: float = 1.2,
                 if seq <= sent_at or seq in seen:
                     return
                 seen.add(seq)
+                if me and (e.get("recipient_id") == me or e.get("actor_id") == me):
+                    answered["yes"] = True
                 line = _line({"kind": "event", "event": e})
                 if line:
                     result.append(line)
@@ -182,7 +191,9 @@ async def _session(st: dict, frame: dict | None, quiet: float = 1.2,
                     line = _line(f)
                     if line:
                         result.append(line)
-                deadline = time.monotonic() + quiet
+                        answered["yes"] = True
+                if answered["yes"]:
+                    deadline = time.monotonic() + quiet
     if snap is not None:
         st["room"] = (snap.get("room") or {}).get("id")
         st["entities"] = snap.get("entities") or []

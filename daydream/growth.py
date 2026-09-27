@@ -174,6 +174,9 @@ def _user_prompt(growth: dict, room: rooms.Room, phrase: str) -> str:
     motifs = growth.get("motifs") or []
     if motifs:
         lines.append(f"- motifs: {', '.join(motifs)}")
+    never = [w for w in growth.get("never_words") or [] if isinstance(w, str) and w.strip()]
+    if never:
+        lines.append(f"- never mention: {', '.join(never)}")
     lines.append("")
     lines.append("Example rooms in this seed's voice (for spirit, never to copy):")
     for ex in growth.get("exemplars") or []:
@@ -251,6 +254,12 @@ def validate_growth_output(result: object, growth: dict) -> dict | None:
     )
     if safety.first_banned(all_text) is not None:
         return None
+    # The world's own canon words it must never introduce (a world with no
+    # bakery never grows a baker's note: playtest 2026-09-26).
+    for w in growth.get("never_words") or []:
+        if isinstance(w, str) and w.strip() and re.search(
+                rf"\b{re.escape(w.strip())}\b", all_text, re.I):
+            return None
     # Anti-copy tripwire: the composition must not BE an exemplar. Exact
     # normalized match on any exemplar's title / seed / description; the
     # softer "how distinct is it" measure lives in the tier_long probe.
@@ -587,6 +596,18 @@ def _commit_growth(
         {"kind": "rename_object", "object_id": seed_id,
          "name": "spent dreamseed", "aliases": ["dreamseed", "seed", "husk"]},
         {"kind": "move_object", "object_id": seed_id, "dest_id": new_room_id},
+    ])
+    # The room it grew from says so (playtest 2026-09-26: the parent's text
+    # never mentioned the new way, though the compass did).
+    parent = objects.get(current_room_id)
+    desc = parent.properties.get("description_cached") if parent is not None else None
+    if isinstance(desc, str) and desc.strip():
+        consume.append({
+            "kind": "set_property", "target_id": current_room_id, "key": "description_cached",
+            "value": (f"{desc.strip()} A new way opens {_direction_phrase(direction)}, "
+                      f"toward {composition['title']}."),
+        })
+    consume.extend([
         {"kind": "narrate", "text": (
             f"The dreamseed takes root, and the dream makes room. A new way "
             f"opens {_direction_phrase(direction)}: {composition['title']}."

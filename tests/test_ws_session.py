@@ -84,6 +84,11 @@ def test_leave_releases_toon_and_routes_next_connect_to_picker():
         assert slot2["toon"] is not None
         assert slot2["toon"]["claimed_by_me"] is False  # released
         assert slot2["toon"]["kicked_at"] is not None  # rested, claimable
+        # The room sees the dreamer go; the leaver never reads it.
+        from daydream import events
+        gone = [e for e in events.fetch_since(0) if e.kind == "narrate"
+                and "Fen drifts out of the dream" in e.payload.get("text", "")]
+        assert gone and gone[0].payload.get("except")
 
         # The next WS connect routes to the picker, not the toon or t-wren.
         with client.websocket_connect("/ws") as ws2:

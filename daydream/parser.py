@@ -318,8 +318,13 @@ def _fast_path(actor_id: str, text: str, room: rooms.Room | None):
     # "look at <name>" -> examine the named in-scope object. A bare `look`
     # describes the room and ignores any target, so the targeted form is routed
     # explicitly to examine rather than a room look (SPEC 2026-06-30).
-    if spec is not None and spec.name == "look" and rest.lower().startswith("at "):
-        target = _strip_article(rest[3:].strip())
+    look_prep = re.match(r"(?i)(at|through|out of|out|into|in)\s+", rest) if (
+        spec is not None and spec.name == "look") else None
+    if look_prep is not None:
+        # "look through the telescope", "look out the window" read the thing
+        # (playtest 2026-09-26: they fell back to the room description).
+        target = _strip_article(rest[look_prep.end():].strip())
+        target = re.sub(r"(?i)\s+(toward|towards|at|to)\s+.*$", "", target) or target
         matches = _ground(actor_id, target)
         if len(matches) == 1 and "examine" in objects.verbs_for(matches[0]):
             return [Parse("examine", dobj_id=matches[0].id)]
