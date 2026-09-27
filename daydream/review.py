@@ -223,6 +223,24 @@ def _compose_html(
         "brief <em>“the dream shifts…”</em> beat resolves into the new world's "
         "fresh snapshot.</li>"
     )
+    # The front door (SPEC 2026-09-27 criterion 8): its flow is endpoint-tested;
+    # whether it reads as a storybook on a phone and a laptop is a human look.
+    p.append(
+        "<li>On a phone AND a laptop, open a fresh invite link "
+        "(<code>bin/game invite create --for \"Test Friend\"</code>). Confirm, in "
+        "order: a storybook card that greets <em>Test</em> by name and says plainly "
+        "that the village keeps what you do; account creation (the password "
+        "manager offers to save it); the <em>your dreamer</em> form (no browser "
+        "pop-up dialogs); the How to Dream book; the start room. Then sign out "
+        "and back in: you land straight in your toon.</li>"
+    )
+    p.append(
+        "<li>Asleep page: <code>bin/game edge sleep \"back Sunday\"</code>, then open "
+        "<code>https://www.eidolon.com/daydream/</code> in a browser that signed "
+        "in recently and in a private window. The first shows the night village, "
+        "the note, and your keepsakes; the private one only the note. "
+        "<code>bin/game edge wake</code> after.</li>"
+    )
     p.append("</ol>")
 
     # Images.

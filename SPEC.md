@@ -75,7 +75,7 @@ working exactly as it does now.
   - Generated images require a session and are marked not publicly
     cacheable.
 
-- [ ] **8. The front door.** A friend with an invite link reaches, in order:
+- [x] **8. The front door.** A friend with an invite link reaches, in order:
   1. a storybook redeem card that greets them by name
   2. account creation
   3. a "your dreamer" form (name and appearance, with no browser prompt
@@ -363,4 +363,4 @@ first dream) remains open. It is operator-paced and does not gate this turn.
 *Prior spec (2026-09-26): The Village of Lost Hours, the pivot turn. Closed
 21/22; criterion 22 (the operator playtest) stays open, operator-paced.*
 
-<!-- SPEC_META: {"date":"2026-09-27","title":"Going live: the village opens its doors","criteria_total":23,"criteria_met":11} -->
+<!-- SPEC_META: {"date":"2026-09-27","title":"Going live: the village opens its doors","criteria_total":23,"criteria_met":12} -->
