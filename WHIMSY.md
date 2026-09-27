@@ -1,4 +1,4 @@
-# WHIMSY.md — the tone bible
+# WHIMSY.md: the tone bible
 
 This file is the durable source of truth for Daydream's voice and look.
 Every image-gen prompt template, every LLM narration call, and every
@@ -14,10 +14,10 @@ gentle place. Reread this file before drifting.
 
 The two anchors:
 
-- **Spiritfarer** — warm watercolor, soft edges, gentle light. Late-day
+- **Spiritfarer**: warm watercolor, soft edges, gentle light. Late-day
   amber. Wood, wool, candleflame. Companionship with a tinge of
   bittersweet, but never cruel.
-- **A Short Hike** — chunky low-fidelity 3D and big readable shapes.
+- **A Short Hike**: chunky low-fidelity 3D and big readable shapes.
   Cozy forests, friendly creatures, small tasks that matter to the
   characters you meet. Curious, not anxious.
 
@@ -25,7 +25,7 @@ Adjacent if-it-helps: *Florence* for color and pacing, *Cocoon* for
 slow wonder, *Knytt Stories* for atmospheric solitude.
 
 Explicitly NOT references: anything pixel-art (Undertale included
-even though Toby Fox was in the original brief — the user picked
+even though Toby Fox was in the original brief; the user picked
 the painterly references over the pixel-art ones), anything
 "retrowave" or "neon", anything Soulslike, anything horror.
 
@@ -40,12 +40,12 @@ No pure black. No pure white. No bright red. No neon.
 
 Anchor hex values (used in the v0 placeholder PNG and the SPA CSS):
 
-- `#f6f3ec` — paper background
-- `#fbf9f3` — paper surface (cards, panels)
-- `#5a7a6a` — sage ink (primary type, accent)
-- `#3a4a44` — deep ink (body text)
-- `#c8a06e` — warm amber (highlights, fireflies, late sun)
-- `#d8d2c2` — paper line (borders, dividers)
+- `#f6f3ec`: paper background
+- `#fbf9f3`: paper surface (cards, panels)
+- `#5a7a6a`: sage ink (primary type, accent)
+- `#3a4a44`: deep ink (body text)
+- `#c8a06e`: warm amber (highlights, fireflies, late sun)
+- `#d8d2c2`: paper line (borders, dividers)
 
 These are starting points, not a hard contract. Drift them within the
 warm/painterly band as long as the result still feels like the

@@ -1,4 +1,4 @@
-# DESIGN.md — the interface bible
+# DESIGN.md: the interface bible
 
 This file is the durable source of truth for Daydream's **user interface**: how
 the running game looks and feels as a surface you act inside. It is the interface
