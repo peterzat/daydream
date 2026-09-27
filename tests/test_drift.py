@@ -1175,3 +1175,15 @@ async def test_a_phase_at_room_bucket_beats_the_phase_bucket(monkeypatch):
     assert drift._pick_authored(npc, {"night@r-bedroom": ["asleep"], "calm": ["awake"]}) == "awake"
     assert drift.is_phase_bucket("dawn@r-lamphouse") and drift.is_phase_bucket("night")
     assert not drift.is_phase_bucket("cheerful")
+
+
+def test_a_time_of_day_bucket_never_becomes_a_mood(monkeypatch):
+    """Playtest 2026-09-27: a toon card read "Bell (night@r-lamphouse)"."""
+    monkeypatch.setenv("DAYDREAM_DRIFT_MOOD_DRIFT_ENABLED", "1")
+    monkeypatch.setenv("DAYDREAM_DRIFT_MOOD_DRIFT_PROB", "1")
+    monkeypatch.setattr(drift, "_pools_for", lambda npc_id: {
+        "default": ["a"], "night": ["b"], "night@r-bed": ["c"], "dawn": ["d"]})
+    set_to = []
+    monkeypatch.setattr(drift.toons, "set_mood", lambda tid, m: set_to.append(m) or True)
+    assert drift._maybe_transition_mood({"id": "t-x", "mood": "default"}, rng=random.Random(0)) is None
+    assert set_to == []

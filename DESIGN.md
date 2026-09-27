@@ -113,7 +113,11 @@ of room narration takes a **drop cap** in `--amber`.
 - **Title block:** hand-lettered room title + a `--sans` folio subtitle.
 - **Drop-cap prose** (`#chat` + `#room-desc`): the narration column; the arrival /
   room description takes the drop cap, and the running event log continues beneath
-  as prose (newest last).
+  as prose (newest last). On desktop the column is ONE scroll (description and log
+  together), pinned to the newest line, and it opens on the description when you
+  enter a room; the plate and title shrink with the window's height so the text
+  keeps its room on a laptop. Up/Down in the input recall what you typed. A
+  resident with many ask-about topics shows the first six and a "+N more" chip.
 - **In-prose affordances** (`.entity-link`): in-scope object mentions become
   soft dotted-underline click targets; the staged/active target is emphasized.
 - **Detail / ledger inset** (`.detail-inset`): the storybook expression of

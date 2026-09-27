@@ -180,7 +180,8 @@ function renderSnapshot(snap) {
   }
   // WHO ELSE IS HERE: co-located toons, excluding yourself.
   const others = (snap.toons || []).filter((t) => t.id !== selfId);
-  renderObjects("toons", others, "no one else is here", (t) => `${t.name} (${t.mood})`);
+  renderObjects("toons", others, "no one else is here",
+    (t) => (t.mood && /^[a-z][a-z -]*$/.test(t.mood) ? `${t.name} (${t.mood})` : t.name));
   renderTopics(others);
   // WHAT'S ON THE GROUND: room things (previously sent but never rendered).
   renderObjects("things", snap.items || [], "nothing around you");
@@ -242,8 +243,9 @@ function renderSnapshot(snap) {
       span.onclick = () => onObjectClick(span.dataset.objectId);
     });
     chat.appendChild(div);
-    chat.scrollTop = chat.scrollHeight;
+    pinLog();
   }
+  if (arrivalRoomId !== lastArrivalRoomId) requestAnimationFrame(showRoomTop);
   lastArrivalRoomId = arrivalRoomId;
   // Verb bar: Examine / Take / Drop / Talk. Click a verb to stage it, then
   // click an object; clicking an object with no staged verb defaults to
@@ -300,6 +302,9 @@ function renderFolio(time) {
   el.textContent = "day " + time.day + " \u00b7 " + (time.label || time.phase);
 }
 
+const TOPIC_SHOW = 6;
+const topicsOpen = new Set();
+
 function renderTopics(others) {
   // What you could ask each person here about: one row per person with
   // topics, each topic a chip that sends the ask verb (a click, no typing,
@@ -314,7 +319,11 @@ function renderTopics(others) {
     who.className = "topic-who";
     who.textContent = "ask " + t.name + " about";
     row.appendChild(who);
-    for (const label of t.topics) {
+    // A long list collapses to its first few (a resident with a dozen
+    // topics read as a wall of chips); "more" opens the rest for this visit.
+    const open = topicsOpen.has(t.id) || t.topics.length <= TOPIC_SHOW + 1;
+    const shown = open ? t.topics : t.topics.slice(0, TOPIC_SHOW);
+    for (const label of shown) {
       const chip = document.createElement("button");
       chip.type = "button";
       chip.className = "topic-chip";
@@ -324,6 +333,17 @@ function renderTopics(others) {
         showPending();
       };
       row.appendChild(chip);
+    }
+    if (!open) {
+      const more = document.createElement("button");
+      more.type = "button";
+      more.className = "topic-chip topic-more";
+      more.textContent = `+${t.topics.length - TOPIC_SHOW} more`;
+      more.onclick = () => {
+        topicsOpen.add(t.id);
+        renderTopics(others);
+      };
+      row.appendChild(more);
     }
     box.appendChild(row);
   }
@@ -598,7 +618,7 @@ function renderEvent(e) {
         prior.dataset.text === text) {
       clearPending();
       glowElement(prior);
-      chat.scrollTop = chat.scrollHeight;
+      pinLog();
       return;
     }
     div.dataset.text = text;
@@ -623,7 +643,7 @@ function renderEvent(e) {
         div.textContent = mover + " crumples, and is elsewhere.";
         clearPending();
         chat.appendChild(div);
-        chat.scrollTop = chat.scrollHeight;
+        pinLog();
       }
       return;
     }
@@ -647,7 +667,7 @@ function renderEvent(e) {
   }
   clearPending(); // a slow action just produced its line; drop the "thinking" beat
   chat.appendChild(div);
-  chat.scrollTop = chat.scrollHeight;
+  pinLog();
 }
 
 function renderDetailInset(e, detail) {
@@ -666,7 +686,7 @@ function renderDetailInset(e, detail) {
       clearPending();
       chat.appendChild(prior); // move to the end, no duplicate
       glowElement(prior);
-      chat.scrollTop = chat.scrollHeight;
+      pinLog();
       return;
     }
   }
@@ -690,7 +710,7 @@ function renderDetailInset(e, detail) {
   aside.appendChild(dogear);
   clearPending();
   chat.appendChild(aside);
-  chat.scrollTop = chat.scrollHeight;
+  pinLog();
 }
 
 function glowElement(el) {
@@ -835,7 +855,7 @@ function renderClarify(c) {
   }
   clearPending();
   chat.appendChild(div);
-  chat.scrollTop = chat.scrollHeight;
+  pinLog();
 }
 
 function showDeathOverlay() {
@@ -846,11 +866,13 @@ function showDeathOverlay() {
 }
 
 function sendInput(text) {
+  holdPinUntil = 0; // what you just did should show, even right after arriving
   if (!ws || ws.readyState !== WebSocket.OPEN) return;
   ws.send(JSON.stringify({ kind: "input", text: text }));
 }
 
 function sendCommand(verb, dobjId, args, iobjId) {
+  holdPinUntil = 0;
   // The structured command frame: the click path. Bypasses the parser, so a
   // deterministic verb makes no LLM call (the server's verb handler may). A
   // two-object verb (give/use) carries iobj_id; single-object verbs omit it.
@@ -910,7 +932,33 @@ function systemLine(msg) {
   div.className = "evt evt-system";
   div.textContent = msg;
   chat.appendChild(div);
+  pinLog();
+}
+
+// Entering a room shows its description first; the arrival lines that land
+// right after (greetings, the replayed room log) must not yank the view back
+// to the bottom, so pinning holds briefly after a room change.
+let holdPinUntil = 0;
+const ARRIVAL_HOLD_MS = 2500;
+
+function pinLog() {
+  // Keep the newest line in view. On desktop the whole reading column (the
+  // room description plus the log) is the scroll container; on phones the
+  // log scrolls in its own box. Pin whichever is scrolling.
+  const chat = document.getElementById("chat");
   chat.scrollTop = chat.scrollHeight;
+  const prose = chat.closest(".prose");
+  if (prose && Date.now() >= holdPinUntil) prose.scrollTop = prose.scrollHeight;
+}
+
+function showRoomTop() {
+  // Entering a room: show its description first, not the bottom of its log.
+  holdPinUntil = Date.now() + ARRIVAL_HOLD_MS;
+  const prose = document.querySelector(".prose");
+  if (prose) prose.scrollTop = 0;
+  // On a phone the page itself scrolls: bring the new room's plate and title
+  // back into view after a move made from the compass at the foot.
+  if (window.innerWidth <= 640) window.scrollTo(0, 0);
 }
 
 function clearPending() {
@@ -936,7 +984,7 @@ function showPending() {
   div.className = "evt evt-pending";
   div.textContent = "the dream stirs...";
   chat.appendChild(div);
-  chat.scrollTop = chat.scrollHeight;
+  pinLog();
   pendingEl = div;
   pendingTimer = setTimeout(clearPending, 30000);
 }
@@ -949,6 +997,10 @@ function escape(s) {
     .replace(/"/g, "&quot;");
 }
 
+// What you typed, for Up/Down recall (as in any text game), this tab only.
+const inputHistory = [];
+let historyPos = 0;
+
 document.getElementById("input-form").addEventListener("submit", (ev) => {
   ev.preventDefault();
   const inp = document.getElementById("input-text");
@@ -956,7 +1008,21 @@ document.getElementById("input-form").addEventListener("submit", (ev) => {
   if (!text) return;
   sendInput(text);
   showPending();
+  if (inputHistory[inputHistory.length - 1] !== text) inputHistory.push(text);
+  if (inputHistory.length > 50) inputHistory.shift();
+  historyPos = inputHistory.length;
   inp.value = "";
+});
+
+document.getElementById("input-text").addEventListener("keydown", (ev) => {
+  if (ev.key !== "ArrowUp" && ev.key !== "ArrowDown") return;
+  if (!inputHistory.length) return;
+  ev.preventDefault();
+  historyPos += ev.key === "ArrowUp" ? -1 : 1;
+  historyPos = Math.max(0, Math.min(inputHistory.length, historyPos));
+  const inp = ev.target;
+  inp.value = inputHistory[historyPos] || "";
+  inp.setSelectionRange(inp.value.length, inp.value.length);
 });
 
 // Backpack control: open the keepsakes foldout over the live inventory (a

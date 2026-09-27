@@ -36,3 +36,31 @@ def test_the_book_renders_from_the_snapshot_and_the_folio_shows_time():
     assert "lastBook = snap.book || null;" in JS
     assert "renderFolio(snap.time);" in JS
     assert '"day " + time.day' in JS
+
+
+CSS = (WEB / "assets/style.css").read_text()
+
+
+def test_the_reading_column_is_one_scroll_that_never_clips():
+    """Operator 2026-09-27: on a short window the room description was cut
+    mid-sentence and the log had no height. The desktop reading column
+    scrolls as one (description and log together), the header shrinks with
+    the window, new lines pin to the bottom, and entering a room opens on its
+    description."""
+    shell = CSS[CSS.index("@media (min-width: 641px) {"):]
+    assert re.search(r"\.prose \{[^}]*overflow-y: auto", shell)
+    assert re.search(r"#chat \{[^}]*overflow: visible", shell)
+    assert "clamp(76px" in shell and "max-height: 760px" in CSS
+    assert "function pinLog()" in JS and "function showRoomTop()" in JS
+    assert "chat.scrollTop = chat.scrollHeight;" in JS.split("function pinLog()")[1][:600]
+    assert JS.count("pinLog();") >= 9
+
+
+def test_input_history_and_topic_overflow():
+    assert 'ev.key !== "ArrowUp"' in JS and "inputHistory" in JS
+    assert "TOPIC_SHOW = 6" in JS and "topic-more" in JS
+
+
+def test_phones_never_scroll_sideways():
+    phone = CSS[CSS.index("@media (max-width: 640px) {"):]
+    assert "overflow-x: hidden" in phone.split("}")[0] + phone.split("}")[1]

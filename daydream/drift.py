@@ -416,8 +416,11 @@ def _maybe_transition_mood(
         return None
     buckets = _pools_for(npc["id"])
     current_mood = npc.get("mood")
+    # Time-of-day buckets ("night", "dawn@r-room") are when, not how: never a
+    # mood (playtest 2026-09-27: a card read "<keeper> (night@r-<room>)").
     targets = [
-        m for m in buckets.keys() if m != "default" and m != current_mood
+        m for m in buckets.keys()
+        if m != "default" and m != current_mood and not is_phase_bucket(m)
     ]
     if not targets:
         return None
