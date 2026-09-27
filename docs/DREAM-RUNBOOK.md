@@ -112,6 +112,13 @@ To undo a bad night: `bin/game down`, then
 `bin/game world snapshot-restore <the pre-dream snapshot> --yes` (move the
 live DB aside first; the command refuses to overwrite), then `bin/game up`.
 
+If the patch added rooms or residents, paint them before players find them
+(the local GPU renders every picture; only what players create is painted
+live): `bin/game down && bin/game prebake && bin/game up`. Prebake skips
+everything already cached, so only the new targets render; Read each new
+render and grade it against WHIMSY.md as for the base world
+(`docs/art/lost-hours-prebake.md`).
+
 ## 6. Commit and verify
 
 - Commit `worlds/lost-hours/dreams/<id>/` (digest, patch, rehearsal) and
