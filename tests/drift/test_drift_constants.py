@@ -198,3 +198,16 @@ def test_vllm_default_revision_pin_matches_bootstrap():
     model = re.search(r'VLLM_MODEL="\$\{DAYDREAM_VLLM_MODEL:-([^}]+)\}"', game).group(1)
     assert f'"$VLLM_MODEL" == "{model}"' in game
     assert f'"$MODEL" == "{model}"' in boot
+
+
+def test_vllm_internal_sockets_pinned_to_loopback():
+    """The EngineCore's internal torch-distributed sockets bind to whatever
+    the hostname resolves to unless pinned; on this box that was the PUBLIC
+    IPv6 address (six high ports guarded only by UFW, found 2026-09-27).
+    vllm-up must export all three loopback pins on the serve command."""
+    game = BIN_GAME.read_text()
+    serve = game[game.index("cmd_vllm_up()"):]
+    serve = serve[: serve.index('nohup "$VLLM_BIN" serve')]
+    for pin in ("VLLM_HOST_IP=127.0.0.1", "GLOO_SOCKET_IFNAME=lo",
+                "NCCL_SOCKET_IFNAME=lo"):
+        assert pin in serve, f"vllm-up no longer exports {pin}"
