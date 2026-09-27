@@ -4301,6 +4301,12 @@
               "value": "In the littlest armchair, Pim's Nap is curled up asleep with the hush tucked under one cheek."
             },
             {
+              "kind": "set_property",
+              "target_id": "t-pims-nap",
+              "key": "seed",
+              "value": "a lost nap curled up in the littlest armchair at the Waiting House, the hush tucked under one cheek; small and rumpled, and fast asleep at last"
+            },
+            {
               "kind": "grant_collectible"
             },
             {
@@ -4337,6 +4343,12 @@
               "target_id": "t-pims-nap",
               "key": "presence_text",
               "value": "On a low shelf, in a small glass jar, Pim's Nap sleeps curled on a folded paper hour."
+            },
+            {
+              "kind": "set_property",
+              "target_id": "t-pims-nap",
+              "key": "seed",
+              "value": "a lost nap asleep in a small glass jar on a folded paper hour, under Umber's label: NAP. BIRTHDAY. DO NOT WAKE"
             },
             {
               "kind": "set_property",

@@ -517,6 +517,9 @@ def enqueue_room_regen(room_id: str, prompt_override: str | None = None) -> str:
     return "started"
 
 
+GREETING_WINDOW_S = 3 * 3600
+
+
 def _emit_npc_presence_narrates(controlled_toon_id: str, room_id: str,
                                 greeted: set | None = None) -> None:
     """Emit one narrate per co-located NPC with non-empty presence_text.
@@ -541,16 +544,30 @@ def _emit_npc_presence_narrates(controlled_toon_id: str, room_id: str,
     # so everyone read the same nod each time anyone arrived. Now a
     # greeting is the arriving player's alone, once per NPC per connection
     # (`greeted`, the connection's memory, like the room-visit memory).
+    # The memory lives on the toon too (a reconnect, or a bin/game play call,
+    # is a new connection): an NPC greets a given player at most once every
+    # GREETING_WINDOW (playtest follow-up 2026-09-26).
+    me = objects.get(controlled_toon_id)
+    world_id = me.world_id if me is not None else None
+    key = f"greeted:{controlled_toon_id}"
+    seen = worldstate.get(world_id, key) if world_id else None
+    seen = dict(seen) if isinstance(seen, dict) else {}
+    now = time.time()
     for t in toons.get_toons_in_room(room_id):
         if t.id == controlled_toon_id:
             continue
         if greeted is not None and t.id in greeted:
+            continue
+        if now - float(seen.get(t.id, 0)) < GREETING_WINDOW_S:
             continue
         greeting = (t.presence_text or "").strip()
         if not greeting:
             continue
         if greeted is not None:
             greeted.add(t.id)
+        seen[t.id] = now
+        if world_id:
+            worldstate.set(world_id, key, seen)
         events.append(
             "system", None, "narrate",
             {"text": greeting},

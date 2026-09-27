@@ -61,6 +61,16 @@ order of importance:
    once. Two to five short sentences in the village's voice: who arrived,
    what someone did (by name), what changed. Warm, specific, no urgency.
 
+A callback topic about a player is heard by that player too, so give it a
+second-person twin: two topics with the same label, one gated
+`{"actor": "<their toon id>"}` ("You carried the hush down the lane...")
+and one gated `{"actor": "<their toon id>", "not": true}` (the third-person
+telling for everyone else). Toon ids are in the digest (`players.<name>.toon_id`).
+Lessons from the first dream (observed.md): a callback that names an object
+should give the object a line too (the ribbon on Pollen's pole was only in
+the note), and anything a player is told changed should read changed when
+they examine it.
+
 Rules: additive only (the engine refuses anything else); namespace new ids
 with the dream id (`o-<id>-...`, `t-...`, facts `<id>-...`); never reveal
 the long mystery's answer outright (section 6 of the bible) unless the

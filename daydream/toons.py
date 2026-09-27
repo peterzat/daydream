@@ -252,7 +252,8 @@ def claim_slot(
 ) -> tuple[Toon | None, str | None]:
     """Adopt a kicked-NPC toon as the human player. Returns `(toon, None)` on
     success, `(None, reason)` on failure where reason is 'empty' or
-    'controlled'. Wakes the toon in the world's starting room.
+    'controlled'. A resting toon wakes in the world's starting room; one that
+    never rested stays where it is.
 
     `can_take_over(controller_session) -> bool` (optional): when the slot is
     controlled by ANOTHER session, adopt it anyway if this returns True -- used
@@ -268,7 +269,13 @@ def claim_slot(
             return (None, "controlled")
     from daydream import rooms
 
-    spawn = rooms.starting_room_id(t.world_id) or t.current_room_id
+    # Waking from rest starts at the world's start room; re-claiming a toon
+    # that never rested (the same player reconnecting, or taking back an
+    # abandoned claim) keeps it where it stands (playtest 2026-09-26: a
+    # reconnect moved a player out of the cellar).
+    resting = t.kicked_at is not None or not t.is_human_controlled
+    spawn = ((rooms.starting_room_id(t.world_id) or t.current_room_id) if resting
+             else t.current_room_id)
     db.get_conn().execute(
         "UPDATE objects SET controller_session = ?, is_human_controlled = 1, "
         "kicked_at = NULL, location_id = ? WHERE id = ?",

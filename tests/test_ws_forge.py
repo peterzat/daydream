@@ -246,3 +246,25 @@ def test_a_greeting_is_the_arrivals_alone_and_once_per_session():
             nxt = ws.receive_json()
             # The next frame is the look, not a second greeting.
             assert nxt.get("event", {}).get("payload", {}).get("text") != greet["event"]["payload"]["text"]
+
+
+def test_a_greeting_is_not_repeated_on_a_reconnect():
+    """The greeting memory lives on the toon, so a new connection (a reload,
+    a reconnect, a bin/game play call) does not re-greet within the window."""
+    with TestClient(app) as client:
+        _login(client)
+        with client.websocket_connect("/ws") as ws:
+            ws.receive_json()
+            ws.send_json({"kind": "input", "text": "go north"})
+            ws.receive_json(); ws.receive_json()   # noqa: E702 - move + snapshot
+            greet = ws.receive_json()
+            assert greet["event"]["kind"] == "narrate"
+            ws.send_json({"kind": "input", "text": "go south"})
+            ws.receive_json(); ws.receive_json()   # noqa: E702
+        with client.websocket_connect("/ws") as ws2:
+            ws2.receive_json()
+            ws2.send_json({"kind": "input", "text": "go north"})
+            ws2.receive_json(); ws2.receive_json()   # noqa: E702
+            ws2.send_json({"kind": "input", "text": "look"})
+            nxt = ws2.receive_json()
+            assert nxt.get("event", {}).get("payload", {}).get("text") != greet["event"]["payload"]["text"]

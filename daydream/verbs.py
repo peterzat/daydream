@@ -589,6 +589,10 @@ def _examine_line(dobj: objects.Object, detail: str) -> str:
     # "You examine the hush: a hush: ..." (playtest 2026-09-26).
     detail = re.sub(rf"^(?:a|an|the)\s+{re.escape(dobj.name)}\s*[:,]\s*", "", detail,
                     flags=re.I) or detail
+    if re.match(rf"(?i)(?:a|an|the)\s+{re.escape(dobj.name)}\b", detail):
+        # "a small desk under the lamp, ...": the description already names
+        # it, so it stands alone rather than "the small desk: a small desk".
+        return _terminate(detail[:1].upper() + detail[1:])
     return f"You examine {_the_name(dobj.name)}: {_terminate(detail)}"
 
 

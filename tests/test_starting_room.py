@@ -48,6 +48,19 @@ def test_claim_wakes_toon_in_starting_room():
         assert woke.current_room_id != "r-forge"
 
 
+def test_reclaiming_a_toon_that_never_rested_keeps_it_where_it_is():
+    """Playtest 2026-09-26: a reconnect's claim moved a player from the cellar
+    to the start room. Only waking from rest starts at the start room."""
+    with TestClient(app) as client:
+        _login(client)
+        toon_id = client.post(
+            "/api/slots/2/create", json={"name": "Fen", "appearance_seed": "a wisp"}
+        ).json()["id"]
+        toons.set_current_room(toon_id, "r-forge")
+        assert client.post("/api/slots/2/claim").status_code == 200   # no leave first
+        assert toons.get_toon(toon_id).current_room_id == "r-forge"
+
+
 def test_create_spawns_in_starting_room():
     with TestClient(app) as client:
         _login(client)

@@ -531,3 +531,24 @@ def test_beats_and_endings_may_carry_others_and_to():
     env["arcs"]["moth"]["endings"]["home"]["to"] = "@actor"
     with pytest.raises(Exception, match="to must be"):
         format2.validate_envelope2(copy.deepcopy(env))
+
+
+async def test_the_actor_condition_lets_a_callback_speak_to_its_player():
+    """A dream can give one player a second-person twin of a callback topic
+    ({"actor": <toon id>}) while everyone else hears the third person."""
+    ada = player(1, "Ada", "r-green")
+    bo = player(2, "Bo", "r-green")
+    hob = objects.get("t-hob")
+    topics = list(hob.properties.get("topics") or [])
+    topics += [{"label": "Ada", "if": [{"actor": ada}], "text": "'You lit every lamp, Ada.'"},
+               {"label": "Ada", "if": [{"actor": ada, "not": True}], "text": "'Ada lit every lamp.'"}]
+    objects.set_property("t-hob", "topics", topics)
+    hob = objects.get("t-hob")
+    assert story.match_topic(hob, ada, "ada")["index"] == len(topics) - 2
+    assert story.match_topic(hob, bo, "ada")["index"] == len(topics) - 1
+    from daydream import rules
+    errs = rules.validate_rules([{"on": "look", "if": [{"actor": "t-slot1-x"}],
+                                  "do": [{"kind": "narrate", "text": "x"}]}],
+                                source="r", known_verbs={"look"}, known_flags=set(),
+                                known_ids=set(), known_fuses=set(), known_daemons=set())
+    assert not any("actor" in e for e in errs)

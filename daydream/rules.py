@@ -33,6 +33,7 @@ refused):
     {"in": ROOM_ID}                             actor is in that room
     {"chance": P, "purpose": NAME?}             seeded roll (worldstate.rng)
     {"present": ID}                             object in actor's room or hand
+    {"actor": TOON_ID}                          the acting player is this toon
     {"contains": ID, "of": REF?}                container directly holds it
     {"in_vehicle": true | ID}                   actor is aboard (any/that one)
 
@@ -92,7 +93,7 @@ CONDITION_KEYS = (
     "carried", "carried_filter", "only_carrying", "empty_handed", "chance",
     "present", "contains", "in_vehicle",
     "pflag", "beat", "ending", "helped", "phase", "day", "knows", "collected",
-    "in",
+    "actor", "in",
 )
 # Discriminators whose aux keys may include the `in` membership operator
 # (so a bare `in` is theirs, not the am-I-in-this-room form).
@@ -236,6 +237,11 @@ def _eval_condition(cond: dict, ctx: dict) -> bool:
         )
     if "flag" in cond:
         return worldstate.get_flag(world_id, cond["flag"]) == cond.get("eq", True)
+    if "actor" in cond:
+        # This player (a live toon id): lets a dream speak a callback to the
+        # player it is about in the second person, and to everyone else in
+        # the third.
+        return actor is not None and actor.id == cond["actor"]
     if "dobj" in cond:
         want = _ref_id(cond["dobj"], ctx)
         return ctx["dobj"] is not None and want is not None and ctx["dobj"].id == want
@@ -517,6 +523,7 @@ _CONDITION_AUX: dict[str, frozenset[str]] = {
     "in": frozenset(),
     "chance": frozenset({"purpose"}),
     "present": frozenset(),
+    "actor": frozenset(),
     "contains": frozenset({"of"}),
     "in_vehicle": frozenset(),
     "rel": frozenset(OPS),

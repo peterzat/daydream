@@ -645,3 +645,20 @@ def test_scene_aware_bar_offers_only_what_applies():
     assert "put" in names and "open" in names
     # The core stays first and stable throughout.
     assert names[:3] == ["examine", "take", "drop"]
+
+
+def test_examine_lines_never_double_the_name():
+    """Playtest follow-up 2026-09-26: "You examine the small desk: a small
+    desk under the lamp" and "You examine the Mott's tin"."""
+    from daydream import objects as o
+    from daydream.verbs import _examine_line
+    desk = o.Object(id="x", world_id="w", kind="thing", name="small desk", aliases=[],
+                    location_id=None, prototype_id=None, properties={})
+    assert _examine_line(desk, "a small desk under the lamp, a pen laid ready") == \
+        "A small desk under the lamp, a pen laid ready."
+    tin = o.Object(id="y", world_id="w", kind="thing", name="Mott's tin", aliases=[],
+                   location_id=None, prototype_id=None, properties={})
+    assert _examine_line(tin, "a battered tea tin") == "You examine Mott's tin: a battered tea tin."
+    hush = o.Object(id="z", world_id="w", kind="thing", name="hush", aliases=[],
+                    location_id=None, prototype_id=None, properties={})
+    assert _examine_line(hush, "a hush: a small grey quiet") == "You examine the hush: a small grey quiet."
