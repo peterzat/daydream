@@ -137,6 +137,7 @@ full disposition list is docs/playtests/2026-09-26/SUMMARY.md).
 ### scenery-nouns
 - **One-line description:** Details named in room text should answer when touched, in general: an engine scenery map on rooms (noun to short text, examine only, never listed), so every described detail can say something without cluttering "Around you".
 - **Why deferred:** The world-data pass covered the details playtesters named with aliases and a few fixtures; a general map is an engine feature.
+- **Known gaps (2026-09-26):** a bare "read a letter" in the post office asks which letter (a bare alias would collide with the rain-spotted letter); a four-word target ("scratch Tock behind the ears") is past the fast path's name grounding and goes to the model.
 - **Revisit criteria:** More "You don't see the X here" on things the prose describes.
 - **Origin:** playtest 2026-09-26 (explorer: "a prose detail that refuses to exist is the most deflating response").
 

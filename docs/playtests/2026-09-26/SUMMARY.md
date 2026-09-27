@@ -46,6 +46,10 @@ or engine text.
 
 This confirms the stance: the local model is worth it as reflexes (parsing,
 answering the unplanned, painting what players make) and is the weak voice.
+After the fixes were in, `bin/game world refresh` carried the corrected
+content into the live world without losing the playtest day, and the first
+dream (dream-2026-09-26) digested it.
+
 The playtest fixes lean further on authored lines: a free-form line that
 names an NPC's topic now gets the authored answer ("select, don't write"),
 and the dream digest lists recent local lines as candidates for authored
@@ -126,14 +130,19 @@ recorded in BACKLOG.md.
   dreamseed growth (engine); the list itself is **data**.
 - The plant prompt didn't say how to answer: `question_hint` (engine) and its
   text (**data**).
-- **Data** (the world-data pass): stale lines after quests (Tace's gear topic,
+- **Data, fixed in 82451d4** (the world-data pass): stale lines after quests (Tace's gear topic,
   the nap's refusals, "Here's your first", the lullaby pendulum pointer, the
   hush after it was given), Tace's evasive W-clock framing, Umber's tea, Bell
   taking Pollen back, Linden's nap ending requiring a helper, per-resident
   refusals, everyday affordances (sit, wait, ring, pet, eat, sleep), scenery
   aliases and a west window, resident examine text as observable sentences,
   Tace's first-winding nudge and Bell's welcome for new keepers, `others`
-  lines for shared moments, the clock-case seed.
+  lines for shared moments, the clock-case seed, `never_words` (33) and the
+  `question_hint` text. Two small gaps remain and are backlogged under
+  `scenery-nouns`: a bare "read a letter" in the post office still asks
+  which letter (a bare alias would collide with the rain-spotted letter),
+  and a four-word target such as "scratch Tock behind the ears" still goes
+  to the model.
 
 ### Backlogged
 
