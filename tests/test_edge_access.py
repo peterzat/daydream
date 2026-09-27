@@ -161,3 +161,16 @@ def test_cached_images_are_private(monkeypatch, tmp_path):
         authhelp.login(client)
         r = client.get("/cache/w-x/room/r-x/abc.png")
     assert r.status_code == 200 and r.headers["cache-control"].startswith("private")
+
+
+def test_oversized_bodies_are_refused_before_anyone_signs_in():
+    """SECURITY NOTE 2026-09-27: the public endpoints parsed bodies of any size
+    (a 20 MB login body cost ~74 MB of memory)."""
+    from daydream.api import gate
+
+    with TestClient(app) as client:
+        big = b"{" + b" " * (gate.MAX_BODY_BYTES + 10) + b"}"
+        r = client.post("/api/login", content=big, headers={"content-type": "application/json"})
+        assert r.status_code == 413
+        ok = client.post("/api/login", json={"username": "nobody", "password": "x" * 12})
+        assert ok.status_code == 401

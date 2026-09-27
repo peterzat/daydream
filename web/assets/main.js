@@ -50,6 +50,7 @@ const RECONNECT_MIN = 1000;
 const RECONNECT_MAX = 20000;
 const ASLEEP_RETRY = 30000; // a sleeping village is checked gently
 let dreamingElsewhere = false; // another window of this account has the toon
+let pingTimer = null;
 
 async function whyClosed() {
   // "signed-out", {asleep, note, since, operator}, or null (a transient drop).
@@ -110,8 +111,15 @@ function connect(isReconnect) {
   ws.onopen = () => {
     reconnectDelay = 0; // the dream wakes: reset the backoff
     hideDreamOverlay();
+    // A quiet keepalive: idle sockets survive the edge's proxy hops, and each
+    // ping rides the server's per-frame session check.
+    clearInterval(pingTimer);
+    pingTimer = setInterval(() => {
+      if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ kind: "ping" }));
+    }, 25000);
   };
   ws.onclose = async (ev) => {
+    clearInterval(pingTimer);
     if (awaitingPick || dreamingElsewhere) return; // left, or another window has us
     if (ev.code === 4409) {
       dreamingElsewhere = true;

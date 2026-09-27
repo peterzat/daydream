@@ -22,6 +22,7 @@ is no default-toon fallback: an unresolved session never silently controls an
 arbitrary toon."""
 
 import asyncio
+import json
 import logging
 import random
 import time
@@ -845,8 +846,9 @@ async def ws_endpoint(ws: WebSocket):
         broadcast_task = asyncio.create_task(
             _broadcast_loop(ws, queue, last_seq, toon_id, view, session_id)
         )
+        watch_task = asyncio.create_task(_session_watch(ws, token))
         done, pending = await asyncio.wait(
-            [receive_task, broadcast_task],
+            [receive_task, broadcast_task, watch_task],
             return_when=asyncio.FIRST_COMPLETED,
         )
         for t in pending:
@@ -886,8 +888,10 @@ async def _handle_command(msg: dict, toon_id: str) -> None:
 # through a small token bucket (a quick typist or a flurry of clicks fits;
 # a script does not). Over either limit a frame is refused with no effect.
 MAX_INPUT_CHARS = 500
+MAX_FRAME_CHARS = 2000   # a whole frame, any kind (a command's args included)
 RATE_BURST = 12          # frames available at once
 RATE_PER_SECOND = 3.0    # refill
+SESSION_RECHECK_S = 30.0  # an idle socket's session is re-read this often
 
 
 class _Bucket:
@@ -914,7 +918,17 @@ async def _receive_loop(ws: WebSocket, toon_id: str, token: str | None = None,
     bucket = _Bucket()
     try:
         while True:
-            msg = await ws.receive_json()
+            raw = await ws.receive_text()
+            if len(raw) > MAX_FRAME_CHARS:
+                # Checked before parsing, for every kind: a command frame's
+                # args are as much a player's words as a typed line.
+                await ws.send_json({"kind": "notice", "text": (
+                    f"that's a lot to say at once; keep it under {MAX_INPUT_CHARS} characters")})
+                continue
+            try:
+                msg = json.loads(raw)
+            except ValueError:
+                continue
             if not isinstance(msg, dict):
                 continue
             # The session is re-read on every frame, so disabling an account
@@ -934,6 +948,8 @@ async def _receive_loop(ws: WebSocket, toon_id: str, token: str | None = None,
                                         "text": "slow down a little; the dream is still catching up"})
                 continue
             kind = msg.get("kind")
+            if kind == "ping":
+                continue  # the SPA's keepalive: it rode the session check above
             if kind == "input":
                 text = str(msg.get("text", ""))
                 if len(text) > MAX_INPUT_CHARS:
@@ -948,6 +964,22 @@ async def _receive_loop(ws: WebSocket, toon_id: str, token: str | None = None,
                 await _handle_command(msg, toon_id)
     except WebSocketDisconnect:
         pass
+    except KeyError:
+        pass  # a binary frame: this socket speaks JSON text only
+
+
+async def _session_watch(ws: WebSocket, token: str | None) -> None:
+    """Re-read the session while the socket is quiet, so disabling an account
+    or revoking its sessions also ends a tab that only listens (SECURITY WARN
+    2026-09-27; the receive loop checks on every frame too)."""
+    while True:
+        await asyncio.sleep(SESSION_RECHECK_S)
+        if accounts.resolve(token) is None:
+            try:
+                await ws.close(code=4401)
+            except Exception:
+                pass
+            return
 
 
 async def _broadcast_loop(

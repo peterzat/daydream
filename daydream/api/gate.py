@@ -60,6 +60,52 @@ def _wants_html(scope) -> bool:
     return False
 
 
+# No request this app serves carries more than a few KB; the public
+# endpoints parse bodies before anyone is signed in (SECURITY NOTE 2026-09-27).
+MAX_BODY_BYTES = 64 * 1024
+
+
+def _content_length(scope) -> int | None:
+    for k, v in scope.get("headers") or []:
+        if k == b"content-length":
+            try:
+                return int(v)
+            except ValueError:
+                return None
+    return None
+
+
+def _capped(receive):
+    """A receive that stops a streamed body at MAX_BODY_BYTES: what arrives
+    beyond it is dropped and the body ends, so a handler sees a truncated
+    (unparseable) body instead of holding megabytes."""
+    seen = 0
+    done = False
+
+    async def wrapped():
+        nonlocal seen, done
+        if done:
+            return {"type": "http.request", "body": b"", "more_body": False}
+        message = await receive()
+        if message["type"] == "http.request":
+            body = message.get("body", b"")
+            seen += len(body)
+            if seen > MAX_BODY_BYTES:
+                done = True
+                keep = max(0, MAX_BODY_BYTES - (seen - len(body)))
+                return {"type": "http.request", "body": body[:keep], "more_body": False}
+        return message
+
+    return wrapped
+
+
+async def _send_simple(send, status: int, body: bytes, ctype: bytes = b"application/json"):
+    await send({"type": "http.response.start", "status": status,
+                "headers": [(b"content-type", ctype),
+                            (b"content-length", str(len(body)).encode())]})
+    await send({"type": "http.response.body", "body": body})
+
+
 class GateMiddleware:
     def __init__(self, app: Callable[..., Awaitable[None]]) -> None:
         self.app = app
@@ -68,6 +114,12 @@ class GateMiddleware:
         if scope.get("type") not in ("http", "websocket"):
             await self.app(scope, receive, send)
             return
+        if scope["type"] == "http":
+            length = _content_length(scope)
+            if length is not None and length > MAX_BODY_BYTES:
+                await _send_simple(send, 413, json.dumps({"error": "too large"}).encode())
+                return
+            receive = _capped(receive)
         try:
             who = accounts.resolve(_token(scope))
         except Exception:  # an unreadable accounts DB fails closed

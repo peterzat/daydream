@@ -87,3 +87,46 @@ def test_revoking_a_session_closes_an_open_socket_on_its_next_frame():
                 for _ in range(20):
                     ws.receive_json()
             assert closed.value.code == 4401
+
+
+def test_a_command_frame_is_capped_like_a_typed_line(monkeypatch):
+    """SECURITY WARN 2026-09-27: a `command` frame's args used to skip the cap
+    (a 20,000-character `say` was broadcast and stored)."""
+    handled = []
+
+    async def fake_command(msg, toon_id):
+        handled.append(msg)
+
+    monkeypatch.setattr(ws_module, "_handle_command", fake_command)
+    with TestClient(app) as client:
+        _enter(client)
+        with client.websocket_connect("/ws") as ws:
+            ws.receive_json()
+            ws.send_json({"kind": "command", "verb": "say", "args": "x" * 20000})
+            notice = _next_notice(ws)
+            assert "at once" in notice["text"]
+            ws.send_json({"kind": "command", "verb": "say", "args": "hello"})
+            ws.send_json({"kind": "ping"})
+            ws.send_json({"kind": "input", "text": "a" * (ws_module.MAX_INPUT_CHARS + 1)})
+            _next_notice(ws)
+    assert [m["args"] for m in handled] == ["hello"]
+
+
+def test_an_idle_socket_of_a_revoked_account_is_closed(monkeypatch):
+    """SECURITY WARN 2026-09-27: revocation used to bite only on the next
+    inbound frame, so a listening tab kept receiving room chat."""
+    monkeypatch.setattr(ws_module, "SESSION_RECHECK_S", 0.2)
+    with TestClient(app) as client:
+        _enter(client)
+        with client.websocket_connect("/ws") as ws:
+            ws.receive_json()
+            accounts.set_disabled("wren-player", True)
+            with pytest.raises(WebSocketDisconnect) as closed:
+                for _ in range(50):
+                    ws.receive_json()
+            assert closed.value.code == 4401
+
+
+def test_the_spa_sends_a_keepalive_ping():
+    js = (Path(__file__).resolve().parent.parent / "web" / "assets" / "main.js").read_text()
+    assert 'JSON.stringify({ kind: "ping" })' in js and "clearInterval(pingTimer)" in js
