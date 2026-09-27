@@ -163,8 +163,10 @@ while the box is down. The design needs no signing key and no new crypto:
 - **Releases** are `git archive` snapshots under `/srv/daydream/releases/`,
   with a `current` symlink. Venvs are shared by lockfile hash. Deploys
   back up, switch atomically, health-check and roll back automatically.
-- **`bin/game prod <verb>`** re-execs the prod release's own `bin/game` with a
-  clean prod environment. Every existing flow (refresh, dreams, prebake,
+- **`bin/game prod <verb>`** runs the prod release's own `bin/game` with a
+  clean prod environment, as the `daydream` user. A narrow sudoers entry
+  allows exactly two things: starting and stopping the daydream units, and
+  dropping to that user. Every existing flow (refresh, dreams, prebake,
   snapshots) therefore runs prod code against prod data. There is no
   migration skew and no dev `.env` leak.
 - **Dev is unchanged** apart from accounts. It keeps its tailnet port and its

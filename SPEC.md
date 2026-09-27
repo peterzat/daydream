@@ -210,7 +210,7 @@ working exactly as it does now.
   process has a listening socket on a non-loopback address (checked with
   `ss`), and a tier_short test pins the launch setting that ensures it.
 
-- [ ] **20. The docs tell the truth.**
+- [x] **20. The docs tell the truth.**
   - SECURITY.md is rewritten for internet exposure: threat model, trust
     boundaries, and residual risks, including engines that run as peter.
   - CLAUDE.md documents prod and dev, the CLI as admin console, "no network
@@ -363,4 +363,4 @@ first dream) remains open. It is operator-paced and does not gate this turn.
 *Prior spec (2026-09-26): The Village of Lost Hours, the pivot turn. Closed
 21/22; criterion 22 (the operator playtest) stays open, operator-paced.*
 
-<!-- SPEC_META: {"date":"2026-09-27","title":"Going live: the village opens its doors","criteria_total":23,"criteria_met":12} -->
+<!-- SPEC_META: {"date":"2026-09-27","title":"Going live: the village opens its doors","criteria_total":23,"criteria_met":13} -->
