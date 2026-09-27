@@ -40,12 +40,80 @@ def port() -> int:
     return int(os.environ.get("DAYDREAM_PORT", "54321"))
 
 
+ACCESS_MODES = ("tailscale", "public", "edge")
+
+
 def access_mode() -> str:
-    """Network access mode. Either 'tailscale' (default, the access middleware
-    rejects clients outside the Tailscale CGNAT range 100.64.0.0/10 and
-    localhost) or 'public' (middleware lets all through; operator must also
-    open UFW for traffic to arrive). Override via DAYDREAM_ACCESS in .env."""
+    """Network access mode (DAYDREAM_ACCESS):
+
+      tailscale  (default, dev) the access middleware rejects clients outside
+                 the Tailscale CGNAT range 100.64.0.0/10 and loopback.
+      public     no network filter (the test suite; a bare public bind would
+                 also need UFW opened, which this project never does).
+      edge       prod behind the Cloudflare Worker + tunnel (docs/GOING-LIVE.md):
+                 no network location grants anything, CSRF compares Origin to
+                 DAYDREAM_PUBLIC_ORIGIN, and the client address comes only from
+                 the Worker's X-Daydream-Client-IP header.
+
+    Every mode requires an account session for everything outside the public
+    allowlist; the mode only adds network-level rules. An unknown value is a
+    boot error (`boot_problems`), never a silent default."""
     return os.environ.get("DAYDREAM_ACCESS", "tailscale").strip().lower()
+
+
+def public_base() -> str:
+    """The URL path prefix the browser sees, with leading and trailing slash:
+    "/" in dev, "/daydream/" in prod. The edge Worker strips it before
+    proxying, so the origin always serves at "/" and only browser-facing URLs
+    (the SPA's <base href>, redirects, cookie path) carry it."""
+    raw = os.environ.get("DAYDREAM_PUBLIC_BASE", "").strip()
+    if not raw:
+        return "/"
+    if not raw.startswith("/"):
+        raw = "/" + raw
+    if not raw.endswith("/"):
+        raw += "/"
+    return raw
+
+
+def public_origin() -> str:
+    """scheme://host the browser uses (prod: https://www.eidolon.com), no
+    trailing slash. Empty in dev, where CSRF compares Origin to Host. Behind
+    the Worker, Host is the tunnel hostname, so edge mode requires this."""
+    return os.environ.get("DAYDREAM_PUBLIC_ORIGIN", "").strip().rstrip("/")
+
+
+def bind_host() -> str:
+    """The address uvicorn binds (DAYDREAM_BIND_HOST). bin/game and the prod
+    systemd unit both pass it as --host, so this is the single source the boot
+    guard can check. Dev default 0.0.0.0 (tailnet clients reach it; UFW keeps
+    the public interface closed); prod must be loopback."""
+    return os.environ.get("DAYDREAM_BIND_HOST", "0.0.0.0").strip()
+
+
+LOOPBACK_HOSTS = ("127.0.0.1", "::1", "localhost")
+
+
+def boot_problems() -> list[str]:
+    """Reasons this process must refuse to serve (checked in the server
+    lifespan). Prod fails closed: it boots only in edge mode, with a public
+    https origin, an explicit public base, and a loopback bind."""
+    problems: list[str] = []
+    mode = access_mode()
+    if mode not in ACCESS_MODES:
+        problems.append(f"DAYDREAM_ACCESS={mode!r} is not one of {', '.join(ACCESS_MODES)}")
+    if mode == "edge" and not public_origin():
+        problems.append("edge mode needs DAYDREAM_PUBLIC_ORIGIN (e.g. https://www.eidolon.com)")
+    if env() == "prod":
+        if mode != "edge":
+            problems.append(f"prod must run with DAYDREAM_ACCESS=edge (got {mode!r})")
+        if not public_origin().startswith("https://"):
+            problems.append("prod needs an https DAYDREAM_PUBLIC_ORIGIN")
+        if not os.environ.get("DAYDREAM_PUBLIC_BASE", "").strip():
+            problems.append("prod needs an explicit DAYDREAM_PUBLIC_BASE (e.g. /daydream/)")
+        if bind_host() not in LOOPBACK_HOSTS:
+            problems.append(f"prod must bind loopback (DAYDREAM_BIND_HOST={bind_host()!r})")
+    return problems
 
 
 def data_dir() -> Path:

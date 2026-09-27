@@ -207,10 +207,12 @@ _start_fastapi() {
     fi
     _require_venv
     local logf; logf="$(_log_file "fastapi")"
-    # Always bind 0.0.0.0 so tailnet clients can reach it; the
-    # AccessMiddleware filters by source IP per DAYDREAM_ACCESS.
+    # Dev binds 0.0.0.0 so tailnet clients can reach it; the AccessMiddleware
+    # filters by source IP per DAYDREAM_ACCESS. DAYDREAM_BIND_HOST is the one
+    # knob (prod's systemd unit passes the same variable), so the server's
+    # boot guard can check it.
     nohup "$VENV_PY" -m uvicorn daydream.server:app \
-        --host 0.0.0.0 --port "$PORT" \
+        --host "${DAYDREAM_BIND_HOST:-0.0.0.0}" --port "$PORT" \
         > "$logf" 2>&1 < /dev/null &
     echo $! > "$(_pid_file fastapi)"
     echo "fastapi: started (pid $!, port $PORT, access=$ACCESS_MODE, log $logf)"

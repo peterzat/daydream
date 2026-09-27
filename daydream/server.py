@@ -32,6 +32,12 @@ image_cache.ensure_cache_root()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Fail closed before touching anything: prod refuses to serve unless it
+    # runs in edge mode with a public origin, a public base and a loopback
+    # bind (SPEC 2026-09-27 criterion 1; docs/GOING-LIVE.md section 2).
+    problems = config.boot_problems()
+    if problems:
+        raise RuntimeError("daydream refuses to boot: " + "; ".join(problems))
     config.ensure_dirs()
     db.init_live()
     # Refuse to boot on an incompatible live world (a MAJOR world_version gap);
@@ -56,7 +62,10 @@ async def lifespan(app: FastAPI):
         db.close_db()
 
 
-app = FastAPI(lifespan=lifespan, title="daydream")
+# No interactive API docs anywhere: nothing uses them, and in prod they would
+# be a pre-login map of every route.
+app = FastAPI(lifespan=lifespan, title="daydream", docs_url=None, redoc_url=None,
+              openapi_url=None)
 app.add_middleware(
     SessionMiddleware,
     secret_key=config.session_secret(),
