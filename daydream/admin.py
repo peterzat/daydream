@@ -451,6 +451,37 @@ def cmd_rest_all(journal_too: bool) -> int:
     return 0
 
 
+def _find_toon(key: str):
+    from daydream import toons
+
+    for t in toons._query("world_id = ? AND slot BETWEEN 1 AND 99", (toons.live_world_id(),)):
+        if t.id == key or t.name.lower() == key.strip().lower():
+            return t
+    return None
+
+
+def cmd_toon_moderate(key: str, action: str) -> int:
+    """Rest or delete ANY account's toon: the admin's moderation power lives
+    here, in the shell, never in a browser session (SECURITY WARN 2026-09-27)."""
+    rc = _require_live_db()
+    if rc is not None:
+        return rc
+    db.init_live()
+    from daydream import toons
+
+    t = _find_toon(key)
+    if t is None:
+        print(f"error: no player toon {key!r}", file=sys.stderr)
+        return 2
+    if action == "rest":
+        toons.kick_slot(t.slot)
+        print(f"rested {t.name} ({t.id})")
+    else:
+        toons.delete_slot(t.slot)
+        print(f"deleted {t.name} ({t.id}); what it carried was left in its room")
+    return 0
+
+
 def cmd_preflight() -> int:
     """Read-only checks `bin/game prod deploy` runs with the NEW release's
     code against the prod data before switching: key: value lines, exit 3 on
@@ -971,6 +1002,9 @@ def main(argv: list[str] | None = None) -> int:
     )
     p_backup.add_argument("--keep", type=int, default=14, help="how many backups to keep")
     sub.add_parser("preflight", help="read-only deploy checks (world version, pending migrations)")
+    for verb in ("rest-toon", "delete-toon"):
+        p_mod = sub.add_parser(verb, help=f"{verb.split('-')[0]} any account's toon by name or id")
+        p_mod.add_argument("toon")
     p_rest_all = sub.add_parser("rest-all", help="rest every player (server stopped); --journal writes journals")
     p_rest_all.add_argument("--journal", action="store_true")
 
@@ -1061,6 +1095,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_backup(args.keep)
     if args.cmd == "preflight":
         return cmd_preflight()
+    if args.cmd in ("rest-toon", "delete-toon"):
+        return cmd_toon_moderate(args.toon, "rest" if args.cmd == "rest-toon" else "delete")
     if args.cmd == "rest-all":
         return cmd_rest_all(args.journal)
     if args.cmd == "snapshot-restore":

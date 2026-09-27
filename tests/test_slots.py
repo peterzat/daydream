@@ -219,16 +219,25 @@ def test_another_accounts_toon_is_off_limits(monkeypatch, live):
         assert t is not None and t.is_human_controlled and t.kicked_at is None
 
 
-def test_an_admin_may_act_on_any_toon(monkeypatch):
+def test_an_admin_browser_session_cannot_touch_a_friends_toon(monkeypatch):
+    """SECURITY WARN 2026-09-27: in the browser an admin gets exactly three
+    extras (repaint, status, several toons); moderating a friend's toon is the
+    shell's job."""
+    from daydream import admin as admin_cli
     from daydream.api import ws as ws_mod
 
-    with TestClient(app) as c1, TestClient(app) as admin:
+    with TestClient(app) as c1, TestClient(app) as keeper:
         _login(c1, "ivo-player")
-        _login(admin, "keeper", role="admin")
+        _login(keeper, "keeper", role="admin")
         c1.post("/api/slots/3/create", json=IVO)
-        monkeypatch.setattr(ws_mod, "is_session_live", lambda sid: True)
-        assert admin.post("/api/slots/3/kick").status_code == 200
-        assert admin.post("/api/slots/3/delete").status_code == 200
+        monkeypatch.setattr(ws_mod, "is_session_live", lambda sid: False)
+        assert keeper.post("/api/slots/3/claim").status_code == 403
+        assert keeper.post("/api/slots/3/kick").status_code == 403
+        assert keeper.post("/api/slots/3/delete").status_code == 403
+        assert admin_cli.cmd_toon_moderate("Ivo", "rest") == 0
+        assert toons.get_toon_in_slot(3).kicked_at is not None
+        assert admin_cli.cmd_toon_moderate("ivo", "delete") == 0
+        assert toons.get_toon_in_slot(3) is None
 
 
 # ---- unowned toons (seeded or from before accounts) -------------------------------------

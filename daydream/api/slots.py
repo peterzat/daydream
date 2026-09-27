@@ -6,8 +6,10 @@ A human toon belongs to one account (`owner_account`, migration 018):
 - **Players.** A player account may create one toon per world and may enter,
   rest (kick) or delete only its own. It may adopt an unowned toon (a seeded
   or pre-accounts one) when it has none.
-- **Admins.** An admin account may hold several and may act on any toon. The
-  shell is still the real admin console.
+- **Admins.** An admin account may hold several toons. It acts on another
+  account's toon only from the CLI (`bin/game world rest-toon|delete-toon`):
+  a stolen admin cookie cannot touch a friend's dreamer (SECURITY WARN
+  2026-09-27; SPEC criterion 4's "exactly three" admin extras).
 - **Another tab.** Opening the game in a second tab or device of the same
   account takes control; the earlier socket is told quietly (daydream/api/ws.py).
 
@@ -81,7 +83,7 @@ def _require_actionable(t: toons.Toon, who: accounts.Principal, *, for_delete: b
     limits to a player (403). An unowned toon keeps the old liveness rule:
     refuse only while another session is live on it (for delete, within
     DELETE_GRACE_SECONDS of its last drop, since deletion is irreversible)."""
-    if who.is_admin or t.owner_account == who.account_id:
+    if t.owner_account == who.account_id:
         return
     if t.owner_account is not None:
         raise HTTPException(status_code=403, detail="that dreamer belongs to someone else")
@@ -191,15 +193,15 @@ async def create_slot(slot: int, request: Request) -> dict:
 async def claim_slot(slot: int, request: Request) -> dict:
     """Enter as the toon in `slot`. Your own toon: always (a second tab or
     device takes over). An unowned toon: adopted, if you have none and no
-    other live session holds it. Another account's toon: 403 (admins
-    excepted). 404 empty slot; 409 held by an active player or you already
+    other live session holds it. Another account's toon: 403, admins
+    included. 404 empty slot; 409 held by an active player or you already
     have a dreamer."""
     who = _require_authed(request)
     _validate_slot(slot)
     t = toons.get_toon_in_slot(slot)
     if t is None:
         raise HTTPException(status_code=404, detail="slot is empty")
-    if t.owner_account not in (None, who.account_id) and not who.is_admin:
+    if t.owner_account not in (None, who.account_id):
         raise HTTPException(status_code=403, detail="that dreamer belongs to someone else")
     if t.owner_account is None and not _may_hold_another(who):
         raise HTTPException(status_code=409, detail="you already have a dreamer here")
@@ -208,7 +210,7 @@ async def claim_slot(slot: int, request: Request) -> dict:
     own = t.owner_account == who.account_id
     toon, reason = toons.claim_slot(
         slot, who.session_id,
-        can_take_over=lambda cs: own or who.is_admin or not ws_mod.is_session_live(cs))
+        can_take_over=lambda cs: own or not ws_mod.is_session_live(cs))
     if reason == "empty":
         raise HTTPException(status_code=404, detail="slot is empty")
     if reason == "controlled":
@@ -224,8 +226,8 @@ async def claim_slot(slot: int, request: Request) -> dict:
 @router.post("/api/slots/{slot}/kick")
 async def kick_slot(slot: int, request: Request) -> dict:
     """Rest the toon in `slot` (controller cleared, kicked_at stamped; it
-    keeps its room, inventory and memories). Your own, or any as an admin.
-    404 empty; 403 someone else's."""
+    keeps its room, inventory and memories). Your own only. 404 empty; 403
+    someone else's."""
     who = _require_authed(request)
     _validate_slot(slot)
     t = toons.get_toon_in_slot(slot)
@@ -269,8 +271,8 @@ async def leave_session(request: Request) -> dict:
 @router.post("/api/slots/{slot}/delete")
 async def delete_toon(slot: int, request: Request) -> dict:
     """Permanently delete the toon in `slot` (distinct from kick, which rests
-    a recoverable toon). Your own, or any as an admin; an unowned toon keeps
-    the delete grace window. 404 empty; 403 someone else's."""
+    a recoverable toon). Your own only; an unowned toon keeps the delete grace
+    window. 404 empty; 403 someone else's."""
     who = _require_authed(request)
     _validate_slot(slot)
     t = toons.get_toon_in_slot(slot)
