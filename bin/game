@@ -590,6 +590,11 @@ cmd_world() {
         cmd_world_reset "$@"
         return
     fi
+    if [[ "${1:-}" == "refresh" ]]; then
+        shift
+        cmd_world_refresh "$@"
+        return
+    fi
     if [[ "${1:-}" == "patch" ]]; then
         # Dream patches (SPEC 2026-09-26 criterion 14): validate fail-loud
         # (--check, no writes) or apply additively to a DB (default: live).
@@ -646,6 +651,43 @@ cmd_dream() {
     fi
     "$VENV_PY" -m daydream.dream mark --db "$LIVE_DB"
     echo "==> dream install: waking the village"
+    cmd_up
+}
+
+cmd_world_refresh() {
+    # Deploy authored content to the LIVE world without losing play
+    # (daydream/refresh.py): authored definitions take the envelope's
+    # version, while players, positions, object state, arc progress,
+    # relationships, finds, deeds, grown rooms, and what play wrote are kept.
+    # `--check` reports and writes nothing (server may stay up). Otherwise:
+    # snapshot, down (a few seconds of "the dream is sleeping"), refresh the
+    # current live DB, up. Default envelope: worlds/lost-hours.json.
+    _require_venv
+    local check="" args=()
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --check) check=1; shift ;;
+            *) args+=("$1"); shift ;;
+        esac
+    done
+    if [[ -n "$check" ]]; then
+        "$VENV_PY" -m daydream.refresh --check --db "$LIVE_DB" "${args[@]}"
+        return
+    fi
+    "$VENV_PY" -m daydream.refresh --check --db "$LIVE_DB" "${args[@]}" || return 1
+    local world_id
+    world_id="$("$VENV_PY" -c "import sqlite3,sys; print(sqlite3.connect(sys.argv[1]).execute('SELECT id FROM worlds LIMIT 1').fetchone()[0])" "$LIVE_DB")"
+    echo "==> world refresh: snapshot"
+    "$VENV_PY" -m daydream.admin snapshot "$world_id" || return 1
+    echo "==> world refresh: stopping the server"
+    cmd_down
+    echo "==> world refresh: carrying the authored content into the live world"
+    if ! "$VENV_PY" -m daydream.refresh --db "$LIVE_DB" "${args[@]}"; then
+        echo "error: refresh failed; the live world is unchanged. Starting back up." >&2
+        cmd_up
+        return 1
+    fi
+    echo "==> world refresh: starting back up"
     cmd_up
 }
 

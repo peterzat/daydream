@@ -91,6 +91,17 @@ def _text_or_variants(d: dict, where: str, errors: list[str], required: bool) ->
         errors.append(f"{where}: needs 'text' or 'variants'")
 
 
+def _telling_errors(spec: dict, where: str) -> list[str]:
+    """`others` (the third-person line everyone else reads when a telling
+    goes to the actor alone) and `to` ("everyone" forces a broadcast)."""
+    errs = []
+    if "others" in spec and not (isinstance(spec["others"], str) and spec["others"].strip()):
+        errs.append(f"{where}.others must be a non-empty string")
+    if "to" in spec and spec["to"] != "everyone":
+        errs.append(f"{where}.to must be \"everyone\" when present")
+    return errs
+
+
 def validate_story(env: dict, *, known: dict, ks: dict, room_ids: set[str],
                    toon_ids: set[str]) -> list[str]:
     """Named errors for every story section of `env`. `known` is the
@@ -220,7 +231,9 @@ def validate_story(env: dict, *, known: dict, ks: dict, room_ids: set[str],
                     isinstance(x, str) for x in b["topic_aliases"])):
                 errors.append(f"{bw}.topic_aliases must be a list of strings")
             extra = set(b) - {"npc", "topic", "topic_aliases", "hint", "if", "after",
-                              "text", "variants", "do", "per_player", "rel"}
+                              "text", "variants", "do", "per_player", "rel",
+                              "others", "to"}
+            errors.extend(_telling_errors(b, bw))
             if extra:
                 errors.append(f"{bw}: unknown field(s) {sorted(extra)}")
         ends = arc.get("endings")
@@ -250,7 +263,8 @@ def validate_story(env: dict, *, known: dict, ks: dict, room_ids: set[str],
                 if bad in str(e.get("do", [])):
                     errors.append(f"{ew}: endings are never fail states ({bad} refused)")
             extra = set(e) - {"text", "variants", "do", "ledger", "after_days", "room",
-                              "summary"}
+                              "summary", "others", "to"}
+            errors.extend(_telling_errors(e, ew))
             if extra:
                 errors.append(f"{ew}: unknown field(s) {sorted(extra)}")
         if timed > 1:

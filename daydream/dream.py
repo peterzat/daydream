@@ -408,31 +408,42 @@ def apply_patch(patch: dict, world_id: str | None = None) -> str:
                 objects.set_property(f["room"], "description_cached", f["description"].strip())
             objects.set_property(f["room"], "furnished_by", patch["id"])
         for tid, spec in (live.get("cast_add") or {}).items():
-            t = objects.get(tid)
-            props = dict(t.properties)
-            if spec.get("topics"):
-                props["topics"] = list(props.get("topics") or []) + copy.deepcopy(spec["topics"])
-            if spec.get("samples") or spec.get("wants"):
-                voice = dict(props.get("voice") or {})
-                voice["samples"] = list(voice.get("samples") or []) + list(spec.get("samples") or [])
-                voice["wants"] = list(voice.get("wants") or []) + list(spec.get("wants") or [])
-                props["voice"] = voice
-            for mood, lines in (spec.get("drift_pools") or {}).items():
-                pools = dict(props.get("drift_pools") or {})
-                pools[mood] = list(pools.get(mood) or []) + list(lines)
-                props["drift_pools"] = pools
-            for k, v in props.items():
-                if t.properties.get(k) != v:
-                    objects.set_property(tid, k, v)
+            cast_add(objects.get(tid), spec)
         if isinstance(patch.get("while_you_slept"), str):
             worldstate.set(world_id, LATEST_KEY, {
                 "id": patch["id"], "title": patch.get("title") or "While you slept",
                 "text": patch["while_you_slept"].strip(), "at": worldclock.iso()})
         worldstate.set(world_id, APPLIED_PREFIX + patch["id"], {
             "at": worldclock.iso(), "title": patch.get("title"),
-            "sha": patch_sha(patch), "add": add})
+            "sha": patch_sha(patch), "add": add,
+            # Kept so a content refresh (daydream/refresh.py) can re-apply
+            # this dream's facts and cast additions on top of fresh defs.
+            "live": {"facts": live.get("facts") or {},
+                     "cast_add": live.get("cast_add") or {}}})
     events.append("system", None, "dream_installed", {"id": patch["id"]}, room_id=None)
     return "applied"
+
+
+def cast_add(t: objects.Object | None, spec: dict) -> None:
+    """Append a dream's additions (topics, voice samples and wants, drift
+    lines) to one resident, writing only the keys that change."""
+    if t is None or not isinstance(spec, dict):
+        return
+    props = dict(t.properties)
+    if spec.get("topics"):
+        props["topics"] = list(props.get("topics") or []) + copy.deepcopy(spec["topics"])
+    if spec.get("samples") or spec.get("wants"):
+        voice = dict(props.get("voice") or {})
+        voice["samples"] = list(voice.get("samples") or []) + list(spec.get("samples") or [])
+        voice["wants"] = list(voice.get("wants") or []) + list(spec.get("wants") or [])
+        props["voice"] = voice
+    for mood, lines in (spec.get("drift_pools") or {}).items():
+        pools = dict(props.get("drift_pools") or {})
+        pools[mood] = list(pools.get(mood) or []) + list(lines)
+        props["drift_pools"] = pools
+    for k, v in props.items():
+        if t.properties.get(k) != v:
+            objects.set_property(t.id, k, v)
 
 
 def patch_sha(patch: dict) -> str:

@@ -1,0 +1,107 @@
+"""`bin/game world refresh` (daydream/refresh.py): authored content reaches a
+played world without losing play. Fixture world, zero LLM calls."""
+
+from __future__ import annotations
+
+import copy
+import json
+from pathlib import Path
+
+import pytest
+
+from daydream import db, events, objects, refresh, story, worldclock, worldstate
+from daydream.skills import effects
+from tests.story_helpers import FIXTURE, WORLD, at, load, player, say
+
+pytestmark = pytest.mark.tier_medium
+
+
+@pytest.fixture(autouse=True)
+def world(tmp_path, monkeypatch):
+    monkeypatch.setenv("DAYDREAM_VILLAGE_ENABLED", "0")
+    at("2026-10-01T10:00:00+00:00")
+    load(tmp_path)
+    yield
+    worldclock.set_fake_now(None)
+    db.close_db()
+    events.reset_subscribers()
+
+
+def _envelope(tmp_path, mutate) -> Path:
+    env = copy.deepcopy(FIXTURE)
+    mutate(env)
+    p = tmp_path / "next.json"
+    p.write_text(json.dumps(env))
+    return p
+
+
+def _hob_topic_text(env):
+    hob = next(t for t in env["toons"] if t["id"] == "t-hob")
+    return hob["properties"]["topics"][0]
+
+
+async def test_refresh_carries_authored_fixes_and_keeps_play(tmp_path):
+    ada = player(1, "Ada", "r-lane")
+    await say(ada, "take oats")
+    # Play writes a key on an authored object, and grows a room off r-lane.
+    effects.dispatch_effects(
+        [{"kind": "set_property", "target_id": "t-hob", "key": "presence_text",
+          "value": "Hob is asleep on a bench."}],
+        actor_id=ada, room_id="r-lane", world_id=WORLD, allowed=effects.RULE_KINDS)
+    objects.spawn(WORLD, "room", "Moss Stair", None, object_id="r-moss",
+                  properties={"title": "Moss Stair", "exits": {"west": "r-lane"},
+                              "grown": {"phrase": "a mossy stair"}})
+    lane = objects.get("r-lane")
+    objects.set_property("r-lane", "exits", {**lane.properties["exits"], "east": "r-moss"})
+    objects.set_property("r-lane", "description_cached",
+                         (lane.properties.get("description_cached") or "The lane.")
+                         + " A new way opens to the east, toward Moss Stair.")
+    rel_before = story.rel(WORLD, "t-wynn", ada)
+
+    def fix(env):
+        _hob_topic_text(env)["variants"] = ["'Twelve lamps, and every one polished.'"]
+        env["things"].append({"id": "o-new-bench", "name": "new bench",
+                              "location": {"room": "r-green"}, "fixture": True,
+                              "seed": "a freshly painted bench"})
+        hob = next(t for t in env["toons"] if t["id"] == "t-hob")
+        hob["presence_text"] = "Hob waves from the ladder."
+        hob["properties"]["declines_text"] = ["Hob shakes their head at the {item}."]
+
+    report = refresh.refresh(_envelope(tmp_path, fix))
+    hob = objects.get("t-hob")
+    # The authored fix is live...
+    assert hob.properties["topics"][0]["variants"] == ["'Twelve lamps, and every one polished.'"]
+    assert hob.properties["declines_text"] == ["Hob shakes their head at the {item}."]
+    assert objects.get("o-new-bench").location_id == "r-green"
+    assert "o-new-bench" in report["inserted"] and "t-hob" in report["updated"]
+    # ...and play is kept: the player, their inventory, what play wrote, the
+    # grown room, its exit, and the room text's new-way sentence.
+    assert objects.get(ada).location_id == "r-lane"
+    assert objects.get("o-oats").location_id == ada
+    assert hob.properties["presence_text"] == "Hob is asleep on a bench."
+    assert objects.get("r-moss") is not None
+    lane = objects.get("r-lane")
+    assert lane.properties["exits"]["east"] == "r-moss"
+    assert lane.properties["description_cached"].endswith("A new way opens to the east, toward Moss Stair.")
+    assert story.rel(WORLD, "t-wynn", ada) == rel_before
+    assert worldstate.get(WORLD, "refresh:last")["inserted"] == 1
+
+
+async def test_refresh_check_writes_nothing(tmp_path):
+    before = objects.get("t-hob").properties
+
+    def fix(env):
+        _hob_topic_text(env)["variants"] = ["'Changed.'"]
+
+    report = refresh.refresh(_envelope(tmp_path, fix), check=True)
+    assert "t-hob" in report["updated"]
+    assert objects.get("t-hob").properties == before
+    assert worldstate.get(WORLD, "refresh:last") is None
+
+
+async def test_refresh_refuses_another_world(tmp_path):
+    def other(env):
+        env["world"]["slug"] = "elsewhere"
+
+    with pytest.raises(SystemExit):
+        refresh.refresh(_envelope(tmp_path, other))

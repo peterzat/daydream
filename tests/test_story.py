@@ -517,3 +517,17 @@ async def test_talk_that_names_a_topic_gets_the_authored_answer(monkeypatch):
     assert story.match_in_talk(hob, ada, "lampshades are nice") is None
     await talk(ada, "t-hob", "how was your day?")
     assert spy.await_count >= 1
+
+
+def test_beats_and_endings_may_carry_others_and_to():
+    env = copy.deepcopy(FIXTURE)
+    env["arcs"]["moth"]["beats"]["hob-notices"]["others"] = "{actor} and Hob talk about the moth."
+    env["arcs"]["moth"]["endings"]["home"]["to"] = "everyone"
+    format2.validate_envelope2(copy.deepcopy(env))
+    env["arcs"]["moth"]["beats"]["hob-notices"]["others"] = ""
+    with pytest.raises(Exception, match="others"):
+        format2.validate_envelope2(copy.deepcopy(env))
+    env["arcs"]["moth"]["beats"]["hob-notices"]["others"] = "{actor} listens."
+    env["arcs"]["moth"]["endings"]["home"]["to"] = "@actor"
+    with pytest.raises(Exception, match="to must be"):
+        format2.validate_envelope2(copy.deepcopy(env))
