@@ -206,6 +206,36 @@ def _daily_picks(world_id: str, toon_id: str, pool: list[str], n: int, rng) -> l
     return picks
 
 
+def _near(room_id: str | None, rooms: list[str], hops: int) -> list[str]:
+    """Configured rooms exactly `hops` exits from `room_id` (breadth-first
+    over room exits), in a stable order."""
+    if not room_id:
+        return []
+    seen, frontier = {room_id}, [room_id]
+    for _ in range(hops):
+        nxt = []
+        for rid in frontier:
+            r = objects.get(rid)
+            exits = r.properties.get("exits") if r is not None else None
+            for dest in (exits.values() if isinstance(exits, dict) else []):
+                if isinstance(dest, str) and dest not in seen:
+                    seen.add(dest)
+                    nxt.append(dest)
+        frontier = nxt
+    return sorted(r for r in frontier if r in rooms)
+
+
+def _daily_rooms(toon: objects.Object, rooms: list[str], n: int, rng) -> list[str]:
+    """Where today's finds go: the first within reach of where the player
+    stands (one exit away, else two, else anywhere), so a newcomer's first
+    day has a find on their own path (playtest 2026-09-26: both of a
+    player's finds landed in rooms they never visited); the rest anywhere."""
+    first_pool = _near(toon.location_id, rooms, 1) or _near(toon.location_id, rooms, 2) or rooms
+    first = rng.choice(first_pool)
+    rest = [r for r in rooms if r != first]
+    return [first] + rng.sample(rest, n - 1)
+
+
 def ensure_daily(toon_id: str) -> list[str]:
     """Place today's finds for one player (idempotent per local date).
     Returns the ids of things spawned now ([] when already placed)."""
@@ -239,7 +269,7 @@ def ensure_daily(toon_id: str) -> list[str]:
         return []
     rng = worldstate.rng_stable(world_id, f"collect:{today}:{toon_id}")
     picks = _daily_picks(world_id, toon_id, pool, n, rng)
-    where = rng.sample(rooms, n)
+    where = _daily_rooms(toon, rooms, n, rng)
     spawned = []
     name = c.get("name") or "keepsake"
     aliases = [a for a in c.get("aliases") or [] if isinstance(a, str)]

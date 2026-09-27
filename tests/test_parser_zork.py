@@ -270,3 +270,32 @@ async def test_put_prep_variants():
     for prep in ("in", "into", "inside"):
         lp = await line(f"put the lantern {prep} the sack")
         assert cmds(lp) == [("put", "i-lantern", "o-sack", "")], prep
+
+
+# ---- utterances vs command chains (playtest 2026-09-26) ------------------------------
+
+
+async def test_a_line_that_is_not_a_command_chain_stays_whole(llm_spy):
+    """Periods chain commands only when every piece is a command; a sentence
+    line reaches the model whole (one call), never split into fragments."""
+    llm_spy.side_effect = None
+    llm_spy.return_value = {"verb": "none"}
+    await line("I keep bees back home. My name is Oona.")
+    assert llm_spy.await_count == 1
+    assert "I keep bees back home. My name is Oona." in llm_spy.await_args.kwargs.get(
+        "user", "") + str(llm_spy.await_args)
+
+
+async def test_a_list_with_nothing_here_is_not_a_list(llm_spy):
+    """"drop a pebble into the well and listen" is not two missing objects:
+    with nothing in the list here, the phrase goes to the model."""
+    llm_spy.side_effect = None
+    llm_spy.return_value = {"verb": "none"}
+    await line("take the pebble near the well and listen")
+    assert llm_spy.await_count == 1
+
+
+async def test_take_from_and_drop_into():
+    spawn_ground_items()
+    lp = await line("take sword from the floor")
+    assert cmds(lp) == [("take", "o-sword", None, "")]

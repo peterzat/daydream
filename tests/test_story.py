@@ -22,7 +22,7 @@ from daydream import (
     worldstate,
 )
 from daydream.llm import format2
-from tests.story_helpers import FIXTURE, WORLD, at, load, narrations, player, say
+from tests.story_helpers import FIXTURE, WORLD, at, load, narrations, player, say, talk
 
 pytestmark = pytest.mark.tier_short
 
@@ -360,6 +360,27 @@ async def test_daily_finds_are_per_player_and_fill_the_book():
     assert len(objects.things_where_property(WORLD, "private_to", ada)) == 2
 
 
+async def test_the_first_daily_find_is_one_exit_from_the_player():
+    """Playtest 2026-09-26: a newcomer's finds landed in rooms they never
+    visited. The first find of the day is placed one exit from where the
+    player stands (r-mill and r-lane are the fixture's neighbors of r-green)."""
+    from daydream import collect as c
+
+    assert c._near("r-green", ["r-green", "r-mill", "r-lane"], 1) == ["r-lane", "r-mill"]
+    assert c._near("r-mill", ["r-green", "r-mill", "r-lane"], 2) == ["r-lane"]
+    ada = player(1, "Ada", "r-green")
+    await _start(ada)
+    objects.move(ada, "r-mill")
+    await say(ada, "look")
+    spawned = objects.things_where_property(WORLD, "private_to", ada)
+    assert any(o.location_id == "r-green" for o in spawned)   # r-mill's only neighbor
+    import random
+    for seed in range(25):   # the rule, not luck: the first pick is always a neighbor
+        where = c._daily_rooms(objects.get(ada), ["r-green", "r-mill", "r-lane"], 2,
+                               random.Random(seed))
+        assert where[0] == "r-green" and len(set(where)) == 2
+
+
 async def test_completing_a_page_grants_its_reward_once():
     ada = player(1, "Ada", "r-green")
     await _start(ada)
@@ -420,3 +441,79 @@ async def test_knows_honors_an_authored_facts_own_condition():
     assert not knowledge.npc_knows(WORLD, "t-hob", "moth-lost")    # arc not open
     story.open_arc(WORLD, "moth", None, None)
     assert knowledge.npc_knows(WORLD, "t-hob", "moth-lost")
+
+
+async def test_a_topic_answer_is_the_askers_and_the_room_sees_one_line():
+    """Playtest 2026-09-26: in a busy room four dreamers' answers reached
+    everyone, unaddressed. The answer goes to the asker; others see one short
+    line, at most once per pair every ten minutes, never the pair themselves."""
+    ada = player(1, "Ada", "r-green")
+    player(2, "Bo", "r-green")
+    before = events.max_seq()
+    await say(ada, "ask hob about the lamps")
+    await say(ada, "ask hob about the lamps")
+    evs = [e for e in events.fetch_since(before) if e.kind == "narrate"]
+    answers = [e for e in evs if e.recipient_id == ada]
+    assert len(answers) == 2
+    seen_by_bo = [e.payload["text"] for e in events.fetch_since(before, recipient_for="t-bo")]
+    bo_view = [e.payload["text"] for e in evs if e.recipient_id is None and e.payload.get("except") == ada]
+    assert len(bo_view) == 1 and "Hob" in bo_view[0] and "Ada" in bo_view[0]
+    assert all("lamp" not in t.lower() for t in bo_view)
+    mine = [e.payload["text"] for e in events.fetch_since(before, recipient_for=ada)]
+    assert not any(t in mine for t in bo_view)
+    del seen_by_bo
+
+
+async def test_talking_to_another_dreamer_is_speech_to_them():
+    ada = player(1, "Ada", "r-green")
+    player(2, "Bo", "r-green")
+    before = events.max_seq()
+    await say(ada, "talk to Bo: hello there, neighbor")
+    says = [e for e in events.fetch_since(before) if e.kind == "say"]
+    assert says and says[0].payload == {"text": "hello there, neighbor", "name": "Ada", "to": "Bo"}
+    assert not any("much to say" in (e.payload.get("text") or "")
+                   for e in events.fetch_since(before))
+
+
+def test_narration_that_addresses_you_is_detected_outside_speech():
+    from daydream.skills import effects
+    assert effects.addresses_actor("You turn the little key.")
+    assert effects.addresses_actor("They fold a small brass key into your hand, warm.")
+    assert not effects.addresses_actor("Tace smiles. 'The case is yours to open now, friend.'")
+    assert not effects.addresses_actor("Hob's lamps hum; 'you know,' Hob says.")
+    assert not effects.addresses_actor("Down in the square, a lantern comes alight early.")
+
+
+async def test_a_resting_player_sends_world_objects_home_and_keeps_keepsakes():
+    """Playtest 2026-09-26: a spare pendulum and the unsent letters stranded
+    in the pockets of players who left. Things with a home go back there on
+    rest; a keepsake (no home) stays with the player."""
+    from daydream import toons
+    ada = player(1, "Ada", "r-lane")
+    await say(ada, "take oats")
+    objects.set_property("o-oats", "home", "r-lane")
+    kept = objects.spawn(WORLD, "thing", "pressed flower", ada, prototype_id=objects.PROTO_THING)
+    objects.move(ada, "r-mill")
+    toons.kick_slot(1)
+    assert objects.get("o-oats").location_id == "r-lane"
+    assert objects.get(kept.id).location_id == ada
+
+
+async def test_talk_that_names_a_topic_gets_the_authored_answer(monkeypatch):
+    """Select, don't write (docs/REFLEXES.md): a free-form line naming one of
+    an NPC's topics answers with the authored line and makes no LLM call;
+    plural or singular, as whole words; a line naming none goes to the model."""
+    from unittest.mock import AsyncMock
+    spy = AsyncMock(return_value={"gesture": "Hob nods.", "say": "Evening.", "advance": "none"})
+    monkeypatch.setattr("daydream.llm.client.acompletion_json", spy)
+    ada = player(1, "Ada", "r-green")
+    before = events.max_seq()
+    await talk(ada, "t-hob", "Hello Hob! Tell me about your lamps, would you?")
+    said = narrations(before)
+    assert any(t in " ".join(said) for t in ("Twelve lamps", "hum at dusk", "has a name"))
+    assert spy.await_count == 0
+    hob = objects.get("t-hob")
+    assert story.match_in_talk(hob, ada, "is that a lamp?")["label"] == "the lamps"
+    assert story.match_in_talk(hob, ada, "lampshades are nice") is None
+    await talk(ada, "t-hob", "how was your day?")
+    assert spy.await_count >= 1

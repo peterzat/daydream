@@ -517,7 +517,8 @@ def enqueue_room_regen(room_id: str, prompt_override: str | None = None) -> str:
     return "started"
 
 
-def _emit_npc_presence_narrates(controlled_toon_id: str, room_id: str) -> None:
+def _emit_npc_presence_narrates(controlled_toon_id: str, room_id: str,
+                                greeted: set | None = None) -> None:
     """Emit one narrate per co-located NPC with non-empty presence_text.
 
     Called from the broadcast loop's controlled-move branch after the
@@ -536,16 +537,24 @@ def _emit_npc_presence_narrates(controlled_toon_id: str, room_id: str) -> None:
     on effect-mutation snapshot refreshes (which would spam the log
     during data-skill dispatch in a populated room). See SPEC
     2026-04-24 criterion 3."""
+    # Playtest 2026-09-26: greetings went to the whole room on every arrival,
+    # so everyone read the same nod each time anyone arrived. Now a
+    # greeting is the arriving player's alone, once per NPC per connection
+    # (`greeted`, the connection's memory, like the room-visit memory).
     for t in toons.get_toons_in_room(room_id):
         if t.id == controlled_toon_id:
+            continue
+        if greeted is not None and t.id in greeted:
             continue
         greeting = (t.presence_text or "").strip()
         if not greeting:
             continue
+        if greeted is not None:
+            greeted.add(t.id)
         events.append(
             "system", None, "narrate",
             {"text": greeting},
-            room_id=room_id,
+            room_id=room_id, recipient_id=controlled_toon_id,
         )
 
 
@@ -622,12 +631,30 @@ async def _handle_input(text: str, toon_id: str, conn: dict) -> dict | None:
         )
         return None
     if not executed:
+        # Private (playtest 2026-09-26: someone's "eat the pocket watch" reached
+        # the whole room as a thought), and varied, with a nudge toward what
+        # the dream does understand rather than a promise it doesn't keep.
+        from daydream import variants
+
+        line = variants.pick(_world_of(toon_id), f"chatter:{toon_id}", _CHATTER_LINES, room_id)
         events.append(
-            "system", None, "narrate",
-            {"text": f"You think to yourself: \"{text}\". The daydream answers softly."},
-            room_id=room_id,
+            "system", None, "narrate", {"text": line.replace("{text}", text)},
+            room_id=room_id, recipient_id=toon_id,
         )
     return None
+
+
+_CHATTER_LINES = [
+    "You think \"{text}\", and the dream lets the thought drift by like a moth past a lantern.",
+    "\"{text}\": the dream doesn't quite catch that one. Something here might, if you look or ask about it.",
+    "\"{text}\" floats up and away. (Try looking around, or asking someone here about something.)",
+    "Nothing in the dream takes up \"{text}\" just now, though it seems to listen.",
+]
+
+
+def _world_of(toon_id: str) -> str | None:
+    t = objects.get(toon_id)
+    return t.world_id if t is not None else None
 
 
 async def _dispatch_parsed(p: "parser.Parse", toon_id: str) -> None:
@@ -743,7 +770,7 @@ async def ws_endpoint(ws: WebSocket):
     # Per-connection room-view memory: which rooms this session has entered
     # (drives full-vs-abbreviated room descriptions) plus the current room and
     # its first-visit verdict (sticky so mid-visit re-snapshots don't shrink).
-    view = {"visited": set(), "room_id": None, "first_visit": True}
+    view = {"visited": set(), "room_id": None, "first_visit": True, "greeted": set()}
     # A fresh page load omits `since` and starts with an empty event log; a
     # reconnect sends its last-rendered seq and resumes from there.
     since_raw = ws.query_params.get("since")
@@ -850,6 +877,9 @@ async def _broadcast_loop(
             if event.recipient_id is not None:
                 if event.recipient_id != toon_id:
                     continue
+            elif event.payload.get("except") == toon_id:
+                # The others-telling of this toon's own private moment.
+                continue
             else:
                 # Room filter follows the player: events in rooms the toon is
                 # NOT currently in get dropped. The toon's own events always
@@ -899,6 +929,7 @@ async def _broadcast_loop(
                     # the effect-mutation branch, so dispatching a
                     # data skill at r-forge doesn't re-greet Rook on
                     # every snapshot refresh.
-                    _emit_npc_presence_narrates(toon_id, _current_room_id(toon_id))
+                    _emit_npc_presence_narrates(toon_id, _current_room_id(toon_id),
+                                                view.get("greeted"))
     except (WebSocketDisconnect, RuntimeError):
         pass

@@ -244,3 +244,22 @@ def test_unknown_patch_sections_fail_loud():
     p = copy.deepcopy(_patch())
     p["add"]["dragons"] = []
     assert any("unknown section" in e for e in dream.check_patch(p))
+
+
+
+async def test_a_player_who_left_is_still_a_player_to_the_dream():
+    """Leaving the dream rests the toon (is_human_controlled 0, kicked_at
+    stamped). The digest must still read that player's day, and the live
+    synthesis must not mistake them (or what they carry) for an NPC."""
+    from daydream import toons
+    ada = player(1, "Ada", "r-lane")
+    inputs.record(ada, "text", text="take oats")
+    await say(ada, "take oats")
+    toons.kick_slot(1)
+    assert not objects.get(ada).is_human_controlled and objects.get(ada).is_player
+    d = dream.digest(WORLD)
+    assert "Ada" in d["players"] and d["players"]["Ada"]["inputs"]
+    env = dream.synthesize_envelope(WORLD)
+    assert all(t["id"] != ada for t in env["toons"])
+    assert all(t.get("location") != {"toon": ada} for t in env["things"])
+    assert not objects.get("t-wynn").is_player

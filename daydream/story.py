@@ -33,6 +33,7 @@ from __future__ import annotations
 
 import logging
 import re
+from datetime import timedelta
 
 from daydream import events, objects, variants, worldclock, worldstate
 
@@ -213,9 +214,13 @@ def _run_effects(effs, ctx: dict, world_id: str, actor_id: str | None,
 
 
 def _tell(world_id: str, key: str, spec: dict, room_id: str | None,
-          recipient: str | None = None) -> events.Event | None:
+          recipient: str | None = None, actor_id: str | None = None,
+          npc: objects.Object | None = None) -> events.Event | None:
     """Narrate an authored `text` / `variants` block (no verbatim repeat
-    within the recent tellings in that room)."""
+    within the recent tellings in that room). A line opening "You ..." goes
+    to the acting player alone, and the block's `others` line (if any) to
+    everyone else there (effects.second_person_recipient / tell_others)."""
+    from daydream.skills import effects
     options = []
     if isinstance(spec.get("variants"), list):
         options = [v for v in spec["variants"] if isinstance(v, str) and v.strip()]
@@ -224,8 +229,50 @@ def _tell(world_id: str, key: str, spec: dict, room_id: str | None,
     if not options:
         return None
     line = variants.pick(world_id, key, options, room_id)
-    return events.append("system", None, "narrate", {"text": line},
-                         room_id=room_id, recipient_id=recipient)
+    if recipient is None and spec.get("to") != "everyone":
+        recipient = effects.second_person_recipient(line, actor_id)
+    ev = events.append("system", None, "narrate", {"text": line},
+                       room_id=room_id, recipient_id=recipient)
+    if recipient is not None and recipient == actor_id:
+        if spec.get("others"):
+            effects.tell_others(spec.get("others"), actor_id, room_id)
+        elif npc is not None:
+            bystander_note(world_id, npc, actor_id, room_id)
+    return ev
+
+
+_BYSTANDER_LINES = [
+    "{npc} and {actor} talk quietly for a while.",
+    "{npc} leans in to say something to {actor}.",
+    "{actor} and {npc} fall into a low conversation.",
+]
+BYSTANDER_WINDOW = timedelta(minutes=10)
+
+
+def bystander_note(world_id: str, npc: objects.Object | None, actor_id: str | None,
+                   room_id: str | None) -> events.Event | None:
+    """What everyone else in the room sees of a conversation that is not
+    theirs (playtest 2026-09-26: answers meant for one dreamer reached all
+    four, unaddressed): one short line, at most once per pair every ten
+    minutes, never to the pair themselves."""
+    actor = objects.get(actor_id) if actor_id else None
+    if npc is None or actor is None or not actor.is_player or not room_id:
+        return None
+    key = f"bystander:{npc.id}:{actor.id}"
+    last = worldstate.get(world_id, key)
+    now = worldclock.now()
+    if isinstance(last, str):
+        try:
+            if now - worldclock.parse(last) < BYSTANDER_WINDOW:
+                return None
+        except ValueError:
+            pass
+    worldstate.set(world_id, key, worldclock.iso(now))
+    line = variants.pick(world_id, "bystander", _BYSTANDER_LINES, room_id)
+    return events.append("system", None, "narrate",
+                         {"text": line.format(npc=npc.name, actor=actor.name),
+                          "except": actor.id},
+                         room_id=room_id)
 
 
 def _is_player(toon_id: str | None) -> bool:
@@ -367,7 +414,7 @@ def advance_beat(world_id: str, arc_id: str, beat_id: str,
     ev = events.append("system", None, "beat_advanced",
                        {"arc": arc_id, "beat": beat_id}, room_id=here)
     if tell:
-        _tell(world_id, f"beat:{arc_id}/{beat_id}", beat, here)
+        _tell(world_id, f"beat:{arc_id}/{beat_id}", beat, here, actor_id=actor_id, npc=npc)
     ctx = _ctx(world_id, actor_id, here, npc, f"beat:{arc_id}/{beat_id}")
     _run_effects(beat.get("do"), ctx, world_id, actor_id, here)
     return ev
@@ -402,7 +449,7 @@ def close_arc(world_id: str, arc_id: str, ending_id: str,
                        {"arc": arc_id, "ending": ending_id,
                         "title": arc.get("title"), "helpers": names},
                        room_id=here)
-    _tell(world_id, f"ending:{arc_id}/{ending_id}", ending, here)
+    _tell(world_id, f"ending:{arc_id}/{ending_id}", ending, here, actor_id=actor_id)
     ctx = _ctx(world_id, actor_id, here, None, f"ending:{arc_id}/{ending_id}")
     _run_effects(ending.get("do"), ctx, world_id, actor_id, here)
     return ev
@@ -482,6 +529,10 @@ def match_topic(npc: objects.Object, actor_id: str, text: str) -> dict | None:
     for t in topics:
         if want in {normalize_topic(x) for x in [t["label"], *t["aliases"]]}:
             return t
+    stem = " ".join(_stems(text))
+    for t in topics:
+        if stem in {" ".join(_stems(x)) for x in [t["label"], *t["aliases"]]}:
+            return t
     if len(want) >= 4:
         for t in topics:
             for x in [t["label"], *t["aliases"]]:
@@ -489,6 +540,38 @@ def match_topic(npc: objects.Object, actor_id: str, text: str) -> dict | None:
                 if len(nx) >= 4 and (nx in want or want in nx):
                     return t
     return None
+
+
+def _stems(text: str) -> list[str]:
+    """Normalized words with a plural "s" dropped ("lullaby clocks" meets
+    "a lullaby clock")."""
+    return [w[:-1] if len(w) > 4 and w.endswith("s") and not w.endswith("ss") else w
+            for w in normalize_topic(text).split()]
+
+
+def match_in_talk(npc: objects.Object, actor_id: str, text: str) -> dict | None:
+    """Select, don't write (docs/REFLEXES.md): a free-form line to an NPC
+    that names one of its available topics or open beats, as whole words,
+    gets that authored answer instead of an improvised one (playtest
+    2026-09-26: "can I have the hush?" drew an invented, thread-closing
+    answer).
+    Beats win; then the longest name. Names under four letters never match
+    on their own. Deterministic, no LLM."""
+    words = _stems(text)
+    if not words:
+        return None
+    joined = f" {' '.join(words)} "
+    best, best_len = None, 0
+    for t in available_topics(npc, actor_id):
+        for name in [t["label"], *t["aliases"]]:
+            sw = _stems(name)
+            if not sw or len(" ".join(sw)) < 4:
+                continue
+            if f" {' '.join(sw)} " in joined:
+                n = len(" ".join(sw)) + (1000 if t["kind"] == "beat" else 0)
+                if n > best_len:
+                    best, best_len = t, n
+    return best
 
 
 def ask(actor: objects.Object, npc: objects.Object, topic: dict, room_id: str) -> None:
@@ -502,7 +585,11 @@ def ask(actor: objects.Object, npc: objects.Object, topic: dict, room_id: str) -
         return
     topics = npc.properties.get("topics") or []
     spec = topics[topic["index"]] if topic["index"] < len(topics) else {}
-    _tell(world_id, f"topic:{npc.id}:{normalize_topic(topic['label'])}", spec, room_id)
+    # A topic answer is the asker's (playtest 2026-09-26: in a busy room the
+    # answers to four dreamers' questions reached everyone, unaddressed).
+    private = actor.is_player and spec.get("to") != "everyone"
+    _tell(world_id, f"topic:{npc.id}:{normalize_topic(topic['label'])}", spec, room_id,
+          recipient=actor.id if private else None, actor_id=actor.id, npc=npc)
     ctx = _ctx(world_id, actor.id, room_id, npc, f"topic:{npc.id}")
     _run_effects(spec.get("do"), ctx, world_id, actor.id, room_id)
 

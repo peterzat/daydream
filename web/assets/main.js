@@ -583,7 +583,8 @@ function renderEvent(e) {
     // player-visible text — SPEC 2026-06-30).
     const who =
       (e.payload && e.payload.name) || actorNames[e.actor_id] || "someone";
-    div.innerHTML = `<span class="speaker">${escape(who)}:</span> &ldquo;${escape(
+    const to = e.payload && e.payload.to ? ` <span class="to">to ${escape(e.payload.to)}</span>` : "";
+    div.innerHTML = `<span class="speaker">${escape(who)}${to}:</span> &ldquo;${escape(
       e.payload.text || ""
     )}&rdquo;`;
   } else if (e.kind === "narrate") {

@@ -277,6 +277,28 @@ def claim_slot(
     return (get_toon(t.id), None)
 
 
+def send_home_things(toon_id: str) -> list[str]:
+    """World objects a resting player carries go back to their authored home
+    room (`properties.home`, recorded at load for worlds that opt in, or set
+    on an authored spawn): the shared world's quest items never strand in an
+    absent pocket. Keepsakes and finds have no home and stay. Returns the ids
+    moved."""
+    from daydream import events
+
+    moved = []
+    for thing in objects.contents(toon_id, "thing"):
+        home = thing.properties.get("home")
+        room = objects.get(home) if isinstance(home, str) else None
+        if room is None or room.kind != "room":
+            continue
+        objects.move(thing.id, room.id)
+        events.append("system", None, "object_moved",
+                      {"object_id": thing.id, "to": room.id, "reason": "home"},
+                      room_id=room.id)
+        moved.append(thing.id)
+    return moved
+
+
 def kick_slot(slot: int) -> Toon | None:
     """Release `slot` to a non-drifting NPC (controller_session NULL,
     is_human_controlled 0, kicked_at <UTC ISO>). The toon keeps its room,
@@ -284,6 +306,7 @@ def kick_slot(slot: int) -> Toon | None:
     t = _slot_occupied(slot)
     if t is None:
         return None
+    send_home_things(t.id)
     db.get_conn().execute(
         "UPDATE objects SET controller_session = NULL, is_human_controlled = 0, "
         "kicked_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now') WHERE id = ?",
@@ -314,6 +337,7 @@ def delete_slot(slot: int) -> Toon | None:
     # room (drop on the ground) before deleting the toon, so no child references
     # the gone row. If the toon somehow has no room, remove them rather than
     # leave unreachable top-level rows.
+    send_home_things(t.id)
     for thing_id in objects.content_ids(t.id, "thing"):
         if t.current_room_id is None:
             objects.delete(thing_id)

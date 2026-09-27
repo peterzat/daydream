@@ -220,3 +220,29 @@ def test_forge_refusal_short_circuits_effects():
         assert "cool" in msg["event"]["payload"]["text"]
         names = {i.name for i in objects.contents("r-forge", kind="thing")}
         assert "should-not-appear" not in names
+
+
+def test_a_greeting_is_the_arrivals_alone_and_once_per_session():
+    """Playtest 2026-09-26: an NPC's presence greeting went to the whole room
+    on every arrival. It reaches only the arriving player, once per NPC per
+    connection: a second trip into the forge brings no second greeting."""
+    with TestClient(app) as client:
+        _login(client)
+        with client.websocket_connect("/ws") as ws:
+            ws.receive_json()  # meadow snapshot
+            ws.send_json({"kind": "input", "text": "go north"})
+            ws.receive_json()  # move
+            ws.receive_json()  # forge snapshot
+            greet = ws.receive_json()
+            assert greet["event"]["kind"] == "narrate"
+            assert greet["event"]["recipient_id"] is not None
+            ws.send_json({"kind": "input", "text": "go south"})
+            ws.receive_json()  # move
+            ws.receive_json()  # meadow snapshot
+            ws.send_json({"kind": "input", "text": "go north"})
+            ws.receive_json()  # move
+            ws.receive_json()  # forge snapshot
+            ws.send_json({"kind": "input", "text": "look"})
+            nxt = ws.receive_json()
+            # The next frame is the look, not a second greeting.
+            assert nxt.get("event", {}).get("payload", {}).get("text") != greet["event"]["payload"]["text"]

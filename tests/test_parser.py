@@ -39,7 +39,25 @@ def _mock_llm(monkeypatch, payload):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("text", ["say hi to rook", "talk to rook", "greet rook"])
+async def test_talk_to_someone_here_is_deterministic(monkeypatch):
+    """`talk to <someone here>[: words]` grounds with no parser call, and a
+    multi-sentence line reaches them whole (playtest 2026-09-26); a bare
+    "talk to rook" says hello. "say hi to rook" is talking to Rook too."""
+    spy = _mock_llm(monkeypatch, {"verb": "none"})
+    p = await parser.parse("t-wren", "talk to rook")
+    assert (p.verb, p.dobj_id, p.args) == ("talk", "t-rook", "hello")
+    lp = await parser.parse_line("t-wren", "talk to Rook: I keep bees back home. Do you like honey?")
+    assert [(c.verb, c.dobj_id, c.args) for c in lp.commands] == [
+        ("talk", "t-rook", "I keep bees back home. Do you like honey?")]
+    p = await parser.parse("t-wren", "say hi to rook")
+    assert (p.verb, p.dobj_id, p.args) == ("talk", "t-rook", "hi")
+    lp = await parser.parse_line("t-wren", "say Hello all! I'm Wren. I'm off to the loft.")
+    assert [(c.verb, c.args) for c in lp.commands] == [("say", "Hello all! I'm Wren. I'm off to the loft.")]
+    assert spy.await_count == 0
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("text", ["greet rook"])
 async def test_natural_phrasings_ground_to_talk_rook(monkeypatch, text):
     # The model returns the grounded command; the parser validates it against
     # the real in-scope id set.

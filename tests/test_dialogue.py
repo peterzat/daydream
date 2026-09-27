@@ -108,7 +108,9 @@ async def test_a_beat_that_went_stale_before_commit_changes_nothing(monkeypatch)
     monkeypatch.setattr("daydream.llm.client.acompletion_json", racing)
     monkeypatch.setenv("DAYDREAM_DIALOGUE_NBEST", "1")
     before = events.max_seq()
-    await talk(ada, "t-hob", "did you see the moth?")
+    # A line naming no topic, so the model (not the authored topic route)
+    # answers and the race at commit is exercised.
+    await talk(ada, "t-hob", "did you see anything odd tonight?")
     st = story.arc_state(WORLD, "moth")
     assert st["beats"]["hob-notices"]["by"] == bo      # recorded once, by Bo
     assert ada not in st["helpers"]
@@ -223,7 +225,10 @@ async def test_a_local_reply_is_tagged_and_an_authored_beat_is_not(monkeypatch):
     before = events.max_seq()
     await talk(ada, "t-hob", "hi")
     evs = [e for e in events.fetch_since(before) if e.kind == "narrate"]
-    assert evs and evs[-1].payload.get("src") == "local"
+    reply = [e for e in evs if e.payload.get("src") == "local"]
+    assert reply and reply[0].recipient_id == ada   # the talker's own reply
+    bystander = [e for e in evs if e.payload.get("except") == ada]
+    assert bystander and "Hob" in bystander[0].payload["text"]   # the room sees a conversation
     before = events.max_seq()
     await verbs_look(ada)
     assert all("src" not in e.payload for e in events.fetch_since(before) if e.kind == "narrate")
@@ -232,3 +237,22 @@ async def test_a_local_reply_is_tagged_and_an_authored_beat_is_not(monkeypatch):
 async def verbs_look(actor):
     from daydream import verbs
     await verbs.execute_command(actor, "look")
+
+
+def test_flat_denials_and_self_naming_are_penalized():
+    """Playtest 2026-09-26: "I do not know your name, friend" and "Tace
+    remembers your name" read as a guard and a script, not a person."""
+    base = dlg.score("Hob nods. 'Evening, and welcome.'", "Hob", "they", [], [])
+    assert dlg.score("Hob nods. 'I do not know your name.'", "Hob", "they", [], []) > base
+    assert dlg.score("Hob nods. 'Hob remembers you.'", "Hob", "they", [], []) > base
+
+
+def test_one_candidate_when_the_gpu_is_busy(monkeypatch):
+    from daydream.gpu import arbiter
+    monkeypatch.setenv("DAYDREAM_DIALOGUE_NBEST", "2")
+    monkeypatch.setattr(arbiter, "stats", lambda: {"waiting_llm": 0, "active_llm": 0,
+                                                   "llm_concurrency": 3})
+    assert dlg.nbest() == 2
+    monkeypatch.setattr(arbiter, "stats", lambda: {"waiting_llm": 1, "active_llm": 3,
+                                                   "llm_concurrency": 3})
+    assert dlg.nbest() == 1

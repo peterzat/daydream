@@ -562,3 +562,32 @@ def test_one_bad_effect_does_not_poison_others():
     assert applied[1].event.kind == "narrate"  # fallback
     assert applied[2].event.kind == "mood_set"
     assert toons.get_toon("t-wren").mood == "steady"
+
+
+def test_second_person_lines_reach_only_the_actor_and_others_read_a_third_person_line():
+    """Playtest 2026-09-26: "You turn the little key" reached everyone in the
+    room as if they had done it. A line opening "You " is the actor's alone
+    unless the author says to: "everyone"; `others` tells the rest of the room."""
+    from daydream import toons
+    db.get_conn().execute("DELETE FROM objects WHERE kind = 'toon' AND slot = 1")
+    ada = toons.create_toon_in_slot(1, "Ada", "Ada", "sess-ada")
+    objects.move(ada.id, "r-meadow")
+    before = events.max_seq()
+    effects.dispatch_effects(
+        [{"kind": "narrate", "text": "You turn the little key.",
+          "others": "{actor} winds a small clock of their own."},
+         {"kind": "narrate", "text": "You hear the bell ring.", "to": "everyone"},
+         {"kind": "narrate", "text": "The lanterns hiss softly."}],
+        actor_id=ada.id, room_id="r-meadow", world_id="w-bunny", allowed=effects.RULE_KINDS)
+    evs = [e for e in events.fetch_since(before) if e.kind == "narrate"]
+    by_text = {e.payload["text"]: e for e in evs}
+    assert by_text["You turn the little key."].recipient_id == ada.id
+    others = by_text["Ada winds a small clock of their own."]
+    assert others.recipient_id is None and others.payload["except"] == ada.id
+    assert by_text["You hear the bell ring."].recipient_id is None
+    assert by_text["The lanterns hiss softly."].recipient_id is None
+    # Replay for Ada never includes the others-telling; for anyone else it does.
+    mine = [e.payload["text"] for e in events.fetch_since(before, recipient_for=ada.id)]
+    assert "Ada winds a small clock of their own." not in mine and "You turn the little key." in mine
+    theirs = [e.payload["text"] for e in events.fetch_since(before, recipient_for="t-bo")]
+    assert "Ada winds a small clock of their own." in theirs and "You turn the little key." not in theirs

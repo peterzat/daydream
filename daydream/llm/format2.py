@@ -532,6 +532,11 @@ def insert_entities(cur, world_id: str, env: dict) -> None:
     # Things: two-pass so containment order never fights the FK — insert
     # every row locationless, then point locations at the now-existing
     # rows ("offstage" stays NULL).
+    # A world that opts in (config.rest_returns_things) records each authored
+    # thing's home room: when a player leaves the dream, world objects they
+    # carried go home instead of resting in their pocket (playtest 2026-09-26:
+    # a spare pendulum and the unsent letters stranded with players who left).
+    returns = bool((env.get("config") or {}).get("rest_returns_things"))
     for th in env.get("things", []):
         proto = "thing"
         if th.get("fixture"):
@@ -544,6 +549,9 @@ def insert_entities(cur, world_id: str, env: dict) -> None:
             props.update(extra)
         props["seed"] = th.get("seed") or ""
         props["is_unique"] = 1
+        loc = th.get("location")
+        if returns and not th.get("fixture") and isinstance(loc, dict) and "room" in loc:
+            props.setdefault("home", loc["room"])
         if isinstance(th.get("text"), str) and th["text"].strip():
             props["text"] = th["text"].strip()
         if isinstance(th.get("verbs"), list):

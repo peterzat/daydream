@@ -58,6 +58,14 @@ class Object:
     kicked_at: str | None = None
 
     @property
+    def is_player(self) -> bool:
+        """A player's toon: controlled now, or rested by its player ("leave
+        the dream" clears is_human_controlled but stamps kicked_at). Seeded
+        NPCs are never either. Use this, not is_human_controlled, to ask
+        "is this a player?" about someone who may have left."""
+        return self.kind == "toon" and (bool(self.is_human_controlled) or self.kicked_at is not None)
+
+    @property
     def seed(self) -> str:
         s = self.properties.get("seed")
         return s if isinstance(s, str) else ""

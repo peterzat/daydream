@@ -59,10 +59,21 @@ def temperature() -> float:
 
 
 def nbest() -> int:
+    """Candidates per reply (n-best, reranked). Under load (every LLM slot
+    busy, or someone already waiting) one candidate: a second one then costs
+    a whole extra wait, not a free parallel slot (playtest 2026-09-26: four
+    dreamers at once saw 7 to 9 second replies)."""
     try:
-        return max(1, min(3, int(os.environ.get("DAYDREAM_DIALOGUE_NBEST", "2"))))
+        n = max(1, min(3, int(os.environ.get("DAYDREAM_DIALOGUE_NBEST", "2"))))
     except ValueError:
-        return 2
+        n = 2
+    if n > 1:
+        from daydream.gpu import arbiter
+
+        st = arbiter.stats()
+        if st["waiting_llm"] > 0 or st["active_llm"] + n > st["llm_concurrency"]:
+            return 1
+    return n
 
 
 # ---- context --------------------------------------------------------------
@@ -153,7 +164,11 @@ def build_prompt(actor: objects.Object, npc: objects.Object, text: str,
         "the player 'you' in the gesture. Say ONLY what the sections below support: "
         "never invent a person, place, object, animal, or event that is not listed, "
         "and never claim something happened that the sections do not say. Asked "
-        "about something not listed, say honestly that you don't know. Do not echo "
+        "about something not listed, stay in character and turn it gently (a small "
+        "wondering, a change of subject, a question back); never a flat 'I do not "
+        f"know'. The player's name is {actor.name}; what {actor.name} tells you "
+        f"about themself is theirs to tell, so take it in warmly and never deny it. "
+        f"{npc.name} speaks of themself as I, never by name. Do not echo "
         "your own recent lines: new words, a new opening, and a pet name for the "
         "player only once in a while. Cozy and warm, soft stakes allowed, no urgency, "
         "no modern things."
@@ -284,6 +299,11 @@ def score(line: str, npc_name: str, pkey: str, openers: list[str],
         penalty += 10
     if re.search(r"\byou(r|rs|rself)?\b", bare, re.I):
         penalty += 5
+    speech = " ".join(_QUOTED.findall(line)).lower()
+    if re.search(r"\bi (do not|don't) know\b", speech):
+        penalty += 3          # the flat denial reads as a guard, not a person
+    if npc_name and re.search(rf"\b{re.escape(npc_name.lower())}\b", speech):
+        penalty += 4          # speaking of oneself by name
     key = opener_key(line)
     if any(opener_key(o) == key for o in openers):
         penalty += 4
@@ -420,8 +440,13 @@ async def talk(actor: objects.Object, npc: objects.Object, text: str, room_id: s
         if ev is not None and authored:
             spoken = None  # the author wrote this moment; it has been told
     if spoken is not None:
+        # The reply is the talker's; the room sees that a conversation is
+        # happening, not four interleaved answers (playtest 2026-09-26).
+        private = actor.is_player
         events.append("system", None, "narrate", {"text": spoken, "src": "local"},
-                      room_id=room_id)
+                      room_id=room_id, recipient_id=actor.id if private else None)
+        if private:
+            story.bystander_note(world_id, npc, actor.id, room_id)
         _note_opener(world_id, npc.id, spoken)
         _note_line(world_id, npc.id, spoken)
     story.remember_exchange(world_id, npc.id, actor.id, text, spoken or "(the moment)")

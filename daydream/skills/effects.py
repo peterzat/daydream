@@ -43,6 +43,7 @@ per-effect jsonschema validation, per-player rate limits, an `audit` table,
 `bin/game world undo`."""
 
 import logging
+import re
 from collections.abc import Callable
 from dataclasses import dataclass
 
@@ -261,15 +262,58 @@ def dispatch_effects(
     return applied
 
 
+# Quoted speech ('...' after a space or line start, closing before a space or
+# punctuation; "..." and curly quotes too). Apostrophes inside words (the keeper's,
+# don't) neither open nor close a span.
+_QUOTED = re.compile(r"(?:(?<=\s)|^)'.*?'(?=[\s.,!?;:)]|$)|\"[^\"]*\"|“[^”]*”", re.S)
+_ADDRESS = re.compile(r"\byou(?:rs?|rself)?\b", re.I)
+
+
+def addresses_actor(text: str) -> bool:
+    """Narration (outside quoted speech) that speaks to "you": a line that
+    opens "You ..." or says "into your hand"."""
+    if not isinstance(text, str):
+        return False
+    return text.startswith("You ") or bool(_ADDRESS.search(_QUOTED.sub(" ", text)))
+
+
+def second_person_recipient(text: str, actor_id: str | None) -> str | None:
+    """A line whose narration addresses "you" is about the acting player, so
+    by default only that player reads it (playtest 2026-09-26: "You turn the
+    little key" and "They fold a small brass key into your hand" reached
+    everyone in the room as if it were theirs). Returns the actor's id for
+    such a line, else None."""
+    if not (actor_id and addresses_actor(text)):
+        return None
+    actor = objects.get(actor_id)
+    return actor_id if actor is not None and actor.is_player else None
+
+
+def tell_others(text: str | None, actor_id: str | None, room_id: str | None) -> events.Event | None:
+    """The third-person telling of a private moment for everyone else in the
+    room (`others`, with {actor} for the player's name): broadcast with an
+    `except` so the actor, who read their own line, never reads this one."""
+    actor = objects.get(actor_id) if actor_id else None
+    if not (isinstance(text, str) and text.strip() and actor is not None and actor.is_player):
+        return None
+    return events.append("system", None, "narrate",
+                         {"text": text.strip().replace("{actor}", actor.name), "except": actor_id},
+                         room_id=room_id)
+
+
 def _apply_narrate(
     eff: dict, *, actor_id: str, room_id: str, world_id: str
 ) -> events.Event | None:
-    """Emit narration. Two optional routing fields (platform turn):
+    """Emit narration. Optional routing fields (platform turn, story turn):
 
     `to: "@actor"` (or an explicit toon id) makes the line actor-private
     (events.recipient_id, migration 014) — self-narrations and refusals
-    reach only the acting player. `room: <id>` overrides which room's log
-    the line lands in (a daemon narrating into its own room)."""
+    reach only the acting player. With no `to`, a line opening "You ..." is
+    actor-private too (`second_person_recipient`); `to: "everyone"` forces a
+    room broadcast. `others` is the third-person line everyone else in the
+    room reads when the main line went to the actor alone. `room: <id>`
+    overrides which room's log the line lands in (a daemon narrating into
+    its own room)."""
     text = eff.get("text")
     target_room = eff.get("room")
     if not (isinstance(target_room, str) and target_room.strip()):
@@ -287,17 +331,23 @@ def _apply_narrate(
     to = eff.get("to")
     recipient: str | None = None
     if isinstance(to, str) and to.strip():
-        recipient = actor_id if to.strip() == "@actor" else to.strip()
+        if to.strip() != "everyone":
+            recipient = actor_id if to.strip() == "@actor" else to.strip()
+    else:
+        recipient = second_person_recipient(text.strip(), actor_id)
     payload = {"text": text.strip()}
     if eff.get("src") == "local":
         # Provenance (docs/REFLEXES.md): the local model wrote this line.
         # Absent means authored or engine text. Read by the dream digest and
         # the playtest analysis; the SPA ignores it.
         payload["src"] = "local"
-    return events.append(
+    ev = events.append(
         "system", None, "narrate", payload,
         room_id=target_room, recipient_id=recipient,
     )
+    if recipient is not None and recipient == actor_id:
+        tell_others(eff.get("others"), actor_id, target_room)
+    return ev
 
 
 def _apply_add_item(

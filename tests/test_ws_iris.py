@@ -163,8 +163,9 @@ def test_iris_hidden_in_meadow():
                 msg = ws.receive_json()
         assert msg["event"]["kind"] == "narrate"
         # The narrate is the chat fallback, not an iris-voice response.
-        assert "iris" not in msg["event"]["payload"]["text"].lower() or \
-               "you think to yourself" in msg["event"]["payload"]["text"].lower()
+        from daydream.api.ws import _CHATTER_LINES
+        assert msg["event"]["payload"]["text"] in {
+            ln.replace("{text}", "iris hello") for ln in _CHATTER_LINES}
         # One LLM call = the parser's grounder. A second would mean the
         # iris skill dispatched in a room where its predicate hides it.
         assert mock_llm.call_count == 1

@@ -142,8 +142,9 @@ def fetch_since(
         sql += " AND room_id = ?"
         params.append(room_id)
     if recipient_for is not None:
-        sql += " AND (recipient_id IS NULL OR recipient_id = ?)"
-        params.append(recipient_for)
+        sql += (" AND (recipient_id IS NULL OR recipient_id = ?)"
+                " AND COALESCE(json_extract(payload_json, '$.except'), '') != ?")
+        params += [recipient_for, recipient_for]
     sql += " ORDER BY seq"
     if limit is not None:
         sql += f" LIMIT {int(limit)}"

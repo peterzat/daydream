@@ -172,7 +172,7 @@ async def parse_line(
 
     room = rooms.get_room(actor.location_id) if actor.location_id else None
     commands: list[Parse] = []
-    segments = [s for s in _THEN_SPLIT.split(text) if s and s.strip()]
+    segments = _segments(actor_id, text, room)
     for segment in segments:
         seg = await _parse_segment(actor_id, segment.strip(), room)
         if isinstance(seg, Clarify):
@@ -186,6 +186,42 @@ async def parse_line(
         commands.extend(seg)
     _remember(actor_id, commands)
     return LineParse(commands=tuple(commands))
+
+
+def _starts_like_a_command(actor_id: str, segment: str, room) -> bool:
+    words = segment.strip().split()
+    if not words:
+        return False
+    world_id = objects.get(actor_id).world_id if objects.get(actor_id) else None
+    first = words[0].lower().strip(",;:!?")
+    two = " ".join(w.lower() for w in words[:2])
+    if len(first) == 1 and len(words) > 1 and first not in verbs.DIRECTION_WORDS:
+        return False
+    return (first in verbs.DIRECTION_WORDS
+            or (room is not None and first in room.exits)
+            or first in ("again", "g")
+            or _verb_by_word(world_id, two) is not None
+            or _verb_by_word(world_id, first) is not None)
+
+
+def _segments(actor_id: str, text: str, room) -> list[str]:
+    """THEN / period chaining ("take lamp. north") splits a line only when
+    it is a chain of commands: every piece opens with a verb or a direction,
+    and the first is not speech. Anything else is one utterance and stays
+    whole (playtest 2026-09-26: "say Hi Oona! I'm Juniper. I'm going up."
+    lost its second sentence, and a talk's tail was parsed as a command)."""
+    pieces = [p for p in _THEN_SPLIT.split(text) if p and p.strip()]
+    if len(pieces) <= 1:
+        return pieces
+    world_id = objects.get(actor_id).world_id if objects.get(actor_id) else None
+    first = pieces[0].strip().split()
+    two = " ".join(w.lower() for w in first[:2])
+    head = _verb_by_word(world_id, two) or _verb_by_word(world_id, first[0].lower())
+    if head is not None and (head.free_text or head.name == "ask"):
+        return [text]
+    if all(_starts_like_a_command(actor_id, piece, room) for piece in pieces):
+        return pieces
+    return [text]
 
 
 def _remember(actor_id: str, commands: list[Parse]) -> None:
@@ -272,7 +308,9 @@ def _fast_path(actor_id: str, text: str, room: rooms.Room | None):
         spec = _verb_by_word(world_id, two)
         if spec is not None:
             rest = " ".join(words[2:]).strip()
-    if spec is None:
+    if spec is None and not (len(words[0]) == 1 and len(words) > 1):
+        # A one-letter alias (i, l, x) is a command only on its own: "I keep
+        # bees back home" is a sentence, not an inventory (playtest 2026-09-26).
         spec = _verb_by_word(world_id, words[0].lower())
         if spec is not None:
             rest = " ".join(words[1:]).strip()
@@ -301,10 +339,23 @@ def _fast_path(actor_id: str, text: str, room: rooms.Room | None):
     verb = spec.name
     if verb == "ask":
         return _ask_fast_path(actor_id, rest)
-    # Free-text verbs (say/talk/plant) with args may name a target ("say hi
-    # to rook" -> talk); hand those to the LLM rather than claim them here.
+    if rest and verb == "say":
+        return _say_fast_path(actor_id, rest)
+    if rest and verb == "talk":
+        talked = _talk_fast_path(actor_id, rest)
+        if talked is not None:
+            return talked
+    # Other free-text verbs (plant) with args may need the model's reading;
+    # hand those to the LLM rather than claim them here.
     if rest and spec.free_text:
         return None
+    # "take X from Y" is taking X; "drop X in/into Y" is putting it there.
+    if verb == "take" and " from " in f" {rest.lower()} ":
+        rest = rest[:rest.lower().find(" from ")].strip() or rest
+    if verb == "drop" and re.search(r"\s(in|into|inside)\s", rest.lower()):
+        put = _verb_by_word(world_id, "put")
+        if put is not None:
+            spec, verb = put, put.name
 
     if not spec.needs_dobj:
         return [Parse(verb, args=rest)]
@@ -341,8 +392,10 @@ def _fast_path(actor_id: str, text: str, room: rooms.Room | None):
     if len(matches) == 0:
         # Named but not in scope ("take the moon"): pass the name through so
         # the executor reads "you don't see the <name> here". If an iobj
-        # half was present but this name missed, defer to the LLM instead.
-        if iobj_part is not None:
+        # half was present but this name missed, or the "name" is a whole
+        # phrase (four words or more, a sentence rather than a noun), defer
+        # to the LLM instead.
+        if iobj_part is not None or len(name.split()) >= 4:
             return None
         return [Parse(verb, dobj_name=name)]
     if len(matches) > 1:
@@ -358,6 +411,66 @@ def _fast_path(actor_id: str, text: str, room: rooms.Room | None):
     if iobj_id is None:
         return _fill_iobj_default(actor_id, spec, parses)
     return parses
+
+
+_LEAD_PUNCT = re.compile(r"^[\s,:;.!?-]+")
+
+
+def _toon_prefix(actor_id: str, words: list[str]):
+    """The longest leading run of `words` naming exactly one toon in scope:
+    (toon, words consumed), (None, 0) when none does, or a Clarify list."""
+    for k in range(min(len(words), 4), 0, -1):
+        name = _strip_article(" ".join(words[:k]).strip(",:;.!?"))
+        if not name:
+            continue
+        matches = [o for o in _ground(actor_id, name) if o.kind == "toon" and o.id != actor_id]
+        if len(matches) == 1:
+            return matches[0], k
+        if len(matches) > 1:
+            return matches, k
+    return None, 0
+
+
+def _say_fast_path(actor_id: str, rest: str):
+    """`say <words>` is speech to the room, whole and deterministic
+    (playtest 2026-09-26: the model read "say I'm off to see the loft" as a
+    move). `say to <someone>: <words>` and `say <words> to <someone>` (a
+    toon here) are talking to them."""
+    words = rest.split()
+    if words and words[0].lower() == "to":
+        who, k = _toon_prefix(actor_id, words[1:])
+        if isinstance(who, list):
+            return _clarify("talk", "dobj", " ".join(words[1:1 + k]), who)
+        if who is not None:
+            text = _LEAD_PUNCT.sub("", " ".join(words[1 + k:]))
+            return [Parse("talk", dobj_id=who.id, args=text)]
+    low = rest.lower()
+    idx = low.rfind(" to ")
+    if idx > 0:
+        tail = rest[idx + 4:].strip().rstrip(".!?")
+        who, k = _toon_prefix(actor_id, tail.split())
+        if who is not None and not isinstance(who, list) and k == len(tail.split()):
+            return [Parse("talk", dobj_id=who.id, args=rest[:idx].strip())]
+    return [Parse("say", args=rest)]
+
+
+def _talk_fast_path(actor_id: str, rest: str):
+    """`talk to|with <someone>[:,] <words>` / `talk to <someone> about <x>`:
+    the someone grounds deterministically and every word after is theirs
+    to hear, so a multi-sentence line reaches them whole (no parser call).
+    None when no toon here is named (the LLM reads it)."""
+    words = rest.split()
+    if words and words[0].lower() in ("to", "with"):
+        words = words[1:]
+    who, k = _toon_prefix(actor_id, words)
+    if who is None:
+        return None
+    if isinstance(who, list):
+        return _clarify("talk", "dobj", " ".join(words[:k]), who)
+    text = _LEAD_PUNCT.sub("", " ".join(words[k:]))
+    if text.lower().startswith("about "):
+        text = text[6:].strip()
+    return [Parse("talk", dobj_id=who.id, args=text or "hello")]
 
 
 def _ask_fast_path(actor_id: str, rest: str):
@@ -515,8 +628,11 @@ def _expand_multi(
             return LineParse(message=msgs.get(verb, "Nothing to do."))
         return [Parse(verb, dobj_id=o.id, iobj_id=iobj_id) for o in kept]
 
-    # AND-list of names.
+    # AND-list of names. A list is only a list if something in it is here
+    # (playtest 2026-09-26: "drop a pebble into the well and listen" read back
+    # "you don't see the listen here"); otherwise the single-name path decides.
     out: list[Parse] = []
+    grounded = 0
     for raw_name in _AND_SPLIT.split(part):
         name = _strip_article(raw_name)
         if not name:
@@ -525,8 +641,9 @@ def _expand_multi(
         if not matches:
             out.append(Parse(verb, dobj_name=name, iobj_id=iobj_id))
         else:
+            grounded += 1
             out.append(Parse(verb, dobj_id=matches[0].id, iobj_id=iobj_id))
-    return out or None
+    return out if out and grounded else None
 
 
 def _all_candidates(

@@ -158,7 +158,7 @@ def synthesize_envelope(world_id: str) -> dict:
             if extra:
                 r["properties"] = extra
             rooms.append(r)
-        elif o.kind == "toon" and not o.is_human_controlled:
+        elif o.kind == "toon" and not o.is_player:
             t = {"id": o.id, "name": o.name, "slot": o.slot if o.slot is not None else 100,
                  "room": o.location_id or "offstage", "aliases": o.aliases}
             for k in ("seed", "appearance_seed", "mood", "presence_text"):
@@ -181,7 +181,7 @@ def synthesize_envelope(world_id: str) -> dict:
                 location = {"room": holder.id}
             elif holder.kind == "thing":
                 location = {"in": holder.id}
-            elif holder.kind == "toon" and not holder.is_human_controlled:
+            elif holder.kind == "toon" and not holder.is_player:
                 location = {"toon": holder.id}
             else:
                 location = ({"room": holder.location_id}
@@ -470,13 +470,14 @@ def digest(world_id: str | None = None) -> dict:
     m = worldstate.get(world_id, MARK_KEY)
     m = m if isinstance(m, dict) else {"event_seq": 0, "input_seq": 0, "at": None}
     conn = db.get_conn()
-    players = [objects.Object.from_row(r) for r in conn.execute(
-        "SELECT * FROM objects WHERE world_id = ? AND kind = 'toon' "
-        "AND is_human_controlled = 1 ORDER BY slot", (world_id,))]
+    toons_all = [objects.Object.from_row(r) for r in conn.execute(
+        "SELECT * FROM objects WHERE world_id = ? AND kind = 'toon' ORDER BY slot",
+        (world_id,))]
+    # Players who left the dream are still players (their day is what the
+    # dream reads): is_player, not is_human_controlled.
+    players = [t for t in toons_all if t.is_player]
     names = {p.id: p.name for p in players}
-    npcs = [objects.Object.from_row(r) for r in conn.execute(
-        "SELECT * FROM objects WHERE world_id = ? AND kind = 'toon' "
-        "AND is_human_controlled = 0 ORDER BY slot", (world_id,))]
+    npcs = [t for t in toons_all if not t.is_player]
     since_events = [e for e in events.fetch_since(m.get("event_seq", 0))]
     by_player = {}
     for p in players:

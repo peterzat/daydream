@@ -61,9 +61,11 @@ def test_two_agents_play_across_invocations(live_server, capsys):
     _run(capsys, *base, "start", "Bo")
     out = _run(capsys, *base, "do", "Ada", "take lantern")
     assert "You take the lantern." in out
-    # Bo's next invocation shows what happened in the room meanwhile.
+    # Bo's next invocation shows what happened in the room meanwhile, in the
+    # third person: Ada's own "You take the lantern." is Ada's alone.
     out = _run(capsys, *base, "do", "Bo", "look")
-    assert "(meanwhile)" in out and "take the lantern" in out
+    assert "(meanwhile)" in out and "Ada takes the lantern." in out
+    assert "You take the lantern." not in out
     out = _run(capsys, *base, "look", "Ada")
     assert "You carry: lantern" in out
     out = _run(capsys, *base, "click", "Ada", "drop", "lantern")

@@ -105,7 +105,8 @@ def _line(frame: dict) -> str | None:
         if e.get("kind") == "narrate" and p.get("text"):
             return p["text"]
         if e.get("kind") == "say" and p.get("text"):
-            return f"{p.get('name', 'someone')} says: \"{p['text']}\""
+            to = f" to {p['to']}" if p.get("to") else ""
+            return f"{p.get('name', 'someone')} says{to}: \"{p['text']}\""
         if e.get("kind") == "game_won":
             return "[the dream reaches an ending]"
         return None

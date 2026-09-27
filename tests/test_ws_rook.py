@@ -156,8 +156,9 @@ def test_rook_hidden_in_meadow():
         # The narrate is the chat fallback, not a rook-voice response.
         # The literal text reads "You think to yourself: ..." per
         # daydream/api/ws._handle_input's chatter path.
-        assert "rook" not in msg["event"]["payload"]["text"].lower() or \
-               "you think to yourself" in msg["event"]["payload"]["text"].lower()
+        from daydream.api.ws import _CHATTER_LINES
+        assert msg["event"]["payload"]["text"] in {
+            ln.replace("{text}", "rook hello") for ln in _CHATTER_LINES}
         # One LLM call = the parser's grounder. A second would mean the
         # rook skill dispatched in a room where its predicate hides it.
         assert mock_llm.call_count == 1

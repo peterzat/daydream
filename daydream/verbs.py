@@ -26,6 +26,7 @@ mutation flows through the allowlisted world-mutation effect API
 from __future__ import annotations
 
 import logging
+import re
 from dataclasses import dataclass, field
 
 from daydream import events, objects, rooms, rules
@@ -528,8 +529,9 @@ def _iobj_prep(spec: VerbSpec) -> str:
 def _the(obj: objects.Object) -> str:
     """Display reference with the natural article: things take 'the' ('the
     lantern'); named toons take none (a name, never 'the <name>' — playtest
-    2026-07-02)."""
-    return obj.name if obj.kind == "toon" else f"the {obj.name}"
+    2026-07-02); nor does a possessive (a name with an apostrophe s) or a title that
+    already carries one ("The Lantern Square") — playtest 2026-09-26."""
+    return obj.name if obj.kind == "toon" else _the_name(obj.name)
 
 
 # ---- engine handlers (deterministic unless noted) ----------------------
@@ -572,11 +574,22 @@ def _terminate(text: str) -> str:
     return text if text[-1] in ".!?…" else text + "."
 
 
+def _the_name(name: str) -> str:
+    """"the lantern", but not a possessive or a title that starts "The"."""
+    if re.search(r"'s\b", name) or re.match(r"(?i)the\s", name):
+        return name
+    return f"the {name}"
+
+
 def _examine_line(dobj: objects.Object, detail: str) -> str:
     detail = (detail or "").strip()
     if not detail:
-        return f"You examine the {dobj.name}."
-    return f"You examine the {dobj.name}: {_terminate(detail)}"
+        return f"You examine {_the_name(dobj.name)}."
+    # A seed that restates the name ("a hush: a small grey quiet") would read
+    # "You examine the hush: a hush: ..." (playtest 2026-09-26).
+    detail = re.sub(rf"^(?:a|an|the)\s+{re.escape(dobj.name)}\s*[:,]\s*", "", detail,
+                    flags=re.I) or detail
+    return f"You examine {_the_name(dobj.name)}: {_terminate(detail)}"
 
 
 def _container_glance(dobj: objects.Object) -> str:
@@ -626,7 +639,7 @@ async def _handle_examine(actor, room_id, dobj, iobj, args, spec) -> None:
         if not isinstance(appearance, str):  # a raw set_property can store any JSON
             appearance = ""
         parts = [p for p in (appearance, dobj.seed) if p and p.strip()]
-        body = " ".join(_terminate(p) for p in parts)
+        body = " ".join(_terminate(p[:1].upper() + p[1:]) for p in parts)
         line = f"You see {dobj.name}: {body}" if body else f"You see {dobj.name}."
         _dispatch(actor, room_id, [{"kind": "narrate", "text": line, "to": "@actor"}], spec)
         return
@@ -724,7 +737,7 @@ async def _handle_take(actor, room_id, dobj, iobj, args, spec) -> None:
         return False
     effs: list = [
         {"kind": "move_object", "object_id": dobj.id, "dest_id": actor.id},
-        {"kind": "narrate", "text": f"You take the {dobj.name}."},
+        {"kind": "narrate", "text": f"You take the {dobj.name}.", "others": f"{{actor}} takes the {dobj.name}."},
     ]
     # Authored first-take treasure value (platform turn): awarded exactly once,
     # and only on a take that actually succeeded (gates above returned).
@@ -741,7 +754,7 @@ async def _handle_drop(actor, room_id, dobj, iobj, args, spec) -> None:
         return False
     _dispatch(actor, room_id, [
         {"kind": "move_object", "object_id": dobj.id, "dest_id": room_id},
-        {"kind": "narrate", "text": f"You drop the {dobj.name}."},
+        {"kind": "narrate", "text": f"You drop the {dobj.name}.", "others": f"{{actor}} sets down the {dobj.name}."},
     ], spec)
 
 
@@ -761,10 +774,18 @@ async def _handle_give(actor, room_id, dobj, iobj, args, spec) -> None:
             "text": "You can't give something to yourself."}], spec)
         return False
     if not _matches_name(dobj, iobj.properties.get("wants")):
+        # The refusal is the giver's (it hands the thing back to "you"), in the
+        # NPC's own authored words when it has them: a string or a list of
+        # variants, with {item} for the thing (playtest 2026-09-26: one
+        # smiling template for everyone, a cat included).
         decline = iobj.properties.get("declines_text")
-        if not (isinstance(decline, str) and decline.strip()):
-            decline = f"{iobj.name} smiles and gently sets the {dobj.name} back in your hands."
-        _dispatch(actor, room_id, [{"kind": "narrate", "text": decline}], spec)
+        options = ([decline] if isinstance(decline, str) else
+                   [d for d in decline if isinstance(d, str)] if isinstance(decline, list) else [])
+        options = [o.replace("{item}", dobj.name) for o in options if o.strip()]
+        if not options:
+            options = [f"{iobj.name} looks at the {dobj.name} a moment, and leaves it with you."]
+        _dispatch(actor, room_id, [{"kind": "narrate", "variants": options,
+                                    "key": f"decline:{iobj.id}", "to": "@actor"}], spec)
         return False
 
     effs: list = [{"kind": "move_object", "object_id": dobj.id, "dest_id": iobj.id}]
@@ -867,7 +888,7 @@ async def _handle_open(actor, room_id, dobj, iobj, args, spec) -> None:
     if isinstance(open_text, str) and open_text.strip():
         effs.append({"kind": "narrate", "text": open_text.strip()})
     else:
-        effs.append({"kind": "narrate", "text": f"You open the {dobj.name}."})
+        effs.append({"kind": "narrate", "text": f"You open the {dobj.name}.", "others": f"{{actor}} opens the {dobj.name}."})
     contains = dobj.properties.get("contains")
     entries = contains if isinstance(contains, list) else [contains]
     revealed: list[str] = []
@@ -963,7 +984,8 @@ async def _handle_put(actor, room_id, dobj, iobj, args, spec) -> None:
         return False
     effs: list = [
         {"kind": "move_object", "object_id": dobj.id, "dest_id": iobj.id},
-        {"kind": "narrate", "text": f"You put the {dobj.name} {prep} the {iobj.name}."},
+        {"kind": "narrate", "text": f"You put the {dobj.name} {prep} the {iobj.name}.",
+         "others": f"{{actor}} puts the {dobj.name} {prep} the {iobj.name}."},
     ]
     # Authored deposit value (platform turn): a treasure's score_case awards once
     # when it lands in a container that declares score_deposits (the trophy
@@ -1391,11 +1413,31 @@ async def _handle_talk(actor, room_id, dobj, args, spec) -> None:
     memory to this toon directly (playtest fix 2026-07-02)."""
     from daydream.skills import data as data_skills
 
+    if dobj.is_player:
+        # Another dreamer, not a character: talking to them is speech to them
+        # (playtest 2026-09-26: the game answered for players with an NPC
+        # deflection, "Oona doesn't have much to say just now").
+        text = (args or "").strip()
+        if not text:
+            _narrate(room_id, f"What would you like to say to {dobj.name}? "
+                     f"(Try: talk to {dobj.name}: hello)", recipient_id=actor.id)
+            return False
+        events.append("toon", actor.id, "say",
+                      {"text": text, "name": actor.name, "to": dobj.name}, room_id=room_id)
+        return None
     if isinstance(dobj.properties.get("voice"), dict):
-        # A voice-sheet NPC (SPEC 2026-09-26 criteria 6, 10): grounded
-        # dialogue with game state injected, and the talk-beat advance.
-        from daydream import dialogue
+        # A voice-sheet NPC (SPEC 2026-09-26 criteria 6, 10): a line naming
+        # one of its topics or open beats gets the authored answer (select,
+        # don't write: docs/REFLEXES.md); anything else is grounded dialogue
+        # with game state injected, and the talk-beat advance.
+        from daydream import dialogue, story
 
+        topic = story.match_in_talk(dobj, actor.id, args or "")
+        if topic is not None:
+            story.ask(actor, dobj, topic, room_id)
+            story.remember_exchange(actor.world_id, dobj.id, actor.id, args or "",
+                                    f"(answered about {topic['label']})")
+            return None
         return await dialogue.talk(actor, dobj, args, room_id)
     skill_name = _bound_dialogue_skill(dobj)
     pair = data_skills.find(skill_name) if skill_name else None
