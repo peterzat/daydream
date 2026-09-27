@@ -142,7 +142,7 @@ after its first dream.
   (surprise, consequence, being remembered, reason to return), and every
   experience defect they surface is fixed or backlogged.
 
-- [ ] **18. The first dream happened.** After the agent playtest day, one
+- [x] **18. The first dream happened.** After the agent playtest day, one
   dream digests that play, is authored in-session, passes rehearsal, and is
   live. It furnishes every room grown during the playtest day and calls back to
   at least one specific player deed. Its digest, patch, and rehearsal result are
@@ -273,4 +273,4 @@ annotate them at turn end.
 criteria 7 (the loft reset) and 9 (the Zork playtest) were superseded by the
 2026-09-26 pivot.*
 
-<!-- SPEC_META: {"date":"2026-09-26","title":"The Village of Lost Hours: the pivot turn","criteria_total":22,"criteria_met":20} -->
+<!-- SPEC_META: {"date":"2026-09-26","title":"The Village of Lost Hours: the pivot turn","criteria_total":22,"criteria_met":21} -->
