@@ -1,276 +1,366 @@
-## Spec — 2026-09-26 — The Village of Lost Hours: the pivot turn
+## Spec — 2026-09-27 — Going live: the village opens its doors
 
-**Goal:** Turn daydream from a platform carrying one fifteen-minute quest into
-The Village of Lost Hours: a shared, persistent, coffee-break world whose story
-arcs respond to what players do. Opus authors the story (at design time, and
-in-session "dreams" that read what players did), the local 9B performs it live
-with real game state injected, and the deterministic engine keeps it honest and
-completable. The turn ends with the operator playing the world the morning
-after its first dream.
+**Goal:** Host The Village of Lost Hours for about twelve invited friends at
+`https://www.eidolon.com/daydream`. Friends get real accounts from invite
+links. Prod runs sandboxed on the Hetzner box behind Cloudflare, with no
+inbound port. Code, content and dreams reach prod in pinned, reversible
+steps. Whenever the box is down or lent to other GPU work, friends see that
+the village is asleep, and can still read their own keepsakes. Dev keeps
+working exactly as it does now.
 
 ### Acceptance Criteria
 
-- [x] **1. The Village of Lost Hours is the live world.** A format-2 world
-  replaces the Clockmaker's Loft as the default for `bin/game world reset` and
-  is installed as the live world (the live Zork world archived first). It holds
-  at least 15 rooms, at least 8 resident NPCs (guests not counted), at least 10
-  arcs (at least 6 guest arcs, the 3 keeper arcs for Tace, Bell, and Mott, and
-  at least 1 cumulative multiplayer arc), and at least 150 authored stray
-  minutes. A static analyzer, run in tier_short, proves every room reachable
-  and every arc solvable (every beat reachable, every needed item obtainable),
-  and fails on a deliberately broken fixture.
+- [ ] **1. Prod fails closed.** With `DAYDREAM_ACCESS=edge`, no HTTP route,
+  WebSocket or mount answers without a valid account session. The only
+  exceptions are an explicit public allowlist: the cover, login and redeem
+  pages, static assets, login, invite redemption and a health check. This
+  holds for requests arriving from loopback and from tailnet addresses, and
+  with spoofed forwarding or client-IP headers. A test walks the app's
+  registered routes, so a newly added unguarded route fails it automatically.
+  With `DAYDREAM_ENV=prod`, the server refuses to boot unless edge mode, a
+  public origin, a public base path and a loopback bind are all configured.
+  In edge mode the API docs routes are off and the world hot-swap endpoint
+  does not exist.
 
-- [x] **2. Every arc ending is a contract.** Every arc has at least two
-  endings, chosen by what players did or by elapsed real time, and none is a
-  fail state (no death, no lost progress, no player locked out of the world's
-  content). Each ending ships a walkthrough: a command dataset replayed under a
-  zero-LLM spy that ends at an asserted world state, run in tier_medium. The
-  whole world is therefore completable with vLLM and ComfyUI down.
+- [ ] **2. Accounts come from invites.**
+  - `invite create --for "<name>"` prints a single-use, two-word invite link
+    that expires after 14 days. Redeeming it lets the invitee choose a
+    username and a password of at least 10 characters, and signs them in.
+  - A used, expired, revoked or unknown slug is refused with one
+    indistinguishable message. A slug stays single-use under concurrent
+    redemption (tested).
+  - A reset invite lets an existing account set a new password.
+  - Passwords and session tokens are stored only as hashes (passwords with a
+    memory-hard hash).
+  - `invite list|revoke` and `account list|disable|role|sessions --revoke`
+    exist. Disabling an account or revoking its sessions ends its access on
+    the next request, including reconnects.
+  - The shared `DAYDREAM_PASSWORD` and the signed-cookie session are gone.
 
-- [x] **3. The prologue starts time, and latecomers still get a beginning.**
-  The existing clock quest opens the world: before the great clock is mended the
-  village has no day cycle; mending it starts time, and the first dusk brings
-  the first guest. A player who first arrives after someone else has already
-  mended the clock still gets a complete authored first session, proved by a
-  walkthrough for a second player joining a post-prologue world.
+- [ ] **3. Guessing is throttled.** Failed logins are limited per client
+  address and per username. Failed invite redemptions are capped globally per
+  hour. No response distinguishes "no such user" from "wrong password" (tested).
 
-- [x] **4. Real time moves the village.** Each world keeps a wall-clock day
-  (dusk time configurable). Authored dusk events fire once per real day even
-  with no one connected; a server restart neither skips nor double-fires a day;
-  NPCs follow authored schedules between rooms by time of day. Tests drive all
-  of this with a fake clock. Story randomness keys on stable purposes (date and
-  entity), never on turn index.
+- [ ] **4. Two roles, and the shell governs.** Every account is `player` or
+  `admin`, and only the CLI can change a role. The admin-only web
+  capabilities are exactly three: repaint a room, read server status, and
+  hold more than one toon. A player session is refused each of them. Every
+  other admin operation (invites, accounts, world, dreams, deploys,
+  sleep/wake) exists only in the CLI.
 
-- [x] **5. A background director chooses what happens.** Which eligible
-  arrival comes at dusk, and which small NPC events occur, are chosen among
-  authored storylets. When the local LLM ranks the choices, it runs in a
-  background arbiter class that never delays a player-facing call and never
-  starves a queued render (tested); with vLLM down the director falls back to a
-  seeded deterministic choice, and a choice outside the eligible set changes
-  nothing.
+- [ ] **5. Your dreamer is yours.** Each human toon belongs to exactly one
+  account. A player account can create one toon per world and can enter, rest
+  or delete only its own; it cannot claim, kick or delete another account's
+  toon. Opening the game in a second tab or device takes control, and the
+  earlier connection is told quietly. At least 12 player accounts can each
+  hold a toon in one world. Every existing walkthrough, including the
+  latecomer, passes with account-owned toons.
 
-- [x] **6. Talk moves the story.** Each NPC exposes the open beats it can
-  advance (authored, condition-gated). A talk turn's single LLM call returns the
-  spoken line plus at most one beat id chosen from the enumerated open beats,
-  and the engine applies that beat's authored effects deterministically. An id
-  that was not offered, or a beat whose conditions no longer hold at commit,
-  changes nothing. Every talk-advanceable beat is also reachable through a
-  deterministic producer (a clickable ask-about topic or an exact phrasing), so
-  walkthroughs need no LLM.
+- [ ] **6. It works under a path prefix.** The same code serves correctly at
+  `/` (dev) and behind a proxy that strips `/daydream/` (prod). No page,
+  script, stylesheet, WebSocket, API call, redirect or image URL resolves
+  outside the configured base, including image URLs persisted in old events.
+  A test fails on any root-absolute path literal in the web client.
+  Cross-site POSTs and WebSockets are refused by comparing Origin to the
+  configured public origin, not to Host.
 
-- [x] **7. NPCs know things, and the village talks.** NPC knowledge is data:
-  authored facts plus facts created by player deeds that name the player. A
-  deed fact spreads from NPC to NPC on an authored real-time schedule, and an
-  NPC's dialogue context includes what it knows. Tested: after player A gives
-  something to Tace, Bell's dialogue context names A's deed after the gossip
-  interval and not before.
+- [ ] **7. Sessions and transport are hardened.**
+  - The session cookie is HttpOnly and SameSite=Lax, scoped to the public
+    base path, Secure in prod, named per environment, and expires after 30
+    days without use.
+  - Responses carry a CSP plus nosniff, `frame-ancestors 'none'`, a referrer
+    policy and noindex.
+  - WebSocket input frames over a length cap, and commands over a
+    per-session rate, are refused with no effect.
+  - Generated images require a session and are marked not publicly
+    cacheable.
 
-- [x] **8. Relationships are per player.** Each (NPC, player toon) pair has
-  relationship state that rules and effects can read and change and that the
-  NPC's dialogue context receives. Two players' relationships with the same NPC
-  are independent; world-scoped flags, counters, and score behave as before.
+- [ ] **8. The front door.** A friend with an invite link reaches, in order:
+  1. a storybook redeem card that greets them by name
+  2. account creation
+  3. a "your dreamer" form (name and appearance, with no browser prompt
+     dialogs)
+  4. the How to Dream book
+  5. the start room
 
-- [x] **9. Rules can follow, not only replace.** A rule can run after a verb's
-  normal handling succeeds without suppressing it. The Zork walkthrough still
-  ends at exactly 350 in tier_medium, and Zork is frozen: no edits under
-  `worlds/zork1*` or `tests/data/zork1_walkthrough.json` this turn.
+  A returning friend logs in and lands straight in their toon. The redeem card
+  says plainly that the village keeps what players do and that the operator
+  reads summaries of it. An expired or revoked session goes to the login page
+  instead of looping on "the dream is sleeping". The flow endpoints are tested
+  automatically; the look is one checklist item in `bin/game review`.
 
-- [x] **10. Dialogue is grounded (measured).** The dialogue prompt carries the
-  NPC's authored voice sheet (including pronouns), the player's name, what the
-  NPC knows, its relationship with this player, its current wants, and its
-  recent exchanges with this player. `bin/game model-eval` gains a canon suite
-  (questions whose answers are fixed by authored facts, scored mechanically for
-  contradiction) and an opener-distinctness metric. A before run (the current
-  production prompt, recorded this turn before any dialogue change) and an
-  after run are committed. After: zero canon contradictions on the suite; no
-  more than two of any NPC's dialogue-suite replies share their first six
-  words; JSON validity at least 99%; dialogue p50 no worse than 3.5 s.
+- [ ] **9. Prod runs sandboxed as its own user.** A one-time install script
+  (the operator runs it with sudo) creates the prod layout, the service units
+  and a `daydream` system user with no login shell and no docker membership.
+  It also adds a sudoers entry that permits only start, stop, restart and
+  status of the daydream units. The running prod service:
+  - listens only on loopback
+  - cannot read `/home/peter`
+  - cannot open network connections except to localhost (shown by a probe
+    run under the same policy)
+  - holds no Cloudflare credential or signing secret
+  - rates "OK" or better under `systemd-analyze security`
 
-- [x] **11. Authored voice leads, and nothing repeats verbatim.** Drift for an
-  NPC with authored pools emits authored lines first (the LLM may vary them);
-  the loft's `wind` and `listen` room skills are replaced by world-declared
-  affordances that narrate authored variants; no NPC beat or affordance repeats
-  the same line verbatim within its last several tellings in a room (tested).
-  Prose surfaces run warm (temperature above 0); the parser stays deterministic.
+  A live dialogue and a portrait render work under the sandbox.
 
-- [x] **12. A daily find for everyone.** Each player can find at least one new
-  stray minute per real day regardless of what other players have collected.
-  Found minutes are catalogued in a per-player book viewable from the satchel,
-  and completing an authored page of the book grants something authored.
+- [ ] **10. Releases are pinned and reversible.** `bin/game prod deploy <ref>`:
+  - refuses a dirty tree, or a ref whose short or medium tier fails
+  - builds an immutable release of that ref
+  - backs up the prod world and accounts databases
+  - refuses a WORLD_VERSION MAJOR mismatch
+  - switches over atomically and health-checks
 
-- [x] **13. Dreamseeds come from arcs, and grown rooms join the story.** Some
-  arc endings grant a dreamseed. Planting still composes one room inside
-  authored boundaries, and the existing growth guarantees (every failure path
-  preserves the seed, direction hints, dedup) stay green. A dream can furnish a
-  grown room (a resident, a hook, or a stray minute) while preserving the
-  planter's phrase verbatim in its provenance.
+  A release that fails its health check is rolled back automatically and the
+  previous release keeps serving (shown with a deliberately broken build).
+  `prod rollback` restores the previous release. `prod status` reports the
+  release against HEAD, the service, tunnel reachability, the asleep state and
+  who is online. Every prod admin command runs the prod release's code with
+  prod's environment, never dev's.
 
-- [x] **14. The dream works, in-session.** `bin/game dream digest` writes a
-  deterministic digest of play since the last dream (raw inputs, deeds per
-  player, beats advanced, arcs opened and closed, grown rooms, gossip).
-  `bin/game world patch` validates a dream patch fail-loud with zero writes on
-  error, applies additive content without deleting or overwriting
-  player-created objects or per-player state, rejects id collisions, and is
-  idempotent. A rehearsal step snapshots the live world, applies the patch to a
-  side copy, and replays every walkthrough against it; only if all pass is the
-  patch installed on the live world, and installing never discards a player
-  action taken meanwhile (a brief restart that applies the proven patch to the
-  current live database is enough; no hot-patch mechanism is required). A
-  failed rehearsal installs nothing, and the pre-dream snapshot restores
-  cleanly (tested). A runbook lets the operator trigger a dream by name in any
-  Claude Code session. Dreams run in-session only; no headless or scheduled
-  runs.
+- [ ] **11. Dev and prod coexist.**
+  - Dev keeps working on the tailnet as today (same port, same data dir), now
+    with accounts.
+  - Prod has its own data root, accounts, world, image cache and backups, and
+    nothing in dev (including `world reset`) can delete prod data.
+  - The engines are shared: starting either environment never launches a
+    second vLLM or ComfyUI while one is reachable.
+  - While prod is active, GPU-heavy dev commands (tier_long, prebake, review,
+    model-eval, image-test) refuse to run, until criterion 21 replaces that
+    guard.
 
-- [x] **15. Returning players see what changed.** A player's first snapshot
-  after a dream carries that dream's "while you slept" note exactly once; the
-  SPA shows it as a dismissible storybook leaf, and it does not repeat on
-  reconnect. The Ledger of Returned Hours is a readable in-world book whose text
-  reflects every closed arc and who helped.
+- [ ] **12. Content reaches prod incrementally.** Each path works against the
+  prod world:
+  - authored fixes, via `prod world refresh`
+  - dreams, via `prod dream digest|check|rehearse|install`
+  - art, via `prod prebake --from-cache`, which copies only the graded dev
+    images whose content hash matches, records them, and renders nothing
+  - `prod pull`, which installs a prod backup into dev to reproduce a
+    friend's bug
 
-- [x] **16. Every word a player types is kept.** Raw input for every command
-  (free text and structured) is persisted with actor, time, and the resolved
-  command; it is never broadcast to other players; the dream digest includes
-  it; and a recorded session can be exported as a walkthrough dataset.
+  Commands that must not run against a live service refuse while it is
+  running.
 
-- [x] **17. Agent playtesters.** `bin/game play` lets an agent drive a live
-  session through the same WebSocket path a player uses, across repeated shell
-  invocations (each prints the narration caused since the previous one) and
-  with several concurrent toons. Before the operator gate, at least four
-  persona sessions (explorer, chatterbox, completionist, rule-breaker; at least
-  two concurrent in the same world) play the live stack against the real local
-  models. Each critique is recorded in a playtest log against a rubric
-  (surprise, consequence, being remembered, reason to return), and every
-  experience defect they surface is fixed or backlogged.
+- [ ] **13. Backups happen.** A nightly job writes consistent online-backup
+  copies of the prod world and accounts databases, keeping 14 days. Restoring
+  the latest one into dev is demonstrated.
 
-- [x] **18. The first dream happened.** After the agent playtest day, one
-  dream digests that play, is authored in-session, passes rehearsal, and is
-  live. It furnishes every room grown during the playtest day and calls back to
-  at least one specific player deed. Its digest, patch, and rehearsal result are
-  committed, and a later agent session records observing the callback in play.
+- [ ] **14. The edge fronts an unexposed origin.** A Cloudflare Worker on
+  `www.eidolon.com/daydream*` proxies HTTP and WebSocket traffic to the
+  origin. Its source is in the repo and it is deployed by `bin/game edge
+  deploy`. The origin is reachable only through a Cloudflare Tunnel whose
+  hostname admits only the Worker's Access service token; a direct request
+  is refused by Access. No inbound port is opened on the box: UFW is
+  unchanged, and the prod port is closed on both the public and the tailnet
+  address. The Worker:
+  - passes the app's redirects to the browser rather than following them
+  - is not reachable on `workers.dev`
+  - overwrites any client-sent client-IP header
+  - redirects `/daydream` and the apex host to
+    `https://www.eidolon.com/daydream/`
 
-- [x] **19. The security side findings are closed.** An LLM-originated
-  `spawn_object` cannot carry authored-only properties (rules, growth, extra
-  verbs, combat, light, container, scoring); room data skills honor their
-  declared effect allowlist or are retired; each has a regression test under
-  `tests/security/`, and SECURITY.md records both.
+  Unit tests cover these behaviors with mocked fetch and KV.
 
-- [x] **20. Art is pre-baked and graded.** Every room and NPC portrait in the
-  new world is rendered at design time through the production pipeline, graded
-  by the agent against WHIMSY.md (weak renders re-seeded or reframed, verdicts
-  recorded), and cached so a first entry never waits on a render. Image anchors
-  and goldens that change are re-ratified deliberately.
+- [ ] **15. The village sleeps visibly.** The Worker serves the asleep state
+  within 60 s whenever the operator has run `prod sleep --note "..."` or the
+  origin is unreachable (tunnel down, service down or box off):
+  - `www.eidolon.com/daydream/` shows a storybook asleep page with the note
+    (or a default), how long the village has slept, and an instruction to
+    text Peter.
+  - API calls get a 503 JSON body, and WebSockets are refused.
+  - An open game tab shows the note in its overlay and reconnects by itself
+    on wake.
+  - A 503 from the app itself is not mistaken for sleep.
 
-- [x] **21. Tone and docs tell the truth.** WHIMSY.md gains a stories section
-  (soft stakes, wants, gentle time, and bittersweet endings allowed; cruelty,
-  horror, and grimdark still banned), and the safety banlist matches it: a
-  corpus of soft-stakes lines passes, and each still-banned category still
-  blocks. A canon bible (characters, secrets, voice sheets, the arc library, the
-  long mystery and its answer) exists for future dreams to stay consistent.
-  README's purpose sections reflect the pivot; CLAUDE.md documents the story
-  layer, the dream runbook, and the in-session-only policy; `docs/prompts.md`
-  lists every new or changed prompt surface; no cloud LLM key exists anywhere
-  (grep-verified).
+  `prod sleep` rests connected players (their journals are written) and frees
+  the GPU. `prod wake` brings the engines and service up and clears the
+  notice. `prod drill` exercises service down, tunnel down, planned sleep and
+  a bad service token, then restores.
 
-- [ ] **22. The operator plays.** The morning after the first dream, the
-  operator plays the live world in a browser. Findings and the verdict are
-  recorded, and experience defects are fixed or backlogged. This is the only
-  criterion that needs the operator.
+- [ ] **16. Keepsakes while asleep.** While the village is asleep, a friend
+  whose browser holds a session from the last 30 days that was synced before
+  sleep sees their own journal, Book of Stray Minutes and portrait, plus the
+  village chronicle, under the notice. They never see anyone else's.
+  - A revoked or disabled account's keepsakes and access disappear at the
+    next sync.
+  - Password hashes never leave the box.
+  - Sync runs at sleep, and at least hourly while awake.
+
+  (May land after the first friends are invited.)
+
+- [ ] **17. Launch.**
+  - The prod world is a fresh Lost Hours village, and the operator has an
+    admin account in it.
+  - At least one friend was invited with `/invite`, and that friend's account
+    and toon exist in prod.
+  - From a phone on a cellular network, invite → account → dreamer → talk →
+    portrait → leave → journal completes through
+    `www.eidolon.com/daydream/`.
+  - An idle WebSocket survives 5 minutes.
+  - Ten rapid logins from one address are rate-limited at the edge.
+
+- [ ] **18. Operator skills.**
+  - `/invite <name>` produces the link, its expiry and a message ready to
+    paste, and records who it is for.
+  - `/village status|wake|sleep "<note>"|deploy [ref]` wraps the prod verbs.
+  - The project's agent permissions pre-allow only the read-only prod verbs
+    and `prod invite`. Prod commands that drop sessions or mutate state still
+    ask first.
+
+- [ ] **19. vLLM listens only on loopback.** After `bin/game vllm-up`, no vLLM
+  process has a listening socket on a non-loopback address (checked with
+  `ss`), and a tier_short test pins the launch setting that ensures it.
+
+- [ ] **20. The docs tell the truth.**
+  - SECURITY.md is rewritten for internet exposure: threat model, trust
+    boundaries, and residual risks, including engines that run as peter.
+  - CLAUDE.md documents prod and dev, the CLI as admin console, "no network
+    location grants privilege", and the prod agent policy.
+  - `docs/GOING-LIVE.md` records the design.
+  - `docs/CLOUDFLARE-SETUP.md` lists the operator's one-time steps.
+  - The GEX44 README records the exposure design and the vLLM finding; this
+    edit stays uncommitted, for the operator.
+
+- [ ] **21. The GPU is safe across processes.** An image render in one
+  daydream process never overlaps an LLM call or render in another. A
+  two-process test shows it, and a cancelled waiter never leaves the lock
+  held. This replaces criterion 11's prod-active guard. (May land after the
+  first friends.)
+
+- [ ] **22. Backups leave the box.** A weekly encrypted copy of the prod
+  backups lands in a private Cloudflare R2 bucket, and a restore from it is
+  demonstrated. (May land after the first friends.)
+
+- [ ] **23. A seam for remote reflexes.** Choosing the LLM backend or the
+  image backend is configuration. The local default changes no image cache
+  key and no existing test, and the GPU arbiter gates only local backends.
+  `docs/remote-reflexes.md` records the Cloudflare Workers AI path and the
+  generation-policy amendment that enabling it would require. The shipped
+  runtime stays local-only, and `tests/test_no_cloud_keys.py` stays green.
+  (May land after the first friends.)
 
 ### Context
 
-**Read `docs/PIVOT.md` first.** It is the approved design record: the evidence
-(about 19 minutes of human play ever; every moment that landed was
-Opus-authored; the local layer was texture at best), the six misalignments,
-the three-tier architecture, the creative direction with worked arc sketches,
-the quality-convergence instruments, and section 9's jobs for the save/load and
-walkthrough machinery. Where this spec and PIVOT.md differ, this spec wins
-(the operator chose the full world over a slice, and in-session-only dreams).
+**Adopted from the approved plan** `~/.claude/plans/i-want-to-host-idempotent-hoare.md`.
+It is the design narrative: architecture diagram, the reasoning behind each
+choice, the Cloudflare setup, and the verification drill. `docs/GOING-LIVE.md`
+becomes its durable, in-repo record.
 
-**Operator autonomy (2026-09-26).** Make product, design, scope-detail, and
-housekeeping decisions yourself and record them in this file, PIVOT.md, or the
-canon bible; do not stop to ask. Spend subscription tokens freely on creative
-exploration: use subagents for parallel authoring (arcs, voice sheets, stray
-minutes, the mystery) and for independent critique. Builder/verifier
-separation applies to content too: an author subagent never grades its own
-arcs or prose; a fresh subagent does, blind where possible.
+**Operator decisions (2026-09-27):**
+- Sign-in is an invite link plus a username and password. A `/invite` skill
+  mints two-word slugs such as `amber-thimble`.
+- While asleep, friends see a notice, and signed-in friends can also read
+  their own keepsakes from Cloudflare.
+- Invites are rolling. The first friend mends the clock (the `mended`
+  ending) and later friends take the walkthrough-proven latecomer path, so
+  the operator's admin account should not mend the clock in prod.
+- Prod runs as a sandboxed `daydream` system user, with a narrow sudoers
+  rule.
+- Build in auto mode.
 
-Constraints:
+**The critical finding that shapes criterion 1.** In today's default
+`tailscale` mode, `auth.is_authed()` returns True and `AccessMiddleware`
+admits loopback. `/api/world/swap` is gated only by a loopback check. A
+Cloudflare tunnel connects from 127.0.0.1, so tunnelling the current server
+would expose everything. "No network location grants privilege in prod" is
+the rule.
 
-- **Generation policy is absolute.** The running game calls only the local
-  engines; no API key exists in runtime, tooling, tests, or CI. Opus authors
-  at design time and in dreams, in-session only.
-- **The 9B's job is narrow.** Select, judge, compress, and lightly voice, with
-  game state injected; never invent structure. Measured facts (docs/PIVOT.md
-  section 1, the model-eval runs under `~/data/daydream/model-eval/`): ~40
-  tok/s single-stream, ~100 tok/s aggregate at three concurrent calls, so
-  parallel calls are nearly free and serial chains are not; talk p50 ~2.7 s;
-  JSON 100% even at temperature 0.8; no production call has exceeded ~1.1k
-  prompt tokens of the 8192 window. Its known failure modes: invents facts it
-  is not given, repeats openers at temperature 0 with enumerated template
-  beats, drifts pronouns when none are stated. Author the lines that matter.
-- **SDXL carries mood, not information.** Soft interiors, landscapes, and
-  faces render well; hard objects do not (BACKLOG `forge-render-legibility`).
-  Never make a puzzle depend on reading an object from the art.
-- **Keep the engine world-agnostic.** All Lost Hours content lives in world
-  data; `tests/test_no_world_literals.py` guards engine purity for Zork and
-  sets the standard for any world.
-- **Format facts.** Format 1 is capped at 5 rooms and 4 toons and cannot
-  author rules; format 2 cannot author room data skills. `worlds/bunny.json`
-  stays as the format-1 loader fixture. The region-source pattern
-  (`tools/assemble_world.py`, byte-match `--check`) is available if the world
-  outgrows one file.
-- **Test discipline.** The medium tier is green at every commit. Tests that
-  encode behavior this spec deliberately retires (the format-1 loft, the
-  `wind`/`listen` skills, LLM-first drift) are rewritten to the new contract,
-  with each retirement named in its commit message; never loosen a test to hide
-  a regression. The Zork walkthrough is the engine's regression net for the
-  rule-engine changes.
-- **Determinism.** The Zork walkthrough taught that turn-keyed rolls make
-  datasets brittle; key story rolls on date plus entity, as dreamseed
-  propagation already does.
-- **Dream installs never discard play, cheaply.** Do not install by swapping
-  in the rehearsal copy (it would drop actions taken after the snapshot). The
-  simple path: rehearse on the copy while the game runs, then `bin/game down`,
-  apply the proven patch to the current live database, `bin/game up`. Players
-  see a few seconds of the calm "the dream is sleeping" overlay, which fits a
-  dream turning over. Do not build a live hot-patch endpoint for this.
-- **GPU discipline.** tier_long runs and the art pre-bake happen with the game
-  server down (the arbiter is in-process). Dev-mode policy allows cycling the
-  server; leave a one-line note when you do.
-- **Live world.** The live Zork world holds only the 68-second automated
-  replay, and `archives/w-zork1-20260707-140643.tar.gz` exists; take a fresh
-  archive before the reset anyway.
-- **Versions and git.** Bump `WORLD_VERSION` per its discipline in CLAUDE.md.
-  No release tag or GitHub release this turn; never move the `pre-pivot` tag.
-  Commit locally in small increments (no Co-Authored-By trailers); push only
-  when the operator asks.
-- **Code pointers from the research pass.** The unrecorded security gap is
-  the `properties` passthrough in `daydream/skills/effects.py` `spawn_object`
-  (around line 309), reachable from `talk`; room data skills ignore their
-  `effects_schema` (`daydream/skills/data.py` around line 17). LLM drift
-  overrides authored pools (`daydream/drift.py`, `_tick` and `_pools_for`).
-  The dialogue prompt sees only `player_input`, `actor_id`, `room_id`, and
-  `memories` (`daydream/skills/data.py` around line 360). Rules replace verbs
-  and never follow them (`daydream/verbs.py` around line 429). Fuses and
-  daemons count commands, not seconds (`daydream/clock.py`). The event log
-  stores effects but not what the player typed. `tools/ws_playthrough.py` is
-  the base for the play bridge.
-- **Suggested order (not binding).** Security fix and input logging; the
-  model-eval canon baseline; performer fixes; story primitives; world
-  authoring (parallel subagents) with walkthroughs as each arc lands; art
-  pre-bake; agent playtest day; first dream; operator gate. Scale the arc
-  library and stray minutes up from a working prologue plus one arc rather
-  than authoring everything before anything plays.
+**Operator's hands (Claude cannot sudo; secrets never pass through Claude):**
+- `sudo ops/install-prod.sh`, then log out and back in for group membership.
+  The tunnel token is typed into the script's prompt directly.
+- Cloudflare dashboard: the Zero Trust team, a non-expiring service token,
+  the Access app on the origin hostname, the tunnel and its public hostname
+  with "Protect with Access", a cache-bypass rule for the origin host, one
+  WAF rate-limit rule, and an API token for Workers Scripts, KV and eidolon.com
+  routes saved to `~/.config/daydream/cloudflare.env`.
+- `wrangler secret put` for the service token.
+- The first `/invite` and the phone check.
 
-BACKLOG entries this turn touches: `drift-variety-richer-beats` (criterion
-11), `snapshot-enrichments-for-reading-room`, `per-npc-event-log-visibility-filtering`
-(facts and gossip replace it), `user-authored-llm-driven-world-building-verbs`
-(dreams furnish grown rooms), and the Zork and retell entries (frozen). Close or
-annotate them at turn end.
+**Constraints:**
+- **Generation policy unchanged.** The runtime calls only local engines, and
+  prod's sandbox enforces that in the kernel. Criterion 23 builds a seam
+  only; turning on a remote backend is a separate policy change.
+- **Other repos.** The only allowed action outside this repo is editing
+  `~/src/GEX44-security-audit/README.md` (no commit). zat.env is not touched.
+  Report other cross-repo findings; don't act on them.
+- **Agent policy.** Dev keeps its grab-the-GPU autonomy. Prod verbs that drop
+  sessions or mutate state are ask-first. Never push, tag or release without
+  asking. `APP_VERSION` may move to 1.1.0 at go-live, bumped together with
+  `pyproject.toml`. The new accounts database and migration 018 are additive,
+  so `WORLD_VERSION` does not change.
+- **Test discipline (zat.env practices).** Work in small increments, with
+  tests in the same increment, and the medium tier green at every commit.
+  About 25 test files log in through the shared password today; moving them
+  to one authed-client fixture is a deliberate contract change, named in its
+  commit message, with behavioral assertions unchanged. Never loosen a test
+  to hide a regression. After two failed fix attempts, revert and rethink.
+- **Engine purity.** `tests/test_no_world_literals.py` scans `daydream/**`
+  and `web/assets/**`. The invite wordlist and front-door copy must avoid
+  Lost Hours proper nouns in engine files. The redeem card's in-world
+  greeting belongs in world data or edge assets.
+
+**Code pointers (from the research pass):**
+- **Auth and access:**
+  - `daydream/api/auth.py` holds the shared password and `is_authed`.
+  - `daydream/api/access.py` is the tailscale/public middleware.
+  - `daydream/api/csrf.py` compares Origin to Host.
+  - `daydream/api/world.py` has the loopback-gated swap.
+  - `daydream/server.py` has `SessionMiddleware`, and
+    `config.session_secret()` writes under `~/.config` at import, which
+    crashes under `ProtectHome`.
+- **URLs and routes:**
+  - `/status/*` and `/cache/*` have no session check.
+  - `daydream/images/cache.py` `cache_url`/`versioned_url_for_path` URLs are
+    persisted in event payloads.
+  - Root-absolute paths appear in `web/index.html`, `web/assets/main.js`
+    and `web/assets/style.css`.
+- **Toons and sessions:**
+  - `toons.HUMAN_SLOT_RANGE = range(1, 6)`.
+  - `daydream/play.py` logs in over HTTP.
+  - `daydream/admin.py` snapshot is checkpoint plus copyfile, which is not
+    safe while prod writes; `dream.py` already uses `sqlite3.backup`.
+- **bin/game:**
+  - It sources the dev `.env` before dispatching; prod must re-exec with a
+    clean environment.
+  - Engine PID files are per-environment under `/run/user/1000`, which
+    vanishes at logout, so a second environment double-launches engines.
+- **Edge and proxy gotchas:**
+  - The Worker must fetch with `redirect: "manual"` and set
+    `workers_dev = false`.
+  - Cloudflare would otherwise cache origin `.png`/`.js` after Access.
+  - uvicorn trusts `X-Forwarded-For` from 127.0.0.1 unless started with
+    `--no-proxy-headers`.
+  - A pre-accept WebSocket refusal reads as 1006 in the browser.
+  - Asleep means 502, 530/1033 or a thrown fetch; a plain 503 is the app's
+    own.
+  - Idle sockets need a client ping (about 25 s).
+- **systemd:**
+  - Skip `MemoryDenyWriteExecute`, `PrivateUsers` and `PrivateNetwork`.
+  - `IPAddressAllow=localhost` still permits DNS through 127.0.0.53.
+  - Data dir sharing between peter and the service user needs setgid plus
+    default ACLs.
+  - `tempfile` creates 0600 files.
+- **Residual risk to record, not fix now.** The service user can reach
+  ComfyUI's unauthenticated API on loopback, and ComfyUI runs as peter, who
+  is in the docker group. The later fix is an engines user.
+- **Side findings to report:**
+  - `www.eidolon.com/generate` accepts unauthenticated POSTs that spend
+    Workers AI.
+  - The GEX44 README has stale facts (root is on md2, the driver version).
+
+**BACKLOG entries this turn touches:**
+- `multi-env-layout`: prod lands; a preview env does not.
+- `multi-user-shared-world`: its nightly-snapshot line, via criterion 13.
+- `litellm-proxy-fallbacks`: the seam, with no proxy.
+- `staging-probes` and `prod-verify-probes`: the prod verify sweep.
+- `shared-thread-contention`: watch it as 12 friends arrive.
+
+Annotate or close them at turn end.
+
+**The prior turn's criterion 22** (the operator plays the morning after the
+first dream) remains open. It is operator-paced and does not gate this turn.
 
 ---
-*Prior spec (2026-07-07): daydream v1.0, the release turn. Closed 14/16;
-criteria 7 (the loft reset) and 9 (the Zork playtest) were superseded by the
-2026-09-26 pivot.*
+*Prior spec (2026-09-26): The Village of Lost Hours, the pivot turn. Closed
+21/22; criterion 22 (the operator playtest) stays open, operator-paced.*
 
-<!-- SPEC_META: {"date":"2026-09-26","title":"The Village of Lost Hours: the pivot turn","criteria_total":22,"criteria_met":21} -->
+<!-- SPEC_META: {"date":"2026-09-27","title":"Going live: the village opens its doors","criteria_total":23,"criteria_met":0} -->
