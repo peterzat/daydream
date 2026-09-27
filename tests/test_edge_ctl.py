@@ -53,3 +53,27 @@ def test_set_and_describe_state(tmp_path, monkeypatch):
     assert edge.describe_state().startswith("asleep (back Sunday) since ")
     with pytest.raises(edge.EdgeError):
         edge.set_state("dozing")
+
+
+def test_public_status_names_its_user_agent(monkeypatch):
+    """Cloudflare's Browser Integrity Check answers urllib's default
+    User-Agent with a 403 (error 1010), which read as "no answer"."""
+    seen = {}
+
+    class Resp:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        def read(self):
+            return b'{"state": "asleep"}'
+
+    def fake_urlopen(req, timeout):
+        seen["ua"] = req.get_header("User-agent")
+        return Resp()
+
+    monkeypatch.setattr(edge.urllib.request, "urlopen", fake_urlopen)
+    assert edge.public_status() == {"state": "asleep"}
+    assert seen["ua"] and not seen["ua"].startswith("Python-urllib")

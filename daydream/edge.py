@@ -155,8 +155,11 @@ def describe_state() -> str:
 
 
 def public_status() -> dict | None:
+    # Cloudflare's Browser Integrity Check refuses urllib's default
+    # User-Agent (error 1010), so the probe names itself.
+    req = urllib.request.Request(PUBLIC_STATUS, headers={"User-Agent": "daydream-edge-cli"})
     try:
-        with urllib.request.urlopen(PUBLIC_STATUS, timeout=10) as r:
+        with urllib.request.urlopen(req, timeout=10) as r:
             return json.loads(r.read())
     except (urllib.error.URLError, OSError, ValueError):
         return None
