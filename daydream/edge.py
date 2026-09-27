@@ -174,20 +174,17 @@ def _kv_bulk_put(items: list[dict]) -> None:
              json.dumps(items[i:i + 1000]).encode())
 
 
-def desired_keys(export_dir: Path) -> dict[str, tuple[str, bool]]:
-    """The KV keys a keepsakes export maps to: key -> (value, is_base64)."""
-    import base64
-
-    doc = json.loads((export_dir / "keepsakes.json").read_text())
+def desired_keys(doc: dict) -> dict[str, tuple[str, bool]]:
+    """The KV keys a keepsakes document maps to: key -> (value, is_base64)."""
     out: dict[str, tuple[str, bool]] = {
         "passes": (json.dumps(doc["passes"], sort_keys=True), False),
         "chronicle": (json.dumps(doc["chronicle"]), False),
     }
+    portraits = doc.get("portraits") or {}
     for acct, entry in doc["accounts"].items():
         out[f"keepsakes:{acct}"] = (json.dumps(entry, sort_keys=True), False)
-        png = export_dir / "portraits" / f"{acct}.png"
-        if entry.get("portrait") and png.exists():
-            out[f"portrait:{acct}"] = (base64.b64encode(png.read_bytes()).decode(), True)
+        if entry.get("portrait") and portraits.get(acct):
+            out[f"portrait:{acct}"] = (portraits[acct], True)
     return out
 
 
@@ -208,18 +205,16 @@ def sync_keepsakes(release: Path) -> dict:
     """Export keepsakes with the prod release's code and push the changes to
     KV (criterion 16). A revoked or disabled account's keepsakes and passes
     disappear here."""
-    import tempfile
-
     from daydream import prodctl
 
     if not configured():
         raise EdgeError("the edge is not configured (docs/CLOUDFLARE-SETUP.md)")
-    with tempfile.TemporaryDirectory(prefix="daydream-keepsakes-") as tmp:
-        r = prodctl.run_release_python(release, ["-m", "daydream.keepsakes", "export",
-                                                 "--out", tmp], check=False, capture=True)
-        if r.returncode != 0:
-            raise EdgeError("keepsakes export failed: " + (r.stderr or r.stdout)[-500:])
-        desired = desired_keys(Path(tmp))
+    # Exported by the service user; the operator only receives the bytes.
+    r = prodctl.run_release_python(release, ["-m", "daydream.keepsakes", "export", "--stdout"],
+                                   check=False, capture=True)
+    if r.returncode != 0:
+        raise EdgeError("keepsakes export failed: " + (r.stderr or r.stdout)[-500:])
+    desired = desired_keys(json.loads(r.stdout))
     manifest = json.loads(MANIFEST.read_text()) if MANIFEST.exists() else {}
     new, write, delete = plan_sync(desired, manifest)
     if write:

@@ -42,7 +42,6 @@ from __future__ import annotations
 
 import argparse
 import hashlib
-import json
 import os
 import shutil
 import subprocess
@@ -58,7 +57,6 @@ SRV = Path(os.environ.get("DAYDREAM_PROD_ROOT", "/srv/daydream"))
 UNIT = "daydream-prod.service"
 TUNNEL = "cloudflared-daydream.service"
 KEEP_RELEASES = 5
-STATE = Path.home() / ".local" / "state" / "daydream"
 PASSTHROUGH = ("world", "dream", "account", "invite", "prebake", "play")
 
 
@@ -98,20 +96,43 @@ def prod_env() -> dict[str, str]:
     return env
 
 
+# Every prod command that touches the data dir runs AS THE SERVICE USER, never
+# as the operator: the data dir is writable by the sandboxed service, so the
+# operator's own tools following a path planted there (a symlinked "portrait",
+# a symlinked announce file) would carry the sandbox's reach out to everything
+# the operator can read and write (SECURITY WARN 2026-09-27). The operator
+# only handles bytes a prod command hands back on stdout. Dropping to the
+# service user is safe to allow without a password (sudoers: (daydream) ALL).
+# DAYDREAM_PROD_AS_USER="" runs as the caller (rehearsals in a scratch root).
+AS_USER = os.environ.get("DAYDREAM_PROD_AS_USER", "daydream")
+
+
+def data_dir() -> Path:
+    return Path(prod_env().get("DAYDREAM_DATA_DIR", str(SRV / "data")))
+
+
 def release_env(release: Path) -> dict[str, str]:
     """The clean environment a prod command runs in: prod.env, the release's
-    build id, where the engines live, and systemd lifecycle for up/down."""
+    build id, where the engines live. The service is started and stopped by
+    this module (DAYDREAM_LIFECYCLE=external), never by the command itself."""
     env = {
         "PATH": "/usr/local/bin:/usr/bin:/bin",
-        "HOME": str(Path.home()),
         "LANG": "C.UTF-8",
         "PYTHONDONTWRITEBYTECODE": "1",
     }
     env.update(prod_env())
+    env["HOME"] = str(data_dir())
     env.update(parse_env_file(release / ".release.env"))
     env["DAYDREAM_ENGINES_ROOT"] = str(REPO)
-    env["DAYDREAM_LIFECYCLE"] = "systemd"
+    env["DAYDREAM_LIFECYCLE"] = "external"
     return env
+
+
+def as_prod(cmd: list[str], env: dict[str, str]) -> list[str]:
+    """`cmd` run as the service user with exactly `env`."""
+    pairs = [f"{k}={v}" for k, v in env.items()]
+    prefix = ["sudo", "-n", "-u", AS_USER] if AS_USER else []
+    return [*prefix, "/usr/bin/env", "-i", *pairs, *cmd]
 
 
 def current_release() -> Path | None:
@@ -128,16 +149,62 @@ def _require_current() -> Path:
 
 def run_release_python(release: Path, args: list[str], *, check: bool = True,
                        capture: bool = False) -> subprocess.CompletedProcess:
-    return subprocess.run([str(release / ".venv" / "bin" / "python"), *args],
-                          cwd=release, env=release_env(release), check=check,
-                          text=True, capture_output=capture)
+    cmd = as_prod([str(release / ".venv" / "bin" / "python"), *args], release_env(release))
+    return subprocess.run(cmd, cwd=release, check=check, text=True, capture_output=capture)
+
+
+def run_as_prod_bytes(release: Path, cmd: list[str]) -> bytes:
+    """A command's stdout as bytes, run as the service user (tar, cat)."""
+    r = subprocess.run(as_prod(cmd, release_env(release)), cwd=release, capture_output=True)
+    if r.returncode != 0:
+        raise ProdError(f"{cmd[0]} failed: {r.stderr.decode('utf-8', 'replace')[-300:]}")
+    return r.stdout
+
+
+# Verbs that must not run against a live service: stopped first, started after.
+STOP_FOR = {("world", "reset"), ("world", "refresh"), ("world", "restore"),
+            ("world", "snapshot-restore"), ("world", "delete"), ("world", "load"),
+            ("dream", "install"), ("prebake",)}
+INCOMING_ART = "incoming-art"
 
 
 def passthrough(args: list[str]) -> int:
-    """Run the current release's own bin/game (prod env, clean slate)."""
+    """Run the current release's own bin/game as the service user (prod env,
+    clean slate), stopping and restarting the service around verbs that need
+    it down. `prebake --from-cache DIR` first stages DIR somewhere the
+    service user can read but never write."""
     rel = _require_current()
-    return subprocess.run([str(rel / "bin" / "game"), *args], cwd=rel,
-                          env=release_env(rel)).returncode
+    args = list(args)
+    staged = None
+    if args[:1] == ["prebake"] and "--from-cache" in args:
+        i = args.index("--from-cache")
+        staged = _stage_art(Path(args[i + 1]).expanduser())
+        args[i + 1] = str(staged)
+    needs_stop = (tuple(args[:2]) in STOP_FOR or tuple(args[:1]) in STOP_FOR)
+    was_up = needs_stop and unit_active(UNIT)
+    if was_up:
+        say("stopping the service for this ...")
+        systemctl("stop", UNIT)
+    try:
+        return subprocess.run(as_prod([str(rel / "bin" / "game"), *args], release_env(rel)),
+                              cwd=rel).returncode
+    finally:
+        if staged is not None:
+            shutil.rmtree(staged, ignore_errors=True)
+        if was_up:
+            systemctl("start", UNIT)
+            say("service: " + ("back up" if wait_healthy() else "NOT healthy after restart"))
+
+
+def _stage_art(src: Path) -> Path:
+    """Copy the operator's graded image cache (their own files) into a dir the
+    operator owns and the service user can only read (made by
+    ops/install-prod.sh): the prod prebake reads from there."""
+    if not src.is_dir():
+        raise ProdError(f"{src} is not a directory")
+    dest = SRV / INCOMING_ART / time.strftime("%Y%m%d-%H%M%S")
+    shutil.copytree(src, dest, symlinks=False)
+    return dest
 
 
 # ---- systemd + health -----------------------------------------------------------
@@ -177,9 +244,8 @@ def wait_healthy(seconds: float = 45.0) -> bool:
 
 
 def cli_cookie(release: Path) -> str | None:
-    STATE.mkdir(parents=True, exist_ok=True)
     r = run_release_python(release, ["-m", "daydream.accounts_cli", "account", "cli-cookie",
-                                     "--cache", str(STATE / "prod-cli-cookie")],
+                                     "--cache", str(data_dir() / ".cli-cookie")],
                            check=False, capture=True)
     return r.stdout.strip() if r.returncode == 0 and r.stdout.strip() else None
 
@@ -367,27 +433,18 @@ def deploy(ref: str, skip_tests: bool) -> int:
     point("current", before)
     if pending and backup is not None:
         systemctl("stop", UNIT)
-        _restore_backup(backup)
+        _restore_backup(backup, before)
     systemctl("restart", UNIT)
     ok = wait_healthy()
     raise ProdError(f"deploy of {release.name} rolled back to {before.name} "
                     f"({'healthy' if ok else 'NOT healthy: look at bin/game prod logs'})")
 
 
-def _restore_backup(backup: Path) -> None:
-    data = Path(prod_env().get("DAYDREAM_DATA_DIR", str(SRV / "data")))
-    env_name = prod_env().get("DAYDREAM_ENV", "prod")
-    targets = {"live.db": data / f"worlds-{env_name}" / "live.db",
-               f"accounts-{env_name}.db": data / f"accounts-{env_name}.db"}
-    for name, dest in targets.items():
-        src = backup / name
-        if src.exists():
-            for sfx in ("-wal", "-shm"):
-                side = dest.with_name(dest.name + sfx)
-                if side.exists():
-                    side.unlink()
-            shutil.copyfile(src, dest)
-            say(f"restored {dest} from {backup.name}")
+def _restore_backup(backup: Path, release: Path) -> None:
+    """Put a backup's DBs back (service stopped), as the service user."""
+    r = run_release_python(release, ["-m", "daydream.admin", "restore-backup", str(backup)],
+                           check=False, capture=True)
+    say((r.stdout + r.stderr).strip())
 
 
 def rollback() -> int:
@@ -453,10 +510,10 @@ def sleep_(note: str, grace: int, keep_engines: bool) -> int:
         if grace > 0:
             text = ("The lamps are dimming; the village will sleep in a minute or so. "
                     "What you carry is safe, and your journal will remember today.")
-            # The server picks this file up within seconds (daydream/announce.py);
-            # there is deliberately no web endpoint for it.
-            data = Path(prod_env().get("DAYDREAM_DATA_DIR", str(SRV / "data")))
-            (data / "announce.json").write_text(json.dumps({"text": text}))
+            # Written by the service user (never the operator: the data dir is
+            # the sandbox's); the server picks it up within seconds
+            # (daydream/announce.py). There is no web endpoint for it.
+            run_release_python(rel, ["-m", "daydream.announce", "send", text], check=False)
             say(f"told everyone; waiting {grace}s ...")
             time.sleep(grace)
         edge = _edge()
@@ -551,7 +608,9 @@ def offsite() -> int:
     with tempfile.TemporaryDirectory(prefix="daydream-offsite-") as tmp:
         tmpd = Path(tmp)
         name = f"prod-{backup.name}.tar.gz"
-        subprocess.run(["tar", "-czf", str(tmpd / name), "-C", str(backup), "."], check=True)
+        # The service user tars (it owns what is in the data dir); the
+        # operator only receives the bytes and encrypts them.
+        (tmpd / name).write_bytes(run_as_prod_bytes(rel, ["tar", "-czf", "-", "-C", str(backup), "."]))
         sealed = tmpd / (name + ".age")
         subprocess.run(["age", "-R", str(age_recipients(tmpd / "recipients")),
                         "-o", str(sealed), str(tmpd / name)], check=True)
@@ -642,7 +701,8 @@ def pull() -> int:
                 side.unlink()
         say(f"dev world kept at {keep}")
     live.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copyfile(backup / "live.db", live)
+    # Read by the service user, written by the operator into their own dir.
+    live.write_bytes(run_as_prod_bytes(rel, ["cat", str(backup / "live.db")]))
     say(f"prod world ({backup.name}) installed as the dev world; `{dev_game} up` to look. "
         "Dev accounts are separate: an admin dev account can enter any toon.")
     return 0

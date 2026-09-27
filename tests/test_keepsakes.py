@@ -62,9 +62,8 @@ def test_a_disabled_account_drops_out_of_the_export(tmp_path):
 
 def test_the_sync_writes_only_what_changed_and_deletes_what_went(tmp_path):
     _two_players()
-    k = tmp_path / "k"
-    keepsakes.export(k)
-    desired = edge.desired_keys(k)
+    doc = keepsakes.export(tmp_path / "k")
+    desired = edge.desired_keys(doc)
     manifest, write, delete = edge.plan_sync(desired, {})
     assert "passes" in write and "chronicle" in write
     assert sum(key.startswith("keepsakes:") for key in write) == 2
@@ -78,3 +77,26 @@ def test_the_sync_writes_only_what_changed_and_deletes_what_went(tmp_path):
     stale["portrait:a-gone"] = "y"
     _, _, delete3 = edge.plan_sync(desired, stale)
     assert delete3 == ["keepsakes:a-gone", "portrait:a-gone"]
+
+
+
+def test_a_planted_symlink_never_becomes_a_friends_portrait(tmp_path):
+    """SECURITY WARN 2026-09-27: code running as the service user could point
+    a portrait cache file at any file the operator can read; the export (now
+    run as the service user anyway) refuses to follow it."""
+    from daydream.images import cache, client
+
+    mira = _two_players()
+    db.init_live()
+    t = objects.get(mira["id"])
+    seed = t.properties["appearance_seed"]
+    target = client.portrait_target(t.world_id, t.id, seed)
+    path = cache.cache_path(t.world_id, "toon", t.id, seed, client.load_workflow_for(target))
+    secret = tmp_path / "operator-secret.env"
+    secret.write_text("CLOUDFLARE_API_TOKEN=do-not-publish")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.symlink_to(secret)
+    db.close_db()
+    doc = keepsakes.build()
+    assert doc["portraits"] == {}
+    assert "do-not-publish" not in json.dumps(doc)

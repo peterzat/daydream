@@ -3,6 +3,7 @@ online backup API copies a DB a server is still writing, rotation keeps the
 newest N, and preflight reads versions and pending migrations without
 running any."""
 
+import json
 import sqlite3
 
 import pytest
@@ -86,3 +87,32 @@ def test_preflight_on_a_brand_new_box(tmp_path, capsys):
     assert admin.cmd_preflight() == 0
     assert "live_world: missing" in capsys.readouterr().out
     assert not config.live_db_path().exists()  # read-only: created nothing
+
+
+
+def test_restore_backup_refuses_a_symlink(tmp_path, capsys):
+    backup = tmp_path / "b"
+    backup.mkdir()
+    (backup / "live.db").symlink_to(tmp_path / "elsewhere.db")
+    (tmp_path / "elsewhere.db").write_bytes(b"x")
+    assert admin.cmd_restore_backup(backup) == 2
+    assert "not a regular file" in capsys.readouterr().err
+
+
+def test_restore_backup_puts_the_dbs_back(tmp_path):
+    db.init_live()
+    db.close_db()
+    backup = tmp_path / "b"
+    backup.mkdir()
+    (backup / "live.db").write_bytes(config.live_db_path().read_bytes())
+    config.live_db_path().write_bytes(b"broken")
+    assert admin.cmd_restore_backup(backup) == 0
+    assert config.live_db_path().read_bytes() == (backup / "live.db").read_bytes()
+
+
+def test_announce_cli_writes_the_file(tmp_path):
+    from daydream import announce
+
+    assert announce.main(["send", "The lamps are dimming."]) == 0
+    assert json.loads(announce.path().read_text()) == {"text": "The lamps are dimming."}
+    assert announce.main(["send", "  "]) == 2

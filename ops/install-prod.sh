@@ -49,7 +49,8 @@ done
 # ---- layout -----------------------------------------------------------------
 say "layout under $SRV"
 command -v setfacl >/dev/null || apt-get install -y acl
-install -d -o "$OPERATOR" -g daydream -m 2750 "$SRV" "$SRV/releases" "$SRV/venvs"
+install -d -o "$OPERATOR" -g daydream -m 2750 "$SRV" "$SRV/releases" "$SRV/venvs" \
+    "$SRV/incoming-art"   # graded art staged by the operator, read-only to the service
 install -d -o daydream -g daydream -m 2770 "$SRV/data"
 install -d -o root -g daydream -m 0750 "$SRV/etc"
 # The operator's CLI and the service both write the data dir: group rw on
@@ -122,7 +123,7 @@ echo "installed; only the backup, keepsakes and offsite timers are enabled at bo
 say "sudoers: start/stop/restart of the daydream units only"
 tmp="$(mktemp)"
 cp "$OPS/sudoers.d/daydream" "$tmp"
-sed -i "s/^peter /$OPERATOR /" "$tmp"
+sed -i "s/^peter /$OPERATOR /" "$tmp"   # both lines: the units, and acting as daydream
 visudo -cf "$tmp" >/dev/null
 install -o root -g root -m 0440 "$tmp" /etc/sudoers.d/daydream
 rm -f "$tmp"

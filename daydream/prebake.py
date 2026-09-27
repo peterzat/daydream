@@ -68,7 +68,7 @@ def _adopt_from_cache(target, workflow, path: Path, from_cache: Path) -> bool:
     from daydream.images import cache, client
 
     src = from_cache / path.relative_to(cache.cache_dir())
-    if not src.is_file():
+    if src.is_symlink() or not src.is_file():
         return False
     path.parent.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(src, path)

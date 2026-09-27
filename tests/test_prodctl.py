@@ -54,6 +54,7 @@ def srv(tmp_path, monkeypatch, fake_repo):
         "DAYDREAM_PUBLIC_ORIGIN='https://www.eidolon.com'\nDAYDREAM_PORT=54322\n"
         f"DAYDREAM_DATA_DIR={root / 'data'}\n")
     monkeypatch.setattr(prodctl, "SRV", root)
+    monkeypatch.setattr(prodctl, "AS_USER", "")  # no daydream user in the suite
     # Pre-seed the venv the lock hashes to, so building a release never pips.
     lock = (fake_repo / "ops" / "requirements-prod.lock").read_bytes()
     venv = root / "venvs" / hashlib.sha256(lock).hexdigest()[:16] / "bin"
@@ -82,8 +83,9 @@ def test_release_env_is_a_clean_slate(srv, monkeypatch, tmp_path):
     assert env["DAYDREAM_ACCESS"] == "edge" and env["DAYDREAM_ENV"] == "prod"
     assert env["DAYDREAM_PUBLIC_ORIGIN"] == "https://www.eidolon.com"
     assert env["DAYDREAM_BUILD_SHA"] == "abc123def456"
-    assert env["DAYDREAM_LIFECYCLE"] == "systemd"
+    assert env["DAYDREAM_LIFECYCLE"] == "external"
     assert env["DAYDREAM_ENGINES_ROOT"] == str(prodctl.REPO)  # the checkout that ran us
+    assert env["HOME"] == str(srv / "data")   # the service user's home, not the operator's
     assert "DAYDREAM_PASSWORD" not in env
     assert set(env) - {k for k in env if k.startswith("DAYDREAM_")} <= {
         "PATH", "HOME", "LANG", "PYTHONDONTWRITEBYTECODE"}
@@ -257,17 +259,73 @@ def test_offsite_encrypts_before_anything_leaves(srv, monkeypatch, tmp_path):
     calls = []
 
     def fake_run(cmd, **kw):
-        calls.append(cmd)
-        if cmd[0] == "age":
+        tool = "tar" if "tar" in cmd else cmd[0]
+        calls.append(tool)
+        if tool == "age":
             Path(cmd[cmd.index("-o") + 1]).write_bytes(b"age-encryption.org/v1 ciphertext")
-        return __import__("subprocess").CompletedProcess(cmd, 0)
+        out = b"tarball-bytes" if tool == "tar" else b""
+        return __import__("subprocess").CompletedProcess(cmd, 0, stdout=out, stderr=b"")
 
     monkeypatch.setattr(prodctl.subprocess, "run", fake_run)
     uploaded = []
     monkeypatch.setattr(prodctl, "_wrangler", lambda args: uploaded.append(args))
     assert prodctl.offsite() == 0
-    assert [c[0] for c in calls] == ["tar", "age"]
+    assert calls == ["tar", "age"]
     (put,) = uploaded
     assert put[:3] == ["r2", "object", "put"]
     assert put[3] == "daydream-backups/prod-20261004-043000.tar.gz.age"
     assert put[put.index("--file") + 1].endswith(".tar.gz.age")
+
+
+
+def test_prod_commands_run_as_the_service_user(srv, monkeypatch):
+    """SECURITY WARN 2026-09-27: anything touching the data dir runs as
+    daydream, so the operator's tools never follow a path planted there."""
+    monkeypatch.setattr(prodctl, "AS_USER", "daydream")
+    cmd = prodctl.as_prod(["python", "-m", "x"], {"A": "1", "HOME": "/srv/daydream/data"})
+    assert cmd[:4] == ["sudo", "-n", "-u", "daydream"]
+    assert cmd[4:6] == ["/usr/bin/env", "-i"] and "A=1" in cmd and cmd[-3:] == ["python", "-m", "x"]
+    monkeypatch.setattr(prodctl, "AS_USER", "")
+    assert prodctl.as_prod(["x"], {})[:2] == ["/usr/bin/env", "-i"]
+
+
+def test_server_stopping_verbs_cycle_the_unit(srv, monkeypatch):
+    rel = srv / "releases" / "aaaaaaaaaaaa"
+    (rel / "bin").mkdir(parents=True)
+    prodctl.point("current", rel)
+    calls = []
+    monkeypatch.setattr(prodctl, "unit_active", lambda unit: True)
+    monkeypatch.setattr(prodctl, "systemctl", lambda a, u: calls.append(a))
+    monkeypatch.setattr(prodctl, "wait_healthy", lambda seconds=45.0: True)
+    monkeypatch.setattr(prodctl.subprocess, "run",
+                        lambda cmd, **kw: calls.append("run") or
+                        __import__("subprocess").CompletedProcess(cmd, 0))
+    prodctl.passthrough(["world", "reset", "--yes"])
+    assert calls == ["stop", "run", "start"]
+    calls.clear()
+    prodctl.passthrough(["invite", "list"])
+    assert calls == ["run"]
+
+
+def test_prebake_from_cache_is_staged_read_only_for_the_service(srv, monkeypatch, tmp_path):
+    rel = srv / "releases" / "aaaaaaaaaaaa"
+    (rel / "bin").mkdir(parents=True)
+    prodctl.point("current", rel)
+    (srv / "incoming-art").mkdir()
+    graded = tmp_path / "graded"
+    (graded / "w" / "room" / "r").mkdir(parents=True)
+    (graded / "w" / "room" / "r" / "h.png").write_bytes(b"png")
+    seen = []
+
+    def fake_run(cmd, **kw):
+        i = cmd.index("--from-cache")
+        staged = Path(cmd[i + 1])
+        seen.append((staged, (staged / "w" / "room" / "r" / "h.png").read_bytes()))
+        return __import__("subprocess").CompletedProcess(cmd, 0)
+
+    monkeypatch.setattr(prodctl, "unit_active", lambda unit: False)
+    monkeypatch.setattr(prodctl.subprocess, "run", fake_run)
+    prodctl.passthrough(["prebake", "--from-cache", str(graded)])
+    (staged, data), = seen
+    assert staged.parent == srv / "incoming-art" and data == b"png"
+    assert not staged.exists()  # cleaned up after

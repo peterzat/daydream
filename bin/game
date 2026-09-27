@@ -341,27 +341,12 @@ _refuse_gpu_work_while_prod_runs() {
     fi
 }
 
-_systemd_up() {
-    # Prod (DAYDREAM_LIFECYCLE=systemd, set by daydream/prodctl.py): the
-    # sandboxed unit owns the process; the operator's sudoers entry permits
-    # exactly this start/stop. Engines are not started here (`prod wake` does).
-    sudo -n /usr/bin/systemctl start daydream-prod.service
-    local i
-    for i in $(seq 1 60); do
-        if curl -s -o /dev/null --max-time 1 "http://127.0.0.1:${PORT}/healthz"; then
-            echo "daydream-prod: up (port $PORT)"
-            return 0
-        fi
-        sleep 0.5
-    done
-    echo "daydream-prod: started but /healthz did not answer in 30 s" >&2
-    return 1
-}
-
 cmd_up() {
-    if [[ "${DAYDREAM_LIFECYCLE:-}" == "systemd" ]]; then
-        _systemd_up
-        return
+    if [[ "${DAYDREAM_LIFECYCLE:-}" == "external" ]]; then
+        # Prod: `bin/game prod` (daydream/prodctl.py) starts and stops the
+        # sandboxed unit around the commands that need it down.
+        echo "(the prod service is started by bin/game prod)"
+        return 0
     fi
     # Default assumes the GPU (vLLM + ComfyUI). `--no-gpu` brings up FastAPI
     # only (CPU-only / docs / tests). The GPU path preflights so an
@@ -438,10 +423,9 @@ cmd_up_all() {
 }
 
 cmd_down() {
-    if [[ "${DAYDREAM_LIFECYCLE:-}" == "systemd" ]]; then
-        sudo -n /usr/bin/systemctl stop daydream-prod.service
-        echo "daydream-prod: stopped"
-        return
+    if [[ "${DAYDREAM_LIFECYCLE:-}" == "external" ]]; then
+        echo "(the prod service is stopped by bin/game prod)"
+        return 0
     fi
     _stop_one fastapi
 }

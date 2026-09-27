@@ -460,6 +460,35 @@ def _find_toon(key: str):
     return None
 
 
+def cmd_restore_backup(backup_dir: Path) -> int:
+    """Put a backup's live world + accounts DBs back in place (the server
+    must be stopped; `bin/game prod deploy` uses it to undo a release whose
+    migrations ran). Regular files only: a symlink in the backup is refused."""
+    import os
+    import stat
+
+    backup_dir = Path(backup_dir)
+    targets = {"live.db": config.live_db_path(),
+               config.accounts_db_path().name: config.accounts_db_path()}
+    for name, dest in targets.items():
+        src = backup_dir / name
+        try:
+            st = os.lstat(src)
+        except FileNotFoundError:
+            continue
+        if not stat.S_ISREG(st.st_mode):
+            print(f"refusing {src}: not a regular file", file=sys.stderr)
+            return 2
+        for sfx in ("-wal", "-shm"):
+            side = dest.with_name(dest.name + sfx)
+            if side.exists():
+                side.unlink()
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(src, dest, follow_symlinks=False)
+        print(f"restored {dest.name} from {backup_dir.name}")
+    return 0
+
+
 def cmd_toon_moderate(key: str, action: str) -> int:
     """Rest or delete ANY account's toon: the admin's moderation power lives
     here, in the shell, never in a browser session (SECURITY WARN 2026-09-27)."""
@@ -1002,6 +1031,8 @@ def main(argv: list[str] | None = None) -> int:
     )
     p_backup.add_argument("--keep", type=int, default=14, help="how many backups to keep")
     sub.add_parser("preflight", help="read-only deploy checks (world version, pending migrations)")
+    p_rb = sub.add_parser("restore-backup", help="put a backup's DBs back (server stopped)")
+    p_rb.add_argument("backup_dir", type=Path)
     for verb in ("rest-toon", "delete-toon"):
         p_mod = sub.add_parser(verb, help=f"{verb.split('-')[0]} any account's toon by name or id")
         p_mod.add_argument("toon")
@@ -1095,6 +1126,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_backup(args.keep)
     if args.cmd == "preflight":
         return cmd_preflight()
+    if args.cmd == "restore-backup":
+        return cmd_restore_backup(args.backup_dir)
     if args.cmd in ("rest-toon", "delete-toon"):
         return cmd_toon_moderate(args.toon, "rest" if args.cmd == "rest-toon" else "delete")
     if args.cmd == "rest-all":

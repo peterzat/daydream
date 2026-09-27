@@ -70,3 +70,25 @@ async def stop() -> None:
         except (asyncio.CancelledError, Exception):
             pass
         _task = None
+
+
+def main(argv: list[str] | None = None) -> int:
+    """`python -m daydream.announce send TEXT`: leave a line for the running
+    server to tell everyone. `bin/game prod sleep` runs this as the service
+    user; the operator never writes into the data dir."""
+    import sys
+
+    args = list(sys.argv[1:] if argv is None else argv)
+    if len(args) != 2 or args[0] != "send" or not args[1].strip():
+        print("usage: python -m daydream.announce send TEXT", file=sys.stderr)
+        return 2
+    target = path()
+    target.parent.mkdir(parents=True, exist_ok=True)
+    tmp = target.with_suffix(".tmp")
+    tmp.write_text(json.dumps({"text": args[1].strip()[:MAX_CHARS]}))
+    tmp.replace(target)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
