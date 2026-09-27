@@ -24,6 +24,16 @@ Opus-written seeds, graded by the agent, and cached: `bin/game prebake`). The wh
 world is completable with vLLM and ComfyUI both down; every arc ending has a
 walkthrough the tests replay with zero model calls.
 
+## Pictures: the local GPU paints everything
+
+There is no cloud image model, and Opus does not paint. Every image in the
+game is rendered by SDXL on the local GPU; what differs is when. The world's
+rooms and resident portraits are rendered at design time (Opus writes each
+prompt and grades the result against WHIMSY.md, `bin/game prebake`), and so
+is anything a dream adds. Only what players create is painted live. For
+pictures, the local GPU is the painter and Opus is the art director; the
+"reflexes, not voice" split is about words.
+
 ## What the GPU generates at runtime, ranked by honest value
 
 **Useful, because the input comes from the player and cannot be prepared in
