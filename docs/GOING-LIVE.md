@@ -202,3 +202,39 @@ is lent out.
   co-op design; the world has no griefing economy.
 - **What friends type reaches the local LLM.** The existing role separation,
   length caps and banlists apply.
+
+## 10. Where it stands (2026-09-27, end of the build session)
+
+**Built and verified on the box (SPEC criteria 1-8, 18, 19, 21, 23):**
+- Accounts, invites, the sign-in gate, edge mode, roles, "your dreamer",
+  hardened sessions and transport, and the front door.
+- The cross-process GPU lock and the remote-reflexes seam.
+- The live dev server runs it.
+- **A prod rehearsal passed.** The real `bin/game prod deploy` pipeline built
+  a release and its locked venv into a scratch root. That release, booted
+  under prod's exact environment, then carried the whole edge-shaped flow:
+  invite, peek, redeem (the Secure cookie scoped to `/daydream/`), your
+  dreamer, the WebSocket, a command. It refused a cross-origin write and
+  answered a signed-out API call with 401.
+
+**Built and unit-tested, waiting on the operator's hands (criteria 9-17, 20, 22):**
+
+1. `sudo ops/install-prod.sh`, then log out and back in.
+2. The Cloudflare dashboard steps in `docs/CLOUDFLARE-SETUP.md` (token, Zero
+   Trust, service token, Access app, tunnel, rules, KV, R2).
+3. `bin/game edge secrets`, then `bin/game edge sleep "opening soon"` and
+   `bin/game edge deploy`. Check that the asleep page shows at
+   www.eidolon.com/daydream/.
+4. `bin/game prod deploy`, `bin/game prod world reset --yes`,
+   `bin/game prod prebake --from-cache ~/data/daydream/images/cache`,
+   `bin/game prod wake`, then `bin/game prod account create peter --admin`.
+5. Run the checks: `bin/game review` (the phone and laptop glance) and the
+   locks in `docs/CLOUDFLARE-SETUP.md` step 10. Then `/invite` the first
+   friend.
+
+Two things to watch on the real edge that no unit test can prove:
+- WebSocket passthrough through the Worker to the tunnel
+- the Worker's route winning over the Pages site on www.eidolon.com
+
+The first deploy is done in forced-asleep mode, so the second is checked
+before anything is exposed.
