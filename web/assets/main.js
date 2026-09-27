@@ -66,7 +66,7 @@ async function whyClosed() {
 }
 
 function asleepText(why) {
-  const who = why.operator || "the person who invited you";
+  const who = why.operator ? `${why.operator}, the Night Warden,` : "the person who invited you";
   const note = why.note ? " " + why.note : "";
   return `The village is asleep.${note} Send ${who} a note to light the lamps; this page will wake with it.`;
 }

@@ -211,6 +211,18 @@ def test_invite_peek_and_redeem_sign_the_invitee_in(words, monkeypatch):
         assert again.status_code == 404 and "Peter" in again.json()["error"]
 
 
+def test_invite_peek_without_an_operator_name_leaves_the_fallback_to_the_door(
+        words, monkeypatch):
+    """The door titles a real name ("Peter, the Night Warden,"); the generic
+    fallback must not reach it as if it were a name."""
+    monkeypatch.delenv("DAYDREAM_OPERATOR_NAME", raising=False)
+    accounts.init()
+    slug, _ = accounts.create_invite("Robin Ash")
+    with TestClient(app) as client:
+        assert client.post("/api/invite/peek", json={"slug": slug}).json()["operator"] == ""
+    assert "the person who invited you" in accounts.invite_refused()
+
+
 def test_a_taken_username_or_short_password_keeps_the_invite(words):
     accounts.init()
     accounts.create_account("robin", PW)

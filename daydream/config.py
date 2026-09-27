@@ -111,11 +111,12 @@ def cookie_secure() -> bool:
     return public_origin().startswith("https://")
 
 
-def operator_name() -> str:
+def operator_name(fallback: str = "the person who invited you") -> str:
     """Who friends ask for help (an invite that won't work, a sleeping
     village). Set DAYDREAM_OPERATOR_NAME in the deployment's env; the default
-    stays generic because this repo is public."""
-    return os.environ.get("DAYDREAM_OPERATOR_NAME", "").strip() or "the person who invited you"
+    stays generic because this repo is public. `fallback=""` hands the choice
+    to a client that adds a title to a real name."""
+    return os.environ.get("DAYDREAM_OPERATOR_NAME", "").strip() or fallback
 
 
 LOOPBACK_HOSTS = ("127.0.0.1", "::1", "localhost")

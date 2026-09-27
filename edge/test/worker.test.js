@@ -105,10 +105,17 @@ test("KV asleep: the storybook page with the note, escaped, and no origin call",
   const html = await r.text();
   assert.match(html, /The village is asleep/);
   assert.match(html, /back &lt;Sunday&gt;/);
-  assert.match(html, /Send Peter a note/);
+  assert.match(html, /Send Peter, the Night Warden, a note/);
   assert.match(html, /href="\/daydream\/_edge\/asleep\.css"/);
   assert.equal(calls.length, 0);
   assert.match(r.headers.get("content-security-policy"), /script-src 'self'/);
+});
+
+test("KV asleep with no operator name: the plain fallback, no title", async () => {
+  const e = { ...env({ state: "asleep", note: "", since: "2026-09-27T10:00:00Z" }), OPERATOR: "" };
+  const html = await (await handle(req("/daydream/"), e)).text();
+  assert.match(html, /Send the person who invited you a note/);
+  assert.doesNotMatch(html, /Night Warden/);
 });
 
 test("KV asleep: the API gets 503 JSON and a WebSocket is refused", async () => {

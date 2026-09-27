@@ -128,7 +128,7 @@ workflow hash, so the graded files are reused exactly.
 Planned sleep (`bin/game prod sleep --note "lent to training until Sunday"`)
 and an unplanned outage (tunnel down, service down, box off) look the same to
 a friend: a watercolor of the village at night, the note, how long it has
-slept, and "send Peter a text to light the lamps". An open game tab shows the
+slept, and "send Peter, the Night Warden, a note and the lamps will be lit". An open game tab shows the
 note in its reconnect overlay and wakes by itself.
 
 **Keepsakes (operator's choice).** A signed-in friend can still read their

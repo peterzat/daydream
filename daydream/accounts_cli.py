@@ -46,7 +46,7 @@ def invite_message(for_name: str, link: str, expires_at: str, kind: str = "join"
         return (f"Hi {first}, here's a link to set a new daydream password: {link} "
                 f"(it works once, until {day}).")
     return (f"Hi {first}! You're invited to daydream, a small storybook village I keep for "
-            f"friends. Your invitation: {link} (it works once, until {day}). Open it, pick a "
+            f"friends (I'm its Night Warden). Your invitation: {link} (it works once, until {day}). Open it, pick a "
             f"username and password, and you're in.")
 
 

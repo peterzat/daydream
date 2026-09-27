@@ -24,6 +24,13 @@ Players are **dreamers**: visitors who fall asleep somewhere in the waking
 world and wake here. The keepers call them dreamers or friends. A dreamer is
 always welcome and never needed in a way that could go wrong.
 
+The one who keeps the village from outside it (invites dreamers, wakes it
+and puts it to sleep, writes its dreams) is the **Night Warden**. The title
+lives only outside the story: the front door, the asleep page, invitations,
+and a dream's while-you-slept note. No keeper knows of a Night Warden or
+speaks of one, and the Night Warden is never the answer to whose dream this
+is (section 6).
+
 ## 2. The rules of the world (hard canon)
 
 - **Hours are people, softly.** A lost hour that arrives as a guest looks
