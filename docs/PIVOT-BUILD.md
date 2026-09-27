@@ -156,3 +156,23 @@ are dropped. Room data skills dispatch under their declared allowlist.
   test run. Operator's words: "Use this addition, and our pivot, to
   significantly review our README and design docs when you're done building
   all of it (before you think we're ready to push, and then test)."
+- 2026-09-26 (night): AFTER model-eval committed (criterion 10: canon 20 -> 0,
+  pronoun 8 -> 0, openers 6 -> 1, p50 3.15 -> 2.24 s; the canon scorer now
+  skips authored gesture lines, both runs rescored). Canon bible section 7
+  rewritten as shipped. Live world reset to Lost Hours (Zork archived) and
+  prebaked (32 targets). **Agent playtest day** (17:45-18:02 PT, four
+  personas at once, ~500 commands, no server errors): 15% of narrations were
+  local-model lines, and nearly every worst line was one of them. Fixes:
+  multiplayer routing (private "you" lines + `others`, private conversations
+  with a bystander line, once-per-session greetings), the parser (utterances
+  stay whole, deterministic say/talk), select-don't-write topic routing,
+  prompt and reranker changes, the play bridge, rest-return of world objects,
+  never_words, question_hint, provenance tags, and a large world-data pass
+  (docs/playtests/2026-09-26/SUMMARY.md). New tool: **`bin/game world
+  refresh`**, a content deploy that keeps play (a reset is a new village; a
+  dream is additive only), used to carry the fixes into the played world.
+  **The first dream** (dream-2026-09-26) is live: callbacks to all four
+  players by name, the grown room furnished; a returning agent session is
+  recording what it observes (criterion 18). Remaining: the observed.md
+  record, the README/design-doc review (a fresh reviewer is critiquing
+  first), tier_long with the server down, and the operator's morning play.
