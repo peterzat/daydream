@@ -70,7 +70,12 @@
       <aside class="margin" id="scene" aria-label="here">
         <div class="mgroup" id="self-region">
           <div class="mlabel">you</div>
-          <div id="self" class="region-body"></div>
+          <!-- Your own portrait and name open "your dreamer" and your
+               account (playtest 2026-09-28: a footer link said it twice). -->
+          <button id="slots-toggle" type="button" class="self-toggle"
+                  title="your dreamer, and your account">
+            <span id="self" class="region-body"></span>
+          </button>
         </div>
         <div class="mgroup" id="here-region">
           <div class="mlabel">here with you</div>
@@ -120,7 +125,6 @@
     </div>
 
     <footer>
-      <button id="slots-toggle" type="button" class="slots-toggle">your dreamer</button>
       <button id="leave-dream" type="button" class="logout">leave the dream</button>
       <button id="help-toggle" type="button" class="help-toggle"
               title="how to dream" aria-label="how to dream">?</button>
@@ -135,18 +139,19 @@
          browser prompt dialogs. Shown when the account may make a dreamer. -->
     <form id="dreamer-form" class="dreamer-form hidden" autocomplete="off">
       <p class="dreamer-lede">Who will you be in {{place}}?</p>
-      <label class="door-field">a name
+      <label class="door-field">your name here
         <input name="name" maxlength="24" required>
       </label>
       <label class="door-field">how you look, in a few words
         <input name="appearance_seed" maxlength="300" required
-               placeholder="a tall heron in a patched blue coat">
+               placeholder="round spectacles, freckles, a patched blue coat">
       </label>
       <button type="submit" class="door-button">begin dreaming</button>
       <p class="door-error" role="alert" hidden></p>
     </form>
     <details class="account-box">
       <summary>your account</summary>
+      <p id="account-who" class="account-note"></p>
       <form id="password-form" class="dreamer-form" autocomplete="on">
         <label class="door-field">current password
           <input type="password" name="old" autocomplete="current-password" required>
@@ -163,6 +168,10 @@
       <button id="delete-yes" type="button" class="slot-delete">let them go</button>
       <button id="delete-no" type="button">keep them</button>
     </div>
+    <!-- Leaving the dream rests your dreamer and keeps you signed in; signing
+         out does both (the operator asked, 2026-09-28, whether they differ). -->
+    <p class="account-note">Leave the dream to let your dreamer rest. Sign out
+      rests them too, and this browser forgets you until you sign in again.</p>
     <div class="panel-actions">
       <button id="sign-out" type="button">sign out</button>
       <button id="slots-close" type="button">close</button>
@@ -184,7 +193,7 @@
              dream (rendered by renderCollection; a dashed slot when the
              book is still blank). -->
         <div id="collection" class="collection"></div>
-        <p class="collection-note">the book writes a little each time you wake &mdash;<br>every dream leaves you carrying a little more.</p>
+        <p class="collection-note">your journal writes a little each time you wake &mdash;<br>every dream leaves you carrying a little more.</p>
         <button id="backpack-close" type="button" class="back-link">&larr; close the satchel</button>
       </section>
     </div>
@@ -236,9 +245,9 @@
           hears plain words. say hello to whoever is near, ask about what you see,
           or describe what you&rsquo;d like to try. the dream is good at guessing.</p>
         <div class="page-eyebrow">doing</div>
-        <p class="help-note">the <em>what you might do</em> ribbon holds your verbs.
-          touch one to stage it, then touch a thing or a friend in the margin to
-          act on it. touching something with nothing staged simply looks closer.</p>
+        <p class="help-note">the <em>what you might do</em> ribbon holds what you
+          can do. touch one, then touch whoever or whatever you mean in the
+          margin. touching something with nothing chosen simply looks closer.</p>
         <div class="page-eyebrow">asking</div>
         <p class="help-note">under <em>here with you</em>, each person lists what you
           could ask them about. touch a topic to ask. {{place}} remembers what
@@ -255,10 +264,10 @@
           them up and they settle into <em>your book</em>.</p>
         <div class="page-eyebrow">waking</div>
         <p class="help-note"><em>leave the dream</em> lets your dreamer rest, and you
-          can step back in whenever you like; <em>your dreamer</em> is where you
-          find them, and your account. your keepsakes and your book stay with you;
-          things that belong to {{place}} find their way home while you sleep.</p>
-        <p class="collection-note">this page keeps &mdash; find it again behind<br>the small <strong>?</strong> at the foot of the book.</p>
+          can step back in whenever you like. touch your own name, under <em>you</em>,
+          for <em>your dreamer</em> and your account. your keepsakes and your book stay
+          with you; things that belong to {{place}} find their way home while you sleep.</p>
+        <p class="collection-note">this page keeps &mdash; find it again behind<br>the small <strong>?</strong> at the foot of the page.</p>
         <button id="help-close" type="button" class="back-link">&larr; begin dreaming</button>
       </section>
     </div>

@@ -227,6 +227,9 @@ def test_an_invitation_opens_the_door_and_a_new_dreamer_steps_in(tab, engines):
     expect(page.locator("#help-panel")).to_be_hidden()
 
     dreamer = page.locator("#dreamer-form")
+    # The name given at the door is offered back, not asked for twice
+    # (playtest 2026-09-28).
+    expect(dreamer.locator("input[name=name]")).to_have_value("Robin")
     dreamer.locator("input[name=name]").fill("Robin")
     dreamer.locator("input[name=appearance_seed]").fill("a small wren in a moss-green scarf")
     dreamer.locator("button[type=submit]").click()
@@ -241,7 +244,7 @@ def test_a_returning_friend_signs_in_and_a_wrong_password_stays_at_the_door(tab,
     page = tab.page
     friend = accounts.create_account("wren", PASSWORD, display_name="Wren Hollis")
     # A dreamer from an earlier evening, so signing in lands straight in it.
-    toons.create_toon_in_slot(1, "Wren", "a tall heron in a patched blue coat",
+    toons.create_toon_in_slot(1, "Wren", "round spectacles, a patched blue coat",
                               "s-an-earlier-evening", owner_account=friend["id"])
 
     page.goto("/login")
@@ -298,7 +301,7 @@ READING = """() => {
 def _signed_in_with_a_dreamer(tab: Tab, name: str = "Marlo"):
     """A friend from an earlier evening signs in and lands in their dreamer."""
     friend = accounts.create_account(name.lower(), PASSWORD, display_name="A Friend")
-    toons.create_toon_in_slot(1, name, "a tall heron in a patched blue coat",
+    toons.create_toon_in_slot(1, name, "round spectacles, a patched blue coat",
                               "s-an-earlier-evening", owner_account=friend["id"])
     page = tab.page
     page.add_init_script("try { localStorage.setItem('dd-help-seen', '1'); } catch (e) {}")
@@ -461,3 +464,64 @@ def test_the_account_panel_buttons_line_up(tab, engines):
     assert abs(out["x"] - field["x"]) < 2, (out, field)
     assert abs(close["x"] + close["width"] - right) < 2, (close, field)
     _assert_quiet(tab, engines)
+
+
+def test_walking_up_and_down_tells_where_you_went_and_leaves_nothing_behind(tab, engines):
+    """First prod evening, 2026-09-28: up and down from the start room left a
+    bare "you go up." / "you go down." in each room, stacked on every return.
+    Now each arrival says where you went, and a room you come back to holds
+    nothing of your going."""
+    page = _signed_in_with_a_dreamer(tab)
+    chat = page.locator("#chat")
+    page.locator("#exit-bar button[data-direction=up]").click()
+    expect(page.locator("#room-title")).to_have_text(UP["title"])
+    expect(chat.locator(".evt-arrival")).to_contain_text("You climb up to ")
+    page.locator("#exit-bar button[data-direction=down]").click()
+    expect(page.locator("#room-title")).to_have_text(START["title"])
+    page.locator("#exit-bar button[data-direction=up]").click()
+    expect(page.locator("#room-title")).to_have_text(UP["title"])
+    page.locator("#exit-bar button[data-direction=down]").click()
+    expect(page.locator("#room-title")).to_have_text(START["title"])
+    arrival = chat.locator(".evt-arrival")
+    expect(arrival).to_have_count(1)
+    expect(arrival).to_contain_text("You go down to ")
+    expect(chat.locator(".evt-move")).to_have_count(0)
+    assert not re.search(r"\byou go (up|down)\.", chat.inner_text(), re.IGNORECASE)
+    _assert_quiet(tab, engines)
+
+
+def test_talking_asks_for_your_words_on_the_page_not_in_a_browser_box(tab, engines):
+    """Talk opened the browser's own prompt box ("www.eidolon.com says").
+    The words now go on the page's input line: the hint names who you are
+    talking to, Enter sends one talk command, and "never mind" lets it go."""
+    dialogs, sent = [], []
+    tab.page.on("dialog", lambda d: (dialogs.append(d.message), d.dismiss()))
+    tab.page.on("websocket", lambda w: w.on("framesent", lambda f: sent.append(f)))
+    page = _signed_in_with_a_dreamer(tab)
+    page.locator("#exit-bar button[data-direction=up]").click()
+    expect(page.locator("#room-title")).to_have_text(UP["title"])
+    resident = page.locator("#toons .obj-toon").first
+    who = resident.inner_text().split(" (")[0].strip()
+    inp = page.locator("#input-text")
+    before = inp.get_attribute("placeholder")
+
+    page.locator("#verb-bar button[data-verb=talk]").click()
+    resident.click()
+    hint = page.locator("#verb-hint")
+    expect(hint).to_be_visible()
+    expect(hint).to_contain_text(who)
+    assert inp.get_attribute("placeholder") != before
+    hint.locator(".hint-cancel").click()
+    expect(hint).to_be_hidden()
+    assert inp.get_attribute("placeholder") == before
+
+    page.locator("#verb-bar button[data-verb=talk]").click()
+    resident.click()
+    inp.fill("good evening")
+    inp.press("Enter")
+    expect(hint).to_be_hidden()
+    frames = [json.loads(f) for f in sent if isinstance(f, str) and f.startswith("{")]
+    talks = [f for f in frames if f.get("kind") == "command" and f.get("verb") == "talk"]
+    assert [t["args"] for t in talks] == ["good evening"], frames
+    assert dialogs == []
+    assert tab.js_errors == [], tab.js_errors

@@ -111,7 +111,7 @@ def _require_actionable(t: toons.Toon, who: accounts.Principal, *, for_delete: b
                else ws_mod.is_session_live(controller))
     if (t.is_human_controlled and t.kicked_at is None and controller is not None
             and controller != who.session_id and present):
-        raise HTTPException(status_code=403, detail="slot is held by another active player")
+        raise HTTPException(status_code=403, detail="someone is dreaming as them just now")
 
 
 async def _toon_request(request: Request) -> tuple[str, str]:
@@ -122,25 +122,30 @@ async def _toon_request(request: Request) -> tuple[str, str]:
         raise HTTPException(status_code=400, detail="body must be JSON") from None
     if not isinstance(body, dict):
         raise HTTPException(status_code=400, detail="body must be a JSON object")
+    # These refusals read under the "your dreamer" form: player words, never
+    # field names (playtest 2026-09-28).
     name = body.get("name")
     appearance = body.get("appearance_seed")
     if not isinstance(name, str) or not name.strip():
-        raise HTTPException(status_code=400, detail="name must be a non-empty string")
+        raise HTTPException(status_code=400, detail="your dreamer needs a name")
     if len(name.strip()) > toons.MAX_NAME_CHARS or not name.strip().isprintable():
         raise HTTPException(status_code=400, detail=(
-            f"name must be at most {toons.MAX_NAME_CHARS} characters on one line"))
+            f"a name of at most {toons.MAX_NAME_CHARS} letters, on one line, please"))
     if safety.first_banned(name) is not None:
-        raise HTTPException(status_code=400, detail="name doesn't fit the dream's tone")
+        raise HTTPException(status_code=400, detail=(
+            f"that name doesn't suit {instance.place()}; try another"))
     if _mimics_a_toon_id(name):
-        raise HTTPException(status_code=400, detail="name can't use brackets or a dreamer's id")
+        raise HTTPException(status_code=400, detail=(
+            f"that name reads like one of {instance.place()}'s own labels; try another"))
     if not isinstance(appearance, str) or not appearance.strip():
-        raise HTTPException(status_code=400, detail="appearance_seed must be a non-empty string")
+        raise HTTPException(status_code=400, detail="a few words about how you look, please")
     appearance = appearance.strip()
     if len(appearance) > MAX_APPEARANCE_SEED_CHARS:
         raise HTTPException(status_code=400, detail=(
-            f"appearance_seed must be at most {MAX_APPEARANCE_SEED_CHARS} characters"))
+            f"a shorter description, please (at most {MAX_APPEARANCE_SEED_CHARS} characters)"))
     if safety.first_banned(appearance) is not None:
-        raise HTTPException(status_code=400, detail="appearance_seed doesn't fit the dream's tone")
+        raise HTTPException(status_code=400, detail=(
+            "the dream can't quite picture that; try describing yourself another way"))
     return name.strip(), appearance
 
 
@@ -163,7 +168,7 @@ def _create(slot: int, name: str, appearance: str, who: accounts.Principal) -> d
     new_toon = toons.create_toon_in_slot(slot, name, appearance, who.session_id,
                                          owner_account=who.account_id)
     if new_toon is None:
-        raise HTTPException(status_code=409, detail="slot already populated")
+        raise HTTPException(status_code=409, detail="that place was just taken; try again")
     accounts.set_left(who.session_id, False)  # picking a toon re-enters the dream
     if not who.is_admin:
         accounts.record_failure(budget_key, DREAMERS_PER_DAY)  # counts makes, not failures
@@ -184,7 +189,9 @@ async def my_dreamer(request: Request) -> dict:
         mine.append(card)
     return {"toons": mine,
             "can_create": _may_hold_another(who) and toons.next_free_slot() is not None,
-            "display_name": who.display_name, "is_admin": who.is_admin}
+            "display_name": who.display_name, "is_admin": who.is_admin,
+            # The name given at the door seeds the dreamer form's name field.
+            "username": who.username}
 
 
 @router.post("/api/dreamer/create")
@@ -235,7 +242,7 @@ async def claim_slot(slot: int, request: Request) -> dict:
     _validate_slot(slot)
     t = toons.get_toon_in_slot(slot)
     if t is None:
-        raise HTTPException(status_code=404, detail="slot is empty")
+        raise HTTPException(status_code=404, detail="that dreamer isn't here any more")
     if t.owner_account not in (None, who.account_id):
         raise HTTPException(status_code=403, detail="that dreamer belongs to someone else")
     if t.owner_account is None and not _may_hold_another(who):
@@ -247,9 +254,9 @@ async def claim_slot(slot: int, request: Request) -> dict:
         slot, who.session_id,
         can_take_over=lambda cs: own or not ws_mod.is_session_live(cs))
     if reason == "empty":
-        raise HTTPException(status_code=404, detail="slot is empty")
+        raise HTTPException(status_code=404, detail="that dreamer isn't here any more")
     if reason == "controlled":
-        raise HTTPException(status_code=409, detail="slot is held by an active player; kick first")
+        raise HTTPException(status_code=409, detail="someone is dreaming as them just now")
     assert toon is not None
     if toon.owner_account is None:
         toons.adopt(toon.id, who.account_id)
@@ -269,12 +276,12 @@ async def kick_slot(slot: int, request: Request) -> dict:
     _validate_slot(slot)
     t = toons.get_toon_in_slot(slot)
     if t is None:
-        raise HTTPException(status_code=404, detail="slot is empty")
+        raise HTTPException(status_code=404, detail="that dreamer isn't here any more")
     _require_actionable(t, who)
     held_here = t.controller_session == who.session_id
     toon = toons.kick_slot(slot)
     if toon is None:
-        raise HTTPException(status_code=404, detail="slot is empty")
+        raise HTTPException(status_code=404, detail="that dreamer isn't here any more")
     if held_here:
         # Resting the toon you are playing is leaving the dream: otherwise the
         # next connect's auto-enter wakes it at once, in the start room.
@@ -328,11 +335,11 @@ async def delete_toon(slot: int, request: Request) -> dict:
     _validate_slot(slot)
     t = toons.get_toon_in_slot(slot)
     if t is None:
-        raise HTTPException(status_code=404, detail="slot is empty")
+        raise HTTPException(status_code=404, detail="that dreamer isn't here any more")
     _require_actionable(t, who, for_delete=True)
     deleted = toons.delete_slot(slot)
     if deleted is None:
-        raise HTTPException(status_code=404, detail="slot is empty")
+        raise HTTPException(status_code=404, detail="that dreamer isn't here any more")
     logger.info("dreamer let go: %s by %s", deleted.name, who.username)
     return {"ok": True, "deleted": deleted.id}
 

@@ -341,6 +341,10 @@ body::before {
 }
 .ribbon-hint.hidden { display: none; }
 .ribbon-hint b { color: var(--sage-deep); font-weight: 600; font-style: normal; }
+.hint-cancel {
+  background: none; border: none; padding: 0 0 0 4px; font: inherit; cursor: pointer;
+  color: var(--sage-deep); text-decoration: underline dotted; text-underline-offset: 3px;
+}
 
 /* ---------- free-text input ---------- */
 #input-form { margin: 10px 0 0; }
@@ -373,12 +377,22 @@ body::before {
 
 /* ---------- meta footer (switch / leave) ---------- */
 footer { text-align: center; font-size: 0.85em; margin-top: 12px; opacity: 0.75; }
-footer .slots-toggle, footer .logout {
+footer .logout {
   background: none; border: none; padding: 0; font: inherit; cursor: pointer;
   color: var(--sage-deep); text-decoration: none;
 }
-footer .slots-toggle { margin-right: 1em; }
-footer .slots-toggle:hover, footer .logout:hover { text-decoration: underline; }
+footer .logout:hover { text-decoration: underline; }
+
+/* Your own portrait and name: the way to "your dreamer" and your account. */
+.self-toggle {
+  display: block; width: 100%; background: none; border: none; padding: 0; margin: 0;
+  font: inherit; color: inherit; text-align: left; cursor: pointer;
+}
+.self-toggle #self { display: block; }
+.self-toggle:hover .you-name, .self-toggle:focus-visible .you-name {
+  text-decoration: underline dotted; text-underline-offset: 4px;
+}
+.account-note { font-size: .85rem; font-style: italic; color: var(--sage); margin: .4em 0 .6em; }
 
 /* ---------- slot picker ---------- */
 .slots-panel {

@@ -182,13 +182,16 @@ def test_style_css_has_dream_overlay():
 
 
 def test_index_html_has_slot_picker_elements():
-    """SPA exposes the slot-picker affordance per toon-slot-management
-    spec: a 'switch toon' toggle in the footer, a slots panel with the
-    slots list ul, and a close button."""
+    """SPA exposes "your dreamer": your own portrait and name under "you"
+    open it (playtest 2026-09-28: no separate footer link), a panel with the
+    list ul, and a close button."""
     with TestClient(app) as client:
         _login(client)
         r = client.get("/")
-    assert 'id="slots-toggle"' in r.text
+    you = r.text[r.text.index('id="self-region"'):r.text.index('id="here-region"')]
+    assert 'id="slots-toggle"' in you and 'id="self"' in you
+    footer = r.text[r.text.index("<footer>"):r.text.index("</footer>")]
+    assert "your dreamer" not in footer
     assert 'id="slots-panel"' in r.text
     assert 'id="slots-list"' in r.text
     assert 'id="slots-close"' in r.text
@@ -207,14 +210,17 @@ def test_main_js_dreamer_panel_shows_only_your_own_toons():
 
 def test_main_js_wires_the_dreamer_endpoints_without_prompt_dialogs():
     """The dreamer panel lists (api/dreamer), creates (api/dreamer/create)
-    through a real form, and enters / rests / deletes by slot, with a
-    storybook confirm instead of window.confirm (criterion 8)."""
+    through a real form, and enters / deletes by slot, with a storybook
+    confirm instead of window.confirm (criterion 8). Resting is the footer's
+    "leave the dream" (api/session/leave), not a second button in the panel
+    beside "sign out" (playtest 2026-09-28)."""
     with TestClient(app) as client:
         _login(client)
         js = client.get("/assets/main.js").text
         html = client.get("/").text
     assert '"api/dreamer"' in js and '"api/dreamer/create"' in js
-    assert 'postSlotAction(slot, "claim"' in js and 'postSlotAction(slot, "kick"' in js
+    assert 'postSlotAction(slot, "claim"' in js and '"api/session/leave"' in js
+    assert 'postSlotAction(slot, "kick"' not in js
     assert '"delete"' in js
     assert "window.confirm" not in js
     body = js[js.index("async function renderSlots"):js.index("function reconnectAfterSlotChange")]
@@ -322,12 +328,16 @@ def test_main_js_plant_prompts_for_vision_and_sends_command():
     with TestClient(app) as client:
         _login(client)
         r = client.get("/assets/main.js")
-    # The generic flow: prompt from verb data, one command, pending beat.
+    # The generic flow: prompt from verb data, one command, pending beat. The
+    # words go on the page's own input line, never a browser dialog
+    # (playtest 2026-09-28: Talk opened the browser's prompt box).
     assert "stagedSpec.needs_text" in r.text
-    assert "window.prompt(stagedSpec.text_prompt" in r.text
-    assert "sendCommand(verb, objectId, msg)" in r.text
+    assert "window.prompt" not in r.text
     needs_text_branch = r.text.split("stagedSpec.needs_text")[1].split("} else {")[0]
-    assert "showPending()" in needs_text_branch
+    assert "askForText(verb, objectId, stagedSpec)" in needs_text_branch
+    assert "spec.text_prompt" in r.text.split("function askForText")[1].split("\n}\n")[0]
+    send = r.text.split("function sendText")[1].split("\n}\n")[0]
+    assert "sendCommand(t.verb, t.objectId, text)" in send and "showPending()" in send
     # Plant's prompt is authored on its VerbSpec and rides the verb_bar.
     assert verbs.VERBS["plant"].needs_text
     assert verbs.VERBS["plant"].text_prompt
@@ -630,7 +640,7 @@ def test_main_js_renders_journal_collection_and_item_detail():
     assert "function renderCollection(" in r.text
     assert "lastJournal" in r.text
     assert "journal-entry" in r.text
-    assert "the book waits for your first waking" in r.text
+    assert "your journal waits for your first waking" in r.text
     assert 'it.detail || keepsakeCaption' in r.text
 
 

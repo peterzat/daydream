@@ -28,6 +28,7 @@ let entities = []; // in-scope {alias, object_id, kind} for narration linking
 let stagedVerb = null; // the verb-bar verb awaiting an object click
 let stagedDobjId = null; // step-1 direct object of a two-object (give/use) verb, awaiting the iobj click
 let verbSpecs = {}; // verb name -> {needs_iobj, valid_iobj_kinds} from the snapshot's verb_bar
+let textTarget = null; // {verb, objectId}: a chosen verb waiting for your words on the input line
 let lastArrivalRoomId = null; // room of the last arrival line shown (suppresses re-show on same-room re-snapshots)
 let arrival = null; // {roomId, seq, text}: this room's arrival line, re-placed on same-room re-snapshots
 let pendingMove = null; // your own move event's payload, told as the next room's arrival line
@@ -242,6 +243,7 @@ function renderSnapshot(snap) {
     (a, b) => (b.alias || "").length - (a.alias || "").length
   );
   clearStagedVerb();
+  if (snap.room && snap.room.id !== lastArrivalRoomId) cancelText(); // a new room: words unsent
   pendingDetail = null; // a fresh snapshot supersedes any in-flight examine/read
   // Map actor IDs to display names so 'say' events can name the speaker
   // (built from ALL co-located toons, including yourself).
@@ -544,6 +546,7 @@ function objectChip(o, label) {
 }
 
 function toggleStagedVerb(verb, btn) {
+  cancelText(); // choosing a verb lets any unsent words go
   if (stagedVerb === verb) {
     clearStagedVerb();
     return;
@@ -581,7 +584,8 @@ function showStagedHint(verb, dobjName) {
   const word = (spec.preps && spec.preps[0]) ||
     (kinds.indexOf("toon") !== -1 ? "to" : "on");
   const hint = document.getElementById("verb-hint");
-  hint.textContent = `${verb} ${dobjName} ${word}... (click a target, or the verb again to cancel)`;
+  const whom = kinds.indexOf("toon") !== -1 ? "someone" : "something";
+  hint.textContent = `${verb} ${dobjName} ${word}... (touch ${whom}, or ${verb} again to change your mind)`;
   hint.classList.remove("hidden");
 }
 
@@ -596,6 +600,7 @@ function clearSceneAndLog() {
   // scene + log so stale text doesn't sit visible under the picker (before, it
   // only cleared once a toon was claimed). Mirrors renderSnapshot's empty states.
   clearPending();
+  cancelText();
   document.getElementById("chat").innerHTML = "";
   setSpacer(0);
   answerFrom = null;
@@ -684,12 +689,12 @@ function onObjectClick(objectId, objectVerbs, objectKind) {
   if (stagedSpec.needs_text) {
     // Free-text prompting is verb DATA (criterion 12): the server's verb_bar
     // carries needs_text + text_prompt, so talk, plant, and any world verb
-    // prompt through one generic flow — no verb names hardcoded here. An
-    // empty answer still sends (the server may reply with its own authored
-    // question); the action may be LLM-backed, so show the pending beat.
-    const msg = (window.prompt(stagedSpec.text_prompt || "and what do you say?") || "").trim();
-    sendCommand(verb, objectId, msg);
-    showPending();
+    // prompt through one generic flow — no verb names hardcoded here. The
+    // words go on the page's own input line, never a browser dialog
+    // (playtest 2026-09-28); the submit sends the command (sendText).
+    clearStagedVerb();
+    askForText(verb, objectId, stagedSpec);
+    return;
   } else {
     // A targeted examine/read renders its narrate as a storybook detail inset
     // (the ledger reveal); remember the target so renderEvent can style it.
@@ -699,6 +704,46 @@ function onObjectClick(objectId, objectVerbs, objectKind) {
     sendCommand(verb, objectId);
   }
   clearStagedVerb();
+}
+
+function askForText(verb, objectId, spec) {
+  // The input line asks for the words: its placeholder is the verb's
+  // question, and the hint under the ribbon names who or what it is for,
+  // with a way to change your mind. Enter sends, even empty (the server may
+  // answer with its own authored question); Esc lets it go.
+  textTarget = { verb, objectId };
+  const hint = document.getElementById("verb-hint");
+  hint.innerHTML = "";
+  const what = document.createElement("b");
+  what.textContent = (spec.ui_hint || verb) + " \u00b7 " + nameForObject(objectId);
+  hint.appendChild(what);
+  hint.appendChild(document.createTextNode(": your words go on the line below. "));
+  const never = document.createElement("button");
+  never.type = "button";
+  never.className = "hint-cancel";
+  never.textContent = "never mind";
+  never.onclick = cancelText;
+  hint.appendChild(never);
+  hint.classList.remove("hidden");
+  const inp = document.getElementById("input-text");
+  inp.placeholder = spec.text_prompt || "and what do you say?";
+  inp.focus();
+}
+
+function cancelText() {
+  if (!textTarget) return;
+  textTarget = null;
+  hideStagedHint();
+  document.getElementById("input-text").placeholder = INPUT_PLACEHOLDER;
+}
+
+function sendText(text) {
+  // The words for a chosen verb: one structured command, and the pending
+  // beat (the action may be LLM-backed).
+  const t = textTarget;
+  cancelText();
+  sendCommand(t.verb, t.objectId, text);
+  showPending();
 }
 
 function nameForObject(objectId) {
@@ -1290,10 +1335,17 @@ const inputHistory = [];
 let historyPos = 0;
 let historyDraft = ""; // the half-typed line, kept while you browse history
 
+const INPUT_PLACEHOLDER = document.getElementById("input-text").placeholder;
+
 document.getElementById("input-form").addEventListener("submit", (ev) => {
   ev.preventDefault();
   const inp = document.getElementById("input-text");
   const text = inp.value.trim();
+  if (textTarget) {
+    sendText(text);
+    inp.value = "";
+    return;
+  }
   if (!text) return;
   sendInput(text);
   showPending();
@@ -1304,6 +1356,11 @@ document.getElementById("input-form").addEventListener("submit", (ev) => {
 });
 
 document.getElementById("input-text").addEventListener("keydown", (ev) => {
+  if (ev.key === "Escape" && textTarget) {
+    ev.preventDefault();
+    cancelText();
+    return;
+  }
   if (ev.key !== "ArrowUp" && ev.key !== "ArrowDown") return;
   if (!inputHistory.length) return;
   const browsing = historyPos < inputHistory.length;
@@ -1583,7 +1640,7 @@ function renderCollection(journal) {
     slot.className = "slot";
     slot.innerHTML =
       '<div class="slot-label">unwritten</div>' +
-      '<div class="slot-note">the book waits for your first waking</div>';
+      '<div class="slot-note">your journal waits for your first waking</div>';
     box.appendChild(slot);
     return;
   }
@@ -1659,7 +1716,7 @@ async function fetchDreamer() {
   if (!r.ok) {
     let j = null;
     try { j = await r.json(); } catch (_) {}
-    refused(r.status, j, `(could not open your dreamer: ${r.status})`);
+    refused(r.status, j, "your dreamer can't be reached just now; try again in a moment");
     return null;
   }
   return r.json();
@@ -1673,20 +1730,28 @@ async function postSlotAction(slot, action, body) {
     body: body ? JSON.stringify(body) : null,
   });
   if (!r.ok) {
-    let detail = `${r.status}`;
+    let detail = "that didn't work just now; try again in a moment";
     let j = null;
     try {
       j = await r.json();
-      if (j.detail) detail = j.detail;
+      if (typeof j.detail === "string") detail = j.detail;
     } catch (_) {}
-    refused(r.status, j, `(${detail})`);
+    refused(r.status, j, detail);
     return null;
   }
   return r.json();
 }
 
+function dreamerNameFrom(username) {
+  // The name you gave at the door, as a name: "robin_ash" -> "Robin Ash"
+  // (playtest 2026-09-28: the form asked for it a second time).
+  return (username || "").split(/[-_\s]+/).filter(Boolean)
+    .map((w) => w[0].toUpperCase() + w.slice(1)).join(" ").slice(0, 24);
+}
+
 // "Your dreamer" (SPEC 2026-09-27 criterion 5): an account's own toon(s),
-// with enter / rest / delete, and a create form when it may make one.
+// with step back in / let go, and a create form when it may make one.
+// Leaving the dream is the footer's; this panel never rests a dreamer.
 async function renderSlots() {
   const data = await fetchDreamer();
   const list = document.getElementById("slots-list");
@@ -1701,27 +1766,28 @@ async function renderSlots() {
     name.textContent = t.name;
     li.appendChild(name);
     const state = document.createElement("em");
-    state.textContent = t.claimed_by_me ? " (here now)" : t.kicked_at ? " (resting)" : "";
+    state.textContent = t.claimed_by_me ? " (dreaming now)" : t.kicked_at ? " (resting)" : "";
     li.appendChild(state);
-    const main = document.createElement("button");
-    main.type = "button";
-    if (t.claimed_by_me) {
-      main.textContent = "rest";
-      main.onclick = () => kickSlot(t.slot);
-    } else {
-      main.textContent = "enter";
+    if (!t.claimed_by_me) {
+      const main = document.createElement("button");
+      main.type = "button";
+      main.textContent = "step back in";
       main.onclick = () => claimSlot(t.slot);
+      li.appendChild(main);
     }
-    li.appendChild(main);
     const del = document.createElement("button");
     del.type = "button";
-    del.textContent = "delete";
+    del.textContent = "let go";
     del.className = "slot-delete";
     del.onclick = () => askDelete(t);
     li.appendChild(del);
     list.appendChild(li);
   }
   form.classList.toggle("hidden", !data.can_create);
+  const nameInput = form.querySelector("input[name=name]");
+  if (data.can_create && !nameInput.value) nameInput.value = dreamerNameFrom(data.username);
+  document.getElementById("account-who").textContent =
+    data.username ? `signed in as ${data.username}` : "";
   document.getElementById("slots-title").textContent =
     data.toons.length > 1 ? "your dreamers" : "your dreamer";
   return data;
@@ -1754,17 +1820,6 @@ document.getElementById("dreamer-form").addEventListener("submit", async (ev) =>
 async function claimSlot(slot) {
   const result = await postSlotAction(slot, "claim", null);
   if (result) reconnectAfterSlotChange();
-}
-
-async function kickSlot(slot) {
-  const result = await postSlotAction(slot, "kick", null);
-  if (result) {
-    // Resting the toon you play is leaving the dream (the server marks the
-    // session left): stay on "your dreamer" rather than reconnecting.
-    awaitingPick = true;
-    if (ws) { try { ws.close(); } catch (_) {} }
-    enterPicker();
-  }
 }
 
 // Your account (criterion 2): change password, sign out.

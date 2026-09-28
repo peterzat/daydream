@@ -1423,7 +1423,7 @@ async def _handle_talk(actor, room_id, dobj, args, spec) -> None:
         text = (args or "").strip()
         if not text:
             _narrate(room_id, f"What would you like to say to {dobj.name}? "
-                     f"(Try: talk to {dobj.name}: hello)", recipient_id=actor.id)
+                     f"Say it aloud, and {dobj.name} will hear you.", recipient_id=actor.id)
             return False
         events.append("toon", actor.id, "say",
                       {"text": text, "name": actor.name, "to": dobj.name}, room_id=room_id)

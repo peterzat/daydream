@@ -75,7 +75,8 @@ def test_dreamer_create_picks_the_next_free_slot():
     with TestClient(app) as client:
         _login(client)
         assert client.get("/api/dreamer").json() == {
-            "toons": [], "can_create": True, "display_name": "tester", "is_admin": False}
+            "toons": [], "can_create": True, "display_name": "tester", "is_admin": False,
+            "username": "tester"}
         r = client.post("/api/dreamer/create", json=MIRA)
         assert r.status_code == 200 and r.json()["slot"] == 2  # Wren holds 1
 
@@ -291,7 +292,7 @@ def test_a_name_that_could_pass_for_a_toon_id_is_refused(name):
         _login(client)
         name = name.format(wren=toons.get_toon_in_slot(1).id)
         r = client.post("/api/dreamer/create", json={**IVO, "name": name})
-        assert r.status_code == 400 and "id" in r.json()["detail"]
+        assert r.status_code == 400 and "label" in r.json()["detail"]
         assert client.post("/api/dreamer/create", json=IVO).status_code == 200
 
 
@@ -322,7 +323,7 @@ def test_a_residents_id_inside_a_name_is_no_mimic():
                       json={**IVO, "name": "Kat-bell"}).status_code == 200
         _login(c, "copycat")
         r = c.post("/api/dreamer/create", json={**IVO, "name": f"x {matt.json()['id']}"})
-        assert r.status_code == 400 and "id" in r.json()["detail"]
+        assert r.status_code == 400 and "label" in r.json()["detail"]
 
 
 # ---- unowned toons (seeded or from before accounts) -------------------------------------
