@@ -131,5 +131,27 @@ answers that matter are authored.
 
 ## Status
 
-Tracked in the commits of the fix pass; the second playtest follows below
-once it has run.
+All 32 fixed in the pass, one commit per area, each with its tests:
+
+| Area | Findings | Commit |
+|---|---|---|
+| Arrival order and greetings | 1 | a6598a0 |
+| Dozing players | 8 | 7cbf248 |
+| The guide on a first visit; typed help | 3, 7 | 4d3c3b4 |
+| Scroll rail, margin index, resting fade | 12, 13, 14, 21 | 810524a, 307b8fd |
+| Cards, portraits, links, drop cap, titles, hint, overlays, awake page, guide arrow, book count | 15, 17-20, 22, 23, 28, 31, 32 | 397e83f |
+| Your words and asks told back | 24 | 8fa034f |
+| Asked and new topics | 27 | da1d4ea |
+| Parser: trailing phrases, "both" | 5, 6 | 809c57b |
+| Dialogue echo guard | 4 | 6a40c2c |
+| Journal window and hour | 11 | 53be38c |
+| Things that go home; keepsake tags | 2 | d067558 |
+| Authored lines, prepositions, the wound clock, "daylight" (1.6) | 9, 10, 16, 26, 29, 30 | 9198edb |
+| Threads, and "what now" | 25 | 7e96b86 |
+
+Two notes. A small clock wound before this pass keeps its old description
+until it is wound once more (winding now rewrites it). The local model can
+still invent a gesture in an improvised reply; that is its reach, and
+answers that matter are authored.
+
+The second playtest follows below once it has run.
