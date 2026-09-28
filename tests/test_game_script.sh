@@ -8,10 +8,13 @@ GAME="$PROJECT_ROOT/bin/game"
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
-# Isolate from any live dev session.
+# Isolate from any live dev session, and from an awake prod on the same box
+# (the suite blanks DAYDREAM_GPU_LOCK, so bin/game's GPU guard would refuse
+# image-test while prod runs, and `prod deploy`'s own test gate would fail).
 export DAYDREAM_ENV="test-$$"
 export XDG_RUNTIME_DIR="$TMP"
 export HOME="$TMP"
+export DAYDREAM_ALLOW_GPU_WITH_PROD=1
 
 fail() { echo "FAIL: $*" >&2; exit 1; }
 
