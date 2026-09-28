@@ -1,9 +1,27 @@
 # Root and the admin console
 
-Status: **proposal, 2026-09-28, for the operator's decision.** Nothing here
-is built. It answers: "I shouldn't have to do the `sudo ops/install-prod.sh`
-thing; you should be able to do it from this repo", without adding sudo
-scripts carelessly.
+Status: **decided 2026-09-28** (the operator chose the validated helper,
+with `prod.env` through it); being built. It answers: "I shouldn't have to do
+the `sudo ops/install-prod.sh` thing; you should be able to do it from this
+repo", without adding sudo scripts carelessly.
+
+## Security posture (the operator's policy, 2026-09-28)
+
+- **External attacks: high priority, hardened, documented, tested.** The
+  network ingress (the Worker, Access, the tunnel, edge mode on loopback),
+  escalation through the game (the sandboxed service, closed verbs, effect
+  allowlists, loopback-only egress), the prod scripts (commands as the
+  service user, path guards, ask rules on credential and world verbs, the
+  helper's validator), the Cloudflare credentials (a 0600 token scoped and
+  IP-filtered, the Access service token only on the Worker), and injection
+  into the admin agent through player text.
+- **Local attackers: best efforts only.** The box is single-user and locked
+  down (its own notes live in the operator's environment repo: key-only SSH,
+  a deny-by-default firewall, routine access over the tailnet). The operator
+  keeps the `docker` group, which is root-equivalent, so a hostile process
+  running as the operator is out of scope. Reasonable precautions still
+  hold: the sandboxed service user, root-only secrets, root actions through
+  the validated helper, and every one logged.
 
 ## Where we are
 
@@ -120,9 +138,10 @@ One last `sudo ops/install-prod.sh` by the operator: it installs the helper
 and the one-line sudoers entry (plus today's pending unit fix). After that,
 unit changes, timer jobs and `prod.env` edits flow through the admin console.
 
-## Decisions for the operator
+## Decisions (2026-09-28)
 
-1. Adopt the helper design (or passwordless sudo, or the status quo)?
-2. Should `prod.env` edits be in the helper at all, or stay `sudoedit`?
-3. Is the operator's membership in `docker` needed? Leaving it would make
-   the password mean what it seems to (a separate, optional hardening).
+1. The validated helper, as above.
+2. `prod.env` edits go through the helper (`env set`, validated, boot guard
+   first, behind an ask rule).
+3. The operator keeps the `docker` group; local attackers are best efforts
+   only (the posture above).
