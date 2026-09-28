@@ -581,19 +581,33 @@ def _the_name(name: str) -> str:
     return f"the {name}"
 
 
+def _examine_detail(dobj: objects.Object, detail: str) -> str:
+    # A seed that restates the name ("a hush: a small grey quiet") would read
+    # "You examine the hush: a hush: ..." (playtest 2026-09-26).
+    detail = (detail or "").strip()
+    return re.sub(rf"^(?:a|an|the)\s+{re.escape(dobj.name)}\s*[:,]\s*", "", detail,
+                  flags=re.I) or detail
+
+
 def _examine_line(dobj: objects.Object, detail: str) -> str:
     detail = (detail or "").strip()
     if not detail:
         return f"You examine {_the_name(dobj.name)}."
-    # A seed that restates the name ("a hush: a small grey quiet") would read
-    # "You examine the hush: a hush: ..." (playtest 2026-09-26).
-    detail = re.sub(rf"^(?:a|an|the)\s+{re.escape(dobj.name)}\s*[:,]\s*", "", detail,
-                    flags=re.I) or detail
+    detail = _examine_detail(dobj, detail)
     if re.match(rf"(?i)(?:a|an|the)\s+{re.escape(dobj.name)}\b", detail):
         # "a small desk under the lamp, ...": the description already names
         # it, so it stands alone rather than "the small desk: a small desk".
         return _terminate(detail[:1].upper() + detail[1:])
     return f"You examine {_the_name(dobj.name)}: {_terminate(detail)}"
+
+
+def _card(verb: str, dobj: objects.Object, body: str) -> dict:
+    """The look-closer card a narrate carries for the page: the same card for
+    a clicked or a typed examine/read, labelled with what you looked at, the
+    body without the "You examine the X:" lead the text keeps."""
+    body = _examine_detail(dobj, body) if verb == "examine" else (body or "").strip()
+    return {"verb": verb, "name": _the(dobj), "object_id": dobj.id,
+            "body": body[:1].upper() + body[1:]}
 
 
 def _container_glance(dobj: objects.Object) -> str:
@@ -633,7 +647,8 @@ async def _handle_examine(actor, room_id, dobj, iobj, args, spec) -> None:
     cache."""
     cached = dobj.properties.get("examined_text")
     if isinstance(cached, str) and cached.strip():
-        eff = {"kind": "narrate", "text": _examine_line(dobj, cached) + _container_glance(dobj), "to": "@actor"}
+        eff = {"kind": "narrate", "text": _examine_line(dobj, cached) + _container_glance(dobj),
+               "to": "@actor", "card": _card("examine", dobj, _terminate(cached) + _container_glance(dobj))}
         if dobj.properties.get("examined_src") == "local":
             eff["src"] = "local"  # the lazy LLM path below wrote this cache
         _dispatch(actor, room_id, [eff], spec)
@@ -645,10 +660,16 @@ async def _handle_examine(actor, room_id, dobj, iobj, args, spec) -> None:
         parts = [p for p in (appearance, dobj.seed) if p and p.strip()]
         body = " ".join(_terminate(p[:1].upper() + p[1:]) for p in parts)
         line = f"You see {dobj.name}: {body}" if body else f"You see {dobj.name}."
-        _dispatch(actor, room_id, [{"kind": "narrate", "text": line, "to": "@actor"}], spec)
+        eff = {"kind": "narrate", "text": line, "to": "@actor"}
+        if body:
+            eff["card"] = _card("examine", dobj, body)
+        _dispatch(actor, room_id, [eff], spec)
         return
     if dobj.seed and dobj.seed.strip():
-        _dispatch(actor, room_id, [{"kind": "narrate", "text": _examine_line(dobj, _detail_with_state(dobj)) + _container_glance(dobj), "to": "@actor"}], spec)
+        detail = _detail_with_state(dobj)
+        _dispatch(actor, room_id, [{"kind": "narrate", "to": "@actor",
+            "text": _examine_line(dobj, detail) + _container_glance(dobj),
+            "card": _card("examine", dobj, _terminate(detail) + _container_glance(dobj))}], spec)
         return
     if objects.is_container(dobj):
         # A seedless authored container still answers with its contents
@@ -665,7 +686,8 @@ async def _handle_examine(actor, room_id, dobj, iobj, args, spec) -> None:
     _dispatch(actor, room_id, [
         {"kind": "set_property", "target_id": dobj.id, "key": "examined_text", "value": detail},
         {"kind": "set_property", "target_id": dobj.id, "key": "examined_src", "value": "local"},
-        {"kind": "narrate", "text": _examine_line(dobj, detail), "to": "@actor", "src": "local"},
+        {"kind": "narrate", "text": _examine_line(dobj, detail), "to": "@actor", "src": "local",
+         "card": _card("examine", dobj, _terminate(detail))},
     ], spec)
 
 
@@ -1011,12 +1033,14 @@ async def _handle_read(actor, room_id, dobj, iobj, args, spec) -> None:
         # world's closed arcs and who helped, composed at read time.
         from daydream import story
 
-        _dispatch(actor, room_id, [{"kind": "narrate", "to": "@actor",
-            "text": story.chronicle_text(actor.world_id, dobj)}], spec)
+        text = story.chronicle_text(actor.world_id, dobj)
+        _dispatch(actor, room_id, [{"kind": "narrate", "to": "@actor", "text": text,
+                                    "card": _card("read", dobj, text)}], spec)
         return
     text = dobj.properties.get("text")
     if isinstance(text, str) and text.strip():
-        _dispatch(actor, room_id, [{"kind": "narrate", "text": text.strip(), "to": "@actor"}], spec)
+        _dispatch(actor, room_id, [{"kind": "narrate", "text": text.strip(), "to": "@actor",
+                                    "card": _card("read", dobj, text)}], spec)
         return
     _dispatch(actor, room_id, [{"kind": "narrate", "to": "@actor",
         "text": f"There's nothing written on the {dobj.name} to read."}], spec)

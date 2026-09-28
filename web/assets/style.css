@@ -160,6 +160,11 @@ body::before {
   color: var(--sage-deep); font-family: var(--hand); font-size: 1.7em; letter-spacing: .02em;
 }
 .dream-overlay.hidden { display: none; }
+/* Dreaming elsewhere: a solid wash (the prose beneath fought the words) and
+ * the way back (playtest 2026-09-28b). */
+.dream-overlay:has(.door-button) { flex-direction: column; gap: 18px; background: rgba(251, 249, 243, 0.97); }
+.dream-overlay p { margin: 0; padding: 0 24px; }
+.dream-overlay .door-button { font-size: 1.3rem; }
 
 /* ---------- title block ---------- */
 .titleblock { text-align: center; margin: 8px 0 2px; }
@@ -241,6 +246,20 @@ body::before {
   background: linear-gradient(135deg, transparent 50%, #e4d4ad 50%, #d8c79a 100%);
   border-bottom-right-radius: 9px; box-shadow: -2px -2px 4px -2px rgba(120,96,52,.4) inset;
 }
+/* Looking at someone: their painted face, larger, set into the card. */
+.portrait-inset {
+  float: right; position: relative; margin: 4px 0 6px 14px; padding: 0; cursor: zoom-in;
+  width: 96px; height: 115px; border-radius: 8px; overflow: hidden; border: 1px solid #e3d6b4;
+  background: #fffdf6; box-shadow: 0 8px 16px -10px rgba(120,96,52,.55); transform: rotate(1deg);
+}
+.portrait-inset img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 20%; display: block; }
+.portrait-panel { cursor: zoom-out; }
+.portrait-frame {
+  margin: 0; padding: 14px 14px 10px; background: var(--paper); border-radius: 14px;
+  box-shadow: var(--page-shadow); text-align: center; max-width: min(460px, 92vw);
+}
+.portrait-frame img { display: block; width: 100%; height: auto; max-height: 72vh; object-fit: contain; border-radius: 8px; }
+.portrait-frame figcaption { font-family: var(--hand); font-size: 1.6rem; color: var(--sage-deep); margin-top: 6px; }
 /* Repeat examine/read of the same thing resurfaces its card with a warm glow
  * instead of stacking a duplicate (main.js:renderDetailInset); a verbatim
  * repeat of the last prose line glows it the same way (main.js:renderEvent). */
@@ -337,12 +356,14 @@ body::before {
 .skill-ribbon { margin-top: 9px; }
 .skill-ribbon button { font-style: italic; padding: 6px 13px; font-size: .78rem; }
 
-/* the one-line staged hint under the ribbon ("Read is in your hand — ...") */
+/* The one-line staged hint: it takes the ribbon label's place, so the verbs
+ * stay put when it appears (playtest 2026-09-28b). */
 .ribbon-hint {
-  text-align: center; margin-top: 11px;
+  text-align: center; margin: -2px 0 6px; line-height: 1.25;
   font-family: var(--serif); font-style: italic; font-size: .9rem; color: var(--sage);
 }
 .ribbon-hint.hidden { display: none; }
+.ribbon-wrap.hinting .ribbon-label { display: none; }
 .ribbon-hint b { color: var(--sage-deep); font-weight: 600; font-style: normal; }
 .hint-cancel {
   background: none; border: none; padding: 0 0 0 4px; font: inherit; cursor: pointer;
@@ -405,6 +426,8 @@ footer .logout:hover { text-decoration: underline; }
   box-shadow: var(--page-shadow);
 }
 .slots-panel.hidden { display: none; }
+.slots-scrim { position: fixed; inset: 0; z-index: 59; background: rgba(58, 74, 68, 0.32); }
+.slots-scrim.hidden { display: none; }
 .slots-panel h2 { margin: 0 0 0.6em 0; font-family: var(--hand); color: var(--sage-deep); font-size: 1.7em; letter-spacing: .01em; }
 .slots-panel ul { list-style: none; padding: 0; margin: 0 0 0.8em 0; }
 .slots-panel .slot-row {
@@ -562,7 +585,9 @@ footer .logout:hover { text-decoration: underline; }
   content: "\2740"; margin: auto; color: var(--sage); opacity: .5; font-size: .85rem;
 }
 #self .toon-face { width: 44px; height: 44px; }
-.slot-row .toon-face { width: 40px; height: 40px; }
+.slot-row .toon-face { width: 64px; height: 64px; }
+.toon-face.zoomable { cursor: zoom-in; }
+#portrait-panel { z-index: 75; align-items: center; } /* above the dreamer panel it opens from */
 
 /* ---------- how to dream: the first-visit help leaf ---------- */
 #help-panel { z-index: 70; } /* above the slot picker (60): it opens over the arrival beat */
@@ -921,7 +946,7 @@ body.awake #chat { display: none; }
 .margin-index {
   position: absolute; z-index: 5; display: flex; flex-wrap: wrap; justify-content: flex-end;
   gap: 4px 12px; padding: 5px 16px 3px 26px;
-  background: linear-gradient(180deg, rgba(251,249,243,0), var(--paper) 40%);
+  background: linear-gradient(180deg, rgba(249,246,238,0), rgba(249,246,238,.96) 45%);
 }
 .margin-index.hidden { display: none; }
 .index-tab {

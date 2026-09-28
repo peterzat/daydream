@@ -349,6 +349,13 @@ def _apply_narrate(
         # Absent means authored or engine text. Read by the dream digest and
         # the playtest analysis; the SPA ignores it.
         payload["src"] = "local"
+    card = eff.get("card")
+    if isinstance(card, dict) and all(isinstance(v, str) for v in card.values()):
+        # A look-closer card (examine / read): the page shows it as the same
+        # storybook card whether it was clicked or typed (playtest
+        # 2026-09-28b). {verb, name, object_id, body}; the text stays whole
+        # for every other reader.
+        payload["card"] = {k: card[k] for k in ("verb", "name", "object_id", "body") if k in card}
     ev = events.append(
         "system", None, "narrate", payload,
         room_id=target_room, recipient_id=recipient,

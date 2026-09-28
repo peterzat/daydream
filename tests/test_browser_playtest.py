@@ -100,3 +100,37 @@ def test_a_column_with_more_draws_its_rail_and_the_margin_names_what_is_below(ta
     expect(page.locator("#margin-index")).to_be_hidden()
     assert scene.evaluate("(m) => m.scrollTop") > 0
     _assert_quiet(tab, engines)
+
+
+def test_a_typed_look_reads_as_the_same_card_as_a_click(tab, engines):
+    """A clicked examine was a labelled card and a typed one plain prose, with
+    "You examine the clock case: a tall ... clock case" doubling the noun.
+    Both are now the server-marked card, labelled with what you looked at."""
+    page = _signed_in_with_a_dreamer(tab)
+    thing = page.locator("#things .obj").first
+    name = thing.get_attribute("data-name")
+    page.locator("#input-text").fill(f"examine the {name}")
+    page.locator("#input-text").press("Enter")
+    card = page.locator("#chat .detail-inset").last
+    expect(card.locator(".tab")).to_have_text(re.compile(rf"you examine (the )?{re.escape(name)}", re.I))
+    assert not card.locator("p").inner_text().startswith("You examine"), card.inner_text()
+    thing.click()
+    expect(page.locator("#chat .detail-inset")).to_have_count(1)  # the same card, glowed
+    _assert_quiet(tab, engines)
+
+
+def test_the_give_hint_takes_the_label_place_and_the_verbs_stay_put(tab, engines):
+    page = _signed_in_with_a_dreamer(tab)
+    objects.spawn(toons.live_world_id(), "thing", "pebble",
+                  location_id=toons.owned_toons(accounts.get_account("marlo")["id"])[0].id,
+                  prototype_id=objects.PROTO_THING, properties={"seed": "a smooth grey pebble"})
+    page.locator("#exit-bar button[data-direction=up]").click()
+    expect(page.locator("#room-title")).to_have_text(UP["title"])
+    give = page.locator("#verb-bar button[data-verb=give]")
+    before = give.bounding_box()["y"]
+    give.click()
+    page.locator("#inventory .obj", has_text="pebble").click()
+    expect(page.locator("#verb-hint")).to_be_visible()
+    expect(page.locator(".ribbon-label")).to_be_hidden()
+    assert abs(give.bounding_box()["y"] - before) < 3
+    _assert_quiet(tab, engines)

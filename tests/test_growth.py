@@ -175,7 +175,7 @@ async def test_plant_happy_path_full_atomic_batch(monkeypatch):
     assert "south" in line and "The Moss Stair" in line
     # The room it grew from now mentions the new way (playtest 2026-09-26).
     meadow = rooms.get_room("r-meadow").description_cached or ""
-    assert "toward The Moss Stair" in meadow
+    assert "toward the Moss Stair" in meadow  # a title mid-sentence lowers its article (playtest 2026-09-28b)
 
 
 @pytest.mark.asyncio

@@ -354,11 +354,14 @@ _COMPASS = frozenset({"north", "south", "east", "west",
                       "northeast", "northwest", "southeast", "southwest"})
 
 
-def _place(title: str | None) -> str:
+def in_sentence(title: str | None) -> str:
     """A room title mid-sentence: "The Old Mill" -> "the Old Mill"."""
     if not title:
         return "somewhere"
     return "the " + title[4:] if title.startswith("The ") else title
+
+
+_place = in_sentence
 
 
 def move_texts(name: str, direction: str | None, from_title: str | None,

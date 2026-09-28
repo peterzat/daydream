@@ -210,7 +210,7 @@ def _room_description(room: "rooms.Room", view: dict | None) -> str:
         view["room_id"] = room.id
         view["first_visit"] = room.id not in view["visited"]
         view["visited"].add(room.id)
-    return full if view["first_visit"] else f"You return to {room.title}."
+    return full if view["first_visit"] else f"You return to {toons.in_sentence(room.title)}."
 
 
 def _state_snapshot(
@@ -752,7 +752,7 @@ async def _handle_input(text: str, toon_id: str, conn: dict) -> dict | None:
 
         line = variants.pick(_world_of(toon_id), f"chatter:{toon_id}", _CHATTER_LINES, room_id)
         events.append(
-            "system", None, "narrate", {"text": line.replace("{text}", text)},
+            "system", None, "narrate", {"text": line.replace("{text}", text), "plain": True},
             room_id=room_id, recipient_id=toon_id,
         )
     return None

@@ -39,7 +39,7 @@ from __future__ import annotations
 import logging
 import re
 
-from daydream import config, events, journal, objects, rooms, worldclock, worldstate
+from daydream import config, events, journal, objects, rooms, toons, worldclock, worldstate
 from daydream.llm import client, safety
 from daydream.skills import effects
 
@@ -651,7 +651,7 @@ def _commit_growth(
         consume.append({
             "kind": "set_property", "target_id": current_room_id, "key": "description_cached",
             "value": (f"{desc.strip()} A new way opens {_direction_phrase(direction)}, "
-                      f"toward {composition['title']}."),
+                      f"toward {toons.in_sentence(composition['title'])}."),
         })
     consume.extend([
         {"kind": "narrate", "text": (

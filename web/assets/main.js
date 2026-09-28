@@ -37,7 +37,7 @@ let pendingTimer = null; // its safety timeout
 let loadedBuild = null; // server build SHA this page's JS loaded against (redeploy detection)
 let loadedWorldVersion = null;
 let lastCmd = null; // {key, t} -- debounce an accidental double-fire of one command
-let pendingDetail = null; // {verb, name, t} -- a targeted examine/read whose next narrate renders as a detail inset (the ledger reveal)
+let toonCards = {}; // id -> this room's toon cards (portraits for a look-closer card)
 let lastInventory = []; // the latest snapshot's carried things, for the keepsakes backpack foldout
 let inventorySeen = false; // a first snapshot's things are not "new" (nothing to compare)
 let lastJournal = []; // the controlled toon's journal entries from the snapshot (self only)
@@ -98,6 +98,23 @@ function hideDreamOverlay() {
   document.getElementById("dream-overlay").classList.add("hidden");
 }
 
+function showElsewhere() {
+  // Another window or device took your dreamer; one touch brings it back
+  // here (playtest 2026-09-28b: the note said "window" for a phone, and
+  // offered no way back but a reload).
+  const o = document.getElementById("dream-overlay");
+  o.textContent = "";
+  const p = document.createElement("p");
+  p.textContent = "you're dreaming in another window or on another device";
+  const back = document.createElement("button");
+  back.type = "button";
+  back.className = "door-button";
+  back.textContent = "dream here instead";
+  back.onclick = () => { hideDreamOverlay(); reconnectAfterSlotChange(); };
+  o.append(p, back);
+  o.classList.remove("hidden");
+}
+
 function majorOf(v) {
   // MAJOR int of a "MAJOR.MINOR" world_version string (0 when absent/garbled).
   return v ? parseInt(String(v).split(".")[0], 10) || 0 : 0;
@@ -141,7 +158,7 @@ function connect(isReconnect) {
     if (awaitingPick || dreamingElsewhere) return; // left, or another window has us
     if (ev.code === 4409) {
       dreamingElsewhere = true;
-      showDreamOverlay("you're dreaming in another window");
+      showElsewhere();
       return;
     }
     // Why did it close? A refused handshake reads as 1006 in the browser, so
@@ -180,7 +197,7 @@ function connect(isReconnect) {
       renderClarify(data);
     } else if (data.kind === "elsewhere") {
       dreamingElsewhere = true;
-      showDreamOverlay("you're dreaming in another window");
+      showElsewhere();
     } else if (data.kind === "notice") {
       systemLine(data.text); // a gentle limit note (too long, too fast)
     } else if (data.kind === "needs_toon") {
@@ -223,8 +240,11 @@ function renderSnapshot(snap) {
   markHelpSeen(); // someone in the dream has been here before: no guide unasked
   document.getElementById("room-title").textContent =
     snap.room ? snap.room.title : "drifting...";
-  document.getElementById("room-desc").textContent =
-    snap.room && snap.room.description ? snap.room.description : "";
+  const descEl = document.getElementById("room-desc");
+  descEl.textContent = snap.room && snap.room.description ? snap.room.description : "";
+  // The drop cap is for a paragraph: "You return to the square." under a
+  // giant letter read as a glitch (playtest 2026-09-28b).
+  descEl.classList.toggle("dropcap", descEl.textContent.length > 80);
   renderStatusRibbon(snap.status);
   renderFolio(snap.time);
   // The ended-marker derives from snapshot status, so late joiners and
@@ -246,7 +266,8 @@ function renderSnapshot(snap) {
   );
   clearStagedVerb();
   if (snap.room && snap.room.id !== lastArrivalRoomId) cancelText(); // a new room: words unsent
-  pendingDetail = null; // a fresh snapshot supersedes any in-flight examine/read
+  toonCards = {};
+  for (const t of snap.toons || []) toonCards[t.id] = t;
   // Map actor IDs to display names so 'say' events can name the speaker
   // (built from ALL co-located toons, including yourself).
   actorNames = {};
@@ -612,13 +633,21 @@ function showStagedHint(verb, dobjName) {
   const hint = document.getElementById("verb-hint");
   const whom = kinds.indexOf("toon") !== -1 ? "someone" : "something";
   hint.textContent = `${verb} ${dobjName} ${word}... (touch ${whom}, or ${verb} again to change your mind)`;
-  hint.classList.remove("hidden");
+  showHint();
+}
+
+function showHint() {
+  // The hint takes the ribbon label's place, so the verbs don't jump when it
+  // appears (playtest 2026-09-28b).
+  document.getElementById("verb-hint").classList.remove("hidden");
+  document.querySelector(".ribbon-wrap").classList.add("hinting");
 }
 
 function hideStagedHint() {
   const hint = document.getElementById("verb-hint");
   hint.textContent = "";
   hint.classList.add("hidden");
+  document.querySelector(".ribbon-wrap").classList.remove("hinting");
 }
 
 function clearSceneAndLog() {
@@ -722,11 +751,7 @@ function onObjectClick(objectId, objectVerbs, objectKind) {
     askForText(verb, objectId, stagedSpec);
     return;
   } else {
-    // A targeted examine/read renders its narrate as a storybook detail inset
-    // (the ledger reveal); remember the target so renderEvent can style it.
-    if (verb === "examine" || verb === "read") {
-      pendingDetail = { verb, objectId, name: nameForObject(objectId), t: Date.now() };
-    }
+    // An examine/read answers with a card the server marks (renderEvent).
     sendCommand(verb, objectId);
   }
   clearStagedVerb();
@@ -750,7 +775,7 @@ function askForText(verb, objectId, spec) {
   never.textContent = "never mind";
   never.onclick = cancelText;
   hint.appendChild(never);
-  hint.classList.remove("hidden");
+  showHint();
   const inp = document.getElementById("input-text");
   inp.placeholder = spec.text_prompt || "and what do you say?";
   inp.focus();
@@ -803,11 +828,12 @@ function renderEvent(e) {
     return;
   }
 
-  // A targeted examine/read just fired: render its narrate as a storybook
-  // detail inset (the ledger reveal) rather than a plain prose line.
-  if (e.kind === "narrate" && pendingDetail && Date.now() - pendingDetail.t < 8000) {
-    renderDetailInset(e, pendingDetail);
-    pendingDetail = null;
+  // A look-closer line (examine / read) carries its card from the server,
+  // so a typed "read the ledger" and a clicked one read the same (playtest
+  // 2026-09-28b: typed ones were plain prose, with other labels).
+  if (e.kind === "narrate" && e.payload && e.payload.card) {
+    const c = e.payload.card;
+    renderDetailInset(e, { verb: c.verb, objectId: c.object_id, name: c.name, body: c.body });
     return;
   }
 
@@ -840,7 +866,9 @@ function renderEvent(e) {
       return;
     }
     div.dataset.text = text;
-    div.innerHTML = linkifyEntities(text, entities);
+    // A line quoting your own words back (the dream not catching them) links
+    // nothing: your words are not the world's (playtest 2026-09-28b).
+    div.innerHTML = e.payload.plain ? escape(text) : linkifyEntities(text, entities);
     div.querySelectorAll(".entity-link").forEach((span) => {
       span.onclick = () => onObjectClick(span.dataset.objectId);
     });
@@ -915,10 +943,15 @@ function renderDetailInset(e, detail) {
   const tab = document.createElement("span");
   tab.className = "tab";
   const nm = detail.name || "it";
-  tab.textContent = detail.verb === "read" ? `${nm}, read` : `you examine ${nm}`;
+  const person = toonCards[detail.objectId];
+  tab.textContent = detail.verb === "read" ? `you read ${nm}`
+    : person ? `you look at ${nm}` : `you examine ${nm}`;
   aside.appendChild(tab);
+  // Looking at someone shows their painted face, larger; a touch opens it
+  // whole (playtest 2026-09-28b: portraits were only ever a small circle).
+  if (person && person.image_url) aside.appendChild(portraitInset(person));
   const p = document.createElement("p");
-  p.innerHTML = linkifyEntities(text, entities);
+  p.innerHTML = linkifyEntities(detail.body || text, entities);
   p.querySelectorAll(".entity-link").forEach((span) => {
     span.onclick = () => onObjectClick(span.dataset.objectId);
   });
@@ -930,6 +963,31 @@ function renderDetailInset(e, detail) {
   chat.appendChild(aside);
   followLog(aside);
 }
+
+function portraitInset(person) {
+  const fig = document.createElement("button");
+  fig.type = "button";
+  fig.className = "portrait-inset";
+  fig.title = `${person.name}, larger`;
+  const img = document.createElement("img");
+  img.src = assetUrl(person.image_url);
+  img.alt = `${person.name}'s portrait`;
+  fig.appendChild(img);
+  fig.onclick = () => showPortrait(person.image_url, person.name);
+  return fig;
+}
+
+function showPortrait(url, name) {
+  const panel = document.getElementById("portrait-panel");
+  const img = document.getElementById("portrait-img");
+  img.src = assetUrl(url);
+  img.alt = `${name}'s portrait`;
+  document.getElementById("portrait-name").textContent = name;
+  panel.classList.remove("hidden");
+}
+document.getElementById("portrait-panel").addEventListener("click", () => {
+  document.getElementById("portrait-panel").classList.add("hidden");
+});
 
 function glowElement(el) {
   // Restart the glow animation even if the class is already present.
@@ -1140,15 +1198,18 @@ function linkifyEntities(text, ents) {
   for (const e of valid) {
     const a = escape(e.alias);
     const k = a.toLowerCase();
-    if (!byAlias.has(k)) byAlias.set(k, { alias: a, id: e.object_id });
+    if (!byAlias.has(k)) byAlias.set(k, { alias: a, id: e.object_id, person: e.kind === "toon" });
   }
   const aliases = [...byAlias.values()].sort((a, b) => b.alias.length - a.alias.length);
   const pattern = aliases.map((a) => escapeRegex(a.alias)).join("|");
   const re = new RegExp("\\b(" + pattern + ")\\b", "gi");
   return html.replace(re, (m) => {
     const hit = byAlias.get(m.toLowerCase());
-    const id = hit ? hit.id : "";
-    return '<span class="entity-link" data-object-id="' + escape(id) + '">' + m + "</span>";
+    // A person links only by name, as written with its capital: "the way an
+    // hour waits" is not a resident whose name holds the word (playtest
+    // 2026-09-28b).
+    if (!hit || (hit.person && !/^[A-Z]/.test(m))) return m;
+    return '<span class="entity-link" data-object-id="' + escape(hit.id) + '">' + m + "</span>";
   });
 }
 
@@ -1560,8 +1621,10 @@ function closeBook() {
 function renderBook(book) {
   if (!book) return;
   document.getElementById("book-title").textContent = book.title || "The Book";
-  document.getElementById("book-sub").textContent =
-    book.found + " of " + book.total + " stray minutes found";
+  // What you found, not how far there is to go: "1 of 172" read as a chore
+  // on a first day (playtest 2026-09-28b). Each page keeps its own count.
+  document.getElementById("book-sub").textContent = book.found === 1
+    ? "one stray minute found" : book.found + " stray minutes found";
   const pagesBox = document.getElementById("book-pages");
   pagesBox.innerHTML = "";
   const pages = book.pages || [];
@@ -1918,7 +1981,15 @@ async function renderSlots() {
   for (const t of data.toons) {
     const li = document.createElement("li");
     li.className = "slot-row";
-    li.appendChild(toonFace(t.portrait_url));
+    const face = toonFace(t.portrait_url);
+    if (t.portrait_url) {
+      // Your painted face, larger, whole at a touch (playtest 2026-09-28b).
+      face.classList.add("zoomable");
+      face.title = `${t.name}, larger`;
+      face.querySelector("img").alt = `${t.name}'s portrait`;
+      face.onclick = () => showPortrait(t.portrait_url, t.name);
+    }
+    li.appendChild(face);
     const name = document.createElement("strong");
     name.textContent = t.name;
     li.appendChild(name);
@@ -1941,6 +2012,8 @@ async function renderSlots() {
     list.appendChild(li);
   }
   form.classList.toggle("hidden", !data.can_create);
+  // Resting and signing out mean something once there is a dreamer to rest.
+  document.getElementById("rest-note").hidden = !data.toons.length;
   const nameInput = form.querySelector("input[name=name]");
   if (data.can_create && !nameInput.value) nameInput.value = dreamerNameFrom(data.username);
   document.getElementById("account-who").textContent =
@@ -2055,6 +2128,21 @@ async function openDreamerPanel() {
   document.getElementById("slots-panel").classList.remove("hidden");
   await renderSlots();
 }
+
+// The dreamer panel sits over a soft backdrop like the books do, and a touch
+// on it closes the panel (playtest 2026-09-28b: the page showed through).
+new MutationObserver(() => {
+  const open = !document.getElementById("slots-panel").classList.contains("hidden");
+  document.getElementById("slots-scrim").classList.toggle("hidden", !open);
+}).observe(document.getElementById("slots-panel"), { attributes: true, attributeFilter: ["class"] });
+document.getElementById("slots-scrim").addEventListener("click", () => {
+  if (document.body.classList.contains("awake") && !awakeHasDreamer()) return; // the way in stays open
+  document.getElementById("slots-panel").classList.add("hidden");
+});
+
+function awakeHasDreamer() {
+  return !document.getElementById("awake-dreamer").classList.contains("hidden");
+}
 document.getElementById("awake-dreamer").addEventListener("click", openDreamerPanel);
 
 document.getElementById("slots-toggle").addEventListener("click", async () => {
@@ -2147,6 +2235,9 @@ async function showAwake() {
     return;
   }
   const dreamers = data.toons || [];
+  // With no dreamer yet there is one way in; "your dreamer" beside "make
+  // your dreamer" was the same door twice (playtest 2026-09-28b).
+  document.getElementById("awake-dreamer").classList.toggle("hidden", !dreamers.length);
   if (dreamers.length === 1) {
     const t = dreamers[0];
     text.textContent = `You are awake. ${t.name} is resting in ${PLACE} until you step back in.`;

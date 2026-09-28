@@ -105,8 +105,9 @@
     <!-- action ribbon: what you might do -->
     <div class="ribbon-wrap">
       <div class="ribbon-label">what you might do</div>
-      <nav id="verb-bar" class="ribbon" aria-label="actions"></nav>
+      <!-- A staged verb's hint takes the label's place (no jump). -->
       <div id="verb-hint" class="ribbon-hint hidden" aria-live="polite"></div>
+      <nav id="verb-bar" class="ribbon" aria-label="actions"></nav>
       <nav id="skill-bar" class="ribbon skill-ribbon" aria-label="affordances"></nav>
     </div>
 
@@ -134,7 +135,8 @@
     </footer>
   </main>
 
-  <!-- slot picker (fixed overlay) -->
+  <!-- slot picker (fixed overlay) over a soft backdrop -->
+  <div id="slots-scrim" class="slots-scrim hidden" aria-hidden="true"></div>
   <section id="slots-panel" class="slots-panel hidden" aria-label="your dreamer">
     <h2 id="slots-title">your dreamer</h2>
     <ul id="slots-list"></ul>
@@ -173,7 +175,7 @@
     </div>
     <!-- Leaving the dream rests your dreamer and keeps you signed in; signing
          out does both (the operator asked, 2026-09-28, whether they differ). -->
-    <p class="account-note">Leave the dream to let your dreamer rest. Sign out
+    <p id="rest-note" class="account-note">Leave the dream to let your dreamer rest. Sign out
       rests them too, and this browser forgets you until you sign in again.</p>
     <div class="panel-actions">
       <button id="sign-out" type="button">sign out</button>
@@ -235,6 +237,15 @@
     </div>
   </div>
 
+  <!-- A portrait, whole: opened from the face in a look-closer card; a touch
+       anywhere closes it (playtest 2026-09-28b). -->
+  <div id="portrait-panel" class="backpack-overlay portrait-panel hidden" role="dialog" aria-label="a portrait">
+    <figure class="portrait-frame">
+      <img id="portrait-img" alt="">
+      <figcaption id="portrait-name"></figcaption>
+    </figure>
+  </div>
+
   <!-- How to dream: the first-visit help leaf (shown once per browser at the
        picker; reopenable anytime from the footer's ? affordance). Pure static
        authored content; dismissing it is one click and it never gates play. -->
@@ -271,7 +282,7 @@
           for <em>your dreamer</em> and your account. your keepsakes and your book stay
           with you; things that belong to {{place}} find their way home while you sleep.</p>
         <p class="collection-note">this page keeps &mdash; find it again behind<br>the small <strong>?</strong> at the foot of the page.</p>
-        <button id="help-close" type="button" class="back-link">&larr; begin dreaming</button>
+        <button id="help-close" type="button" class="back-link">begin dreaming &rarr;</button>
       </section>
     </div>
   </div>
