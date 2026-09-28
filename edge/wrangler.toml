@@ -27,6 +27,12 @@ COOKIE_NAME = "dd_session_prod"
 binding = "STATE"
 id = "871a206305f04a3a9c7fac38e91660e7"
 
+# The uptime watch (worker.js `scheduled`): every five minutes while the flag
+# says awake, probe the origin and record an unplanned outage's start and end
+# in KV ("uptime"); `bin/game edge status` and `prod status` show it.
+[triggers]
+crons = ["*/5 * * * *"]
+
 [assets]
 directory = "./public"
 binding = "ASSETS"

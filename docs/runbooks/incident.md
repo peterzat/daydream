@@ -6,7 +6,7 @@ Start by looking, in this order, and stop at the first thing that is off.
 bin/game prod check       # which invariant broke?
 bin/game prod status      # units, engines, jobs, health, who is playing
 bin/game prod logs        # the service and the tunnel (add -f to follow)
-bin/game edge status      # the flag, and what the public URL answers
+bin/game edge status      # the flag, the uptime watch (DOWN since ...?), what the public URL answers
 nvidia-smi                # is the card free, full, or held by something else?
 ```
 

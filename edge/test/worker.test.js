@@ -6,7 +6,7 @@ import { test, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { handle, rewriteLocation, upstreamHeaders, escapeHtml, stripAccessCookies,
-  placeOf, cookieNameFor }
+  placeOf, cookieNameFor, watch }
   from "../src/worker.js";
 
 const TEMPLATE = readFileSync(new URL("../public/daydream/_edge/asleep.html", import.meta.url), "utf8");
@@ -250,4 +250,58 @@ test("the pass cookie is the flag's when it is a session cookie name, else the c
   assert.equal(cookieNameFor(e, { cookie: "evil; path=/" }), "dd_session_prod");
   assert.equal(cookieNameFor(e, {}), "dd_session_prod");
   assert.equal(cookieNameFor({ ...e, COOKIE_NAME: "dd_session_x" }, null), "dd_session_x");
+});
+
+test("the app's security headers reach the browser through the proxy unchanged", async () => {
+  const appHeaders = {
+    "content-security-policy": "default-src 'self'; frame-ancestors 'none'",
+    "x-content-type-options": "nosniff",
+    "x-frame-options": "DENY",
+    "referrer-policy": "same-origin",
+    "permissions-policy": "camera=(), microphone=(), geolocation=()",
+  };
+  originReply = () => new Response("<html></html>", { status: 200, headers: appHeaders });
+  const r = await handle(req("/daydream/"), env({ state: "awake", note: "", since: null }));
+  assert.equal(r.status, 200);
+  for (const [k, v] of Object.entries(appHeaders)) assert.equal(r.headers.get(k), v, k);
+});
+
+// ---- the uptime watch ----
+
+function kvEnv(initial) {
+  const store = new Map(Object.entries(initial));
+  const puts = [];
+  const e = env();
+  e.STATE = {
+    get: async (k) => (store.has(k) ? store.get(k) : null),
+    put: async (k, v) => { store.set(k, v); puts.push(k); },
+  };
+  return { e, store, puts };
+}
+
+test("the watch records an outage's start and end, and writes nothing on a quiet check", async () => {
+  const awake = JSON.stringify({ state: "awake", note: "", since: null });
+  const { e, store, puts } = kvEnv({ state: awake });
+  originReply = () => new Response("ok", { status: 200 });
+  assert.equal(await watch(e, new Date("2026-09-28T10:00:00Z")), "up");
+  assert.deepEqual(puts, []);
+  originReply = () => new Error("tunnel down");
+  assert.equal(await watch(e, new Date("2026-09-28T10:05:00Z")), "down");
+  assert.equal(await watch(e, new Date("2026-09-28T10:10:00Z")), "down");
+  assert.equal(puts.length, 1);
+  assert.equal(JSON.parse(store.get("uptime")).down_since, "2026-09-28T10:05:00Z");
+  originReply = () => new Response("ok", { status: 200 });
+  await watch(e, new Date("2026-09-28T10:15:00Z"));
+  const u = JSON.parse(store.get("uptime"));
+  assert.equal(u.down_since, null);
+  assert.deepEqual(u.outages, [{ from: "2026-09-28T10:05:00Z", to: "2026-09-28T10:15:00Z" }]);
+  assert.equal(puts.length, 2);
+});
+
+test("the watch leaves a planned sleep alone", async () => {
+  const { e, puts } = kvEnv({ state: JSON.stringify({ state: "asleep", note: "", since: null }) });
+  originReply = () => new Error("down on purpose");
+  assert.equal(await watch(e), "asleep");
+  assert.deepEqual(puts, []);
+  assert.equal(calls.length, 0);
 });

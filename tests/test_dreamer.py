@@ -158,3 +158,27 @@ def test_an_admin_switches_toons_and_leaving_rests_the_one_in_play():
         assert not any(t["claimed_by_me"] for t in client.get("/api/dreamer").json()["toons"])
         with client.websocket_connect("/ws") as ws:
             assert ws.receive_json() == {"kind": "needs_toon"}
+
+
+def test_a_player_makes_only_so_many_dreamers_a_day():
+    """Each dreamer paints a portrait on the shared GPU: making and letting go
+    in a loop is capped per player per day (codereview/hardening 2026-09-28);
+    the operator's admin accounts are exempt."""
+    from daydream.api import slots as slots_module
+
+    limit, _ = slots_module.DREAMERS_PER_DAY
+    with TestClient(app) as client:
+        authhelp.login(client, "looper")
+        for i in range(limit):
+            r = client.post("/api/dreamer/create",
+                            json={"name": f"Loop{i}", "appearance_seed": "a small wren"})
+            assert r.status_code == 200, r.text
+            slot = r.json()["slot"]
+            assert client.post(f"/api/slots/{slot}/delete").status_code == 200
+        r = client.post("/api/dreamer/create",
+                        json={"name": "LoopMore", "appearance_seed": "a small wren"})
+        assert r.status_code == 429
+        authhelp.login(client, "keeper-admin", role="admin")
+        r = client.post("/api/dreamer/create",
+                        json={"name": "Admin", "appearance_seed": "a small wren"})
+        assert r.status_code == 200

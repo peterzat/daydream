@@ -217,17 +217,22 @@ in order), **operator** (needs the operator's hands or decision), **later**.
 - next: a capacity rehearsal in dev before twelve friends: N agent players
   (`bin/game play`) at once; LLM p50/p95 from the new log lines, arbiter
   waits, render queueing; the numbers written down
-- next: dreamer creation is rate-limited per account (each one costs a
-  portrait render on the shared GPU)
+- done: dreamer creation is capped per player per day (each one costs a
+  portrait render on the shared GPU); admins are exempt
 - next: a "fresh GitHub user" review of the README, the setup docs and the
   runbooks: could someone clone, fork and host their own instance from
   them alone? (the operator's ask, 2026-09-28)
-- next: an uptime record: a Worker cron trigger (free plan) probes the
-  origin while the flag says awake and records unplanned outages in KV;
-  `edge status` and `prod status` show them (a friend's "it's down" should
-  never be the first signal)
-- next: the edge's response headers for /daydream: HSTS, Referrer-Policy,
-  and a test that the Worker keeps the app's CSP intact
+- done: an uptime record: a Worker cron trigger (free plan) probes the
+  origin while the flag says awake and records unplanned outages in KV
+  (writes only on a change); `edge status` and `prod status` show them
+- next: `bin/game edge deploy` ships it (with the instance words above)
+- later: a push notification when an outage opens (an alert channel the
+  operator chooses)
+- done: a test that the Worker passes the app's security headers (CSP,
+  nosniff, frame denial, Referrer-Policy, Permissions-Policy) unchanged
+- operator: HSTS is host-wide (it binds the Pages site on www.eidolon.com
+  too), so it belongs in the Cloudflare dashboard (SSL/TLS, Edge
+  Certificates), not in the app
 - later: a disaster-recovery drill written down (a new box: install,
   offsite restore, Cloudflare re-pointing), once offsite exists
 - operator: the R2 bucket and its lifecycle rule (CLOUDFLARE-SETUP step 13)

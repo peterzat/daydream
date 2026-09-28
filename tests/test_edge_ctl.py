@@ -108,3 +108,14 @@ def test_node_is_found_under_nvm_when_path_lacks_it(tmp_path, monkeypatch):
     monkeypatch.setenv("PATH", "/usr/bin:/bin")
     first = edge._node_env()["PATH"].split(":")[0]
     assert first == str(tmp_path / ".nvm" / "versions" / "node" / "v24.14.1" / "bin")
+
+
+def test_the_uptime_watch_is_described_plainly():
+    from daydream import edge
+
+    assert edge.describe_uptime({"down_since": None, "outages": []}) == \
+        "up; no unplanned outage recorded"
+    assert edge.describe_uptime({"down_since": "2026-09-28T10:05:00Z", "outages": []}).startswith(
+        "DOWN since 2026-09-28T10:05:00Z")
+    one = {"down_since": None, "outages": [{"from": "a", "to": "b"}]}
+    assert edge.describe_uptime(one) == "up; last unplanned outage a to b (1 recorded)"

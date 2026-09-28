@@ -155,6 +155,29 @@ def get_state() -> dict:
     return s if isinstance(s, dict) else {"state": "awake", "note": "", "since": None}
 
 
+def get_uptime() -> dict:
+    """What the Worker's uptime watch recorded (worker.js `watch`): an open
+    unplanned outage's start, and the last ones, newest first."""
+    try:
+        u = json.loads(kv_get("uptime") or "null")
+    except json.JSONDecodeError:
+        u = None
+    if not isinstance(u, dict):
+        return {"down_since": None, "outages": []}
+    outages = u.get("outages") if isinstance(u.get("outages"), list) else []
+    return {"down_since": u.get("down_since"), "outages": outages}
+
+
+def describe_uptime(u: dict) -> str:
+    if u.get("down_since"):
+        return f"DOWN since {u['down_since']} (unplanned; the flag says awake)"
+    last = next((o for o in u.get("outages", []) if isinstance(o, dict)), None)
+    if last:
+        return (f"up; last unplanned outage {last.get('from')} to {last.get('to')} "
+                f"({len(u['outages'])} recorded)")
+    return "up; no unplanned outage recorded"
+
+
 def describe_state() -> str:
     s = get_state()
     out = s.get("state", "?")
@@ -162,6 +185,12 @@ def describe_state() -> str:
         out += f" ({s['note']})"
     if s.get("since"):
         out += f" since {s['since']}"
+    if s.get("place"):
+        out += f"; {s['place']}"
+    try:
+        out += "; watch: " + describe_uptime(get_uptime())
+    except (EdgeError, OSError):
+        out += "; watch: unknown"
     return out
 
 

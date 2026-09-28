@@ -13,6 +13,17 @@ bin/game edge sleep "<note>" | wake    # the flag only
 bin/game edge secrets    # set ACCESS_CLIENT_ID / ACCESS_CLIENT_SECRET (typed or piped)
 ```
 
+## The uptime watch
+
+A cron trigger in `edge/wrangler.toml` runs the Worker's `watch` every five
+minutes. While the flag says awake it probes the origin, and it writes the
+KV key `uptime` only when an unplanned outage starts or ends (the last 20
+are kept). `bin/game edge status` and `bin/game prod status` end their edge
+line with `watch: ...`: `up; no unplanned outage recorded`, the last outage's
+start and end, or `DOWN since ...` while one is open. A planned sleep is not
+an outage. The trigger ships with `bin/game edge deploy`; the free plan
+allows it.
+
 ## Deploy a Worker change
 
 Change `edge/src/` or `edge/public/`, run `bin/game edge test`, commit, then

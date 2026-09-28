@@ -146,15 +146,27 @@ async def _toon_request(request: Request) -> tuple[str, str]:
 
 logger = logging.getLogger(__name__)
 
+# Each new dreamer paints a portrait on the shared GPU, so making and letting
+# go of dreamers in a loop could keep the card from everyone else. A player
+# makes at most this many a day (the operator's admin accounts are exempt).
+DREAMERS_PER_DAY = (6, 24 * 60 * 60)
+
 
 def _create(slot: int, name: str, appearance: str, who: accounts.Principal) -> dict:
     if not _may_hold_another(who):
         raise HTTPException(status_code=409, detail="you already have a dreamer here")
+    budget_key = f"dreamer-create:{who.account_id}"
+    if not who.is_admin and accounts.throttled(budget_key, DREAMERS_PER_DAY):
+        logger.warning("dreamer made too often: %s", who.username)
+        raise HTTPException(status_code=429,
+                            detail="you have made several dreamers today; try again tomorrow")
     new_toon = toons.create_toon_in_slot(slot, name, appearance, who.session_id,
                                          owner_account=who.account_id)
     if new_toon is None:
         raise HTTPException(status_code=409, detail="slot already populated")
     accounts.set_left(who.session_id, False)  # picking a toon re-enters the dream
+    if not who.is_admin:
+        accounts.record_failure(budget_key, DREAMERS_PER_DAY)  # counts makes, not failures
     logger.info("dreamer made: %s by %s", new_toon.name, who.username)
     return _toon_to_dict(new_toon, who.session_id)
 
