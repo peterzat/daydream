@@ -342,3 +342,36 @@ async def test_a_thing_whose_name_holds_from_grounds_whole(monkeypatch):
     p = await parser.parse("t-wren", "take the letter from home")
     assert (p.verb, p.dobj_id) == ("take", letter.id)
     spy.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_a_trailing_phrase_does_not_hide_the_name(monkeypatch):
+    """Playtest 2026-09-28b: "wind the turned-back clock for linden" named
+    nothing whole, went to the model, and wound the other clock. The name
+    before a trailing "for/on/with ..." phrase grounds when it alone matches."""
+    spy = _mock_llm(monkeypatch, {"verb": "none"})
+    turned = objects.spawn("w-bunny", "thing", "turned-back clock", location_id="t-wren",
+                         prototype_id=objects.PROTO_THING, properties={"seed": "a clock"})
+    objects.spawn("w-bunny", "thing", "small clock", location_id="t-wren",
+                  prototype_id=objects.PROTO_THING, properties={"seed": "a clock"})
+    p = await parser.parse("t-wren", "examine the turned-back clock for linden")
+    assert (p.verb, p.dobj_id) == ("examine", turned.id)
+    assert spy.await_count == 0
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("text", ["take both letters", "take all the letters",
+                                  "take all of the letters", "take every letter"])
+async def test_a_group_named_by_its_noun_takes_each_one(monkeypatch, text):
+    """"take both letters" read "You don't see the both letters here"."""
+    spy = _mock_llm(monkeypatch, {"verb": "none"})
+    a = objects.spawn("w-bunny", "thing", "crayon letter", location_id="r-forge",
+                      prototype_id=objects.PROTO_THING, properties={"seed": "a letter"})
+    b = objects.spawn("w-bunny", "thing", "marble letter", location_id="r-forge",
+                      prototype_id=objects.PROTO_THING, properties={"seed": "a letter"})
+    lp = await parser.parse_line("t-wren", text)
+    assert sorted(c.dobj_id for c in lp.commands) == sorted([a.id, b.id])
+    assert all(c.verb == "take" for c in lp.commands)
+    lp = await parser.parse_line("t-wren", "take both spoons")
+    assert lp.message == "You don't see any spoons here."
+    assert spy.await_count == 0

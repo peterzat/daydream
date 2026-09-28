@@ -42,7 +42,16 @@ from daydream.skills import registry
 
 logger = logging.getLogger(__name__)
 
-_LEADING_ARTICLES = ("the ", "a ", "an ", "my ")
+_LEADING_ARTICLES = ("the ", "a ", "an ", "my ", "some ", "any ")
+
+# A trailing phrase after a name ("wind the clock for my friend", "examine the
+# jar on the shelf"): when the whole name matches nothing, the name before it
+# is tried (playtest 2026-09-28b: the model grounded the other clock).
+_TRAILING_PHRASE = re.compile(
+    r"(?i)\s+(?:for|to|with|at|on|in|near|by|toward|towards|beside|under|over|into|onto|from)\s+.*$")
+
+# "both letters", "all the clocks", "every lantern": a group named by its noun.
+_GROUP = re.compile(r"(?i)^(?:both|each|every|all(?:\s+of)?)\s+(?:the\s+)?(?:of\s+the\s+)?(.+)$")
 
 
 def _strip_article(text: str) -> str:
@@ -401,6 +410,12 @@ def _fast_path(actor_id: str, text: str, room: rooms.Room | None):
 
     name = _strip_article(dobj_part)
     matches = _ground(actor_id, name)
+    if len(matches) == 0 and iobj_part is None:
+        head = _TRAILING_PHRASE.sub("", name).strip()
+        if head and head != name:
+            head_matches = _ground(actor_id, head)
+            if len(head_matches) == 1:
+                name, matches = head, head_matches
     if len(matches) == 0:
         # Named but not in scope ("take the moon"): pass the name through so
         # the executor reads "you don't see the <name> here". If an iobj
@@ -607,6 +622,11 @@ def _expand_multi(
     single-target commands get the clarify treatment instead)."""
     part = dobj_part.strip()
     low = part.lower()
+    group = _GROUP.match(part)
+    if group and not re.match(r"(?i)^all\s+(?:except|but)\b", part):
+        # "take both letters": every one of them here (playtest 2026-09-28b
+        # read "You don't see the both letters here").
+        return _expand_group(actor_id, verb, group.group(1).strip(), iobj_id)
     is_all = low == "all" or low.startswith("all ") or low == "everything"
     listy = _AND_SPLIT.search(part) is not None
     if not is_all and not listy:
@@ -656,6 +676,26 @@ def _expand_multi(
             grounded += 1
             out.append(Parse(verb, dobj_id=matches[0].id, iobj_id=iobj_id))
     return out if out and grounded else None
+
+
+def _expand_group(actor_id: str, verb: str, noun: str, iobj_id: str | None):
+    """Every candidate for the verb whose name or an alias ends in the noun,
+    plural or not ("letters" takes the crayon letter and the marble letter)."""
+    stem = noun.lower()
+    stems = {stem}
+    if stem.endswith("es") and len(stem) > 4:
+        stems.add(stem[:-2])
+    if stem.endswith("s") and len(stem) > 3:
+        stems.add(stem[:-1])
+    kept = []
+    for o in _all_candidates(actor_id, verb, iobj_id):
+        names = [o.name.lower()] + [str(a).lower() for a in o.aliases]
+        if any(n == st or n.endswith(" " + st) for n in names for st in stems):
+            kept.append(o)
+    if not kept:
+        where = "here" if verb == "take" else "with you"
+        return LineParse(message=f"You don't see any {noun} {where}.")
+    return [Parse(verb, dobj_id=o.id, iobj_id=iobj_id) for o in kept]
 
 
 def _all_candidates(
