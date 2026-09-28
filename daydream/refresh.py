@@ -259,7 +259,12 @@ def main(argv: list[str] | None = None) -> int:
 
     ap = argparse.ArgumentParser(prog="bin/game world refresh", description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("envelope", nargs="?", default=str(PROJECT_ROOT / "worlds/lost-hours.json"))
+    from daydream import instance
+
+    # The instance's own world by default (docs/INSTANCES.md): a bare refresh
+    # of another instance must never read The Village of Lost Hours.
+    ap.add_argument("envelope", nargs="?",
+                    default=str(PROJECT_ROOT / instance.load()["envelope"]))
     ap.add_argument("--db", help="live DB (default: the configured live DB)")
     ap.add_argument("--check", action="store_true", help="report only; write nothing")
     args = ap.parse_args(argv)

@@ -8,7 +8,7 @@
   <title>daydream</title>
   <link rel="stylesheet" href="assets/style.css">
 </head>
-<body class="door-body">
+<body class="door-body" data-place="{{place}}" data-place-capital="{{Place}}">
   <!-- The front door (SPEC 2026-09-27 criteria 2 and 8): sign in, or redeem
        an invitation. Served for the base path when signed out, for login,
        and for invite/<slug>. No inline script: door.js does the work. -->
@@ -16,12 +16,12 @@
     <span class="leaf l1" aria-hidden="true"></span>
     <span class="leaf l2" aria-hidden="true"></span>
     <figure class="plate-figure door-plate">
-      <img src="assets/door-village.png" alt="">
+      <img src="{{door_image}}" alt="">
     </figure>
     <h1 class="chapter-title door-title">daydream</h1>
 
     <section id="door-login" class="door-panel">
-      <p class="door-lede">A small storybook village, kept for friends.</p>
+      <p class="door-lede">{{lede}}</p>
       <form id="login-form" class="door-form" autocomplete="on">
         <label class="door-field">username
           <input name="username" autocomplete="username" autocapitalize="none"

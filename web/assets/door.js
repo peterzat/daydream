@@ -4,6 +4,9 @@
 // invitation. Every URL is relative to the page's <base href>, like main.js.
 (function () {
   const invite = location.pathname.match(/\/invite\/([^/?#]+)\/?$/);
+  // This instance's words, filled in by the server (docs/INSTANCES.md).
+  const place = document.body.dataset.place || "the village";
+  const Place = document.body.dataset.placeCapital || "The village";
 
   async function post(path, data) {
     let r;
@@ -15,7 +18,7 @@
         body: JSON.stringify(data),
       });
     } catch (e) {
-      return { ok: false, status: 0, body: { error: "the village can't be reached just now" } };
+      return { ok: false, status: 0, body: { error: `${place} can't be reached just now` } };
     }
     let body = {};
     try { body = await r.json(); } catch (e) { body = {}; }
@@ -73,8 +76,8 @@
       document.getElementById("invite-username-field").hidden = true;
       document.getElementById("invite-button").textContent = "set password";
     } else {
-      greeting.textContent = `Welcome, ${first}. A place in the village has been kept for you.`;
-      note.textContent = "The village keeps what you do so its story can answer you, and "
+      greeting.textContent = `Welcome, ${first}. A place in ${place} has been kept for you.`;
+      note.textContent = `${Place} keeps what you do so its story can answer you, and `
         + who + " reads summaries of it to write new chapters.";
       note.hidden = false;
     }

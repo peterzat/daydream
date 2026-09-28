@@ -72,10 +72,16 @@ async function whyClosed() {
   return null;
 }
 
+// This instance's words, filled in by the server (docs/INSTANCES.md).
+const PLACE = document.body.dataset.place || "the village";
+const PLACE_CAPITAL = document.body.dataset.placeCapital || "The village";
+const DOOR_IMAGE = document.body.dataset.doorImage || "assets/door-village.png";
+
 function asleepText(why) {
   const who = why.operator || "the person who invited you";
   const note = why.note ? " " + why.note : "";
-  return `The village is asleep.${note} Send ${who} a note to light the lamps; this page will wake with it.`;
+  const where = why.place ? why.place[0].toUpperCase() + why.place.slice(1) : PLACE_CAPITAL;
+  return `${where} is asleep.${note} Send ${who} a note to light the lamps; this page will wake with it.`;
 }
 
 function showDreamOverlay(text) {
@@ -1872,7 +1878,7 @@ async function showAwake() {
   document.body.classList.add("awake");
   document.getElementById("room-title").textContent = "awake";
   document.getElementById("folio").textContent = "outside the dream";
-  document.getElementById("room-bg").src = assetUrl("assets/door-village.png");
+  document.getElementById("room-bg").src = assetUrl(DOOR_IMAGE);
   const text = document.getElementById("awake-text");
   const back = document.getElementById("awake-return");
   text.textContent = "";
@@ -1883,7 +1889,7 @@ async function showAwake() {
   back.hidden = false;
   if (!data) {
     // Not "no dreamer": the read failed (its reason is on the note).
-    text.textContent = "The village could not be reached just now.";
+    text.textContent = `${PLACE_CAPITAL} could not be reached just now.`;
     back.textContent = "try again";
     back.onclick = showAwake;
     return;
@@ -1891,17 +1897,15 @@ async function showAwake() {
   const dreamers = data.toons || [];
   if (dreamers.length === 1) {
     const t = dreamers[0];
-    text.textContent = `You are awake. ${t.name} is resting in the village, ` +
-      "which keeps its own hours while you are away.";
+    text.textContent = `You are awake. ${t.name} is resting in ${PLACE} until you step back in.`;
     back.textContent = "step back in";
     back.onclick = () => claimSlot(t.slot);
   } else if (dreamers.length) {
-    text.textContent = "You are awake. Your dreamers are resting in the village, " +
-      "which keeps its own hours while you are away.";
+    text.textContent = `You are awake. Your dreamers are resting in ${PLACE} until you step back in.`;
     back.textContent = "choose a dreamer";
     back.onclick = openDreamerPanel;
   } else {
-    text.textContent = "The village is just past this page. " +
+    text.textContent = `${PLACE_CAPITAL} is just past this page. ` +
       "Make your dreamer, and step inside.";
     back.textContent = "make your dreamer";
     back.onclick = openDreamerPanel;

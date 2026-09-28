@@ -2,6 +2,7 @@
 so tests can monkeypatch env vars and re-read."""
 
 import os
+import re
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -100,9 +101,14 @@ def public_url(path: str = "") -> str:
 
 
 def cookie_name() -> str:
-    """The session cookie's name, per env, so a dev cookie and a prod cookie
-    on the same browser never collide."""
-    return f"dd_session_{env()}"
+    """The session cookie's name, per env and per instance, so a dev cookie
+    and a prod cookie on the same browser never collide, and a browser keeps
+    one session per instance across a swap (docs/INSTANCES.md). A data dir
+    with no instance.json keeps the old name."""
+    from daydream import instance
+
+    name = instance.name()
+    return f"dd_session_{env()}_{name}" if name else f"dd_session_{env()}"
 
 
 def cookie_secure() -> bool:
@@ -113,9 +119,13 @@ def cookie_secure() -> bool:
 
 def operator_name() -> str:
     """Who friends ask for help (an invite that won't work, a sleeping
-    village). Set DAYDREAM_OPERATOR_NAME in the deployment's env; the default
-    stays generic because this repo is public."""
-    return os.environ.get("DAYDREAM_OPERATOR_NAME", "").strip() or "the person who invited you"
+    village): the instance's own title when its instance.json sets one, else
+    DAYDREAM_OPERATOR_NAME from the deployment's env; the default stays
+    generic because this repo is public."""
+    from daydream import instance
+
+    return (instance.load()["operator"] or os.environ.get("DAYDREAM_OPERATOR_NAME", "").strip()
+            or "the person who invited you")
 
 
 LOOPBACK_HOSTS = ("127.0.0.1", "::1", "localhost")
@@ -143,8 +153,42 @@ def boot_problems() -> list[str]:
     return problems
 
 
-def data_dir() -> Path:
+def data_root() -> Path:
+    """DAYDREAM_DATA_DIR as set: the whole data dir, or (with instances) the
+    box's, which holds `instances/<name>/` and the `active` link."""
     return Path(os.environ.get("DAYDREAM_DATA_DIR", str(Path.home() / "data" / "daydream")))
+
+
+INSTANCE_NAME = re.compile(r"^[a-z][a-z0-9-]{0,31}$")
+_data_dirs: dict[tuple[str, str], Path] = {}
+
+
+def data_dir() -> Path:
+    """The data dir of the instance this process serves (docs/INSTANCES.md):
+    `instances/$DAYDREAM_INSTANCE` when that is set, else the target of the
+    `active` link when there is one, else DAYDREAM_DATA_DIR itself (dev, the
+    tests, a single-instance box). Resolved once per process for a given
+    setting: a swap flips `active` with the service stopped, and a process
+    must never serve half of one instance and half of another."""
+    root = data_root()
+    name = os.environ.get("DAYDREAM_INSTANCE", "").strip()
+    key = (str(root), name)
+    found = _data_dirs.get(key)
+    if found is None:
+        if name:
+            if not INSTANCE_NAME.match(name):
+                raise ValueError(f"DAYDREAM_INSTANCE={name!r} is not an instance name")
+            found = root / "instances" / name
+        else:
+            active = root / "active"
+            found = active.resolve() if active.exists() else root
+        _data_dirs[key] = found
+    return found
+
+
+def forget_data_dir() -> None:
+    """Drop the per-process resolution (tests, and tools that flip `active`)."""
+    _data_dirs.clear()
 
 
 def worlds_dir() -> Path:

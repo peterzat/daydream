@@ -7,7 +7,7 @@
   <title>daydream</title>
   <link rel="stylesheet" href="assets/style.css">
 </head>
-<body>
+<body data-place="{{place}}" data-place-capital="{{Place}}" data-door-image="{{door_image}}">
   <!-- Calm connection / hot-swap wash (fixed; recovers on its own). -->
   <div id="dream-overlay" class="dream-overlay hidden" aria-live="polite"></div>
   <!-- Death interstitial: a brief black beat before the respawn snapshot. -->
@@ -134,7 +134,7 @@
     <!-- "your dreamer" (SPEC 2026-09-27 criteria 5 and 8): a real form, no
          browser prompt dialogs. Shown when the account may make a dreamer. -->
     <form id="dreamer-form" class="dreamer-form hidden" autocomplete="off">
-      <p class="dreamer-lede">Who will you be in the village?</p>
+      <p class="dreamer-lede">Who will you be in {{place}}?</p>
       <label class="door-field">a name
         <input name="name" maxlength="24" required>
       </label>
@@ -218,7 +218,7 @@
         <div class="page-eyebrow">while you slept</div>
         <h1 id="slept-title" class="spread-title ending-title slept-title">The dream turned over</h1>
         <p id="slept-text" class="ending-text slept-text"></p>
-        <button id="slept-close" type="button" class="back-link">&larr; back to the village</button>
+        <button id="slept-close" type="button" class="back-link">&larr; back to {{place}}</button>
       </section>
     </div>
   </div>
@@ -241,7 +241,7 @@
           act on it. touching something with nothing staged simply looks closer.</p>
         <div class="page-eyebrow">asking</div>
         <p class="help-note">under <em>here with you</em>, each person lists what you
-          could ask them about. touch a topic to ask. the village remembers what
+          could ask them about. touch a topic to ask. {{place}} remembers what
           you do, and so do its people.</p>
       </section>
       <section class="pg right">
@@ -251,13 +251,13 @@
         <div class="page-eyebrow">the satchel</div>
         <p class="help-note"><em>open the satchel</em> lays out your keepsakes &mdash;
           the things you carry, and in time the story of your dreams. stray
-          minutes glint about the village, a few each day just for you; pick
+          minutes glint about {{place}}, a few each day just for you; pick
           them up and they settle into <em>your book</em>.</p>
         <div class="page-eyebrow">waking</div>
         <p class="help-note"><em>leave the dream</em> lets your dreamer rest, and you
           can step back in whenever you like; <em>your dreamer</em> is where you
           find them, and your account. your keepsakes and your book stay with you;
-          things that belong to the village find their way home while you sleep.</p>
+          things that belong to {{place}} find their way home while you sleep.</p>
         <p class="collection-note">this page keeps &mdash; find it again behind<br>the small <strong>?</strong> at the foot of the book.</p>
         <button id="help-close" type="button" class="back-link">&larr; begin dreaming</button>
       </section>

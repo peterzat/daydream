@@ -45,8 +45,11 @@ def invite_message(for_name: str, link: str, expires_at: str, kind: str = "join"
     if kind == "reset":
         return (f"Hi {first}, here's a link to set a new daydream password: {link} "
                 f"(it works once, until {day}).")
-    return (f"Hi {first}! You're invited to daydream, a small storybook village I keep for "
-            f"friends (I'm its Night Warden). Your invitation: {link} (it works once, until {day}). Open it, pick a "
+    from daydream import instance
+
+    blurb = instance.load()["invite_blurb"]
+    return (f"Hi {first}! You're invited to daydream, {blurb} (I'm {config.operator_name()}). "
+            f"Your invitation: {link} (it works once, until {day}). Open it, pick a "
             f"username and password, and you're in.")
 
 

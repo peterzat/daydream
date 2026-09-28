@@ -4,6 +4,7 @@ Static SPA serving: when web/dist/ exists (built by Inc 7's Vite step), the
 root path serves it; before that, a minimal placeholder HTML lets a browser
 verify the auth flow end to end."""
 
+import logging
 import re
 from contextlib import asynccontextmanager
 from html import escape as html_escape
@@ -17,7 +18,7 @@ from fastapi.responses import (
 )
 from fastapi.staticfiles import StaticFiles
 
-from daydream import accounts, announce, config, db, drift, logs, version, village
+from daydream import accounts, announce, config, db, drift, instance, logs, version, village
 from daydream.api import auth, slots, world, ws
 from daydream.api import rooms as rooms_api
 from daydream.api.access import AccessMiddleware
@@ -36,6 +37,12 @@ image_cache.ensure_cache_root()
 async def lifespan(app: FastAPI):
     # The app's own log lines reach the journal (daydream/logs.py).
     logs.configure()
+    # Which instance this process serves, read once (docs/INSTANCES.md). A
+    # malformed instance.json refuses to boot rather than serve half-worded.
+    words = instance.load()
+    logging.getLogger("daydream.server").info(
+        "serving instance %s (%s) from %s", words["name"] or "(none)", words["title"],
+        config.data_dir())
     # Fail closed before touching anything: prod refuses to serve unless it
     # runs in edge mode with a public origin, a public base and a loopback
     # bind (SPEC 2026-09-27 criterion 1; docs/GOING-LIVE.md section 2).
@@ -200,6 +207,7 @@ async def status_build(request: Request):
 
     return PlainTextResponse(
         f"app: {version.APP_VERSION}\n"
+        f"instance: {instance.name() or '-'}\n"
         f"build: {version.build_sha()}\n"
         f"world_version: {version.WORLD_VERSION}\n"
         f"migration: {db.max_known_migration()}\n"
@@ -222,6 +230,14 @@ def _page(name: str) -> HTMLResponse:
     base = html_escape(config.public_base(), quote=True)
     html = page.read_text().replace('<base href="/">', f'<base href="{base}">', 1)
     html = re.sub(r'"(assets/[a-z0-9_-]+\.(?:js|css))"', rf'"\1?v={sha}"', html)
+    # This instance's words (docs/INSTANCES.md): escaped, and validated in
+    # instance.json (the door image can only name an asset).
+    words = instance.load()
+    for marker, value in (("{{place}}", words["place"]),
+                          ("{{Place}}", instance.place(capital=True)),
+                          ("{{lede}}", words["lede"]),
+                          ("{{door_image}}", words["door_image"])):
+        html = html.replace(marker, html_escape(value, quote=True))
     return HTMLResponse(html, headers={"Cache-Control": "no-store"})
 
 

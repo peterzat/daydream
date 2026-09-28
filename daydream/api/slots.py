@@ -34,7 +34,7 @@ import re
 
 from fastapi import APIRouter, HTTPException, Request
 
-from daydream import accounts, journal, toons
+from daydream import accounts, instance, journal, toons
 from daydream.api import auth as auth_mod
 from daydream.images import client as image_client
 from daydream.llm import safety
@@ -181,7 +181,7 @@ async def create_dreamer(request: Request) -> dict:
     name, appearance = await _toon_request(request)
     slot = toons.next_free_slot()
     if slot is None:
-        raise HTTPException(status_code=409, detail="the village is full just now")
+        raise HTTPException(status_code=409, detail=f"{instance.place()} is full just now")
     return _create(slot, name, appearance, who)
 
 

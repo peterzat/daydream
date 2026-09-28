@@ -755,7 +755,8 @@ cmd_world_refresh() {
     # relationships, finds, deeds, grown rooms, and what play wrote are kept.
     # `--check` reports and writes nothing (server may stay up). Otherwise:
     # snapshot, down (a few seconds of "the dream is sleeping"), refresh the
-    # current live DB, up. Default envelope: worlds/lost-hours.json.
+    # current live DB, up. Default envelope: the instance's own
+    # (instance.json "envelope"; worlds/lost-hours.json without one).
     _require_venv
     local check="" args=()
     while [[ $# -gt 0 ]]; do
@@ -792,8 +793,12 @@ cmd_world_reset() {
     # version-gate's "run 'bin/game world reset'" message points at. Gated
     # behind --yes; `--world <envelope.json>` selects the world (default
     # worlds/lost-hours.json, The Village of Lost Hours; worlds/zork1.json is
-    # the frozen engine regression fixture).
-    local envelope="$PROJECT_ROOT/worlds/lost-hours.json"
+    # the frozen engine regression fixture). With instances, the default is
+    # the instance's own envelope (docs/INSTANCES.md): a bare reset of
+    # another instance must never seed The Village of Lost Hours.
+    _require_venv
+    local envelope
+    envelope="$PROJECT_ROOT/$("$VENV_PY" -m daydream.instance envelope)" || return 1
     local confirmed=""
     while [[ $# -gt 0 ]]; do
         case "$1" in
