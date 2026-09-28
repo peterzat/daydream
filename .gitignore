@@ -29,6 +29,10 @@ web/node_modules/
 *.swp
 .DS_Store
 
+# This instance's local record (CLAUDE.md "This repo and this instance"):
+# what exists only on this box and in its Cloudflare account. Never pushed.
+/instance/
+
 # Per-project Claude state
 .claude/*
 # The operator's project skills (/invite, /village) are versioned; the rest of

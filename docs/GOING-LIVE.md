@@ -15,7 +15,8 @@ static Pages site, fronts it.
 
 - The box is often down, or lent to other GPU work, for days at a time. That
   is expected. When it happens, a friend who opens the page should know at
-  once that the village is asleep and that texting Peter will wake it.
+  once that the village is asleep and that a note to the Night Warden (the
+  operator's title; players never see a name) will wake it.
 - The admin console is a Claude Code session on the box. The web surface
   only plays.
 
@@ -95,9 +96,9 @@ Tunnel hostname (Access: service token only; cloudflared validates the JWT)
 
 ## 5. The first evening for a friend
 
-1. A text from Peter with the `/invite` link.
+1. A text from the operator with the `/invite` link.
 2. A storybook redeem card that greets them by name. It says honestly that
-   the village keeps what they do so its story can answer, and that Peter
+   the village keeps what they do so its story can answer, and that the Night Warden
    reads summaries of it to write new chapters.
 3. Username and password, then "your dreamer" (a name and a one-line
    appearance). The portrait paints in the background.
@@ -205,38 +206,39 @@ is lent out.
 - **What friends type reaches the local LLM.** The existing role separation,
   length caps and banlists apply.
 
-## 10. Where it stands (2026-09-27, end of the build session)
+## 10. Where it stands (2026-09-28: live)
 
-**Built and verified on the box (SPEC criteria 1-8, 18, 19, 21, 23):**
-- Accounts, invites, the sign-in gate, edge mode, roles, "your dreamer",
-  hardened sessions and transport, and the front door.
-- The cross-process GPU lock and the remote-reflexes seam.
-- The live dev server runs it.
-- **A prod rehearsal passed.** The real `bin/game prod deploy` pipeline built
-  a release and its locked venv into a scratch root. That release, booted
-  under prod's exact environment, then carried the whole edge-shaped flow:
-  invite, peek, redeem (the Secure cookie scoped to `/daydream/`), your
-  dreamer, the WebSocket, a command. It refused a cross-origin write and
-  answered a signed-out API call with 401.
+**Live since 2026-09-28** at www.eidolon.com/daydream, following
+`docs/CLOUDFLARE-SETUP.md` end to end in one session. Criteria 1-8, 14, 18,
+19, 21 and 23 are met. Verified on the real edge:
+- the Worker's route wins over the Pages site on the same host (the asleep
+  page showed there before anything on the box was exposed)
+- the origin refuses a request without the service token, or with a wrong
+  one (403); `cf-cache-status: DYNAMIC` shows the never-cache rule
+- `/daydream` and the apex redirect to `https://www.eidolon.com/daydream/`;
+  workers.dev and preview URLs are off; prod listens only on loopback
+- the front door, a 401 for a signed-out API call, a 403 for a cross-origin
+  login
+- a WebSocket through Worker, Access and tunnel (`needs_toon`, then a clean
+  close)
 
-**Built and unit-tested, waiting on the operator's hands (criteria 9-17, 20, 22):**
+**Found and fixed during the bring-up:**
+- `prod deploy`'s test gate could never pass on a real box: its worktree had
+  no `.venv` for the `bin/game` smoke test, and with prod awake the suite's
+  blanked GPU lock made `bin/game` refuse `image-test`. The worktree now
+  borrows the dev venv, and the smoke test ignores an awake prod.
+- The app dropped the socket right after `needs_toon` without a close frame;
+  through the tunnel that last frame was lost on the first connection after
+  a wake. It now closes with 1000.
+- `bin/game edge status` read the public edge as down: Cloudflare's Browser
+  Integrity Check refuses Python's default User-Agent.
+- The setup runbook gained what the real dashboard needed: two token
+  permissions (Workers Tail Read, Zone Read), the IPv6 address in the token's
+  IP filter, deploying the Worker before its secrets, the JWT-validation
+  switch on the tunnel route, and the R2 command with the token loaded.
 
-1. `sudo ops/install-prod.sh`, then log out and back in.
-2. The Cloudflare dashboard steps in `docs/CLOUDFLARE-SETUP.md` (token, Zero
-   Trust, service token, Access app, tunnel, rules, KV, R2).
-3. `bin/game edge secrets`, then `bin/game edge sleep "opening soon"` and
-   `bin/game edge deploy`. Check that the asleep page shows at
-   www.eidolon.com/daydream/.
-4. `bin/game prod deploy`, `bin/game prod world reset --yes`,
-   `bin/game prod prebake --from-cache ~/data/daydream/images/cache`,
-   `bin/game prod wake`, then `bin/game prod account create peter --admin`.
-5. Run the checks: `bin/game review` (the phone and laptop glance) and the
-   locks in `docs/CLOUDFLARE-SETUP.md` step 10. Then `/invite` the first
-   friend.
-
-Two things to watch on the real edge that no unit test can prove:
-- WebSocket passthrough through the Worker to the tunnel
-- the Worker's route winning over the Pages site on www.eidolon.com
-
-The first deploy is done in forced-asleep mode, so the second is checked
-before anything is exposed.
+**Still to demonstrate (criteria 9-13, 15-17, 22):** a live dialogue and
+portrait under the sandbox, a rollback drill, a backup restored into dev,
+`prod sleep`/`wake` with keepsakes, the first friend's full flow from a
+phone, and the R2 offsite bucket. This instance's own record of what exists
+where is the gitignored `instance/NOTES.md`.

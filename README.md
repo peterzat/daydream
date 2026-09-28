@@ -12,7 +12,7 @@
 
 Every hour that goes missing ends up somewhere: the afternoon you daydreamed through at school, the hour lost when the clocks went back, the wait under an awning while the rain would not stop. They drift down at dusk to a small clockmaker's village at the bottom of a dream, where a few patient keepers catch them, mend them, and, when they can, send them home. You are a dreamer who wakes there.
 
-Daydream is a small, shared, persistent coffee-break world running on one dev box: text you can type or click, watercolor rooms, and stories that respond to what the people playing it actually do. A visit might go: arrive at the Clocktower, wind a small clock of your own by the old custom, meet the lamplighter and the clockmaker, help a lost hour find its way home, pick up the stray minutes that glint about the village for you alone, and leave something changed for the next dreamer to find.
+Daydream is a small, shared, persistent coffee-break world running on one GPU box, open to a few invited friends at [www.eidolon.com/daydream](https://www.eidolon.com/daydream): text you can type or click, watercolor rooms, and stories that respond to what the people playing it actually do. A visit might go: arrive at the Clocktower, wind a small clock of your own by the old custom, meet the lamplighter and the clockmaker, help a lost hour find its way home, pick up the stray minutes that glint about the village for you alone, and leave something changed for the next dreamer to find.
 
 ## Reflexes, not voice
 
@@ -44,7 +44,7 @@ The canon bible ([`docs/canon/LOST-HOURS.md`](docs/canon/LOST-HOURS.md)) has spo
 
 ## Playing
 
-Open `http://<host>:54321` from a tailnet device and enter the shared password. The picker lets you make a dreamer: a name and a line about how you look (your portrait paints itself in a moment). A "How to Dream" page explains the rest, and a `?` at the foot of the book brings it back.
+Everyone plays with their own account, and accounts come only from invitations: a friend gets a single-use link, picks a username and password, and makes a dreamer (a name and a line about how you look; the portrait paints itself in a moment). There is no shared password. In dev, open `http://<host>:54321` from a tailnet device and sign in with the account you made on the command line (below). A "How to Dream" page explains the rest, and a `?` at the foot of the book brings it back.
 
 - Click objects and the verbs under the picture, or type. Exact commands (`look`, `take lantern`, `north`) resolve instantly; plain sentences go through a local parser that grounds them to a real action on a real thing.
 - Each resident shows **ask-about topics** under their name. Clicking one, or naming it in your own words, gets their authored answer.
@@ -80,10 +80,11 @@ First time:
 
 ```sh
 python3 -m venv .venv && .venv/bin/pip install -e '.[dev]'
-cp .env.example .env && $EDITOR .env    # set DAYDREAM_PASSWORD; review DAYDREAM_ACCESS
+cp .env.example .env && $EDITOR .env    # review DAYDREAM_ACCESS; the defaults work on a tailnet
 bin/vllm-bootstrap && bin/comfyui-bootstrap   # ~13 GB each, one time
 bin/game world reset --yes              # build The Village of Lost Hours as the live world
 bin/game down && bin/game prebake && bin/game up   # paint every room and portrait, then play
+bin/game account create <you> --admin  # your own account; friends get `bin/game invite create --for "Name"`
 ```
 
 Daily verbs:
@@ -96,13 +97,28 @@ bin/game dream digest|check|rehearse|install   # a dream (docs/DREAM-RUNBOOK.md)
 bin/game play start|do|ask|look ...   # play from a shell (how agent playtesters play)
 ```
 
-`DAYDREAM_PASSWORD` is the only required setting; with it unset, every login is refused. By default the server accepts only Tailscale and loopback clients (`DAYDREAM_ACCESS`). Everything else (engines, network access, world archives and snapshots, the image and voice A/B harnesses) is in [`CLAUDE.md`](CLAUDE.md).
+Requirements: Linux with an NVIDIA GPU of about 20 GB (an RTX 4000 SFF Ada here; the VRAM budget is in [`docs/gpu-and-models.md`](docs/gpu-and-models.md)), Python 3.10 or newer, and about 30 GB of disk for the engines and model weights. By default the dev server accepts only Tailscale and loopback clients (`DAYDREAM_ACCESS`), and every request needs an account session on top of that. Everything else (engines, network access, world archives and snapshots, the image and voice A/B harnesses) is in [`CLAUDE.md`](CLAUDE.md).
+
+### Hosting it for friends
+
+The live village runs as a second, sandboxed environment on the same box: its own system user, data, accounts and release directory, sharing the GPU engines with dev. Friends reach it through a Cloudflare Worker that proxies to an Access-guarded Cloudflare Tunnel, so the box opens no inbound port, and when the box is off or lent to other work the Worker shows a storybook "the village is asleep" page (with each friend's own journal and book). Requirements on top of the dev setup: Node.js 20 or newer, and a Cloudflare account with a domain on Cloudflare DNS (the free plan covers it: Workers, KV, Zero Trust with no seats used, a tunnel; R2 for offsite backups needs a payment method on file). The design is [`docs/GOING-LIVE.md`](docs/GOING-LIVE.md); the one-time setup, dashboard and box, is [`docs/CLOUDFLARE-SETUP.md`](docs/CLOUDFLARE-SETUP.md). After that the shell is the admin console:
+
+```sh
+bin/game prod status | logs          # release vs HEAD, service, tunnel, engines, who is playing
+bin/game prod deploy [ref]           # test that ref, build a release, back up, switch, health-check, roll back on failure
+bin/game prod sleep --note "..."     # rest everyone, write journals, show the asleep page, free the GPU
+bin/game prod wake                   # engines, tunnel, service; the edge says awake
+bin/game prod invite create --for "Name"   # a friend's single-use link
+bin/game prod world|dream|account ...      # the prod release's own bin/game, as the service user
+```
+
+The committed hostnames and names (`edge/wrangler.toml`, `ops/prod.env.example`) are this instance's own; a fork changes them first.
 
 ## Tests
 
 ```sh
-bin/game test short     # ~975 tests, ~8 s: the pre-commit gate
-bin/game test medium    # ~1430 tests, ~28 s: the pre-push gate (CI runs this)
+bin/game test short     # ~1080 tests, ~9 s: the pre-commit gate
+bin/game test medium    # ~1630 tests, ~37 s: the pre-push gate (CI runs this)
 bin/game test long      # + real-GPU drift probes against committed goldens (~3 min)
 ```
 
@@ -114,7 +130,7 @@ Every arc ending has a walkthrough replayed with zero model calls; a static anal
 - **Generated images are content-addressed**: the cache key folds the prompt and the workflow JSON, so editing either repaints; a `generated_assets` table records provenance.
 - **VRAM-driven model choice.** Qwen3.5 9B AWQ 4-bit (about 7.5 GiB of weights in a 0.45 slice) leaves room for an SDXL render beside it (peak about 17 GB on the 20 GB card). It won a bake-off on parser grounding, point of view, and blind-graded prose ([`docs/model-evals/2026-09-26-bakeoff.md`](docs/model-evals/2026-09-26-bakeoff.md)); CUDA graphs are on; FP8 KV cache is deliberately off. The narrative is [`docs/gpu-and-models.md`](docs/gpu-and-models.md).
 - **Vanilla HTML, CSS, and JavaScript** under `web/`, no framework and no build step, over one WebSocket; assets are stamped with the build SHA and an open tab reloads itself once after a redeploy. The display font is self-hosted.
-- **Friend-scoped access**: a shared-password cookie session behind a middleware that rejects anything outside the tailnet before any auth code runs.
+- **Invite-only accounts, and no network location grants privilege**: argon2id passwords, random session tokens stored hashed and checked on every request and WebSocket frame, a sign-in gate a test proves covers every route, and admin powers that live in the shell rather than the browser ([`SECURITY.md`](SECURITY.md)). In prod, only the edge Worker can reach the origin.
 
 ## Docs
 
@@ -128,6 +144,8 @@ Every arc ending has a walkthrough replayed with zero model calls; a static anal
 | [`docs/playtests/`](docs/playtests/) | Agent playtest critiques and summaries |
 | [`WHIMSY.md`](WHIMSY.md), [`DESIGN.md`](DESIGN.md) | Tone and interface design language |
 | [`CLAUDE.md`](CLAUDE.md) | The operating manual (lifecycle, engines, conventions) |
+| [`docs/GOING-LIVE.md`](docs/GOING-LIVE.md), [`docs/CLOUDFLARE-SETUP.md`](docs/CLOUDFLARE-SETUP.md) | Hosting for friends: the design, and the one-time setup |
+| [`SECURITY.md`](SECURITY.md) | Threat model, trust boundaries, residual risks |
 | [`docs/gpu-and-models.md`](docs/gpu-and-models.md) | GPU and model decisions |
 | [`CHANGELOG.md`](CHANGELOG.md), [`docs/RELEASES.md`](docs/RELEASES.md) | Release history |
 | [`BACKLOG.md`](BACKLOG.md), [`docs/ROADMAP.md`](docs/ROADMAP.md) | Deferred ideas and direction |

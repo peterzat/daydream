@@ -144,7 +144,7 @@ working exactly as it does now.
   copies of the prod world and accounts databases, keeping 14 days. Restoring
   the latest one into dev is demonstrated.
 
-- [ ] **14. The edge fronts an unexposed origin.** A Cloudflare Worker on
+- [x] **14. The edge fronts an unexposed origin.** A Cloudflare Worker on
   `www.eidolon.com/daydream*` proxies HTTP and WebSocket traffic to the
   origin. Its source is in the repo and it is deployed by `bin/game edge
   deploy`. The origin is reachable only through a Cloudflare Tunnel whose
@@ -257,6 +257,17 @@ becomes its durable, in-repo record.
   rule.
 - Build in auto mode.
 
+**Operator decisions (2026-09-28, during the first bring-up):**
+- The agent drives prod from this repo when the operator asks: a local,
+  gitignored permission rule lets it run `bin/game prod` and `bin/game edge`
+  verbs without a prompt. This supersedes criterion 18's ask-first clause
+  for operator-requested work; unasked, state-changing prod verbs still ask.
+- Players see the operator as "the Night Warden", never by name
+  (`DAYDREAM_OPERATOR_NAME`, the Worker's `OPERATOR`). Criterion 15's "text
+  Peter" reads as "send the Night Warden a note".
+- The repo stays forkable; this instance's own records live in the
+  gitignored `instance/NOTES.md` (CLAUDE.md "This repo and this instance").
+
 **The critical finding that shapes criterion 1.** In today's default
 `tailscale` mode, `auth.is_authed()` returns True and `AccessMiddleware`
 admits loopback. `/api/world/swap` is gated only by a loopback check. A
@@ -363,4 +374,4 @@ first dream) remains open. It is operator-paced and does not gate this turn.
 *Prior spec (2026-09-26): The Village of Lost Hours, the pivot turn. Closed
 21/22; criterion 22 (the operator playtest) stays open, operator-paced.*
 
-<!-- SPEC_META: {"date":"2026-09-27","title":"Going live: the village opens its doors","criteria_total":23,"criteria_met":13} -->
+<!-- SPEC_META: {"date":"2026-09-27","title":"Going live: the village opens its doors","criteria_total":23,"criteria_met":14} -->
