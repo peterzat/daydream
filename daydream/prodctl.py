@@ -22,6 +22,8 @@ Verbs:
 
 - `status`
 - `check` (live verification of the edge and prod invariants; daydream/prodcheck.py)
+- `plan [ref]` (read-only: what a deploy of ref ships, and what it needs
+  besides the deploy; docs/runbooks/publish.md)
 - `deploy [ref] [--skip-tests]`
 - `rollback`
 - `logs [-f]`
@@ -840,6 +842,96 @@ def behind(release: str, head: str) -> str:
     return f"{n} commit(s) behind"
 
 
+# ---- what a publish ships (docs/runbooks/publish.md) ------------------------------
+
+
+def _under(path: str, *prefixes: str) -> bool:
+    return any(path == p or path.startswith(p.rstrip("/") + "/") for p in prefixes)
+
+
+def followups(changed: list[str], old_world: str | None, new_world: str | None) -> list[str]:
+    """What shipping these changed paths needs besides `prod deploy`, in the
+    order to do it. Pure, so the rules are tested rather than remembered."""
+    out: list[str] = []
+    major = lambda v: (v or "").split(".")[0]  # noqa: E731
+    if old_world and new_world and major(old_world) != major(new_world):
+        out.append(f"WORLD_VERSION {old_world} -> {new_world} is a MAJOR change: the deploy's "
+                   "preflight refuses it. That is a new village (a reset), the operator's "
+                   "call: docs/runbooks/reset.md")
+    if any(_under(p, "migrations", "migrations_accounts") for p in changed):
+        out.append("migrations run at the restart (the deploy backs up first)")
+    if "ops/requirements-prod.lock" in changed:
+        out.append("a new prod venv is built (a few minutes)")
+    dreams = [p for p in changed if re.match(r"worlds/[^/]+/dreams/", p)]
+    # Walkthroughs are the tests' replays, not content the live world holds.
+    content = sorted({p.split("/")[1].removesuffix(".json") for p in changed
+                      if _under(p, "worlds") and p not in dreams
+                      and not re.match(r"worlds/[^/]+/walkthroughs/", p)})
+    if content or (old_world and new_world and old_world != new_world):
+        which = f" ({', '.join(content)} changed)" if content else ""
+        out.append(f"content{which}: `bin/game prod world refresh --check`, then "
+                   "`bin/game prod world refresh`, if the attached instance plays it")
+    if dreams:
+        out.append("a dream folder changed: install it after the deploy "
+                   "(docs/runbooks/content.md, \"A dream\")")
+    if any(_under(p, "edge") for p in changed):
+        out.append("the Worker changed: `bin/game edge deploy`")
+    if any(_under(p, "ops/systemd") for p in changed):
+        out.append("units changed: `bin/game prod root units`, then "
+                   "`bin/game prod root units --apply` (it asks)")
+    if any(_under(p, "ops/root", "ops/sudoers.d", "ops/install-prod.sh") for p in changed):
+        out.append("root-installed files changed: the operator re-runs `sudo ops/install-prod.sh`")
+    if "ops/prod.env.example" in changed:
+        out.append("prod.env is not touched by a deploy: `bin/game prod root env set KEY VALUE` "
+                   "for an allowlisted key, sudo for the rest")
+    return out
+
+
+def world_version_at(commit: str) -> str | None:
+    try:
+        src = git("show", f"{commit}:daydream/version.py")
+    except subprocess.CalledProcessError:
+        return None
+    m = re.search(r'^WORLD_VERSION\s*=\s*"([0-9]+\.[0-9]+)"', src, re.M)
+    return m.group(1) if m else None
+
+
+def plan(ref: str) -> int:
+    """Read-only: what `prod deploy <ref>` would ship over the running
+    release, whether it is pushed, and what it needs besides the deploy."""
+    sha = resolve_ref(ref)
+    rel = current_release()
+    say(f"release: {rel.name if rel else 'none yet'}; {ref} is {sha[:12]}")
+    if ref == "HEAD" and git("status", "--porcelain"):
+        say("the working tree has uncommitted changes: commit them first (prod runs commits)")
+    if rel is not None and sha.startswith(rel.name):
+        say("nothing to ship: prod already runs it")
+        return 0
+    pushed = git("branch", "-r", "--contains", sha)
+    say("pushed: yes" if pushed else "pushed: not yet (a publish pushes first, through the review gate)")
+    base = rel.name if rel is not None else None
+    if base is not None and subprocess.run(
+            ["git", "-C", str(REPO), "merge-base", "--is-ancestor", base, sha],
+            capture_output=True).returncode == 0:
+        say(f"going out ({base[:12]}..{sha[:12]}):")
+        for line in git("log", "--oneline", "--no-decorate", f"{base}..{sha}").splitlines():
+            say(f"  {line}")
+        changed = git("diff", "--name-only", f"{base}..{sha}").splitlines()
+    else:
+        say("the running release is not in this ref's history: the whole tree ships")
+        changed = git("ls-tree", "-r", "--name-only", sha).splitlines()
+    todo = followups(changed, world_version_at(base) if base else None, world_version_at(sha))
+    if not todo:
+        say("then: nothing else; `bin/game prod deploy`, `bin/game prod check`. "
+            "Open tabs reload themselves.")
+    else:
+        say("then, after `bin/game prod deploy`:")
+        for step in todo:
+            say(f"  - {step}")
+        say("and `bin/game prod check`.")
+    return 0
+
+
 def logs(follow: bool) -> int:
     args = ["journalctl", "-u", UNIT, "-u", TUNNEL, "--no-pager", "-n", "200"]
     if follow:
@@ -1143,6 +1235,8 @@ def main(argv: list[str] | None = None) -> int:
     sub = p.add_subparsers(dest="cmd", required=True)
     sub.add_parser("status")
     sub.add_parser("check", help="live verification of the edge and prod invariants (read-only)")
+    pl = sub.add_parser("plan", help="what a deploy of ref ships, and what else it needs (read-only)")
+    pl.add_argument("ref", nargs="?", default="HEAD")
     d = sub.add_parser("deploy")
     d.add_argument("ref", nargs="?", default="HEAD")
     d.add_argument("--skip-tests", action="store_true",
@@ -1189,6 +1283,8 @@ def main(argv: list[str] | None = None) -> int:
         if args.cmd == "check":
             from daydream import prodcheck
             return prodcheck.main()
+        if args.cmd == "plan":
+            return plan(args.ref)
         if args.cmd == "deploy":
             return deploy(args.ref, args.skip_tests)
         if args.cmd == "rollback":

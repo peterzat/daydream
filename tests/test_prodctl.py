@@ -579,3 +579,49 @@ def test_prod_root_arguments_reach_the_helper_before_instance_is_read(tmp_path, 
     assert prodctl.main(["root", "units", "--instance", "zork", "--apply"]) == 2
     assert calls == [["sudo", "-n", str(helper), "units", "--instance", "zork", "--apply"]]
     assert prodctl.INSTANCE is None
+
+
+# ---- what a publish ships (docs/runbooks/publish.md) --------------------------------
+
+
+@pytest.mark.tier_short
+def test_followups_name_what_a_deploy_alone_does_not_do():
+    assert prodctl.followups(["daydream/verbs.py", "web/assets/main.js"], "1.5", "1.5") == []
+    content = prodctl.followups(["worlds/lost-hours/cast/tace.json", "worlds/lost-hours.json"],
+                                "1.5", "1.5")
+    assert len(content) == 1 and "world refresh --check" in content[0] and "lost-hours" in content[0]
+    # A walkthrough is a test's replay; a dream is installed, not refreshed.
+    assert prodctl.followups(["worlds/lost-hours/walkthroughs/prologue.json"], "1.5", "1.5") == []
+    (dream,) = prodctl.followups(["worlds/lost-hours/dreams/d-1/patch.json"], "1.5", "1.5")
+    assert "dream" in dream and "refresh" not in dream
+    # A MINOR bump alone still wants a refresh (it re-stamps the world).
+    assert any("world refresh" in s for s in prodctl.followups(["daydream/version.py"], "1.5", "1.6"))
+    major = prodctl.followups(["daydream/version.py"], "1.5", "2.0")
+    assert "MAJOR" in major[0] and "reset" in major[0]
+    joined = " | ".join(prodctl.followups(
+        ["edge/src/worker.js", "ops/systemd/daydream-prod.service", "ops/install-prod.sh",
+         "ops/prod.env.example", "migrations/019_x.sql", "ops/requirements-prod.lock"],
+        "1.5", "1.5"))
+    for needle in ("edge deploy", "root units", "install-prod.sh", "root env set",
+                   "migrations", "venv"):
+        assert needle in joined, needle
+
+
+def test_plan_lists_what_goes_out_and_what_else_it_needs(srv, fake_repo, capsys):
+    first = prodctl.resolve_ref("HEAD")
+    prodctl.point("current", prodctl.build_release(first))
+    (fake_repo / "worlds" / "lost-hours").mkdir(parents=True)
+    (fake_repo / "worlds" / "lost-hours" / "world.json").write_text("{}\n")
+    (fake_repo / "edge").mkdir()
+    (fake_repo / "edge" / "worker.js").write_text("// w\n")
+    _git(fake_repo, "add", "-A")
+    _git(fake_repo, "commit", "-q", "-m", "a new line for the lamplighter")
+    capsys.readouterr()
+    assert prodctl.plan("HEAD") == 0
+    out = capsys.readouterr().out
+    assert "a new line for the lamplighter" in out
+    assert "pushed: not yet" in out  # the fixture repo has no remote
+    assert "world refresh --check" in out and "edge deploy" in out
+    prodctl.point("current", prodctl.build_release(prodctl.resolve_ref("HEAD")))
+    prodctl.plan("HEAD")
+    assert "nothing to ship" in capsys.readouterr().out
