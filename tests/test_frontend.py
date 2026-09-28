@@ -487,7 +487,8 @@ def test_main_js_synthesizes_first_entry_arrival_line():
     with TestClient(app) as client:
         _login(client)
         r = client.get("/assets/main.js")
-    assert "You are in " in r.text
+    # "You are in / on / at X": the room says how you are there (2026-09-28b).
+    assert '"You are " + (snap.room.at || "in")' in r.text
     assert "You see: " in r.text
     assert "lastArrivalRoomId" in r.text  # guards same-room re-snapshots
     assert "!chat.children.length" in r.text  # only when the log would be empty
