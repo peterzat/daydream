@@ -817,11 +817,25 @@ cmd_world_reset() {
     local data_dir="${DAYDREAM_DATA_DIR:-$HOME/data/daydream}"
     echo "==> world reset: stopping server"
     cmd_down
-    echo "==> world reset: wiping live DB + image caches"
+    if [[ -f "$LIVE_DB" ]]; then
+        # The paintings outlive the world, with their provenance
+        # (docs/DATA-LIFECYCLE.md): keep them first, and wipe nothing if the
+        # keep cannot be written.
+        echo "==> world reset: keeping every painting in the art keep"
+        if ! "$VENV_PY" -m daydream.admin keep-sync; then
+            echo "error: the art keep could not be written; nothing was reset" >&2
+            cmd_up
+            return 1
+        fi
+    fi
+    echo "==> world reset: wiping live DB + image caches (working copies)"
     rm -f "$LIVE_DB" "${LIVE_DB}-wal" "${LIVE_DB}-shm"
     rm -rf "${data_dir}/images/cache/"w-*
     echo "==> world reset: loading ${envelope} (keyless)"
     "$VENV_PY" -m daydream.admin load "$envelope" --force --output "$LIVE_DB"
+    echo "==> world reset: putting back the new world's art from the keep"
+    "$VENV_PY" -m daydream.prebake --from-keep --db "$LIVE_DB" \
+        || echo "warning: some art was not restored; bin/game prebake paints what is missing" >&2
     echo "==> world reset: starting server on current code"
     cmd_up
 }

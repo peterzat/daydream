@@ -72,14 +72,42 @@ def _adopt_from_cache(target, workflow, path: Path, from_cache: Path) -> bool:
         return False
     path.parent.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(src, path)
-    client._record_persistent(target, client.canonical_prompt(target.seed, target.prompt_suffix),
-                              workflow, path)
+    prompt = client.canonical_prompt(target.seed, target.prompt_suffix)
+    client._record_persistent(target, prompt, workflow, path)
+    client.keep_render(target, prompt, workflow, path, "adopted", from_cache=str(from_cache))
+    return True
+
+
+def _adopt_from_keep(target, workflow, path: Path) -> bool:
+    """Put this target's kept image back into the cache (a reset's new
+    world, docs/DATA-LIFECYCLE.md): the keep holds every painting by its
+    cache key (seed text + workflow), so a match IS this target's painting.
+    Records it like a render. False when the keep has none."""
+    import os
+    import shutil
+
+    from daydream.images import client, keep
+
+    found = keep.find(path.stem)
+    if found is None:
+        return False
+    art, _ = found
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(f".{path.name}.restore")
+    try:
+        os.link(art, tmp)
+    except OSError:
+        shutil.copyfile(art, tmp)
+    os.replace(tmp, path)
+    prompt = client.canonical_prompt(target.seed, target.prompt_suffix)
+    client._record_persistent(target, prompt, workflow, path)
+    client.keep_render(target, prompt, workflow, path, "restored")
     return True
 
 
 async def prebake(db_path: Path, only: str | None = None, force: set[str] | None = None,
                   reseed: dict[str, int] | None = None,
-                  from_cache: Path | None = None) -> list[dict]:
+                  from_cache: Path | None = None, from_keep: bool = False) -> list[dict]:
     from daydream.gpu import arbiter
     from daydream.images import cache, client
 
@@ -97,8 +125,11 @@ async def prebake(db_path: Path, only: str | None = None, force: set[str] | None
                 rec["status"] = "cached"
                 results.append(rec)
                 continue
-            if from_cache is not None and tid not in force:
-                if _adopt_from_cache(target, workflow, path, from_cache):
+            if (from_keep or from_cache is not None) and tid not in force:
+                if from_keep and _adopt_from_keep(target, workflow, path):
+                    rec["status"] = "restored"
+                elif from_cache is not None and _adopt_from_cache(target, workflow, path,
+                                                                  from_cache):
                     rec["status"] = "copied"
                 else:
                     rec["status"] = "missing"  # not in the graded cache: render it deliberately
@@ -163,6 +194,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--allow-server-up", action="store_true")
     ap.add_argument("--from-cache", help="copy graded images from another env's image cache "
                     "(e.g. ~/data/daydream/images/cache) instead of rendering; renders nothing")
+    ap.add_argument("--from-keep", action="store_true",
+                    help="put back each target's painting from this env's art keep "
+                    "(after a reset); renders nothing")
     args = ap.parse_args(argv)
     if _server_up() and not args.allow_server_up:
         print("the game server is up; stop it first (bin/game down): its renders "
@@ -175,7 +209,8 @@ def main(argv: list[str] | None = None) -> int:
     force = {x.strip() for x in args.force.split(",") if x.strip()} | set(reseed)
     db_path = Path(args.db or config.live_db_path()).expanduser()
     from_cache = Path(args.from_cache).expanduser() if args.from_cache else None
-    results = asyncio.run(prebake(db_path, args.only, force, reseed, from_cache))
+    results = asyncio.run(prebake(db_path, args.only, force, reseed, from_cache,
+                                  args.from_keep))
     stamp = time.strftime("%Y%m%d-%H%M%S")
     sheet = contact_sheet(results, config.data_dir() / "prebake" / stamp)
     failed = [r for r in results if r["status"] == "failed"]

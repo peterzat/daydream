@@ -410,6 +410,11 @@ def cmd_backup(keep: int, keep_days: int = 14) -> int:
         if src.exists():
             _online_copy(src, out / src.name)
             copied.append(f"{src.name} ({_format_bytes((out / src.name).stat().st_size)})")
+    from daydream.images import keep as art_keep
+
+    if art_keep.provenance_path().exists():  # the art keep's records ride along (not its bytes)
+        shutil.copyfile(art_keep.provenance_path(), out / "provenance.jsonl")
+        copied.append("provenance.jsonl")
     if not copied:
         out.rmdir()
         print("backup: nothing to back up yet (no live world, no accounts)")
@@ -790,6 +795,30 @@ def cmd_verify(world_id: str | None) -> int:
 # ---- delete -------------------------------------------------------------
 
 
+def cmd_keep_sync(world_id: str | None = None) -> int:
+    """Keep every painting the live world knows of in the art keep, with its
+    provenance (daydream/images/keep.py). `world reset` and `world delete` run
+    it before they wipe, and refuse to wipe when it fails."""
+    rc = _require_live_db()
+    if rc is not None:
+        return rc
+    db.init_live()
+    from daydream.images import keep
+
+    try:
+        counts = keep.sync(world_id)
+    except Exception as e:
+        print(f"error: the art keep could not be written ({type(e).__name__}: {e})",
+              file=sys.stderr)
+        return 1
+    finally:
+        db.close_db()
+    print(f"art keep ({keep.keep_dir()}): {counts['kept']} kept, {counts['found']} found "
+          f"without records, {counts['already']} already kept, {counts['missing_file']} "
+          "recorded but missing on disk")
+    return 0
+
+
 def cmd_delete(world_id: str, yes: bool) -> int:
     if not yes:
         print(
@@ -810,6 +839,17 @@ def cmd_delete(world_id: str, yes: bool) -> int:
     if world is None:
         print(f"error: no world with id {world_id} in live DB", file=sys.stderr)
         return 2
+    # Its paintings outlive it, with their provenance (docs/DATA-LIFECYCLE.md):
+    # keep them first, and delete nothing if the keep cannot be written.
+    from daydream.images import keep
+
+    try:
+        kept = keep.sync(world_id)
+    except Exception as e:
+        print(f"error: the art keep could not be written ({type(e).__name__}: {e}); "
+              "nothing was deleted", file=sys.stderr)
+        return 1
+    print(f"kept {kept['kept'] + kept['found']} painting(s) in the art keep first")
     # Cascade by hand. Order: child rows first.
     conn.execute(
         "DELETE FROM events WHERE room_id IN "
@@ -828,8 +868,8 @@ def cmd_delete(world_id: str, yes: bool) -> int:
     conn.execute("DELETE FROM worlds WHERE id = ?", (world_id,))
     cache_dir = _world_cache_dir(world_id)
     if cache_dir.exists():
-        shutil.rmtree(cache_dir)
-    print(f"deleted world {world_id} (DB rows + {cache_dir})")
+        shutil.rmtree(cache_dir)  # a working copy: the art keep holds the paintings
+    print(f"deleted world {world_id} (DB rows + {cache_dir}; its art is in the keep)")
     return 0
 
 
@@ -1053,6 +1093,9 @@ def main(argv: list[str] | None = None) -> int:
     p_backup.add_argument("--keep", type=int, default=14,
                           help="keep at least this many (and every one from the last 14 days)")
     sub.add_parser("preflight", help="read-only deploy checks (world version, pending migrations)")
+    p_keep = sub.add_parser("keep-sync", help="keep every painting the live world knows of in "
+                            "the art keep, with its provenance (idempotent)")
+    p_keep.add_argument("world_id", nargs="?")
     p_rb = sub.add_parser("restore-backup", help="put a backup's DBs back (server stopped)")
     p_rb.add_argument("backup_dir", type=Path)
     for verb in ("rest-toon", "delete-toon"):
@@ -1146,6 +1189,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_snapshot(args.world_id)
     if args.cmd == "backup":
         return cmd_backup(args.keep)
+    if args.cmd == "keep-sync":
+        return cmd_keep_sync(args.world_id)
     if args.cmd == "preflight":
         return cmd_preflight()
     if args.cmd == "restore-backup":

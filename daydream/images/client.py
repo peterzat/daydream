@@ -495,7 +495,30 @@ async def _generate_persistent(
         "(experimental prompt, not retained)" if experimental else full_prompt
     )
     _record_persistent(target, recorded_prompt, base_workflow, out)
+    keep_render(target, recorded_prompt, base_workflow, out,
+                "repainted" if force else "rendered")
     return out
+
+
+def keep_render(target: PersistentTarget, full_prompt: str, workflow: dict, out: Path,
+                event: str, **extra) -> None:
+    """Keep a persistent image in the art keep with its provenance
+    (daydream/images/keep.py). Never fails the render: the image is already
+    in the cache and recorded; a keep that cannot be written says so in the
+    log, and `keep-sync` catches it up later."""
+    from daydream.images import keep
+
+    try:
+        keep.put(out, keep.provenance(
+            world_id=target.world_id, target_kind=target.target_kind,
+            target_id=target.target_id, source_text=target.seed, prompt=full_prompt,
+            model=workflow.get(CHECKPOINT_NODE, {}).get("inputs", {}).get("ckpt_name"),
+            lora=workflow.get(LORA_NODE, {}).get("inputs", {}).get("lora_name"),
+            workflow_hash=cache.workflow_hash(workflow), cache_key=out.stem,
+            file=str(out.relative_to(config.data_dir())), event=event, **extra))
+    except Exception as e:
+        logger.warning("keep: could not keep %s %s: %s", target.target_kind, target.target_id,
+                       type(e).__name__)
 
 
 async def _generate_ephemeral(
