@@ -125,6 +125,12 @@ def fetch(
     return [Input.from_row(r) for r in db.get_conn().execute(sql, tuple(params))]
 
 
+def forget_toon(toon_id: str) -> int:
+    """Delete everything a toon typed or clicked (its account was deleted:
+    docs/DATA-LIFECYCLE.md). The event log, which others saw, stays."""
+    return db.get_conn().execute("DELETE FROM inputs WHERE toon_id = ?", (toon_id,)).rowcount
+
+
 def max_seq() -> int:
     row = db.get_conn().execute("SELECT MAX(seq) FROM inputs").fetchone()
     return row[0] or 0

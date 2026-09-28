@@ -287,6 +287,23 @@ def set_disabled(key: str, disabled: bool) -> sqlite3.Row:
     return get_account(row["id"])
 
 
+def delete_account(key: str) -> sqlite3.Row:
+    """Remove an account from the records for good (`account delete`, the
+    lifecycle's end for a person: docs/DATA-LIFECYCLE.md): the account, its
+    sessions, every invite tied to it, and its throttle counters. Its dreamers
+    live in the world database; the CLI verb removes them first. Returns the
+    deleted row."""
+    row = _require_account(key)
+    with _tx() as conn:
+        conn.execute("DELETE FROM sessions WHERE account_id = ?", (row["id"],))
+        conn.execute("DELETE FROM invites WHERE account_id = ? OR id = ?",
+                     (row["id"], row["invite_id"]))
+        conn.execute("DELETE FROM throttle WHERE key IN (?, ?)",
+                     ("login-user:" + row["username"], "password-change:" + row["id"]))
+        conn.execute("DELETE FROM accounts WHERE id = ?", (row["id"],))
+    return row
+
+
 def set_display_name(key: str, display_name: str) -> sqlite3.Row:
     row = _require_account(key)
     name = (display_name or "").strip()[:80]

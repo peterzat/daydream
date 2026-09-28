@@ -76,6 +76,8 @@ def cmd_account(args) -> int:
         row = accounts.set_disabled(args.username, args.acmd == "disable")
         print(f"{row['username']} {'disabled (sessions revoked)' if row['disabled_at'] else 'enabled'}")
         return 0
+    if args.acmd == "delete":
+        return _delete_account(args.username, confirmed=args.yes)
     if args.acmd == "rename":
         row = accounts.set_display_name(args.username, args.display_name)
         print(f"{row['username']} is shown as {row['display_name']!r}")
@@ -96,6 +98,37 @@ def cmd_account(args) -> int:
         print(cli_cookie(Path(args.cache) if args.cache else None))
         return 0
     raise AssertionError(args.acmd)
+
+
+def _delete_account(key: str, *, confirmed: bool) -> int:
+    """Remove a person for good: their dreamers in the live world (carried
+    things left in the room, as `world delete-toon` does), everything those
+    dreamers typed (the private input log), then the account, its sessions,
+    invites and throttle counters. What stays: the shared event history, and
+    each dreamer's portrait in the art keep with its provenance (retired, not
+    erased: docs/DATA-LIFECYCLE.md). Without --yes it only says what would go."""
+    from daydream import db, inputs, toons
+
+    row = accounts._require_account(key)
+    world = config.live_db_path()
+    dreamers = []
+    if world.exists():
+        db.init_live()
+        dreamers = toons.owned_toons(row["id"])
+    sessions = len(accounts.list_sessions(row["id"]))
+    names = ", ".join(f"{t.name} ({t.id})" for t in dreamers) or "none in the live world"
+    print(f"account {row['username']} ({row['id']}, {row['role']}): {sessions} session(s); "
+          f"dreamers: {names}")
+    if not confirmed:
+        print("nothing deleted; re-run with --yes to delete it for good", file=sys.stderr)
+        return 2
+    for t in dreamers:
+        typed = inputs.forget_toon(t.id)
+        toons.delete_slot(t.slot)
+        print(f"deleted dreamer {t.name} ({t.id}) and {typed} input line(s)")
+    accounts.delete_account(row["id"])
+    print(f"deleted account {row['username']} ({row['id']})")
+    return 0
 
 
 def cli_cookie(cache: Path | None = None) -> str:
@@ -179,6 +212,10 @@ def build_parser() -> argparse.ArgumentParser:
     for name in ("disable", "enable"):
         d = a.add_parser(name, help=f"{name} an account (disable also revokes its sessions)")
         d.add_argument("username")
+    de = a.add_parser("delete", help="delete an account for good, with its dreamers "
+                                     "(lists what would go without --yes)")
+    de.add_argument("username")
+    de.add_argument("--yes", action="store_true", help="really delete")
     rn = a.add_parser("rename", help="change an account's display name")
     rn.add_argument("username")
     rn.add_argument("display_name")
