@@ -57,8 +57,9 @@ every command it runs as the service user (so `bin/game`'s own bash paths,
 `world reset` included, agree with Python), and keeps `HOME` at the box's
 data dir (the engines' state is the box's). `bin/game prod <verb> ...
 --instance zork` acts on an instance that is not attached (an invite before
-Zork is up, a backup, a load). The option comes after the verb: the agent's
-permission rules read the verb first, and prodctl refuses it in front.
+Zork is up, a backup, a load). The option must be the last two arguments:
+the agent's permission rules match a verb as a prefix, and anywhere else the
+option could split a two-word verb past its rule, so prodctl refuses it.
 
 ## instance.json: identity and words
 

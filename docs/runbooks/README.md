@@ -43,8 +43,8 @@ The design behind all of it is [`docs/GOING-LIVE.md`](../GOING-LIVE.md).
   the world, remove a person, or change what root has installed (`prod invite
   reset`, `prod account role|create|cli-cookie|delete`, `prod world
   reset|delete|restore|snapshot-restore|restore-backup|load`, `prod root units
-  --apply`, `prod root env set`), which always prompt. `--instance NAME` goes
-  after the verb, so these rules still see it.
+  --apply`, `prod root env set`), which always prompt. `--instance NAME` must be
+  the last two arguments, so these rules always see the whole verb.
 - **The root helper** (`bin/game prod root`, [root.md](root.md)) is how the
   agent refreshes the units, runs a timer job, and changes an allowlisted
   prod.env key, with no password: it validates what it installs and logs

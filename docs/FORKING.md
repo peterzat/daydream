@@ -66,8 +66,8 @@ prod verbs and keep the dangerous ones behind a prompt. Copy
 `.claude/settings.local.json` (gitignored). It allows `bin/game prod *` and
 `bin/game edge *`, and always asks before the verbs that mint a credential or
 a privilege, replace a world, remove a person, or change what root installed.
-Keep `--instance NAME` after the verb (prodctl refuses it in front), so those
-rules still see it.
+`--instance NAME` must be the last two arguments (prodctl refuses it
+anywhere else), so those rules always see the whole verb.
 
 ## Your instance record
 

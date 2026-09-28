@@ -34,6 +34,12 @@ carries them).
   running as the operator is out of scope. Reasonable precautions still
   hold: the sandboxed service user, root-only secrets, root actions through
   the validated helper, and every one logged.
+- **Known local-only residuals** (recorded, not fixed, under the posture):
+  systemd reads the release's `.release.env` as root, and releases belong
+  to the operator, so the operator's user could point that file at the
+  tunnel token's file and hand the token to the prod service's environment
+  (whose egress is loopback-only). Anyone who can do that already holds the
+  operator's `docker` membership.
 
 ## Where we are
 

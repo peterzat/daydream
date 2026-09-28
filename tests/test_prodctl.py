@@ -486,6 +486,10 @@ def test_instance_goes_after_the_verb_so_the_permission_rules_see_it(monkeypatch
     assert prodctl.main(["invite", "create", "--for", "A Friend", "--instance", "zork"]) == 0
     assert seen == {"argv": ["invite", "create", "--for", "A Friend"], "inst": "zork"}
     assert prodctl.main(["backup", "--instance", "../x"]) == 2
+    # Anywhere but the end it could split a two-word verb past its ask rule.
+    assert prodctl.main(["world", "--instance", "zork", "reset", "--yes"]) == 2
+    assert prodctl.main(["invite", "create", "--instance", "zork", "--for", "A"]) == 2
+    assert prodctl.main(["backup", "--instance", "a", "--instance", "b"]) == 2
 
 
 # ---- prod root: the validated helper (docs/ADMIN-ROOT.md) ----------------------------------

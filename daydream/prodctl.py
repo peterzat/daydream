@@ -1094,12 +1094,17 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     if "--instance" in argv:
         # Act on an instance that is not the attached one (an invite before
-        # it is up, its backup, its world).
+        # it is up, its backup, its world). Only as the LAST two arguments:
+        # anywhere inside the command it could split a two-word verb
+        # (`world --instance x reset`) past its ask rule (codereview
+        # 2026-09-28d).
         i = argv.index("--instance")
-        if i + 1 >= len(argv) or not INSTANCE_NAME.match(argv[i + 1]):
-            print("usage: bin/game prod <verb> ... --instance NAME", file=sys.stderr)
+        if (i != len(argv) - 2 or argv.count("--instance") != 1
+                or not INSTANCE_NAME.match(argv[i + 1])):
+            print("usage: bin/game prod <verb> ... --instance NAME (the last two "
+                  "arguments, so the permission rules read the whole verb)", file=sys.stderr)
             return 2
-        INSTANCE, argv = argv[i + 1], argv[:i] + argv[i + 2:]
+        INSTANCE, argv = argv[i + 1], argv[:i]
     if argv and argv[0] in PASSTHROUGH:
         try:
             return passthrough(argv)
