@@ -18,6 +18,9 @@ lines:
 - engines up or down
 - the timer jobs (backup, keepsakes, offsite): name any that failed
 - who is playing
+- the attached instance, when the box has several (`bin/game prod instance
+  list`; swapping is `bin/game prod instance use <name>`,
+  docs/runbooks/instances.md, ask-first unless the operator asked)
 
 ## check
 

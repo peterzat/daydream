@@ -30,6 +30,11 @@ criterion 18; design in docs/GOING-LIVE.md section 4).
 
 ## Variants
 
+- **Another instance** (docs/runbooks/instances.md): friends belong to an
+  instance. `bin/game prod instance list` shows which is attached;
+  `bin/game prod --instance <name> invite create --for "<name>" --json`
+  mints one for a detached instance. Its link works only while that instance
+  is attached: say so to the operator.
 - **Forgotten password:** `/invite reset <username>` runs
   `bin/game prod invite reset <username> --json` (3-day link; it sets a new
   password and ends the account's other sessions).

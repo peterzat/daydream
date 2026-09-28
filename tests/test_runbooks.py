@@ -51,6 +51,9 @@ def test_the_runbooks_exist():
 def test_every_prod_verb_the_docs_name_exists():
     verbs = _prod_verbs()
     bad = [(d, v) for d, v in _mentions(r"bin/game prod ([a-z][a-z-]*)") if v not in verbs]
+    # `bin/game prod --instance NAME <verb>` acts on a detached instance.
+    bad += [(d, v) for d, v in _mentions(r"bin/game prod --instance [a-z0-9<>-]+ ([a-z][a-z-]*)")
+            if v not in verbs]
     assert not bad, f"unknown `bin/game prod` verbs: {bad}"
 
 

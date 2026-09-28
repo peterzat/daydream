@@ -1,6 +1,6 @@
 # Instances: several villages behind one door
 
-Status: design, 2026-09-28; building from the checklist at the end. The
+Status: 2026-09-28, built through the checklist's instance section except the prod steps; see the checklist at the end. The
 operator's ask: swap prod between The Village of Lost Hours and a Zork I
 playthrough (invite a friend, let them play, shelve it, go back), preserving
 every instance's state (accounts, world, art, everything), all from the same
@@ -184,24 +184,25 @@ in order), **operator** (needs the operator's hands or decision), **later**.
 
 ### Instances (this document)
 
-- next: `config.data_dir()` resolution (`DAYDREAM_INSTANCE`, `active`),
+- done: `config.data_dir()` resolution (`DAYDREAM_INSTANCE`, `active`),
   once per process; instance.json with village defaults; tests
-- next: prodctl passes the instance dir to every command, `HOME` stays the
+- done: prodctl passes the instance dir to every command, `HOME` stays the
   box's; `--instance NAME`; per-instance `.cli-cookie`; `prod status` and
   `/status/build` name the instance
-- next: `bin/game world reset|refresh` default to the instance's envelope
-- next: the words: door, game page, server text, invite message, sleep
-  warning; tests that a Zork-worded instance reads as Zork and the default
-  reads exactly as today
-- next: the per-instance cookie name, and the Worker reading it from the flag
-- next: `prod instance list|create|use|migrate`, with the swap's rollback;
+- done: `bin/game world reset|refresh` default to the instance's envelope
+- done: the words: door, game page, server text, invite message, sleep
+  warning; tests that another instance's words appear, escaped, and the
+  default reads exactly as before
+- done: the per-instance cookie name, and the Worker reading it from the flag
+- done: `prod instance list|create|use|migrate`, with the swap's rollback;
   tests against a fake box (tmp dirs, a fake systemctl)
-- next: the Worker: the flag's words on the asleep and keepsakes pages;
-  node tests; `bin/game edge deploy`
-- next: a runbook (docs/runbooks/instances.md), and the /village and
-  /invite skills learn `--instance`
-- next: in dev, a full rehearsal: two instances, swap, invite, play, swap
-  back, everything intact
+- done: the Worker: the flag's words on the asleep page, its API answer and
+  the WebSocket refusal; node tests
+- next: `bin/game edge deploy` (the Worker above)
+- done: a runbook (docs/runbooks/instances.md); the /village and /invite
+  skills know `--instance`
+- done: a real swap rehearsal (tests/test_instances.py): two instances, an
+  account and a dreamer in one, swap and back, everything intact
 - next: prod: `instance migrate` (the village becomes `instances/village`),
   `prod check`
 - next (its own turn if long): prod: `instance create zork`, the art import,
@@ -209,13 +210,18 @@ in order), **operator** (needs the operator's hands or decision), **later**.
 
 ### The internet-facing system (a deep, test-driven look)
 
-- next: `prod check` learns the attached instance (served vs `active` vs
-  the flag), the keep (provenance present), per-instance backup age
+- done: `prod check` learns the attached instance (served vs `active`) and
+  the flag's cookie
+- later: `prod check` on the keep (provenance present) and each instance's
+  backup age
 - next: a capacity rehearsal in dev before twelve friends: N agent players
   (`bin/game play`) at once; LLM p50/p95 from the new log lines, arbiter
   waits, render queueing; the numbers written down
 - next: dreamer creation is rate-limited per account (each one costs a
   portrait render on the shared GPU)
+- next: a "fresh GitHub user" review of the README, the setup docs and the
+  runbooks: could someone clone, fork and host their own instance from
+  them alone? (the operator's ask, 2026-09-28)
 - next: an uptime record: a Worker cron trigger (free plan) probes the
   origin while the flag says awake and records unplanned outages in KV;
   `edge status` and `prod status` show them (a friend's "it's down" should
