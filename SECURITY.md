@@ -2,259 +2,263 @@
 
 ## Security Review — 2026-09-28 (scope: paths)
 
-**Summary:** Path-scoped review of the 37 files in scope: the code changed
-from `1e65f3a` (the last review) to HEAD `8c39d4a`, which is the 15-WARN
-codereview fix pass plus the six unpushed commits (comings and goings, the
-dreamer panel and door note, Talk on the input line, `prod plan`). No code
-vulnerability found. One WARN: an unpushed commit message names the deleted
-prod test account's username, which the operator already once rewrote out of
-history. One NOTE, outside these paths: a committed test holds the box's
-tailnet address. Both prior findings are closed (0 BLOCK / 1 WARN / 1 NOTE).
+**Summary:** Path-scoped review of the 30 files in scope: the first friend's
+playtest fix pass (`2b67900..f8d26c7`, 20 unpushed commits) plus `44d8690`,
+measured from `600b1d5` (the tree the last review scanned, before its commit
+was reworded). No code vulnerability found. One WARN: the new talk echo
+writes what a player says to a resident into the event log as a private row
+that `account delete` leaves behind, which breaks the deletion promise in
+docs/DATA-LIFECYCLE.md. The prior NOTE (a tailnet address in a test outside
+these paths) is still open, and the prior WARN is closed
+(0 BLOCK / 1 WARN / 1 NOTE).
 
 ### Scope and method
 
-The 37 scanned files are every path in the review argument. Each file's diff
-from `1e65f3a` to HEAD was read in full, along with the code it touches or
-calls:
+Each scoped file's diff from `600b1d5` to HEAD `f8d26c7` was read in full,
+along with the code it touches or calls:
 
-- `toons.announce_move` and `move_texts`, and their callers (`go`, rule
-  teleport).
-- The WebSocket broadcast loop's room filter and the new presence
-  re-snapshot.
-- `events.fetch_since` (`skip_kinds`) and `fetch_for_toon`.
-- The SPA's arrival line (`placeArrival`, `escape`, `linkifyEntities`), the
-  move/arrive renderer, `askForText`/`sendText`, `refused`/`notice`, and the
-  door note.
-- `images/client.restore_from_keep` on the live render path, with
-  `keep.find`/`_store`/`records`/`put`, and `_generate_and_emit`'s error
-  handling.
-- `admin.cmd_restore`'s unlink and `cmd_keep_sync`.
-- `accounts_cli._forget_dreamer_state` and how toon ids are minted.
-- `instance.discard`/`load`/`migrate`.
-- prodctl's `plan`, `resolve_ref`, `_detached`, the `--instance` verb
-  allowlist, and `instance_create`/`use`/`migrate`.
-- `edge.set_state(note=None)`, the Worker's `watch`, the installer's
-  operator check, and the root helper's ASCII guard (read against the
-  rendered units it validates).
+- The WebSocket layer:
+  - the broadcast loop's private-event filter, and the replay
+    (`events.fetch_since(recipient_for=)`)
+  - the new snapshot fields: `arrival_seq`, `threads`, `went_home` and
+    `at`; toon `away` and `asked_topics`; object `keeps` and `detail`
+  - "what now" and "help"
+  - the greeting suppression's `fetch_since`
+- The new event rows: the talk echo (`say` with a recipient), the ask echo
+  (`echo`), the dozing note, and the echo guard's fallback. Also
+  `effects._apply_narrate`'s `card`, traced back to `_sanitize_llm_effect`.
+- The parser's trailing-phrase and group forms (`_TRAILING_PHRASE`,
+  `_GROUP`, `_expand_group`, `_all_candidates`), timed against worst-case
+  500-character inputs.
+- The journal's wider window, story markers, time of day and pronouns
+  (`fetch_for_toon`, `_event_lines`, `_user_prompt`).
+- Threads: `story.threads_for`, the validator, dream patches, and the
+  per-player `asked:` state.
+- Things that go home: `home_of`, `send_home_things`, `take_went_home`.
+- Every new or changed SPA sink:
+  - the card renderer and `linkifyEntities`' person rule
+  - the echo, chatter and went-home lines
+  - the portrait inset and panel, and the takeover overlay
+  - the scroll rail, the margin index and the threads list
+  - keepsake tags
+  - the attribute selectors built from object ids
 
-HTML, SQL, subprocess and filesystem sinks in every scoped module were swept
-by pattern. Credential-handling files' last three commits and the full
-outgoing range (`origin/main..HEAD`, messages included) were scanned for
-secrets and instance details. The 418 Python tests in the 13 scoped test
-files pass, as do the Worker's 35 tests (`node --test test/*.test.js`).
+Every `innerHTML` in main.js was swept, and the scoped Python diffs were
+swept for SQL, subprocess and file sinks. The outgoing range
+(`origin/main..HEAD`, every file and message) and the last three commits of
+ws.py and journal.py were scanned for secrets and instance values. The 135
+tests in the 8 scoped test files pass. The WARN was reproduced against a
+temp data dir.
 
 ### Findings
 
-[WARN] commit `67e1db3` (message lines 9-10; not yet pushed) — The commit
-message names the prod test account's username, in lowercase and
-capitalized forms, as the example of the "name given at the door" feature.
-  Attack vector: Not an exploit. It is instance data that becomes public on
-the next push, since the GitHub repo is public. `instance/NOTES.md` records
-three things: this username belonged to the operator's own test account
-(display name the operator's own), the account has since been deleted, and
-"History before the push was rewritten once to take a friend's name and the
-test account's username out of committed docs". The project's separation
-rule (CLAUDE.md, "Before any push, check the separation") covers exactly
-this. Because the account is deleted, the name no longer identifies a
-working login. The exposure is the name itself.
-  Evidence: `git show --no-patch 67e1db3` lines 9-10 (the name itself is
-kept out of this file). No tracked file at HEAD contains it. The other five
-outgoing commits and all their patches are clean.
-  Remediation: Before pushing, reword `67e1db3`'s message so it uses the
-neutral example the code comment already uses (`robin_ash` becomes
-`Robin Ash`). Do this non-interactively: a rebase from `origin/main` with a
-scripted sequence editor and message editor, or
-`git filter-branch --msg-filter` limited to `origin/main..HEAD`. Then
-re-run the separation check on the rewritten range.
+[WARN] daydream/verbs.py:1470-1472 — Every line a player says to a resident
+is now also written to the event log as a private `say` row, with the
+speaker as both actor and recipient. `account delete` does not remove it.
+  Attack vector: Not an exploit. The change breaks a privacy promise.
+docs/DATA-LIFECYCLE.md (lines 104-110) says `account delete` removes "what
+they said to each resident", and keeps only "the shared event history
+(what others saw happen in the village)". These rows are addressed to the
+speaker alone, so no one else ever saw them. Yet `_delete_account`
+(daydream/accounts_cli.py:106) and `_forget_dreamer_state` (:139) never
+touch `events`. The dialogue prompt is built to take in what a player says
+about themself, so these rows can hold personal details. After a friend
+asks to be forgotten, their words stay in the live DB. Every later backup,
+local and offsite, copies them again, so they never age out.
+  - No player can read them: the recipient toon is deleted, and a new toon
+    gets a fresh random id.
+  - Anyone with the DB or a backup can: the operator, and any tool that
+    reads `events`.
+  Evidence: `_handle_talk` appends `{"text": args.strip(), ...}` with
+`recipient_id=actor.id` before any dialogue runs (verbs.py:1470-1472, added
+in `8fa034f`). The repro: a player spoke a line to Hob in the story
+fixture, then `_delete_account(..., confirmed=True)` ran. The dreamer's
+`talk:` and other story records were deleted, but the `say` row holding the
+words remained. A smaller form of the same gap predates this range:
+  - The private chatter line quotes an unparsed typed line (ws.py:788,
+    since `283aa22`).
+  - Parser messages and model replies addressed to the player can carry
+    fragments of what they typed.
+  Remediation: When `account delete` removes a dreamer, delete or blank the
+text of the event rows addressed only to it (`recipient_id = <toon id>`).
+No one else saw those rows, so the shared history is unchanged. `seq` is
+AUTOINCREMENT (migrations/001_initial.sql:89), so a deletion cannot free a
+sequence number for reuse. Add a case to tests/test_account_delete.py:
+talk to a resident, delete the account, and assert the words are gone.
+Then add private lines to DATA-LIFECYCLE.md's list of what goes.
 
-[NOTE] tests/test_config_edge.py:61 (outside this review's paths) — The test
-that proves a non-loopback bind host is refused uses this box's real tailnet
-IPv4 as its example.
-  Attack vector: Minimal. The address belongs to Tailscale's CGNAT range and
-is reachable only by members of the operator's tailnet, so disclosing it
-gives an outsider nothing to connect to. It is still "the box's addresses",
-which CLAUDE.md keeps off GitHub. It has been public since `5f2bd3d`
-(2026-09-27, on `origin/main`), and earlier outgoing-diff scans missed it
-because it predates them.
-  Evidence: An exact match for `tailscale ip -4` on this box, at
-`tests/test_config_edge.py:61` (the value is not reproduced here).
-  Remediation: The next time the file is touched, replace it with a neutral
-address such as `100.64.0.1`; the test needs only a non-loopback address.
-No history rewrite is warranted for a tailnet-only address.
+[NOTE] tests/test_config_edge.py:61 (outside these paths; carried unchanged
+from the prior review) — The non-loopback bind-host test still uses this
+box's real tailnet IPv4.
+  Attack vector: Minimal. The address is in Tailscale's CGNAT range and
+reachable only inside the operator's tailnet. It has been public since
+`5f2bd3d`.
+  Evidence: Still an exact match for `tailscale ip -4` (the value is not
+reproduced here).
+  Remediation: Swap in `100.64.0.1` the next time the file is touched. A
+history rewrite is not warranted.
 
 ### Closed since the last review
 
-- **The unit validator's Unicode whitespace (prior WARN).** Fixed in
-  `03a5b08`. `parse_unit` now refuses any non-ASCII line before parsing
-  (`ops/root/daydream-root:317-323`). Lines are split on `"\n"` only, so
-  Unicode line separators stay inside a line and are refused too. The check
-  runs on the rendered text that gets installed. Two hostile tests carry
-  real U+00A0 bytes. The installed `/usr/local/sbin/daydream-root` is
-  byte-identical to the repo copy, and the prod release (`e1adc76`)
-  contains the fix.
-- **`NoNewPrivileges` on the installed timer units (prior NOTE).** Resolved
-  by the operator's installer run (2026-09-28 17:30 UTC). The installed
-  keepsakes unit matches the repo's rendered unit, and the 18:03 UTC
-  keepsakes run exited 0.
+- **The deleted test account's username in a commit message (prior
+  WARN).** Reworded before the push (the commit is now `4a59178`). No
+  message on `origin/main` and no tracked file at HEAD contains it.
 
 ### Traced and cleared this run (not findings)
 
-- **Comings and goings.** Presence events are room broadcasts: `move` is
-  keyed to the room left and `arrive` to the room reached, with no
-  recipient. The broadcast loop's room filter and private-event filter are
-  unchanged. The mover's own `arrive` does not re-snapshot twice. The line
-  text interpolates three things only:
-  - the toon's validated name (printable, capped, banlisted, not id-shaped)
-  - room titles
-  - `direction`, which `_handle_go` accepts only as an existing exit key,
-    never raw player text
-
-  Every SPA sink is `textContent` or `escape()`d. `escape` covers
-  `& < > "`, and every attribute it feeds is double-quoted. `linkifyEntities`
-  escapes before matching. `play.py` prints the same text; a name cannot
-  carry ESC because `isprintable()` refuses it. `skip_kinds` adds only
-  placeholders, bound to a code constant. Re-snapshots on others' moves are
-  bounded by the per-connection rate (3 frames/s, burst 12) among invited
-  friends.
-- **The live keep restore.** The cache key is seed text plus workflow, and
-  the sampler seed derives from the same text. A keep hit is therefore the
-  painting a fresh render would produce, and a matching seed is the only way
-  to hit another target's painting. `find` takes the newest record, so an
-  admin repaint wins over the original.
-  - Only `keep.put` writes provenance lines. They are JSON-encoded and read
-    by `\n` bytes, and nothing imports provenance back from a backup.
-    `rec["sha256"]` is used unvalidated in `art_path`, but no attacker
-    input reaches it.
-  - The restore replaces its temp file and never writes into it. Kept files
-    are 0444, so a write through a hard link fails loudly
-    (`SameFileError` and `EACCES` both fall back to a render).
-  - `prompt_text` is nullable, and `_generate_and_emit`'s broad catch keeps
-    any failure off the session.
-  - The only other writer into cache paths, prebake's adopt step, runs only
-    when the path is absent.
-- **`world restore`'s new unlink.** It removes only a non-symlink regular
-  file whose resolved path is inside the data dir. An archive could already
-  write any file there, so the unlink adds no reach. Archives remain
-  operator-trusted, and the verb is behind an ask rule in prod.
-- **`account delete`'s forgetting.** SQL is parameterized. The
-  `:<toon id>` suffix match is anchored by the colon, so it cannot catch a
-  longer id. Toon ids carry 32 random bits per slot, so a later toon never
-  inherits an old one's `pq:`/`talk:` state. It is CLI only, behind the ask
-  rule. The dreamer-cap throttle key goes with the account.
-- **`instance.discard`.** Reached only from `instance_create`'s failure
-  path, run by the release as the service user. It refuses:
-  - a symlink or a non-directory
-  - the attached instance
-  - any dir holding a world or accounts DB
-
-  `rmtree` is symlink-attack resistant on Linux.
-- **prodctl.**
-  - `plan` is read-only. `resolve_ref` returns a verified full SHA
-    (`rev-parse --verify <ref>^{commit}`), and every later git call takes
-    that SHA or a release dir name, in list form with no shell.
-  - `--instance` is now refused outside the passthrough verbs and `backup`,
-    and still only as the last two arguments.
-  - `_detached()` compares the resolved `active` link to the name. A
-    symlinked `instances/<name>` would mislead it, but only the service user
-    can create one there, and the effect would be a consistency risk to its
-    own data, not privilege.
-- **Edge.** `set_state(note=None)` keeps the flag's note, capped at 280
-  characters. Words are still capped, allowlisted and escaped by the Worker.
-  `watch` changes only outage bookkeeping, writes KV only on a change, and
-  the `uptime` key is on no public route.
-- **Installer.** The operator is now `SUDO_USER` and never a guess, and it
-  refuses empty or `root`. The name is regex-checked before it reaches
-  `root.conf` or sudoers.
-- **UI.** Slot refusals now name `instance.place()` (validated operator
-  words) and reach `notice()` through `textContent`. `/api/dreamer` returns
-  the caller's own username, used only as `textContent` and an input value.
-  Talk's words now go from the page's input line as a structured command
-  frame, which the server still checks for scope, verb applicability, length
-  and rate. The door note keeps criterion 8's two facts.
+- **New private rows stay private.**
+  - These are all addressed to the actor: the ask echo, the talk echo, the
+    dozing note, "what now", "help", the echo guard's fallback and the
+    went-home note.
+  - The broadcast loop drops any row addressed to someone else, whatever
+    its kind, and every replay passes `recipient_for`.
+  - `threads`, `went_home` and the journal ride only the controlled toon's
+    snapshot. `asked_topics` is computed per viewer.
+  - `take_went_home` and `send_home_things` write through
+    `objects.set_property`, which emits no event.
+- **Cards.** `_apply_narrate` keeps a card only when every value is a
+  string, and it copies only four keys. `_sanitize_llm_effect` reduces an
+  LLM-originated narrate to `text` and `to` before dispatch. So a card can
+  come only from engine verbs, authored rules and dream patches. The page
+  renders the card's label with `textContent`, and its body through
+  `linkifyEntities`, which escapes first.
+- **SPA sinks.**
+  - Every new line uses `textContent` or `escape()`.
+  - The person rule in `linkifyEntities` returns a slice of text that is
+    already escaped.
+  - Portrait URLs come from the server, go through `assetUrl`, and sit
+    behind the sign-in gate.
+  - The attribute selectors built from object ids take only ids the
+    server mints (`o-` or `t-slot<n>-` plus hex) or the author writes. A
+    card's `object_id` is the examined object's own id.
+- **Parser.**
+  - `_TRAILING_PHRASE` is quadratic at worst: about 10 ms for 500
+    characters of whitespace. The frame cap (500 characters) and the
+    per-connection rate (3 frames/s) bound it.
+  - The group form runs only for take, drop and put. It draws on
+    `_all_candidates`, which excludes another player's private finds.
+  - Each expanded command still passes the executor's scope gate.
+  - A "don't see any X" reply echoes the player's own noun back to them
+    alone.
+- **Dozing.** `away` and the dozing note tell players in the same room
+  whether another player's page is open. They could already see that
+  player's presence, and they get only a boolean: the session id stays on
+  the server.
+- **Journal.**
+  - The window is wider (150 events, 48 lines of 260 characters) and now
+    includes the player's own echoes.
+  - Output validation is unchanged: refusal parse, 60 to 500 characters,
+    and the banlist.
+  - An entry is shown only to its owner.
+  - Another player's words reach a journal only through rows addressed to
+    its owner, as before.
+- **Threads and dreams.**
+  - Threads are authored and checked by `validate_story`. Dream patches
+    pass `validate_envelope2`.
+  - Per-player `asked:` state lives under `pq:<toon>:`, which
+    `account delete` already forgets. It holds at most 200 entries per
+    resident.
+- **Takeover.** "Dream here instead" reconnects through the same account's
+  session. The server still decides ownership (`_auto_enter`).
+- **Nothing new at the edges.**
+  - The outgoing range adds no routes and no dependencies.
+  - `index.html` adds no inline script or handler.
+  - The CSS adds no external URL.
 
 ### Secrets, PII and the instance
 
-- **Credentials.** The Cloudflare API token and account id (read from
-  `~/.config/daydream/cloudflare.env` and compared without printing) appear
-  in no tracked file, no commit since `1e65f3a`, and no outgoing commit.
-  Neither do the zone id, the Zero Trust team, the Access AUD tag, the
-  tunnel id, or the invite ids that `instance/NOTES.md` records.
-- **Deliberate instance values.** The origin hostname and KV id appear only
-  in the deliberately committed places (`edge/wrangler.toml`, the tunnel
-  unit, the setup doc, the Worker tests).
-- **Addresses.** The box's public IPv4 and IPv6 are absent. Its tailnet
-  IPv4 is the NOTE above.
-- **Operator identity.** The operator's surname appears only in LICENSE's
-  copyright line and in commit author metadata.
-- **Pattern scans.** No token-shaped value, invite link or cookie value
-  appears in the range. Test fixtures use fictional names.
-- **Ignored directory.** `instance/` is still gitignored.
-- **The one exception** is the username in `67e1db3`'s message (the WARN).
+- **Credentials.** The values in `~/.config/daydream/` were compared
+  without printing. They appear in:
+  - no outgoing commit or message
+  - none of the last three commits of ws.py and journal.py
+
+  No token-shaped value, invite link or cookie value appears either.
+- **Instance values.** None of these appears in the outgoing diff or its
+  messages:
+  - the zone id, the Zero Trust team, the AUD tag and the tunnel id
+  - the invite ids and the box's public addresses
+  - the deleted test account and the operator's name
+
+  The KV id and the origin hostname appear only in their deliberately
+  committed places.
+- **Names.** Test fixtures and the playtest doc use fictional dreamer
+  names. Of the names in the dev accounts DB, only the playtest's fictional
+  dreamer appears. `instance/` is still gitignored.
 
 ### Accepted Risks
 
 Accepted by the operator for going live (`docs/GOING-LIVE.md` section 9;
 docs/ADMIN-ROOT.md "Security posture", 2026-09-28):
 
-- **The engines run as `peter`.** vLLM (`:8000`) and ComfyUI (`:8188`) listen
-  unauthenticated on loopback and run as `peter`, who is in the docker group.
-  The prod service user can reach both. Planned fix: a separate engines user.
-- **Local attackers are best-efforts only.** The box is single-user; `peter`
-  keeps the root-equivalent `docker` group, so a hostile process running as
-  the operator is out of scope. The helper, root-only secrets, and the
-  validated-and-logged root actions are reasonable precautions, not a boundary
-  against the operator's own user.
-- **Known local-only residual (docs/ADMIN-ROOT.md):** systemd reads a
-  release's `.release.env` as root and releases belong to the operator, so the
-  operator's user could point it at the tunnel token; anyone who can do that
-  already holds `docker`.
-- **The pre-login surface is public** (door, login, invite redemption, static
-  assets), throttled in the app and at the edge.
-- **Friends drive shared-world verbs on shared objects** (co-op design).
-- **What friends type reaches the local LLM**, with role separation, length
-  caps, banlists and strict output validation.
+- **The engines run as `peter`.** vLLM (`:8000`) and ComfyUI (`:8188`)
+  listen unauthenticated on loopback and run as `peter`, who is in the
+  docker group. The prod service user can reach both. Planned fix: a
+  separate engines user.
+- **Local attackers are best-efforts only.** The box is single-user, and
+  `peter` keeps the root-equivalent `docker` group, so a hostile process
+  running as the operator is out of scope. The helper, the root-only
+  secrets, and the validated and logged root actions are reasonable
+  precautions, not a boundary against the operator's own user.
+- **Known local-only residual (docs/ADMIN-ROOT.md).** systemd reads a
+  release's `.release.env` as root, and releases belong to the operator. So
+  the operator's user could point it at the tunnel token. Anyone who can do
+  that already holds `docker`.
+- **The pre-login surface is public** (the door, login, invite redemption,
+  static assets). The app and the edge both throttle it.
+- **Friends drive shared-world verbs on shared objects** (the co-op
+  design).
+- **What friends type reaches the local LLM.** Role separation, length
+  caps, banlists and strict output validation stand between them.
 
-Carried register (from prior reviews, still open, not re-flagged):
+Carried register (from prior reviews; still open, not re-flagged):
 
 - LLM-emitted effects take an unscoped, LLM-chosen target id on the
-  data-skill paths (neither exists in the live Lost Hours world; planned v2).
-- Raw parser input is not role-separated; output is re-grounded to a closed
-  verb and an in-scope id.
-- NPC dialogue and growth are exposed to prompt injection; input is wrapped,
-  capped and banlisted, output validated before any mutation; refusal `reason`
-  text is narrated without an output-banlist pass, through escaped sinks.
-- World envelopes, archives and `bin/game` are trusted as the operator's own
-  (world load/reset content, `reset`'s `rm -rf`, dev `.env` sourcing, the dev
-  `0.0.0.0` bind, the deprecated `bootstrap_world`). None take network input.
+  data-skill paths. Neither path exists in the live Lost Hours world
+  (planned for v2).
+- Raw parser input is not role-separated. The output is re-grounded to a
+  closed verb and an in-scope id.
+- NPC dialogue and growth are exposed to prompt injection.
+  - Input is wrapped, capped and banlisted, and output is validated before
+    any mutation.
+  - Refusal `reason` text is narrated without an output-banlist pass,
+    through escaped sinks.
+- World envelopes, archives and `bin/game` are trusted as the operator's
+  own. That covers world load and reset content, `reset`'s `rm -rf`, dev
+  `.env` sourcing, the dev `0.0.0.0` bind, and the deprecated
+  `bootstrap_world`. None of these takes network input.
 - Event queues are bounded (256, drop-oldest).
-- DNS (127.0.0.53) and AF_UNIX leave the prod sandbox; any local process can
-  reach `127.0.0.1:54322` and choose its own `X-Daydream-Client-IP` (moves
-  throttle keys only; the gate still applies); `gpu.lock` is writable by the
-  service.
-- Invite slugs are unsalted sha256 over ~983,000 phrases (a copy of the
-  accounts DB recovers open slugs); strangers can keep invitations paused
-  (global cap; `invite unblock` reopens).
-- On the Workers Free plan an anonymous client can exhaust the daily request
-  quota; the one WAF rule covers login and invite paths.
-- The operator's Cloudflare token is account-wide (Workers Scripts edit cannot
-  be scoped to one Worker).
-- Toon names are not unique and lookalikes are not folded; moderation refuses
-  an ambiguous key and `/status/who` shows id and owner.
-- A shell rest does not reach an open socket; `account disable` is the stop.
-- Supply-chain: the prod lock pins versions but not hashes; CI actions use
-  tags.
-- The standing prod grant's `ask` rules are text patterns; a quoted word may
-  slip past one (a PreToolUse hook would be firmer).
-- Player text (names, speech, now also move lines) reaches the agent's
-  context through `bin/game play`; the verbs an injected instruction would
-  want stay behind ask rules.
+- DNS (127.0.0.53) and AF_UNIX leave the prod sandbox.
+- Any local process can reach `127.0.0.1:54322` and set its own
+  `X-Daydream-Client-IP`. That moves throttle keys only; the gate still
+  applies.
+- `gpu.lock` is writable by the service.
+- Invite slugs are unsalted sha256 over about 983,000 phrases, so a copy of
+  the accounts DB recovers open slugs.
+- Strangers can keep invitations paused (a global cap); `invite unblock`
+  reopens them.
+- On the Workers Free plan, an anonymous client can exhaust the daily
+  request quota. The one WAF rule covers the login and invite paths.
+- The operator's Cloudflare token is account-wide: Workers Scripts edit
+  cannot be scoped to one Worker.
+- Toon names are not unique, and lookalikes are not folded. Moderation
+  refuses an ambiguous key, and `/status/who` shows the id and the owner.
+- A shell rest does not reach an open socket; `account disable` is the
+  stop.
+- Supply chain: the prod lock pins versions but not hashes, and CI actions
+  use tags.
+- The standing prod grant's `ask` rules are text patterns, so a quoted word
+  may slip past one. A PreToolUse hook would be firmer.
+- Player text reaches the agent's context through `bin/game play`: names,
+  speech and move lines. The verbs an injected instruction would want stay
+  behind ask rules.
 
 ---
-*Prior review (2026-09-28, paths, commit `1e65f3a`): the root helper,
-instances, the art keep, `account delete`, the dreamer cap and the Worker's
-uptime watch (28 files). It found 0 BLOCK / 1 WARN / 1 NOTE: the unit
-validator's Unicode-whitespace gap and the installed timer units'
-`NoNewPrivileges`, both now closed. Earlier entry at
-`git show 48c5b2d:SECURITY.md`.*
+*Prior review (2026-09-28, paths, commit `8c39d4a`, reworded to `600b1d5`):
+37 files covering comings and goings, the dreamer panel and door note, Talk
+on the input line, `prod plan`, and the codereview fix pass. It found
+0 BLOCK / 1 WARN / 1 NOTE. The WARN (the deleted test account's username in
+a commit message) was reworded before the push. The NOTE (a tailnet address
+in an older test) is carried above. Full entry at
+`git show b6c7644:SECURITY.md`.*
 
-<!-- SECURITY_META: {"date":"2026-09-28","commit":"8c39d4afc45e3f9dbcf5f09c509567ac102a0341","scope":"paths","scanned_files":["daydream/accounts.py","daydream/accounts_cli.py","daydream/admin.py","daydream/api/slots.py","daydream/api/ws.py","daydream/edge.py","daydream/events.py","daydream/images/client.py","daydream/images/keep.py","daydream/instance.py","daydream/play.py","daydream/prebake.py","daydream/prodctl.py","daydream/skills/effects.py","daydream/toons.py","daydream/verbs.py","edge/src/worker.js","edge/test/worker.test.js","ops/install-prod.sh","ops/root/daydream-root","tests/test_account_delete.py","tests/test_art_keep.py","tests/test_browser_flow.py","tests/test_comings_and_goings.py","tests/test_edge_ctl.py","tests/test_frontend.py","tests/test_frontend_zork.py","tests/test_instances.py","tests/test_ops_units.py","tests/test_prodctl.py","tests/test_root_helper.py","tests/test_slots.py","tests/test_ws.py","web/assets/door.js","web/assets/main.js","web/assets/style.css","web/index.html"],"block":0,"warn":1,"note":1} -->
+<!-- SECURITY_META: {"date":"2026-09-28","commit":"f8d26c72a12781886e927a2a520d2b7026a8321c","scope":"paths","scanned_files":["daydream/api/ws.py","daydream/dialogue.py","daydream/dream.py","daydream/growth.py","daydream/journal.py","daydream/llm/story_format.py","daydream/parser.py","daydream/skills/effects.py","daydream/story.py","daydream/toons.py","daydream/verbs.py","daydream/version.py","daydream/walkthrough.py","tests/test_arrival.py","tests/test_browser_playtest.py","tests/test_dialogue.py","tests/test_dozing.py","tests/test_journal.py","tests/test_lost_hours_world.py","tests/test_parser.py","tests/test_story.py","tools/assemble_world.py","web/assets/main.js","web/assets/style.css","web/index.html","worlds/lost-hours/arcs/00-prologue.json","worlds/lost-hours/arcs/02-extra-hour.json","worlds/lost-hours/arcs/07-letters.json","worlds/lost-hours/regions/03-lane.json","worlds/lost-hours/world.json"],"block":0,"warn":1,"note":1} -->
