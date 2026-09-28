@@ -110,8 +110,11 @@ def prod_env() -> dict[str, str]:
 AS_USER = os.environ.get("DAYDREAM_PROD_AS_USER", "daydream")
 
 
-# `bin/game prod --instance NAME <verb>` acts on an instance that is not the
-# attached one (docs/INSTANCES.md); unset, commands act on the attached one.
+# `bin/game prod <verb> ... --instance NAME` acts on an instance that is not
+# the attached one (docs/INSTANCES.md); unset, commands act on the attached
+# one. The option comes AFTER the verb, never before it: the agent's
+# permission rules match a verb by its prefix (`bin/game prod world reset *`
+# always asks), and a leading option would walk around them.
 INSTANCE: str | None = None
 INSTANCE_NAME = re.compile(r"^[a-z][a-z0-9-]{0,31}$")
 
@@ -1035,12 +1038,17 @@ def main(argv: list[str] | None = None) -> int:
     global INSTANCE
     argv = list(sys.argv[1:] if argv is None else argv)
     if argv[:1] == ["--instance"]:
-        # `bin/game prod --instance NAME <verb>`: act on an instance that is not
-        # the attached one (an invite before it is up, its backup, its world).
-        if len(argv) < 3 or not INSTANCE_NAME.match(argv[1]):
-            print("usage: bin/game prod --instance NAME <verb> ...", file=sys.stderr)
+        print("put --instance after the verb: bin/game prod <verb> ... --instance NAME "
+              "(the permission rules read the verb first)", file=sys.stderr)
+        return 2
+    if "--instance" in argv:
+        # Act on an instance that is not the attached one (an invite before
+        # it is up, its backup, its world).
+        i = argv.index("--instance")
+        if i + 1 >= len(argv) or not INSTANCE_NAME.match(argv[i + 1]):
+            print("usage: bin/game prod <verb> ... --instance NAME", file=sys.stderr)
             return 2
-        INSTANCE, argv = argv[1], argv[2:]
+        INSTANCE, argv = argv[i + 1], argv[:i] + argv[i + 2:]
     if argv and argv[0] in PASSTHROUGH:
         try:
             return passthrough(argv)

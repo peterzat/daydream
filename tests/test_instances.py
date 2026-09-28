@@ -241,7 +241,7 @@ def test_a_swap_keeps_each_instances_accounts_world_and_sessions(box):
         me = client.get("/api/me")
         assert me.status_code == 200 and me.json()["username"] == "robin"  # still signed in
         assert [t["name"] for t in client.get("/api/dreamer").json()["toons"]] == ["Robin"]
-        assert accounts.get_account("juno") is None  # a friend lives only in the other one
+        assert accounts.get_account("juno") is None  # Juno lives only in the other one
 
 
 # ---- the prod swap's order and its rollback (systemd and the edge faked) ----

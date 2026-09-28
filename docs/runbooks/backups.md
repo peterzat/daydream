@@ -37,8 +37,10 @@ again. Prefer restoring only after a bad migration or a bad dream.
 
 ## Offsite: set up, prove, restore
 
-Not set up yet on this instance until the R2 bucket exists
-([`CLOUDFLARE-SETUP.md`](../CLOUDFLARE-SETUP.md) step 13). Then prove the
+The weekly job fails until the R2 bucket exists
+([`CLOUDFLARE-SETUP.md`](../CLOUDFLARE-SETUP.md) step 13). With instances,
+each one is sealed under its own name (`prod-<instance>-<ts>.tar.gz.age`).
+Once the bucket exists, prove the
 round trip once, on the box (`offsite-restore` decrypts with the box's own
 key and needs `~/.config/daydream/cloudflare.env` and wrangler):
 

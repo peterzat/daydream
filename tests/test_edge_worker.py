@@ -2,6 +2,7 @@
 runner) run as part of tier_short when node is on the box (SPEC 2026-09-27
 criterion 14)."""
 
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -27,5 +28,7 @@ def test_the_worker_config_keeps_its_guarantees():
     routes are the public ones, and no secret is committed."""
     toml = (EDGE / "wrangler.toml").read_text()
     assert "workers_dev = false" in toml and "preview_urls = false" in toml
-    assert 'pattern = "www.eidolon.com/daydream*"' in toml
+    # A route exists; which host it names is the instance's (a fork changes
+    # it), and tests/test_ops_units.py ties it to ops/prod.env.example.
+    assert re.search(r'pattern = "[^"/]+/[^"]*\*"', toml)
     assert "ACCESS_CLIENT_SECRET" not in toml.split("[vars]")[1].split("[[")[0]

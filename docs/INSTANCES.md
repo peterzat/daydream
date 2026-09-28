@@ -36,7 +36,7 @@ the GPU engines and their lock, the edge (Worker, KV, Access, tunnel), the
 Cloudflare credentials, prod.env's boot-guard settings. Per instance:
 everything a friend could tell apart.
 
-Accounts are per instance on purpose: a friend exists only in Zork, the
+Accounts are per instance on purpose: a friend invited to Zork exists only in Zork, the
 village's friends only in the village. That is the isolation multi-tenancy
 needs, and it costs nothing today.
 
@@ -55,9 +55,10 @@ the service first, always.
 `bin/game prod` passes the resolved instance dir as `DAYDREAM_DATA_DIR` to
 every command it runs as the service user (so `bin/game`'s own bash paths,
 `world reset` included, agree with Python), and keeps `HOME` at the box's
-data dir (the engines' state is the box's). `bin/game prod --instance zork
-<verb>` acts on an instance that is not attached (an invite for a friend before
-Zork is up, a backup, a load).
+data dir (the engines' state is the box's). `bin/game prod <verb> ...
+--instance zork` acts on an instance that is not attached (an invite before
+Zork is up, a backup, a load). The option comes after the verb: the agent's
+permission rules read the verb first, and prodctl refuses it in front.
 
 ## instance.json: identity and words
 
@@ -133,7 +134,7 @@ and `instance migrate` (the one-time move of today's flat layout into
 - Zork is frozen (CLAUDE.md): nothing in `worlds/zork1*` changes. Its
   WORLD_VERSION gap is MINOR, so it boots with a warning; a fresh load stamps
   the current version.
-- `bin/game prod --instance zork invite create --for "a friend"`; the link works
+- `bin/game prod invite create --for "<a friend>" --instance zork`; the link works
   while Zork is attached (the invite message says so).
 
 ## Toward multi-tenancy
@@ -167,8 +168,9 @@ in order), **operator** (needs the operator's hands or decision), **later**.
 - done: the art keep, keep-before-wipe, restore-from-keep, provenance in
   backups
 - next: deploy, then `keep-sync` prod; import the two recovered portraits
-  (from the engine's own output folder) with provenance from the pre-reset backup
-- next: delete the early test accounts in prod (`account delete --yes`)
+  from the engine's own output folder, with provenance from the pre-reset
+  backup (the instance record has the details)
+- next: remove the early test accounts in prod (`account delete --yes`)
 - later: art bytes offsite (after the R2 bucket); a `prune` verb; a prune of
   ComfyUI's output folder
 

@@ -38,12 +38,15 @@ The design behind all of it is [`docs/GOING-LIVE.md`](../GOING-LIVE.md).
 - **The agent** runs every `bin/game prod` and `bin/game edge` verb when the
   operator asks for the work, with a one-line note per step (CLAUDE.md
   "Agent policy for prod"). A local permission rule lets them run without a
-  prompt, except the verbs that mint a credential or a privilege or replace
-  the world (`prod invite reset`, `prod account role|create|cli-cookie`, `prod
-  world reset|delete|restore|snapshot-restore|restore-backup|load`), which
-  always prompt.
-- **The operator** does what needs root or a browser: `sudo ops/install-prod.sh`,
-  editing `/srv/daydream/etc/prod.env`, and the Cloudflare dashboard.
+  prompt, except the verbs that mint a credential or a privilege, replace
+  the world, remove a person, or change what root has installed (`prod invite
+  reset`, `prod account role|create|cli-cookie|delete`, `prod world
+  reset|delete|restore|snapshot-restore|restore-backup|load`, `prod root units
+  --apply`, `prod root env set`), which always prompt. `--instance NAME` goes
+  after the verb, so these rules still see it.
+- **The operator** does what needs a password or a browser: installing or
+  changing the root helper and sudoers (`sudo ops/install-prod.sh`), system
+  packages, the tunnel token, and the Cloudflare dashboard.
 - **Nobody** mends the great clock with the operator's own account in prod:
   the prologue belongs to the first friend.
 

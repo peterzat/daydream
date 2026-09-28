@@ -94,8 +94,9 @@ class AccessMiddleware:
         if scope["type"] == "http":
             body = (
                 f"forbidden: {host or 'unknown client'} is not on the tailnet. "
-                "Set DAYDREAM_ACCESS=public in .env (and open UFW for the port) "
-                "to allow non-tailnet clients.\n"
+                "Reach the dev server over the tailnet, from the box itself, or "
+                "through an SSH tunnel (ssh -L 54321:127.0.0.1:54321 <box>); "
+                "hosting for friends goes through the edge (docs/CLOUDFLARE-SETUP.md).\n"
             ).encode()
             await send(
                 {

@@ -40,13 +40,15 @@ must be an asset the release ships (`--door-image assets/<file>.png`).
 
 ## Act on a detached instance
 
-`--instance NAME` before the verb acts on that instance instead of the
-attached one: its accounts, invites, backups, world.
+`--instance NAME` after the verb acts on that instance instead of the
+attached one: its accounts, invites, backups, world. It must come after the
+verb: the agent's permission rules read the verb first, and prodctl refuses
+the option in front of it.
 
 ```sh
-bin/game prod --instance zork invite create --for "a friend" --json
-bin/game prod --instance zork account list
-bin/game prod --instance zork backup
+bin/game prod invite create --for "A Friend" --json --instance zork
+bin/game prod account list --instance zork
+bin/game prod backup --instance zork
 ```
 
 An invitation works only while its instance is attached (the link is the

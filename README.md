@@ -16,13 +16,13 @@ Daydream is a small, shared, persistent coffee-break world running on one GPU bo
 
 ## Where it runs, and how to make it yours
 
-Daydream is meant to be forked: take the repo, make it your own game (or keep the village), and run it on your own box behind your own Cloudflare account. The repo carries everything general: the engine, the world, the prod tooling (`bin/game prod`), the ops templates (`ops/`), the edge Worker (`edge/`), and the playbooks an agent follows to operate it (`docs/runbooks/`). What makes an instance *yours* never enters the repo: your tokens, your dashboard settings, your box's prod environment, and a local record of what exists where (`instance/NOTES.md`, gitignored). This repo's own history is one operator pushing for exactly one instance, the village at [www.eidolon.com/daydream](https://www.eidolon.com/daydream), invitation only.
+Daydream is meant to be forked: take the repo, make it your own game (or keep the village), and run it on your own box behind your own Cloudflare account. The repo carries everything general: the engine, the world, the prod tooling (`bin/game prod`), the ops templates (`ops/`), the edge Worker (`edge/`), and the playbooks for operating it (`docs/runbooks/`). What makes an instance *yours* never enters the repo: your tokens, your dashboard settings, your box's prod environment, and a local record of what exists where (`instance/NOTES.md`, gitignored). This repo serves one live instance, the author's invite-only village at [www.eidolon.com/daydream](https://www.eidolon.com/daydream); your fork serves yours.
 
 - **One GPU box: a Hetzner GEX44** (one RTX 4000 SFF Ada, 20 GB). It runs both environments: dev on the tailnet, and prod as a sandboxed system user with its own releases, data and accounts, loopback-only egress, and no secrets. Both share the local engines (vLLM and ComfyUI) behind a cross-process GPU lock. The running game calls no cloud model.
 - **Cloudflare in front.** A Worker at `/daydream` proxies to an Access-guarded Cloudflare Tunnel, so the box opens no inbound port. The box is often lent to other GPU work; when it sleeps, the Worker shows friends a storybook "the village is asleep" page with their own journal and book. The free plan covers all of it (R2, for offsite backups, needs a card on file).
-- **Operations are agentic.** The admin console is a Claude Code session on the box. The operator asks; the agent runs the prod verbs (deploy, sleep, wake, invite, check), follows the playbooks, and keeps the instance record current. `/village` and `/invite` are skills for the everyday verbs. Only root-owned files and the Cloudflare dashboard need the human's hands, and the verbs that mint a credential or replace the world always ask (among them `prod account cli-cookie`, which prints an admin session cookie, and `prod world load`; the full list is in CLAUDE.md, "Agent policy for prod").
+- **Operations are agentic, and Claude Code is optional.** Every operation is a plain `bin/game` command; the author's admin console is a Claude Code session on the box. The operator asks; the agent runs the prod verbs (deploy, sleep, wake, invite, check), follows the playbooks, and keeps the instance record current. `/village` and `/invite` are skills for the everyday verbs. Only root-owned files and the Cloudflare dashboard need the human's hands, and the verbs that mint a credential or replace the world always ask (among them `prod account cli-cookie`, which prints an admin session cookie, and `prod world load`; the full list is in CLAUDE.md, "Agent policy for prod").
 
-To make it yours: [`docs/CLOUDFLARE-SETUP.md`](docs/CLOUDFLARE-SETUP.md) lists what you need and what to change first; [`docs/GOING-LIVE.md`](docs/GOING-LIVE.md) is the design and what bringing it up taught us.
+To make it yours: run it in dev first ("Running it", below; no Cloudflare), then follow [`docs/FORKING.md`](docs/FORKING.md), the fork path in order: what you need, the values to change, the hosting setup ([`docs/CLOUDFLARE-SETUP.md`](docs/CLOUDFLARE-SETUP.md)), and staying current. [`docs/GOING-LIVE.md`](docs/GOING-LIVE.md) is the design and what bringing it up taught us.
 
 ## Reflexes, not voice
 
@@ -54,7 +54,7 @@ The canon bible ([`docs/canon/LOST-HOURS.md`](docs/canon/LOST-HOURS.md)) has spo
 
 ## Playing
 
-Everyone plays with their own account, and accounts come only from invitations: a friend gets a single-use link, picks a username and password, and makes a dreamer (a name and a line about how you look; the portrait paints itself in a moment). There is no shared password. In dev, open `http://<host>:54321` from a tailnet device and sign in with the account you made on the command line (below). A "How to Dream" page explains the rest, and a `?` at the foot of the book brings it back.
+Everyone plays with their own account, and accounts come only from invitations: a friend gets a single-use link, picks a username and password, and makes a dreamer (a name and a line about how you look; the portrait paints itself in a moment). There is no shared password. In dev, open `http://<host>:54321` from a tailnet device, a browser on the box, or through an SSH tunnel (`ssh -L 54321:127.0.0.1:54321 <box>`, then `http://127.0.0.1:54321`), and sign in with the account you made on the command line (below). A "How to Dream" page explains the rest, and a `?` at the foot of the book brings it back.
 
 - Click objects and the verbs under the picture, or type. Exact commands (`look`, `take lantern`, `north`) resolve instantly; plain sentences go through a local parser that grounds them to a real action on a real thing.
 - Each resident shows **ask-about topics** under their name. Clicking one, or naming it in your own words, gets their authored answer.
@@ -80,11 +80,13 @@ The first version of daydream was a platform players could expand with a little 
 - **A rule engine, proven by Zork.** Worlds are data: rules, flags, fuses, daemons, and effects through one allowlisted mutation API (`daydream/skills/effects.py`). A complete transcription of *Zork I* runs on the same engine as the regression net (frozen since the pivot).
 - **The story layer.** Arcs, beats, and endings (`story.py`); the village clock and schedules (`village.py`); a director that picks which authored storylet happens at dusk (`director.py`); facts and gossip (`knowledge.py`); daily finds and the Book (`collect.py`); grounded dialogue with the game state injected (`dialogue.py`); dreams (`dream.py`).
 - **A shared room reads right.** Your own actions narrate to you and in the third person to others; conversations are private, with a one-line note for bystanders.
-- **One GPU, two engines, one gate.** vLLM (Qwen3.5 9B AWQ) and ComfyUI (SDXL + a watercolor LoRA) sit resident on the card behind an in-process arbiter: text calls share slots, a render runs alone, a waiting player's text goes first, and the director's background ranking never delays anyone.
+- **One GPU, two engines, one gate.** vLLM (Qwen3.5 9B AWQ) and ComfyUI (SDXL + a watercolor LoRA) sit resident on the card behind a GPU arbiter (in-process, plus a lock file shared by dev and prod): text calls share slots, a render runs alone, a waiting player's text goes first, and the director's background ranking never delays anyone.
 
 [`CLAUDE.md`](CLAUDE.md) is the full operating manual.
 
 ## Running it
+
+Requirements: an NVIDIA GPU of about 20 GB (an RTX 4000 SFF Ada here; the VRAM budget is in [`docs/gpu-and-models.md`](docs/gpu-and-models.md)) with a driver new enough for CUDA 13, Ubuntu 22.04 (the prod installer uses apt), Python 3.10 or newer, `git` and `wget`, and about 30 GB of disk for the engines and model weights. The dev server accepts only Tailscale and loopback clients (`DAYDREAM_ACCESS`), so reach it over a tailnet or an SSH tunnel; every request needs an account session on top of that.
 
 First time:
 
@@ -93,7 +95,7 @@ python3 -m venv .venv && .venv/bin/pip install -e '.[dev]'
 cp .env.example .env && $EDITOR .env    # review DAYDREAM_ACCESS; the defaults work on a tailnet
 bin/vllm-bootstrap && bin/comfyui-bootstrap   # ~13 GB each, one time
 bin/game world reset --yes              # build The Village of Lost Hours as the live world
-bin/game down && bin/game prebake && bin/game up   # paint every room and portrait, then play
+bin/game down && bin/game prebake && bin/game up   # stop, paint every room and portrait (ComfyUI must answer), start
 bin/game account create <you> --admin  # your own account; friends get `bin/game invite create --for "Name"`
 ```
 
@@ -107,7 +109,7 @@ bin/game dream digest|check|rehearse|install   # a dream (docs/DREAM-RUNBOOK.md)
 bin/game play start|do|ask|look ...   # play from a shell (how agent playtesters play)
 ```
 
-Requirements: Linux with an NVIDIA GPU of about 20 GB (an RTX 4000 SFF Ada here; the VRAM budget is in [`docs/gpu-and-models.md`](docs/gpu-and-models.md)), Python 3.10 or newer, and about 30 GB of disk for the engines and model weights. By default the dev server accepts only Tailscale and loopback clients (`DAYDREAM_ACCESS`), and every request needs an account session on top of that. Everything else (engines, network access, world archives and snapshots, the image and voice A/B harnesses) is in [`CLAUDE.md`](CLAUDE.md).
+Everything else (engines, network access, world archives and snapshots, the image and voice A/B harnesses) is in [`CLAUDE.md`](CLAUDE.md).
 
 ### Hosting it for friends
 
@@ -121,15 +123,16 @@ bin/game prod sleep --note "..."     # rest everyone, write journals, show the a
 bin/game prod wake                   # engines, tunnel, service; the edge says awake
 bin/game prod invite create --for "Name"   # a friend's single-use link
 bin/game prod world|dream|account ...      # the prod release's own bin/game, as the service user
+bin/game prod instance list|use <name>     # several games behind one door (docs/INSTANCES.md)
 ```
 
-The committed hostnames and names (`edge/wrangler.toml`, `ops/prod.env.example`) are this instance's own; a fork changes them first. Everyday operations (sleep and wake, a maintenance window, deploys and rollbacks, content, friends, backups, incidents) are playbooks in [`docs/runbooks/`](docs/runbooks/).
+The committed hostnames, names and KV id (`edge/wrangler.toml`, `ops/prod.env.example`) are this instance's own; a fork changes them first ([`docs/FORKING.md`](docs/FORKING.md) lists every one). Everyday operations (sleep and wake, a maintenance window, deploys and rollbacks, content, friends, instances, a reset, backups, incidents) are playbooks in [`docs/runbooks/`](docs/runbooks/).
 
 ## Tests
 
 ```sh
-bin/game test short     # ~1110 tests, ~9 s: the pre-commit gate
-bin/game test medium    # ~1690 tests, ~38 s: the pre-push gate (CI runs this; prod deploy's gate too)
+bin/game test short     # ~1130 tests, ~10 s: the pre-commit gate
+bin/game test medium    # ~1770 tests, ~60 s: the pre-push gate (CI runs this; prod deploy's gate too)
 bin/game test long      # + real-GPU drift probes against committed goldens (~3 min)
 ```
 
@@ -138,7 +141,7 @@ Every arc ending has a walkthrough replayed with zero model calls; a static anal
 ## Technical choices
 
 - **SQLite per world, in WAL mode**, under `~/data/daydream/`, never in the repo. The `objects` table is the source of truth; an append-only event log beside it gives reconnect replay (`?since=<seq>`), the raw-input log dreams read, and history. A world can be archived to a tarball, snapshotted, hot-swapped into the running process, or refreshed with new authored content while keeping play. A git build SHA and a `MAJOR.MINOR` world version, checked at boot, keep a stale process or world from misleading anyone.
-- **Generated images are content-addressed**: the cache key folds the prompt and the workflow JSON, so editing either repaints; a `generated_assets` table records provenance.
+- **Generated images are content-addressed**: the cache key folds the prompt and the workflow JSON, so editing either repaints; a `generated_assets` table records provenance, and an append-only art keep holds every painting with what it was for, outliving the worlds that use it ([`docs/DATA-LIFECYCLE.md`](docs/DATA-LIFECYCLE.md)).
 - **VRAM-driven model choice.** Qwen3.5 9B AWQ 4-bit (about 7.5 GiB of weights in a 0.45 slice) leaves room for an SDXL render beside it (peak about 17 GB on the 20 GB card). It won a bake-off on parser grounding, point of view, and blind-graded prose ([`docs/model-evals/2026-09-26-bakeoff.md`](docs/model-evals/2026-09-26-bakeoff.md)); CUDA graphs are on; FP8 KV cache is deliberately off. The narrative is [`docs/gpu-and-models.md`](docs/gpu-and-models.md).
 - **Vanilla HTML, CSS, and JavaScript** under `web/`, no framework and no build step, over one WebSocket; assets are stamped with the build SHA and an open tab reloads itself once after a redeploy. The display font is self-hosted.
 - **Invite-only accounts, and no network location grants privilege**: argon2id passwords, random session tokens stored hashed and checked on every request and WebSocket frame, a sign-in gate a test proves covers every route, and admin powers that live in the shell rather than the browser ([`SECURITY.md`](SECURITY.md)). In prod, only the edge Worker can reach the origin.
@@ -156,7 +159,9 @@ Every arc ending has a walkthrough replayed with zero model calls; a static anal
 | [`WHIMSY.md`](WHIMSY.md), [`DESIGN.md`](DESIGN.md) | Tone and interface design language |
 | [`CLAUDE.md`](CLAUDE.md) | The operating manual (lifecycle, engines, conventions) |
 | [`docs/GOING-LIVE.md`](docs/GOING-LIVE.md), [`docs/CLOUDFLARE-SETUP.md`](docs/CLOUDFLARE-SETUP.md) | Hosting for friends: the design and its lessons, and the one-time setup |
-| [`docs/runbooks/`](docs/runbooks/) | Playbooks for operating a live instance (written for an agent) |
+| [`docs/runbooks/`](docs/runbooks/) | Playbooks for operating a live instance (written for an agent, plain shell for anyone) |
+| [`docs/FORKING.md`](docs/FORKING.md) | Make it yours: the fork path, the values to change, staying current |
+| [`docs/INSTANCES.md`](docs/INSTANCES.md), [`docs/DATA-LIFECYCLE.md`](docs/DATA-LIFECYCLE.md), [`docs/ADMIN-ROOT.md`](docs/ADMIN-ROOT.md) | Several games behind one door; what is kept and for how long; how the admin console gets root |
 | [`SECURITY.md`](SECURITY.md) | Threat model, trust boundaries, residual risks |
 | [`docs/gpu-and-models.md`](docs/gpu-and-models.md) | GPU and model decisions |
 | [`CHANGELOG.md`](CHANGELOG.md), [`docs/RELEASES.md`](docs/RELEASES.md) | Release history |

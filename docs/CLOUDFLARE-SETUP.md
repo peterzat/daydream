@@ -35,7 +35,7 @@ Cloudflare's apt repo), `age` (offsite backup encryption), `acl`.
 
 | File | Values |
 |---|---|
-| `edge/wrangler.toml` | the two `routes`, `ORIGIN`, `PUBLIC_HOST`, `OPERATOR`; `[[kv_namespaces]] id` comes from step 8 |
+| `edge/wrangler.toml` | the two `routes`, `ORIGIN`, `PUBLIC_HOST`, `OPERATOR`; and `[[kv_namespaces]] id`, which is this instance's namespace: set it to `REPLACE_WITH_YOUR_KV_ID` now, and step 8 fills in yours |
 | `ops/prod.env.example` | `DAYDREAM_PUBLIC_ORIGIN`, `DAYDREAM_OPERATOR_NAME` |
 | these steps | `eidolon.com`, `www.eidolon.com/daydream`, `daydream-origin.eidolon.com` |
 
@@ -94,7 +94,9 @@ CLOUDFLARE_ACCOUNT_ID=<32 hex characters: the zone's Overview page, API section>
 ```
 
 Check it: `bin/game edge status` should print `edge flag: not configured`
-(no KV id yet) rather than an authentication error.
+(no KV id yet) rather than an authentication error. (A fork must have set the
+KV id to `REPLACE_WITH_YOUR_KV_ID` first: see the table above; the full fork
+path is [`FORKING.md`](FORKING.md).)
 
 ## 2. Zero Trust
 
@@ -258,7 +260,8 @@ curl -sI https://<domain>/daydream/ | grep -i location         # 301 to https://
 
 ```sh
 bin/game prod deploy          # short + medium tiers at HEAD in a throwaway worktree, build, preflight, switch
-bin/game prod world reset --yes                                   # a fresh village
+bin/game prod instance migrate village                            # the first instance (docs/INSTANCES.md), before any world or friend
+bin/game prod world reset --yes                                   # a fresh village, inside it
 bin/game prod prebake --from-cache ~/data/daydream/images/cache   # the graded dev art; renders nothing
 bin/game prod wake            # engines (if down), tunnel, service; the edge flag -> awake
 bin/game prod status

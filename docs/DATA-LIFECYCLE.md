@@ -88,8 +88,9 @@ Verbs:
   refuse to wipe when it fails.
 - `bin/game prebake --from-keep` puts each target's painting back into the
   cache from the keep, by its cache key. `world reset` runs it after
-  loading, so a fresh village has its art at once (in prod, no separate
-  `--from-cache` step).
+  loading, so a reset village has its art at once. (A brand-new box's keep
+  is empty: it copies the graded dev art in once with `prod prebake
+  --from-cache`, which keeps it, and every reset after that needs no copy.)
 - `bin/game backup` copies `provenance.jsonl` into each backup (the records
   travel offsite with the backups; the bytes do not yet, below).
 

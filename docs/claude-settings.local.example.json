@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(bin/game prod *)",
+      "Bash(bin/game edge *)"
+    ],
+    "ask": [
+      "Bash(bin/game prod invite reset *)",
+      "Bash(bin/game prod account role *)",
+      "Bash(bin/game prod account create *)",
+      "Bash(bin/game prod account cli-cookie *)",
+      "Bash(bin/game prod account delete *)",
+      "Bash(bin/game prod world reset *)",
+      "Bash(bin/game prod world delete *)",
+      "Bash(bin/game prod world restore *)",
+      "Bash(bin/game prod world snapshot-restore *)",
+      "Bash(bin/game prod world restore-backup *)",
+      "Bash(bin/game prod world load *)",
+      "Bash(bin/game prod root units --apply*)",
+      "Bash(bin/game prod root env set *)"
+    ]
+  }
+}

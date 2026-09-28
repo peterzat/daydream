@@ -102,7 +102,7 @@ Tunnel hostname (Access: service token only; cloudflared validates the JWT)
   day keeps worst-case guessing odds under 0.2% with three invites open. The friend gets a link, picks a username and a password, and
   the account is recorded against the name the operator gave. A forgotten
   password gets a reset invite, minted the same way.
-- **Accounts live in `accounts.db`, separate from the world.** A world
+- **Accounts live in `accounts-<env>.db`, separate from the world.** A world
   reset, swap or refresh never touches them.
   - Passwords are argon2id.
   - Sessions are random tokens, stored hashed and read fresh on every
@@ -191,16 +191,18 @@ while the box is down. The design needs no signing key and no new crypto:
   back up, switch atomically, health-check and roll back automatically.
 - **`bin/game prod <verb>`** runs the prod release's own `bin/game` with a
   clean prod environment, as the `daydream` user. A narrow sudoers entry
-  allows exactly two things: starting and stopping the daydream units, and
-  dropping to that user. Every existing flow (refresh, dreams, prebake,
+  allows starting, stopping and restarting the daydream units (and starting
+  the backup job), and dropping to that user; routine root work beyond that
+  goes through a validated helper ([`ADMIN-ROOT.md`](ADMIN-ROOT.md)). Every existing flow (refresh, dreams, prebake,
   snapshots) therefore runs prod code against prod data. There is no
   migration skew and no dev `.env` leak.
 - **Dev is unchanged** apart from accounts. It keeps its tailnet port and its
   data dir, and still has grab-the-GPU autonomy. Prod verbs that drop
   sessions or mutate state are ask-first for the agent.
 - **The engines are shared.** A second environment never double-launches
-  them. Until a cross-process GPU lock lands, GPU-heavy dev commands refuse
-  while prod is up.
+  them, and a cross-process GPU lock (`/srv/daydream/data/gpu.lock`) makes
+  every daydream process on the box take turns on the card; on a box without
+  that lock file, GPU-heavy dev commands refuse while prod is up.
 - **Backups.** Nightly online backups (14 days) on the box, and a weekly copy
   encrypted with `age` to the operator's SSH keys in a private R2 bucket (60-day
   lifecycle), so a dead box can be restored from any machine holding those keys.

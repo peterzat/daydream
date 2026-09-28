@@ -51,9 +51,9 @@ def test_the_runbooks_exist():
 def test_every_prod_verb_the_docs_name_exists():
     verbs = _prod_verbs()
     bad = [(d, v) for d, v in _mentions(r"bin/game prod ([a-z][a-z-]*)") if v not in verbs]
-    # `bin/game prod --instance NAME <verb>` acts on a detached instance.
-    bad += [(d, v) for d, v in _mentions(r"bin/game prod --instance [a-z0-9<>-]+ ([a-z][a-z-]*)")
-            if v not in verbs]
+    # `--instance NAME` goes after the verb (the permission rules read the
+    # verb first); a doc that puts it first teaches a form prodctl refuses.
+    bad += [(d, "--instance first") for d, _ in _mentions(r"bin/game prod (--instance)")]
     assert not bad, f"unknown `bin/game prod` verbs: {bad}"
 
 
@@ -88,3 +88,21 @@ def test_the_parsers_are_read_correctly():
     assert {"status", "check", "deploy", "sleep", "wake", "world", "invite"} <= _prod_verbs()
     assert {"status", "deploy", "sleep", "wake", "secrets"} <= _parser_names(
         REPO / "daydream" / "edge.py")
+
+
+def test_the_permission_template_asks_before_every_dangerous_verb():
+    """docs/claude-settings.local.example.json is what a fork copies to give
+    the agent its standing grant; it must ask before each verb the docs say
+    always prompts, and match verbs first (prodctl refuses a leading
+    --instance, so a prefix rule cannot be walked around)."""
+    import json
+
+    rules = json.loads((REPO / "docs" / "claude-settings.local.example.json").read_text())
+    allow, ask = rules["permissions"]["allow"], rules["permissions"]["ask"]
+    assert "Bash(bin/game prod *)" in allow and "Bash(bin/game edge *)" in allow
+    for verb in ("invite reset", "account role", "account create", "account cli-cookie",
+                 "account delete", "world reset", "world delete", "world restore",
+                 "world snapshot-restore", "world restore-backup", "world load",
+                 "root units --apply", "root env set"):
+        assert any(r.startswith(f"Bash(bin/game prod {verb}") for r in ask), verb
+    assert not any("--instance" in r for r in allow + ask)

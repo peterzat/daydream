@@ -472,3 +472,17 @@ def test_behind_survives_a_release_off_heads_history(fake_repo):
     _git(fake_repo, "add", "-A")
     _git(fake_repo, "commit", "-q", "-m", "more")
     assert prodctl.behind(head[:12], prodctl.resolve_ref("HEAD")) == "1 commit(s) behind"
+
+
+def test_instance_goes_after_the_verb_so_the_permission_rules_see_it(monkeypatch, capsys):
+    """A leading `--instance` would walk around the prefix-matched ask rules
+    (`bin/game prod world reset *`), so prodctl refuses it; after the verb it
+    names the instance and is removed before the verb runs."""
+    assert prodctl.main(["--instance", "zork", "world", "reset", "--yes"]) == 2
+    assert "after the verb" in capsys.readouterr().err
+    seen = {}
+    monkeypatch.setattr(prodctl, "passthrough", lambda argv: seen.update(argv=argv, inst=prodctl.INSTANCE) or 0)
+    monkeypatch.setattr(prodctl, "INSTANCE", None)
+    assert prodctl.main(["invite", "create", "--for", "A Friend", "--instance", "zork"]) == 0
+    assert seen == {"argv": ["invite", "create", "--for", "A Friend"], "inst": "zork"}
+    assert prodctl.main(["backup", "--instance", "../x"]) == 2
