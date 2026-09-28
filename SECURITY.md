@@ -2,188 +2,202 @@
 
 ## Security Review — 2026-09-28 (scope: paths)
 
-**Summary:** Path-scoped review of the 30 files in scope: the first friend's
-playtest fix pass (`2b67900..f8d26c7`, 20 unpushed commits) plus `44d8690`,
-measured from `600b1d5` (the tree the last review scanned, before its commit
-was reworded). No code vulnerability found. One WARN: the new talk echo
-writes what a player says to a resident into the event log as a private row
-that `account delete` leaves behind, which breaks the deletion promise in
-docs/DATA-LIFECYCLE.md. The prior NOTE (a tailnet address in a test outside
-these paths) is still open, and the prior WARN is closed
-(0 BLOCK / 1 WARN / 1 NOTE).
+**Summary:** Path-scoped review of 21 files: the code, tests and world
+sources changed between the last scan (`f8d26c7`) and HEAD `4cef786`. That
+covers the codereview fix pass (`18bcbd0`) and the second playtest's fixes
+and lines (`8ff847b`, `94121c5`). No vulnerability found, and the prior WARN
+is fixed: `account delete` now removes the rows addressed only to the
+person's dreamers. One new NOTE records a narrow gap in that fix: a reply
+that is still being generated when the account is deleted gets written
+after the purge. The prior NOTE is carried (0 BLOCK / 0 WARN / 2 NOTE).
 
 ### Scope and method
 
-Each scoped file's diff from `600b1d5` to HEAD `f8d26c7` was read in full,
-along with the code it touches or calls:
+Each scoped file's diff from `f8d26c7` to HEAD was read in full, along with
+the code it calls:
 
-- The WebSocket layer:
-  - the broadcast loop's private-event filter, and the replay
-    (`events.fetch_since(recipient_for=)`)
-  - the new snapshot fields: `arrival_seq`, `threads`, `went_home` and
-    `at`; toon `away` and `asked_topics`; object `keeps` and `detail`
-  - "what now" and "help"
-  - the greeting suppression's `fetch_since`
-- The new event rows: the talk echo (`say` with a recipient), the ask echo
-  (`echo`), the dozing note, and the echo guard's fallback. Also
-  `effects._apply_narrate`'s `card`, traced back to `_sanitize_llm_effect`.
-- The parser's trailing-phrase and group forms (`_TRAILING_PHRASE`,
-  `_GROUP`, `_expand_group`, `_all_candidates`), timed against worst-case
-  500-character inputs.
-- The journal's wider window, story markers, time of day and pronouns
-  (`fetch_for_toon`, `_event_lines`, `_user_prompt`).
-- Threads: `story.threads_for`, the validator, dream patches, and the
-  per-player `asked:` state.
-- Things that go home: `home_of`, `send_home_things`, `take_went_home`.
-- Every new or changed SPA sink:
-  - the card renderer and `linkifyEntities`' person rule
-  - the echo, chatter and went-home lines
-  - the portrait inset and panel, and the takeover overlay
-  - the scroll rail, the margin index and the threads list
-  - keepsake tags
-  - the attribute selectors built from object ids
+- **Account delete.** `events.forget_private` and its caller in
+  `_delete_account`, the connection's autocommit mode, and the broadcast
+  and replay rules that decide who ever sees a row with a recipient.
+- **The went-home note.** It is now a private narrate appended after the
+  first snapshot. Checked where its text comes from
+  (`toons.send_home_things`, `take_went_home`) and where the page renders
+  it (the narrate path).
+- **The `threads` frame.** `story.threads_for`, the `carried_filter`
+  condition the new thread uses, and the per-frame checks that run before
+  the frame is sent.
+- **Dream threads.** A dream patch's threads are now installed
+  (`dream.apply_patch`). Checked their validation (`check_patch`).
+- **The parser.** The quantified AND-list branch (`_expand_multi`).
+- **Page sinks.** Every changed one: the own-echo insertion, `setThreads`
+  and `renderThreads`, the `linkifyEntities` regex, and the margin index
+  reset.
+- **World sources.** The Pim thread split, the gear seed and Tock's
+  greeting (authored text only).
 
-Every `innerHTML` in main.js was swept, and the scoped Python diffs were
-swept for SQL, subprocess and file sinks. The outgoing range
-(`origin/main..HEAD`, every file and message) and the last three commits of
-ws.py and journal.py were scanned for secrets and instance values. The 135
-tests in the 8 scoped test files pass. The WARN was reproduced against a
-temp data dir.
+The prior WARN's fix was checked two ways: with its new test, and with a
+scratch repro outside the repo that also covered a reply still being
+generated. Secrets were checked without printing any value:
+
+- The outgoing range (`origin/main..HEAD`) and every commit message since
+  `f8d26c7` were compared against the instance's credentials, ids,
+  addresses and names.
+- Every two-word phrase was hashed and compared against the stored invite
+  slugs.
+- The last three commits of each of the four credential-handling files in
+  scope were scanned.
+
+The 286 tests in the 9 scoped test files pass.
 
 ### Findings
 
-[WARN] daydream/verbs.py:1470-1472 — Every line a player says to a resident
-is now also written to the event log as a private `say` row, with the
-speaker as both actor and recipient. `account delete` does not remove it.
-  Attack vector: Not an exploit. The change breaks a privacy promise.
-docs/DATA-LIFECYCLE.md (lines 104-110) says `account delete` removes "what
-they said to each resident", and keeps only "the shared event history
-(what others saw happen in the village)". These rows are addressed to the
-speaker alone, so no one else ever saw them. Yet `_delete_account`
-(daydream/accounts_cli.py:106) and `_forget_dreamer_state` (:139) never
-touch `events`. The dialogue prompt is built to take in what a player says
-about themself, so these rows can hold personal details. After a friend
-asks to be forgotten, their words stay in the live DB. Every later backup,
-local and offsite, copies them again, so they never age out.
-  - No player can read them: the recipient toon is deleted, and a new toon
-    gets a fresh random id.
-  - Anyone with the DB or a backup can: the operator, and any tool that
-    reads `events`.
-  Evidence: `_handle_talk` appends `{"text": args.strip(), ...}` with
-`recipient_id=actor.id` before any dialogue runs (verbs.py:1470-1472, added
-in `8fa034f`). The repro: a player spoke a line to Hob in the story
-fixture, then `_delete_account(..., confirmed=True)` ran. The dreamer's
-`talk:` and other story records were deleted, but the `say` row holding the
-words remained. A smaller form of the same gap predates this range:
-  - The private chatter line quotes an unparsed typed line (ws.py:788,
-    since `283aa22`).
-  - Parser messages and model replies addressed to the player can carry
-    fragments of what they typed.
-  Remediation: When `account delete` removes a dreamer, delete or blank the
-text of the event rows addressed only to it (`recipient_id = <toon id>`).
-No one else saw those rows, so the shared history is unchanged. `seq` is
-AUTOINCREMENT (migrations/001_initial.sql:89), so a deletion cannot free a
-sequence number for reuse. Add a case to tests/test_account_delete.py:
-talk to a resident, delete the account, and assert the words are gone.
-Then add private lines to DATA-LIFECYCLE.md's list of what goes.
+[NOTE] daydream/accounts_cli.py:129-136 — `account delete --yes` can leave a
+few records behind if the person is talking to a resident at that moment.
+It purges the dreamer's private rows and story records, but a reply that is
+still being generated gets written after the purge.
+  Attack vector: Not an exploit. It happens only if the operator deletes
+someone while they are talking to a resident.
+  - In prod, the delete runs while the service is up: `account delete` is
+    not in `prodctl.STOP_FOR` (daydream/prodctl.py:211-213).
+  - `dialogue.talk` waits several seconds for the model (daydream/dialogue.py:426:
+    a 15 s timeout per call, plus any wait for the GPU).
+  - When the reply comes back, it is appended addressed to the dreamer
+    (:482), and the exchange is stored under `talk:<npc>:<toon>` (:488).
+    Nothing checks first that the dreamer still exists.
+  - The account's session stays valid until the last step (:136), so a
+    frame that arrives meanwhile is still accepted. Untested: in that
+    window the same session could also create a new dreamer, which the
+    delete would miss.
+  Evidence: Reproduced with a scratch test (not committed). It holds the
+model call open, runs `_delete_account(..., confirmed=True)`, then lets
+the reply finish.
+  - Control (delete after the talk ends): nothing is left.
+  - Delete during the model call: one reply row addressed to the deleted
+    dreamer is left, and so are `rel:`, `relday:` and `talk:t-hob:<toon>`,
+    all written after the purge. The `talk:` record holds the player's
+    words verbatim.
+  No player can read these rows: they are keyed to a toon id that no one
+holds. The DB and later backups still keep them, though, which falls
+short of what docs/DATA-LIFECYCLE.md promises.
+  Remediation: Two options.
+  - Simplest: have `prodctl` stop the service around
+    `account delete --yes`, as it does for the other verbs that change
+    prod data. Add the verb to `STOP_FOR`, gated on `--yes` the way
+    `NEEDS_YES` gates the destructive world verbs.
+  - In code: revoke the account's sessions before touching its dreamers.
+    Then have `dialogue.talk` return without writing if
+    `objects.get(actor.id)` is gone after the model call.
 
-[NOTE] tests/test_config_edge.py:61 (outside these paths; carried unchanged
-from the prior review) — The non-loopback bind-host test still uses this
-box's real tailnet IPv4.
+  Either way, turn the scratch repro into a test in
+tests/test_account_delete.py.
+
+[NOTE] tests/test_config_edge.py:61 (outside these paths; carried unchanged)
+— The non-loopback bind-host test still uses this box's real tailnet IPv4.
   Attack vector: Minimal. The address is in Tailscale's CGNAT range and
 reachable only inside the operator's tailnet. It has been public since
 `5f2bd3d`.
-  Evidence: Still an exact match for `tailscale ip -4` (the value is not
-reproduced here).
+  Evidence: It still matches `tailscale ip -4` exactly (the value is not
+reproduced here). This range does not touch the file.
   Remediation: Swap in `100.64.0.1` the next time the file is touched. A
 history rewrite is not warranted.
 
 ### Closed since the last review
 
-- **The deleted test account's username in a commit message (prior
-  WARN).** Reworded before the push (the commit is now `4a59178`). No
-  message on `origin/main` and no tracked file at HEAD contains it.
+- **Account delete kept what a player said to residents (prior WARN).**
+  Fixed in `18bcbd0`:
+  - `events.forget_private` (daydream/events.py:191-197) deletes every row
+    addressed to the dreamer. `_delete_account` calls it for each dreamer
+    (daydream/accounts_cli.py:132).
+  - The connection is autocommit (`isolation_level=None`,
+    daydream/db.py:20), so the delete takes effect at once.
+  - A row with a recipient reaches only that recipient. The broadcast loop
+    drops it for everyone else, including the player who caused it
+    (daydream/api/ws.py:1181-1183), and replay filters the same way. So
+    the delete removes only lines no one else saw, and the shared history
+    stays.
+  - `seq` is AUTOINCREMENT, so no sequence number is reused. The SQL is
+    parameterized.
+
+  The new test covers the fix, and so did the control case in the repro.
+  The remaining gap is the first NOTE above.
 
 ### Traced and cleared this run (not findings)
 
-- **New private rows stay private.**
-  - These are all addressed to the actor: the ask echo, the talk echo, the
-    dozing note, "what now", "help", the echo guard's fallback and the
-    went-home note.
-  - The broadcast loop drops any row addressed to someone else, whatever
-    its kind, and every replay passes `recipient_for`.
-  - `threads`, `went_home` and the journal ride only the controlled toon's
-    snapshot. `asked_topics` is computed per viewer.
-  - `take_went_home` and `send_home_things` write through
-    `objects.set_property`, which emits no event.
-- **Cards.** `_apply_narrate` keeps a card only when every value is a
-  string, and it copies only four keys. `_sanitize_llm_effect` reduces an
-  LLM-originated narrate to `text` and `to` before dispatch. So a card can
-  come only from engine verbs, authored rules and dream patches. The page
-  renders the card's label with `textContent`, and its body through
-  `linkifyEntities`, which escapes first.
-- **SPA sinks.**
-  - Every new line uses `textContent` or `escape()`.
-  - The person rule in `linkifyEntities` returns a slice of text that is
-    already escaped.
-  - Portrait URLs come from the server, go through `assetUrl`, and sit
-    behind the sign-in gate.
-  - The attribute selectors built from object ids take only ids the
-    server mints (`o-` or `t-slot<n>-` plus hex) or the author writes. A
-    card's `object_id` is the examined object's own id.
+- **The went-home note** (daydream/api/ws.py:973-977).
+  - It is a narrate addressed to the dreamer, appended after the first
+    snapshot.
+  - Its text holds a thing's name and a room title, both written by the
+    server (`toons.send_home_things`).
+  - The page renders it through `linkifyEntities`, which escapes first.
+  - `take_went_home` keeps only entries that have a name. If sending the
+    first snapshot fails, the note stays unread for the next connection.
+  - The note has a recipient, so it goes with the account.
+- **The `threads` frame** (daydream/api/ws.py:1125-1132).
+  - It is sent only for the connection's own dreamer, and only after the
+    incoming frame passes the session check, the ownership check and the
+    rate limit.
+  - `threads_for` evaluates authored conditions for that dreamer. The new
+    `carried_filter` thread looks only at what the player is carrying
+    (daydream/rules.py:254-261).
+  - The page renders threads with `textContent`.
+  - The work per frame is bounded by the number of authored threads and
+    by the 3-frames-per-second limit.
+- **Dream threads.**
+  - `apply_patch` now installs them like rules and storylets.
+  - The operator directs every patch, and `check_patch` validates it.
+  - A callback thread gated on `{"actor": <toon id>}` shows only to that
+    player.
+  - The dream runbook keeps the raw digest out of the public repo and
+    treats it as untrusted.
 - **Parser.**
-  - `_TRAILING_PHRASE` is quadratic at worst: about 10 ms for 500
-    characters of whitespace. The frame cap (500 characters) and the
-    per-connection rate (3 frames/s) bound it.
-  - The group form runs only for take, drop and put. It draws on
-    `_all_candidates`, which excludes another player's private finds.
-  - Each expanded command still passes the executor's scope gate.
-  - A "don't see any X" reply echoes the player's own noun back to them
-    alone.
-- **Dozing.** `away` and the dozing note tell players in the same room
-  whether another player's page is open. They could already see that
-  player's presence, and they get only a boolean: the session id stays on
-  the server.
-- **Journal.**
-  - The window is wider (150 events, 48 lines of 260 characters) and now
-    includes the player's own echoes.
-  - Output validation is unchanged: refusal parse, 60 to 500 characters,
-    and the banlist.
-  - An entry is shown only to its owner.
-  - Another player's words reach a journal only through rows addressed to
-    its owner, as before.
-- **Threads and dreams.**
-  - Threads are authored and checked by `validate_story`. Dream patches
-    pass `validate_envelope2`.
-  - Per-player `asked:` state lives under `pq:<toon>:`, which
-    `account delete` already forgets. It holds at most 200 entries per
-    resident.
-- **Takeover.** "Dream here instead" reconnects through the same account's
-  session. The server still decides ownership (`_auto_enter`).
+  - The quantified AND-list branch only strips the quantifier and passes
+    the text to the existing AND-list path. A player could already reach
+    that path by typing the list without "both".
+  - Every expanded command still passes the executor's scope gate.
+  - The regexes (`_AND_SPLIT`, `_GROUP`) are unchanged. At worst they are
+    quadratic within the 500-character limit.
+- **Page sinks.**
+  - The own-echo branch inserts a line that was already built with
+    `escape()` or `textContent`. It matches on `actor_id` and
+    `recipient_id`, which the server sets.
+  - The new `linkifyEntities` lookbehind only narrows matches.
+    - It still runs over escaped text, and the replacement escapes the id.
+    - An alias can match inside an escape sequence (`amp` in `&amp;`) and
+      split it. The result is a visible glitch, never markup, the same as
+      with the old `\b`.
+  - The margin index reset clears with `innerHTML = ""`, and its tabs use
+    `textContent`.
+  - `index.html` adds help text only: no script, no handler and no URL.
 - **Nothing new at the edges.**
-  - The outgoing range adds no routes and no dependencies.
-  - `index.html` adds no inline script or handler.
-  - The CSS adds no external URL.
+  - No new route and no new frame kind from the client.
+  - No new dependency: `pyproject.toml` adds only lint settings.
+  - No log line with content. The delete's printed summary carries counts
+    only.
+- **World sources.** The Pim threads, the gear seed and Tock's greeting
+  are authored text, rendered through the existing escaped sinks.
+  WORLD_VERSION 1.7 is a MINOR bump with no schema change.
 
 ### Secrets, PII and the instance
 
 - **Credentials.** The values in `~/.config/daydream/` were compared
-  without printing. They appear in:
-  - no outgoing commit or message
-  - none of the last three commits of ws.py and journal.py
+  without printing. They appear in no added line and no message from
+  `f8d26c7` to HEAD. They also appear in none of the last three commits
+  of `accounts_cli.py`, `ws.py`, `test_root_helper.py` or
+  `test_account_delete.py`. No token-shaped value appears: the long
+  strings are commit SHAs and test names.
+- **Instance values.** These were compared without printing:
+  - the ids and addresses in `instance/NOTES.md`
+  - the box's public addresses
+  - every username, display name and invitee name in the prod accounts
+    DBs
 
-  No token-shaped value, invite link or cookie value appears either.
-- **Instance values.** None of these appears in the outgoing diff or its
-  messages:
-  - the zone id, the Zero Trust team, the AUD tag and the tunnel id
-  - the invite ids and the box's public addresses
-  - the deleted test account and the operator's name
-
-  The KV id and the origin hostname appear only in their deliberately
-  committed places.
-- **Names.** Test fixtures and the playtest doc use fictional dreamer
-  names. Of the names in the dev accounts DB, only the playtest's fictional
-  dreamer appears. `instance/` is still gitignored.
+  There were only two hits, both in SECURITY.md's carried text:
+  `127.0.0.1`, and `peter` as the Unix account in the accepted risks. No
+  two-word phrase in the range hashes to a stored invite slug.
+  `instance/` is still gitignored.
+- **Names.** Test fixtures use fictional names. The playtest doc's "Hazel"
+  (outside these paths) is an agent persona: it appears only in the dev
+  accounts DB, and in no prod accounts DB or backup.
 
 ### Accepted Risks
 
@@ -253,12 +267,10 @@ Carried register (from prior reviews; still open, not re-flagged):
   behind ask rules.
 
 ---
-*Prior review (2026-09-28, paths, commit `8c39d4a`, reworded to `600b1d5`):
-37 files covering comings and goings, the dreamer panel and door note, Talk
-on the input line, `prod plan`, and the codereview fix pass. It found
-0 BLOCK / 1 WARN / 1 NOTE. The WARN (the deleted test account's username in
-a commit message) was reworded before the push. The NOTE (a tailnet address
-in an older test) is carried above. Full entry at
-`git show b6c7644:SECURITY.md`.*
+*Prior review (2026-09-28, paths, commit `f8d26c7`): 30 files covering the
+first friend's playtest fix pass. It found 0 BLOCK / 1 WARN / 1 NOTE. The
+WARN (account delete kept a player's private lines) was fixed in `18bcbd0`
+and is closed above. The NOTE is carried. Full entry at
+`git show 63e15c3:SECURITY.md`.*
 
-<!-- SECURITY_META: {"date":"2026-09-28","commit":"f8d26c72a12781886e927a2a520d2b7026a8321c","scope":"paths","scanned_files":["daydream/api/ws.py","daydream/dialogue.py","daydream/dream.py","daydream/growth.py","daydream/journal.py","daydream/llm/story_format.py","daydream/parser.py","daydream/skills/effects.py","daydream/story.py","daydream/toons.py","daydream/verbs.py","daydream/version.py","daydream/walkthrough.py","tests/test_arrival.py","tests/test_browser_playtest.py","tests/test_dialogue.py","tests/test_dozing.py","tests/test_journal.py","tests/test_lost_hours_world.py","tests/test_parser.py","tests/test_story.py","tools/assemble_world.py","web/assets/main.js","web/assets/style.css","web/index.html","worlds/lost-hours/arcs/00-prologue.json","worlds/lost-hours/arcs/02-extra-hour.json","worlds/lost-hours/arcs/07-letters.json","worlds/lost-hours/regions/03-lane.json","worlds/lost-hours/world.json"],"block":0,"warn":1,"note":1} -->
+<!-- SECURITY_META: {"date":"2026-09-28","commit":"4cef78698ac0731c329de0859e047e2ee78e661c","scope":"paths","scanned_files":["daydream/accounts_cli.py","daydream/api/ws.py","daydream/dream.py","daydream/events.py","daydream/parser.py","daydream/version.py","pyproject.toml","tests/test_account_delete.py","tests/test_browser_flow.py","tests/test_browser_playtest.py","tests/test_dozing.py","tests/test_dream.py","tests/test_linkify.py","tests/test_parser.py","tests/test_root_helper.py","tests/test_ws.py","web/assets/main.js","web/index.html","worlds/lost-hours/arcs/01-pim.json","worlds/lost-hours/regions/02-square.json","worlds/lost-hours/regions/10-residents.json"],"block":0,"warn":0,"note":2} -->
