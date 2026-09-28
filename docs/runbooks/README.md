@@ -8,6 +8,7 @@ hands can do (sudo, the Cloudflare dashboard).
 
 | Playbook | When |
 |---|---|
+| [publish.md](publish.md) | The everyday loop: play, say, build, (preview), publish. Start here |
 | [verify.md](verify.md) | Any time: is everything that should hold, holding? (`bin/game prod check`) |
 | [sleep-and-wake.md](sleep-and-wake.md) | Lend the GPU, a maintenance window, a reboot, waking up |
 | [deploy.md](deploy.md) | Ship code; roll back |

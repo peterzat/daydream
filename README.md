@@ -128,6 +128,18 @@ bin/game prod instance list|use <name>     # several games behind one door (docs
 
 The committed hostnames, names and KV id (`edge/wrangler.toml`, `ops/prod.env.example`) are this instance's own; a fork changes them first ([`docs/FORKING.md`](docs/FORKING.md) lists every one). Everyday operations (sleep and wake, a maintenance window, deploys and rollbacks, content, friends, instances, a reset, backups, incidents) are playbooks in [`docs/runbooks/`](docs/runbooks/).
 
+## Typical use
+
+Day to day, the village is run from a Claude Code session in this checkout, on the box. The loop is short and the same every time ([`docs/runbooks/publish.md`](docs/runbooks/publish.md)):
+
+1. **Play and say.** Play the village (prod for small things, dev over the tailnet for bigger ones) and write what you noticed in the session, as many notes as you like.
+2. **Build.** The agent makes the changes in dev with their tests, looks at anything a player would see in a headless browser against the dev server, and says what changed and what to try.
+3. **Preview, for bigger changes only.** Say "preview": dev runs the new code, over a copy of prod's village if it matters (`bin/game prod pull`), and you play it at `http://<box>:54321`.
+4. **Publish.** Say "publish" (or `/publish`). The agent shows what goes out (`bin/game prod plan`), pushes through the pre-push review, deploys (`bin/game prod deploy` re-runs the tests at that commit and rolls back by itself if the new release is unhealthy), refreshes the live world if authored content changed, and verifies (`bin/game prod check`).
+5. **Play again.**
+
+The other everyday asks are `/invite <name>` for a friend's link, `/village status|sleep|wake` to check on the village or lend the GPU, and "dream" for a new chapter ([`docs/DREAM-RUNBOOK.md`](docs/DREAM-RUNBOOK.md)). Without Claude Code, every step is a plain command in the playbook.
+
 ## Tests
 
 ```sh

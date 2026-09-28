@@ -62,9 +62,13 @@ by itself; the edge shows friends the asleep page until the wake.
 
 ## deploy [ref]
 
+The everyday path is `/publish` (push through the review gate, deploy, the
+follow-ups, check; docs/runbooks/publish.md). This is the deploy alone, for a
+ref that is already pushed or a redeploy.
+
 When the operator's message asks for the deploy (typing `/village deploy` is
-the ask), show what is going out, `git log --oneline <current>..<ref>` (the
-current release name is in `bin/game prod status`), and run it; ask first
+the ask), show what is going out with `bin/game prod plan <ref>` (the commits
+and any follow-ups: a world refresh, an edge deploy), and run it; ask first
 only when the deploy was not requested. Run `bin/game prod deploy <ref>`
 (default HEAD).
 It tests that exact commit, builds a release, backs up prod, switches, and

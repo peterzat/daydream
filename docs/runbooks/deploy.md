@@ -2,14 +2,16 @@
 
 Prod runs commits, never a working tree. A deploy is safe to run with friends
 online: they see a few seconds of "the dream is sleeping..." and their tabs
-reload themselves into the new build.
+reload themselves into the new build. The everyday way to ship is a publish
+([publish.md](publish.md): push through the review gate, then this); this
+playbook is the deploy itself.
 
 ## Deploy
 
 ```sh
 git status                         # clean; commit first
 bin/game prod status               # current release, who is playing
-git log --oneline <current>..HEAD  # what is going out
+bin/game prod plan                 # what is going out, and what else it needs
 bin/game prod deploy               # or: bin/game prod deploy <ref>
 bin/game prod check
 ```
