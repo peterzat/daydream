@@ -411,6 +411,18 @@ def validate_story(env: dict, *, known: dict, ks: dict, room_ids: set[str],
             for r in col.get("rooms") or []:
                 if r not in room_ids:
                     errors.append(f"config.collect.rooms: unknown room {r!r}")
+    the_post = cfg.get("post")
+    if the_post is not None:
+        # Letters between dreamers (daydream/post.py): the room must exist,
+        # and every telling must be a string.
+        if not isinstance(the_post, dict) or not isinstance(the_post.get("room"), str):
+            errors.append("config.post must be an object with a 'room'")
+        else:
+            if the_post["room"] not in room_ids:
+                errors.append(f"config.post.room: unknown room {the_post['room']!r}")
+            for k, v in the_post.items():
+                if k != "room" and not isinstance(v, str):
+                    errors.append(f"config.post.{k} must be a string")
     tiers = cfg.get("relationship_tiers")
     if tiers is not None and not (isinstance(tiers, list) and all(
             isinstance(x, dict) and isinstance(x.get("min"), int)

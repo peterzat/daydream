@@ -120,6 +120,15 @@ VERBS: dict[str, VerbSpec] = {
         free_text=True,
         needs_text=True, text_prompt="What do you say?",
     ),
+    "write": VerbSpec(
+        name="write", ui_hint="Write",
+        description="Write a letter to another dreamer, to be found where the world "
+                    "keeps its post. Args: '<dreamer's name>: <your words>'.",
+        allowed_effects=frozenset({"narrate", "spawn_object"}),
+        free_text=True, needs_text=True,
+        text_prompt="To whom, and what? (their name, a colon, your words)",
+        aliases=("post", "mail"),
+    ),
     "give": VerbSpec(
         name="give", ui_hint="Give",
         description="Give a thing you're carrying to someone. Target: the thing, then the toon.",
@@ -1088,6 +1097,15 @@ async def _handle_plant(actor, room_id, dobj, iobj, args, spec) -> None:
     return await growth.execute_plant(actor, room_id, dobj, args, spec.allowed_effects)
 
 
+async def _handle_write(actor, room_id, dobj, iobj, args, spec) -> None:
+    """Write a letter to another dreamer (beta rehearsal 2026-09-28): thin
+    delegate to `daydream.post`, which files it where the world's
+    `config.post` says letters wait; every refusal is the writer's alone."""
+    from daydream import post
+
+    return post.write_letter(actor, room_id, args, spec.allowed_effects)
+
+
 async def _handle_say(actor, room_id, dobj, iobj, args, spec) -> None:
     text = args.strip()
     if not text:
@@ -1446,6 +1464,7 @@ _ENGINE_HANDLERS = {
     "board": _handle_board,
     "disembark": _handle_disembark,
     "say": _handle_say,
+    "write": _handle_write,
     "go": _handle_go,
     "inventory": _handle_inventory,
 }

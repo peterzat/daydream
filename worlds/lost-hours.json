@@ -202,6 +202,22 @@
           "own_clock": true
         }
       }
+    },
+    "post": {
+      "room": "r-post",
+      "keeper": "t-fen",
+      "write_text": "Fen slides a sheet of good paper and a soft pencil across the counter, and turns to her sorting while you write. You fold it twice and hand it over; she reads the front, nods once, and files it without a glance inside. 'It'll be here when {to} next comes by. Everything arrives eventually.'",
+      "write_others": "{actor} writes something out at Fen's counter, folds it twice, and hands it across. Fen files it without a glance inside.",
+      "elsewhere_text": "You've nothing to write on. Fen keeps good paper and soft pencils at the Little Post Office, north off Lamplight Lane; letters between dreamers go through her.",
+      "unknown_text": "Fen taps the pencil against the counter and shakes her head. 'No dreamer here goes by {to}. Check the name; I can't file what I can't address.'",
+      "self_text": "Fen raises an eyebrow over her reading glasses. 'A letter to yourself? That's what TO ME, LATER is for, and it's full. Write to somebody else.'",
+      "resident_text": "Fen slides the paper back. 'The keepers get their post by hand, friend. {to} is a short walk from here; go and say it.'",
+      "off_tone_text": "Fen reads the front, then the first line, and slides the paper back across the counter. 'Not in this office,' she says, kindly and finally. 'Try again with the kind part.'",
+      "waiting_text": "A letter is waiting for you at the Little Post Office, north off Lamplight Lane.",
+      "rings_text": "Down Lamplight Lane, the brass bell on the post office counter rings twice, bright and small: there is post for you.",
+      "letter_name": "letter from {from}",
+      "letter_seed": "a letter folded twice, addressed to {to} in {from}'s hand, filed by Fen the moment it was written",
+      "read_text": "To {to}, from {from}:\n\n{text}"
     }
   },
   "verbs": {

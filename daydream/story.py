@@ -601,6 +601,10 @@ def threads_for(actor_id: str) -> list[str]:
             text = text.replace("{count}", _NUMBER_WORDS[n] if n < len(_NUMBER_WORDS) else str(n))
         if text and text not in out:
             out.append(text)
+    from daydream import post
+
+    # Post waiting for this player (beta rehearsal 2026-09-28).
+    out.extend(line for line in post.thread_lines(actor.id) if line not in out)
     return out
 
 

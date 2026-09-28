@@ -42,6 +42,7 @@ from daydream import (
     lighting,
     objects,
     parser,
+    post,
     rooms,
     story,
     toons,
@@ -1008,6 +1009,11 @@ async def ws_endpoint(ws: WebSocket):
                 "text": f"While you rested, {verbs._the_name(w['name'])} went home to "
                         f"{toons.in_sentence(w.get('room'))}."},
                 room_id=_current_room_id(toon_id), recipient_id=toon_id)
+        # Post waiting for you, said once as you step back in (beta rehearsal
+        # 2026-09-28: letters between dreamers).
+        for line in post.thread_lines(toon_id):
+            events.append("system", None, "narrate", {"text": line},
+                          room_id=_current_room_id(toon_id), recipient_id=toon_id)
         # Kick off image gen for the current room if the cache is cold.
         # Fire-and-forget; the resulting room_image_ready event reaches the
         # client through the broadcast loop below. Portraits for everyone

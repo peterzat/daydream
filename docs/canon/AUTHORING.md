@@ -79,6 +79,18 @@ leaves the dream leaves world objects there. Spawned quest items carry
 keepsake out. Keepsakes and stray minutes have no home and stay with the
 player.
 
+Letters between dreamers (`config.post`, engine `daydream/post.py`). The
+world names the room where letters are written and wait (`room`) and every
+telling a player reads: `write_text` / `write_others` (the writer's line and
+the room's, `{to}` and `{actor}`), `elsewhere_text`, `unknown_text`,
+`self_text`, `resident_text`, `off_tone_text`, `waiting_text` (the
+recipient's thread and arrival note), `rings_text` (the recipient, awake
+elsewhere, at once), and the letter itself: `letter_name`, `letter_seed`,
+`read_text` (`{from}`, `{to}`, `{text}`). The letter is a keepsake
+(`home: null`) that only its recipient sees. A world without `config.post`
+has no post. Keep these in the keeper's voice; the engine's own fallbacks
+name nothing.
+
 Dreamseed growth boundaries (the `dreamseed` template) also take
 `never_words` (canon-breakers the gardener must never write; a composition
 with one is rejected, seed kept, and a planted phrase with one is turned

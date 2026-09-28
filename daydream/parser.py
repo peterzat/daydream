@@ -363,6 +363,9 @@ def _fast_path(actor_id: str, text: str, room: rooms.Room | None):
         planted = _plant_fast_path(actor_id, rest)
         if planted is not None:
             return planted
+    if rest and verb == "write":
+        # A letter is the writer's words whole: no model reads them.
+        return [Parse("write", args=rest)]
     # Other free-text verbs with args may need the model's reading; hand
     # those to the LLM rather than claim them here.
     if rest and spec.free_text:

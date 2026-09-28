@@ -64,6 +64,16 @@ is (section 6).
   little: someone new has come, a thread has moved, a keeper has news. The
   village calls this "the dream turning over". The Ledger of Returned Hours
   records every hour sent home or kept, and who helped.
+- **Letters between dreamers go through Fen.** At the Little Post Office a
+  dreamer may write to another dreamer (`write to <name>: <words>`): Fen
+  hands over good paper and a soft pencil, reads only the front, and files
+  the letter without a glance inside. It waits in the pigeonholes for the one
+  it is addressed to, who alone can see, take and read it, and keeps it (a
+  keepsake). Fen will not carry a letter to a keeper ("the keepers get their
+  post by hand") or take one addressed to its writer, and turns back anything
+  unkind. When post arrives for a dreamer who is awake elsewhere, the counter
+  bell rings twice down Lamplight Lane. (Beta rehearsal 2026-09-28; the
+  words live in `config.post`, `worlds/lost-hours/world.json`.)
 - **No one else lives here.** The residents are exactly the people listed in
   section 3, plus whatever guests are staying. There is no baker, miller,
   smith, innkeeper, mayor, farmer, fisher, doctor, teacher, or beekeeper, and
