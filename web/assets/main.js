@@ -344,7 +344,10 @@ function renderSnapshot(snap) {
     const groundItems = snap.items || [];
     const seen = groundItems.length
       ? "You see: " + groundItems.map((o) => o.name).join(", ") + "." : "";
-    arrival = { roomId: arrivalRoomId, seq: snap.last_seq, lead, seen };
+    // Lines your move caused (a room's welcome) come after the arrival line,
+    // not above it as earlier (playtest 2026-09-28b): the cut is the move's.
+    const cut = typeof snap.arrival_seq === "number" ? snap.arrival_seq : snap.last_seq;
+    arrival = { roomId: arrivalRoomId, seq: cut, lead, seen };
     followLog(placeArrival(chat));
   } else if (arrival && arrival.roomId === arrivalRoomId) {
     placeArrival(chat);

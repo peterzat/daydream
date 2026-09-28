@@ -25,6 +25,7 @@ import asyncio
 import json
 import logging
 import random
+import re
 import time
 from collections import Counter
 
@@ -214,7 +215,7 @@ def _room_description(room: "rooms.Room", view: dict | None) -> str:
 
 def _state_snapshot(
     last_seq: int, toon_id: str, view: dict | None = None, resume_since=_REPLAY_RECENT,
-    *, arriving: bool = False,
+    *, arriving: bool = False, arrival_seq: int | None = None,
 ) -> dict:
     """Build a snapshot pinned to the given last_seq. Caller subscribes first
     (so concurrent appends fan out to this connection's queue), then captures
@@ -358,6 +359,12 @@ def _state_snapshot(
         "book": collect.book(room.world_id, toon_id) if room is not None else None,
         "while_you_slept": dream.note_for(toon_id),
         "last_seq": last_seq,
+        # A move's own seq: the lines it caused (a room's enter rule, a beat)
+        # land before this snapshot but belong after the arrival line, so the
+        # SPA cuts "earlier" here rather than at last_seq (playtest
+        # 2026-09-28b: a resident's welcome read as an old, dimmed line). None
+        # when the snapshot is not an arrival.
+        "arrival_seq": arrival_seq,
         # Build + world version so the client can detect a redeploy (a stale
         # open tab still running the OLD main.js — a WS reconnect never reloads
         # page JS) and reload itself. The snapshot already re-flows on every
@@ -589,7 +596,8 @@ GREETING_WINDOW_S = 3 * 3600
 
 
 def _emit_npc_presence_narrates(controlled_toon_id: str, room_id: str,
-                                greeted: set | None = None) -> None:
+                                greeted: set | None = None,
+                                since_seq: int | None = None) -> None:
     """Emit one narrate per co-located NPC with non-empty presence_text.
 
     Called from the broadcast loop's controlled-move branch after the
@@ -621,6 +629,14 @@ def _emit_npc_presence_narrates(controlled_toon_id: str, room_id: str,
     seen = worldstate.get(world_id, key) if world_id else None
     seen = dict(seen) if isinstance(seen, dict) else {}
     now = time.time()
+    # Someone the move's own lines already named (a room's enter rule where a
+    # resident climbs down to shake your hand) has met the player in them;
+    # their usual greeting after that contradicted it (playtest 2026-09-28b).
+    told = " ".join(
+        str(e.payload.get("text") or "")
+        for e in events.fetch_since(since_seq, room_id=room_id, recipient_for=controlled_toon_id)
+        if e.kind == "narrate"
+    ) if since_seq is not None else ""
     for t in toons.get_toons_in_room(room_id):
         if t.id == controlled_toon_id:
             continue
@@ -636,6 +652,8 @@ def _emit_npc_presence_narrates(controlled_toon_id: str, room_id: str,
         seen[t.id] = now
         if world_id:
             worldstate.set(world_id, key, seen)
+        if told and re.search(rf"\b{re.escape(t.name)}\b", told):
+            continue
         events.append(
             "system", None, "narrate",
             {"text": greeting},
@@ -1117,8 +1135,9 @@ async def _broadcast_loop(
             )
             if is_controlled_move or is_effect_mutation or is_state_change:
                 snapshot_seq = events.max_seq()
-                await ws.send_json(_state_snapshot(snapshot_seq, toon_id, view,
-                                                   arriving=is_controlled_move))
+                await ws.send_json(_state_snapshot(
+                    snapshot_seq, toon_id, view, arriving=is_controlled_move,
+                    arrival_seq=event.seq if is_controlled_move else None))
                 if is_controlled_move:
                     # Kick image gen for the new room if the cache is cold;
                     # the room_image_ready event flows back through this
@@ -1135,6 +1154,6 @@ async def _broadcast_loop(
                     # data skill at r-forge doesn't re-greet Rook on
                     # every snapshot refresh.
                     _emit_npc_presence_narrates(toon_id, _current_room_id(toon_id),
-                                                view.get("greeted"))
+                                                view.get("greeted"), since_seq=event.seq)
     except (WebSocketDisconnect, RuntimeError):
         pass
