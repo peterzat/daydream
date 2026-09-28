@@ -158,6 +158,46 @@ def test_repeated_failures_for_one_username_are_throttled():
     assert r.status_code == 429  # even the right password waits out the window
 
 
+def test_a_concurrent_burst_cannot_outrun_the_username_budget(monkeypatch):
+    """SECURITY WARN 2026-09-28: the password check runs in a thread, so a
+    burst whose requests all passed the budget check before any failure was
+    recorded got every guess checked. Now only the budget's worth are."""
+    import asyncio
+    import time
+
+    import httpx
+
+    _account()
+    checked = []
+
+    def slow_wrong(username, password):
+        checked.append(username)
+        time.sleep(0.05)
+        return None
+
+    monkeypatch.setattr(accounts, "authenticate", slow_wrong)
+    with TestClient(app):  # the lifespan opens the databases
+
+        async def burst():
+            async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app),
+                                         base_url="http://testserver") as c:
+                return await asyncio.gather(*[
+                    c.post("/api/login", json={"username": "wren", "password": "wrong wrong"})
+                    for _ in range(20)])
+
+        replies = asyncio.run(burst())
+    budget = accounts.LOGIN_PER_USERNAME[0]
+    assert len(checked) <= budget
+    assert sum(r.status_code == 429 for r in replies) >= 20 - budget
+
+
+def test_a_right_password_does_not_use_up_the_address_budget():
+    _account()
+    with TestClient(app) as client:
+        for _ in range(accounts.LOGIN_PER_ADDRESS[0] + 2):
+            assert client.post("/api/login", json={"username": "wren", "password": PW}).status_code == 200
+
+
 def test_repeated_failures_from_one_address_are_throttled():
     with TestClient(app) as client:
         for i in range(accounts.LOGIN_PER_ADDRESS[0]):

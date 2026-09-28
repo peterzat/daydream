@@ -451,13 +451,17 @@ def cmd_rest_all(journal_too: bool) -> int:
     return 0
 
 
-def _find_toon(key: str):
+def _find_toons(key: str) -> list:
+    """Player toons matching `key`: an exact id, else every toon of that name
+    (names are not unique, so the caller refuses an ambiguous name)."""
     from daydream import toons
 
-    for t in toons._query("world_id = ? AND slot BETWEEN 1 AND 99", (toons.live_world_id(),)):
-        if t.id == key or t.name.lower() == key.strip().lower():
-            return t
-    return None
+    rows = list(toons._query("world_id = ? AND slot BETWEEN 1 AND 99", (toons.live_world_id(),)))
+    by_id = [t for t in rows if t.id == key]
+    if by_id:
+        return by_id
+    name = key.strip().lower()
+    return [t for t in rows if t.name.lower() == name]
 
 
 def cmd_restore_backup(backup_dir: Path) -> int:
@@ -498,10 +502,18 @@ def cmd_toon_moderate(key: str, action: str) -> int:
     db.init_live()
     from daydream import toons
 
-    t = _find_toon(key)
-    if t is None:
+    found = _find_toons(key)
+    if not found:
         print(f"error: no player toon {key!r}", file=sys.stderr)
         return 2
+    if len(found) > 1:
+        # Two players can share a name; acting on the first match could rest
+        # or delete the wrong friend's toon (SECURITY NOTE 2026-09-28).
+        ids = ", ".join(f"{t.id} (slot {t.slot})" for t in found)
+        print(f"error: {len(found)} player toons are named {key!r}; name one by id: {ids}",
+              file=sys.stderr)
+        return 2
+    t = found[0]
     if action == "rest":
         toons.kick_slot(t.slot)
         print(f"rested {t.name} ({t.id})")

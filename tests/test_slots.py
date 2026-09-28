@@ -240,6 +240,25 @@ def test_an_admin_browser_session_cannot_touch_a_friends_toon(monkeypatch):
         assert toons.get_toon_in_slot(3) is None
 
 
+def test_moderating_an_ambiguous_name_refuses_and_an_id_picks_one():
+    """SECURITY NOTE 2026-09-28: two players can share a name; by name the
+    shell used to act on whichever came first."""
+    from daydream import admin as admin_cli
+
+    with TestClient(app) as a, TestClient(app) as b:
+        _login(a, "ivo-one")
+        _login(b, "ivo-two")
+        a.post("/api/slots/3/create", json=IVO)
+        b.post("/api/slots/4/create", json=IVO)
+        first, second = toons.get_toon_in_slot(3), toons.get_toon_in_slot(4)
+        assert first.name == second.name
+        assert admin_cli.cmd_toon_moderate("Ivo", "delete") == 2
+        assert toons.get_toon_in_slot(3) is not None and toons.get_toon_in_slot(4) is not None
+        assert admin_cli.cmd_toon_moderate(second.id, "delete") == 0
+        assert toons.get_toon_in_slot(4) is None
+        assert toons.get_toon_in_slot(3).id == first.id
+
+
 # ---- unowned toons (seeded or from before accounts) -------------------------------------
 
 

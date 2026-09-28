@@ -163,6 +163,33 @@ def test_cached_images_are_private(monkeypatch, tmp_path):
     assert r.status_code == 200 and r.headers["cache-control"].startswith("private")
 
 
+def test_after_the_cut_the_capped_receive_still_waits_for_the_client():
+    """SECURITY NOTE 2026-09-28: once a streamed body was cut, every later
+    receive answered at once, so a disconnect listener (a streaming response)
+    would spin and freeze the server. It now waits on the real receive."""
+    import asyncio
+
+    calls = []
+
+    async def receive():
+        calls.append(1)
+        if len(calls) == 1:
+            return {"type": "http.request", "body": b"x" * (gate.MAX_BODY_BYTES + 10),
+                    "more_body": True}
+        if len(calls) == 2:
+            return {"type": "http.request", "body": b"rest", "more_body": False}
+        return {"type": "http.disconnect"}
+
+    async def run():
+        capped = gate._capped(receive)
+        return [await capped() for _ in range(3)]
+
+    first, second, third = asyncio.run(run())
+    assert first["more_body"] is False and len(first["body"]) == gate.MAX_BODY_BYTES
+    assert second == {"type": "http.request", "body": b"", "more_body": False}
+    assert third == {"type": "http.disconnect"} and len(calls) == 3
+
+
 def test_oversized_bodies_are_refused_before_anyone_signs_in():
     """SECURITY NOTE 2026-09-27: the public endpoints parsed bodies of any size
     (a 20 MB login body cost ~74 MB of memory)."""

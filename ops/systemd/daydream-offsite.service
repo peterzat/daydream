@@ -9,5 +9,7 @@ Description=daydream prod offsite backup to R2
 Type=oneshot
 User=@OPERATOR@
 ExecStart=@REPO@/bin/game prod offsite
-NoNewPrivileges=yes
+# No NoNewPrivileges: the job drops to the service user through sudo (the
+# sudoers entry), and that flag would block setuid sudo (SECURITY WARN
+# 2026-09-28). The prod service unit keeps it.
 PrivateTmp=yes

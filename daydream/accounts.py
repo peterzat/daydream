@@ -608,6 +608,11 @@ def clear_failures(key: str) -> None:
     get_conn().execute("DELETE FROM throttle WHERE key = ?", (key,))
 
 
+def forgive_one(key: str) -> None:
+    """Take back one attempt recorded up front (a login that turned out right)."""
+    get_conn().execute("UPDATE throttle SET count = MAX(count - 1, 0) WHERE key = ?", (key,))
+
+
 def clear_redeem_throttles() -> int:
     """The operator's lever when strangers' guesses have paused invitations
     for everyone (`bin/game invite unblock`)."""

@@ -20,6 +20,7 @@ Failures never say whether a username exists.
 from __future__ import annotations
 
 import asyncio
+import threading
 
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
@@ -132,6 +133,9 @@ def _signed_in(principal_row, request: Request, body: dict | None = None) -> JSO
 
 
 LOGIN_REFUSED = "that username and password don't match"
+# At most this many argon2 checks at once; a burst queues instead of each
+# check taking its own slice of memory (SECURITY WARN 2026-09-28).
+_HASH_SLOTS = threading.BoundedSemaphore(4)
 SLOW_DOWN = "too many tries; wait a few minutes and try again"
 
 
@@ -145,16 +149,26 @@ async def login(request: Request):
     if (accounts.throttled(addr_key, accounts.LOGIN_PER_ADDRESS)
             or accounts.throttled(user_key, accounts.LOGIN_PER_USERNAME)):
         return _deny(429, SLOW_DOWN)
+    # Count the attempt before the await: the check above and this record run
+    # with no await between them, so a concurrent burst cannot all pass the
+    # budget while the hashes run (SECURITY WARN 2026-09-28). A right password
+    # takes it back.
+    accounts.record_failure(addr_key, accounts.LOGIN_PER_ADDRESS)
+    if username:
+        accounts.record_failure(user_key, accounts.LOGIN_PER_USERNAME)
     # argon2 is ~30-60 ms of CPU: off the event loop, so a burst of logins
     # never stalls everyone's game (SECURITY NOTE 2026-09-27).
-    row = await asyncio.to_thread(accounts.authenticate, username, password)
+    row = await asyncio.to_thread(_authenticate_capped, username, password)
     if row is None:
-        accounts.record_failure(addr_key, accounts.LOGIN_PER_ADDRESS)
-        if username:
-            accounts.record_failure(user_key, accounts.LOGIN_PER_USERNAME)
         return _deny(401, LOGIN_REFUSED)
+    accounts.forgive_one(addr_key)
     accounts.clear_failures(user_key)
     return _signed_in(row, request)
+
+
+def _authenticate_capped(username: str, password: str):
+    with _HASH_SLOTS:
+        return accounts.authenticate(username, password)
 
 
 @router.post("/api/logout")

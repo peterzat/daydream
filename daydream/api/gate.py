@@ -84,9 +84,14 @@ def _capped(receive):
 
     async def wrapped():
         nonlocal seen, done
-        if done:
-            return {"type": "http.request", "body": b"", "more_body": False}
         message = await receive()
+        if done:
+            # After the cut, still wait on the client (a disconnect listener
+            # must not spin; SECURITY NOTE 2026-09-28), but hide the rest of
+            # the body.
+            if message["type"] == "http.request":
+                return {"type": "http.request", "body": b"", "more_body": False}
+            return message
         if message["type"] == "http.request":
             body = message.get("body", b"")
             seen += len(body)
