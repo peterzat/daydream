@@ -52,6 +52,11 @@ if (/entity-link/.test(run("the way an hour waits", [{alias: "hour", object_id: 
   fail.push("a person's alias linked as a common word");
 if (!/entity-link/.test(run("The Hour waits", [{alias: "hour", object_id: "t-x", kind: "toon"}])))
   fail.push("a person's alias did not link as a name");
+// The boundary before a word is matched, not looked behind: back-to-back
+// mentions sharing one space both link, and the space survives.
+const two = run("case case", [{alias: "case", object_id: "o-case"}]);
+if ((two.match(/entity-link/g) || []).length !== 2 || two.replace(/<[^>]+>/g, "") !== "case case")
+  fail.push("back-to-back mentions: " + two);
 if (fail.length) { console.error("FAIL: " + fail.join("; ")); process.exit(1); }
 console.log("OK");
 """
@@ -69,3 +74,14 @@ def test_linkify_no_nested_spans_or_id_leak_for_overlapping_aliases(tmp_path):
     )
     assert r.returncode == 0, f"linkify regression:\nstdout={r.stdout}\nstderr={r.stderr}"
     assert "OK" in r.stdout
+
+
+def test_browser_js_has_no_regex_lookbehind():
+    # Safari before 16.4 (iOS/iPadOS 15 and older) cannot parse a regex
+    # lookbehind: the RegExp constructor throws, and a throw in linkifying
+    # stops the reading column rendering (codereview 2026-09-28i). Named
+    # groups, "(?<name>", are fine there and are not flagged.
+    for js in sorted(MAIN_JS.parent.glob("*.js")):
+        src = js.read_text()
+        for token in ("(?<=", "(?<!"):
+            assert token not in src, f"{js.name} uses a regex lookbehind ({token})"

@@ -1239,15 +1239,17 @@ function linkifyEntities(text, ents) {
   const aliases = [...byAlias.values()].sort((a, b) => b.alias.length - a.alias.length);
   const pattern = aliases.map((a) => escapeRegex(a.alias)).join("|");
   // Whole words only, and not half of a hyphened one: "case" in "case-key"
-  // is not the clock case (playtest 2026-09-28c).
-  const re = new RegExp("(?<![\\w-])(" + pattern + ")(?![\\w-])", "gi");
-  return html.replace(re, (m) => {
-    const hit = byAlias.get(m.toLowerCase());
+  // is not the clock case (playtest 2026-09-28c). The character before the
+  // word is matched and put back, not looked behind: Safari before 16.4
+  // cannot parse a lookbehind, and every line would fail to render.
+  const re = new RegExp("(^|[^\\w-])(" + pattern + ")(?![\\w-])", "gi");
+  return html.replace(re, (m, pre, word) => {
+    const hit = byAlias.get(word.toLowerCase());
     // A person links only by name, as written with its capital: "the way an
     // hour waits" is not a resident whose name holds the word (playtest
     // 2026-09-28b).
-    if (!hit || (hit.person && !/^[A-Z]/.test(m))) return m;
-    return '<span class="entity-link" data-object-id="' + escape(hit.id) + '">' + m + "</span>";
+    if (!hit || (hit.person && !/^[A-Z]/.test(word))) return m;
+    return pre + '<span class="entity-link" data-object-id="' + escape(hit.id) + '">' + word + "</span>";
   });
 }
 
