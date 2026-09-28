@@ -492,6 +492,24 @@ def test_instance_goes_after_the_verb_so_the_permission_rules_see_it(monkeypatch
     assert prodctl.main(["backup", "--instance", "a", "--instance", "b"]) == 2
 
 
+def test_instance_is_refused_on_verbs_that_act_on_the_attached_one(monkeypatch, capsys):
+    """`sleep --instance zork` announced, rested and journaled zork while the
+    village went down; `deploy --instance zork` backed up zork and migrated
+    the village (codereview WARN 2026-09-28e). Only the pass-throughs and
+    backup act on one instance's data."""
+    monkeypatch.setattr(prodctl, "INSTANCE", None)
+    for verb in (["sleep"], ["deploy"], ["keepsakes"], ["wake"], ["status"], ["pull"],
+                 ["offsite"], ["rollback"], ["instance", "use", "village"]):
+        assert prodctl.main([*verb, "--instance", "zork"]) == 2, verb
+        assert "--instance applies only to" in capsys.readouterr().err
+        assert prodctl.INSTANCE is None
+    seen = []
+    monkeypatch.setattr(prodctl, "_require_current", lambda: Path("/nowhere"))
+    monkeypatch.setattr(prodctl, "_backup", lambda rel, data=None: seen.append(prodctl.INSTANCE))
+    assert prodctl.main(["backup", "--instance", "zork"]) == 0
+    assert seen == ["zork"]
+
+
 # ---- prod root: the validated helper (docs/ADMIN-ROOT.md) ----------------------------------
 
 

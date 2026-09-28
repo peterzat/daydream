@@ -111,6 +111,27 @@ def test_the_installer_installs_the_root_helper_and_a_root_conf_it_accepts(tmp_p
     assert (got.operator, got.repo) == ("peter", "/home/peter/src/daydream")
 
 
+def test_the_installer_takes_its_operator_from_sudo_and_never_guesses():
+    """Run as root without sudo, a guessed operator would get the sudoers
+    rules, root.conf and the operator jobs on a fork (codereview WARN
+    2026-09-28e). The guard runs here for real, minus the EUID check."""
+    import subprocess
+
+    script = (OPS / "install-prod.sh").read_text()
+    start = script.index('OPERATOR="${SUDO_USER')
+    guard = script[start:script.index("\nREPO=", start)]
+    assert not re.search(r"SUDO_USER:-[^}]", script)  # no fallback name, anyone's
+    for sudo_user, ok in ((None, False), ("", False), ("root", False), ("alice", True)):
+        env = {"PATH": os.environ["PATH"]}
+        if sudo_user is not None:
+            env["SUDO_USER"] = sudo_user
+        r = subprocess.run(["bash", "-c", guard + '\necho "operator=$OPERATOR"'], env=env,
+                           capture_output=True, text=True)
+        assert (r.returncode == 0) is ok, (sudo_user, r.stdout, r.stderr)
+        assert ("operator=alice" in r.stdout) is ok
+        assert ok or "run it with sudo as the operator" in r.stderr
+
+
 def test_the_installer_installs_every_unit_and_enables_every_timer():
     script = (OPS / "install-prod.sh").read_text()
     for f in sorted(UNITS.iterdir()):

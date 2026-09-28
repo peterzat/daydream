@@ -32,10 +32,14 @@ from pathlib import Path
 from daydream import config, db, objects, toons
 
 
-def _targets(world_id: str, only: str | None):
+def _targets(world_id: str, only: str | None, every_toon: bool = False):
+    """Rooms and faces to paint. Players still in a session are painted by
+    the live server; `every_toon` (from-keep mode) includes them too, so a
+    player who closed a tab without resting gets their portrait back."""
     from daydream.images import client
 
     out = []
+    in_session = "" if every_toon else "AND is_human_controlled = 0 "
     conn = db.get_conn()
     if only in (None, "rooms"):
         for r in conn.execute("SELECT * FROM objects WHERE world_id = ? AND kind = 'room' "
@@ -48,7 +52,7 @@ def _targets(world_id: str, only: str | None):
                 prompt_suffix=client.WHIMSY_PROMPT_SUFFIX)))
     if only in (None, "toons"):
         for r in conn.execute("SELECT * FROM objects WHERE world_id = ? AND kind = 'toon' "
-                              "AND is_human_controlled = 0 ORDER BY slot", (world_id,)):
+                              + in_session + "ORDER BY slot", (world_id,)):
             o = objects.Object.from_row(r)
             seed = o.properties.get("appearance_seed")
             if not isinstance(seed, str) or not seed.strip():
@@ -80,29 +84,11 @@ def _adopt_from_cache(target, workflow, path: Path, from_cache: Path) -> bool:
 
 def _adopt_from_keep(target, workflow, path: Path) -> bool:
     """Put this target's kept image back into the cache (a reset's new
-    world, docs/DATA-LIFECYCLE.md): the keep holds every painting by its
-    cache key (seed text + workflow), so a match IS this target's painting.
-    Records it like a render. False when the keep has none."""
-    import os
-    import shutil
+    world, docs/DATA-LIFECYCLE.md), with the prompt it was painted from.
+    False when the keep has none (images/client.py `restore_from_keep`)."""
+    from daydream.images import client
 
-    from daydream.images import client, keep
-
-    found = keep.find(path.stem)
-    if found is None:
-        return False
-    art, _ = found
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_name(f".{path.name}.restore")
-    try:
-        os.link(art, tmp)
-    except OSError:
-        shutil.copyfile(art, tmp)
-    os.replace(tmp, path)
-    prompt = client.canonical_prompt(target.seed, target.prompt_suffix)
-    client._record_persistent(target, prompt, workflow, path)
-    client.keep_render(target, prompt, workflow, path, "restored")
-    return True
+    return client.restore_from_keep(target, workflow, path)
 
 
 async def prebake(db_path: Path, only: str | None = None, force: set[str] | None = None,
@@ -116,7 +102,7 @@ async def prebake(db_path: Path, only: str | None = None, force: set[str] | None
     world_id = toons.live_world_id()
     results = []
     try:
-        for kind, tid, label, target in _targets(world_id, only):
+        for kind, tid, label, target in _targets(world_id, only, every_toon=from_keep):
             workflow = client.load_workflow_for(target)
             path = cache.cache_path(world_id, target.target_kind, tid, target.seed, workflow)
             rec = {"kind": kind, "id": tid, "label": label, "path": str(path),

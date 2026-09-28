@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import json
 import re
+import shutil
 import sys
 from pathlib import Path
 
@@ -83,7 +84,16 @@ def load(data_dir: Path | None = None) -> dict[str, str]:
     key = str(d)
     if key not in _cache:
         p = d / FILE
-        _cache[key] = validate(json.loads(p.read_text())) if p.exists() else dict(DEFAULTS)
+        words = validate(json.loads(p.read_text())) if p.exists() else dict(DEFAULTS)
+        if d.parent.name == "instances" and NAME_RE.match(d.name):
+            # An instance's name is its directory's (the cookie, /status/build
+            # and the swap's served check all read it): a file may omit it,
+            # never contradict it (codereview WARN 2026-09-28e).
+            if words["name"] not in ("", d.name):
+                raise InstanceError(f"{p}: name {words['name']!r} is not its directory's "
+                                    f"({d.name!r})")
+            words["name"] = d.name
+        _cache[key] = words
     return _cache[key]
 
 
@@ -148,6 +158,21 @@ def create(name: str, words: dict) -> Path:
     return d
 
 
+def discard(name: str) -> None:
+    """Remove an instance that holds nothing yet (a `create` whose world did
+    not load), so a retry starts clean. Refuses the attached instance and
+    any dir that holds a world or accounts."""
+    d = instances_root() / name
+    if not NAME_RE.match(name) or d.is_symlink() or not d.is_dir():
+        raise InstanceError(f"no instance {name!r}")
+    if name == attached():
+        raise InstanceError(f"{name} is attached")
+    held = sorted(p.name for p in (*d.glob("worlds-*/live.db"), *d.glob("accounts-*.db")))
+    if held:
+        raise InstanceError(f"{name} holds {', '.join(held)}; not discarded")
+    shutil.rmtree(d)
+
+
 def attach(name: str) -> None:
     """Point `active` at an instance, atomically (a new link renamed over the
     old). The service must be stopped: a running server keeps the instance it
@@ -172,6 +197,10 @@ def migrate(name: str) -> list[str]:
         raise InstanceError("this data dir already has instances")
     if not NAME_RE.match(name):
         raise InstanceError(f"{name!r} is not an instance name")
+    # A flat dir's own instance.json moves with it and takes the new name; a
+    # bad one refuses here, before anything moves.
+    raw = json.loads((root / FILE).read_text()) if (root / FILE).exists() else {}
+    validate(raw)
     d = root / "instances" / name
     d.mkdir(parents=True)
     moved = []
@@ -180,8 +209,7 @@ def migrate(name: str) -> list[str]:
             continue
         entry.rename(d / entry.name)
         moved.append(entry.name)
-    if not (d / FILE).exists():
-        (d / FILE).write_text(json.dumps({"name": name}, indent=2) + "\n")
+    (d / FILE).write_text(json.dumps({**raw, "name": name}, indent=2, ensure_ascii=False) + "\n")
     attach(name)
     return moved
 
@@ -205,12 +233,16 @@ def main(argv: list[str] | None = None) -> int:
         elif len(args) == 2 and args[0] == "attach":
             attach(args[1])
             print(f"attached {args[1]}")
+        elif len(args) == 2 and args[0] == "discard":
+            discard(args[1])
+            print(f"discarded {args[1]}")
         elif len(args) == 2 and args[0] == "migrate":
             moved = migrate(args[1])
             print(f"migrated into instances/{args[1]}: {', '.join(moved) or 'nothing'}")
         else:
             print("usage: python -m daydream.instance envelope|show|flag-words|list|"
-                  "create NAME WORDS_JSON|attach NAME|migrate NAME", file=sys.stderr)
+                  "create NAME WORDS_JSON|attach NAME|discard NAME|migrate NAME",
+                  file=sys.stderr)
             return 2
     except (InstanceError, ValueError, OSError) as e:
         print(f"error: {e}", file=sys.stderr)

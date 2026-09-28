@@ -11,7 +11,9 @@ is the durable record, one per data dir (dev's and prod's are separate):
 The bytes are hard-linked from the cache when they can be (no extra disk).
 That is safe because nothing writes a cache file in place: a repaint writes a
 temp file and renames it over the old name, so the keep's link still holds
-the old bytes (images/client.py `_atomic_write_with_prev`).
+the old bytes (images/client.py `_atomic_write_with_prev`), and a restore
+replaces files rather than writing into them. Each kept file is read-only,
+so anything that tried to write through a link would fail loudly.
 
 A provenance line says what an image is FOR, in words as well as ids: the
 world, the target (a room or a resident) and its name, the prompt and the
@@ -67,15 +69,20 @@ def file_sha256(path: Path) -> str:
 
 def _store(path: Path, sha256: str) -> Path:
     dest = art_path(sha256)
-    if dest.exists():
-        return dest
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    tmp = dest.with_name(f".{dest.name}.tmp")
+    if not dest.exists():
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        tmp = dest.with_name(f".{dest.name}.tmp")
+        try:
+            os.link(path, tmp)
+        except OSError:  # another filesystem, or links not allowed: copy
+            shutil.copyfile(path, tmp)
+        os.replace(tmp, dest)
     try:
-        os.link(path, tmp)
-    except OSError:  # another filesystem, or links not allowed: copy
-        shutil.copyfile(path, tmp)
-    os.replace(tmp, dest)
+        # Read-only, as defense in depth: a cache file may share this inode,
+        # so a write into it in place fails loudly (renames still work).
+        os.chmod(dest, 0o444)
+    except OSError:  # (another user's file): the store itself still holds
+        pass
     return dest
 
 
@@ -85,11 +92,11 @@ def records() -> list[dict]:
     if not p.exists():
         return []
     out = []
-    with open(p, encoding="utf-8") as f:
+    with open(p, "rb") as f:  # bytes: a line torn mid-character must not stop the read
         for line in f:
             try:
-                rec = json.loads(line)
-            except ValueError:
+                rec = json.loads(line.decode("utf-8"))
+            except ValueError:  # (UnicodeDecodeError included)
                 continue
             if isinstance(rec, dict) and rec.get("sha256"):
                 out.append(rec)
@@ -163,24 +170,25 @@ def provenance(*, world_id: str, target_kind: str, target_id: str, source_text: 
             "workflow_hash": workflow_hash, "cache_key": cache_key, "file": file, **extra}
 
 
-def sync(world_id: str | None = None) -> dict:
+def sync(world_id: str | None = None, *, with_db: bool = True) -> dict:
     """Keep every image the live world knows of (backfill): each
     generated_assets row whose file exists, with the row's provenance, and
     each cache file with no row ("found"). Idempotent. Raises if the keep
-    cannot be written: callers that wipe art must not wipe after a failure."""
+    cannot be written: callers that wipe art must not wipe after a failure.
+    `with_db=False` (a live DB that cannot be opened) keeps every cache file
+    as "found"."""
     from daydream import db
     from daydream.images import cache
 
     counts = {"kept": 0, "already": 0, "found": 0, "missing_file": 0}
     existing = records()
-    conn = db.get_conn()
     sql = "SELECT * FROM generated_assets"
     params: tuple = ()
     if world_id is not None:
         sql += " WHERE world_id = ?"
         params = (world_id,)
     known: set[Path] = set()
-    for row in conn.execute(sql, params).fetchall():
+    for row in db.get_conn().execute(sql, params).fetchall() if with_db else []:
         f = config.data_dir() / row["file_relpath"]
         known.add(f.resolve())
         if not f.is_file():

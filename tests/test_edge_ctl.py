@@ -69,6 +69,10 @@ def test_set_and_describe_state(tmp_path, monkeypatch):
     s = edge.set_state("asleep", "back Sunday")
     assert json.loads(store["state"]) == s and s["note"] == "back Sunday" and s["since"]
     assert edge.describe_state().startswith("asleep (back Sunday) since ")
+    # A swap writes new words and no note: the asleep page keeps its note.
+    kept = edge.set_state("asleep", None, {"place": "the old empire"})
+    assert kept["note"] == "back Sunday" and kept["place"] == "the old empire"
+    assert edge.set_state("awake")["note"] == ""  # an explicit (default) note still clears it
     with pytest.raises(edge.EdgeError):
         edge.set_state("dozing")
 
@@ -115,7 +119,9 @@ def test_the_uptime_watch_is_described_plainly():
 
     assert edge.describe_uptime({"down_since": None, "outages": []}) == \
         "up; no unplanned outage recorded"
-    assert edge.describe_uptime({"down_since": "2026-09-28T10:05:00Z", "outages": []}).startswith(
-        "DOWN since 2026-09-28T10:05:00Z")
+    down = edge.describe_uptime({"down_since": "2026-09-28T10:05:00Z", "outages": []})
+    # The record cannot know the flag's state now (the line sits beside the
+    # flag's own words): it says only that the outage was unplanned.
+    assert down == "DOWN since 2026-09-28T10:05:00Z (unplanned)"
     one = {"down_since": None, "outages": [{"from": "a", "to": "b"}]}
     assert edge.describe_uptime(one) == "up; last unplanned outage a to b (1 recorded)"

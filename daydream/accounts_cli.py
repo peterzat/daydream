@@ -128,10 +128,32 @@ def _delete_account(key: str, *, confirmed: bool) -> int:
     for t in dreamers:
         typed = inputs.forget_toon(t.id)
         toons.delete_slot(t.slot)
-        print(f"deleted dreamer {t.name} ({t.id}) and {typed} input line(s)")
+        forgot = _forget_dreamer_state(t.world_id, t.id)
+        print(f"deleted dreamer {t.name} ({t.id}), {typed} input line(s) and {forgot} "
+              "story record(s)")
     accounts.delete_account(row["id"])
     print(f"deleted account {row['username']} ({row['id']})")
     return 0
+
+
+def _forget_dreamer_state(world_id: str, toon_id: str) -> int:
+    """What the world keeps under a dreamer's id (the key shapes in story.py,
+    collect.py and api/ws.py): its Book, flags and counters (`pq:<id>:*`),
+    and every key ending in `:<id>`: what it said to each resident
+    (`talk:<npc>:<id>`), relationships (`rel:`, `relday:`), greetings and
+    bystander notes. Then its private finds (`private_to`). Returns how many
+    went."""
+    from daydream import objects, worldstate
+
+    n = 0
+    for key in worldstate.keys(world_id):
+        if key.startswith(f"pq:{toon_id}:") or key.endswith(f":{toon_id}"):
+            worldstate.delete(world_id, key)
+            n += 1
+    for thing in objects.things_where_property(world_id, "private_to", toon_id):
+        objects.delete(thing.id)
+        n += 1
+    return n
 
 
 def cli_cookie(cache: Path | None = None) -> str:

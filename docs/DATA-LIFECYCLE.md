@@ -91,8 +91,9 @@ Verbs:
   loading, so a reset village has its art at once. (A brand-new box's keep
   is empty: it copies the graded dev art in once with `prod prebake
   --from-cache`, which keeps it, and every reset after that needs no copy.)
-- `bin/game backup` copies `provenance.jsonl` into each backup (the records
-  travel offsite with the backups; the bytes do not yet, below).
+- `bin/game world backup` (and `bin/game prod backup`, the nightly timer)
+  copies `provenance.jsonl` into each backup (the records travel offsite
+  with the backups; the bytes do not yet, below).
 
 ## A person's end: `account delete`
 
@@ -102,7 +103,8 @@ would go). It deletes:
 - the account, its sessions, every invite tied to it, and its throttle
   counters (the accounts DB)
 - its dreamers in the live world, their carried things left in the room
-  (as `world delete-toon` does), with their journals and books
+  (as `world delete-toon` does), with their journals and books, what they
+  said to each resident, their relationships and their private finds
 - everything those dreamers typed or clicked (the private input log)
 
 It keeps the shared event history (what others saw happen in the village)

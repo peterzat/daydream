@@ -287,15 +287,56 @@ test("the watch records an outage's start and end, and writes nothing on a quiet
   assert.deepEqual(puts, []);
   originReply = () => new Error("tunnel down");
   assert.equal(await watch(e, new Date("2026-09-28T10:05:00Z")), "down");
-  assert.equal(await watch(e, new Date("2026-09-28T10:10:00Z")), "down");
-  assert.equal(puts.length, 1);
+  assert.equal(JSON.parse(store.get("uptime")).down_since, null);  // only suspected
+  assert.equal(await watch(e, new Date("2026-09-28T10:10:00Z")), "down");  // two in a row: open
+  assert.equal(await watch(e, new Date("2026-09-28T10:15:00Z")), "down");  // still open: quiet
+  assert.equal(puts.length, 2);
   assert.equal(JSON.parse(store.get("uptime")).down_since, "2026-09-28T10:05:00Z");
   originReply = () => new Response("ok", { status: 200 });
-  await watch(e, new Date("2026-09-28T10:15:00Z"));
+  await watch(e, new Date("2026-09-28T10:20:00Z"));
   const u = JSON.parse(store.get("uptime"));
   assert.equal(u.down_since, null);
-  assert.deepEqual(u.outages, [{ from: "2026-09-28T10:05:00Z", to: "2026-09-28T10:15:00Z" }]);
-  assert.equal(puts.length, 2);
+  assert.deepEqual(u.outages, [{ from: "2026-09-28T10:05:00Z", to: "2026-09-28T10:20:00Z" }]);
+  assert.equal(puts.length, 3);
+  await watch(e, new Date("2026-09-28T10:25:00Z"));
+  assert.equal(puts.length, 3);
+});
+
+test("one failed probe and then an answer records no outage (a planned restart)", async () => {
+  const { e, store } = kvEnv({ state: JSON.stringify({ state: "awake", note: "", since: null }) });
+  originReply = () => new Error("restarting");
+  await watch(e, new Date("2026-09-28T10:05:00Z"));
+  originReply = () => new Response("ok", { status: 200 });
+  assert.equal(await watch(e, new Date("2026-09-28T10:10:00Z")), "up");
+  const u = JSON.parse(store.get("uptime"));
+  assert.equal(u.down_since, null);
+  assert.equal(u.suspect_since, null);
+  assert.deepEqual(u.outages, []);
+});
+
+test("an open outage closes when the flag goes asleep, and a suspicion does not outlive a sleep", async () => {
+  const awake = JSON.stringify({ state: "awake", note: "", since: null });
+  const { e, store } = kvEnv({ state: awake });
+  originReply = () => new Error("the box is off");
+  await watch(e, new Date("2026-09-28T10:05:00Z"));
+  await watch(e, new Date("2026-09-28T10:10:00Z"));
+  store.set("state", JSON.stringify({ state: "asleep", note: "back Sunday", since: null }));
+  assert.equal(await watch(e, new Date("2026-09-28T10:15:00Z")), "asleep");
+  let u = JSON.parse(store.get("uptime"));
+  assert.equal(u.down_since, null);
+  assert.deepEqual(u.outages, [{ from: "2026-09-28T10:05:00Z", to: "2026-09-28T10:15:00Z",
+    ended: "asleep" }]);
+  // Awake again: a failure seen just before a sleep is not carried past it.
+  store.set("state", awake);
+  await watch(e, new Date("2026-09-29T09:00:00Z"));
+  store.set("state", JSON.stringify({ state: "asleep", note: "", since: null }));
+  await watch(e, new Date("2026-09-29T09:05:00Z"));
+  store.set("state", awake);
+  await watch(e, new Date("2026-09-29T09:10:00Z"));
+  u = JSON.parse(store.get("uptime"));
+  assert.equal(u.down_since, null);
+  assert.equal(u.suspect_since, "2026-09-29T09:10:00Z");
+  assert.equal(u.outages.length, 1);
 });
 
 test("the watch leaves a planned sleep alone", async () => {

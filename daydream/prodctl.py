@@ -225,7 +225,7 @@ def passthrough(args: list[str]) -> int:
         i = args.index("--from-cache")
         staged = _stage_art(Path(args[i + 1]).expanduser())
         args[i + 1] = str(staged)
-    was_up = needs_stop(args) and unit_active(UNIT)
+    was_up = needs_stop(args) and not _detached() and unit_active(UNIT)
     if was_up:
         say("stopping the service for this ...")
         systemctl("stop", UNIT)
@@ -243,6 +243,13 @@ def passthrough(args: list[str]) -> int:
 # Verbs that refuse (or only look) without their confirming flag.
 NEEDS_YES = {("world", "reset"), ("world", "delete"), ("world", "restore"),
              ("world", "snapshot-restore")}
+
+
+def _detached() -> bool:
+    """`--instance` names an instance the service is not serving: its data
+    changes without stopping anyone (codereview WARN 2026-09-28e)."""
+    active = data_root() / "active"
+    return INSTANCE is not None and not (active.is_symlink() and active.resolve().name == INSTANCE)
 
 
 def needs_stop(args: list[str]) -> bool:
@@ -580,7 +587,7 @@ def flag_words(release: Path, data: Path | None = None) -> dict | None:
     return words if isinstance(words, dict) else None
 
 
-def _set_edge_flag(edge, state: str, note: str = "", words: dict | None = None) -> bool:
+def _set_edge_flag(edge, state: str, note: str | None = "", words: dict | None = None) -> bool:
     """Best effort (codereview WARN 2026-09-28): a Cloudflare API error must
     not abort a sleep or wake half done. An unset asleep flag is covered
     anyway: the Worker reads an unreachable origin as asleep."""
@@ -972,7 +979,11 @@ def instance_create(name: str, words: dict) -> int:
                                  "--output", str(live)], check=False, capture=True, data=d)
     say(r.stdout.strip())
     if r.returncode != 0:
-        raise ProdError(f"the world did not load: {r.stderr.strip()[-300:]}")
+        # Remove the new dir (it holds no world), or a retry fails on "File exists".
+        gone = _instance_cli(rel, ["discard", name]).returncode == 0
+        raise ProdError(f"the world did not load: {r.stderr.strip()[-300:]}; "
+                        + ("the new instance was removed, so a retry starts clean" if gone
+                           else f"{d} was left as it is"))
     say(f"created instance {name}; attach it with: bin/game prod instance use {name}")
     return 0
 
@@ -1000,7 +1011,8 @@ def instance_migrate(name: str) -> int:
             say("service: " + ("back up" if wait_healthy() else "NOT healthy after restart"))
     edge = _edge()
     if edge is not None:
-        _set_edge_flag(edge, edge.get_state().get("state", "awake"), words=flag_words(rel))
+        _set_edge_flag(edge, edge.get_state().get("state", "awake"), note=None,
+                       words=flag_words(rel))
         try:
             edge.sync_keepsakes(rel)
         except Exception as e:
@@ -1009,10 +1021,11 @@ def instance_migrate(name: str) -> int:
     return 0
 
 
-def instance_use(name: str, grace: int, note: str) -> int:
+def instance_use(name: str, grace: int, note: str | None) -> int:
     """Attach another instance to the public URL (the swap). Its state and
     the current one's are kept whole; if anything fails after the stop, the
-    previous instance is attached again and started."""
+    previous instance is attached again and started. The flag keeps its note
+    unless `note` is given."""
     rel = _require_current()
     link = data_root() / "active"
     if not link.is_symlink():
@@ -1028,6 +1041,14 @@ def instance_use(name: str, grace: int, note: str) -> int:
     if r.returncode == 3:
         raise ProdError(f"{name}'s world cannot be carried forward by this release "
                         "(WORLD_VERSION MAJOR); nothing changed")
+    # A world-less instance would boot on an empty data dir and answer as the
+    # target, so the swap would "succeed" with friends in no world at all.
+    worlds = [line for line in r.stdout.splitlines()
+              if line.startswith("live_world: ") and line != "live_world: missing"]
+    if r.returncode != 0 or not worlds:
+        raise ProdError(f"{name} has no world to serve (preflight: "
+                        f"{'failed' if r.returncode else 'no live world'}); nothing changed. "
+                        f"Give it one first: bin/game prod world reset --yes --instance {name}")
     _backup(rel, data=target)
     _backup(rel, data=instance_dir(current))
     was_up = unit_active(UNIT)
@@ -1104,6 +1125,13 @@ def main(argv: list[str] | None = None) -> int:
             print("usage: bin/game prod <verb> ... --instance NAME (the last two "
                   "arguments, so the permission rules read the whole verb)", file=sys.stderr)
             return 2
+        # Only the verbs that act on one instance's data take it: the others
+        # (sleep, deploy, keepsakes, instance use, ...) act on the attached one
+        # and would retarget half their work (codereview WARN 2026-09-28e).
+        if argv[0] not in (*PASSTHROUGH, "backup"):
+            print(f"--instance applies only to {', '.join(PASSTHROUGH)} and backup; "
+                  f"`{argv[0]}` does not take it", file=sys.stderr)
+            return 2
         INSTANCE, argv = argv[i + 1], argv[:i]
     if argv and argv[0] in PASSTHROUGH:
         try:
@@ -1146,7 +1174,8 @@ def main(argv: list[str] | None = None) -> int:
     iu = isub.add_parser("use", help="attach an instance to the public URL (the swap)")
     iu.add_argument("name")
     iu.add_argument("--grace", type=int, default=60, help="seconds of warning for players")
-    iu.add_argument("--note", default="", help="the asleep page's note while it is closed")
+    iu.add_argument("--note", default=None,
+                    help="the asleep page's note while it is closed (default: keep the flag's)")
     # `root` is dispatched above, before --instance is read; listed here for --help.
     rt = sub.add_parser("root", help="root actions through the validated helper "
                                      "(docs/runbooks/root.md)")

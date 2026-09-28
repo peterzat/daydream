@@ -37,8 +37,9 @@ patch reaches prod committed and deployed:
 
 Paths are relative to the release (the repo layout). An absolute path under
 the operator's home is refused with this explanation. Undo a bad dream with
-`bin/game prod world restore-backup /srv/daydream/data/backups/<that ts>`,
-which also rolls the accounts DB back to that moment ([backups.md](backups.md)).
+`bin/game prod world restore-backup <the path step 5 printed>`
+(`/srv/daydream/data/instances/<name>/backups/<ts>`), which also rolls the
+accounts DB back to that moment ([backups.md](backups.md)).
 The pre-dream snapshot `dream install` prints cannot be restored in prod:
 `world snapshot-restore` refuses while a live DB exists.
 

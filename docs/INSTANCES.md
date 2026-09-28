@@ -77,7 +77,9 @@ option could split a two-word verb past its rule, so prodctl refuses it.
 ```
 
 Every key is optional; the defaults are the village's words, so an instance
-with no file (dev, the tests) reads exactly as today. `envelope` is what
+with no file (dev, the tests) reads exactly as today. Under `instances/`, the
+name is always the directory's: a file may leave `name` out, and one that
+names another instance is refused. `envelope` is what
 `world reset` and `world refresh` load when not told otherwise (without it, a
 bare reset of a Zork instance would seed Lost Hours). The words reach:
 

@@ -314,6 +314,13 @@ def parse_unit(text: str) -> tuple[list[tuple[int, str, str, str]], list[str]]:
     if bad:
         return [], [f"line {bad[0]}: control characters (carriage returns included) on "
                     f"{len(bad)} line(s); systemd may read such a file differently"]
+    # This parser's strip() takes Unicode whitespace where systemd strips only
+    # ASCII: `ProtectHome<NBSP>=yes` would validate here and be an unknown key
+    # (dropped) there, and the NBSP is invisible in the diff the human approves.
+    wide = [n for n, line in enumerate(lines, 1) if not line.isascii()]
+    if wide:
+        return [], [f"line {wide[0]}: non-ASCII characters on {len(wide)} line(s); "
+                    "systemd may read such a file differently"]
 
     def logical(start: int, line: str) -> None:
         nonlocal section

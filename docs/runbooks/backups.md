@@ -2,10 +2,15 @@
 
 | Copy | When | Where | Kept |
 |---|---|---|---|
-| Nightly | 04:30 (timer) | `/srv/daydream/data/backups/<ts>/` (world + accounts DBs) | every one from the last 14 days, and never fewer than the newest 14 |
+| Nightly | 04:30 (timer) | the attached instance's `backups/<ts>/` (world + accounts DBs) | every one from the last 14 days, and never fewer than the newest 14 |
 | Before a deploy, a pull, an offsite | automatically | the same pool | the same rule |
 | Offsite | Sundays 05:15 (timer) | the private R2 bucket `daydream-backups`, encrypted with `age` | 60 days (bucket lifecycle rule) |
 | By hand | `bin/game prod backup` | the same pool | the same rule |
+
+Each instance's backups live in its own data dir,
+`/srv/daydream/data/instances/<name>/backups/<ts>/`
+(`/srv/daydream/data/backups/<ts>/` on a box without instances);
+`bin/game prod backup` prints the path it wrote.
 
 `bin/game prod status` and `bin/game prod check` show each timer job's last
 result. A failed offsite or keepsakes job says why in
@@ -26,8 +31,8 @@ dev account adopts one with `POST api/slots/<slot>/claim`.
 
 ```sh
 bin/game prod status                                   # sure? who is playing?
-ls /srv/daydream/data/backups/                         # pick one
-bin/game prod world restore-backup /srv/daydream/data/backups/<ts>   # prompts; stops and restarts the service
+ls /srv/daydream/data/instances/<name>/backups/        # pick one (the attached instance's)
+bin/game prod world restore-backup /srv/daydream/data/instances/<name>/backups/<ts>   # prompts; stops and restarts the service
 bin/game prod check
 ```
 

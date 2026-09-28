@@ -156,8 +156,12 @@ def _atomic_write_with_prev(out: Path, data: bytes) -> None:
     tmp = out.parent / f".{out.name}.{uuid.uuid4().hex}.tmp"
     tmp.write_bytes(data)
     if out.exists():
+        prev = out.with_name(out.name + ".prev")
         try:
-            shutil.copy2(out, out.with_name(out.name + ".prev"))
+            # Replaced, not written into: a copy of a kept painting keeps its
+            # read-only mode (images/keep.py), so the next copy onto it would fail.
+            prev.unlink(missing_ok=True)
+            shutil.copy2(out, prev)
         except OSError:
             pass  # a missing revert-copy is not worth failing the regen
     os.replace(tmp, out)
@@ -475,6 +479,8 @@ async def _generate_persistent(
     if out.exists() and not force:
         return out
     experimental = prompt_override is not None and prompt_override.strip() != ""
+    if not force and not experimental and restore_from_keep(target, base_workflow, out):
+        return out  # painted before (a reset or a restore wiped the cache): no render
     full_prompt = (
         prompt_override.strip()
         if experimental
@@ -500,7 +506,41 @@ async def _generate_persistent(
     return out
 
 
-def keep_render(target: PersistentTarget, full_prompt: str, workflow: dict, out: Path,
+def restore_from_keep(target: PersistentTarget, workflow: dict, out: Path) -> bool:
+    """Put this target's kept painting back at `out`, its cache path. The keep
+    holds every painting by its cache key (seed text + workflow), so a match
+    IS this target's painting (docs/DATA-LIFECYCLE.md). Linked, recorded like
+    a render with the prompt it was painted from (an experimental repaint's
+    marker included), and kept as "restored". False when the keep has none,
+    or cannot be read (the caller renders instead)."""
+    from daydream.images import keep
+
+    try:
+        found = keep.find(out.stem)
+    except Exception as e:
+        logger.warning("keep: could not read the keep for %s: %s", out.stem, type(e).__name__)
+        return False
+    if found is None:
+        return False
+    art, rec = found
+    tmp = out.with_name(f".{out.name}.restore")
+    try:
+        out.parent.mkdir(parents=True, exist_ok=True)
+        tmp.unlink(missing_ok=True)  # a crashed restore's leftover: replaced, never written into
+        try:
+            os.link(art, tmp)
+        except OSError:
+            shutil.copyfile(art, tmp)
+        os.replace(tmp, out)
+    except OSError as e:
+        logger.warning("keep: could not restore %s: %s", out.stem, type(e).__name__)
+        return False
+    _record_persistent(target, rec.get("prompt"), workflow, out)
+    keep_render(target, rec.get("prompt"), workflow, out, "restored", restored_from=rec["sha256"])
+    return True
+
+
+def keep_render(target: PersistentTarget, full_prompt: str | None, workflow: dict, out: Path,
                 event: str, **extra) -> None:
     """Keep a persistent image in the art keep with its provenance
     (daydream/images/keep.py). Never fails the render: the image is already
@@ -541,7 +581,7 @@ async def _generate_ephemeral(
 
 def _record_persistent(
     target: PersistentTarget,
-    full_prompt: str,
+    full_prompt: str | None,
     workflow: dict,
     out_path: Path,
 ) -> None:

@@ -128,18 +128,21 @@ def _now() -> str:
 WORD_KEYS = ("place", "title", "operator", "cookie")
 
 
-def set_state(state: str, note: str = "", words: dict | None = None) -> dict:
+def set_state(state: str, note: str | None = "", words: dict | None = None) -> dict:
     """Flip the edge's flag. The Worker reads it on every request; KV
     propagates worldwide within about a minute. The flag also carries the
     attached instance's words (docs/INSTANCES.md: the place, its title, the
     operator's title, the session cookie's name); without `words` it keeps
     the ones it has, so a bare `edge sleep` never forgets which instance is
-    attached."""
+    attached. `note=None` keeps the note it has (a swap must not erase an
+    asleep page's "back Sunday")."""
     if state not in ("awake", "asleep"):
         raise EdgeError("state is 'awake' or 'asleep'")
+    prev = get_state() if words is None or note is None else {}
     if words is None:
-        prev = get_state()
         words = {k: prev[k] for k in WORD_KEYS if isinstance(prev.get(k), str)}
+    if note is None:
+        note = prev.get("note") if isinstance(prev.get("note"), str) else ""
     body = {"state": state, "note": (note or "")[:280], "since": _now()}
     body.update({k: str(v)[:80] for k, v in words.items() if k in WORD_KEYS and v})
     kv_put("state", json.dumps(body))
@@ -170,7 +173,7 @@ def get_uptime() -> dict:
 
 def describe_uptime(u: dict) -> str:
     if u.get("down_since"):
-        return f"DOWN since {u['down_since']} (unplanned; the flag says awake)"
+        return f"DOWN since {u['down_since']} (unplanned)"
     last = next((o for o in u.get("outages", []) if isinstance(o, dict)), None)
     if last:
         return (f"up; last unplanned outage {last.get('from')} to {last.get('to')} "

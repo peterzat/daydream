@@ -14,7 +14,7 @@ seconds of downtime, and two things to know (below) that are now steps.
 | Goes (the world database) | Stays (elsewhere) |
 |---|---|
 | Every dreamer (toon), with its journal, book and satchel | Accounts, sessions and invites (`accounts-prod.db`) |
-| Arcs, the village day, relationships, grown rooms, dream history | Backups (`/srv/daydream/data/backups/`) |
+| Arcs, the village day, relationships, grown rooms, dream history | Backups (the instance's `backups/`; [backups.md](backups.md)) |
 | The raw input log and every event | Every painting and its provenance (the art keep; docs/DATA-LIFECYCLE.md) |
 | The image cache (a working copy) | Each friend's keepsakes on the edge, until the next keepsakes sync |
 
@@ -55,7 +55,8 @@ bin/game prod check
 ## Undo
 
 Restore the backup taken first: `bin/game prod world restore-backup
-/srv/daydream/data/backups/<ts>` ([backups.md](backups.md)). That also rolls
+/srv/daydream/data/instances/<name>/backups/<ts>` (the path the backup
+printed; [backups.md](backups.md)). That also rolls
 the accounts database back to that moment. The old village's paintings are
 in the art keep; `bin/game prod prebake --from-keep` (service stopped by
 prodctl) puts them back into the restored world's cache.

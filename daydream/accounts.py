@@ -298,8 +298,9 @@ def delete_account(key: str) -> sqlite3.Row:
         conn.execute("DELETE FROM sessions WHERE account_id = ?", (row["id"],))
         conn.execute("DELETE FROM invites WHERE account_id = ? OR id = ?",
                      (row["id"], row["invite_id"]))
-        conn.execute("DELETE FROM throttle WHERE key IN (?, ?)",
-                     ("login-user:" + row["username"], "password-change:" + row["id"]))
+        conn.execute("DELETE FROM throttle WHERE key IN (?, ?, ?)",
+                     ("login-user:" + row["username"], "password-change:" + row["id"],
+                      "dreamer-create:" + row["id"]))
         conn.execute("DELETE FROM accounts WHERE id = ?", (row["id"],))
     return row
 

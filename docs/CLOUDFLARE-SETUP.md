@@ -84,7 +84,7 @@ This token cannot touch DNS, Access, tunnels or other zones. Save it on the
 box with an editor (a heredoc would land the token in your shell history):
 
 ```sh
-install -m 600 /dev/null ~/.config/daydream/cloudflare.env
+install -D -m 600 /dev/null ~/.config/daydream/cloudflare.env
 $EDITOR ~/.config/daydream/cloudflare.env
 ```
 
@@ -93,10 +93,22 @@ CLOUDFLARE_API_TOKEN=<the token>
 CLOUDFLARE_ACCOUNT_ID=<32 hex characters: the zone's Overview page, API section>
 ```
 
-Check it: `bin/game edge status` should print `edge flag: not configured`
-(no KV id yet) rather than an authentication error. (A fork must have set the
-KV id to `REPLACE_WITH_YOUR_KV_ID` first: see the table above; the full fork
-path is [`FORKING.md`](FORKING.md).)
+Check the token itself, from the box (it reads the token from the file, so it
+stays out of your shell history and off the process list):
+
+```sh
+(. ~/.config/daydream/cloudflare.env && curl -s -H @- \
+    https://api.cloudflare.com/client/v4/user/tokens/verify \
+    <<< "Authorization: Bearer $CLOUDFLARE_API_TOKEN")
+```
+
+It should print `"status":"active"` and `"success":true`. Anything else is a
+wrong token, or a client IP filter that misses the address the box uses.
+`bin/game edge status` cannot catch a bad token yet: it makes no
+authenticated call until the KV id is set, and prints `edge flag: not
+configured` until then. (A fork must have set the KV id to
+`REPLACE_WITH_YOUR_KV_ID` first: see the table above; the full fork path is
+[`FORKING.md`](FORKING.md).)
 
 ## 2. Zero Trust
 

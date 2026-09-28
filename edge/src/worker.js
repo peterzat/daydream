@@ -33,36 +33,54 @@ export default {
 const OUTAGES_KEPT = 20;
 
 // While the flag says awake, probe the origin; record an unplanned outage in
-// KV ("uptime": {down_since, outages: [{from, to}]}) when it starts and when it
-// ends. KV is written only on a change, never on a quiet check.
+// KV ("uptime": {down_since, suspect_since, outages: [{from, to, ended?}]}).
+// An outage opens on the second failed probe in a row (from the first one's
+// time), so a planned stop shorter than the cron interval (a deploy, a swap,
+// the minute a sleep's flag takes to reach every edge) never counts. It
+// closes when the origin answers, or when the flag says asleep (ended:
+// "asleep"). KV is written only on a change, never on a quiet check.
 export async function watch(env, now = new Date()) {
   const state = await readState(env);
-  if (state.state !== "awake") return "asleep";
-  let up = false;
-  try {
-    const r = await timedFetch(env.ORIGIN + "/healthz", { headers: accessHeaders(env) }, 8000);
-    up = r.ok;
-  } catch (e) {
-    up = false;
-  }
   let u;
   try {
     u = JSON.parse((await env.STATE.get("uptime")) || "null");
   } catch (e) {
     u = null;
   }
-  if (!u || typeof u !== "object") u = { down_since: null, outages: [] };
-  if (!Array.isArray(u.outages)) u.outages = [];
+  if (!u || typeof u !== "object") u = {};
+  u = { down_since: u.down_since || null, suspect_since: u.suspect_since || null,
+    outages: Array.isArray(u.outages) ? u.outages : [] };
+  const before = JSON.stringify(u);
   const at = now.toISOString().replace(/\.\d{3}Z$/, "Z");
-  if (!up && !u.down_since) {
-    u.down_since = at;
-    await env.STATE.put("uptime", JSON.stringify(u));
-  } else if (up && u.down_since) {
-    u.outages = [{ from: u.down_since, to: at }, ...u.outages].slice(0, OUTAGES_KEPT);
+  const close = (extra) => {
+    u.outages = [{ from: u.down_since, to: at, ...extra }, ...u.outages].slice(0, OUTAGES_KEPT);
     u.down_since = null;
-    await env.STATE.put("uptime", JSON.stringify(u));
+  };
+  let result = "asleep";
+  if (state.state !== "awake") {
+    if (u.down_since) close({ ended: "asleep" });
+    u.suspect_since = null;
+  } else {
+    let up = false;
+    try {
+      const r = await timedFetch(env.ORIGIN + "/healthz", { headers: accessHeaders(env) }, 8000);
+      up = r.ok;
+    } catch (e) {
+      up = false;
+    }
+    if (up) {
+      if (u.down_since) close({});
+      u.suspect_since = null;
+    } else if (u.suspect_since && !u.down_since) {
+      u.down_since = u.suspect_since;  // the second failure in a row: it opens
+      u.suspect_since = null;
+    } else if (!u.down_since) {
+      u.suspect_since = at;  // a first failure is only suspected
+    }
+    result = up ? "up" : "down";
   }
-  return up ? "up" : "down";
+  if (JSON.stringify(u) !== before) await env.STATE.put("uptime", JSON.stringify(u));
+  return result;
 }
 
 export async function handle(request, env) {

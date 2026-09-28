@@ -43,7 +43,10 @@ must be an asset the release ships (`--door-image assets/<file>.png`).
 `--instance NAME`, as the last two arguments, acts on that instance instead
 of the attached one: its accounts, invites, backups, world. Anywhere else it
 is refused: the agent's permission rules match a verb as a prefix, and an
-option inside the verb could walk around them.
+option inside the verb could walk around them. Only the verbs that act on
+one instance's data take it (`world`, `dream`, `account`, `invite`,
+`prebake`, `play`, `backup`); `sleep`, `wake`, `deploy`, `instance use` and
+the rest act on the attached instance and refuse it.
 
 ```sh
 bin/game prod invite create --for "A Friend" --json --instance zork

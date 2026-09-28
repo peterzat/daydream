@@ -70,6 +70,41 @@ def test_delete_removes_the_person_and_keeps_the_shared_history(capsys):
     assert accounts.get_account("wren")["id"] == other["id"]  # nobody else touched
 
 
+def test_delete_removes_what_the_world_kept_under_the_dreamers_id(capsys):
+    """Codereview WARN 2026-09-28e: the talk log (the player's own typed
+    sentences), the Book, relationships, greetings, bystander notes, private
+    finds and the dreamer-create counter outlived the delete."""
+    from daydream import objects, story, worldstate
+
+    row, inv, token, t = _a_friend_who_played()
+    other = toons.create_toon_in_slot(3, "Wren", "a heron", "s-wren")
+    w = t.world_id
+    story.remember_exchange(w, "t-rook", t.id, "my real name is Robin Ash", "a lovely name")
+    story.remember_exchange(w, "t-rook", other.id, "hello", "hello, heron")
+    story.pset(w, t.id, "collected", ["m-dawn"])
+    story.pset(w, other.id, "collected", ["m-dusk"])
+    story.adjust_rel(w, "t-rook", t.id, 2)
+    for key in (f"relday:t-rook:{t.id}", f"greeted:{t.id}", f"bystander:t-rook:{t.id}"):
+        worldstate.set(w, key, "2026-09-28")
+    find = objects.spawn(w, "thing", "stray minute", t.current_room_id,
+                         properties={"private_to": t.id})
+    theirs = objects.spawn(w, "thing", "stray minute", t.current_room_id,
+                           properties={"private_to": other.id})
+    accounts.record_failure("dreamer-create:" + row["id"], (6, 86400))
+
+    assert accounts_cli.main(["account", "delete", "robin", "--yes"]) == 0
+    accounts.init()
+    db.init_live()
+    assert not [k for k in worldstate.keys(w) if t.id in k]
+    assert story.recent_exchanges(w, "t-rook", other.id)  # nobody else's
+    assert story.pget(w, other.id, "collected") == ["m-dusk"]
+    assert objects.get(find.id) is None and objects.get(theirs.id) is not None
+    assert accounts.get_conn().execute(
+        "SELECT count(*) FROM throttle WHERE key = ?", ("dreamer-create:" + row["id"],)
+    ).fetchone()[0] == 0
+    assert "story record(s)" in capsys.readouterr().out
+
+
 def test_an_unknown_account_is_an_error(capsys):
     assert accounts_cli.main(["account", "delete", "nobody", "--yes"]) == 1
     assert "no account 'nobody'" in capsys.readouterr().err

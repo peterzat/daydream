@@ -25,7 +25,13 @@ if [[ $EUID -ne 0 ]]; then
     echo "run with sudo: sudo $0" >&2
     exit 2
 fi
-OPERATOR="${SUDO_USER:-peter}"
+# The operator is whoever ran sudo: never a guess (on a fork a guessed name
+# would get the sudoers rules, root.conf and the operator jobs).
+OPERATOR="${SUDO_USER:-}"
+if [[ -z "$OPERATOR" || "$OPERATOR" == root ]]; then
+    echo "run it with sudo as the operator (sudo $0 from your own account), not as root" >&2
+    exit 2
+fi
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 OPS="$REPO/ops"
 SRV=/srv/daydream

@@ -321,6 +321,13 @@ def cmd_restore(archive_path: Path, yes: bool) -> int:
                     file=sys.stderr,
                 )
                 return 2
+            # Replace a file that is already there, never write into it: a
+            # cache file may be a hard link to a painting in the art keep,
+            # and writing through it would change the kept bytes.
+            dest = data_dir / m.name
+            if not m.isdir() and dest.is_file() and not dest.is_symlink() \
+                    and data_dir.resolve() in dest.resolve().parents:
+                dest.unlink()
             t.extract(m, path=data_dir, filter="data")
 
     print(
@@ -802,11 +809,18 @@ def cmd_keep_sync(world_id: str | None = None) -> int:
     rc = _require_live_db()
     if rc is not None:
         return rc
-    db.init_live()
     from daydream.images import keep
 
     try:
-        counts = keep.sync(world_id)
+        db.init_live()
+        with_db = True
+    except Exception as e:  # a broken world must not block the reset that replaces it
+        db.close_db()
+        with_db = False
+        print(f"warning: the live DB could not be opened ({type(e).__name__}: {e}); "
+              "keeping every cache file without its records", file=sys.stderr)
+    try:
+        counts = keep.sync(world_id, with_db=with_db)
     except Exception as e:
         print(f"error: the art keep could not be written ({type(e).__name__}: {e})",
               file=sys.stderr)

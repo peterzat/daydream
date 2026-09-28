@@ -273,6 +273,10 @@ def prodbox(tmp_path, monkeypatch):
         if args[:3] == ["-m", "daydream.instance", "flag-words"]:
             return subprocess.CompletedProcess(args, 0, stdout=json.dumps(
                 {"place": "the village", "title": "t", "operator": "o", "cookie": "dd_session_x"}))
+        if args[:3] == ["-m", "daydream.admin", "preflight"]:
+            return subprocess.CompletedProcess(args, 0, stdout=(
+                "code_world_version: 1.5\nworld_migrations_pending: 0\n"
+                "live_world: w-lost-hours 1.5\naccounts_migrations_pending: 0\n"), stderr="")
         return subprocess.CompletedProcess(args, 0, stdout="ok", stderr="")
 
     monkeypatch.setattr(prodctl, "run_release_python", fake_python)
@@ -302,3 +306,179 @@ def test_a_swap_whose_target_does_not_answer_goes_back(prodbox, monkeypatch):
         prodctl.instance_use("zork", grace=0, note="")
     assert (data / "active").resolve().name == "village"
     assert ("restart", prodctl.UNIT) in calls
+
+
+def test_a_swap_to_an_instance_with_no_world_is_refused_before_anything_stops(prodbox,
+                                                                             monkeypatch):
+    """Codereview WARN 2026-09-28e: a world-less target boots on an empty data
+    dir and answers as itself, so the served check alone would pass."""
+    prodctl, data, calls = prodbox
+    fake = prodctl.run_release_python
+
+    def no_world(rel, args, **k):
+        if args[:3] == ["-m", "daydream.admin", "preflight"]:
+            calls.append(("python", tuple(args), k["data"].name))
+            return subprocess.CompletedProcess(args, 0, stdout=(
+                "code_world_version: 1.5\nlive_world: missing\naccounts: missing\n"), stderr="")
+        return fake(rel, args, **k)
+
+    monkeypatch.setattr(prodctl, "run_release_python", no_world)
+    monkeypatch.setattr(prodctl, "served_instance", lambda rel: "zork")
+    with pytest.raises(prodctl.ProdError, match="no world to serve"):
+        prodctl.instance_use("zork", grace=0, note="")
+    assert (data / "active").resolve().name == "village"
+    assert [c for c in calls if c[0] != "python"] == []  # nothing stopped or started
+    assert not [c for c in calls if c[0] == "python" and c[1][2] == "backup"]
+
+
+def test_a_create_whose_world_does_not_load_leaves_nothing_behind(prodbox, monkeypatch):
+    """Codereview WARN 2026-09-28e: the new dir is discarded, so a retry with
+    a good envelope does not fail on "File exists"."""
+    prodctl, data, calls = prodbox
+    loads = []
+
+    def real_instance_cli(rel, args, check=True, capture=False, data=None, **k):
+        if args[:2] == ["-m", "daydream.instance"]:
+            return subprocess.CompletedProcess(args, instance.main(list(args[2:])), "", "")
+        if args[:3] == ["-m", "daydream.admin", "load"]:
+            loads.append(args[3])
+            if args[3].endswith("nope.json"):
+                return subprocess.CompletedProcess(args, 2, "", "error: envelope not found")
+            out = Path(args[args.index("--output") + 1])
+            out.parent.mkdir(parents=True, exist_ok=True)
+            out.write_text("a world")
+        return subprocess.CompletedProcess(args, 0, "loaded", "")
+
+    monkeypatch.setattr(prodctl, "run_release_python", real_instance_cli)
+    with pytest.raises(prodctl.ProdError, match="removed, so a retry starts clean"):
+        prodctl.instance_create("empire", {"envelope": "worlds/nope.json"})
+    assert not (data / "instances" / "empire").exists()
+    assert prodctl.instance_create("empire", {"envelope": "worlds/zork1.json"}) == 0
+    assert (data / "instances" / "empire" / "worlds-prod" / "live.db").exists()
+    assert len(loads) == 2
+
+
+def test_discard_removes_only_an_empty_detached_instance(box):
+    instance.create("village", {})
+    instance.create("zork", ZORK_WORDS)
+    instance.create("empty", {})
+    instance.attach("village")
+    (box / "instances" / "zork" / "worlds-dev").mkdir()
+    (box / "instances" / "zork" / "worlds-dev" / "live.db").write_text("a world")
+    for name in ("village", "zork", "nowhere", "../x"):
+        with pytest.raises(instance.InstanceError):
+            instance.discard(name)
+    instance.discard("empty")
+    assert sorted(p.name for p in (box / "instances").iterdir()) == ["village", "zork"]
+
+
+def test_a_stop_for_verb_on_a_detached_instance_leaves_the_service_up(prodbox, monkeypatch):
+    """Codereview WARN 2026-09-28e: `world refresh --instance zork` stopped
+    the village's service for nothing."""
+    prodctl, data, calls = prodbox
+    ran = []
+    monkeypatch.setattr(prodctl.subprocess, "run",
+                        lambda cmd, **k: ran.append(cmd) or subprocess.CompletedProcess(cmd, 0))
+    monkeypatch.setattr(prodctl, "INSTANCE", "zork")
+    assert prodctl.passthrough(["world", "refresh"]) == 0
+    assert [c for c in calls if c[0] in ("stop", "start")] == [] and len(ran) == 1
+    monkeypatch.setattr(prodctl, "INSTANCE", "village")  # the attached one: stopped around it
+    assert prodctl.passthrough(["world", "refresh"]) == 0
+    assert [c for c in calls if c[0] in ("stop", "start")] == [("stop", prodctl.UNIT),
+                                                               ("start", prodctl.UNIT)]
+
+
+def test_an_instances_name_is_its_directorys(box, monkeypatch):
+    """Codereview WARN 2026-09-28e: a nameless instance.json under
+    instances/zork shared the plain cookie, said "-" on /status/build, and
+    failed every swap's served check. A file may omit the name, never
+    contradict it."""
+    d = box / "instances" / "zork"
+    d.mkdir(parents=True)
+    (d / "instance.json").write_text(json.dumps({"title": "Zork I"}))
+    assert instance.name(d) == "zork"
+    monkeypatch.setenv("DAYDREAM_INSTANCE", "zork")
+    _fresh()
+    assert config.cookie_name() == "dd_session_dev_zork"
+    (d / "instance.json").write_text(json.dumps({"name": "village"}))
+    _fresh()
+    with pytest.raises(instance.InstanceError, match="not its directory's"):
+        instance.load(d)
+    empty = box / "instances" / "empty"
+    empty.mkdir()
+    assert instance.name(empty) == "empty"  # no file at all: still its directory's
+
+
+def test_migrate_names_an_existing_instance_json_and_refuses_a_bad_one_first(box, monkeypatch):
+    (box / "instance.json").write_text(json.dumps({"title": "Zork I"}))
+    (box / "accounts-dev.db").write_text("accounts")
+    instance.migrate("zork")
+    assert json.loads((box / "instances" / "zork" / "instance.json").read_text()) == {
+        "title": "Zork I", "name": "zork"}
+    other = box / "other"  # a second flat data dir, with a bad instance.json
+    other.mkdir()
+    (other / "instance.json").write_text(json.dumps({"colour": "red"}))
+    (other / "accounts-dev.db").write_text("accounts")
+    monkeypatch.setenv("DAYDREAM_DATA_DIR", str(other))
+    _fresh()
+    with pytest.raises(instance.InstanceError):
+        instance.migrate("village")
+    assert (other / "accounts-dev.db").exists() and not (other / "instances").exists()
+
+
+class _FlagEdge:
+    """The edge module's surface prodctl uses, with the flag asleep on a note."""
+    EdgeError = RuntimeError
+
+    def __init__(self):
+        self.flags = []
+
+    def get_state(self):
+        return {"state": "asleep", "note": "back Sunday"}
+
+    def set_state(self, state, note="", words=None):
+        self.flags.append((state, note))
+
+    def sync_keepsakes(self, rel):
+        pass
+
+
+def test_a_swap_keeps_the_flags_note_unless_given_one(prodbox, monkeypatch):
+    """Codereview WARN 2026-09-28e: `instance use` wrote note "" and erased
+    an asleep note."""
+    prodctl, data, calls = prodbox
+    edge = _FlagEdge()
+    monkeypatch.setattr(prodctl, "_edge", lambda: edge)
+    monkeypatch.setattr(prodctl, "served_instance", lambda rel: "zork")
+    assert prodctl.main(["instance", "use", "zork"]) == 0
+    monkeypatch.setattr(prodctl, "served_instance", lambda rel: "village")
+    assert prodctl.main(["instance", "use", "village", "--note", "a game night"]) == 0
+    assert edge.flags == [("asleep", None), ("asleep", "a game night")]
+
+
+def test_migrate_keeps_the_flags_note(tmp_path, monkeypatch):
+    from daydream import prodctl
+
+    srv, data = tmp_path / "srv", tmp_path / "srv" / "data"
+    (srv / "etc").mkdir(parents=True)
+    (srv / "etc" / "prod.env").write_text(f"DAYDREAM_ENV=prod\nDAYDREAM_DATA_DIR={data}\n")
+    rel = srv / "releases" / "aaaaaaaaaaaa"
+    rel.mkdir(parents=True)
+    monkeypatch.setattr(prodctl, "SRV", srv)
+    prodctl.point("current", rel)
+    monkeypatch.setenv("DAYDREAM_DATA_DIR", str(data))
+    data.mkdir()
+    (data / "accounts-prod.db").write_text("accounts")
+
+    def fake_python(rel, args, check=True, capture=False, data=None, **k):
+        if args[:3] == ["-m", "daydream.instance", "migrate"]:
+            return subprocess.CompletedProcess(args, instance.main(list(args[2:])), "", "")
+        return subprocess.CompletedProcess(args, 0, stdout="{}", stderr="")
+
+    edge = _FlagEdge()
+    monkeypatch.setattr(prodctl, "run_release_python", fake_python)
+    monkeypatch.setattr(prodctl, "unit_active", lambda unit: False)
+    monkeypatch.setattr(prodctl, "_edge", lambda: edge)
+    assert prodctl.instance_migrate("village") == 0
+    assert (data / "active").resolve().name == "village"
+    assert edge.flags == [("asleep", None)]
