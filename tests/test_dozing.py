@@ -68,3 +68,28 @@ def test_a_player_whose_page_is_closed_dozes_and_says_so_when_spoken_to():
                 again = _until(ws, lambda m: m["kind"] == "state_snapshot"
                                and any(t["name"] == "Ivo" for t in m["toons"]))
                 assert {t["name"]: t for t in again["toons"]}["Ivo"]["away"] is False
+
+
+def test_a_command_that_changes_your_threads_sends_them_at_once():
+    """Playtest 2026-09-28c: an ask or a take moved a thread, but the satchel's
+    count waited for the next snapshot. A command that changes this player's
+    threads is followed by a `threads` frame."""
+    from daydream import objects, toons, worldstate
+
+    with TestClient(app) as client:
+        mira = _login(client, "mira-player")
+        me = client.post("/api/dreamer/create",
+                         json={"name": "Mira", "appearance_seed": "a tall woman"}).json()
+        client.cookies.clear()
+        room = objects.get(me["id"]).location_id
+        pebble = objects.spawn(toons.live_world_id(), "thing", "pebble", location_id=room,
+                               prototype_id=objects.PROTO_THING, properties={"seed": "a pebble"})
+        worldstate.set(toons.live_world_id(), "def:threads", [
+            {"id": "pebble", "text": "You carry a pebble.", "if": [{"carried": pebble.id}]}])
+        hdr = {"cookie": f"{config.cookie_name()}={mira}"}
+        with client.websocket_connect("/ws", headers=hdr) as ws:
+            first = _until(ws, lambda m: m["kind"] == "state_snapshot")
+            assert first["threads"] == []
+            ws.send_json({"kind": "command", "verb": "take", "dobj_id": pebble.id})
+            got = _until(ws, lambda m: m["kind"] == "threads")
+            assert got["threads"] == ["You carry a pebble."]

@@ -41,6 +41,17 @@ const fail = [];
 if (/entity-link[^>]*>[^<]*<span[^>]*entity-link/.test(out)) fail.push("nested entity-link spans");
 if (visible !== text) fail.push("visible text altered: " + JSON.stringify(visible));
 if (visible.includes("rook-44210a17") || visible.includes('">')) fail.push("id/markup leaked into visible text");
+// Playtest 2026-09-28b/c: a person's alias links only as a name, and half of
+// a hyphened word is not an alias ("case" in "case-key").
+const run = (t, e) => eval("(function(){" + ctx + "\nreturn linkifyEntities(" +
+  JSON.stringify(t) + "," + JSON.stringify(e) + ");})()");
+const hy = run("The case-key turns in the case.", [{alias: "case", object_id: "o-case"}]);
+if ((hy.match(/entity-link/g) || []).length !== 1 || !/case-key/.test(hy.replace(/<[^>]+>/g, "")))
+  fail.push("hyphened word linked: " + hy);
+if (/entity-link/.test(run("the way an hour waits", [{alias: "hour", object_id: "t-x", kind: "toon"}])))
+  fail.push("a person's alias linked as a common word");
+if (!/entity-link/.test(run("The Hour waits", [{alias: "hour", object_id: "t-x", kind: "toon"}])))
+  fail.push("a person's alias did not link as a name");
 if (fail.length) { console.error("FAIL: " + fail.join("; ")); process.exit(1); }
 console.log("OK");
 """

@@ -984,7 +984,8 @@ async def ws_endpoint(ws: WebSocket):
             _maybe_enqueue_image_gen(room.world_id, room.id, room.seed)
             _maybe_enqueue_toon_portraits(room.id)
         token = auth.token_from_cookie_header(ws.headers.get("cookie"))
-        receive_task = asyncio.create_task(_receive_loop(ws, toon_id, token, session_id))
+        receive_task = asyncio.create_task(_receive_loop(ws, toon_id, token, session_id,
+                                                         threads=first.get("threads")))
         broadcast_task = asyncio.create_task(
             _broadcast_loop(ws, queue, last_seq, toon_id, view, session_id)
         )
@@ -1060,10 +1061,12 @@ class _Bucket:
 
 
 async def _receive_loop(ws: WebSocket, toon_id: str, token: str | None = None,
-                        session_id: str | None = None) -> None:
+                        session_id: str | None = None, threads: list | None = None) -> None:
     # Per-connection parser state: the pending clarify question, if any. A
     # click (command frame) resolves or abandons it just like a typed reply.
-    conn: dict = {"clarify": None}
+    # `threads` are the ones the first snapshot carried (sent again only
+    # when they change).
+    conn: dict = {"clarify": None, "threads": threads}
     bucket = _Bucket()
     try:
         while True:
@@ -1108,13 +1111,25 @@ async def _receive_loop(ws: WebSocket, toon_id: str, token: str | None = None,
                 frame = await _handle_input(text, toon_id, conn)
                 if frame is not None:
                     await ws.send_json(frame)
+                await _send_threads_if_changed(ws, toon_id, conn)
             elif kind == "command":
                 conn["clarify"] = None
                 await _handle_command(msg, toon_id)
+                await _send_threads_if_changed(ws, toon_id, conn)
     except WebSocketDisconnect:
         pass
     except KeyError:
         pass  # a binary frame: this socket speaks JSON text only
+
+
+async def _send_threads_if_changed(ws: WebSocket, toon_id: str, conn: dict) -> None:
+    """After something this player did, their threads as they stand, when they
+    changed: an ask or a wind moves a thread without a snapshot (playtest
+    2026-09-28c: the satchel's count waited for the next move)."""
+    held = story.threads_for(toon_id)
+    if held != conn.get("threads"):
+        conn["threads"] = held
+        await ws.send_json({"kind": "threads", "threads": held})
 
 
 async def _session_watch(ws: WebSocket, token: str | None) -> None:

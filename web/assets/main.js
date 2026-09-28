@@ -199,6 +199,10 @@ function connect(isReconnect) {
     } else if (data.kind === "elsewhere") {
       dreamingElsewhere = true;
       showElsewhere();
+    } else if (data.kind === "threads") {
+      // What you're in the middle of, after something you did changed it
+      // (playtest 2026-09-28c: the count waited for the next snapshot).
+      setThreads(data.threads || []);
     } else if (data.kind === "notice") {
       systemLine(data.text); // a gentle limit note (too long, too fast)
     } else if (data.kind === "needs_toon") {
@@ -323,12 +327,7 @@ function renderSnapshot(snap) {
     setTimeout(refreshScrollCues, 6100);
   }
   lastJournal = snap.journal || []; // your own story so far (self only)
-  lastThreads = snap.threads || [];
-  // The satchel says how many threads you hold, so it is worth opening
-  // (playtest 2026-09-28b).
-  document.getElementById("backpack-toggle").textContent = "open the satchel" +
-    (lastThreads.length ? ` \u00b7 ${lastThreads.length} thread${lastThreads.length === 1 ? "" : "s"}` : "") +
-    " \u2192";
+  setThreads(snap.threads || []);
   // Your Book of Stray Minutes (self only); the link shows once it exists.
   lastBook = snap.book || null;
   document.getElementById("book-toggle").classList.toggle("hidden", !lastBook);
@@ -1239,7 +1238,9 @@ function linkifyEntities(text, ents) {
   }
   const aliases = [...byAlias.values()].sort((a, b) => b.alias.length - a.alias.length);
   const pattern = aliases.map((a) => escapeRegex(a.alias)).join("|");
-  const re = new RegExp("\\b(" + pattern + ")\\b", "gi");
+  // Whole words only, and not half of a hyphened one: "case" in "case-key"
+  // is not the clock case (playtest 2026-09-28c).
+  const re = new RegExp("(?<![\\w-])(" + pattern + ")(?![\\w-])", "gi");
   return html.replace(re, (m) => {
     const hit = byAlias.get(m.toLowerCase());
     // A person links only by name, as written with its capital: "the way an
@@ -1394,6 +1395,9 @@ function showRoomTop() {
   setSpacer(0);
   const prose = document.querySelector(".prose");
   if (prose) prose.scrollTop = 0;
+  // The margin too: a new room opens on "you" and "here with you", not
+  // wherever the last room's margin was scrolled (playtest 2026-09-28c).
+  document.getElementById("scene").scrollTop = 0;
   // On a phone the page itself scrolls: bring the new room's plate and title
   // back into view after a move made from the compass at the foot.
   if (window.innerWidth <= 640) window.scrollTo(0, 0);
@@ -1412,9 +1416,12 @@ function isScrollable(el) {
 
 function updateScrollCue(el) {
   const scrollable = isScrollable(el);
+  // Below, more than a paragraph's own gap: the last line of an answer
+  // with nothing after it is never faded (playtest 2026-09-28c).
+  const gap = (parseFloat(getComputedStyle(el).fontSize) || 17) * 0.9;
   el.classList.toggle("more-above", scrollable && el.scrollTop > 2);
   el.classList.toggle("more-below",
-    scrollable && el.scrollTop + el.clientHeight < contentEnd(el) - 2);
+    scrollable && el.scrollTop + el.clientHeight < contentEnd(el) - gap);
   updateRail(el, scrollable);
   if (el.id === "scene") updateMarginIndex(scrollable);
 }
@@ -1495,7 +1502,13 @@ function updateMarginIndex(scrollable) {
     ? [...m.querySelectorAll(".mgroup")].filter(
       (g) => bottom - g.offsetTop < Math.min(g.offsetHeight, 52)) : [];
   idx.classList.toggle("hidden", !below.length);
-  if (!below.length) { idx.innerHTML = ""; return; }
+  if (!below.length) {
+    // Forget what it drew, so the same sections falling below again redraw
+    // it (playtest 2026-09-28c: the band came back empty).
+    idx.innerHTML = "";
+    delete idx.dataset.key;
+    return;
+  }
   const key = below.map((g) => g.id).join(",") + "|" + lastInventory.length;
   if (idx.dataset.key !== key) {
     idx.dataset.key = key;
@@ -1733,6 +1746,16 @@ document.getElementById("slept-close").addEventListener("click", () => {
 document.getElementById("slept-panel").addEventListener("click", (e) => {
   if (e.target.id === "slept-panel") document.getElementById("slept-panel").classList.add("hidden");
 });
+
+function setThreads(threads) {
+  // The satchel says how many threads you hold, so it is worth opening
+  // (playtest 2026-09-28b); an open satchel keeps its list live.
+  lastThreads = threads;
+  document.getElementById("backpack-toggle").textContent = "open the satchel" +
+    (threads.length ? ` \u00b7 ${threads.length} thread${threads.length === 1 ? "" : "s"}` : "") +
+    " \u2192";
+  if (!document.getElementById("backpack-panel").classList.contains("hidden")) renderThreads(threads);
+}
 
 function renderThreads(threads) {
   const box = document.getElementById("threads");

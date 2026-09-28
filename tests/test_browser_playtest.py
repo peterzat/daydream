@@ -144,3 +144,26 @@ def test_the_give_hint_takes_the_label_place_and_the_verbs_stay_put(tab, engines
     expect(page.locator(".ribbon-label")).to_be_hidden()
     assert abs(give.bounding_box()["y"] - before) < 3
     _assert_quiet(tab, engines)
+
+
+def test_the_margin_index_redraws_and_a_new_room_opens_the_margin_at_its_top(tab, engines):
+    """Playtest 2026-09-28c: the index came back as an empty band after it had
+    once emptied, and the margin kept the last room's scroll, hiding "you"
+    and "here with you" on arrival."""
+    page = tab.page
+    page.set_viewport_size({"width": 1280, "height": 650})
+    _signed_in_with_a_dreamer(tab)
+    scene = page.locator("#scene")
+    index = page.locator("#margin-index")
+    expect(index.locator(".index-tab", has_text="you carry")).to_be_visible()
+    scene.evaluate("(m) => { m.scrollTop = m.scrollHeight; }")
+    expect(index).to_be_hidden()
+    scene.evaluate("(m) => { m.scrollTop = 0; }")
+    expect(index.locator(".index-tab", has_text="you carry")).to_be_visible()
+    scene.evaluate("(m) => { m.scrollTop = m.scrollHeight; }")
+    page.wait_for_timeout(100)
+    page.locator("#exit-bar button[data-direction=up]").click()
+    expect(page.locator("#room-title")).to_have_text(UP["title"])
+    page.wait_for_timeout(300)
+    assert scene.evaluate("(m) => m.scrollTop") == 0
+    _assert_quiet(tab, engines)
