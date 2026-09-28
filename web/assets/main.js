@@ -203,6 +203,11 @@ function connect(isReconnect) {
       // What you're in the middle of, after something you did changed it
       // (playtest 2026-09-28c: the count waited for the next snapshot).
       setThreads(data.threads || []);
+    } else if (data.kind === "thinking") {
+      // A reply is on its way (an improvised line, a seed composing): a
+      // quiet transient line, gone when the next line lands (beta rehearsal
+      // 2026-09-28: silence read as a lost line).
+      showThinking(data);
     } else if (data.kind === "notice") {
       systemLine(data.text); // a gentle limit note (too long, too fast)
     } else if (data.kind === "needs_toon") {
@@ -856,6 +861,7 @@ function nameForObject(objectId) {
 function renderEvent(e) {
   if (e.seq <= lastSeq && lastSeq > 0) return; // dedupe on reconnect overlap
   lastSeq = Math.max(lastSeq, e.seq);
+  clearThinking(); // whatever was coming has come
 
   // room_image_ready does not flow into the chat log; it just updates the bg.
   if (e.kind === "room_image_ready") {
@@ -1274,6 +1280,27 @@ function linkifyEntities(text, ents) {
     if (!hit || (hit.person && !/^[A-Z]/.test(word))) return m;
     return pre + '<span class="entity-link" data-object-id="' + escape(hit.id) + '">' + word + "</span>";
   });
+}
+
+// ---- a reply on its way ---------------------------------------------------
+let thinkingTimer = null;
+
+function showThinking(data) {
+  clearThinking();
+  const chat = document.getElementById("chat");
+  const div = document.createElement("div");
+  div.className = "evt evt-thinking";
+  div.id = "thinking-line";
+  div.textContent = data.text || (data.who ? `${data.who} considers...` : "...");
+  chat.appendChild(div);
+  followLog(div);
+  thinkingTimer = setTimeout(clearThinking, 20000); // never a stuck line
+}
+
+function clearThinking() {
+  const old = document.getElementById("thinking-line");
+  if (old) old.remove();
+  if (thinkingTimer) { clearTimeout(thinkingTimer); thinkingTimer = null; }
 }
 
 function systemLine(msg) {

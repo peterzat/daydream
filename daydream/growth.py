@@ -518,6 +518,10 @@ async def execute_plant(
         return False
 
     # ---- compose: one LLM call (a second only if the first is rejected) ----
+    from daydream import live
+
+    await live.thinking(actor.id if actor.is_player else None,
+                        text="the seed stirs, and the dream makes room...")
     composition = None
     for attempt in range(COMPOSE_ATTEMPTS):
         try:

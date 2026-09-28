@@ -330,7 +330,14 @@ def _eval_story_condition(cond: dict, ctx: dict) -> bool | None:
             return False
         return _op_compare(cond, story.pcounter(world_id, actor.id, cond["pcounter"]))
     if "helpers" in cond:
-        n = len(story.arc_state(world_id, str(cond["helpers"]))["helpers"])
+        # The acting player counts: the ending they are about to close
+        # credits them, so "helpers gte 2" on the closing verb means two
+        # pairs of hands including theirs (beta rehearsal 2026-09-28: a solo
+        # helper plus a different opener read as mended alone).
+        helpers = set(story.arc_state(world_id, str(cond["helpers"]))["helpers"])
+        if actor.id and getattr(actor, "is_player", False):
+            helpers.add(actor.id)
+        n = len(helpers)
         return _op_compare(cond, n)
     if "arc" in cond:
         status = story.arc_status(world_id, str(cond["arc"]))

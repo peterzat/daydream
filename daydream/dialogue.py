@@ -423,6 +423,12 @@ async def talk(actor: objects.Object, npc: objects.Object, text: str, room_id: s
             max_tokens=200, timeout=15.0, response_format=_schema(ids),
         )
 
+    # A reply is on its way: the asker's page shows "<name> considers..."
+    # while the model composes (three to eight seconds of silence read as a
+    # lost line; beta rehearsal 2026-09-28). Transient, never logged.
+    from daydream import live
+
+    await live.thinking(actor.id if actor.is_player else None, npc.name)
     results = await asyncio.gather(*(one() for _ in range(nbest())),
                                    return_exceptions=True)
     candidates = []

@@ -57,9 +57,13 @@ is (section 6).
   guests' thanks at a home ending, three pages of the Book (Growing Things,
   On Foot, Waiting), the fifth Unsent Letter delivered, and now and then a
   new seed found in a freshly grown place (propagation). Keeper arcs give
-  none; their reward is the keeper's step. Planted, a dreamseed grows one new small place from the
-  dreamer's own words. The village treats grown places as real and keeps
-  them.
+  none; their reward is the keeper's step. And Quill keeps one back in his
+  coat pocket for every keeper who has wound their clock and stood and
+  talked with him a while (`ask quill about a seed of your own`, once per
+  dreamer; beta rehearsal 2026-09-28: the shared seeds all went to the
+  fastest player, and the writers had nothing to plant). Planted, a
+  dreamseed grows one new small place from the dreamer's own words. The
+  village treats grown places as real and keeps them.
 - **The dream turns over at night.** Some mornings the village has changed a
   little: someone new has come, a thread has moved, a keeper has news. The
   village calls this "the dream turning over". The Ledger of Returned Hours

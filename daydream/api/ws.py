@@ -1119,6 +1119,13 @@ async def _receive_loop(ws: WebSocket, toon_id: str, token: str | None = None,
     # when they change).
     conn: dict = {"clarify": None, "threads": threads}
     bucket = _Bucket()
+    # Transient frames for this page (a reply on its way): daydream/live.py.
+    from daydream import live
+
+    async def _send_live(frame: dict) -> None:
+        await ws.send_json(frame)
+
+    live.register(toon_id, _send_live)
     try:
         while True:
             raw = await ws.receive_text()
@@ -1171,6 +1178,8 @@ async def _receive_loop(ws: WebSocket, toon_id: str, token: str | None = None,
         pass
     except KeyError:
         pass  # a binary frame: this socket speaks JSON text only
+    finally:
+        live.unregister(toon_id, _send_live)
 
 
 async def _send_threads_if_changed(ws: WebSocket, toon_id: str, conn: dict) -> None:

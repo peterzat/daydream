@@ -16,7 +16,8 @@
     "WOUND",
     "MET-BOOK",
     "MET-BELL",
-    "WAITED-DUSK"
+    "WAITED-DUSK",
+    "QUILL-SEED"
   ],
   "player_counters": [],
   "time": {
@@ -12338,6 +12339,110 @@
             "variants": [
               "'Bell says the lanterns lean in to listen when the garden ticks,' Quill says. 'I think Bell might be right.'",
               "Quill smiles into his collar. 'Bell talks enough for both of us. It's very restful.'"
+            ]
+          },
+          {
+            "label": "a seed of your own",
+            "aliases": [
+              "a seed",
+              "seeds",
+              "a dreamseed",
+              "dreamseed",
+              "dreamseeds",
+              "something to plant",
+              "seed of my own",
+              "my own seed",
+              "plant something"
+            ],
+            "if": [
+              {
+                "pflag": "WOUND"
+              },
+              {
+                "pflag": "MET-BOOK"
+              },
+              {
+                "pflag": "QUILL-SEED",
+                "not": true
+              }
+            ],
+            "text": "Quill goes quiet, then reaches into the pocket of his coat and brings out something small, cupped in both hands like a moth. 'I keep one back, for a keeper who's wound their clock and been to see Mott. It's the round that makes a keeper, Tace says.' He tips it into your palm: a dreamseed, warm, its slow light just waking. 'Plant it where you'd like a new way to open, and tell it what you hope to find. It listens better than I do.'",
+            "others": "Quill brings something small out of his coat pocket, cupped like a moth, and tips it into {actor}'s palm.",
+            "do": [
+              {
+                "kind": "spawn_template",
+                "template": "dreamseed",
+                "location_id": "@actor",
+                "generated_by": "quill:keeper-seed"
+              },
+              {
+                "kind": "set_pflag",
+                "name": "QUILL-SEED"
+              },
+              {
+                "kind": "add_fact",
+                "id": "quill-gave-seed",
+                "text": "Quill gave {actor} a dreamseed of their own, from his coat pocket.",
+                "known_by": [
+                  "t-quill"
+                ],
+                "spread": [
+                  {
+                    "to": [
+                      "t-tace",
+                      "t-umber"
+                    ],
+                    "after_minutes": 60
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "label": "a seed of your own",
+            "aliases": [
+              "a seed",
+              "seeds",
+              "a dreamseed",
+              "dreamseed",
+              "dreamseeds",
+              "something to plant",
+              "seed of my own",
+              "my own seed",
+              "plant something"
+            ],
+            "if": [
+              {
+                "pflag": "QUILL-SEED",
+                "not": true
+              }
+            ],
+            "variants": [
+              "Quill's hand goes to his coat pocket and stays there. 'I do keep one back,' he admits. 'For a keeper who's wound their own clock and been to Mott for the book. The garden likes to know who it's growing for.'",
+              "Quill straightens a trellis that didn't need it. 'Seeds want to know whose hands they're in,' he says, not quite looking at you. 'Wind your clock with Tace, see Mott about your book, then ask me again.'"
+            ]
+          },
+          {
+            "label": "a seed of your own",
+            "aliases": [
+              "a seed",
+              "seeds",
+              "a dreamseed",
+              "dreamseed",
+              "dreamseeds",
+              "something to plant",
+              "seed of my own",
+              "my own seed",
+              "plant something"
+            ],
+            "if": [
+              {
+                "pflag": "QUILL-SEED"
+              }
+            ],
+            "variants": [
+              "Quill pats his empty coat pocket. 'You've had yours. Plant it, and come and tell me what came up; I never get to see the ones that grow away from the garden.'",
+              "'One each,' Quill says, apologetic, tipping his hat brim. 'That's the rule the garden set, not me. What did you tell it, when you planted?'"
             ]
           }
         ],

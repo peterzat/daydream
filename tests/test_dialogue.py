@@ -302,3 +302,35 @@ async def test_an_echoing_candidate_is_never_the_reply(monkeypatch):
     before = events.max_seq()
     await talk(ada, "t-hob", heard)
     assert dlg.ECHO_FALLBACK.replace("{npc}", "Hob") in " ".join(narrations(before))
+
+
+@pytest.mark.asyncio
+async def test_a_reply_on_its_way_shows_on_the_askers_page(monkeypatch):
+    """Beta rehearsal 2026-09-28: three to eight seconds of silence read as
+    a lost line. Before the model is asked, the asker's open page gets a
+    transient `thinking` frame naming who is composing; nobody else's, and
+    never an event."""
+    from daydream import live
+
+    ada = player(1, "Ada", "r-green")
+    bo = player(2, "Bo", "r-green")
+    frames: dict[str, list] = {ada: [], bo: []}
+
+    async def send_ada(frame):
+        frames[ada].append(frame)
+
+    async def send_bo(frame):
+        frames[bo].append(frame)
+
+    live.register(ada, send_ada)
+    live.register(bo, send_bo)
+    try:
+        _mock(monkeypatch, {"gesture": "Hob grins.", "say": "Evening, Ada.", "advance": "none"})
+        before = events.max_seq()
+        await talk(ada, "t-hob", "what is your favourite colour, and why that one?")
+        assert frames[ada] == [{"kind": "thinking", "who": "Hob", "text": None}]
+        assert frames[bo] == []
+        assert all(e.kind != "thinking" for e in events.fetch_since(before))
+    finally:
+        live.unregister(ada)
+        live.unregister(bo)

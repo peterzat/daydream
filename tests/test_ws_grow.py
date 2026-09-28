@@ -18,6 +18,15 @@ from daydream.api import ws as ws_module
 from daydream.server import app
 from tests import authhelp
 
+
+def _recv(sock):
+    """The next frame that is not the transient "the seed stirs" line a
+    plant shows while it composes (daydream/live.py)."""
+    while True:
+        msg = sock.receive_json()
+        if msg.get("kind") != "thinking":
+            return msg
+
 pytestmark = pytest.mark.tier_medium
 
 GROWTH_BLOCK = {
@@ -97,7 +106,7 @@ def test_plant_command_grows_room_and_refreshes_snapshot_live():
                 sock.send_json({"kind": "command", "verb": "plant",
                                 "dobj_id": seed_id,
                                 "args": "a mossy stair into green light"})
-                first = sock.receive_json()
+                first = _recv(sock)
                 assert first["kind"] == "event"
                 assert first["event"]["kind"] == "room_grown"
                 snap1 = sock.receive_json()
@@ -229,7 +238,7 @@ def test_plant_failure_path_over_ws_preserves_seed():
                 sock.receive_json()
                 sock.send_json({"kind": "command", "verb": "plant",
                                 "dobj_id": seed_id, "args": "somewhere soft"})
-                msg = sock.receive_json()
+                msg = _recv(sock)
                 assert msg["event"]["kind"] == "narrate"
                 assert "settling" in msg["event"]["payload"]["text"]
         assert objects.get(seed_id).location_id == "t-wren"
