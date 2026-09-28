@@ -1,129 +1,97 @@
-## Review — 2026-09-28 (commit: 3df294b) — refresh
+## Review — 2026-09-28b (commit: f3f46dc) — full
 
-**Summary:** Pre-push review of the going-live work: 29 unpushed commits, 130
-files, +13.3k / -1.2k lines against origin/main (accounts and invites, the
-sign-in gate, edge mode, "your dreamer", prod tooling, the edge Worker, the
-cross-process GPU lock, and the first live bring-up). A refresh against the
-2026-09-27 pivot review (0 BLOCK), but every code file changed since, so all
-were read in full, in four areas by fresh reviewers (accounts and auth; the
-game session and SPA; prod tooling and ops; the edge Worker), and each finding
-below was re-checked against the code before inclusion (the Worker's cookie
-leak live, over HTTP/1.1). Baseline: medium tier 1640 passed; after the fix
-pass 1651 passed (11 new tests), Worker tests 26/26. A /security scan of the
-files changed since the 2026-09-28 security review found 0 BLOCK / 0 WARN / 3
-NOTE (SECURITY.md).
+**Summary:** Pre-push review of the operating turn against origin/main
+(`fdf4077`): 5 commits, 34 files, +1,774 / -90 (`bin/game prod check`, the
+prodctl NOTE fixes, the review-NOTE fixes in accounts/auth/admin/SPA/Worker,
+a headless-browser test, ops and runbook tests, and the playbooks in
+docs/runbooks/). Two fresh reviewers read it in parallel: one for the code
+(all new tests confirmed to fail when their fix is reverted), one
+fact-checking every playbook and doc claim against the code. Each finding
+below was re-checked against the code before inclusion. Baseline: medium
+tier 1685 passed, Worker tests 27/27, browser tests 2/2 with Chromium; after
+two fix passes 1701 passed, Worker 27/27, ruff clean. A /security scan of the
+code changed since its last run found 0 BLOCK / 0 WARN / 2 NOTE (the
+`/status/who` spoof, fixed here, and the timer units awaiting the operator's
+`sudo ops/install-prod.sh`).
 
 **External reviewers:** None configured.
 
 ### Findings
 
-**BLOCK**
-
-[BLOCK] edge/src/worker.js:69 — the WebSocket branch returns the origin response untouched, so Access's `CF_Authorization` cookie (a 24 h app token for the origin hostname) reaches anonymous browsers.
-  Evidence: `if (isWS) return resp;` skips `rewriteResponse`, whose `CF_*` Set-Cookie filter (lines 156-168) the HTTP path uses. Live: an anonymous HTTP/1.1 upgrade GET to https://www.eidolon.com/daydream/ws returned `403` with `Set-Cookie: CF_Authorization=<JWT>; Expires=+24h; Path=/; Secure; SameSite=none`; the same probe on an HTTP path carries no cookie. A holder can present that cookie to daydream-origin directly, skipping the Worker: no edge rate limit (the rule matches /daydream/api/..., not the origin's /api/...), and a forgeable `X-Daydream-Client-IP` for the per-address throttles. Breaks SPEC criterion 14 ("the hostname admits only the Worker's Access service token"). Friends' browsers would also store it for www.eidolon.com, Path=/.
-  Suggested fix: in the WS branch, `if (resp.status !== 101) return rewriteResponse(resp, env, prefix);`; for a 101, rebuild the response with the same headers minus every `CF_*` Set-Cookie: `new Response(null, { status: 101, headers, webSocket: resp.webSocket })`. Factor the cookie filter out of `rewriteResponse` into a helper both paths use. Node's `Response` rejects status 101, so unit-test the helper directly and the non-101 WS path end to end (a mocked 403 WS reply carrying `set-cookie: CF_Authorization=...` must reach the client without it).
-
-[BLOCK] web/assets/door.js:44-45 and 87-88 — the front door disables its inputs before reading them, so nobody can sign in or redeem an invitation from a real browser.
-  Evidence: `busy(form, true)` sets `disabled` on every input, and the next line builds `new FormData(form)`; FormData skips disabled controls (HTML spec, constructing the entry list). Login posts `{"username": null, "password": null}` (401, and it counts against the per-username throttle); redeem posts an empty username (400) and leaves the invite unused. Reproduced by the reviewer in headless Chromium with the real door.js. No test drives door.js; the endpoint tests post correct JSON. Breaks SPEC criteria 2 and 8.
-  Suggested fix: read the form (`new FormData(form)`, or the values) before `busy(form, true)` in both handlers. Add a regression guard, e.g. a tier_short test that fails if a submit handler in web/assets/door.js calls `busy(` before `new FormData(`.
-
-[BLOCK] web/assets/main.js:1531 with daydream/api/slots.py:226-240 — "rest" in "your dreamer" puts the player straight back in, in the start room, after their carried things were sent home.
-  Evidence: `kickSlot` POSTs `/api/slots/{slot}/kick`, then `reconnectAfterSlotChange()` connects afresh. The kick endpoint never calls `accounts.set_left(session, True)`, so on the new socket `_resolve_controlled_toon_id` is None and `_auto_enter` (ws.py:116-128) claims the account's one toon; `kicked_at` was set, so it wakes at the start room. `kick_slot` → `send_home_things` already sent the authored things it carried home, and no journal entry or departure line was written. Reproduced by the reviewer (create → kick → WS connect returns a `state_snapshot`, toon `kicked_at=None`). Breaks SPEC criterion 5's "rest ... its own" for every one-toon player.
-  Suggested fix: when the kicked toon is controlled by the caller's own session, `accounts.set_left(who.session_id, True)` in the kick endpoint (or have the SPA's rest use `api/session/leave`, which also writes the journal and tells the room), and show "your dreamer" rather than reconnecting into the game. Test: kick your own toon, reconnect, expect `needs_toon`.
+No BLOCK findings.
 
 **WARN**
 
-[WARN] daydream/api/ws.py:806 (`_auto_enter`, 116-128) — a stale tab's automatic reconnect takes the toon back from the device actually in use, and that device then stops for good.
-  Evidence: `_auto_enter` runs on every connect, including the SPA's `?since=` reconnect. A laptop sleeps with the game open; the friend continues on the phone (takeover); the laptop wakes, its socket drops (1006), `onclose` → `connect(true)`, and its session takes the toon over again. The phone gets `elsewhere`/4409, sets `dreamingElsewhere`, and never retries. Reproduced by the reviewer (controller flips back on `/ws?since=5`).
-  Suggested fix: on a reconnect (`since` present), do not take over a toon another live session holds (`is_session_live(controller)`); send `elsewhere` (close 4409) instead. Keep takeover for fresh page loads and explicit enter clicks. Test the two-device sequence.
+[WARN] daydream/server.py:177 — `/status/who` prints player-chosen names inside its own `name [id], ` layout, so a toon name can fake another toon's id entry and steer moderation onto the wrong friend.
+  Evidence: names allow `[`, `]` and `,` (printable, at most 24 characters). A toon named `B [t-slot2-9f4f6ed2], A` makes the line read as if a second toon carried Mira's id; docs/runbooks/friends.md tells the operator to take the id from this output, and `delete-toon <id>` then deletes the real Mira (the name isn't equal to the key, so the ambiguity refusal never fires).
+  Suggested fix (the code reviewer and the /security scan agree): (1) one toon per line, id first, name JSON-quoted (`json.dumps(name, ensure_ascii=False)`), then the owner's username and `(away)` when not live, e.g. `playing:\n  t-slot5-aaaa1111  "B [t-…], A"  owner robin  (away)`; keep `playing: no one`. (2) Refuse `[`, `]` and any substring shaped like a toon id (`t-slot\d+-[0-9a-f]{8}`, and any existing toon id) in toon names at create (daydream/api/slots.py). (3) `_find_toons` also counts a toon whose NAME contains the key as a match, so an id quoted inside another name is ambiguous. Update tests/test_admin_surfaces.py; add tests that a bracketed, id-bearing name is refused at create and cannot produce a line starting with another toon's id. `prodctl.status()` prints the body as is.
 
-[WARN] daydream/api/slots.py:128-136, 192-223; daydream/toons.py:147-157, 370-376 — an admin with several toons cannot switch between them, and after "leave the dream" walks back into one.
-  Evidence: `create_toon_in_slot` and `claim_slot` set `controller_session` on the new or claimed toon without releasing the session's other toon; `get_toon_by_session` is an unordered `LIMIT 1`, and `release_session_toon` rests only one. Reproduced by the reviewer as an admin (create A, create B, claim B → the socket is still A; after leave, B is still claimed).
-  Suggested fix: in `create_toon_in_slot` and `claim_slot`, clear `controller_session` on any other toon held by the same session (a release, not a rest); make `release_session_toon` release every toon the session holds. Test switching and then leaving.
+[WARN] daydream/prodcheck.py:169-205, 290 — one probe's network error aborts the whole check with no per-check output, in the verifier docs/runbooks/incident.md says to run first.
+  Evidence: `http_request`, `ws_session` and `run` catch nothing, and `report()` runs only after every probe. A DNS/TLS failure or a WebSocket `open_timeout` reaches `prodctl.main` as a bare "error: timed out"; `websockets.exceptions.InvalidMessage` and `http.client.IncompleteRead` are not OSError subclasses and end in a traceback.
+  Suggested fix: wrap each probe so an exception becomes a failing `Check(name, False, f"{type(e).__name__}: {e}")`, and always reach `report()` (timer checks included). Test: a `request` that raises for one URL yields one failing check and the rest still run.
 
-[WARN] daydream/gpu/arbiter.py:109-134 — across processes, back-to-back renders starve text calls: prod players get "the dream is foggy" while a dev prebake, image-test, review or tier_long runs.
-  Evidence: the flock layer polls with `LOCK_NB` every 50 ms and keeps no queue. A process rendering in a loop (prebake.py:90-118) releases `LOCK_EX` and re-takes it within milliseconds without yielding, so another process's text waiter gets in only if its poll lands in that gap. The reviewer measured on a scratch lock: text timed out in 6 of 6 runs at a 1:6 render-to-timeout ratio (as with ~15 s renders against `XP_TEXT_WAIT_S`=90). bin/game:333-335 now allows dev GPU work while prod is awake whenever the lock exists.
-  Suggested fix: after releasing an exclusive flock, a process waits more than two poll intervals (e.g. 0.15 s) before its next exclusive attempt, so waiting pollers get a turn; or a turnstile lock that text waiters hold `LOCK_SH` while waiting and renderers must clear first. Add a two-process test like the existing cross-process one.
+[WARN] daydream/prodcheck.py:147-155 — a timer job that is not installed, or whose timer is not enabled, reads "ok (not run yet)" forever.
+  Evidence: `systemctl show nonexistent.service -p Result -p ExecMainExitTimestamp` prints `Result=success`, `ExecMainExitTimestamp=n/a` (verified on the box, `LoadState=not-found`).
+  Suggested fix: also read `LoadState` of the service (fail unless `loaded`) and `ActiveState` of the matching `.timer` (fail unless `active`); `check_timer` takes both. Tests for not-found and an inactive timer.
 
-[WARN] daydream/prebake.py:108-115; daydream/images/cli.py:69-78; daydream/review.py:96 — `GpuBusyElsewhere` is not caught, so a render that cannot get the card within 20 s aborts the whole prebake (no contact sheet) or the CLI with a traceback.
-  Evidence: `except client.ComfyUIError` only; `GpuBusyElsewhere` subclasses `RuntimeError` (arbiter.py:92), not `ComfyUIError` (images/client.py:84). The arbiter docstring promises the caller keeps its placeholder; only ws.py:496 does.
-  Suggested fix: catch `arbiter.GpuBusyElsewhere` in prebake (record the target as busy and continue), in images/cli.py and in review.py.
+[WARN] daydream/prodcheck.py:288 with docs/runbooks/verify.md:20 — an awake box behind an asleep flag passes `prod check`, and verify.md says it fails.
+  Evidence: `expect` is derived from the flag itself (`"awake" if (awake and flag != "asleep") else "asleep"`), so after a `prod wake` that could not flip the flag (the case incident.md and sleep-and-wake.md describe) every check passes with "edge status: asleep" while friends cannot get in.
+  Suggested fix: when the service is active and the flag is `asleep`, add a failing check ("the flag says asleep while the service runs: friends see the asleep page; `bin/game edge wake` unless that is intended"). Update verify.md's row: a stale awake flag on an asleep box is harmless (the Worker reads an unreachable origin as asleep), so it is not a failure. Test both.
 
-[WARN] daydream/prodctl.py:591-598 with ops/systemd/daydream-offsite.service — the weekly offsite timer cannot find `npx` (node lives only under ~/.nvm on this box), so criterion 22's scheduled upload fails every week while a hand-run succeeds.
-  Evidence: `/usr/bin/npx` and `/usr/local/bin/npx` do not exist; the unit sets no `Environment=PATH`; `_wrangler` runs `["npx", ...]`, raising FileNotFoundError, which `main()` (catching only ProdError and CalledProcessError) turns into a traceback, after a backup was already taken and encrypted.
-  Suggested fix: resolve node's bin dir in daydream/edge.py (`shutil.which("node")`, else the newest `~/.nvm/versions/node/*/bin`), prepend it to PATH in `_wrangler_env()`, and use it for every npx/npm call; catch OSError in `prodctl.main`.
+[WARN] daydream/dream.py:842 and :780 — in prod, `dream rehearse` crashes copying its report into the read-only release, and `dream install` is gated only by the rehearsal committed from dev.
+  Evidence: rehearse writes `data/dreams/<id>/rehearsal.json`, then `shutil.copyfile(... , pdir / "rehearsal.json")`; a release is `chmod -R a-w` (prodctl.py:385) and the process runs as the service user, so it raises PermissionError. `install_ready(patch, pdir)` reads only `pdir/rehearsal.json`. docs/runbooks/content.md steps 4-5 therefore fail, and a prod install is gated on a rehearsal against dev's world.
+  Suggested fix: in rehearse, skip the copy (say where the report is) when `pdir` is not writable; make install-check/install accept a passing rehearsal of exactly this patch from `config.data_dir() / "dreams" / <id> / "rehearsal.json"` first, then `pdir`. Tests: a read-only patch dir rehearses and installs from the data-dir report.
 
-[WARN] daydream/prodctl.py:522-527, 534-536 — an error from the Cloudflare API aborts `prod sleep` before anything stops, after players were already warned.
-  Evidence: `edge.set_state("asleep")` runs before `systemctl stop` of the tunnel and the unit; `_api` raises EdgeError on HTTP/URL errors (a read timeout raises TimeoutError), and `main()` catches neither. With the API unreachable or the token expired, the village announces sleep and stays up with the GPU held. `wake()` and `status()` have the same uncaught path after the work is done.
-  Suggested fix: treat the edge flag as best effort in sleep, wake and status: wrap `set_state`/`describe_state` in `try/except (EdgeError, OSError)` and warn (the Worker's unreachable-origin fallback covers the gap).
+[WARN] docs/runbooks/content.md:38-39 — "Undo a bad dream by restoring the pre-dream snapshot it printed": no prod verb can (`world snapshot-restore` refuses while a live DB exists, admin.py:599-605, and only the service user can move it).
+  Suggested fix: take `bin/game prod backup` immediately before `dream install`, and undo with `bin/game prod world restore-backup /srv/daydream/data/backups/<that ts>` (which also rolls the accounts DB back to that moment).
 
-[WARN] daydream/prodctl.py:512-528 — `prod sleep` stops the tunnel and service only when the unit is exactly "active"; a failed or auto-restarting unit is left looping with the tunnel up.
-  Evidence: `systemctl is-active --quiet` is non-zero for "activating (auto-restart)" and "failed"; the unit has `Restart=on-failure`. A `wake()` whose health check failed leaves both running, and a following `prod sleep` skips both stops yet reports the village asleep.
-  Suggested fix: in `sleep_`, always `systemctl stop` both units (idempotent on inactive units); gate only the grace announcement on `unit_active`.
+[WARN] docs/runbooks/friends.md:27 — "closing it there ... takes it back": after a 4409 close the tab stops retrying (`dreamingElsewhere`), so closing the other tab does not bring this one back.
+  Suggested fix: "reload this tab, or press enter in 'your dreamer' here, to take it back."
 
-[WARN] daydream/prodctl.py:397-399 with daydream/admin.py:396-417 — backup retention is "the newest 14 directories" of one pool shared by nightly, deploy, offsite, pull and manual backups, so criterion 13's "keeping 14 days" does not hold.
-  Evidence: `_backup` passes `--keep 14`; `cmd_backup` prunes every dir under backups/ by name. Fourteen deploys in a working session prune every nightly backup (three deploys went out within hours on 2026-09-27/28).
-  Suggested fix: prune by age with a floor: delete a backup only if it is older than 14 days AND not among the newest 14. Test with synthetic timestamped dirs.
+[WARN] docs/runbooks/backups.md:41-47 — "restore from any machine holding one of the SSH keys" is followed by `bin/game prod offsite-restore`, which decrypts only with the box's own key and needs cloudflare.env and wrangler (prodctl.py:695).
+  Suggested fix: prove the round trip on the box with `prod offsite-restore`; from another machine, fetch the object from R2 and `age -d -i <your ssh key>`.
 
-[WARN] daydream/prodctl.py:709-710 — `prod pull` says "an admin dev account can enter any toon", but no admin can claim another account's toon, and the pulled toons belong to prod account ids that do not exist in dev, so a friend's toon cannot be played to reproduce their bug (criterion 12).
-  Evidence: api/slots.py:205 refuses with 403 "that dreamer belongs to someone else"; account ids are random.
-  Suggested fix: after installing the pulled world in dev, clear `owner_account` on its toons (`UPDATE objects SET owner_account = NULL WHERE kind = 'toon'`, so a dev account can adopt one) and correct the message.
+[WARN] .claude/skills/village/SKILL.md:43-46 — the numbered `sleep` steps are out of order (the code: warn and wait, flag asleep, stop tunnel and service, rest everyone and write journals, sync keepsakes, stop the engines; prodctl.py:567-605).
+  Suggested fix: list them in that order, as sleep-and-wake.md does.
 
-[WARN] .claude/skills/village/SKILL.md (deploy section) — "Always ask-first" for `/village deploy` contradicts the operator's standing grant recorded in CLAUDE.md (2026-09-28): typing `/village deploy` is the ask.
-  Evidence: CLAUDE.md "Agent policy for prod": when the operator asks for prod work the agent runs the verbs itself.
-  Suggested fix: when the operator's message asks for the deploy, show what is going out (`git log --oneline <current>..<ref>`) and run it; ask first only when the deploy was not requested.
+[WARN] daydream/edge.py:44 — `PUBLIC_STATUS` hardcodes `https://www.eidolon.com/daydream/edge/status`, so a fork's `bin/game edge status` probes this instance, contradicting "a fork changes the few committed instance values" (README, GOING-LIVE, CLOUDFLARE-SETUP's list).
+  Suggested fix: derive it from edge/wrangler.toml's `PUBLIC_HOST` and `BASE` vars (edge.py already reads that file for the KV id). Test with a synthetic wrangler.toml.
 
-**NOTE**
+[WARN] daydream/accounts.py `commit_password_change` — the password change is split around an await, so a reset redeemed in that window could be overwritten by a change still in flight from a session the reset just ended (recorded by the /security scan as a non-finding; the fix is two lines).
+  Suggested fix: `prepare_password_change` returns the hash it verified against; `commit_password_change` updates `WHERE id = ? AND password_hash = <that hash>` and, if no row changed (or the kept session no longer exists), raises AccountError("your password changed meanwhile; sign in again"). Test: a hash change between prepare and commit is refused.
 
-[NOTE] edge/src/worker.js:304, 352-353 — the keepsakes book count reads " of 150 found" for a friend who has found nothing: `escapeHtml` does `String(s || "")`, so 0 becomes "". Use `String(s ?? "")`.
+**WARN (reclassified from NOTE: cheap, and each is a playbook inaccuracy an agent would act on or a small invariant gap)**
 
-[NOTE] web/assets/main.js:60-62, 140-141 — a short origin restart (a deploy, a tunnel blip) shows open tabs the asleep note ("Send the Night Warden a note") and holds reconnection for 30 s: the Worker's 503 carries `unplanned: true`, which `whyClosed` ignores. Keep the normal backoff and the plain "the dream is sleeping..." text when `unplanned` is set.
+[WARN] daydream/keepsakes.py:122 with accounts.py:442 — the 180-day cap is applied when passes sync, but the Worker trusts the published `expires` (the 30-day sliding expiry), so a session crossing 180 days during a sleep keeps its keepsakes until that expiry. Publish `min(expires_at, created_at + SESSION_MAX_DAYS)`.
 
-[NOTE] web/assets/main.js:1591-1597 — `reconnectAfterSlotChange` resets `awaitingPick` but not `dreamingElsewhere`, so a tab that got `elsewhere` and then re-entered from the dreamer panel stops silently on its next drop.
+[WARN] .claude/settings.local.json (local) with docs/runbooks/README.md, CLAUDE.md, README.md — `prod account cli-cookie` (prints an admin session cookie) and `prod world load ... --force` (overwrites the live world) are not among the prompting verbs the docs list. The ask rules were added locally outside the fix pass; the fix pass adds both verbs to the documented lists (docs/runbooks/README.md, CLAUDE.md "Agent policy for prod" and "This repo and this instance", README.md).
 
-[NOTE] web/assets/main.js:1652-1657 — the How to Dream book opens over the "your dreamer" form on a first visit, the reverse of criterion 8's order (form, then book).
+[WARN] docs/runbooks/content.md:43 — "Prod never renders room or resident art": a target missing from the copy is painted lazily by prod on first entry; `prebake --from-cache` lists such targets as `missing`.
 
-[NOTE] daydream/admin.py (`cmd_toon_moderate` "rest") — resting a toon from the shell does not reach its open socket: the player keeps acting as a toon others can no longer see until they reconnect, when `_auto_enter` wakes it. `account disable` is the moderation stop.
+[WARN] docs/runbooks/deploy.md:21 — "~1650 tests"; the tiers collect ~1690.
 
-[NOTE] tools/ws_playthrough.py:48, 150 — the (frozen) Zork WS playthrough no longer completes: `--slot 1` now returns 409 for a new agent account, and its ~0.15 s pacing outruns the WS token bucket (3/s, burst 12), so refused commands silently diverge the replay.
+[WARN] docs/GOING-LIVE.md:243 — lists "prod listens only on loopback" among what `prod check` verifies; no check looks at the bind address.
 
-[NOTE] daydream/accounts.py:427-434 — `live_passes()` ignores the 180-day absolute session cap that `resolve()` enforces, so the Worker can serve keepsakes for a session the server already refuses (up to 30 more days).
+[WARN] docs/GOING-LIVE.md:261 — the browser test runs "in CI's tier and in the deploy gate"; CI skips it (no browser).
 
-[NOTE] daydream/accounts.py:222-225 via `authenticate` — login accepts an account id (`a-<hex>`) in place of a username, a second per-username guessing budget for the same account; ids are visible only to their owner and admins.
+**Re-review of the first fix pass (cycle 2)**
 
-[NOTE] daydream/api/auth.py:191-206 with accounts.py:298-312 — change-password runs two argon2id operations on the event loop, and successful changes are never throttled; a signed-in session could stall the loop ~66 ms per request.
-
-[NOTE] daydream/api/auth.py:44-55 — the session cookie is parsed with `http.cookies.SimpleCookie`, which drops every cookie after a malformed neighbor (e.g. `prefs={"a":1}`), reading a signed-in person as signed out. Low risk in prod (Path=/daydream/ sorts first); `starlette.requests.cookie_parser` is tolerant.
-
-[NOTE] daydream/prodctl.py:419-440 — after an automatic rollback, `previous` equals `current`, so a later `prod rollback` does nothing and the release before is forgotten.
-
-[NOTE] daydream/prodctl.py:165-196 — the STOP_FOR match is on the verb only, so `prod world refresh --check`, a `world reset` without `--yes`, or a refused `dream install` still stop and restart the service, dropping every session.
-
-[NOTE] daydream/prodctl.py:171-196 — `prod dream check|rehearse|install <patch>` runs as the daydream user, which cannot read a patch under /home/peter; only a patch already committed and deployed in the current release works, and no runbook says so.
-
-[NOTE] daydream/prodctl.py:653 — `prod status` computes "behind" with `git rev-list --count rel..HEAD`, which is wrong after a history rewrite and raises (aborting the whole status) once the release's commit is gone. Today's release 8428675 predates the pre-push rewrite; redeploy after the push.
+[WARN] daydream/api/slots.py `_mimics_a_toon_id` — a new name is refused if it contains ANY existing toon id, residents included (`t-bell`, `t-fen`, `t-mott`, ...), so ordinary names are refused: "Matt-Fenwick" contains "t-fen", "Kat-bell" contains "t-bell".
+  Evidence: `any(t.id.lower() in low for t in toons._query("world_id = ?", ...))` scans every toon in the world. Moderation (`_find_toons`, `rest-toon`/`delete-toon`) acts only on player toons, slots 1-99.
+  Suggested fix: scan only player toons (`"world_id = ? AND slot BETWEEN 1 AND 99"`), keep the bracket and `t-slot…` shape rules. Test: "Matt-Fenwick" is accepted in the Lost Hours world (whose resident ids include `t-fen`), and a name containing a player toon's id is still refused.
 
 ### Fixes Applied
 
-All three BLOCKs and nine of the ten WARNs, in `3df294b` (applied by /codefix,
-re-reviewed here against the code):
-
-- [BLOCK] edge/src/worker.js — `passWebSocket`: a 101 is rebuilt without `CF_*` Set-Cookie; any other answer to an upgrade goes through `rewriteResponse`. The filter is the shared `stripAccessCookies`. Three node tests, one a mocked 403 upgrade carrying the cookie.
-- [BLOCK] web/assets/door.js — both handlers read `FormData` before `busy()`; a tier_short guard in tests/test_web_paths.py fails if a submit handler calls `busy(` first.
-- [BLOCK] daydream/api/slots.py, web/assets/main.js — resting the toon your own session plays marks the session left, tells the room and writes the journal (`_departed`, shared with leave); the SPA stays on "your dreamer". Test: kick your own toon, reconnect, `needs_toon`.
-- [WARN] daydream/api/ws.py — a `?since=` reconnect never takes the toon from another live session; it gets `elsewhere` and 4409. Two-device test.
-- [WARN] daydream/toons.py — create and claim release the session's other toons (`_release_others`); a released toon can be claimed again; leave rests all the session held. Switch-and-leave test.
-- [WARN] daydream/gpu/arbiter.py — `XP_YIELD_S` (0.15 s) after a process's own render before its next exclusive attempt. Two-process render-loop test.
-- [WARN] daydream/prebake.py, images/cli.py, review.py — `GpuBusyElsewhere` is caught (prebake records "busy", lists it, exits 1).
-- [WARN] daydream/edge.py, prodctl.py — `_node_env()` finds node on PATH or the newest ~/.nvm install for every node/npm/npx call; `prodctl.main` catches OSError.
-- [WARN] daydream/prodctl.py — the edge flag is best effort in sleep, wake and status (`_set_edge_flag`); `sleep` always stops the tunnel and the unit.
-- [WARN] daydream/admin.py — backups are pruned only when older than 14 days and not among the newest `keep`.
-- [WARN] daydream/prodctl.py — `prod pull` clears `owner_account` on the pulled toons; the message says how a dev account adopts one.
-
-**Not fixed (requires manual intervention):** the WARN on
-`.claude/skills/village/SKILL.md`. The fix pass's edit was refused by the
-permission classifier as the agent loosening its own ask-first rule; the
-operator makes that edit.
+All 18 WARNs, in `f3f46dc` (two /codefix passes, each re-reviewed here against the
+code): the `/status/who` layout, name rules and substring-aware moderation;
+`prod check`'s per-probe isolation, timer install/active checks and the
+asleep-flag-over-a-running-service check; prod dream rehearse and
+install-check reading the data dir; the password change's compare-and-swap;
+the 180-day cap on published pass expiry; `edge status` deriving its URL from
+wrangler.toml; the playbook and doc corrections; and (cycle 2) the name rule
+narrowed to player toons so residents' short ids don't refuse ordinary names.
+The two local ask rules (`prod account cli-cookie`, `prod world load`) were
+added outside the fix pass.
 
 ### Accepted Risks
 
@@ -136,6 +104,6 @@ Carried forward (the standing register lives in SECURITY.md):
   CGNAT hardcoding in tailscale mode.
 
 ---
-*Prior review (2026-09-27, full): the pivot turn, 61 commits; 0 BLOCK / 23 WARN / 14 NOTE, all 23 WARNs fixed before the push.*
+*Prior review (2026-09-28, refresh, `3df294b`): the going-live push; 3 BLOCK (the Worker's Access-cookie leak on WebSocket answers, the front door's empty credentials, "rest" re-entering) and 9 of 10 WARNs fixed before it was pushed as `fdf4077`; the tenth (the /village deploy wording) was fixed by the operator's direction in this turn.*
 
-<!-- REVIEW_META: {"date":"2026-09-28","commit":"3df294b","reviewed_up_to":"3df294bdcc2632aceeaa4e1d483a9516409bd4fa","base":"origin/main","tier":"refresh","block":3,"warn":10,"note":14,"fixed":12} -->
+<!-- REVIEW_META: {"date":"2026-09-28","commit":"f3f46dc","reviewed_up_to":"f3f46dc9505542ed84cf56b8c6bdc659535723e2","base":"origin/main","tier":"full","block":0,"warn":18,"note":0,"fixed":18} -->
