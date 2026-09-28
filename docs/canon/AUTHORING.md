@@ -147,9 +147,15 @@ recent local lines for exactly this.
   "per_player": true,                   // each player can do it once (a story told to each)
   "text": "the authored line" | "variants": ["...", "..."],
   "do": [effects],
-  "rel": 1                              // relationship gain with the NPC (default 1)
+  "rel": 1,                             // relationship gain with the NPC (default 1)
+  "credit": false                       // no helper's credit for the Ledger (default: true
+                                        // for a world beat, false for a per-player one)
 }
 ```
+
+A per-player beat's line is the asking player's alone (the room reads the
+bystander note); a world beat's line goes to the room unless it addresses
+"you".
 
 A talk beat's `text` is spoken instead of the model's line: write it as a
 complete moment (a gesture and a spoken line, third person, naming the

@@ -297,7 +297,9 @@ async def test_per_player_beats_and_endings_and_the_chronicle():
     assert objects.get("t-moth").location_id is None  # gone home
     assert any(o.name == "seedling" for o in objects.contents(ada, kind="thing"))
     text = " ".join(await say(ada, "read ledger"))
-    assert "Ada and Bo lit a lamp for the moth hour" in text
+    # Bo only heard the story (a per-player beat): no helper's credit (beta
+    # rehearsal 2026-09-28).
+    assert "Day 1: Ada lit a lamp for the moth hour" in text and "Bo" not in text
     # A closed arc can't close again or reopen.
     assert story.close_arc(WORLD, "moth", "kept") is None
     assert story.open_arc(WORLD, "moth") is None

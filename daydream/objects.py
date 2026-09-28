@@ -255,13 +255,25 @@ def find_all_in_scope_by_name(actor_id: str, name: str) -> list[Object]:
     needle = name.strip().lower()
     if not needle:
         return []
+    scope = [o for o in in_scope(actor_id) if o.id != actor_id]
     out: list[Object] = []
-    for o in in_scope(actor_id):
-        if o.id == actor_id:
-            continue
+    for o in scope:
         names = [o.name.lower()] + [str(a).lower() for a in o.aliases]
         if needle in names:
             out.append(o)
+    if out:
+        return out
+    # Nothing answers to the name exactly: the last words of a name will do
+    # ("brass hand" for the polished brass hand a player's seed grew, which
+    # has no authored aliases; beta rehearsal 2026-09-28). Two such matches
+    # are the parser's to ask about.
+    words = needle.split()
+    for o in scope:
+        for n in [o.name.lower()] + [str(a).lower() for a in o.aliases]:
+            nw = n.split()
+            if len(nw) > len(words) and nw[-len(words):] == words:
+                out.append(o)
+                break
     return out
 
 

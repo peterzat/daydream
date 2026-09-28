@@ -655,9 +655,11 @@ def _commit_growth(
         {"kind": "set_property", "target_id": seed_id, "key": "verbs",
          "value": []},
         # The husk stops answering to a fresh seed's name, so it never reads
-        # as "another dreamseed" on the ground (playtest 2026-07-02).
+        # as "another dreamseed" on the ground (playtest 2026-07-02), and a
+        # fresh seed lying beside it (a propagated child) is never "which
+        # dreamseed do you mean" (beta rehearsal 2026-09-28).
         {"kind": "rename_object", "object_id": seed_id,
-         "name": "spent dreamseed", "aliases": ["dreamseed", "seed", "husk"]},
+         "name": "spent dreamseed", "aliases": ["husk", "spent seed"]},
         {"kind": "move_object", "object_id": seed_id, "dest_id": new_room_id},
     ])
     # The room it grew from says so (playtest 2026-09-26: the parent's text

@@ -235,7 +235,7 @@ def validate_story(env: dict, *, known: dict, ks: dict, room_ids: set[str],
                     isinstance(x, str) for x in b["topic_aliases"])):
                 errors.append(f"{bw}.topic_aliases must be a list of strings")
             extra = set(b) - {"npc", "topic", "topic_aliases", "hint", "if", "after",
-                              "text", "variants", "do", "per_player", "rel",
+                              "text", "variants", "do", "per_player", "rel", "credit",
                               "others", "to"}
             errors.extend(_telling_errors(b, bw))
             if extra:

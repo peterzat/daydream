@@ -95,15 +95,29 @@ async def test_a_thing_for_one_player_alone_stays_with_them():
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("how", ["dozing", "resting"])
-async def test_a_dreamer_not_at_their_page_is_not_here_to_take_it(how):
-    ivo = _ivo(awake=False, resting=(how == "resting"))
+async def test_a_gift_to_a_dozing_dreamer_is_tucked_away_for_them():
+    """No one at their page: the thing still passes, for when they stir (a
+    gift left with a friend who stepped away is the point)."""
+    ivo = _ivo(awake=False)
+    await verbs.execute_command("t-wren", "take", dobj_id="i-lantern")
+    before = events.max_seq()
+    await verbs.execute_command("t-wren", "give", dobj_id="i-lantern", iobj_id=ivo.id)
+    assert objects.get("i-lantern").location_id == ivo.id
+    mine = [e for e in _narrates(before) if e.recipient_id == "t-wren"]
+    assert len(mine) == 1 and "tuck the lantern into their satchel" in mine[0].payload["text"]
+    room = [e for e in _narrates(before) if e.recipient_id is None]
+    assert [e.payload["text"] for e in room] == ["Wren tucks the lantern into Ivo's satchel."]
+
+
+@pytest.mark.asyncio
+async def test_a_resting_dreamer_is_not_here_to_take_it():
+    ivo = _ivo(awake=False, resting=True)
     await verbs.execute_command("t-wren", "take", dobj_id="i-lantern")
     await verbs.execute_command("t-wren", "give", dobj_id="i-lantern", iobj_id=ivo.id)
     assert objects.get("i-lantern").location_id == "t-wren"
     last = _narrates()[-1]
     assert last.recipient_id == "t-wren"
-    assert "far off in a dream of their own" in last.payload["text"]
+    assert "resting, far off in a dream of their own" in last.payload["text"]
 
 
 def test_a_page_closed_a_moment_ago_is_not_yet_dozing(monkeypatch):

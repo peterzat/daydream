@@ -85,9 +85,10 @@ is (section 6).
 
 Mott gives each dreamer a small blue book and their first minute during the
 first winding (`ask mott about the book`, section 7). Every day after the
-clock is mended, two stray minutes of each dreamer's own (private things
+clock is mended, three stray minutes of each dreamer's own (private things
 only that dreamer sees) glint somewhere in the 17 rooms, placed by a stable
-roll that favors the page nearest completion. Taking one catalogues it.
+roll that favors the page nearest completion (two until the beta rehearsal
+of 2026-09-28, when a player who walked fifteen rooms met one). Taking one catalogues it.
 There are 172 minutes on 12 pages (14 or 15 each), in
 `worlds/lost-hours/minutes/`.
 
@@ -362,6 +363,12 @@ exceptions noted per arc.
 - Keepsakes and dreamseeds go to the dreamer whose action closed the ending
   (or to the room, where noted). "A stray minute" means one of that
   dreamer's missing minutes (section 2).
+- The Ledger's "who helped" names the dreamers who moved the arc for
+  everyone: a world beat or the ending. A per-player beat (a story told to
+  each) earns no credit unless it says so, and reading the repair ledger
+  earns none (`credit: false`), so `mended-together` means two pairs of
+  hands on the gear, the key or the case (beta rehearsal 2026-09-28: a
+  ledger that credited a bystander twice).
 - The pattern for guests: an ending that sends the guest home grants a
   dreamseed, usually with a keepsake (the Extra Hour's `sat-down` is the
   exception: a keepsake and a stray minute instead); an ending where it

@@ -446,6 +446,10 @@ async def _execute_resolved(
                      recipient_id=actor_id)
             return
         dn = _the(dobj) if dobj is not None else "that"
+        if spec.name == "use" and iobj.kind == "toon" and dobj is not None:
+            # "use the hush on the nap" is handing it over (beta rehearsal
+            # 2026-09-28): the give path, with its rules and refusals.
+            spec = VERBS["give"]
         if spec.valid_iobj_kinds and iobj.kind not in spec.valid_iobj_kinds:
             _narrate(room_id, f"You can't {spec.name} {dn} {prep} {_the(iobj)}.",
                      recipient_id=actor_id)
@@ -867,11 +871,22 @@ def _hand_to_player(actor, room_id, dobj, iobj, spec) -> bool:
         _dispatch(actor, room_id, [{"kind": "narrate", "to": "@actor",
             "text": f"The {dobj.name} is yours alone; it won't pass to other hands."}], spec)
         return False
-    if not iobj.is_human_controlled or ws_mod.is_dozing(iobj):
+    if not iobj.is_human_controlled:
         _dispatch(actor, room_id, [{"kind": "narrate", "to": "@actor",
-            "text": f"{iobj.name} is far off in a dream of their own just now; "
+            "text": f"{iobj.name} is resting, far off in a dream of their own; "
                     f"you'll have to catch them awake."}], spec)
         return False
+    if ws_mod.is_dozing(iobj):
+        # No one at their page: the thing still passes, for when they stir
+        # (a gift left with a friend who stepped away is the point).
+        _dispatch(actor, room_id, [
+            {"kind": "move_object", "object_id": dobj.id, "dest_id": iobj.id},
+            {"kind": "narrate", "to": "@actor",
+             "text": f"{iobj.name} is dozing, far off in a dream of their own. You tuck "
+                     f"the {dobj.name} into their satchel, for when they stir.",
+             "others": f"{{actor}} tucks the {dobj.name} into {iobj.name}'s satchel."},
+        ], spec)
+        return True
     _dispatch(actor, room_id, [
         {"kind": "move_object", "object_id": dobj.id, "dest_id": iobj.id},
         {"kind": "narrate", "to": "@actor",
@@ -937,13 +952,26 @@ async def _handle_open(actor, room_id, dobj, iobj, args, spec) -> None:
     generic line."""
     state = dobj.properties.get("state")
     if state == "locked":
+        # The key in your hand counts (beta rehearsal 2026-09-28: "open clock
+        # case" with the case key in hand still read as locked, and only
+        # "use key on case" would do): a carried thing the target's authored
+        # `use` rule names is used on it first, through the executor, so
+        # its rules and beats run as if the player had typed it.
+        key = _carried_key_for(actor, dobj)
+        if key is not None:
+            await execute_command(actor.id, "use", dobj_id=key.id, iobj_id=dobj.id)
+            fresh = objects.get(dobj.id)
+            if fresh is not None and fresh.properties.get("state") != "locked":
+                return await _handle_open(actor, room_id, fresh, iobj, args, spec)
         locked = dobj.properties.get("locked_text")
         if not (isinstance(locked, str) and locked.strip()):
             locked = f"The {dobj.name} is locked."
-        _dispatch(actor, room_id, [{"kind": "narrate", "text": locked}], spec)
+        # A refusal is the opener's alone (beta rehearsal 2026-09-28: a
+        # bystander read "the clock case is locked" out of nowhere).
+        _dispatch(actor, room_id, [{"kind": "narrate", "text": locked, "to": "@actor"}], spec)
         return False
     if state == "open":
-        _dispatch(actor, room_id, [{"kind": "narrate",
+        _dispatch(actor, room_id, [{"kind": "narrate", "to": "@actor",
             "text": f"The {dobj.name} is already open."}], spec)
         return False
     effs: list = [
@@ -984,6 +1012,19 @@ async def _handle_open(actor, room_id, dobj, iobj, args, spec) -> None:
         effs.append({"kind": "narrate",
                      "text": "Inside, you find: " + ", ".join(revealed) + "."})
     _dispatch(actor, room_id, effs, spec)
+
+
+def _carried_key_for(actor, target) -> objects.Object | None:
+    """The carried thing the target's `use` rule names for its current
+    state ({with, from_state}), if the actor holds exactly one."""
+    rule = target.properties.get("use")
+    if not (isinstance(rule, dict) and isinstance(rule.get("with"), str)):
+        return None
+    if rule.get("from_state") not in (None, target.properties.get("state")):
+        return None
+    held = [o for o in objects.contents(actor.id, kind="thing")
+            if _matches_name(o, rule["with"])]
+    return held[0] if len(held) == 1 else None
 
 
 async def _handle_close(actor, room_id, dobj, iobj, args, spec) -> None:

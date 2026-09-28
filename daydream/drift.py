@@ -525,7 +525,12 @@ def _is_near_duplicate(text: str, prev: str | None) -> bool:
 # may only lightly VARY an authored line (validated, warm), never replace it.
 # NPCs with no authored voice keep the old order: model first, generic pool
 # as the fallback.
-_DEFAULT_VARY_PROB = 0.3
+# Off by default since the beta rehearsal (2026-09-28): the local rewordings
+# of authored ambient lines were the worst lines two playtests met (a
+# pronoun slip, "rises slightly in stature"), and nobody missed variety
+# (docs/ROADMAP.md "zero the marginal reflexes"). DAYDREAM_DRIFT_VARY_PROB
+# turns it back on.
+_DEFAULT_VARY_PROB = 0.0
 
 _VARY_SYSTEM = (
     "You lightly vary one authored line of ambient narration for a cozy "

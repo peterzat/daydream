@@ -405,7 +405,13 @@ def advance_beat(world_id: str, arc_id: str, beat_id: str,
         st["beats"].setdefault(beat_id, stamp)
     else:
         st["beats"][beat_id] = stamp
-    if _is_player(actor_id) and actor_id not in st["helpers"]:
+    # Who helped: the players who moved the arc for everyone. A per-player
+    # beat (a story told to each) earns no helper's credit unless it says
+    # so, and any beat may say `credit: false` (reading the repair ledger is
+    # not mending the clock; beta rehearsal 2026-09-28: "co-credit for a
+    # spectator", twice in one ledger).
+    credit = beat.get("credit", not beat.get("per_player"))
+    if _is_player(actor_id) and actor_id not in st["helpers"] and credit:
         st["helpers"].append(actor_id)
     _save(world_id, arc_id, st)
     if actor_id and npc is not None and _is_player(actor_id):
@@ -414,7 +420,14 @@ def advance_beat(world_id: str, arc_id: str, beat_id: str,
     ev = events.append("system", None, "beat_advanced",
                        {"arc": arc_id, "beat": beat_id}, room_id=here)
     if tell:
-        _tell(world_id, f"beat:{arc_id}/{beat_id}", beat, here, actor_id=actor_id, npc=npc)
+        # A per-player beat is a story told to this player: theirs alone,
+        # with the bystander note for the room (beta rehearsal 2026-09-28: a
+        # resident's answer to one dreamer's question reached the other
+        # verbatim, who had just heard it themself).
+        mine = (beat.get("per_player") and _is_player(actor_id)
+                and beat.get("to") != "everyone")
+        _tell(world_id, f"beat:{arc_id}/{beat_id}", beat, here,
+              recipient=actor_id if mine else None, actor_id=actor_id, npc=npc)
     ctx = _ctx(world_id, actor_id, here, npc, f"beat:{arc_id}/{beat_id}")
     _run_effects(beat.get("do"), ctx, world_id, actor_id, here)
     return ev

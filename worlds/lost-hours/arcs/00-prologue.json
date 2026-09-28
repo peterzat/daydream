@@ -7,7 +7,7 @@
       "opens": "start",
       "summary": "The great clock stopped the night of the first hard frost. Find the escapement gear, bring it to Tace, and open the clock case: time begins again.",
       "beats": {
-        "read-ledger": {"hint": "the dreamer reads the repair ledger"},
+        "read-ledger": {"hint": "the dreamer reads the repair ledger", "credit": false},
         "found-gear": {"hint": "the dreamer finds the escapement gear by the well"},
         "gave-gear": {"hint": "the dreamer brings the gear home to Tace"},
         "unlocked": {"hint": "the dreamer unlocks the clock case"}

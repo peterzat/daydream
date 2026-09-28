@@ -293,15 +293,16 @@ async def test_use_right_item_wrong_state_changes_nothing():
 
 
 @pytest.mark.asyncio
-async def test_use_on_a_toon_is_refused_by_kind_gate():
+async def test_use_on_a_toon_is_handing_it_over():
+    """"use the hush on the nap" is giving it (beta rehearsal 2026-09-28):
+    the give path, with its rules and refusals, so a thing a character
+    does not want is declined in their voice rather than refused by kind."""
     key = _spawn_carried_key()
     objects.move("t-wren", "r-forge")  # co-locate with Rook
     await verbs.execute_command("t-wren", "use", dobj_id=key, iobj_id="t-rook")
     line = _last_narrate()
-    assert "can't use" in line.lower()
-    # Articles read naturally: things take 'the', named toons take none
-    # (playtest 2026-07-02: 'You can't use the case key on the Tace.').
-    assert line == "You can't use the case key on Rook."
+    assert line == "Rook looks at the case key a moment, and leaves it with you."
+    assert objects.get(key).location_id == "t-wren"
 
 
 @pytest.mark.asyncio

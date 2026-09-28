@@ -61,7 +61,7 @@
       }
     ],
     "collect": {
-      "per_day": 2,
+      "per_day": 3,
       "rooms": [
         "r-clocktower",
         "r-loft",
