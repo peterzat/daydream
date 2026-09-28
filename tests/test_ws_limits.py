@@ -216,3 +216,73 @@ def test_the_arrivals_cut_holds_for_later_snapshots_in_the_room():
     assert "an old line" not in texts
     assert "a recent ambient beat" not in texts
 
+
+def _snapshot_after_painting(ws, room_id: str, beat: str) -> dict:
+    """Live, after the first snapshot: an ambient beat, then a face painted in
+    the room. Returns the re-snapshot the painting sets off."""
+    events.append("system", None, "narrate", {"text": beat, "ambient": True}, room_id=room_id)
+    events.append("system", None, "toon_image_ready",
+                  {"toon_id": "t-someone", "image_url": None}, room_id=room_id)
+    ws.send_json({"kind": "ping"})  # wakes the server loop for the appends
+    painted = False
+    for _ in range(30):
+        msg = ws.receive_json()
+        if msg["kind"] == "event" and msg["event"]["kind"] == "toon_image_ready":
+            painted = True
+        elif painted and msg["kind"] == "state_snapshot":
+            return msg
+    raise AssertionError("no snapshot after the face was painted")
+
+
+def test_a_fresh_loads_empty_log_holds_for_later_snapshots_in_the_room():
+    """Codereview 2026-09-28c, cycle 2: the cut was recorded only on a move, so
+    after a fresh page load (an empty log) the next re-snapshot in the room (a
+    face painted, which connecting itself sets off, or a take) replayed its
+    last 50 events however old, ambient beats included."""
+    with TestClient(app) as client:
+        _enter(client)
+        old = events.append("system", None, "narrate", {"text": "an old line"},
+                            room_id="r-meadow")
+        db.get_conn().execute(
+            "UPDATE events SET created_at = datetime('now', '-2 hours') WHERE seq = ?",
+            (old.seq,))
+        events.append("system", None, "narrate",
+                      {"text": "an ambient beat before the load", "ambient": True},
+                      room_id="r-meadow")
+        with client.websocket_connect("/ws") as ws:
+            snap = ws.receive_json()
+            assert snap["room"]["id"] == "r-meadow" and snap["events"] == []
+            msg = _snapshot_after_painting(ws, "r-meadow", "a beat since the load")
+    texts = [e["payload"].get("text") for e in msg["events"]]
+    assert msg["room"]["id"] == "r-meadow"
+    assert "a beat since the load" in texts
+    assert "an old line" not in texts
+    assert "an ambient beat before the load" not in texts
+
+
+def test_a_reconnects_replay_holds_for_later_snapshots_in_the_room():
+    """Codereview 2026-09-28c, cycle 2: a reconnect rebuilds the log from the
+    lines it replays, so a later re-snapshot in the room keeps those and adds
+    nothing older."""
+    with TestClient(app) as client:
+        _enter(client)
+        events.append("system", None, "narrate", {"text": "a line before the drop"},
+                      room_id="r-meadow")
+        shown = events.append("system", None, "narrate", {"text": "the last line shown"},
+                              room_id="r-meadow")
+        events.append("system", None, "narrate", {"text": "a line while away"},
+                      room_id="r-meadow")
+        events.append("system", None, "narrate",
+                      {"text": "a beat while away", "ambient": True}, room_id="r-meadow")
+        with client.websocket_connect(f"/ws?since={shown.seq}") as ws:
+            snap = ws.receive_json()
+            replayed = [e["payload"].get("text") for e in snap["events"]]
+            assert "a line while away" in replayed and "a beat while away" in replayed
+            assert "the last line shown" not in replayed
+            msg = _snapshot_after_painting(ws, "r-meadow", "a beat since reconnecting")
+    texts = [e["payload"].get("text") for e in msg["events"]]
+    assert msg["room"]["id"] == "r-meadow"
+    assert {"a line while away", "a beat while away", "a beat since reconnecting"} <= set(texts)
+    assert "a line before the drop" not in texts
+    assert "the last line shown" not in texts
+

@@ -248,13 +248,8 @@ def _state_snapshot(
             recipient_for=toon_id, within_s=ARRIVAL_REPLAY_S if arriving else None,
             skip_ambient=arriving,
         )
-        # The arrival's cut holds for the rest of the visit: a later re-snapshot
-        # here (a take, a face painted) keeps the lines from before arriving
-        # to those the arrival showed (codereview 2026-09-28c).
-        if view is not None and arriving:
-            view["arrival"] = {"room": room_id, "seq": last_seq,
-                               "kept": {e.seq for e in recent}}
-        elif view is not None and (cut := view.get("arrival")) and cut["room"] == room_id:
+        if (not arriving and view is not None and (cut := view.get("arrival"))
+                and cut["room"] == room_id):
             recent = [e for e in recent if e.seq > cut["seq"] or e.seq in cut["kept"]]
     elif resume_since is None:
         recent = []  # fresh session: empty log, only new events stream in
@@ -265,6 +260,13 @@ def _state_snapshot(
             max(resume_since, last_seq - RESUME_DEPTH), room_id=room_id,
             recipient_for=toon_id,
         )
+    # The first snapshot of a room (a move's arrival, a fresh load's empty log,
+    # a reconnect's replay) sets the cut for the rest of the visit: a later
+    # re-snapshot here (a take, a face painted) keeps the lines from before it
+    # to those it showed (codereview 2026-09-28c).
+    if view is not None and (arriving or resume_since is not _REPLAY_RECENT):
+        view["arrival"] = {"room": room_id, "seq": last_seq,
+                           "kept": {e.seq for e in recent}}
     available = registry.list_available_for_room(room_id)
 
     image_url: str | None = None
