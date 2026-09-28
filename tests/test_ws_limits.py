@@ -145,16 +145,19 @@ def test_a_reconnect_replays_a_bounded_history(monkeypatch):
 
 def test_walking_into_a_room_replays_only_its_recent_history():
     """First prod evening, 2026-09-28: in a quiet village a room's last 50
-    events span hours, and a resident's ambient line from two hours before
-    read as happening on arrival. A move replays the last twenty minutes."""
+    events span hours, and a resident seemed to do four things at once on
+    meeting a player (two ambient lines from hours before, the greeting, the
+    answer). A move replays the last twenty minutes, without ambient beats."""
     with TestClient(app) as client:
         _enter(client)
-        old = events.append("system", None, "narrate", {"text": "an old ambient line"},
+        old = events.append("system", None, "narrate", {"text": "an old line"},
                             room_id="r-forge")
         db.get_conn().execute(
             "UPDATE events SET created_at = datetime('now', '-2 hours') WHERE seq = ?",
             (old.seq,))
         events.append("system", None, "narrate", {"text": "a recent line"}, room_id="r-forge")
+        events.append("system", None, "narrate",
+                      {"text": "a recent ambient beat", "ambient": True}, room_id="r-forge")
         with client.websocket_connect("/ws") as ws:
             ws.receive_json()  # the meadow
             ws.send_json({"kind": "input", "text": "go north"})
@@ -165,4 +168,6 @@ def test_walking_into_a_room_replays_only_its_recent_history():
     assert msg["room"]["id"] == "r-forge"
     texts = [e["payload"].get("text") for e in msg["events"]]
     assert "a recent line" in texts
-    assert "an old ambient line" not in texts
+    assert "an old line" not in texts
+    assert "a recent ambient beat" not in texts
+

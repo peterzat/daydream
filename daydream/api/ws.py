@@ -86,9 +86,10 @@ _EFFECT_MUTATION_KINDS = frozenset(
      "toon_image_ready"}
 )
 SNAPSHOT_HISTORY_DEPTH = 50
-# Walking into a room replays only what happened there lately: in a quiet
-# village the last 50 events can span hours, and a resident's ambient line
-# from two hours ago read as happening now (first prod evening, 2026-09-28).
+# Walking into a room replays only what happened there lately, and never its
+# ambient beats (drift's idle lines are for whoever was there): in a quiet
+# village the last 50 events spanned hours, and a resident seemed to do four
+# things at once on meeting a player (first prod evening, 2026-09-28).
 ARRIVAL_REPLAY_S = 20 * 60
 
 # Sentinel for _state_snapshot's resume_since: replay the room's recent history
@@ -245,6 +246,7 @@ def _state_snapshot(
         recent = events.fetch_since(
             max(0, last_seq - SNAPSHOT_HISTORY_DEPTH), room_id=room_id,
             recipient_for=toon_id, within_s=ARRIVAL_REPLAY_S if arriving else None,
+            skip_ambient=arriving,
         )
     elif resume_since is None:
         recent = []  # fresh session: empty log, only new events stream in

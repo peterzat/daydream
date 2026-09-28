@@ -252,6 +252,20 @@ async def test_tick_canned_uses_npc_mood_bucket(monkeypatch):
     assert e.payload["text"] in drift._DRIFT_POOLS["t-rook"]["thoughtful"]
 
 
+
+@pytest.mark.tier_medium
+@pytest.mark.asyncio
+async def test_a_drift_beat_is_ambient():
+    """Drift's lines carry `ambient`, which the arrival replay skips: they are
+    for whoever is there (first prod evening, 2026-09-28)."""
+    from daydream import config
+    db.init_live(migrations_dir=config.MIGRATIONS_DIR)
+    before_seq = events.max_seq()
+    assert await drift._tick(rng=random.Random(0)) is True
+    (e,) = events.fetch_since(before_seq)
+    assert e.payload.get("ambient") is True
+    assert events.fetch_since(before_seq, skip_ambient=True) == []
+
 # ---- tick: LLM path (tier_medium) --------------------------------------
 
 

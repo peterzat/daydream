@@ -685,11 +685,17 @@ async def _tick(rng: random.Random | None = None) -> bool:
         # since nothing was emitted.
         _TICK_COUNTS["noop"] += 1
         return False
+    # Ambient: a beat for whoever is there when it happens. A player walking
+    # in later never gets it replayed as if it were happening now
+    # (ws.ARRIVAL_REPLAY_S; first prod evening, 2026-09-28).
+    payload: dict[str, Any] = {"text": text, "ambient": True}
+    if llm_text is not None:
+        payload["src"] = "local"
     events.append(
         actor_type="system",
         actor_id=None,
         kind="narrate",
-        payload={"text": text, "src": "local"} if llm_text is not None else {"text": text},
+        payload=payload,
         room_id=room_id,
     )
     _last_emitted[room_id] = text
