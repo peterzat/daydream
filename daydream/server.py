@@ -17,7 +17,7 @@ from fastapi.responses import (
 )
 from fastapi.staticfiles import StaticFiles
 
-from daydream import accounts, announce, config, db, drift, version, village
+from daydream import accounts, announce, config, db, drift, logs, version, village
 from daydream.api import auth, slots, world, ws
 from daydream.api import rooms as rooms_api
 from daydream.api.access import AccessMiddleware
@@ -34,6 +34,8 @@ image_cache.ensure_cache_root()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # The app's own log lines reach the journal (daydream/logs.py).
+    logs.configure()
     # Fail closed before touching anything: prod refuses to serve unless it
     # runs in edge mode with a public origin, a public base and a loopback
     # bind (SPEC 2026-09-27 criterion 1; docs/GOING-LIVE.md section 2).

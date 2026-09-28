@@ -86,6 +86,10 @@ _EFFECT_MUTATION_KINDS = frozenset(
      "toon_image_ready"}
 )
 SNAPSHOT_HISTORY_DEPTH = 50
+# Walking into a room replays only what happened there lately: in a quiet
+# village the last 50 events can span hours, and a resident's ambient line
+# from two hours ago read as happening now (first prod evening, 2026-09-28).
+ARRIVAL_REPLAY_S = 20 * 60
 
 # Sentinel for _state_snapshot's resume_since: replay the room's recent history
 # (the default, used by move/effect re-snapshots). None = a fresh session
@@ -208,7 +212,8 @@ def _room_description(room: "rooms.Room", view: dict | None) -> str:
 
 
 def _state_snapshot(
-    last_seq: int, toon_id: str, view: dict | None = None, resume_since=_REPLAY_RECENT
+    last_seq: int, toon_id: str, view: dict | None = None, resume_since=_REPLAY_RECENT,
+    *, arriving: bool = False,
 ) -> dict:
     """Build a snapshot pinned to the given last_seq. Caller subscribes first
     (so concurrent appends fan out to this connection's queue), then captures
@@ -239,7 +244,7 @@ def _state_snapshot(
         # events addressed to other toons are filtered out (migration 014).
         recent = events.fetch_since(
             max(0, last_seq - SNAPSHOT_HISTORY_DEPTH), room_id=room_id,
-            recipient_for=toon_id,
+            recipient_for=toon_id, within_s=ARRIVAL_REPLAY_S if arriving else None,
         )
     elif resume_since is None:
         recent = []  # fresh session: empty log, only new events stream in
@@ -492,10 +497,13 @@ async def _generate_and_emit(
     payload: dict = {}
     try:
         async with image_client.render_slot():
+            t0 = time.monotonic()
             path = await image_client.generate_image(
                 target, force=force, prompt_override=prompt_override, seed=seed
             )
         payload["image_url"] = image_cache.versioned_url_for_path(path)
+        logger.info("painted %s %s in %.1fs", target.target_kind, target.target_id,
+                    time.monotonic() - t0)
     except image_client.ComfyUIError as e:
         logger.warning(
             "%s image gen failed for %s/%s: %s",
@@ -817,6 +825,7 @@ async def ws_endpoint(ws: WebSocket):
     reconnect = ws.query_params.get("since") is not None
     toon_id = _resolve_controlled_toon_id(session_id) or _auto_enter(who, reconnect=reconnect)
     if toon_id is _HELD_ELSEWHERE:
+        logger.info("ws: %s is dreaming in another window", who.username)
         await ws.accept()
         await ws.send_json({"kind": "elsewhere"})
         await ws.close(code=ELSEWHERE)
@@ -828,6 +837,7 @@ async def ws_endpoint(ws: WebSocket):
         # (picker-first entry, SPEC 2026-06-30). This subsumes the prior
         # `left`-flag branch — leaving the dream rests the toon, so it
         # resolves to None here.
+        logger.info("ws: %s is awake (no dreamer in the dream)", who.username)
         await ws.accept()
         await ws.send_json({"kind": "needs_toon"})
         # Close cleanly: a socket dropped without a close frame can lose this
@@ -853,6 +863,10 @@ async def ws_endpoint(ws: WebSocket):
             resume_since = int(since_raw)
         except ValueError:
             resume_since = None
+    opened = time.monotonic()
+    me = toons.get_toon(toon_id)
+    logger.info("ws: %s dreaming as %s in %s%s", who.username, me.name if me else toon_id,
+                _current_room_id(toon_id), " (reconnect)" if reconnect else "")
     try:
         _mark_session_live(session_id)
         last_seq = events.max_seq()
@@ -877,9 +891,16 @@ async def ws_endpoint(ws: WebSocket):
         )
         for t in pending:
             t.cancel()
+        for t in done:
+            # A handler bug ends the socket (the SPA reconnects); say so here
+            # rather than as an unretrieved task exception at collection time.
+            if not t.cancelled() and t.exception() is not None:
+                logger.error("ws: %s's session ended on an error", who.username,
+                             exc_info=t.exception())
     finally:
         _unmark_session_live(session_id)
         events.unsubscribe(queue)
+        logger.info("ws: %s closed after %ds", who.username, int(time.monotonic() - opened))
 
 
 async def _handle_command(msg: dict, toon_id: str) -> None:
@@ -1076,7 +1097,8 @@ async def _broadcast_loop(
             )
             if is_controlled_move or is_effect_mutation or is_state_change:
                 snapshot_seq = events.max_seq()
-                await ws.send_json(_state_snapshot(snapshot_seq, toon_id, view))
+                await ws.send_json(_state_snapshot(snapshot_seq, toon_id, view,
+                                                   arriving=is_controlled_move))
                 if is_controlled_move:
                     # Kick image gen for the new room if the cache is cold;
                     # the room_image_ready event flows back through this

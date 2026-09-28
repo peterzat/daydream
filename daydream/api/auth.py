@@ -20,6 +20,7 @@ Failures never say whether a username exists.
 from __future__ import annotations
 
 import asyncio
+import logging
 import threading
 
 from fastapi import APIRouter, Request
@@ -28,6 +29,7 @@ from fastapi.responses import JSONResponse
 from daydream import accounts, config
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 MAX_FIELD = 300
 
@@ -147,6 +149,7 @@ async def login(request: Request):
     user_key = "login-user:" + username
     if (accounts.throttled(addr_key, accounts.LOGIN_PER_ADDRESS)
             or accounts.throttled(user_key, accounts.LOGIN_PER_USERNAME)):
+        logger.warning("sign-in: throttled")
         return _deny(429, SLOW_DOWN)
     # Count the attempt before the await: the check above and this record run
     # with no await between them, so a concurrent burst cannot all pass the
@@ -159,9 +162,12 @@ async def login(request: Request):
     # never stalls everyone's game (SECURITY NOTE 2026-09-27).
     row = await asyncio.to_thread(_hashing, accounts.authenticate, username, password)
     if row is None:
+        # No username here: people type their password into it by mistake.
+        logger.info("sign-in: refused")
         return _deny(401, LOGIN_REFUSED)
     accounts.forgive_one(addr_key)
     accounts.clear_failures(user_key)
+    logger.info("sign-in: %s", row["username"])
     return _signed_in(row, request)
 
 
@@ -173,6 +179,9 @@ def _hashing(fn, *args):
 
 @router.post("/api/logout")
 async def logout(request: Request):
+    p = principal(request)
+    if p is not None:
+        logger.info("sign-out: %s", p.username)
     accounts.end_session(token_from_cookie_header(request.headers.get("cookie")))
     resp = JSONResponse({"ok": True, "next": config.public_base()})
     clear_session_cookie(resp)
@@ -212,6 +221,7 @@ async def change_password(request: Request):
                                         keep_session_id=p.session_id)
     except accounts.AccountError as e:  # a reset (or another change) landed meanwhile
         return _deny(409, str(e))
+    logger.info("password changed: %s", p.username)
     return {"ok": True}
 
 
@@ -240,11 +250,14 @@ async def invite_peek(request: Request):
     body = await _body(request)
     addr = throttle_address(client_address(request.scope))
     if _redeem_blocked(addr):
+        logger.warning("invite: resting (throttled)")
         return _deny(429, invites_resting())
     inv = accounts.peek_invite(body.get("slug", ""))
     if inv is None:
         _redeem_failed(addr)
+        logger.info("invite: an unknown, used or expired link was opened")
         return _deny(404, accounts.invite_refused())
+    logger.info("invite: %s opened", inv["id"])
     return {"for": inv["for_name"], "kind": inv["kind"],
             "operator": config.operator_name()}
 
@@ -256,11 +269,13 @@ async def invite_redeem(request: Request):
     body = await _body(request)
     addr = throttle_address(client_address(request.scope))
     if _redeem_blocked(addr):
+        logger.warning("invite: resting (throttled)")
         return _deny(429, invites_resting())
     slug = body.get("slug", "")
     inv = accounts.peek_invite(slug)
     if inv is None:
         _redeem_failed(addr)
+        logger.info("invite: redeem refused (unknown, used or expired)")
         return _deny(404, accounts.invite_refused())
     try:
         if inv["kind"] == "join":
@@ -273,5 +288,7 @@ async def invite_redeem(request: Request):
             return _deny(404, str(e))
         # A taken username or a short password is the person's to fix, not a
         # guess at the slug: it does not count against the throttle.
+        logger.info("invite: %s not redeemed yet: %s", inv["id"], e)
         return _deny(400, str(e))
+    logger.info("invite: %s redeemed (%s) by %s", inv["id"], inv["kind"], row["username"])
     return _signed_in(row, request)

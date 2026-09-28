@@ -29,6 +29,7 @@ Errors are JSON `{"detail": "<reason>"}` with the documented status codes.
 from __future__ import annotations
 
 import asyncio
+import logging
 import re
 
 from fastapi import APIRouter, HTTPException, Request
@@ -143,6 +144,9 @@ async def _toon_request(request: Request) -> tuple[str, str]:
     return name.strip(), appearance
 
 
+logger = logging.getLogger(__name__)
+
+
 def _create(slot: int, name: str, appearance: str, who: accounts.Principal) -> dict:
     if not _may_hold_another(who):
         raise HTTPException(status_code=409, detail="you already have a dreamer here")
@@ -151,6 +155,7 @@ def _create(slot: int, name: str, appearance: str, who: accounts.Principal) -> d
     if new_toon is None:
         raise HTTPException(status_code=409, detail="slot already populated")
     accounts.set_left(who.session_id, False)  # picking a toon re-enters the dream
+    logger.info("dreamer made: %s by %s", new_toon.name, who.username)
     return _toon_to_dict(new_toon, who.session_id)
 
 
@@ -237,7 +242,9 @@ async def claim_slot(slot: int, request: Request) -> dict:
     if toon.owner_account is None:
         toons.adopt(toon.id, who.account_id)
         toon = toons.get_toon(toon.id)
+        logger.info("dreamer adopted: %s by %s", toon.name, who.username)
     accounts.set_left(who.session_id, False)  # picking a toon re-enters the dream
+    logger.info("dreamer entered: %s by %s", toon.name, who.username)
     return _toon_to_dict(toon, who.session_id)
 
 
@@ -261,6 +268,7 @@ async def kick_slot(slot: int, request: Request) -> dict:
         # next connect's auto-enter wakes it at once, in the start room.
         accounts.set_left(who.session_id, True)
         _departed(toon)
+    logger.info("dreamer rested: %s by %s", toon.name, who.username)
     return _toon_to_dict(toon, who.session_id)
 
 
@@ -292,6 +300,9 @@ async def leave_session(request: Request) -> dict:
     released = toons.release_session_toon(sid)
     accounts.set_left(sid, True)
     if released is not None:
+        who = auth_mod.principal(request)
+        logger.info("left the dream: %s (%s)", released.name,
+                    who.username if who else "unknown account")
         _departed(released)
     return {"ok": True, "released": released.id if released else None}
 
@@ -310,6 +321,7 @@ async def delete_toon(slot: int, request: Request) -> dict:
     deleted = toons.delete_slot(slot)
     if deleted is None:
         raise HTTPException(status_code=404, detail="slot is empty")
+    logger.info("dreamer let go: %s by %s", deleted.name, who.username)
     return {"ok": True, "deleted": deleted.id}
 
 

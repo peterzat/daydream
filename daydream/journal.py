@@ -134,6 +134,7 @@ async def _write_entry_inner(toon_id: str) -> None:
         return
     entry = result.get("entry") if isinstance(result, dict) else None
     if not isinstance(entry, str):
+        logger.info("journal: no entry in the model's answer for %s (skipped)", toon_id)
         return
     entry = entry.strip()
     if not (MIN_ENTRY_CHARS <= len(entry) <= MAX_ENTRY_CHARS):
@@ -147,6 +148,7 @@ async def _write_entry_inner(toon_id: str) -> None:
     # Advance the idempotency marker only on SUCCESS, so a skipped entry's
     # events stay tellable on the next leave.
     objects.set_property(toon_id, "journal_last_seq", newest_seq)
+    logger.info("journal: wrote an entry for %s (%d chars)", toon_id, len(entry))
 
 
 # ---- internals ------------------------------------------------------------

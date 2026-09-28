@@ -10,6 +10,21 @@ bin/game edge status      # the flag, and what the public URL answers
 nvidia-smi                # is the card free, full, or held by something else?
 ```
 
+## Reading the log
+
+`bin/game prod logs` carries the service's own lines (daydream/logs.py, since
+2026-09-28): sign-ins and refusals, invitations opened and redeemed, dreamers
+made, entered, rested and let go, each WebSocket session
+(`ws: <user> dreaming as <dreamer> in <room>` through `closed after Ns`),
+every model call (`llm purpose=... wait_ms=... call_ms=...`), each painting
+with its time, each journal entry written or skipped, and any session that
+ended on an error, with its traceback. They name accounts and dreamers, never
+a password, an invitation link or what anyone typed (that stays in the
+world's private input log). `DAYDREAM_LOG_LEVEL=WARNING` in prod.env quiets
+everything but trouble. To see what a friend actually did (their input
+log, the events around them), `bin/game prod pull` brings a fresh backup into
+dev ([backups.md](backups.md)); never open the live file.
+
 ## Symptoms and causes
 
 | What friends see | Likely cause | Do |

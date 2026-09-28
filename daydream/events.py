@@ -128,8 +128,10 @@ def fetch_since(
     room_id: str | None = None,
     limit: int | None = None,
     recipient_for: str | None = None,
+    within_s: float | None = None,
 ) -> list[Event]:
-    """Events newer than `last_seq`, optionally scoped to one room.
+    """Events newer than `last_seq`, optionally scoped to one room and to
+    the last `within_s` seconds of wall time.
 
     `recipient_for` applies the private-event filter (migration 014): only
     broadcast rows (NULL recipient) and rows addressed to that toon are
@@ -141,6 +143,9 @@ def fetch_since(
     if room_id is not None:
         sql += " AND room_id = ?"
         params.append(room_id)
+    if within_s is not None:
+        sql += " AND created_at >= datetime('now', ?)"
+        params.append(f"-{int(within_s)} seconds")
     if recipient_for is not None:
         sql += (" AND (recipient_id IS NULL OR recipient_id = ?)"
                 " AND COALESCE(json_extract(payload_json, '$.except'), '') != ?")
