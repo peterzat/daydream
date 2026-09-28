@@ -476,6 +476,10 @@ def test_walking_up_and_down_tells_where_you_went_and_leaves_nothing_behind(tab,
     page.locator("#exit-bar button[data-direction=up]").click()
     expect(page.locator("#room-title")).to_have_text(UP["title"])
     expect(chat.locator(".evt-arrival")).to_contain_text("You climb up to ")
+    # Only what is here links: the room's title holds a resident's alias.
+    links = chat.locator(".evt-arrival .entity-link").all_inner_texts()
+    things = [t.strip() for t in page.locator("#things .obj").all_inner_texts()]
+    assert links and {x.lower() for x in links} <= {t.lower() for t in things}, (links, things)
     page.locator("#exit-bar button[data-direction=down]").click()
     expect(page.locator("#room-title")).to_have_text(START["title"])
     page.locator("#exit-bar button[data-direction=up]").click()

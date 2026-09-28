@@ -30,7 +30,7 @@ let stagedDobjId = null; // step-1 direct object of a two-object (give/use) verb
 let verbSpecs = {}; // verb name -> {needs_iobj, valid_iobj_kinds} from the snapshot's verb_bar
 let textTarget = null; // {verb, objectId}: a chosen verb waiting for your words on the input line
 let lastArrivalRoomId = null; // room of the last arrival line shown (suppresses re-show on same-room re-snapshots)
-let arrival = null; // {roomId, seq, text}: this room's arrival line, re-placed on same-room re-snapshots
+let arrival = null; // {roomId, seq, lead, seen}: this room's arrival line, re-placed on same-room re-snapshots
 let pendingMove = null; // your own move event's payload, told as the next room's arrival line
 let pendingEl = null; // transient "thinking..." line during a slow (LLM) action
 let pendingTimer = null; // its safety timeout
@@ -340,12 +340,11 @@ function renderSnapshot(snap) {
   const arrivalRoomId = snap.room ? snap.room.id : null;
   if (snap.room && arrivalRoomId !== lastArrivalRoomId) {
     const moved = pendingMove && pendingMove.to_room === arrivalRoomId ? pendingMove : null;
-    let text = moved && moved.you ? moved.you : "You are in " + inSentence(snap.room.title) + ".";
+    const lead = moved && moved.you ? moved.you : "You are in " + inSentence(snap.room.title) + ".";
     const groundItems = snap.items || [];
-    if (groundItems.length) {
-      text += " You see: " + groundItems.map((o) => o.name).join(", ") + ".";
-    }
-    arrival = { roomId: arrivalRoomId, seq: snap.last_seq, text };
+    const seen = groundItems.length
+      ? "You see: " + groundItems.map((o) => o.name).join(", ") + "." : "";
+    arrival = { roomId: arrivalRoomId, seq: snap.last_seq, lead, seen };
     followLog(placeArrival(chat));
   } else if (arrival && arrival.roomId === arrivalRoomId) {
     placeArrival(chat);
@@ -415,7 +414,10 @@ function placeArrival(chat) {
   // earlier) and ahead of anything since. Returns the line.
   const div = document.createElement("div");
   div.className = "evt evt-narrate evt-arrival";
-  div.innerHTML = linkifyEntities(arrival.text, entities);
+  // Only what is here links: a room's title can hold someone's alias ("the
+  // Clockmaker's Loft" is not the clockmaker).
+  div.innerHTML = escape(arrival.lead) +
+    (arrival.seen ? " " + linkifyEntities(arrival.seen, entities) : "");
   div.querySelectorAll(".entity-link").forEach((span) => {
     span.onclick = () => onObjectClick(span.dataset.objectId);
   });
@@ -527,6 +529,7 @@ function objectChip(o, label) {
   span.dataset.objectId = o.id;
   span.dataset.kind = o.kind;
   span.dataset.verbs = (o.verbs || []).join(",");
+  span.dataset.name = o.name || "";
   span.textContent = label;
   if (o.kind === "toon") span.prepend(toonFace(o.image_url));
   span.onclick = () => onObjectClick(o.id, o.verbs || [], o.kind);
@@ -666,10 +669,7 @@ function onObjectClick(objectId, objectVerbs, objectKind) {
     if (!stagedDobjId) {
       if (objectVerbs && !objectVerbs.includes(stagedVerb)) return;
       stagedDobjId = objectId;
-      const chip = document.querySelector(
-        `#scene .obj[data-object-id="${objectId}"]`
-      );
-      showStagedHint(stagedVerb, chip ? chip.textContent : "it");
+      showStagedHint(stagedVerb, nameForObject(objectId));
       applyVerbGating();
       return;
     }
@@ -751,6 +751,7 @@ function nameForObject(objectId) {
   // else the in-scope entity alias (an in-prose affordance click), else "it".
   // Never an id (no object ids in player-visible text).
   const chip = document.querySelector(`#scene .obj[data-object-id="${objectId}"]`);
+  if (chip && chip.dataset.name) return chip.dataset.name; // the name, not "Ada (glad)"
   if (chip && chip.textContent) return chip.textContent.trim();
   const ent = (entities || []).find((e) => e.object_id === objectId);
   return ent && ent.alias ? ent.alias : "it";
