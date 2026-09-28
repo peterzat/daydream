@@ -52,6 +52,25 @@ bin/game prod check
   its session file stays in the prod data dir.
 - Note the reset in the instance record (`instance/NOTES.md`).
 
+## A clean start ("reset to clean", "zero users")
+
+When the operator asks for a clean initial state, the world reset above is
+only half of it. Clean means no human players: the reset takes every
+dreamer, and each human player's account goes too
+(`bin/game prod account delete <user> --yes`, which prompts), along with
+any probe account left from testing (`agent-<name>`) and any open invite
+(`bin/game prod invite revoke`).
+
+**What the game itself runs on stays.** Infrastructure belongs to the game,
+so it is part of the clean state: `cli-operator` (the command line's own
+admin account, which `bin/game prod status` and `world swap` sign in as) and
+any other account the system uses rather than a person. The art keep, the
+backups, the release, the edge and the timers stay as well. If in doubt
+whether an account is a person or the system, ask before deleting it.
+
+Read `bin/game prod account list` first and name, in the report, what was
+deleted and what was kept.
+
 ## Undo
 
 Restore the backup taken first: `bin/game prod world restore-backup
