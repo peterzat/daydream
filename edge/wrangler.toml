@@ -18,7 +18,7 @@ routes = [
 ORIGIN = "https://daydream-origin.eidolon.com"
 PUBLIC_HOST = "www.eidolon.com"
 BASE = "/daydream/"
-OPERATOR = "Peter"
+OPERATOR = "the Night Warden"
 COOKIE_NAME = "dd_session_prod"
 
 # {state: "awake"|"asleep", note, since}, plus (criterion 16) keepsakes and

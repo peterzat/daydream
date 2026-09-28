@@ -17,7 +17,7 @@ function env(state = null) {
     ORIGIN: "https://daydream-origin.eidolon.com",
     PUBLIC_HOST: "www.eidolon.com",
     BASE: "/daydream/",
-    OPERATOR: "Peter",
+    OPERATOR: "the Night Warden",
     ACCESS_CLIENT_ID: "id.access",
     ACCESS_CLIENT_SECRET: "secret-value",
     STATE: { get: async (k) => (k === "state" && state ? JSON.stringify(state) : null) },
@@ -105,7 +105,7 @@ test("KV asleep: the storybook page with the note, escaped, and no origin call",
   const html = await r.text();
   assert.match(html, /The village is asleep/);
   assert.match(html, /back &lt;Sunday&gt;/);
-  assert.match(html, /Send Peter, the Night Warden, a note/);
+  assert.match(html, /Send the Night Warden a note/);
   assert.match(html, /href="\/daydream\/_edge\/asleep\.css"/);
   assert.equal(calls.length, 0);
   assert.match(r.headers.get("content-security-policy"), /script-src 'self'/);
@@ -124,7 +124,7 @@ test("KV asleep: the API gets 503 JSON and a WebSocket is refused", async () => 
   assert.equal(r.status, 503);
   const body = await r.json();
   assert.equal(body.asleep, true);
-  assert.equal(body.operator, "Peter");
+  assert.equal(body.operator, "the Night Warden");
   r = await handle(req("/daydream/ws", { headers: { upgrade: "websocket" } }), e);
   assert.equal(r.status, 503);
   assert.equal(calls.length, 0);

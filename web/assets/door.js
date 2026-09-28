@@ -67,7 +67,7 @@
       return;
     }
     const first = (r.body.for || "").split(/\s+/)[0] || "friend";
-    const who = r.body.operator ? `${r.body.operator}, the Night Warden,` : "the person who invited you";
+    const who = r.body.operator || "the person who invited you";
     if (r.body.kind === "reset") {
       greeting.textContent = `Welcome back, ${first}. Choose a new password.`;
       document.getElementById("invite-username-field").hidden = true;

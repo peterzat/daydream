@@ -223,7 +223,7 @@ async def invite_peek(request: Request):
         _redeem_failed(addr)
         return _deny(404, accounts.invite_refused())
     return {"for": inv["for_name"], "kind": inv["kind"],
-            "operator": config.operator_name(fallback="")}
+            "operator": config.operator_name()}
 
 
 @router.post("/api/invite/redeem")

@@ -23,7 +23,7 @@ async function envWith({ expires = "2099-01-01T00:00:00Z", portrait = true } = {
     "portrait:a-1": new Uint8Array([137, 80, 78, 71]).buffer,
   };
   return {
-    BASE: "/daydream/", PUBLIC_HOST: "www.eidolon.com", OPERATOR: "Peter",
+    BASE: "/daydream/", PUBLIC_HOST: "www.eidolon.com", OPERATOR: "the Night Warden",
     ORIGIN: "https://daydream-origin.eidolon.com",
     STATE: { get: async (k, opts) => kv[k] ?? null },
     ASSETS: { fetch: async () => new Response(TEMPLATE) },

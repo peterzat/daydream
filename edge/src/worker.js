@@ -214,8 +214,7 @@ async function asleep(request, env, state, rest, isWS) {
   // and `$'` in player text as substitution patterns.
   const fill = {
     "{{NOTE}}": escapeHtml(body.note),
-    "{{OPERATOR}}": escapeHtml(body.operator ? `${body.operator}, the Night Warden,`
-      : "the person who invited you"),
+    "{{OPERATOR}}": escapeHtml(body.operator || "the person who invited you"),
     "{{SINCE}}": escapeHtml(body.since || ""),
     "{{KEEPSAKES}}": keepsakesHtml(await keepsakesFor(request, env), env.BASE || "/daydream/"),
     "{{BASE}}": escapeHtml(env.BASE || "/daydream/"),

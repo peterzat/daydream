@@ -196,31 +196,19 @@ def words(monkeypatch):
 
 
 def test_invite_peek_and_redeem_sign_the_invitee_in(words, monkeypatch):
-    monkeypatch.setenv("DAYDREAM_OPERATOR_NAME", "Peter")
+    monkeypatch.setenv("DAYDREAM_OPERATOR_NAME", "the Night Warden")
     accounts.init()
     slug, _ = accounts.create_invite("Robin Ash")
     with TestClient(app) as client:
         peek = client.post("/api/invite/peek", json={"slug": slug})
-        assert peek.json() == {"for": "Robin Ash", "kind": "join", "operator": "Peter"}
+        assert peek.json() == {"for": "Robin Ash", "kind": "join", "operator": "the Night Warden"}
         r = client.post("/api/invite/redeem",
                         json={"slug": slug, "username": "robin", "password": PW})
         assert r.status_code == 200
         assert client.get("/api/me").json()["display_name"] == "Robin Ash"
         again = client.post("/api/invite/redeem",
                             json={"slug": slug, "username": "robin2", "password": PW})
-        assert again.status_code == 404 and "Peter" in again.json()["error"]
-
-
-def test_invite_peek_without_an_operator_name_leaves_the_fallback_to_the_door(
-        words, monkeypatch):
-    """The door titles a real name ("Peter, the Night Warden,"); the generic
-    fallback must not reach it as if it were a name."""
-    monkeypatch.delenv("DAYDREAM_OPERATOR_NAME", raising=False)
-    accounts.init()
-    slug, _ = accounts.create_invite("Robin Ash")
-    with TestClient(app) as client:
-        assert client.post("/api/invite/peek", json={"slug": slug}).json()["operator"] == ""
-    assert "the person who invited you" in accounts.invite_refused()
+        assert again.status_code == 404 and "the Night Warden" in again.json()["error"]
 
 
 def test_a_taken_username_or_short_password_keeps_the_invite(words):
@@ -296,14 +284,14 @@ def test_the_cli_identities_cannot_be_taken_through_an_invite(words):
 
 
 def test_a_global_pause_says_so_and_the_operator_can_reopen(words, monkeypatch):
-    monkeypatch.setenv("DAYDREAM_OPERATOR_NAME", "Peter")
+    monkeypatch.setenv("DAYDREAM_OPERATOR_NAME", "the Night Warden")
     accounts.init()
     for _ in range(accounts.REDEEM_GLOBAL_HOUR[0]):
         accounts.record_failure("redeem-hour", accounts.REDEEM_GLOBAL_HOUR)
     slug, _ = accounts.create_invite("Robin Ash")
     with TestClient(app) as client:
         r = client.post("/api/invite/peek", json={"slug": slug})
-        assert r.status_code == 429 and "ask Peter" in r.json()["error"]
+        assert r.status_code == 429 and "ask the Night Warden" in r.json()["error"]
         from daydream import accounts_cli
         assert accounts_cli.main(["invite", "unblock"]) == 0
         accounts.init()
