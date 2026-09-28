@@ -844,3 +844,20 @@ def test_style_css_has_plate_tools():
         r = client.get("/assets/style.css")
     assert ".plate-tools" in r.text
     assert ".repaint-input" in r.text
+
+
+def test_an_unplanned_outage_gets_a_grace_before_the_asleep_note():
+    """codereview NOTE 2026-09-28: a deploy's restart read as a planned sleep
+    (the Night Warden's note, and 30 s between retries). The Worker marks an
+    unreachable origin `unplanned`; the SPA keeps quick retries for a minute."""
+    js = (Path(__file__).resolve().parent.parent / "web" / "assets" / "main.js").read_text()
+    assert "unplanned: !!j.unplanned" in js
+    assert "UNPLANNED_GRACE" in js and "const brief = why && why.asleep && why.unplanned" in js
+
+
+def test_re_entering_from_the_dreamer_panel_clears_dreaming_elsewhere():
+    """codereview NOTE 2026-09-28: a tab told it was dreaming elsewhere that
+    re-entered from the panel stopped silently on its next drop."""
+    js = (Path(__file__).resolve().parent.parent / "web" / "assets" / "main.js").read_text()
+    body = js.split("function reconnectAfterSlotChange()", 1)[1].split("\n}\n", 1)[0]
+    assert "dreamingElsewhere = false" in body

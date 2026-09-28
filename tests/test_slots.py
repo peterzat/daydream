@@ -259,6 +259,22 @@ def test_moderating_an_ambiguous_name_refuses_and_an_id_picks_one():
         assert toons.get_toon_in_slot(3).id == first.id
 
 
+def test_a_toon_named_after_another_toons_id_is_ambiguous():
+    """security NOTE 2026-09-28: an exact id match used to win, so a toon
+    named after a friend's toon id diverted `delete-toon` to the friend."""
+    from daydream import admin as admin_cli
+
+    with TestClient(app) as a, TestClient(app) as b:
+        _login(a, "ivo-one")
+        _login(b, "copycat")
+        a.post("/api/slots/3/create", json=IVO)
+        friend = toons.get_toon_in_slot(3)
+        b.post("/api/slots/4/create", json={**IVO, "name": friend.id})
+        assert toons.get_toon_in_slot(4).name == friend.id
+        assert admin_cli.cmd_toon_moderate(friend.id, "delete") == 2
+        assert toons.get_toon_in_slot(3) is not None and toons.get_toon_in_slot(4) is not None
+
+
 # ---- unowned toons (seeded or from before accounts) -------------------------------------
 
 

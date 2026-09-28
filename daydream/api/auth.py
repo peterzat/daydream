@@ -44,15 +44,12 @@ def principal(conn) -> accounts.Principal | None:
 def token_from_cookie_header(raw: str | None) -> str | None:
     if not raw:
         return None
-    from http.cookies import CookieError, SimpleCookie
+    # Starlette's parser, not SimpleCookie: SimpleCookie drops every cookie
+    # after a malformed neighbor (`prefs={"a":1}`), reading a signed-in person
+    # as signed out (codereview NOTE 2026-09-28).
+    from starlette.requests import cookie_parser
 
-    jar = SimpleCookie()
-    try:
-        jar.load(raw)
-    except CookieError:
-        return None
-    morsel = jar.get(config.cookie_name())
-    return morsel.value if morsel is not None else None
+    return cookie_parser(raw).get(config.cookie_name()) or None
 
 
 def throttle_address(addr: str) -> str:
@@ -117,7 +114,9 @@ async def _body(request: Request) -> dict:
         return {}
     if not isinstance(data, dict):
         return {}
-    return {k: str(v)[:MAX_FIELD] for k, v in data.items() if isinstance(k, str)}
+    # A JSON null is a missing field, not the string "None".
+    return {k: ("" if v is None else str(v))[:MAX_FIELD] for k, v in data.items()
+            if isinstance(k, str)}
 
 
 def _signed_in(principal_row, request: Request, body: dict | None = None) -> JSONResponse:
@@ -158,7 +157,7 @@ async def login(request: Request):
         accounts.record_failure(user_key, accounts.LOGIN_PER_USERNAME)
     # argon2 is ~30-60 ms of CPU: off the event loop, so a burst of logins
     # never stalls everyone's game (SECURITY NOTE 2026-09-27).
-    row = await asyncio.to_thread(_authenticate_capped, username, password)
+    row = await asyncio.to_thread(_hashing, accounts.authenticate, username, password)
     if row is None:
         return _deny(401, LOGIN_REFUSED)
     accounts.forgive_one(addr_key)
@@ -166,9 +165,10 @@ async def login(request: Request):
     return _signed_in(row, request)
 
 
-def _authenticate_capped(username: str, password: str):
+def _hashing(fn, *args):
+    """Run an argon2-bound call under the shared cap (in a worker thread)."""
     with _HASH_SLOTS:
-        return accounts.authenticate(username, password)
+        return fn(*args)
 
 
 @router.post("/api/logout")
@@ -197,12 +197,16 @@ async def change_password(request: Request):
     key = "password-change:" + p.account_id
     if accounts.throttled(key, accounts.LOGIN_PER_USERNAME):
         return _deny(429, SLOW_DOWN)
+    # Every attempt counts, and the two argon2 operations run off the event
+    # loop under the login cap: a signed-in session changing its password in a
+    # loop must not stall everyone's game (codereview NOTE 2026-09-28).
+    accounts.record_failure(key, accounts.LOGIN_PER_USERNAME)
     try:
-        accounts.change_password(p.account_id, body.get("old", ""), body.get("new", ""),
-                                 keep_session_id=p.session_id)
+        new_hash = await asyncio.to_thread(_hashing, accounts.prepare_password_change,
+                                           p.account_id, body.get("old", ""), body.get("new", ""))
     except accounts.AccountError as e:
-        accounts.record_failure(key, accounts.LOGIN_PER_USERNAME)
         return _deny(400, str(e))
+    accounts.commit_password_change(p.account_id, new_hash, keep_session_id=p.session_id)
     return {"ok": True}
 
 

@@ -466,11 +466,10 @@ def _find_toons(key: str) -> list:
     from daydream import toons
 
     rows = list(toons._query("world_id = ? AND slot BETWEEN 1 AND 99", (toons.live_world_id(),)))
-    by_id = [t for t in rows if t.id == key]
-    if by_id:
-        return by_id
     name = key.strip().lower()
-    return [t for t in rows if t.name.lower() == name]
+    # Every toon the key could mean: an id match does NOT win outright, since a
+    # player can name a toon after another toon's id (security NOTE 2026-09-28).
+    return [t for t in rows if t.id == key or t.name.lower() == name]
 
 
 def cmd_restore_backup(backup_dir: Path) -> int:

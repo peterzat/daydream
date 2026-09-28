@@ -49,6 +49,10 @@ let reconnectDelay = 0;
 const RECONNECT_MIN = 1000;
 const RECONNECT_MAX = 20000;
 const ASLEEP_RETRY = 30000; // a sleeping village is checked gently
+// An UNPLANNED outage (the Worker's `unplanned`: a deploy restart, a tunnel
+// blip) reads as a brief drop for this long before the asleep note shows.
+const UNPLANNED_GRACE = 60000;
+let outageSince = 0;
 let dreamingElsewhere = false; // another window of this account has the toon
 let pingTimer = null;
 
@@ -59,7 +63,10 @@ async function whyClosed() {
     if (r.status === 401) return "signed-out";
     if (r.status === 503) {
       const j = await r.json();
-      if (j && j.asleep) return { asleep: true, note: j.note, since: j.since, operator: j.operator };
+      if (j && j.asleep) {
+        return { asleep: true, unplanned: !!j.unplanned, note: j.note, since: j.since,
+                 operator: j.operator };
+      }
     }
   } catch (_) {}
   return null;
@@ -110,6 +117,7 @@ function connect(isReconnect) {
   ws = new WebSocket(url);
   ws.onopen = () => {
     reconnectDelay = 0; // the dream wakes: reset the backoff
+    outageSince = 0;
     hideDreamOverlay();
     // A quiet keepalive: idle sockets survive the edge's proxy hops, and each
     // ping rides the server's per-frame session check.
@@ -137,8 +145,14 @@ function connect(isReconnect) {
     // One calm state, not a growing pile of disconnect lines. Keep retrying on
     // a gentle, capped backoff; onopen hides the overlay when the server is
     // back, so a tab left open across a restart recovers with no manual reload.
-    showDreamOverlay(why && why.asleep ? asleepText(why) : "the dream is sleeping...");
-    reconnectDelay = why && why.asleep ? ASLEEP_RETRY : Math.min(
+    // A planned sleep shows its note at once; an unplanned one (a deploy's
+    // restart) gets UNPLANNED_GRACE of quick retries first.
+    if (!outageSince) outageSince = Date.now();
+    const brief = why && why.asleep && why.unplanned
+      && Date.now() - outageSince < UNPLANNED_GRACE;
+    const sleeping = why && why.asleep && !brief;
+    showDreamOverlay(sleeping ? asleepText(why) : "the dream is sleeping...");
+    reconnectDelay = sleeping ? ASLEEP_RETRY : Math.min(
       reconnectDelay ? reconnectDelay * 2 : RECONNECT_MIN,
       RECONNECT_MAX
     );
@@ -1598,6 +1612,7 @@ function reconnectAfterSlotChange() {
   // (A transient network drop still auto-resumes via onclose -> connect(true).)
   document.getElementById("slots-panel").classList.add("hidden");
   awaitingPick = false;
+  dreamingElsewhere = false; // re-entering here takes the toon back
   journalBeatShown = false; // entering as a toon: its beat may show once
   if (ws) {
     const old = ws;

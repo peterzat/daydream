@@ -299,24 +299,39 @@ def change_password(account_id: str, old: str, new: str, *,
                     keep_session_id: str | None = None) -> None:
     """A signed-in person changing their own password. Every other session of
     theirs ends; the one making the change can be kept."""
+    commit_password_change(account_id, prepare_password_change(account_id, old, new),
+                           keep_session_id=keep_session_id)
+
+
+def prepare_password_change(account_id: str, old: str, new: str) -> str:
+    """The argon2 half of a change (CPU, no writes), safe in a worker thread:
+    check the current password and the new one, and return the new hash."""
     row = _require_account(account_id)
     if not _verify_password(row["password_hash"], old or ""):
         raise AccountError("that is not your current password")
     problem = password_problem(new)
     if problem:
         raise AccountError(problem)
+    return _hash_password(new)
+
+
+def commit_password_change(account_id: str, new_hash: str, *,
+                           keep_session_id: str | None = None) -> None:
     with _tx() as conn:
-        conn.execute("UPDATE accounts SET password_hash = ? WHERE id = ?",
-                     (_hash_password(new), row["id"]))
+        conn.execute("UPDATE accounts SET password_hash = ? WHERE id = ?", (new_hash, account_id))
         conn.execute("DELETE FROM sessions WHERE account_id = ? AND id IS NOT ?",
-                     (row["id"], keep_session_id))
+                     (account_id, keep_session_id))
 
 
 def authenticate(username: str, password: str) -> sqlite3.Row | None:
     """The account for a correct username + password, else None. A disabled
     account never authenticates. Constant-shape: an unknown username still
     pays one argon2 verification."""
-    row = get_account(normalize_username(username)) if username else None
+    # By username only: an account id is not a second name to guess against
+    # (codereview NOTE 2026-09-28).
+    row = (get_conn().execute("SELECT * FROM accounts WHERE username = ?",
+                              (normalize_username(username),)).fetchone()
+           if username else None)
     if row is None:
         _burn_a_verification(password or "")
         return None
@@ -428,10 +443,14 @@ def live_passes() -> list[sqlite3.Row]:
     """Unexpired sessions of enabled accounts: (token_hash, account_id,
     expires_at). The keepsakes sync publishes these hashes so the edge can
     recognize a friend while the box is asleep (criterion 16)."""
+    # The same 180-day absolute cap resolve() enforces: the edge must not keep
+    # honoring a session the server already refuses (codereview NOTE 2026-09-28).
+    now = _now()
     return get_conn().execute(
         "SELECT s.token_hash, s.account_id, s.expires_at FROM sessions s JOIN accounts a"
-        " ON a.id = s.account_id WHERE a.disabled_at IS NULL AND s.expires_at > ?",
-        (_iso(_now()),)).fetchall()
+        " ON a.id = s.account_id WHERE a.disabled_at IS NULL AND s.expires_at > ?"
+        " AND s.created_at > ?",
+        (_iso(now), _iso(now - timedelta(days=SESSION_MAX_DAYS)))).fetchall()
 
 
 # ---- invites --------------------------------------------------------------

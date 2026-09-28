@@ -198,6 +198,56 @@ def test_a_right_password_does_not_use_up_the_address_budget():
             assert client.post("/api/login", json={"username": "wren", "password": PW}).status_code == 200
 
 
+def test_a_null_field_is_missing_not_the_string_none():
+    """What the broken door sent: nulls read as "None" and reached the
+    username throttle as a real name."""
+    _account()
+    with TestClient(app) as client:
+        r = client.post("/api/login", json={"username": None, "password": None})
+    assert r.status_code == 401
+    accounts.init()
+    assert not accounts.throttled("login-user:none", (1, 900))
+
+
+def test_a_malformed_neighbor_cookie_does_not_sign_you_out():
+    """codereview NOTE 2026-09-28: SimpleCookie dropped every cookie after a
+    malformed one, so a stray `prefs={...}` read a signed-in person as out."""
+    from daydream.api.auth import token_from_cookie_header
+
+    name = config.cookie_name()
+    assert token_from_cookie_header(f'prefs={{"a":1}}; {name}=TOK') == "TOK"
+    assert token_from_cookie_header(f"theme=dark mode; {name}=TOK") == "TOK"
+    assert token_from_cookie_header("unrelated=1") is None
+
+
+def test_every_password_change_counts_and_runs_off_the_loop(monkeypatch):
+    """codereview NOTE 2026-09-28: successful changes were never counted, and
+    both argon2 operations ran on the event loop."""
+    import asyncio
+
+    _account()
+    on_loop = []
+    real = accounts.prepare_password_change
+
+    def spy(*a):
+        # In a worker thread no event loop runs; on the loop one would.
+        on_loop.append(asyncio._get_running_loop() is not None)
+        return real(*a)
+
+    monkeypatch.setattr(accounts, "prepare_password_change", spy)
+    with TestClient(app) as client:
+        assert client.post("/api/login", json={"username": "wren", "password": PW}).status_code == 200
+        pw = PW
+        for i in range(accounts.LOGIN_PER_USERNAME[0]):
+            new = f"another good password {i}"
+            r = client.post("/api/account/password", json={"old": pw, "new": new})
+            assert r.status_code == 200, r.text
+            pw = new
+        r = client.post("/api/account/password", json={"old": pw, "new": "yet another password"})
+    assert r.status_code == 429
+    assert on_loop and not any(on_loop)
+
+
 def test_repeated_failures_from_one_address_are_throttled():
     with TestClient(app) as client:
         for i in range(accounts.LOGIN_PER_ADDRESS[0]):

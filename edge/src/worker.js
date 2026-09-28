@@ -364,7 +364,7 @@ function json(obj, status, extra = {}) {
 }
 
 export function escapeHtml(s) {
-  return String(s || "")
+  return String(s ?? "")
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;")

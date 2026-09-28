@@ -174,6 +174,27 @@ def test_live_passes_skip_disabled_and_expired(monkeypatch):
     assert accounts.live_passes() == []
 
 
+def test_live_passes_honor_the_absolute_session_cap(monkeypatch):
+    """codereview NOTE 2026-09-28: a session kept alive by use past 180 days is
+    refused by resolve(); the edge's pass list must drop it too."""
+    a = accounts.create_account("wren", PW)
+    token, _ = accounts.create_session(a["id"])
+    # Keep it in use: its sliding expiry follows, its created_at does not.
+    accounts.get_conn().execute(
+        "UPDATE sessions SET expires_at = ?",
+        (accounts._iso(accounts._now() + timedelta(days=accounts.SESSION_MAX_DAYS + 20)),))
+    _shift(monkeypatch, days=accounts.SESSION_MAX_DAYS + 1)
+    assert accounts.resolve(token) is None
+    assert accounts.live_passes() == []
+
+
+def test_login_takes_a_username_not_an_account_id():
+    """codereview NOTE 2026-09-28: an account id was a second name to guess."""
+    a = accounts.create_account("wren", PW)
+    assert accounts.authenticate("wren", PW)["id"] == a["id"]
+    assert accounts.authenticate(a["id"], PW) is None
+
+
 def test_mint_session_creates_the_account_once():
     t1, p1 = accounts.mint_session("agent-one")
     t2, p2 = accounts.mint_session("agent-one")

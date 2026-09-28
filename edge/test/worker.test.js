@@ -209,3 +209,9 @@ test("player text with $-patterns renders literally on the asleep page", async (
   assert.match(html, /back \$&amp; \$` \$&#39; soon/);
   assert.doesNotMatch(html, /\{\{NOTE\}\}/);
 });
+
+test("escapeHtml keeps a zero (the book's \"0 of 150 found\")", () => {
+  assert.equal(escapeHtml(0), "0");
+  assert.equal(escapeHtml(null), "");
+  assert.equal(escapeHtml(undefined), "");
+});
