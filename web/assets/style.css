@@ -936,11 +936,11 @@ body.awake #chat { display: none; }
 /* The top edge fades to nothing over the space the view rests above a
  * paragraph (main.js restAbove), so the line you read first is never greyed
  * and a half-cut line above it never shows its glyphs (playtest 2026-09-28b). */
-.more-above { -webkit-mask-image: linear-gradient(to bottom, transparent, #000 1.1em);
-  mask-image: linear-gradient(to bottom, transparent, #000 1.1em); }
+.more-above { -webkit-mask-image: linear-gradient(to bottom, transparent .55em, #000 1.1em);
+  mask-image: linear-gradient(to bottom, transparent .55em, #000 1.1em); }
 .more-above.more-below {
-  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 1.1em, #000 calc(100% - 2.4em), transparent);
-  mask-image: linear-gradient(to bottom, transparent, #000 1.1em, #000 calc(100% - 2.4em), transparent); }
+  -webkit-mask-image: linear-gradient(to bottom, transparent .55em, #000 1.1em, #000 calc(100% - 2.4em), transparent);
+  mask-image: linear-gradient(to bottom, transparent .55em, #000 1.1em, #000 calc(100% - 2.4em), transparent); }
 
 /* ---- the scroll rail (playtest 2026-09-28b: scrolling was not discoverable) ----
  * The browser's own bar is hidden on the page's scrolling columns (it hid
