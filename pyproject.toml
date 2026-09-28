@@ -31,6 +31,10 @@ dev = [
     # pexpect: tools/zork_oracle.py drives dfrotz over a PTY for the
     # differential oracle (tier_long, skip-if-absent).
     "pexpect>=4.9",
+    # playwright: tests/test_browser_flow.py drives the real front door in
+    # headless Chromium (skips where the browser is absent, e.g. CI). One-time:
+    # `.venv/bin/python -m playwright install chromium-headless-shell`.
+    "playwright>=1.63",
 ]
 # NPC memory retrieval. Pulled in via `bin/memory-bootstrap`, NOT via
 # `pip install -e '.[dev]'`, so the bootstrap's CPU-only torch wheel
