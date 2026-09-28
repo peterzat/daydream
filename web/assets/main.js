@@ -486,6 +486,8 @@ function renderFolio(time) {
 
 const TOPIC_SHOW = 6;
 const topicsOpen = new Set();
+const topicsKnown = new Map(); // npc id -> the topic labels last shown for them
+const topicsNewUntil = new Map(); // "npc|label" -> until when a just-opened topic glows
 
 function renderTopics(others) {
   // What you could ask each person here about: one row per person with
@@ -505,10 +507,23 @@ function renderTopics(others) {
     // topics read as a wall of chips); "more" opens the rest for this visit.
     const open = topicsOpen.has(t.id) || t.topics.length <= TOPIC_SHOW + 1;
     const shown = open ? t.topics : t.topics.slice(0, TOPIC_SHOW);
+    // Asked topics read as asked, and one that just opened glows a while
+    // (playtest 2026-09-28b: a long list gave no sign of either).
+    const asked = new Set(t.asked_topics || []);
+    const known = topicsKnown.get(t.id);
+    const now = Date.now();
+    if (known) {
+      for (const label of t.topics) {
+        if (!known.has(label)) topicsNewUntil.set(t.id + "|" + label, now + 20000);
+      }
+    }
+    topicsKnown.set(t.id, new Set(t.topics));
     for (const label of shown) {
       const chip = document.createElement("button");
       chip.type = "button";
-      chip.className = "topic-chip";
+      chip.className = "topic-chip" + (asked.has(label) ? " asked" : "") +
+        ((topicsNewUntil.get(t.id + "|" + label) || 0) > now ? " topic-new" : "");
+      if (asked.has(label)) chip.title = "you've asked about this";
       chip.textContent = label;
       chip.onclick = () => {
         sendCommand("ask", t.id, label);

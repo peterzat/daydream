@@ -837,6 +837,11 @@ footer .logout:hover { text-decoration: underline; }
   transition: background .15s, border-color .15s;
 }
 .topic-chip:hover { background: rgba(200,160,110,.16); border-color: rgba(169,123,62,.45); color: var(--ink); }
+/* Already asked: quieter, still there to ask again. Just opened: a warm glow. */
+.topic-chip.asked { background: transparent; border-style: dashed; color: var(--sage); }
+.topic-chip.topic-new { border-color: var(--amber); background: rgba(200,160,110,.16);
+  animation: topic-new 1.4s ease-in-out 3; }
+@keyframes topic-new { 50% { box-shadow: 0 0 0 3px rgba(200,160,110,.35); } }
 .topic-chip.topic-more { font-style: normal; font-family: var(--sans); font-size: .72rem;
   letter-spacing: .08em; text-transform: uppercase; color: var(--sage); background: transparent; }
 

@@ -268,6 +268,8 @@ async def test_what_you_ask_and_say_is_told_back_to_you_alone(world):
     said = [e for e in events.fetch_since(seq) if e.kind == "say"]
     assert [(e.payload["to"], e.recipient_id) for e in said] == [("Hob", ada)]
     assert world.await_count == 0
+    # What was asked is remembered per player, for the page to mark.
+    assert story.asked_topics(WORLD, "t-hob", ada) == ["moth", "lamps"]
 
 
 async def test_stale_or_unready_beats_change_nothing():

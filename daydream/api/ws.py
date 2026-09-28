@@ -421,15 +421,20 @@ def _toon_card(t: "toons.Toon", viewer_id: str | None = None) -> dict:
     # first, then authored topics): the clickable ask-about chips, the
     # deterministic producer for every talk beat (SPEC 2026-09-26 crit. 6).
     topics: list[str] = []
+    asked: list[str] = []
     if viewer_id and obj is not None and obj.id != viewer_id \
             and not obj.is_human_controlled:
         topics = [tp["label"] for tp in story.available_topics(obj, viewer_id)]
+        heard = set(story.asked_topics(obj.world_id, obj.id, viewer_id))
+        asked = [label for label in topics if story.normalize_topic(label) in heard]
     return {
         "id": t.id,
         "name": t.name,
         "mood": t.mood,
         "kind": "toon",
         "topics": topics,
+        # The ones this viewer has already asked about, shown as asked.
+        "asked_topics": asked,
         # Another player whose page is closed stands here dozing: they will
         # not hear you (playtest 2026-09-28b: a player held by a long-gone
         # session read as present, and a hello met silence).

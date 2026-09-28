@@ -574,12 +574,29 @@ def match_in_talk(npc: objects.Object, actor_id: str, text: str) -> dict | None:
     return best
 
 
+def asked_topics(world_id: str, npc_id: str, toon_id: str) -> list[str]:
+    """The topic labels this player has asked this NPC about (normalized), so
+    the page can show them as asked (playtest 2026-09-28b: a long list gave
+    no sign of what you had already heard)."""
+    got = pget(world_id, toon_id, f"asked:{npc_id}", [])
+    return [x for x in got if isinstance(x, str)] if isinstance(got, list) else []
+
+
+def mark_asked(world_id: str, npc_id: str, toon_id: str, label: str) -> None:
+    got = asked_topics(world_id, npc_id, toon_id)
+    key = normalize_topic(label)
+    if key and key not in got:
+        pset(world_id, toon_id, f"asked:{npc_id}", (got + [key])[-200:])
+
+
 def ask(actor: objects.Object, npc: objects.Object, topic: dict, room_id: str) -> None:
     """Answer one matched topic. A beat topic advances the beat (its
     authored line is the NPC's answer); a plain topic tells its authored
     answer (varied, never verbatim-repeated) and runs its effects."""
     world_id = npc.world_id
     note_conversation(world_id, npc.id, actor.id)
+    if actor.is_player:
+        mark_asked(world_id, npc.id, actor.id, topic["label"])
     if topic["kind"] == "beat":
         advance_beat(world_id, topic["arc"], topic["beat"], actor.id, room_id)
         return
