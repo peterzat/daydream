@@ -1391,6 +1391,10 @@ async def _handle_ask(actor, room_id, dobj, iobj, args, spec) -> None:
     if topic is None:
         return await _handle_talk(actor, room_id, dobj, f"About {topic_text}?",
                                   VERBS["talk"])
+    # What you asked, where you can read it back (playtest 2026-09-28b).
+    events.append("toon", actor.id, "echo",
+                  {"text": f"You ask {dobj.name} about {topic['label']}."},
+                  room_id=room_id, recipient_id=actor.id)
     story.ask(actor, dobj, topic, room_id)
 
 
@@ -1459,6 +1463,13 @@ async def _handle_talk(actor, room_id, dobj, args, spec) -> None:
             _narrate(room_id, f"{dobj.name} is dozing, far off in a dream of their own, "
                      "and doesn't stir.", recipient_id=actor.id)
         return None
+    if (args or "").strip():
+        # What you said, where you can read it back (playtest 2026-09-28b:
+        # your words to a resident were never shown, so an odd reply had
+        # nothing to answer). Yours alone, as the reply is.
+        events.append("toon", actor.id, "say",
+                      {"text": args.strip(), "name": actor.name, "to": dobj.name},
+                      room_id=room_id, recipient_id=actor.id)
     if isinstance(dobj.properties.get("voice"), dict):
         # A voice-sheet NPC (SPEC 2026-09-26 criteria 6, 10): a line naming
         # one of its topics or open beats gets the authored answer (select,

@@ -851,6 +851,9 @@ function renderEvent(e) {
     div.innerHTML = `<span class="speaker">${escape(who)}${to}:</span> &ldquo;${escape(
       e.payload.text || ""
     )}&rdquo;`;
+  } else if (e.kind === "echo") {
+    // What you asked, told back quietly (playtest 2026-09-28b).
+    div.textContent = (e.payload && e.payload.text) || "";
   } else if (e.kind === "narrate") {
     const text = e.payload.text || "";
     // The line just shown repeating verbatim (an affordance clicked twice, a

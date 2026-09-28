@@ -203,6 +203,8 @@ body::before {
 .evt { margin: 0 0 .55em; }
 .evt-narrate { color: var(--ink); }
 .evt-say .speaker { color: var(--speaker); font-weight: bold; }
+/* Your own question, told back quietly before its answer. */
+.evt-echo { color: var(--sage); font-style: italic; font-size: .92em; margin-bottom: .3em; }
 .evt-system { color: var(--amber); font-style: italic; font-size: 0.88em; }
 .evt-pending { color: var(--sage); font-style: italic; opacity: .85; }
 /* Someone else's coming or going, told live (never replayed on arrival). */

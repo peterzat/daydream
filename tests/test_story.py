@@ -251,6 +251,25 @@ async def test_ask_lists_and_advances_beats_deterministically():
     assert "the moth" not in " ".join(await say(ada, "ask hob"))
 
 
+async def test_what_you_ask_and_say_is_told_back_to_you_alone(world):
+    """Playtest 2026-09-28b: your own words to a resident were never shown, so
+    an odd reply had nothing to answer. An ask is told back ("You ask Hob
+    about the moth."), and talk is your addressed speech, both yours alone."""
+    ada = player(1, "Ada", "r-green")
+    await _moth_open(ada)
+    objects.move(ada, "r-lane")
+    seq = events.max_seq()
+    await say(ada, "ask hob about the moth")
+    mine = [e for e in events.fetch_since(seq) if e.kind in ("echo", "say")]
+    assert [(e.kind, e.payload["text"], e.recipient_id) for e in mine] == [
+        ("echo", "You ask Hob about the moth.", ada)]
+    seq = events.max_seq()
+    await say(ada, "talk to hob: tell me about the lamps")  # names a topic: authored, no LLM
+    said = [e for e in events.fetch_since(seq) if e.kind == "say"]
+    assert [(e.payload["to"], e.recipient_id) for e in said] == [("Hob", ada)]
+    assert world.await_count == 0
+
+
 async def test_stale_or_unready_beats_change_nothing():
     ada = player(1, "Ada", "r-green")
     await _moth_open(ada)
