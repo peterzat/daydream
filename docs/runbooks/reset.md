@@ -15,8 +15,8 @@ seconds of downtime, and two things to know (below) that are now steps.
 |---|---|
 | Every dreamer (toon), with its journal, book and satchel | Accounts, sessions and invites (`accounts-prod.db`) |
 | Arcs, the village day, relationships, grown rooms, dream history | Backups (`/srv/daydream/data/backups/`) |
-| The raw input log and every event | Each friend's keepsakes on the edge, until the next keepsakes sync |
-| **Prod's art** (the reset wipes the world's image cache too) | The release, the engines, the edge flag |
+| The raw input log and every event | Every painting and its provenance (the art keep; docs/DATA-LIFECYCLE.md) |
+| The image cache (a working copy) | Each friend's keepsakes on the edge, until the next keepsakes sync |
 
 A friend who signs in afterwards finds the awake page and "make your
 dreamer": their account survives, their dreamer does not.
@@ -27,21 +27,22 @@ dreamer": their account survives, their dreamer does not.
 bin/game prod status        # who is playing? a reset ends every dreamer, mid-sentence
 bin/game prod backup        # the reset keeps no copy of the old village
 bin/game prod world reset --yes
-bin/game prod prebake --from-cache ~/data/daydream/images/cache
 bin/game prod check
 ```
 
 - `backup` is the undo point, so take it right before the reset. The reset
   prompts for approval, and on 2026-09-28 that prompt waited eight hours:
   if it waits, look at `prod status` again and take a fresh backup.
-- `world reset --yes` stops the service, deletes the world database and its
+- `world reset --yes` stops the service, keeps every painting in the art
+  keep (and resets nothing if it cannot), deletes the world database and its
   image cache, loads the current release's `worlds/lost-hours.json` (no
-  model call), and starts the service. It prompts even under the standing
-  grant (it replaces the world). About 4 seconds.
-- `prebake --from-cache` puts the graded art back: the village's own rooms
-  and residents (32 targets on 2026-09-28), copied, not painted. About 2
-  seconds, with its own brief stop. Skip it and prod paints each room and
-  face lazily on first entry instead, ungraded.
+  model call), puts the new world's art back from the keep (`prebake
+  --from-keep`), and starts the service. It prompts even under the standing
+  grant (it replaces the world). Seconds.
+- The first practice (2026-09-28, before the keep) wiped prod's art with the
+  world, and `bin/game prod prebake --from-cache ~/data/daydream/images/cache`
+  had to copy the graded dev art back (32 targets). That is still the way to
+  bring in art graded in dev that prod's keep has never held.
 - `check` should pass everything it passed before the reset.
 
 ## After
@@ -55,5 +56,6 @@ bin/game prod check
 
 Restore the backup taken first: `bin/game prod world restore-backup
 /srv/daydream/data/backups/<ts>` ([backups.md](backups.md)). That also rolls
-the accounts database back to that moment. Art for the old village's own
-dreamers is gone unless a dev cache holds it.
+the accounts database back to that moment. The old village's paintings are
+in the art keep; `bin/game prod prebake --from-keep` (service stopped by
+prodctl) puts them back into the restored world's cache.

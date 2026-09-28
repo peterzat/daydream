@@ -34,7 +34,16 @@ bin/game prod account sessions <username> [--revoke]    # end every session of t
 bin/game prod account disable <username>                # the moderation stop
 bin/game prod account enable <username>
 bin/game prod account role <username> admin             # prompts; admin = repaint, status, several toons
+bin/game prod account delete <username>                 # lists what would go; --yes deletes for good
 ```
+
+`account delete --yes` is a person's end (docs/DATA-LIFECYCLE.md): the
+account, its sessions, invites and throttle counters, its dreamers in the
+live world (their things left in the room) and everything they typed. The
+shared event history stays, and their portraits stay in the art keep with
+their provenance. Backups older than the delete still hold them until they
+age out. Run it only when the operator asks (a test account, a friend who
+wants out); disable is the moderation stop.
 
 ## Moderation
 
