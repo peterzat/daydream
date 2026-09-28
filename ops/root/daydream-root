@@ -1,0 +1,1071 @@
+#!/usr/bin/python3 -I
+"""daydream-root: the root actions of daydream prod, as a fixed vocabulary.
+
+Installed by ops/install-prod.sh at /usr/local/sbin/daydream-root (root:root
+0755) and reached through one sudoers line:
+
+    <operator> ALL=(root) NOPASSWD: /usr/local/sbin/daydream-root
+
+The design is docs/ADMIN-ROOT.md; the playbook is docs/runbooks/root.md. The
+agent reaches it as `bin/game prod root <verb>`.
+
+The rules this program keeps:
+
+- It never runs code from the release or the repo as root. It only reads the
+  release's unit files, one path component at a time and never through a
+  symlink. The one thing it runs from the release, the boot guard, runs as
+  the service user (runuser -u daydream).
+- Its fixed facts (the operator, the repo) come from /etc/daydream/root.conf,
+  root-owned and written by the installer, never from its arguments or its
+  caller's environment. Every command it runs gets a clean environment.
+- What it installs is validated first (validate_unit): known units only, a
+  per-unit allowlist of keys, each service's identity pinned, and the prod
+  sandbox no weaker than the committed unit.
+- Every action is logged (journalctl -t daydream-root).
+
+Standard library only; Python 3.10 (the box's /usr/bin/python3).
+"""
+
+from __future__ import annotations
+
+import difflib
+import grp
+import hashlib
+import os
+import pwd
+import re
+import stat
+import subprocess
+import sys
+
+VERSION = "1"
+
+# ---- fixed places ------------------------------------------------------------------
+# Module constants, never arguments or environment (the tests point them at a
+# scratch tree by patching the module).
+
+SRV = "/srv/daydream"
+SYSTEMD_DIR = "/etc/systemd/system"
+ROOT_CONF = "/etc/daydream/root.conf"
+SUDOERS = "/etc/sudoers.d/daydream"
+HELPER_PATH = "/usr/local/sbin/daydream-root"
+
+SERVICE_USER = "daydream"
+SYSTEMCTL = "/usr/bin/systemctl"
+LOGGER = "/usr/bin/logger"
+RUNUSER = "/usr/sbin/runuser"
+ENV_BIN = "/usr/bin/env"
+CLEAN_ENV = {"PATH": "/usr/sbin:/usr/bin:/sbin:/bin", "LANG": "C.UTF-8"}
+
+SERVICES = ("daydream-prod.service", "cloudflared-daydream.service", "daydream-backup.service",
+            "daydream-keepsakes.service", "daydream-offsite.service")
+TIMERS = ("daydream-backup.timer", "daydream-keepsakes.timer", "daydream-offsite.timer")
+UNITS = SERVICES + TIMERS
+OPERATOR_UNITS = {"daydream-keepsakes.service": "keepsakes", "daydream-offsite.service": "offsite"}
+
+PROD_ENV = "/srv/daydream/etc/prod.env"
+RELEASE_ENV = "/srv/daydream/current/.release.env"
+TUNNEL_ENV = "/etc/cloudflared/daydream.env"
+CURRENT = "/srv/daydream/current"
+DATA = "/srv/daydream/data"
+
+MAX_FILE = 64 * 1024
+PRIVILEGED_GROUPS = ("root", "sudo", "adm", "wheel", "docker", "lxd", "disk", "shadow")
+
+
+class HelperError(RuntimeError):
+    """A refusal or failure: exit 1."""
+
+
+class Usage(RuntimeError):
+    """Anything outside the vocabulary: exit 2."""
+
+
+def say(msg: str = "") -> None:
+    print(msg, flush=True)
+
+
+# ---- running commands ----------------------------------------------------------------
+
+
+def _run(cmd: list[str], *, capture: bool = False, timeout: float = 180) -> subprocess.CompletedProcess:
+    """The one place this program runs anything. Only the fixed system tools,
+    always with a clean environment from `/`. runuser only ever drops to the
+    service user and runs env there; systemctl and logger never receive a
+    path, so nothing from the release or the repo reaches a root process."""
+    binary = cmd[0]
+    if binary not in (SYSTEMCTL, LOGGER, RUNUSER):
+        raise HelperError(f"refusing to run {binary}: not one of the helper's system tools")
+    if binary == RUNUSER:
+        if cmd[1:5] != ["-u", SERVICE_USER, "--", ENV_BIN]:
+            raise HelperError("runuser only ever drops to the service user")
+    elif any(a.startswith("/") for a in cmd[1:]):
+        raise HelperError(f"refusing to pass a path to {binary}")
+    return subprocess.run(cmd, env=dict(CLEAN_ENV), cwd="/", stdin=subprocess.DEVNULL, text=True,
+                          capture_output=capture, timeout=timeout, check=False)
+
+
+def _log(message: str) -> None:
+    r = _run([LOGGER, "-t", "daydream-root", "--", message])
+    if r.returncode != 0:
+        print(f"daydream-root: warning: could not log: {message}", file=sys.stderr)
+
+
+# ---- files, without following symlinks ---------------------------------------------------
+
+_DIR_FLAGS = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC
+
+
+def _open_dir(path: str) -> int:
+    """A descriptor for the directory at absolute `path`, reached one
+    component at a time from `/` without following a symlink anywhere."""
+    if not path.startswith("/"):
+        raise HelperError(f"not an absolute path: {path}")
+    fd = os.open("/", _DIR_FLAGS)
+    try:
+        for part in path.split("/"):
+            if part in ("", "."):
+                continue
+            if part == "..":
+                raise HelperError(f"refusing a path with '..': {path}")
+            nfd = os.open(part, _DIR_FLAGS, dir_fd=fd)
+            os.close(fd)
+            fd = nfd
+    except OSError as e:
+        os.close(fd)
+        raise HelperError(f"{path}: {e.strerror} (missing, or a symlink where none belongs)") from None
+    except BaseException:
+        os.close(fd)
+        raise
+    return fd
+
+
+def _read_at(dir_fd: int, name: str, where: str, *, missing_ok: bool = False):
+    """(text, stat) of a regular file in `dir_fd`, opened without following a
+    symlink; (None, None) for a missing file when `missing_ok`."""
+    try:
+        fd = os.open(name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK | os.O_CLOEXEC, dir_fd=dir_fd)
+    except FileNotFoundError:
+        if missing_ok:
+            return None, None
+        raise HelperError(f"{where}: missing") from None
+    except OSError as e:
+        raise HelperError(f"{where}: {e.strerror} (a symlink where none belongs?)") from None
+    try:
+        st = os.fstat(fd)
+        if not stat.S_ISREG(st.st_mode):
+            raise HelperError(f"{where}: not a regular file")
+        if st.st_nlink != 1:
+            raise HelperError(f"{where}: has {st.st_nlink} hard links")
+        if st.st_size > MAX_FILE:
+            raise HelperError(f"{where}: larger than {MAX_FILE} bytes")
+        chunks, total = [], 0
+        while True:
+            chunk = os.read(fd, 65536)
+            if not chunk:
+                break
+            total += len(chunk)
+            if total > MAX_FILE:
+                raise HelperError(f"{where}: larger than {MAX_FILE} bytes")
+            chunks.append(chunk)
+    finally:
+        os.close(fd)
+    try:
+        return b"".join(chunks).decode("utf-8"), st
+    except UnicodeDecodeError:
+        raise HelperError(f"{where}: not UTF-8 text") from None
+
+
+def _owned_safely(st: os.stat_result, where: str) -> None:
+    """Owned by whoever runs this (root, in prod) and writable by nobody else."""
+    if st.st_uid != os.geteuid():
+        raise HelperError(f"{where}: not owned by {'root' if os.geteuid() == 0 else 'this user'}")
+    if st.st_mode & 0o022:
+        raise HelperError(f"{where}: writable by its group or others")
+
+
+def _chown(fd: int, uid: int, gid: int) -> None:
+    os.fchown(fd, uid, gid)
+
+
+def _service_gid() -> int:
+    return grp.getgrnam(SERVICE_USER).gr_gid
+
+
+def _write_atomic(dir_path: str, name: str, text: str, mode: int, uid: int, gid: int) -> None:
+    """Write `dir_path/name` by a temporary file and a rename inside a
+    directory reached without symlinks and owned by root alone."""
+    dfd = _open_dir(dir_path)
+    try:
+        _owned_safely(os.fstat(dfd), dir_path)
+        tmp = f".{name}.daydream-root-{os.getpid()}"
+        fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW | os.O_CLOEXEC,
+                     0o600, dir_fd=dfd)
+        try:
+            try:
+                _chown(fd, uid, gid)
+                os.fchmod(fd, mode)
+                view = memoryview(text.encode("utf-8"))
+                while view:
+                    view = view[os.write(fd, view):]
+                os.fsync(fd)
+            finally:
+                os.close(fd)
+            os.rename(tmp, name, src_dir_fd=dfd, dst_dir_fd=dfd)
+        except BaseException:
+            try:
+                os.unlink(tmp, dir_fd=dfd)
+            except OSError:
+                pass
+            raise
+        os.fsync(dfd)
+    finally:
+        os.close(dfd)
+
+
+def _sha(text: str) -> str:
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def _self_sha() -> str:
+    with open(os.path.realpath(__file__), "rb") as f:
+        return hashlib.sha256(f.read()).hexdigest()
+
+
+# ---- root.conf -----------------------------------------------------------------------------
+
+_OPERATOR_RE = re.compile(r"[a-z_][a-z0-9_-]{0,31}")
+_PATH_RE = re.compile(r"/[A-Za-z0-9._/-]+")
+
+
+def _plain_abs_path(p: str) -> bool:
+    """Absolute, ordinary characters (it lands in unit files), no `.`/`..`
+    components, no doubled or trailing slash."""
+    if not _PATH_RE.fullmatch(p) or p.endswith("/") or "//" in p:
+        return False
+    return all(part not in (".", "..") for part in p.split("/")[1:])
+
+
+class Conf:
+    def __init__(self, operator: str, repo: str):
+        self.operator = operator
+        self.repo = repo
+
+
+def load_conf() -> Conf:
+    """The operator and the repo, from the root-owned file the installer wrote."""
+    d, name = os.path.split(ROOT_CONF)
+    try:
+        dfd = _open_dir(d)
+    except HelperError as e:
+        raise HelperError(f"{e}; the operator runs sudo ops/install-prod.sh") from None
+    try:
+        _owned_safely(os.fstat(dfd), d)
+        text, st = _read_at(dfd, name, ROOT_CONF, missing_ok=True)
+        if text is None:
+            raise HelperError(f"{ROOT_CONF} is missing: the operator runs sudo ops/install-prod.sh")
+        _owned_safely(st, ROOT_CONF)
+    finally:
+        os.close(dfd)
+    values: dict[str, str] = {}
+    for n, line in enumerate(text.splitlines(), 1):
+        s = line.strip()
+        if not s or s.startswith("#"):
+            continue
+        key, sep, value = s.partition("=")
+        if not sep or key.strip() not in ("OPERATOR", "REPO") or key.strip() in values:
+            raise HelperError(f"{ROOT_CONF} line {n}: expected OPERATOR=... or REPO=..., once each")
+        values[key.strip()] = value.strip()
+    operator, repo = values.get("OPERATOR", ""), values.get("REPO", "")
+    if not _OPERATOR_RE.fullmatch(operator) or operator in ("root", SERVICE_USER):
+        raise HelperError(f"{ROOT_CONF}: OPERATOR={operator!r} is not an ordinary user name")
+    if not _plain_abs_path(repo):
+        raise HelperError(f"{ROOT_CONF}: REPO={repo!r} is not a plain absolute path")
+    return Conf(operator, repo)
+
+
+# ---- the unit parser -------------------------------------------------------------------
+
+_SECTION_RE = re.compile(r"\[([A-Za-z][A-Za-z0-9-]*)\]")
+_KEY_RE = re.compile(r"[A-Za-z][A-Za-z0-9]*")
+
+
+def _odd_trailing_backslashes(s: str) -> bool:
+    return (len(s) - len(s.rstrip("\\"))) % 2 == 1
+
+
+def parse_unit(text: str) -> tuple[list[tuple[int, str, str, str]], list[str]]:
+    """(entries, problems): each entry is (line, section, key, value), read
+    the way systemd reads a unit (systemd.syntax(7)): `#` and `;` comment
+    lines, [Section] headers, KEY=VALUE with whitespace stripped around both,
+    and a line ending in a backslash continued onto the next (the backslash
+    becomes a space; comment lines inside a continuation are skipped). Where
+    systemd might read a line differently from this, that is a problem, not
+    a guess."""
+    entries: list[tuple[int, str, str, str]] = []
+    problems: list[str] = []
+    section: str | None = None
+    pending: tuple[int, str] | None = None
+    lines = text.split("\n")
+    if lines and lines[-1] == "":
+        lines.pop()
+    bad = [n for n, line in enumerate(lines, 1)
+           if any((ord(c) < 32 and c != "\t") or ord(c) == 127 for c in line)]
+    if bad:
+        return [], [f"line {bad[0]}: control characters (carriage returns included) on "
+                    f"{len(bad)} line(s); systemd may read such a file differently"]
+
+    def logical(start: int, line: str) -> None:
+        nonlocal section
+        s = line.strip()
+        if not s or s[0] in "#;":
+            return
+        if s[0] == "[":
+            m = _SECTION_RE.fullmatch(s)
+            if not m:
+                problems.append(f"line {start}: a malformed section header")
+                section = ""
+            else:
+                section = m.group(1)
+            return
+        key, sep, value = s.partition("=")
+        if not sep:
+            problems.append(f"line {start}: not a KEY=VALUE line")
+            return
+        key, value = key.strip(), value.strip()
+        if not _KEY_RE.fullmatch(key):
+            problems.append(f"line {start}: a malformed key")
+            return
+        if section is None:
+            problems.append(f"line {start}: {key}= before any [Section]")
+            return
+        entries.append((start, section, key, value))
+
+    for n, line in enumerate(lines, 1):
+        if pending is not None and line.lstrip()[:1] in ("#", ";"):
+            continue  # a comment inside a continuation is skipped, as systemd does
+        start, text_so_far = pending if pending is not None else (n, "")
+        joined = text_so_far + line
+        if _odd_trailing_backslashes(joined):
+            pending = (start, joined[:-1] + " ")
+            continue
+        if joined != joined.rstrip() and _odd_trailing_backslashes(joined.rstrip()):
+            problems.append(f"line {n}: whitespace after a line-continuing backslash "
+                            "(systemd versions disagree on it)")
+        pending = None
+        logical(start, joined)
+    if pending is not None:
+        problems.append(f"line {pending[0]}: a continued line runs off the end of the file")
+        logical(pending[0], pending[1])
+    return entries, problems
+
+
+# ---- the unit validator (the heart) ----------------------------------------------------------
+
+TRUE = ("yes", "true", "on", "1")
+FALSE = ("no", "false", "off", "0")
+
+
+class Rule:
+    __slots__ = ("check", "required", "repeatable")
+
+    def __init__(self, check, *, required: bool = False, repeatable: bool = False):
+        self.check = check
+        self.required = required
+        self.repeatable = repeatable
+
+
+def _is(*allowed: str):
+    def check(v: str) -> str | None:
+        return None if v in allowed else "must be " + " or ".join(allowed)
+    return check
+
+
+def _yes(v: str) -> str | None:
+    return None if v.lower() in TRUE else "must be yes"
+
+
+def _boolean(v: str) -> str | None:
+    return None if v.lower() in TRUE + FALSE else "must be yes or no"
+
+
+def _empty(v: str) -> str | None:
+    return None if v == "" else "must be empty (no capabilities at all)"
+
+
+def _text(v: str) -> str | None:
+    return None if 0 < len(v) <= 200 and v.isprintable() else "must be one printable line"
+
+
+def _pattern(regex: str, what: str):
+    compiled = re.compile(regex)
+
+    def check(v: str) -> str | None:
+        return None if compiled.fullmatch(v) else f"must be {what}"
+    return check
+
+
+_duration = _pattern(r"[0-9]+(\.[0-9]+)?(us|ms|s|sec|m|min|h|hr|d)?", "a plain duration")
+_calendar = _pattern(r"[A-Za-z0-9 *:,./~-]{1,80}", "a plain calendar expression")
+_size = _pattern(r"[0-9]+[KMGT]?|infinity", "a size")
+_count = _pattern(r"[0-9]+|infinity", "a count")
+_restart = _is("no", "on-success", "on-failure", "on-abnormal", "on-watchdog", "on-abort", "always")
+_environment = _pattern(r"[A-Za-z_][A-Za-z0-9_]*=[^\s\"'\\]*", "one NAME=value without quotes or spaces")
+
+
+def _umask(v: str) -> str | None:
+    if re.fullmatch(r"0?[0-7]{3}", v) and int(v, 8) & 0o007 == 0o007:
+        return None
+    return "must be an octal umask that gives others nothing (like 0007)"
+
+
+def _tokens_within(*allowed: str):
+    def check(v: str) -> str | None:
+        words = v.split()
+        if words and not v.startswith("~") and set(words) <= set(allowed):
+            return None
+        return "must list only " + " ".join(allowed)
+    return check
+
+
+def _plain_path_under(path: str, prefix: str) -> bool:
+    return path.startswith(prefix) and len(path) > len(prefix) and _plain_abs_path(path)
+
+
+def _exec_under(prefix: str):
+    def check(v: str) -> str | None:
+        words = v.split()
+        if words and _plain_path_under(words[0], prefix):
+            return None
+        return f"must run a program under {prefix}"
+    return check
+
+
+def _exec_exact(*argv: str):
+    def check(v: str) -> str | None:
+        return None if v.split() == list(argv) else "must be exactly " + " ".join(argv)
+    return check
+
+
+def _privileged_prefix(value: str) -> bool:
+    prefix = re.match(r"[-@:+!|]*", value).group()
+    return "+" in prefix or "!" in prefix
+
+
+# Specific words for the keys that would grant privilege, whatever the unit.
+_NEVER = {
+    "SupplementaryGroups": "it adds groups, and docker, sudo or adm are root by other names",
+    "PermissionsStartOnly": "it runs Exec lines with full privileges",
+    "LoadCredential": "it hands files only root can read to the service",
+    "SetCredential": "it hands credentials to the service",
+    "StandardInput": "a file: here is opened by root",
+    "StandardOutput": "a file: here is opened by root",
+    "StandardError": "a file: here is opened by root",
+    "PAMName": "it opens a login session",
+}
+
+U, S, T, I = "Unit", "Service", "Timer", "Install"
+
+
+def _daydream_service(unit_type: str) -> dict:
+    """What a unit running as the sandboxed service user may say."""
+    return {
+        (U, "Description"): Rule(_text),
+        (S, "Type"): Rule(_is(unit_type)),
+        (S, "User"): Rule(_is(SERVICE_USER), required=True),
+        (S, "Group"): Rule(_is(SERVICE_USER), required=True),
+        (S, "WorkingDirectory"): Rule(_is(CURRENT)),
+        (S, "EnvironmentFile"): Rule(_is(PROD_ENV, RELEASE_ENV), required=True, repeatable=True),
+        (S, "Environment"): Rule(_environment, repeatable=True),
+        (S, "ExecStart"): Rule(_exec_under(CURRENT + "/"), required=True),
+        (S, "UMask"): Rule(_umask),
+        (S, "NoNewPrivileges"): Rule(_yes, required=True),
+        (S, "CapabilityBoundingSet"): Rule(_empty, required=True),
+        (S, "ProtectSystem"): Rule(_is("strict"), required=True),
+        (S, "ProtectHome"): Rule(_yes, required=True),
+        (S, "ReadWritePaths"): Rule(_is(DATA), required=True),
+        (S, "PrivateTmp"): Rule(_yes, required=True),
+        (S, "PrivateDevices"): Rule(_yes, required=True),
+    }
+
+
+def _hardening(*, required: bool) -> dict:
+    return {(S, k): Rule(_yes, required=required) for k in (
+        "ProtectKernelTunables", "ProtectKernelModules", "ProtectKernelLogs", "ProtectControlGroups",
+        "RestrictNamespaces", "RestrictSUIDSGID", "LockPersonality")}
+
+
+def unit_rules(name: str, operator: str, repo: str) -> dict:
+    """The per-unit allowlist of [Section] Key pairs, each with a check on its
+    value. Derived from the committed units in ops/systemd/ and hardcoded:
+    a unit that needs a new key needs a new helper, which only the
+    installer (the operator's password) puts in place."""
+    if name == "daydream-prod.service":
+        rules = _daydream_service("simple")
+        rules.update(_hardening(required=True))
+        rules.update({
+            (U, "After"): Rule(_is("network-online.target")),
+            (U, "Wants"): Rule(_is("network-online.target")),
+            (S, "Restart"): Rule(_restart),
+            (S, "RestartSec"): Rule(_duration),
+            (S, "TimeoutStopSec"): Rule(_duration),
+            (S, "AmbientCapabilities"): Rule(_empty),
+            (S, "ProtectClock"): Rule(_yes, required=True),
+            (S, "ProtectHostname"): Rule(_yes, required=True),
+            (S, "ProtectProc"): Rule(_is("invisible", "noaccess"), required=True),
+            (S, "RestrictRealtime"): Rule(_yes, required=True),
+            (S, "SystemCallArchitectures"): Rule(_is("native"), required=True),
+            (S, "SystemCallFilter"): Rule(_is("@system-service"), required=True),
+            (S, "SystemCallErrorNumber"): Rule(_is("EPERM")),
+            (S, "RestrictAddressFamilies"): Rule(_tokens_within("AF_INET", "AF_INET6", "AF_UNIX"),
+                                                 required=True),
+            (S, "IPAddressDeny"): Rule(_is("any"), required=True),
+            (S, "IPAddressAllow"): Rule(_tokens_within("localhost", "127.0.0.1", "::1"),
+                                        required=True),
+            (S, "MemoryMax"): Rule(_size),
+            (S, "TasksMax"): Rule(_count),
+            (I, "WantedBy"): Rule(_is("multi-user.target")),
+        })
+        return rules
+    if name == "daydream-backup.service":
+        rules = _daydream_service("oneshot")
+        rules[(S, "PrivateNetwork")] = Rule(_yes, required=True)
+        return rules
+    if name == "cloudflared-daydream.service":
+        rules = _hardening(required=True)
+        rules.update({
+            (U, "Description"): Rule(_text),
+            (U, "After"): Rule(_is("network-online.target")),
+            (U, "Wants"): Rule(_is("network-online.target")),
+            (S, "Type"): Rule(_is("simple")),
+            (S, "DynamicUser"): Rule(_yes, required=True),
+            (S, "EnvironmentFile"): Rule(_is(TUNNEL_ENV)),
+            (S, "ExecStart"): Rule(_exec_exact("/usr/bin/cloudflared", "--no-autoupdate", "tunnel",
+                                               "run"), required=True),
+            (S, "Restart"): Rule(_restart),
+            (S, "RestartSec"): Rule(_duration),
+            (S, "TimeoutStopSec"): Rule(_duration),
+            (S, "NoNewPrivileges"): Rule(_yes, required=True),
+            (S, "CapabilityBoundingSet"): Rule(_empty, required=True),
+            (S, "ProtectSystem"): Rule(_is("strict"), required=True),
+            (S, "ProtectHome"): Rule(_yes, required=True),
+            (S, "PrivateTmp"): Rule(_yes, required=True),
+            (S, "PrivateDevices"): Rule(_yes, required=True),
+            (S, "RestrictAddressFamilies"): Rule(
+                _tokens_within("AF_INET", "AF_INET6", "AF_UNIX", "AF_NETLINK"), required=True),
+            (S, "SystemCallArchitectures"): Rule(_is("native"), required=True),
+            (S, "SystemCallFilter"): Rule(_is("@system-service"), required=True),
+            (S, "SystemCallErrorNumber"): Rule(_is("EPERM")),
+            (I, "WantedBy"): Rule(_is("multi-user.target")),
+        })
+        return rules
+    if name in OPERATOR_UNITS:
+        return {
+            (U, "Description"): Rule(_text),
+            (S, "Type"): Rule(_is("oneshot")),
+            (S, "User"): Rule(_is(operator), required=True),
+            (S, "ExecStart"): Rule(_exec_exact(f"{repo}/bin/game", "prod", OPERATOR_UNITS[name]),
+                                   required=True),
+            (S, "PrivateTmp"): Rule(_yes),
+        }
+    if name in TIMERS:
+        return {
+            (U, "Description"): Rule(_text),
+            (T, "OnCalendar"): Rule(_calendar, required=True),
+            (T, "Persistent"): Rule(_boolean),
+            (T, "RandomizedDelaySec"): Rule(_duration),
+            (I, "WantedBy"): Rule(_is("timers.target"), required=True),
+        }
+    return {}
+
+
+def _show(value: str) -> str:
+    return value if len(value) <= 60 else value[:57] + "..."
+
+
+def validate_unit(name: str, text: str, operator: str, repo: str) -> list[str]:
+    """Every reason `text` may not be installed as `name`; empty means valid.
+    A pure function: the tests import it."""
+    if name not in UNITS:
+        return [f"{name}: not a unit this helper manages ({', '.join(UNITS)})"]
+    entries, parse_problems = parse_unit(text)
+    out = [f"{name} {p}" for p in parse_problems]
+    if parse_problems and not entries:
+        return out  # unreadable as a whole: say so once, not once per missing key
+    rules = unit_rules(name, operator, repo)
+    seen: dict[tuple[str, str], list[tuple[int, str]]] = {}
+    for n, section, key, value in entries:
+        where = f"{name} line {n}"
+        seen.setdefault((section, key), []).append((n, value))
+        if "%" in value:
+            out.append(f"{where}: {key}={_show(value)}: systemd specifiers (%) are not allowed")
+        if key.startswith("Exec") and _privileged_prefix(value):
+            out.append(f"{where}: {key}={_show(value)}: a privilege prefix (+, ! or !!) "
+                       "would run it with full privileges")
+        if key == "User" and value in ("root", "0"):
+            out.append(f"{where}: User={value}: a service never runs as root")
+            continue
+        if key == "Group" and value in ("root", "0"):
+            out.append(f"{where}: Group={value}: a service never runs in the root group")
+            continue
+        if key in _NEVER:
+            out.append(f"{where}: {key}= is never allowed: {_NEVER[key]}")
+            continue
+        rule = rules.get((section, key))
+        if rule is None:
+            out.append(f"{where}: [{section}] {key}= is not allowed in {name}")
+            continue
+        err = rule.check(value)
+        if err:
+            out.append(f"{where}: {key}={_show(value)}: {err}")
+    for (section, key), values in seen.items():
+        rule = rules.get((section, key))
+        if rule is not None and not rule.repeatable and len(values) > 1:
+            out.append(f"{name} line {values[1][0]}: {key}= appears more than once "
+                       "(a later line would override the one checked)")
+    for (section, key), rule in rules.items():
+        if rule.required and (section, key) not in seen:
+            out.append(f"{name}: [{section}] {key}= is missing, and {name} must have it")
+    if name in ("daydream-prod.service", "daydream-backup.service"):
+        files = [v for _, v in seen.get((S, "EnvironmentFile"), [])]
+        if files and PROD_ENV not in files:
+            out.append(f"{name}: EnvironmentFile= must include {PROD_ENV}")
+    return out
+
+
+def render(name: str, text: str, conf: Conf) -> str:
+    """The unit as installed: the operator's jobs get the operator and the
+    repo from root.conf, exactly as ops/install-prod.sh fills them."""
+    if name in OPERATOR_UNITS:
+        return text.replace("@OPERATOR@", conf.operator).replace("@REPO@", conf.repo)
+    return text
+
+
+# ---- the release and the installed units ------------------------------------------------
+
+_UNIT_SUFFIX = re.compile(r".+\.(service|timer|socket|path|mount|automount|swap|target|slice)")
+
+
+def current_release() -> str:
+    """The release /srv/daydream/current names (releases/<sha>), nothing else."""
+    srv_fd = _open_dir(SRV)
+    try:
+        target = os.readlink("current", dir_fd=srv_fd)
+    except FileNotFoundError:
+        raise HelperError("no release is deployed yet (bin/game prod deploy)") from None
+    except OSError as e:
+        raise HelperError(f"{SRV}/current: {e.strerror} (expected a link to releases/<sha>)") from None
+    finally:
+        os.close(srv_fd)
+    m = re.fullmatch(r"releases/([0-9a-f]{7,40})", target)
+    if not m:
+        raise HelperError(f"{SRV}/current points at {target!r}, not releases/<sha>")
+    return m.group(1)
+
+
+def release_units(release: str) -> tuple[dict[str, str], list[str]]:
+    d = f"{SRV}/releases/{release}/ops/systemd"
+    fd = _open_dir(d)
+    texts: dict[str, str] = {}
+    problems: list[str] = []
+    try:
+        names = set(os.listdir(fd))
+        for extra in sorted(n for n in names - set(UNITS) if _UNIT_SUFFIX.fullmatch(n)):
+            problems.append(f"release {release} has a unit this helper does not know: {extra} "
+                            "(a newer helper: the operator runs sudo ops/install-prod.sh)")
+        for u in UNITS:
+            where = f"release {release}: ops/systemd/{u}"
+            if u not in names:
+                problems.append(f"{where}: missing")
+                continue
+            try:
+                texts[u], _ = _read_at(fd, u, where)
+            except HelperError as e:
+                problems.append(str(e))
+    finally:
+        os.close(fd)
+    return texts, problems
+
+
+def installed_units() -> tuple[dict[str, str | None], list[str]]:
+    fd = _open_dir(SYSTEMD_DIR)
+    out: dict[str, str | None] = {}
+    problems: list[str] = []
+    try:
+        _owned_safely(os.fstat(fd), SYSTEMD_DIR)
+        for u in UNITS:
+            try:
+                out[u], _ = _read_at(fd, u, f"{SYSTEMD_DIR}/{u}", missing_ok=True)
+            except HelperError as e:
+                problems.append(f"{e} (masked or linked by hand? the operator decides)")
+                out[u] = None
+    finally:
+        os.close(fd)
+    return out, problems
+
+
+def plan(conf: Conf):
+    """(release, rendered units, installed units, problems)."""
+    release = current_release()
+    texts, problems = release_units(release)
+    rendered = {}
+    for u, text in texts.items():
+        rendered[u] = render(u, text, conf)
+        problems += validate_unit(u, rendered[u], conf.operator, conf.repo)
+    installed, more = installed_units()
+    return release, rendered, installed, problems + more
+
+
+# ---- verbs ------------------------------------------------------------------------------------
+
+
+def cmd_version() -> int:
+    say(f"daydream-root {VERSION}")
+    say(f"sha256 {_self_sha()}")
+    return 0
+
+
+def _with_newline(text: str) -> list[str]:
+    lines = text.splitlines(keepends=True)
+    if lines and not lines[-1].endswith("\n"):
+        lines[-1] += "\n"
+    return lines
+
+
+def cmd_units(conf: Conf, apply: bool) -> int:
+    release, rendered, installed, problems = plan(conf)
+    say(f"release {release} ({CURRENT})")
+    if problems:
+        say("refused: " + ("nothing was installed" if apply else "these units would not install"))
+        for p in problems:
+            say(f"  {p}")
+        return 1
+    changed = [u for u in UNITS if installed.get(u) != rendered[u]]
+    for u in UNITS:
+        if u not in changed:
+            say(f"{u}: up to date")
+            continue
+        was = installed.get(u)
+        sys.stdout.writelines(difflib.unified_diff(
+            _with_newline(was or ""), _with_newline(rendered[u]),
+            fromfile=f"{SYSTEMD_DIR}/{u}" + ("" if was is not None else " (not installed)"),
+            tofile=f"release {release}: ops/systemd/{u}"))
+    if not apply:
+        say(f"{len(changed)} unit(s) differ; `units --apply` installs them" if changed
+            else "every unit matches the release")
+        return 0
+    for u in changed:
+        _write_atomic(SYSTEMD_DIR, u, rendered[u], 0o644, 0, 0)
+        _log(f"units: installed {u} sha256={_sha(rendered[u])} from release {release}")
+        say(f"installed {u}")
+    rc = 0
+    if changed:
+        r = _run([SYSTEMCTL, "daemon-reload"])
+        _log(f"units: daemon-reload after release {release}: exit {r.returncode}")
+        rc = rc or r.returncode
+    r = _run([SYSTEMCTL, "enable", "--now", *TIMERS])
+    _log(f"units: enable --now {' '.join(TIMERS)} (release {release}): exit {r.returncode}")
+    rc = rc or r.returncode
+    for u in changed:
+        if u in SERVICES:
+            say(f"{u}: the new unit applies at its next start")
+    return rc
+
+
+def _check_sudoers() -> list[str]:
+    d, name = os.path.split(SUDOERS)
+    try:
+        dfd = _open_dir(d)
+    except HelperError as e:
+        return [str(e)]
+    try:
+        text, st = _read_at(dfd, name, SUDOERS, missing_ok=True)
+    except HelperError as e:
+        return [str(e)]
+    finally:
+        os.close(dfd)
+    if text is None:
+        return [f"{SUDOERS} is missing: the operator runs sudo ops/install-prod.sh"]
+    problems = []
+    if st.st_uid != os.geteuid() or stat.S_IMODE(st.st_mode) != 0o440:
+        problems.append(f"{SUDOERS}: expected root-owned 0440")
+    if HELPER_PATH not in text:
+        problems.append(f"{SUDOERS} does not name {HELPER_PATH}: the operator runs sudo "
+                        "ops/install-prod.sh")
+    return problems
+
+
+def _service_user_groups() -> set[str] | None:
+    try:
+        pw = pwd.getpwnam(SERVICE_USER)
+    except KeyError:
+        return None
+    groups = {g.gr_name for g in grp.getgrall() if SERVICE_USER in g.gr_mem}
+    try:
+        groups.add(grp.getgrgid(pw.pw_gid).gr_name)
+    except KeyError:
+        pass
+    if pw.pw_uid == 0:
+        groups.add("root")
+    return groups
+
+
+def cmd_doctor() -> int:
+    """Read-only: is everything the helper looks after as it should be?"""
+    ok = True
+    say(f"helper: daydream-root {VERSION}, sha256 {_self_sha()}")
+    try:
+        conf = load_conf()
+        say(f"root.conf: operator {conf.operator}, repo {conf.repo}")
+    except HelperError as e:
+        conf, ok = None, False
+        say(f"root.conf: {e}")
+    sudoers = _check_sudoers()
+    ok = ok and not sudoers
+    for p in sudoers or [f"{SUDOERS}: present, root 0440, names the helper"]:
+        say(f"sudoers: {p}")
+    groups = _service_user_groups()
+    if groups is None:
+        ok = False
+        say(f"service user: {SERVICE_USER} does not exist")
+    else:
+        bad = sorted(groups & set(PRIVILEGED_GROUPS))
+        ok = ok and not bad
+        say(f"service user: {SERVICE_USER} in " + ", ".join(sorted(groups))
+            + (f"  <- privileged: {', '.join(bad)}" if bad else ""))
+    if conf is not None:
+        try:
+            release, rendered, installed, problems = plan(conf)
+        except HelperError as e:
+            ok = False
+            say(f"units: {e}")
+        else:
+            for p in problems:
+                ok = False
+                say(f"units: {p}")
+            for u in UNITS:
+                if u not in rendered:
+                    continue
+                if installed.get(u) == rendered[u]:
+                    state = f"matches release {release}"
+                else:
+                    ok = False
+                    state = ("not installed" if installed.get(u) is None
+                             else f"differs from release {release}")
+                say(f"units: {u}: {state}")
+    try:
+        fd = _open_dir(SYSTEMD_DIR)
+    except HelperError as e:
+        ok = False
+        say(f"drop-ins: {e}")
+    else:
+        try:
+            for u in UNITS:
+                try:
+                    os.stat(f"{u}.d", dir_fd=fd, follow_symlinks=False)
+                except FileNotFoundError:
+                    continue
+                ok = False
+                say(f"drop-ins: {SYSTEMD_DIR}/{u}.d exists; the helper does not manage "
+                    "drop-ins, so the operator reviews it")
+        finally:
+            os.close(fd)
+    say("doctor: all well" if ok else "doctor: something above needs attention")
+    return 0 if ok else 1
+
+
+def cmd_unit(action: str, unit: str) -> int:
+    allowed = SERVICES + TIMERS if action == "status" else SERVICES
+    if unit not in allowed:
+        raise Usage(f"{action} works on {', '.join(allowed)} only")
+    cmd = [SYSTEMCTL, "status", "--no-pager", unit] if action == "status" else [SYSTEMCTL, action, unit]
+    r = _run(cmd)
+    _log(f"{action} {unit}: exit {r.returncode}")
+    return r.returncode
+
+
+# ---- prod.env ---------------------------------------------------------------------------------
+
+REFUSED_KEYS = ("DAYDREAM_ENV", "DAYDREAM_ACCESS", "DAYDREAM_PUBLIC_ORIGIN", "DAYDREAM_PUBLIC_BASE",
+                "DAYDREAM_BIND_HOST", "DAYDREAM_PORT", "DAYDREAM_DATA_DIR", "DAYDREAM_LLM_BASE_URL",
+                "DAYDREAM_COMFYUI_BASE_URL")
+
+
+def _operator_name(v: str) -> str | None:
+    if not 0 < len(v) <= 60 or not v.isprintable() or v != v.strip():
+        return "must be one printable line of at most 60 characters"
+    if any(c in v for c in "\"'\\$`"):
+        return "must not contain quotes, backslashes, $ or backticks"
+    return None
+
+
+def _int_range(lo: int, hi: int):
+    def check(v: str) -> str | None:
+        return None if re.fullmatch(r"[0-9]{1,2}", v) and lo <= int(v) <= hi else f"must be {lo}..{hi}"
+    return check
+
+
+_FLAG = _is("0", "1")
+ENV_KEYS = {
+    "DAYDREAM_LOG_LEVEL": _is("DEBUG", "INFO", "WARNING", "ERROR"),
+    "DAYDREAM_OPERATOR_NAME": _operator_name,
+    "DAYDREAM_JOURNAL_ENABLED": _FLAG,
+    "DAYDREAM_REGEN_UI": _FLAG,
+    "DAYDREAM_MEMORY_ENABLED": _FLAG,
+    "DAYDREAM_DRIFT_ENABLED": _FLAG,
+    "DAYDREAM_VILLAGE_ENABLED": _FLAG,
+    "DAYDREAM_DIRECTOR_LLM": _FLAG,
+    "DAYDREAM_LLM_CONCURRENCY": _int_range(1, 8),
+}
+QUOTED_KEYS = ("DAYDREAM_OPERATOR_NAME",)
+
+_ENV_LINE = re.compile(r"\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=")
+BOOT_GUARD = ("from daydream import config; import sys; p = config.boot_problems(); "
+              "print(p); sys.exit(1 if p else 0)")
+
+
+def _prod_env_dir() -> str:
+    return os.path.dirname(f"{SRV}/etc/prod.env")
+
+
+def read_prod_env() -> str:
+    d = _prod_env_dir()
+    dfd = _open_dir(d)
+    try:
+        _owned_safely(os.fstat(dfd), d)
+        text, st = _read_at(dfd, "prod.env", f"{d}/prod.env")
+        _owned_safely(st, f"{d}/prod.env")
+    finally:
+        os.close(dfd)
+    return text
+
+
+def parse_env(text: str) -> dict[str, str]:
+    """KEY=VALUE pairs as systemd's EnvironmentFile reads these simple lines:
+    comments and blanks skipped, one layer of matching quotes stripped."""
+    out: dict[str, str] = {}
+    for line in text.splitlines():
+        m = _ENV_LINE.match(line)
+        if not m:
+            continue
+        value = line[m.end():].strip()
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
+            value = value[1:-1]
+        out[m.group(1)] = value
+    return out
+
+
+def rewrite_env(text: str, key: str, value: str) -> str:
+    """`text` with KEY's assignment replaced in place (a later duplicate of
+    it dropped, since one assignment wins) or appended; every other line and
+    comment kept byte for byte."""
+    lines = text.splitlines(keepends=True)
+    if any(line.rstrip("\r\n").endswith("\\") for line in lines):
+        raise HelperError("prod.env has a line continued with a backslash; the operator edits it by hand")
+    shown = f'"{value}"' if key in QUOTED_KEYS else value
+    new_line = f"{key}={shown}\n"
+    out: list[str] = []
+    done = False
+    for line in lines:
+        m = _ENV_LINE.match(line)
+        if m and m.group(1) == key:
+            if not done:
+                out.append(new_line)
+                done = True
+            continue
+        out.append(line)
+    if not done:
+        if out and not out[-1].endswith("\n"):
+            out[-1] += "\n"
+        out.append(new_line)
+    return "".join(out)
+
+
+def boot_guard(pairs: dict[str, str]) -> tuple[bool, str]:
+    """The release's own boot guard (config.boot_problems) over the proposed
+    environment, run AS THE SERVICE USER on a clean slate."""
+    cmd = [RUNUSER, "-u", SERVICE_USER, "--", ENV_BIN, "-i", "-C", CURRENT,
+           *(f"{k}={v}" for k, v in pairs.items()),
+           f"{CURRENT}/.venv/bin/python", "-c", BOOT_GUARD]
+    r = _run(cmd, capture=True, timeout=60)
+    return r.returncode == 0, ((r.stdout or "") + (r.stderr or "")).strip()
+
+
+def cmd_env_show() -> int:
+    sys.stdout.write(read_prod_env())
+    sys.stdout.flush()
+    return 0
+
+
+def cmd_env_set(key: str, value: str) -> int:
+    if key in REFUSED_KEYS:
+        raise HelperError(f"{key} decides where prod listens, what it trusts or where its data "
+                          f"lives; it stays with the operator (sudoedit {PROD_ENV})")
+    check = ENV_KEYS.get(key)
+    if check is None:
+        raise HelperError(f"{key} is not a key env set manages; it manages {', '.join(ENV_KEYS)}")
+    err = check(value)
+    if err:
+        raise HelperError(f"{key}={value!r}: {err}")
+    release = current_release()
+    text = read_prod_env()
+    new = rewrite_env(text, key, value)
+    if new == text:
+        say(f"{key} is already {value}; nothing written")
+        return 0
+    ok, output = boot_guard(parse_env(new))
+    if not ok:
+        raise HelperError(f"refused: release {release}'s boot guard rejects the proposed prod.env: "
+                          f"{output or 'no output'}")
+    _write_atomic(_prod_env_dir(), "prod.env", new, 0o640, 0, _service_gid())
+    _log(f"env set {key}={value} (boot guard of release {release} passed)")
+    say(f"{key}={value} written to {PROD_ENV}; the service reads it at its next start")
+    return 0
+
+
+# ---- main ----------------------------------------------------------------------------------
+
+USAGE = f"""usage: daydream-root <verb>
+  version                  its own sha256
+  doctor                   read-only: root.conf, sudoers, the service user, the units
+  units [--apply]          the release's units, validated, diffed; --apply installs them
+  start|stop|restart UNIT  {', '.join(SERVICES)}
+  status UNIT              those, and {', '.join(TIMERS)}
+  env show                 print {PROD_ENV}
+  env set KEY VALUE        {', '.join(ENV_KEYS)}"""
+
+
+def dispatch(args: list[str]) -> int:
+    verb, rest = (args[0], args[1:]) if args else ("", [])
+    if verb == "version" and not rest:
+        return cmd_version()
+    if verb == "doctor" and not rest:
+        return cmd_doctor()
+    if verb == "units" and rest in ([], ["--apply"]):
+        return cmd_units(load_conf(), apply=bool(rest))
+    if verb in ("start", "stop", "restart", "status") and len(rest) == 1:
+        return cmd_unit(verb, rest[0])
+    if verb == "env" and rest == ["show"]:
+        return cmd_env_show()
+    if verb == "env" and len(rest) == 3 and rest[0] == "set":
+        return cmd_env_set(rest[1], rest[2])
+    raise Usage("not a verb this helper knows, or the wrong arguments for it")
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = list(sys.argv[1:] if argv is None else argv)
+    try:
+        return dispatch(args)
+    except Usage as e:
+        print(f"daydream-root: {e}\n{USAGE}", file=sys.stderr)
+        return 2
+    except HelperError as e:
+        print(f"daydream-root: {e}", file=sys.stderr)
+        return 1
+    except (OSError, subprocess.SubprocessError) as e:
+        print(f"daydream-root: {e}", file=sys.stderr)
+        return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())
