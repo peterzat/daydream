@@ -399,7 +399,10 @@ def _object_card(o: "objects.Object", depth: int = 0) -> dict:
     examine text when one exists, else the authored seed — so the keepsakes
     book can caption carried things with something real (SPEC 2026-07-07
     criterion 4). Pre-baked stored text, never a live LLM call."""
-    detail = o.properties.get("examined_text") or o.properties.get("seed") or ""
+    # The seed with its current state's line (a wound clock no longer reads
+    # as stopped: playtest 2026-09-28b).
+    detail = o.properties.get("examined_text") or (verbs.detail_with_state(o) if o.seed else "")
+    home = toons.home_of(o) if o.kind == "thing" else None
     card = {
         "id": o.id,
         "name": o.name,
@@ -407,6 +410,10 @@ def _object_card(o: "objects.Object", depth: int = 0) -> dict:
         "aliases": o.aliases,
         "verbs": objects.verbs_for(o),
         "detail": detail if isinstance(detail, str) else "",
+        # A village thing goes home when you rest; only what stays is a
+        # keepsake (playtest 2026-09-28b: the satchel called a quest thing a
+        # keepsake, and it went home).
+        "keeps": home is None,
     }
     if depth < 3 and o.kind == "thing":
         inner = objects.visible_contents(o)
@@ -930,7 +937,10 @@ async def ws_endpoint(ws: WebSocket):
     try:
         _mark_session_live(session_id)
         last_seq = events.max_seq()
-        await ws.send_json(_state_snapshot(last_seq, toon_id, view, resume_since))
+        first = _state_snapshot(last_seq, toon_id, view, resume_since)
+        # What went home while you rested, said once as you step back in.
+        first["went_home"] = toons.take_went_home(toon_id)
+        await ws.send_json(first)
         # Kick off image gen for the current room if the cache is cold.
         # Fire-and-forget; the resulting room_image_ready event reaches the
         # client through the broadcast loop below. Portraits for everyone

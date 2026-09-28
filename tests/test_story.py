@@ -536,6 +536,15 @@ async def test_a_resting_player_sends_world_objects_home_and_keeps_keepsakes():
     toons.kick_slot(1)
     assert objects.get("o-oats").location_id == "r-lane"
     assert objects.get(kept.id).location_id == ada
+    # Playtest 2026-09-28b: the player is told, once, what went home and where,
+    # and only what stays is a keepsake.
+    from daydream.api import ws
+    assert ws._object_card(objects.get(kept.id))["keeps"] is True
+    assert ws._object_card(objects.get("o-oats"))["keeps"] is False
+    went = toons.take_went_home(ada)
+    assert [w["name"] for w in went] == [objects.get("o-oats").name]
+    assert went[0]["room"] == objects.get("r-lane").properties.get("title")
+    assert toons.take_went_home(ada) == []
 
 
 async def test_talk_that_names_a_topic_gets_the_authored_answer(monkeypatch):

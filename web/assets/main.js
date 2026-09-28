@@ -371,6 +371,14 @@ function renderSnapshot(snap) {
     beat.appendChild(p);
     chat.appendChild(beat);
   }
+  // What went home while you rested, said once (playtest 2026-09-28b: a
+  // thing given for a quest was simply gone from your hands).
+  for (const w of snap.went_home || []) {
+    const line = document.createElement("div");
+    line.className = "evt evt-echo evt-homeward";
+    line.textContent = `While you rested, ${theName(w.name)} went home to ${inSentence(w.room)}.`;
+    chat.appendChild(line);
+  }
   // Arriving in a room (a move, a fresh load, a claim) writes one line where
   // you are now: how you came ("You climb up to the attic", from your own move
   // event) and what is here, look-style. It sits below whatever the room
@@ -444,6 +452,12 @@ function renderSnapshot(snap) {
     btn.onclick = () => sendInput("go " + dir);
     exitBar.appendChild(btn);
   }
+}
+
+function theName(name) {
+  // "the lantern", but not a possessive or a name that already has "the".
+  const n = name || "something";
+  return /'s\b/.test(n) || /^the\s/i.test(n) ? n : "the " + n;
 }
 
 function inSentence(title) {
@@ -1860,8 +1874,11 @@ function keepsakeCard(it) {
   desc.textContent = it.detail || keepsakeCaption(it.name || "");
   body.appendChild(desc);
   const tag = document.createElement("span");
-  tag.className = "s-tag";
-  tag.textContent = "a keepsake";
+  // Only what stays with you is a keepsake; a village thing goes home when
+  // you rest (playtest 2026-09-28b).
+  const keeps = it.keeps !== false;
+  tag.className = "s-tag" + (keeps ? "" : " s-tag-borrowed");
+  tag.textContent = keeps ? "a keepsake" : "goes home when you rest";
   body.appendChild(tag);
   card.appendChild(body);
   return card;

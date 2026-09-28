@@ -623,7 +623,7 @@ def _container_glance(dobj: objects.Object) -> str:
     return f" The {dobj.name} holds: " + ", ".join(o.name for o in inner) + "."
 
 
-def _detail_with_state(dobj: objects.Object) -> str:
+def detail_with_state(dobj: objects.Object) -> str:
     """The physical seed, plus the current-state line when the object carries
     both a `state` and a `state_text` map for it. Appends (never overwrites) the
     seed, so a stateful object reads e.g. 'a heavy oak case. The lock has given;
@@ -666,7 +666,7 @@ async def _handle_examine(actor, room_id, dobj, iobj, args, spec) -> None:
         _dispatch(actor, room_id, [eff], spec)
         return
     if dobj.seed and dobj.seed.strip():
-        detail = _detail_with_state(dobj)
+        detail = detail_with_state(dobj)
         _dispatch(actor, room_id, [{"kind": "narrate", "to": "@actor",
             "text": _examine_line(dobj, detail) + _container_glance(dobj),
             "card": _card("examine", dobj, _terminate(detail) + _container_glance(dobj))}], spec)

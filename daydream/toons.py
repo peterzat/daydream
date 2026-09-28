@@ -423,17 +423,41 @@ def send_home_things(toon_id: str) -> list[str]:
     from daydream import events
 
     moved = []
+    told = []
     for thing in objects.contents(toon_id, "thing"):
-        home = thing.properties.get("home")
-        room = objects.get(home) if isinstance(home, str) else None
-        if room is None or room.kind != "room":
+        room = home_of(thing)
+        if room is None:
             continue
         objects.move(thing.id, room.id)
         events.append("system", None, "object_moved",
                       {"object_id": thing.id, "to": room.id, "reason": "home"},
                       room_id=room.id)
         moved.append(thing.id)
+        told.append({"name": thing.name, "room": _title(room) or room.name})
+    if told:
+        # Said on the player's return, once (playtest 2026-09-28b: a thing
+        # given for a quest was gone from their hands with no word).
+        before = objects.get_property(toon_id, "went_home")
+        before = [x for x in before if isinstance(x, dict)] if isinstance(before, list) else []
+        objects.set_property(toon_id, "went_home", (before + told)[-10:])
     return moved
+
+
+def home_of(thing: "objects.Object") -> "objects.Object | None":
+    """The room a world thing goes back to when its carrier rests, or None for
+    a keepsake or find, which stays with you."""
+    home = thing.properties.get("home")
+    room = objects.get(home) if isinstance(home, str) else None
+    return room if room is not None and room.kind == "room" else None
+
+
+def take_went_home(toon_id: str) -> list[dict]:
+    """What went home while this player rested, told once: read and cleared."""
+    got = objects.get_property(toon_id, "went_home")
+    if not got:
+        return []
+    objects.set_property(toon_id, "went_home", [])
+    return [x for x in got if isinstance(x, dict) and x.get("name")] if isinstance(got, list) else []
 
 
 def kick_slot(slot: int) -> Toon | None:
