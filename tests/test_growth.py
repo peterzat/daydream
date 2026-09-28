@@ -164,7 +164,8 @@ async def test_plant_happy_path_full_atomic_batch(monkeypatch):
     # grown room as a husk.
     husk = objects.get(seed.id)
     assert husk.properties["state"] == "spent"
-    assert husk.properties["examined_text"] == GROWTH_BLOCK["husk_text"]
+    # The husk keeps the authored husk text, then whose dreaming it was.
+    assert husk.properties["examined_text"].startswith(GROWTH_BLOCK["husk_text"])
     assert "plant" not in objects.verbs_for(husk)
     assert husk.name == "spent dreamseed"
     assert "husk" in husk.aliases
@@ -909,3 +910,76 @@ async def test_a_rejected_composition_gets_one_more_try(monkeypatch):
     await _plant(seed2, "another way somewhere")
     assert spy2.call_count == 2
     assert objects.get(seed2.id).properties.get("state") != "spent"
+
+
+# ---- who reads a planting (beta rehearsal 2026-09-28) ----------------------
+
+
+def _narrates_since(seq: int) -> list:
+    return [e for e in events.fetch_since(seq) if e.kind == "narrate"]
+
+
+@pytest.mark.asyncio
+async def test_gate_refusals_and_the_question_are_the_planters_alone(monkeypatch):
+    """A gate's refusal and the seed's question address the planter, so only
+    the planter reads them (bystanders were reading "hold a smaller vision"
+    as if it were theirs)."""
+    spy = _mock_llm(monkeypatch, dict(VALID_COMPOSITION))
+    seed = _seed()
+    before = events.max_seq()
+    await _plant(seed, "")
+    await _plant(seed, "x" * (growth.MAX_PHRASE_CHARS + 1))
+    lines = _narrates_since(before)
+    assert len(lines) == 2
+    assert all(e.recipient_id == "t-wren" for e in lines)
+    spy.assert_not_called()
+    _assert_nothing_grew(seed.id)
+
+
+@pytest.mark.asyncio
+async def test_the_room_reads_whose_seed_took_root(monkeypatch):
+    """The payoff is the planter's line; everyone else in the room reads a
+    third-person telling that names the planter, whichever way the new way
+    opens (an "above you" payoff used to reach nobody but the planter)."""
+    _mock_llm(monkeypatch, dict(VALID_COMPOSITION))
+    # A planter is a player (the fixture's Wren is a seeded toon).
+    db.get_conn().execute("UPDATE objects SET is_human_controlled = 1 WHERE id = 't-wren'")
+    seed = _seed()
+    before = events.max_seq()
+    await _plant(seed, "a stair climbing up into the attic")
+    lines = _narrates_since(before)
+    mine = [e for e in lines if e.recipient_id == "t-wren" and "takes root" in e.payload["text"]]
+    theirs = [e for e in lines if e.recipient_id is None and "takes root" in e.payload["text"]]
+    assert len(mine) == 1 and "above you" in mine[0].payload["text"]
+    assert len(theirs) == 1
+    assert theirs[0].payload["text"].startswith("Wren's dreamseed takes root")
+    assert "overhead" in theirs[0].payload["text"] and "you" not in theirs[0].payload["text"].lower().split()
+    assert theirs[0].payload.get("except") == "t-wren"
+
+
+@pytest.mark.asyncio
+async def test_the_husk_and_the_parent_room_name_the_planter(monkeypatch):
+    """A later visitor can find whose dreaming a grown place was: the husk
+    keeps the planter's name and their words, and the room it grew from
+    says whose seed opened the new way."""
+    _mock_llm(monkeypatch, dict(VALID_COMPOSITION))
+    seed = _seed()
+    await _plant(seed, "a mossy stair into green light")
+    husk = objects.get(seed.id)
+    assert husk.properties["examined_text"].endswith(
+        'Wren planted it, with the words: "a mossy stair into green light".')
+    parent = objects.get("r-meadow")
+    assert parent.properties["description_cached"].endswith(
+        "toward the Moss Stair, grown from Wren's dreamseed.")
+
+
+@pytest.mark.asyncio
+async def test_first_planting_text_is_the_planters_alone(monkeypatch):
+    """"It was your hands that made the room" reaches the planter, not the
+    room."""
+    _mock_llm(monkeypatch, dict(VALID_COMPOSITION))
+    seed = _seed(growth_block=_first_planting_growth())
+    before = events.max_seq()
+    await _plant(seed)
+    first = [e for e in _narrates_since(before) if "deliberate tick" in e.payload["text"]]
+    assert len(first) == 1 and first[0].recipient_id == "t-wren"

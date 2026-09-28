@@ -310,8 +310,16 @@ def validate_growth_output(result: object, growth: dict) -> dict | None:
 # ---- helpers -------------------------------------------------------------
 
 
-def _narrate(room_id: str, text: str) -> None:
-    events.append("system", None, "narrate", {"text": text}, room_id=room_id)
+def _narrate(room_id: str, text: str, *, to: str | None = None,
+             others: str | None = None) -> None:
+    """A growth line. `to` makes it the planter's alone (a gate's refusal,
+    the seed's question: bystanders were reading "hold a smaller vision"
+    as if it were theirs), and `others` is what everyone else in the room
+    reads instead, third person, `{actor}` for the planter's name."""
+    events.append("system", None, "narrate", {"text": text}, room_id=room_id,
+                  recipient_id=to)
+    if to is not None and others:
+        effects.tell_others(others, to, room_id)
 
 
 def _free_direction(room: rooms.Room) -> str | None:
@@ -336,6 +344,11 @@ def _direction_phrase(direction: str) -> str:
     return {"up": "above you", "down": "below you"}.get(
         direction, f"to the {direction}"
     )
+
+
+def _direction_phrase_room(direction: str) -> str:
+    """The same direction told to the room (no "you")."""
+    return {"up": "overhead", "down": "underfoot"}.get(direction, f"to the {direction}")
 
 
 def _slugify(title: str) -> str:
@@ -459,24 +472,24 @@ async def execute_plant(
 
     # ---- gates (pre-LLM; every refusal is free and mutates nothing) ----
     if seed.location_id != actor.id:
-        _narrate(room_id, _NOT_CARRIED)
+        _narrate(room_id, _NOT_CARRIED, to=actor.id)
         return False
     if seed.properties.get("state") == "spent":
-        _narrate(room_id, _SPENT)
+        _narrate(room_id, _SPENT, to=actor.id)
         return False
     growth = seed.properties.get("growth")
     if not _growth_shape_ok(growth):
-        _narrate(room_id, _NO_GROWTH)
+        _narrate(room_id, _NO_GROWTH, to=actor.id)
         return False
     if rooms.grown_room_count(world_id) >= config.growth_max_rooms():
-        _narrate(room_id, _CAP_REACHED)
+        _narrate(room_id, _CAP_REACHED, to=actor.id)
         return False
     room = rooms.get_room(room_id)
     if room is None:
-        _narrate(room_id, _WONT_HOLD_YET)
+        _narrate(room_id, _WONT_HOLD_YET, to=actor.id)
         return False
     if _free_direction(room) is None:
-        _narrate(room_id, _NO_DIRECTION)
+        _narrate(room_id, _NO_DIRECTION, to=actor.id)
         return False
     if not phrase:
         # The typed two-turn path: ask the seed's authored question and wait
@@ -491,17 +504,17 @@ async def execute_plant(
         hint = growth.get("question_hint")
         if isinstance(hint, str) and hint.strip():
             line = f"{line} {hint.strip()}"
-        _narrate(room_id, line)
+        _narrate(room_id, line, to=actor.id)
         return False
     if len(phrase) > MAX_PHRASE_CHARS:
-        _narrate(room_id, _PHRASE_TOO_LONG)
+        _narrate(room_id, _PHRASE_TOO_LONG, to=actor.id)
         return False
     if safety.first_banned(phrase) is not None:
-        _narrate(room_id, _OFF_TONE)
+        _narrate(room_id, _OFF_TONE, to=actor.id)
         return False
     if _never_word_hit(growth, phrase) is not None:
         # The composition would be rejected for it anyway (after two calls).
-        _narrate(room_id, _NOT_THIS_DREAM)
+        _narrate(room_id, _NOT_THIS_DREAM, to=actor.id)
         return False
 
     # ---- compose: one LLM call (a second only if the first is rejected) ----
@@ -518,12 +531,12 @@ async def execute_plant(
             )
         except client.LLMUnavailable as e:
             logger.warning("plant: LLM unavailable: %s", type(e).__name__)
-            _narrate(room_id, _FOGGY)
+            _narrate(room_id, _FOGGY, to=actor.id)
             return False
 
         refusal = safety.parse_refusal(result)
         if refusal is not None:
-            _narrate(room_id, refusal.reason)
+            _narrate(room_id, refusal.reason, to=actor.id)
             return False
 
         composition = validate_growth_output(result, growth)
@@ -534,7 +547,7 @@ async def execute_plant(
         # warm temperature before the seed waits for another day.
         logger.info("plant: composition rejected by validation (attempt %d)", attempt + 1)
     if composition is None:
-        _narrate(room_id, _WONT_HOLD_YET)
+        _narrate(room_id, _WONT_HOLD_YET, to=actor.id)
         return False
 
     return _commit_growth(actor.id, seed.id, phrase, composition, allowed)
@@ -558,26 +571,26 @@ def _commit_growth(
     current_room_id = actor.location_id or ""
     seed = objects.get(seed_id)  # re-read: the await may have moved/spent it
     if seed is None or seed.location_id != actor_id:
-        _narrate(current_room_id, _NOT_CARRIED)
+        _narrate(current_room_id, _NOT_CARRIED, to=actor_id)
         return False
     if seed.properties.get("state") == "spent":
-        _narrate(current_room_id, _SPENT)
+        _narrate(current_room_id, _SPENT, to=actor_id)
         return False
     growth = seed.properties.get("growth")
     if not isinstance(growth, dict):
-        _narrate(current_room_id, _NO_GROWTH)
+        _narrate(current_room_id, _NO_GROWTH, to=actor_id)
         return False
     if rooms.grown_room_count(world_id) >= config.growth_max_rooms():
-        _narrate(current_room_id, _CAP_REACHED)
+        _narrate(current_room_id, _CAP_REACHED, to=actor_id)
         return False
     room = rooms.get_room(current_room_id)
     if room is None:
-        _narrate(current_room_id, _WONT_HOLD_YET)
+        _narrate(current_room_id, _WONT_HOLD_YET, to=actor_id)
         return False
     # Phrase-hinted pick, re-run at commit: a rival plant may have taken it.
     direction = _pick_direction(room, phrase)
     if direction is None:
-        _narrate(current_room_id, _NO_DIRECTION)
+        _narrate(current_room_id, _NO_DIRECTION, to=actor_id)
         return False
 
     slug, new_room_id = _unique_slug_and_id(world_id, composition["title"])
@@ -613,7 +626,7 @@ def _commit_growth(
             "plant: structural effects failed post-recheck (room=%s slug=%s); "
             "seed preserved", new_room_id, slug,
         )
-        _narrate(current_room_id, _WONT_HOLD_YET)
+        _narrate(current_room_id, _WONT_HOLD_YET, to=actor_id)
         return False
 
     consume: list[dict] = []
@@ -631,8 +644,12 @@ def _commit_growth(
     consume.extend([
         {"kind": "set_property", "target_id": seed_id, "key": "state",
          "value": "spent"},
+        # The husk remembers whose dreaming it was, in their own words: the
+        # one trace of the planter a later visitor can find in the room
+        # (beta rehearsal 2026-09-28: grown rooms never named who grew them).
         {"kind": "set_property", "target_id": seed_id, "key": "examined_text",
-         "value": _husk_text(growth)},
+         "value": f"{_husk_text(growth)} {actor.name} planted it, with the words: "
+                  f"\"{phrase}\"."},
         # Drop the per-object `plant` grant; the husk keeps its prototype
         # verbs (examine / take / drop / give) but is no longer plantable.
         {"kind": "set_property", "target_id": seed_id, "key": "verbs",
@@ -651,12 +668,19 @@ def _commit_growth(
         consume.append({
             "kind": "set_property", "target_id": current_room_id, "key": "description_cached",
             "value": (f"{desc.strip()} A new way opens {_direction_phrase(direction)}, "
-                      f"toward {toons.in_sentence(composition['title'])}."),
+                      f"toward {toons.in_sentence(composition['title'])}, grown from "
+                      f"{actor.name}'s dreamseed."),
         })
     consume.extend([
-        {"kind": "narrate", "text": (
+        # The planter's payoff, and the room's: everyone else here reads
+        # whose seed it was ("above you" addressed the planter, so an up or
+        # down plant used to show nothing to the room at all).
+        {"kind": "narrate", "to": "@actor", "text": (
             f"The dreamseed takes root, and the dream makes room. A new way "
             f"opens {_direction_phrase(direction)}: {composition['title']}."
+        ), "others": (
+            f"{{actor}}'s dreamseed takes root, and the dream makes room. A new "
+            f"way opens {_direction_phrase_room(direction)}: {composition['title']}."
         )},
     ])
     effects.dispatch_effects(
@@ -679,7 +703,9 @@ def _commit_growth(
         worldstate.set(world_id, "first_bloom", {
             "seed_id": seed_id, "room_id": new_room_id, "planter_id": actor_id,
         })
-        _narrate(current_room_id, first_text.strip())
+        # "It was your hands that made the room": the planter's line, not
+        # the room's.
+        _narrate(current_room_id, first_text.strip(), to=actor_id)
         journal.append_authored(actor_id, first_text.strip())
     return True
 

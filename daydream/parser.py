@@ -359,8 +359,12 @@ def _fast_path(actor_id: str, text: str, room: rooms.Room | None):
         talked = _talk_fast_path(actor_id, rest)
         if talked is not None:
             return talked
-    # Other free-text verbs (plant) with args may need the model's reading;
-    # hand those to the LLM rather than claim them here.
+    if rest and verb == "plant":
+        planted = _plant_fast_path(actor_id, rest)
+        if planted is not None:
+            return planted
+    # Other free-text verbs with args may need the model's reading; hand
+    # those to the LLM rather than claim them here.
     if rest and spec.free_text:
         return None
     # "take X from Y" is taking X; "drop X in/into Y" is putting it there.
@@ -498,6 +502,42 @@ def _talk_fast_path(actor_id: str, rest: str):
     if isinstance(who, list):
         return _clarify("talk", "dobj", " ".join(words[:k]), who, args=text or "hello")
     return [Parse("talk", dobj_id=who.id, args=text or "hello")]
+
+
+def _plant_fast_path(actor_id: str, rest: str):
+    """`plant <seed>: <vision>` / `plant <seed> <vision>`: the seed is a
+    thing in scope and every word after its name is the vision, whole, with
+    no parser call (beta rehearsal 2026-09-28: the typed plant paid a model
+    call before the growth call, and the colon form the seed's own hint
+    teaches was never parsed deterministically). A leading "to", "with" or
+    "as" on the vision is dropped ("plant the seed to a moonlit orchard").
+    None when no thing here is named (the LLM reads it)."""
+    head, sep, tail = rest.partition(":")
+    if sep:
+        name = _strip_article(head.strip())
+        phrase = tail.strip()
+        matches = [o for o in _ground(actor_id, name) if o.kind == "thing"] if name else []
+        if len(matches) == 1:
+            return [Parse("plant", dobj_id=matches[0].id, args=phrase)]
+        if len(matches) > 1:
+            return _clarify("plant", "dobj", name, matches, args=phrase)
+        return None
+    words = rest.split()
+    for k in range(min(len(words), 4), 0, -1):
+        name = _strip_article(" ".join(words[:k]).strip(",;.!?"))
+        if not name:
+            continue
+        matches = [o for o in _ground(actor_id, name) if o.kind == "thing"]
+        if not matches:
+            continue
+        phrase_words = words[k:]
+        if phrase_words and phrase_words[0].lower() in ("to", "with", "as", "into", "toward", "towards"):
+            phrase_words = phrase_words[1:]
+        phrase = _LEAD_PUNCT.sub("", " ".join(phrase_words))
+        if len(matches) == 1:
+            return [Parse("plant", dobj_id=matches[0].id, args=phrase)]
+        return _clarify("plant", "dobj", name, matches, args=phrase)
+    return None
 
 
 def _ask_fast_path(actor_id: str, rest: str):
