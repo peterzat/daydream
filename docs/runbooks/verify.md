@@ -17,7 +17,8 @@ the CLI's own account, which has no toon, so nothing is created.
 | Check | Holds when | If it fails |
 |---|---|---|
 | release | a release is deployed; a note when it is behind HEAD | `bin/game prod deploy` ([deploy.md](deploy.md)). "Not in HEAD's history" means a history rewrite: redeploy. |
-| edge status | the public status agrees with the box (awake only when the service runs and the flag isn't asleep) | Awake box, asleep edge: the tunnel or the service is down ([incident.md](incident.md)). Asleep box, awake edge: the flag is stale, `bin/game edge sleep "<note>"`. |
+| edge status | the public status agrees with the box (awake only when the service runs and the flag isn't asleep) | Awake box, awake flag, asleep edge: the tunnel or the service is down ([incident.md](incident.md)). A stale awake flag on an asleep box is not a failure: the Worker reads an unreachable origin as asleep. |
+| edge flag | the flag isn't asleep while the service runs (listed only when it fails) | Friends see the asleep page while the village runs (say, a `prod wake` that could not flip the flag): `bin/game edge wake`, unless a note over a running village is intended ([sleep-and-wake.md](sleep-and-wake.md) "The flag alone"). |
 | front door | awake: 200 with `<base href="/daydream/">`; asleep: the 503 asleep page | A 200 without the base href means the prefix isn't reaching the app (`DAYDREAM_PUBLIC_BASE`); Pages content means the Worker's route is gone ([edge.md](edge.md)). |
 | api signed out | awake: 401; asleep: 503 JSON with `asleep: true` | A 200 would mean the sign-in gate is off: stop and read SECURITY.md before anything else. |
 | cross-origin login | 403 | The CSRF origin check is off or `DAYDREAM_PUBLIC_ORIGIN` is wrong in prod.env. |
@@ -25,7 +26,7 @@ the CLI's own account, which has no toon, so nothing is created.
 | origin locked | the tunnel hostname answers 403 without the service token | **Serious**: the origin is reachable around the Worker. Check the Access application and its single `worker only` policy, and the tunnel route's JWT validation, in the dashboard. |
 | anonymous ws upgrade | no `CF_Authorization` cookie on the answer | **Serious**: the Worker is leaking Access's cookie (the 2026-09-28 BLOCK). Redeploy the Worker from main; `node --test edge/test/*.test.js`. |
 | session ws | 101 with no Access cookie, then `needs_toon` and a clean 1000 close | No 101: the WebSocket path through Worker and tunnel is broken. No 1000: the app is dropping sockets without a close frame (a proxy can then lose the last frame). |
-| backup / keepsakes / offsite job | the last run of each timer succeeded (or it hasn't run yet) | `journalctl -u daydream-<job>.service`. "no new privileges" means the units are the old ones: the operator runs `sudo ops/install-prod.sh`. The offsite job also needs the R2 bucket ([backups.md](backups.md)). |
+| backup / keepsakes / offsite job | the unit is installed, its timer is active, and its last run succeeded (or it hasn't run yet) | "not installed" or an inactive timer: the operator runs `sudo ops/install-prod.sh` (it installs the units and enables the timers). A failed run: `journalctl -u daydream-<job>.service`; "no new privileges" means the units are the old ones, so the same `sudo ops/install-prod.sh`. The offsite job also needs the R2 bucket ([backups.md](backups.md)). |
 
 The unit tests for these checks are `tests/test_prodcheck.py`; they replay
 the failures this list describes, so a check that stops catching one fails

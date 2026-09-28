@@ -37,8 +37,9 @@ The design behind all of it is [`docs/GOING-LIVE.md`](../GOING-LIVE.md).
   operator asks for the work, with a one-line note per step (CLAUDE.md
   "Agent policy for prod"). A local permission rule lets them run without a
   prompt, except the verbs that mint a credential or a privilege or replace
-  the world (`prod invite reset`, `prod account role|create`, `prod world
-  reset|delete|restore|snapshot-restore|restore-backup`), which always prompt.
+  the world (`prod invite reset`, `prod account role|create|cli-cookie`, `prod
+  world reset|delete|restore|snapshot-restore|restore-backup|load`), which
+  always prompt.
 - **The operator** does what needs root or a browser: `sudo ops/install-prod.sh`,
   editing `/srv/daydream/etc/prod.env`, and the Cloudflare dashboard.
 - **Nobody** mends the great clock with the operator's own account in prod:

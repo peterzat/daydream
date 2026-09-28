@@ -829,7 +829,11 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.cmd == "install-check":
         patch, pdir = _patch_arg(args.patch)
-        why = install_ready(patch, pdir)
+        # This box's own rehearsal (the data dir) decides when there is one; a
+        # report beside the patch (committed from dev) only when there isn't:
+        # prod's release is read-only (codereview WARN 2026-09-28b).
+        work = config.data_dir() / "dreams" / str(patch.get("id") or pdir.name)
+        why = install_ready(patch, work if (work / "rehearsal.json").exists() else pdir)
         print(why or f"ready: {patch['id']} passed its rehearsal")
         return 0 if why is None else 1
     if args.cmd == "rehearse":
@@ -839,11 +843,15 @@ def main(argv: list[str] | None = None) -> int:
         # repo tree; the report is copied next to the patch for the commit.
         work = config.data_dir() / "dreams" / str(patch.get("id") or pdir.name)
         report = asyncio.run(rehearse(patch, db_path, work))
-        shutil.copyfile(work / "rehearsal.json", pdir / "rehearsal.json")
+        where = pdir / "rehearsal.json"
+        try:
+            shutil.copyfile(work / "rehearsal.json", where)
+        except OSError:  # a read-only release (prod): install-check reads the data dir first
+            where = work / "rehearsal.json"
         for s in report["steps"]:
             print(("ok   " if s["ok"] else "FAIL ") + s["step"]
                   + (f": {s['detail'][:300]}" if s["detail"] and not s["ok"] else ""))
-        print(f"rehearsal {'PASSED' if report['ok'] else 'FAILED'} -> {pdir / 'rehearsal.json'}")
+        print(f"rehearsal {'PASSED' if report['ok'] else 'FAILED'} -> {where}")
         return 0 if report["ok"] else 1
 
     db.init_live(path=db_path, migrations_dir=config.MIGRATIONS_DIR)

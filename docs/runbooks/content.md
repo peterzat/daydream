@@ -31,16 +31,23 @@ patch reaches prod committed and deployed:
    (the dev server down first), then `bin/game dream check|rehearse` there.
 3. Commit the dream folder, `bin/game prod deploy`.
 4. `bin/game prod dream rehearse worlds/lost-hours/dreams/<id>/patch.json`
-5. `bin/game prod dream install worlds/lost-hours/dreams/<id>/patch.json`
+5. `bin/game prod backup` (the undo point: note the `backups/<ts>` it prints), then
+   `bin/game prod dream install worlds/lost-hours/dreams/<id>/patch.json`
 6. `bin/game prod check`; then look for a callback in play.
 
 Paths are relative to the release (the repo layout). An absolute path under
-the operator's home is refused with this explanation. Undo a bad dream by
-restoring the pre-dream snapshot it printed.
+the operator's home is refused with this explanation. Undo a bad dream with
+`bin/game prod world restore-backup /srv/daydream/data/backups/<that ts>`,
+which also rolls the accounts DB back to that moment ([backups.md](backups.md)).
+The pre-dream snapshot `dream install` prints cannot be restored in prod:
+`world snapshot-restore` refuses while a live DB exists.
 
 ## Art
 
-Prod never renders room or resident art: it copies the graded dev art.
+Prod doesn't prebake: it copies the graded dev art. A room or resident
+missing from the copy (`prebake --from-cache` lists it as `missing`) is
+painted by prod itself, ungraded, the first time a player comes across it;
+render and grade it in dev, then copy again.
 
 ```sh
 bin/game prebake                                                   # in dev, then grade it (docs/art/)

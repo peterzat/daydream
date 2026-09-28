@@ -112,6 +112,27 @@ def test_change_password_ends_other_sessions():
     assert accounts.authenticate("wren", "a brand new password") is not None
 
 
+def test_a_password_change_never_overwrites_one_made_meanwhile():
+    """codereview WARN 2026-09-28b: the change is split around an await; a
+    reset redeemed in that window must not be overwritten by the change."""
+    row = accounts.create_account("wren", PW)
+    _, sid = accounts.create_session(row["id"])
+    new_hash, verified = accounts.prepare_password_change(row["id"], PW, "a brand new password")
+    # A reset lands between the halves: a new password (and, for a real
+    # reset, every session ended; the second case below).
+    accounts.get_conn().execute("UPDATE accounts SET password_hash = ? WHERE id = ?",
+                                (accounts._hash_password("the reset password"), row["id"]))
+    with pytest.raises(accounts.AccountError, match="meanwhile"):
+        accounts.commit_password_change(row["id"], new_hash, verified, keep_session_id=sid)
+    assert accounts.authenticate("wren", "the reset password") is not None
+    new_hash, verified = accounts.prepare_password_change(row["id"], "the reset password",
+                                                          "a brand new password")
+    accounts.revoke_sessions("wren")
+    with pytest.raises(accounts.AccountError, match="meanwhile"):
+        accounts.commit_password_change(row["id"], new_hash, verified, keep_session_id=sid)
+    assert accounts.authenticate("wren", "the reset password") is not None
+
+
 # ---- sessions -----------------------------------------------------------------
 
 
@@ -186,6 +207,24 @@ def test_live_passes_honor_the_absolute_session_cap(monkeypatch):
     _shift(monkeypatch, days=accounts.SESSION_MAX_DAYS + 1)
     assert accounts.resolve(token) is None
     assert accounts.live_passes() == []
+
+
+def test_a_pass_expires_at_the_absolute_cap_when_that_comes_first():
+    """codereview WARN 2026-09-28b: the edge trusts the published expiry, so a
+    session crossing 180 days while the box sleeps kept its pass until the
+    30-day sliding expiry."""
+    a = accounts.create_account("wren", PW)
+    accounts.create_session(a["id"])
+    now = accounts._now()
+    accounts.get_conn().execute("UPDATE sessions SET created_at = ?, expires_at = ?",
+                                (accounts._iso(now - timedelta(days=170)),
+                                 accounts._iso(now + timedelta(days=accounts.SESSION_DAYS))))
+    [p] = accounts.live_passes()
+    assert p["expires_at"] == accounts._iso(now + timedelta(days=10))
+    accounts.get_conn().execute("UPDATE sessions SET created_at = ?",
+                                (accounts._iso(now - timedelta(days=1)),))
+    assert accounts.live_passes()[0]["expires_at"] == accounts._iso(
+        now + timedelta(days=accounts.SESSION_DAYS))
 
 
 def test_login_takes_a_username_not_an_account_id():

@@ -18,7 +18,7 @@ What `deploy` does, in order, stopping at the first failure:
 
 1. Refuses a dirty tree when deploying HEAD.
 2. Runs the short and medium tiers at that exact commit, in a throwaway git
-   worktree that borrows the dev venv (the same ~1650 tests CI runs).
+   worktree that borrows the dev venv (the same ~1700 tests CI runs).
 3. Builds `/srv/daydream/releases/<sha>` (a read-only `git archive`) and its
    venv from `ops/requirements-prod.lock` (reused when the lock is unchanged).
 4. Preflight, as the service user with the NEW release's code against prod

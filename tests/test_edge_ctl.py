@@ -26,6 +26,24 @@ def test_kv_id_is_read_from_wrangler_toml(tmp_path, monkeypatch):
     assert edge.kv_namespace_id() is None
 
 
+def test_the_public_status_url_comes_from_wrangler_toml(tmp_path, monkeypatch):
+    """codereview WARN 2026-09-28b: the URL was hardcoded to this instance, so
+    a fork's `bin/game edge status` probed someone else's village."""
+    import re
+
+    assert re.fullmatch(r"https://[a-z0-9.-]+/([a-z0-9-]+/)?edge/status", edge.public_status_url())
+    monkeypatch.setattr(edge, "EDGE", tmp_path)
+    (tmp_path / "wrangler.toml").write_text(
+        '[vars]\nORIGIN = "https://origin.example.org"\nPUBLIC_HOST = "play.example.org"\n'
+        'BASE = "/village/"\n')
+    assert edge.public_status_url() == "https://play.example.org/village/edge/status"
+    (tmp_path / "wrangler.toml").write_text('[vars]\nPUBLIC_HOST = "example.org"\nBASE = "/"\n')
+    assert edge.public_status_url() == "https://example.org/edge/status"
+    (tmp_path / "wrangler.toml").write_text('[vars]\nBASE = "/village/"\n')
+    with pytest.raises(edge.EdgeError):
+        edge.public_status_url()
+
+
 def test_set_and_describe_state(tmp_path, monkeypatch):
     creds = tmp_path / "cloudflare.env"
     creds.write_text("CLOUDFLARE_API_TOKEN=t0k\nCLOUDFLARE_ACCOUNT_ID=acct\n")

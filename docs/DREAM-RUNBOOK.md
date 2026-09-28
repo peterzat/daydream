@@ -120,8 +120,8 @@ world plus every applied dream's `add` plus this one) and replays EVERY
 committed walkthrough and the patch's `fresh` ones. Zero LLM calls. The
 scratch databases (the snapshot, the side copy, the fresh twin) live under
 `~/data/daydream/dreams/<id>/`; `rehearsal.json` is copied next to the patch
-for the commit. A failed rehearsal installs nothing: fix the patch and
-rehearse again.
+for the commit (in prod's read-only release it stays in the data dir). A
+failed rehearsal installs nothing: fix the patch and rehearse again.
 
 ## 5. Install
 
@@ -129,7 +129,8 @@ rehearse again.
 bin/game dream install worlds/lost-hours/dreams/<id>/patch.json
 ```
 
-Refuses unless `rehearsal.json` passed for exactly this patch. Then: a
+Refuses unless `rehearsal.json` passed for exactly this patch: this box's
+own, under the data dir, when there is one; else the one beside the patch. Then: a
 pre-dream snapshot (`~/data/daydream/snapshots/`), `bin/game down` (players
 see the calm "the dream is sleeping" overlay for a few seconds), apply the
 proven patch to the CURRENT live database (so nothing a player did after

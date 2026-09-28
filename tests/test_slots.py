@@ -259,20 +259,70 @@ def test_moderating_an_ambiguous_name_refuses_and_an_id_picks_one():
         assert toons.get_toon_in_slot(3).id == first.id
 
 
-def test_a_toon_named_after_another_toons_id_is_ambiguous():
+@pytest.mark.parametrize("legacy", ["{id}", "B [{id}], A"])
+def test_a_toon_named_after_another_toons_id_is_ambiguous(legacy):
     """security NOTE 2026-09-28: an exact id match used to win, so a toon
-    named after a friend's toon id diverted `delete-toon` to the friend."""
+    named after a friend's toon id diverted `delete-toon` to the friend. Such
+    names are refused at create since codereview WARN 2026-09-28b; this one
+    predates the rule (renamed in the DB), including an id quoted inside a
+    longer name."""
     from daydream import admin as admin_cli
+    from daydream import objects
 
     with TestClient(app) as a, TestClient(app) as b:
         _login(a, "ivo-one")
         _login(b, "copycat")
         a.post("/api/slots/3/create", json=IVO)
         friend = toons.get_toon_in_slot(3)
-        b.post("/api/slots/4/create", json={**IVO, "name": friend.id})
-        assert toons.get_toon_in_slot(4).name == friend.id
+        b.post("/api/slots/4/create", json=IVO)
+        objects.rename(toons.get_toon_in_slot(4).id, legacy.format(id=friend.id))
+        assert toons.get_toon_in_slot(4).name == legacy.format(id=friend.id)
         assert admin_cli.cmd_toon_moderate(friend.id, "delete") == 2
         assert toons.get_toon_in_slot(3) is not None and toons.get_toon_in_slot(4) is not None
+
+
+@pytest.mark.parametrize("name", ["B [x], A", "Mira t-slot3-0a1b2c3d", "T-SLOT12-ABCDEF12", "{wren}",
+                                  "the {wren} one"])
+def test_a_name_that_could_pass_for_a_toon_id_is_refused(name):
+    """codereview WARN 2026-09-28b: `/status/who` and moderation name toons
+    by id, so a name may not carry brackets, an id-shaped run, or an existing
+    toon's id (the seeded Wren's, here)."""
+    with TestClient(app) as client:
+        _login(client)
+        name = name.format(wren=toons.get_toon_in_slot(1).id)
+        r = client.post("/api/dreamer/create", json={**IVO, "name": name})
+        assert r.status_code == 400 and "id" in r.json()["detail"]
+        assert client.post("/api/dreamer/create", json=IVO).status_code == 200
+
+
+def test_a_residents_id_inside_a_name_is_no_mimic():
+    """codereview WARN 2026-09-28b (cycle 2): moderation acts only on player
+    toons (slots 1-99), so only their ids are refused inside a name. The Lost
+    Hours residents' short ids sit inside ordinary names: "Matt-Fenwick"
+    holds `t-fen`, "Kat-bell" holds `t-bell`. (A player toon's plain id, the
+    seeded Wren's, is still refused: the test above.)"""
+    import json
+
+    from daydream import config
+    from daydream.llm import bootstrap
+
+    live = config.live_db_path()
+    live.parent.mkdir(parents=True, exist_ok=True)
+    envelope = json.loads((Path(__file__).resolve().parent.parent
+                           / "worlds" / "lost-hours.json").read_text())
+    bootstrap.load_world("lost hours", envelope, live)
+    db.close_db()  # the app's lifespan opens it
+    with TestClient(app) as a, TestClient(app) as b, TestClient(app) as c:
+        _login(a, "matt")
+        assert toons.get_toon("t-fen").slot >= 100 and toons.get_toon("t-bell").slot >= 100
+        matt = a.post("/api/dreamer/create", json={**IVO, "name": "Matt-Fenwick"})
+        assert matt.status_code == 200, matt.text
+        _login(b, "kat")
+        assert b.post("/api/dreamer/create",
+                      json={**IVO, "name": "Kat-bell"}).status_code == 200
+        _login(c, "copycat")
+        r = c.post("/api/dreamer/create", json={**IVO, "name": f"x {matt.json()['id']}"})
+        assert r.status_code == 400 and "id" in r.json()["detail"]
 
 
 # ---- unowned toons (seeded or from before accounts) -------------------------------------

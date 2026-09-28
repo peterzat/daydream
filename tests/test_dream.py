@@ -337,6 +337,35 @@ def test_install_marks_what_the_digest_read(tmp_path):
     assert typed == ["wave at the lamps"]
 
 
+def test_a_read_only_patch_dir_rehearses_and_installs_from_the_data_dir(tmp_path, monkeypatch):
+    """codereview WARN 2026-09-28b: in prod the release is read-only, so the
+    copy beside the patch raised, and install-check read only that copy (a
+    rehearsal committed from dev). This box's own rehearsal decides."""
+    if os.geteuid() == 0:
+        pytest.skip("root ignores the read-only bit")
+    real = dream.rehearse
+    monkeypatch.setattr(dream, "rehearse", lambda p, live, work: real(
+        p, live, work, base_env_path=FIXTURE_PATH, walkthrough_dir=FIXTURE_WALKS))
+    pdir = tmp_path / "release" / "dream-test-1"
+    pdir.mkdir(parents=True)
+    patch_path = pdir / "patch.json"
+    patch_path.write_text(json.dumps(_patch()))
+    local = config.data_dir() / "dreams" / "dream-test-1" / "rehearsal.json"
+    live = Path(db.get_conn().execute("PRAGMA database_list").fetchone()["file"])
+    db.close_db()
+    pdir.chmod(0o555)
+    try:
+        assert dream.main(["rehearse", str(patch_path), "--db", str(live)]) == 0
+        assert not (pdir / "rehearsal.json").exists() and local.exists()
+        assert dream.main(["install-check", str(patch_path)]) == 0
+    finally:
+        pdir.chmod(0o755)
+    # A failing rehearsal here is not overridden by a passing one beside the patch.
+    (pdir / "rehearsal.json").write_text(local.read_text())
+    local.write_text(json.dumps({**json.loads(local.read_text()), "ok": False}))
+    assert dream.main(["install-check", str(patch_path)]) == 1
+
+
 def test_the_digest_quotes_what_players_wrote():
     """The dreamer reads the digest and acts on it, so every player-written
     value is one quoted line under an untrusted-data banner."""

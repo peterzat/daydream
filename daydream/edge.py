@@ -41,7 +41,6 @@ REPO = Path(__file__).resolve().parent.parent
 EDGE = REPO / "edge"
 CREDENTIALS = Path.home() / ".config" / "daydream" / "cloudflare.env"
 API = "https://api.cloudflare.com/client/v4"
-PUBLIC_STATUS = "https://www.eidolon.com/daydream/edge/status"
 
 
 class EdgeError(RuntimeError):
@@ -155,10 +154,23 @@ def describe_state() -> str:
     return out
 
 
+def public_status_url() -> str:
+    """The Worker's public status route, from edge/wrangler.toml's PUBLIC_HOST
+    and BASE vars, so a fork probes its own instance (codereview WARN
+    2026-09-28b)."""
+    text = (EDGE / "wrangler.toml").read_text()
+    host = re.search(r'^PUBLIC_HOST\s*=\s*"([^"]+)"', text, flags=re.M)
+    base = re.search(r'^BASE\s*=\s*"([^"]*)"', text, flags=re.M)
+    if not host:
+        raise EdgeError("edge/wrangler.toml has no PUBLIC_HOST var")
+    prefix = (base.group(1) if base else "").strip("/")
+    return f"https://{host.group(1)}/" + (f"{prefix}/" if prefix else "") + "edge/status"
+
+
 def public_status() -> dict | None:
     # Cloudflare's Browser Integrity Check refuses urllib's default
     # User-Agent (error 1010), so the probe names itself.
-    req = urllib.request.Request(PUBLIC_STATUS, headers={"User-Agent": "daydream-edge-cli"})
+    req = urllib.request.Request(public_status_url(), headers={"User-Agent": "daydream-edge-cli"})
     try:
         with urllib.request.urlopen(req, timeout=10) as r:
             return json.loads(r.read())
@@ -322,7 +334,7 @@ def status() -> int:
     else:
         print(f"edge flag: not configured ({CREDENTIALS} and the KV id in edge/wrangler.toml)")
     pub = public_status()
-    print("public:    " + (json.dumps(pub) if pub else f"no answer from {PUBLIC_STATUS}"))
+    print("public:    " + (json.dumps(pub) if pub else f"no answer from {public_status_url()}"))
     return 0
 
 

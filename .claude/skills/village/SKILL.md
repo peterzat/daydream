@@ -39,11 +39,13 @@ note is what friends read on the asleep page (e.g. "lent to a training run
 until Sunday"); if the operator gave none, propose one and use it only once
 they agree, or use an empty note.
 
-Run `bin/game prod sleep --note "<note>"` (the default 60 s grace warns anyone
-playing). It:
-1. rests everyone and writes their journals
+Run `bin/game prod sleep --note "<note>"`. It:
+1. warns anyone playing and waits (the default 60 s grace)
 2. flips the edge to asleep
-3. stops the tunnel, the service and the engines, freeing the GPU
+3. stops the tunnel and the service
+4. rests everyone and writes their journals
+5. syncs keepsakes to the edge
+6. stops the engines, freeing the GPU
 
 Use `--keep-engines` only if the operator wants the GPU engines left running.
 

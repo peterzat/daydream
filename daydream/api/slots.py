@@ -29,6 +29,7 @@ Errors are JSON `{"detail": "<reason>"}` with the documented status codes.
 from __future__ import annotations
 
 import asyncio
+import re
 
 from fastapi import APIRouter, HTTPException, Request
 
@@ -44,6 +45,21 @@ router = APIRouter()
 # phrase (length cap + WHIMSY input banlist). Loader-authored NPC seeds are
 # design-time and do not pass through here.
 MAX_APPEARANCE_SEED_CHARS = 300
+
+# Moderation names a toon by id, so a name must not pass for one (codereview
+# WARN 2026-09-28b): no brackets, no id-shaped run, no player toon's id.
+# Residents (slots 100+) are never moderated, and their short ids (`t-fen`)
+# sit inside ordinary names ("Matt-Fenwick"), so they are not scanned.
+_TOON_ID_SHAPE = re.compile(r"t-slot\d+-[0-9a-f]{8}", re.IGNORECASE)
+
+
+def _mimics_a_toon_id(name: str) -> bool:
+    if "[" in name or "]" in name or _TOON_ID_SHAPE.search(name):
+        return True
+    low = name.lower()
+    players = toons._query("world_id = ? AND slot BETWEEN 1 AND 99", (toons.live_world_id(),))
+    return any(t.id.lower() in low for t in players)
+
 
 # How long after a controller's last WS drop an UNOWNED toon it holds stays
 # protected from another account's delete. (Owned toons are protected by
@@ -114,6 +130,8 @@ async def _toon_request(request: Request) -> tuple[str, str]:
             f"name must be at most {toons.MAX_NAME_CHARS} characters on one line"))
     if safety.first_banned(name) is not None:
         raise HTTPException(status_code=400, detail="name doesn't fit the dream's tone")
+    if _mimics_a_toon_id(name):
+        raise HTTPException(status_code=400, detail="name can't use brackets or a dreamer's id")
     if not isinstance(appearance, str) or not appearance.strip():
         raise HTTPException(status_code=400, detail="appearance_seed must be a non-empty string")
     appearance = appearance.strip()

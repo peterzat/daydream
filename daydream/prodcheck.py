@@ -144,15 +144,40 @@ def check_ws_session(status: int, headers: list[tuple[str, str]], frames: list[s
     return Check("session ws", True, f"101, {frames[0]}, close {close_code}")
 
 
-def check_timer(unit: str, props: dict[str, str]) -> Check:
-    """`systemctl show` properties of a timer-run oneshot service."""
-    name = unit.removesuffix(".service").removeprefix("daydream-") + " job"
+def _job_name(unit: str) -> str:
+    return unit.removesuffix(".service").removeprefix("daydream-") + " job"
+
+
+def check_timer(unit: str, props: dict[str, str], timer_state: str) -> Check:
+    """`systemctl show` properties of a timer-run oneshot service, and the
+    ActiveState of its .timer. A job that is not installed, or whose timer is
+    not active, never runs: it fails rather than reading "not run yet"
+    forever (codereview WARN 2026-09-28b)."""
+    name = _job_name(unit)
+    if props.get("LoadState") != "loaded":
+        return Check(name, False, f"not installed (LoadState {props.get('LoadState') or '?'}; "
+                                  "sudo ops/install-prod.sh)")
+    if timer_state != "active":
+        return Check(name, False, f"its timer is {timer_state or '?'} (sudo ops/install-prod.sh "
+                                  "enables it)")
     ran = props.get("ExecMainExitTimestamp", "").strip()
     if ran in ("", "n/a"):
         return Check(name, True, "not run yet")
     if props.get("Result") == "success":
         return Check(name, True, f"ok (last {ran})")
     return Check(name, False, f"{props.get('Result')} (last {ran}; journalctl -u {unit})")
+
+
+def check_flag(service_active: bool, flag: str | None) -> list[Check]:
+    """The edge flag against the box. An asleep flag over a running service
+    keeps friends out, so it fails; a stale awake flag over a stopped service
+    is harmless (the Worker reads an unreachable origin as asleep), so it is
+    no failure (codereview WARN 2026-09-28b)."""
+    if service_active and flag == "asleep":
+        return [Check("edge flag", False, "the flag says asleep while the service runs: friends "
+                                          "see the asleep page; `bin/game edge wake` unless that "
+                                          "is intended")]
+    return []
 
 
 def check_release(release: str | None, head: str, behind: str) -> Check:
@@ -204,14 +229,28 @@ def ws_session(url: str, cookie: str, origin: str) -> tuple[int, list[tuple[str,
         return e.response.status_code, list(e.response.headers.raw_items()), [], None
 
 
-def systemctl_show(unit: str) -> dict[str, str]:
-    r = subprocess.run(["systemctl", "show", unit, "-p", "Result", "-p", "ExecMainExitTimestamp",
-                        "-p", "ExecMainStatus"], capture_output=True, text=True)
+def systemctl_show(unit: str, props: str = "Result,ExecMainExitTimestamp,ExecMainStatus,LoadState"
+                   ) -> dict[str, str]:
+    r = subprocess.run(["systemctl", "show", unit, "-p", props], capture_output=True, text=True)
     return dict(line.split("=", 1) for line in r.stdout.splitlines() if "=" in line)
 
 
+def _probe(name: str, thunk) -> Check:
+    """One check whose probe may raise: a DNS, TLS, timeout or protocol error
+    fails that check alone, and every other check still runs and reports
+    (codereview WARN 2026-09-28b)."""
+    try:
+        return thunk()
+    except Exception as e:  # noqa: BLE001 - whatever the error, it is this check failing
+        return Check(name, False, f"{type(e).__name__}: {e}")
+
+
 def timer_checks() -> list[Check]:
-    return [check_timer(u, systemctl_show(u)) for u in TIMERS]
+    def one(unit: str) -> Check:
+        timer = systemctl_show(unit.removesuffix(".service") + ".timer", "ActiveState")
+        return check_timer(unit, systemctl_show(unit), timer.get("ActiveState", ""))
+
+    return [_probe(_job_name(u), lambda u=u: one(u)) for u in TIMERS]
 
 
 def target_from_config(env: dict[str, str]) -> Target:
@@ -227,28 +266,32 @@ def target_from_config(env: dict[str, str]) -> Target:
 def run(target: Target, *, awake: bool, flag: str | None, cookie: str | None,
         cookie_name: str, request=http_request, session=ws_session) -> list[Check]:
     root = target.root
-    out = [check_edge_status(request("GET", root + "edge/status"), flag)]
-    out.append(check_front_door(request("GET", root, {"Accept": "text/html"}), awake, target.base))
-    out.append(check_api_signed_out(request("GET", root + "api/me", {"Accept": "application/json"}),
-                                    awake))
+    out = [_probe("edge status", lambda: check_edge_status(request("GET", root + "edge/status"),
+                                                           flag))]
+    out.append(_probe("front door", lambda: check_front_door(
+        request("GET", root, {"Accept": "text/html"}), awake, target.base)))
+    out.append(_probe("api signed out", lambda: check_api_signed_out(
+        request("GET", root + "api/me", {"Accept": "application/json"}), awake)))
     if awake:
-        out.append(check_cross_origin_refused(request(
+        out.append(_probe("cross-origin login", lambda: check_cross_origin_refused(request(
             "POST", root + "api/login",
             {"Origin": "https://example.invalid", "Content-Type": "application/json"},
-            b'{"username": "", "password": ""}')))
-    out.append(check_redirect("no-slash redirect", request("GET", root.rstrip("/")), root))
+            b'{"username": "", "password": ""}'))))
+    out.append(_probe("no-slash redirect", lambda: check_redirect(
+        "no-slash redirect", request("GET", root.rstrip("/")), root)))
     if target.apex:
-        out.append(check_redirect("apex redirect",
-                                  request("GET", f"https://{target.apex}{target.base}"), root))
+        out.append(_probe("apex redirect", lambda: check_redirect(
+            "apex redirect", request("GET", f"https://{target.apex}{target.base}"), root)))
     if target.origin_host:
-        out.append(check_origin_locked(request("GET", f"https://{target.origin_host}/healthz")))
-    out.append(check_ws_anonymous(request("GET", root + "ws", {
+        out.append(_probe("origin locked", lambda: check_origin_locked(
+            request("GET", f"https://{target.origin_host}/healthz"))))
+    out.append(_probe("anonymous ws upgrade", lambda: check_ws_anonymous(request("GET", root + "ws", {
         "Upgrade": "websocket", "Connection": "Upgrade", "Sec-WebSocket-Version": "13",
-        "Sec-WebSocket-Key": "dGhlIHNhbXBsZSBub25jZQ=="})))
+        "Sec-WebSocket-Key": "dGhlIHNhbXBsZSBub25jZQ=="}))))
     if awake and cookie:
         c = cookie if "=" in cookie else f"{cookie_name}={cookie}"
         ws_url = "wss://" + root.split("://", 1)[1] + "ws"
-        out.append(check_ws_session(*session(ws_url, c, target.public)))
+        out.append(_probe("session ws", lambda: check_ws_session(*session(ws_url, c, target.public))))
     return out
 
 
@@ -283,6 +326,7 @@ def main() -> int:
     head = prodctl.resolve_ref("HEAD")[:12]
     checks = [check_release(rel.name if rel else None, head,
                             prodctl.behind(rel.name, head) if rel else "")]
+    checks += check_flag(awake, flag)
     # Awake to the public only when the service runs AND the flag isn't
     # asleep; otherwise the Worker must show the asleep page (planned or not).
     expect = "awake" if (awake and flag != "asleep") else "asleep"

@@ -461,15 +461,16 @@ def cmd_rest_all(journal_too: bool) -> int:
 
 
 def _find_toons(key: str) -> list:
-    """Player toons matching `key`: an exact id, else every toon of that name
-    (names are not unique, so the caller refuses an ambiguous name)."""
+    """Player toons matching `key`: an exact id, or every toon whose name
+    contains it (names are not unique, so the caller refuses an ambiguous key)."""
     from daydream import toons
 
     rows = list(toons._query("world_id = ? AND slot BETWEEN 1 AND 99", (toons.live_world_id(),)))
     name = key.strip().lower()
     # Every toon the key could mean: an id match does NOT win outright, since a
-    # player can name a toon after another toon's id (security NOTE 2026-09-28).
-    return [t for t in rows if t.id == key or t.name.lower() == name]
+    # player can name a toon after another toon's id (security NOTE 2026-09-28),
+    # or quote that id inside a longer name (codereview WARN 2026-09-28b).
+    return [t for t in rows if t.id == key or (name and name in t.name.lower())]
 
 
 def cmd_restore_backup(backup_dir: Path) -> int:
@@ -518,7 +519,7 @@ def cmd_toon_moderate(key: str, action: str) -> int:
         # Two players can share a name; acting on the first match could rest
         # or delete the wrong friend's toon (SECURITY NOTE 2026-09-28).
         ids = ", ".join(f"{t.id} (slot {t.slot})" for t in found)
-        print(f"error: {len(found)} player toons are named {key!r}; name one by id: {ids}",
+        print(f"error: {len(found)} player toons match {key!r}; name one by id: {ids}",
               file=sys.stderr)
         return 2
     t = found[0]

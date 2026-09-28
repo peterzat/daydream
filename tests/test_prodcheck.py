@@ -98,13 +98,71 @@ def test_a_socket_dropped_without_a_close_frame_fails():
 
 
 def test_timer_results():
+    loaded = {"LoadState": "loaded"}
     assert prodcheck.check_timer("daydream-backup.service",
-                                 {"Result": "success", "ExecMainExitTimestamp": "n/a"}).ok
+                                 {**loaded, "Result": "success", "ExecMainExitTimestamp": "n/a"},
+                                 "active").ok
     ok = prodcheck.check_timer("daydream-backup.service",
-                               {"Result": "success", "ExecMainExitTimestamp": "Mon 04:30"})
+                               {**loaded, "Result": "success", "ExecMainExitTimestamp": "Mon 04:30"},
+                               "active")
     bad = prodcheck.check_timer("daydream-keepsakes.service",
-                                {"Result": "exit-code", "ExecMainExitTimestamp": "Mon 02:03"})
+                                {**loaded, "Result": "exit-code", "ExecMainExitTimestamp": "Mon 02:03"},
+                                "active")
     assert ok.ok and not bad.ok and "journalctl -u daydream-keepsakes.service" in bad.detail
+
+
+def test_a_job_not_installed_or_with_a_stopped_timer_fails():
+    """codereview WARN 2026-09-28b: `systemctl show` of a unit that does not
+    exist prints Result=success and no run, which read "not run yet" forever."""
+    never = {"Result": "success", "ExecMainExitTimestamp": "n/a"}
+    gone = prodcheck.check_timer("daydream-offsite.service", {**never, "LoadState": "not-found"},
+                                 "inactive")
+    stopped = prodcheck.check_timer("daydream-offsite.service", {**never, "LoadState": "loaded"},
+                                    "inactive")
+    assert not gone.ok and "not installed" in gone.detail
+    assert not stopped.ok and "timer is inactive" in stopped.detail
+
+
+def test_timer_checks_survive_a_missing_systemctl(monkeypatch):
+    def boom(*a, **k):
+        raise FileNotFoundError("systemctl")
+
+    monkeypatch.setattr(prodcheck, "systemctl_show", boom)
+    checks = prodcheck.timer_checks()
+    assert [c.name for c in checks] == ["backup job", "keepsakes job", "offsite job"]
+    assert not any(c.ok for c in checks) and "FileNotFoundError" in checks[0].detail
+
+
+def test_a_probe_that_raises_fails_alone_and_the_rest_still_run():
+    """codereview WARN 2026-09-28b: one DNS/TLS/timeout error used to abort
+    the whole check with no per-check output."""
+    edge = fake_edge()
+
+    def request(method, url, headers=None, body=None):
+        if url == "https://daydream-origin.example.org/healthz":
+            raise TimeoutError("timed out")
+        return edge(method, url, headers, body)
+
+    def session_fails(url, cookie, origin):
+        raise ConnectionResetError("reset by peer")
+
+    checks = prodcheck.run(T, awake=True, flag="awake", cookie="dd_session_prod=t",
+                           cookie_name="dd_session_prod", request=request, session=session_fails)
+    assert failed(checks) == ["origin locked", "session ws"]
+    assert next(c for c in checks if c.name == "origin locked").detail == "TimeoutError: timed out"
+    assert len(checks) == 9
+
+
+def test_an_asleep_flag_over_a_running_service_fails():
+    """codereview WARN 2026-09-28b: `expect` follows the flag, so an awake box
+    behind an asleep flag passed every check while friends could not get in.
+    A stale awake flag over a stopped box is harmless: the Worker reads an
+    unreachable origin as asleep."""
+    [c] = prodcheck.check_flag(True, "asleep")
+    assert not c.ok and "bin/game edge wake" in c.detail
+    assert prodcheck.check_flag(False, "awake") == []
+    assert prodcheck.check_flag(True, "awake") == []
+    assert prodcheck.check_flag(False, "asleep") == []
 
 
 def test_report_exit_status():

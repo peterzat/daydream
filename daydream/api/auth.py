@@ -202,11 +202,16 @@ async def change_password(request: Request):
     # loop must not stall everyone's game (codereview NOTE 2026-09-28).
     accounts.record_failure(key, accounts.LOGIN_PER_USERNAME)
     try:
-        new_hash = await asyncio.to_thread(_hashing, accounts.prepare_password_change,
-                                           p.account_id, body.get("old", ""), body.get("new", ""))
+        new_hash, verified = await asyncio.to_thread(
+            _hashing, accounts.prepare_password_change,
+            p.account_id, body.get("old", ""), body.get("new", ""))
     except accounts.AccountError as e:
         return _deny(400, str(e))
-    accounts.commit_password_change(p.account_id, new_hash, keep_session_id=p.session_id)
+    try:
+        accounts.commit_password_change(p.account_id, new_hash, verified,
+                                        keep_session_id=p.session_id)
+    except accounts.AccountError as e:  # a reset (or another change) landed meanwhile
+        return _deny(409, str(e))
     return {"ok": True}
 
 

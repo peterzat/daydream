@@ -165,17 +165,23 @@ async def status_arbiter(request: Request):
 
 @app.get("/status/who")
 async def status_who(request: Request):
-    """Who is in the village right now (for `bin/game prod status`): the
-    toons being played, their ids (moderation names a toon by id; names are
-    not unique) and whether their socket is live. Admins only."""
+    """Who is in the village right now (for `bin/game prod status`): one toon
+    per line, id first (moderation names a toon by id; names are not unique),
+    the name JSON-quoted so it cannot pass for another toon's entry (codereview
+    WARN 2026-09-28b), the owner's username, and `(away)` when its socket is
+    not live. Admins only."""
     _require_admin(request)
+    import json
+
     from daydream import toons
 
     lines = []
     for t in toons.playing():
-        live = ws.is_session_live(t.controller_session)
-        lines.append(f"{t.name} [{t.id}]{'' if live else ' (away)'}")
-    return PlainTextResponse("playing: " + (", ".join(lines) if lines else "no one") + "\n")
+        owner = accounts.get_account(t.owner_account) if t.owner_account else None
+        away = "" if ws.is_session_live(t.controller_session) else "  (away)"
+        lines.append(f"  {t.id}  {json.dumps(t.name, ensure_ascii=False)}  "
+                     + (f"owner {owner['username']}" if owner else "unowned") + away)
+    return PlainTextResponse("playing:" + ("\n" + "\n".join(lines) if lines else " no one") + "\n")
 
 
 @app.get("/status/build")

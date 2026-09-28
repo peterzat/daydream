@@ -239,13 +239,16 @@ following `docs/CLOUDFLARE-SETUP.md` end to end in one session. Criteria 1-8,
 demand, everything the bring-up proved by hand:
 - the Worker's route wins over the Pages site on the same host
 - the origin refuses anyone without the service token (403)
-- `/daydream` and the apex redirect to `https://www.eidolon.com/daydream/`;
-  prod listens only on loopback
+- `/daydream` and the apex redirect to `https://www.eidolon.com/daydream/`
 - the front door, a 401 for a signed-out API call, a 403 for a cross-origin
   login
 - no WebSocket answer carries Access's cookie, and a session's socket
   closes cleanly
-- each timer job's last run
+- each timer job is installed, its timer active, and its last run succeeded
+
+The bring-up also proved that prod listens only on loopback. `prod check`
+does not probe that: the service refuses to boot with any other bind
+(`config.boot_problems`).
 
 **Still to demonstrate (criteria 9-13, 15-17, 22):** a live dialogue and
 portrait under the sandbox, a rollback drill, a backup restored into dev,
@@ -258,7 +261,8 @@ phone, and the R2 offsite bucket.
 drove the whole flow through the API and passed. A real browser could not
 sign in: the front door disabled its inputs before reading the form, and
 FormData skips disabled inputs. Now a headless-browser test walks a friend
-from an invitation to the start room, in CI's tier and in the deploy gate.
+from an invitation to the start room in the deploy gate (it sits in the
+medium tier, but CI has no browser and skips it).
 
 **A gate that never ran is not a gate.** `prod deploy`'s test step had never
 passed on the box: its worktree had no venv for the `bin/game` smoke test,

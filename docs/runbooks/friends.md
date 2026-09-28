@@ -24,7 +24,7 @@ drafted message says who the Night Warden is; send it yourself (a text).
 | "invitations are resting" | Strangers' guesses hit the global cap; `bin/game prod invite unblock` |
 | The invite says it can't be used | Used, expired or revoked: `invite list`, `invite revoke <id>`, then a fresh `invite create` |
 | Signed in but bounced to the door | The session was revoked, disabled, or is 180+ days old: sign in again |
-| "you're dreaming in another window" | Another tab or device of the same account has the toon; closing it there, or pressing enter in "your dreamer" here, takes it back |
+| "you're dreaming in another window" | Another tab or device of the same account has the toon, and this tab has stopped retrying: reload this tab, or press enter in "your dreamer" here, to take it back |
 
 ## Accounts
 

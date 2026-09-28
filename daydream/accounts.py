@@ -45,6 +45,7 @@ SESSION_MAX_DAYS = 180     # absolute: however much it is used
 INVITE_DAYS = 14
 MIN_PASSWORD = 10
 MAX_PASSWORD = 256
+CHANGED_MEANWHILE = "your password changed meanwhile; sign in again"
 ROLES = ("player", "admin")
 USERNAME_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{2,23}$")
 # How stale last_seen_at may get before a request refreshes it (and slides
@@ -299,26 +300,36 @@ def change_password(account_id: str, old: str, new: str, *,
                     keep_session_id: str | None = None) -> None:
     """A signed-in person changing their own password. Every other session of
     theirs ends; the one making the change can be kept."""
-    commit_password_change(account_id, prepare_password_change(account_id, old, new),
+    commit_password_change(account_id, *prepare_password_change(account_id, old, new),
                            keep_session_id=keep_session_id)
 
 
-def prepare_password_change(account_id: str, old: str, new: str) -> str:
+def prepare_password_change(account_id: str, old: str, new: str) -> tuple[str, str]:
     """The argon2 half of a change (CPU, no writes), safe in a worker thread:
-    check the current password and the new one, and return the new hash."""
+    check the current password and the new one, and return the new hash and
+    the hash the old password was verified against."""
     row = _require_account(account_id)
     if not _verify_password(row["password_hash"], old or ""):
         raise AccountError("that is not your current password")
     problem = password_problem(new)
     if problem:
         raise AccountError(problem)
-    return _hash_password(new)
+    return _hash_password(new), row["password_hash"]
 
 
-def commit_password_change(account_id: str, new_hash: str, *,
+def commit_password_change(account_id: str, new_hash: str, verified_hash: str, *,
                            keep_session_id: str | None = None) -> None:
+    """The write half, only while the password is still the one prepare
+    verified and the session making the change still exists: a reset redeemed
+    during the await between the halves is never overwritten (codereview WARN
+    2026-09-28b)."""
     with _tx() as conn:
-        conn.execute("UPDATE accounts SET password_hash = ? WHERE id = ?", (new_hash, account_id))
+        if keep_session_id is not None and conn.execute(
+                "SELECT 1 FROM sessions WHERE id = ?", (keep_session_id,)).fetchone() is None:
+            raise AccountError(CHANGED_MEANWHILE)
+        if conn.execute("UPDATE accounts SET password_hash = ? WHERE id = ? AND password_hash = ?",
+                        (new_hash, account_id, verified_hash)).rowcount != 1:
+            raise AccountError(CHANGED_MEANWHILE)
         conn.execute("DELETE FROM sessions WHERE account_id = ? AND id IS NOT ?",
                      (account_id, keep_session_id))
 
@@ -439,18 +450,22 @@ def set_left(session_id: str, left: bool) -> None:
                        (_iso(_now()) if left else None, session_id))
 
 
-def live_passes() -> list[sqlite3.Row]:
+def live_passes() -> list[dict]:
     """Unexpired sessions of enabled accounts: (token_hash, account_id,
     expires_at). The keepsakes sync publishes these hashes so the edge can
     recognize a friend while the box is asleep (criterion 16)."""
     # The same 180-day absolute cap resolve() enforces: the edge must not keep
-    # honoring a session the server already refuses (codereview NOTE 2026-09-28).
-    now = _now()
-    return get_conn().execute(
-        "SELECT s.token_hash, s.account_id, s.expires_at FROM sessions s JOIN accounts a"
-        " ON a.id = s.account_id WHERE a.disabled_at IS NULL AND s.expires_at > ?"
-        " AND s.created_at > ?",
-        (_iso(now), _iso(now - timedelta(days=SESSION_MAX_DAYS)))).fetchall()
+    # honoring a session the server already refuses (codereview NOTE 2026-09-28),
+    # including one that crosses the cap while the box sleeps: expires_at is
+    # the sooner of the two (codereview WARN 2026-09-28b).
+    now, cap = _now(), timedelta(days=SESSION_MAX_DAYS)
+    rows = get_conn().execute(
+        "SELECT s.token_hash, s.account_id, s.expires_at, s.created_at FROM sessions s"
+        " JOIN accounts a ON a.id = s.account_id WHERE a.disabled_at IS NULL"
+        " AND s.expires_at > ? AND s.created_at > ?", (_iso(now), _iso(now - cap))).fetchall()
+    return [{"token_hash": r["token_hash"], "account_id": r["account_id"],
+             "expires_at": _iso(min(_parse(r["expires_at"]), _parse(r["created_at"]) + cap))}
+            for r in rows]
 
 
 # ---- invites --------------------------------------------------------------
