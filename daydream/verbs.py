@@ -799,6 +799,8 @@ async def _handle_give(actor, room_id, dobj, iobj, args, spec) -> None:
         _dispatch(actor, room_id, [{"kind": "narrate",
             "text": "You can't give something to yourself."}], spec)
         return False
+    if iobj.is_player:
+        return _hand_to_player(actor, room_id, dobj, iobj, spec)
     if not _matches_name(dobj, iobj.properties.get("wants")):
         # The refusal is the giver's (it hands the thing back to "you"), in the
         # NPC's own authored words when it has them: a string or a list of
@@ -840,6 +842,34 @@ async def _handle_give(actor, room_id, dobj, iobj, args, spec) -> None:
             "text": f"{iobj.name} takes the {dobj.name} with quiet thanks."})
     _dispatch(actor, room_id, effs, spec)
     _remember_give(actor, iobj, dobj)
+
+
+def _hand_to_player(actor, room_id, dobj, iobj, spec) -> bool:
+    """Hand a carried thing to another dreamer standing here (beta rehearsal
+    2026-09-28: a family playing together had no way to pass anything but
+    drop-and-take, and the giver was told the other "leaves it with you").
+    A thing that exists for one player alone (a stray minute) stays; a
+    dreamer who is resting or dozing is not here to take it. Deterministic:
+    the thing moves, the giver reads their own line, the room reads whose
+    hands it went to."""
+    from daydream.api import ws as ws_mod
+
+    if dobj.properties.get("private_to"):
+        _dispatch(actor, room_id, [{"kind": "narrate", "to": "@actor",
+            "text": f"The {dobj.name} is yours alone; it won't pass to other hands."}], spec)
+        return False
+    if not iobj.is_human_controlled or ws_mod.is_dozing(iobj):
+        _dispatch(actor, room_id, [{"kind": "narrate", "to": "@actor",
+            "text": f"{iobj.name} is far off in a dream of their own just now; "
+                    f"you'll have to catch them awake."}], spec)
+        return False
+    _dispatch(actor, room_id, [
+        {"kind": "move_object", "object_id": dobj.id, "dest_id": iobj.id},
+        {"kind": "narrate", "to": "@actor",
+         "text": f"You hand the {dobj.name} to {iobj.name}.",
+         "others": f"{{actor}} hands the {dobj.name} to {iobj.name}."},
+    ], spec)
+    return True
 
 
 def _remember_give(actor: objects.Object, iobj: objects.Object, dobj: objects.Object) -> None:

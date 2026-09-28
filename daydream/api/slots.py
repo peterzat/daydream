@@ -250,6 +250,7 @@ async def claim_slot(slot: int, request: Request) -> dict:
     from daydream.api import ws as ws_mod
 
     own = t.owner_account == who.account_id
+    was_resting = t.kicked_at is not None or not t.is_human_controlled
     toon, reason = toons.claim_slot(
         slot, who.session_id,
         can_take_over=lambda cs: own or not ws_mod.is_session_live(cs))
@@ -263,6 +264,8 @@ async def claim_slot(slot: int, request: Request) -> dict:
         toon = toons.get_toon(toon.id)
         logger.info("dreamer adopted: %s by %s", toon.name, who.username)
     accounts.set_left(who.session_id, False)  # picking a toon re-enters the dream
+    if was_resting:
+        toons.announce_wake(toon)
     logger.info("dreamer entered: %s by %s", toon.name, who.username)
     return _toon_to_dict(toon, who.session_id)
 
@@ -299,6 +302,10 @@ def _departed(t: toons.Toon) -> None:
         from daydream import events
         events.append("system", None, "narrate",
                       {"text": f"{t.name} drifts out of the dream for now.", "except": t.id},
+                      room_id=t.current_room_id)
+        # The margins follow: a rested dreamer leaves "here with you" and
+        # "also dreaming" at once (a mutation kind, so viewers re-snapshot).
+        events.append("system", None, "presence_changed", {"toon_id": t.id},
                       room_id=t.current_room_id)
     asyncio.create_task(journal.write_entry(t.id))
 

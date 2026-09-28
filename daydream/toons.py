@@ -97,6 +97,29 @@ def find_toon_in_room_by_name(room_id: str, name: str) -> Toon | None:
     return None
 
 
+def get_players_awake() -> list[Toon]:
+    """The live world's players who have not left the dream (controlled
+    now; a dozing page still counts, the caller decides), in slot order."""
+    return _query(
+        "world_id = ? AND is_human_controlled = 1 AND kicked_at IS NULL ORDER BY slot",
+        (live_world_id(),))
+
+
+def announce_wake(t: "Toon") -> None:
+    """A dreamer comes back into the dream: the room sees them arrive (a
+    waking player appeared in nobody's margin until the next refresh; beta
+    rehearsal 2026-09-28), and the margins follow at once."""
+    if not t.current_room_id:
+        return
+    from daydream import events
+
+    events.append("system", None, "narrate",
+                  {"text": f"{t.name} drifts back into the dream.", "except": t.id},
+                  room_id=t.current_room_id)
+    events.append("system", None, "presence_changed", {"toon_id": t.id},
+                  room_id=t.current_room_id)
+
+
 def get_npcs() -> list[Toon]:
     """All NPCs (non-human-controlled, not kicked), ordered by slot. The drift
     loop's source of truth for who can speak."""

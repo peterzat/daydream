@@ -284,6 +284,7 @@ body::before {
   color: var(--sage-deep); opacity: .85; margin-bottom: 6px;
 }
 .region-body { min-height: 1em; }
+.dreaming-line { font-style: italic; opacity: 0.85; }
 .region-empty { font-family: var(--serif); font-style: italic; color: var(--sage); opacity: .82; font-size: .9rem; line-height: 1.5; }
 
 /* the "you" group: hand-lettered name + a mood pill */

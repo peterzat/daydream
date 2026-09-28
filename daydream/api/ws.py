@@ -84,7 +84,11 @@ _EFFECT_MUTATION_KINDS = frozenset(
      # effects): the re-snapshot puts image_url on the toon cards, so
      # co-located players see the face appear live — the same delivery flow
      # room art uses (SPEC 2026-07-07 criterion 2).
-     "toon_image_ready"}
+     "toon_image_ready",
+     # A player left the dream or came back into it: the "here with you"
+     # and "also dreaming" lists follow at once (beta rehearsal 2026-09-28:
+     # a rested player stood in the margin until the next refresh).
+     "presence_changed"}
 )
 SNAPSHOT_HISTORY_DEPTH = 50
 # Walking into a room replays only what happened there lately, and never its
@@ -137,11 +141,14 @@ def _auto_enter(who, *, reconnect: bool = False):
     mine = toons.owned_toons(who.account_id)
     if len(mine) != 1:
         return None
+    was_resting = mine[0].kicked_at is not None or not mine[0].is_human_controlled
     toon, reason = toons.claim_slot(
         mine[0].slot, who.session_id,
         can_take_over=lambda cs: not (reconnect and is_session_live(cs)))
     if reason == "controlled":
         return _HELD_ELSEWHERE
+    if toon is not None and was_resting:
+        toons.announce_wake(toon)
     return toon.id if toon is not None else None
 
 
@@ -363,6 +370,8 @@ def _state_snapshot(
         # What this player is in the middle of (authored threads), for the
         # satchel; self only, like the journal.
         "threads": story.threads_for(toon_id),
+        # Who else is awake in the dream, and where (self never listed).
+        "dreaming": dreaming_elsewhere(toon_id),
         "while_you_slept": dream.note_for(toon_id),
         "last_seq": last_seq,
         # A move's own seq: the lines it caused (a room's enter rule, a beat)
@@ -878,11 +887,35 @@ def is_session_live(session_id: str | None) -> bool:
     return bool(session_id) and _live_session_counts.get(session_id, 0) > 0
 
 
+# How long a player's page may be closed before they read as dozing: a phone
+# switching to its messages for a moment drops the socket and picks it back
+# up with the room's missed lines, so a hello in that minute still lands
+# (beta rehearsal 2026-09-28).
+DOZE_GRACE_S = 90.0
+
+
 def is_dozing(obj: "objects.Object | None") -> bool:
     """A player's dreamer with no one at the page: controlled by a session
-    that has no live connection. Characters never doze."""
+    that has had no live connection for DOZE_GRACE_S. Characters never
+    doze, and a session that never connected dozes at once."""
     return (obj is not None and obj.kind == "toon" and bool(obj.is_human_controlled)
-            and not is_session_live(obj.controller_session))
+            and not is_session_recently_live(obj.controller_session, DOZE_GRACE_S))
+
+
+def dreaming_elsewhere(viewer_id: str) -> list[dict]:
+    """The other players awake in the village right now, and where: a
+    family on different schedules wants to know who is in the dream before
+    going to find them (beta rehearsal 2026-09-28). Dozing and resting
+    players are left out; never the viewer."""
+    out: list[dict] = []
+    for t in toons.get_players_awake():
+        if t.id == viewer_id:
+            continue
+        if is_dozing(objects.get(t.id)):
+            continue
+        room = rooms.get_room(t.current_room_id) if t.current_room_id else None
+        out.append({"id": t.id, "name": t.name, "room": room.title if room else None})
+    return out
 
 
 def is_session_recently_live(session_id: str | None, grace_s: float) -> bool:

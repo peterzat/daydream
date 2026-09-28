@@ -305,6 +305,7 @@ function renderSnapshot(snap) {
     (t) => (t.away ? `${t.name} (dozing)`
       : t.mood && /^[a-z][a-z -]*$/.test(t.mood) ? `${t.name} (${t.mood})` : t.name));
   renderTopics(others);
+  renderDreaming(snap.dreaming || []);
   // WHAT'S ON THE GROUND: room things (previously sent but never rendered).
   renderObjects("things", snap.items || [], "nothing around you");
   // WHAT YOU'RE CARRYING: inventory (things located on you). Cached so the
@@ -561,6 +562,28 @@ function renderObjects(containerId, objs, emptyText, labelFn) {
     return;
   }
   for (const o of objs) el.appendChild(objectChip(o, labelFn ? labelFn(o) : o.name));
+}
+
+function renderDreaming(list) {
+  // ALSO DREAMING: the other players awake in the village right now, and
+  // where, so a friend on a different schedule knows there is someone to
+  // go and find (beta rehearsal 2026-09-28). Hidden when no one else is.
+  const region = document.getElementById("dreaming-region");
+  const el = document.getElementById("dreaming");
+  if (!region || !el) return;
+  el.innerHTML = "";
+  region.classList.toggle("hidden", !list.length);
+  for (const d of list) {
+    const line = document.createElement("div");
+    line.className = "dreaming-line";
+    line.textContent = d.room ? `${d.name}, ${placeInSentence(d.room)}` : d.name;
+    el.appendChild(line);
+  }
+}
+
+function placeInSentence(title) {
+  // "The Orchard of Evenings" -> "in the Orchard of Evenings".
+  return "in " + (title.startsWith("The ") ? "the " + title.slice(4) : title);
 }
 
 function emptyLine(text) {

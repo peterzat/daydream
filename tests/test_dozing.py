@@ -93,3 +93,55 @@ def test_a_command_that_changes_your_threads_sends_them_at_once():
             ws.send_json({"kind": "command", "verb": "take", "dobj_id": pebble.id})
             got = _until(ws, lambda m: m["kind"] == "threads")
             assert got["threads"] == ["You carry a pebble."]
+
+
+def test_the_margin_names_who_else_is_awake_and_where():
+    """Beta rehearsal 2026-09-28: a family on different schedules wants to
+    know who is in the village before going to find them. The snapshot
+    lists the other players awake at their pages, with their room; never
+    yourself, never a dozing or resting dreamer; and a dreamer who leaves
+    or comes back re-snapshots the room at once (presence_changed)."""
+    from daydream import toons
+
+    with TestClient(app) as client:
+        ivo = _login(client, "ivo-player")
+        ivo_me = client.post("/api/dreamer/create",
+                             json={"name": "Ivo", "appearance_seed": "a small man"}).json()
+        ivo_slot = toons.get_toon(ivo_me["id"]).slot
+        mira = _login(client, "mira-player")
+        client.post("/api/dreamer/create", json={"name": "Mira", "appearance_seed": "a tall woman"})
+        client.cookies.clear()
+        hdr = lambda c: {"cookie": f"{config.cookie_name()}={c}"}  # noqa: E731
+        with client.websocket_connect("/ws", headers=hdr(mira)) as ws:
+            snap = _until(ws, lambda m: m["kind"] == "state_snapshot")
+            assert snap["dreaming"] == []  # Ivo's page was never open
+            with client.websocket_connect("/ws", headers=hdr(ivo)) as ws2:
+                first = _until(ws2, lambda m: m["kind"] == "state_snapshot")
+                assert [d["name"] for d in first["dreaming"]] == ["Mira"]
+                assert first["dreaming"][0]["room"] == snap["room"]["title"]
+                ws.send_json({"kind": "input", "text": "go north"})
+                moved = _until(ws, lambda m: m["kind"] == "state_snapshot")
+                assert [d["name"] for d in moved["dreaming"]] == ["Ivo"]
+                assert moved["dreaming"][0]["room"] == snap["room"]["title"]
+                # Ivo leaves the dream: Mira's next snapshot no longer lists them.
+                client.cookies.set(config.cookie_name(), ivo)
+                assert client.post("/api/session/leave").status_code == 200
+                client.cookies.clear()
+                ws.send_json({"kind": "input", "text": "go south"})
+                back = _until(ws, lambda m: m["kind"] == "state_snapshot"
+                              and m["room"]["title"] == snap["room"]["title"])
+                assert back["dreaming"] == []
+                assert all(t["name"] != "Ivo" for t in back["toons"])
+            # Ivo steps back in: the room reads it, and the margin follows.
+            client.cookies.set(config.cookie_name(), ivo)
+            assert client.post(f"/api/slots/{ivo_slot}/claim").status_code == 200
+            client.cookies.clear()
+            with client.websocket_connect("/ws", headers=hdr(ivo)) as ws3:
+                _until(ws3, lambda m: m["kind"] == "state_snapshot")
+                woke = _until(ws, lambda m: m["kind"] == "event"
+                              and m["event"]["kind"] == "narrate"
+                              and "drifts back into the dream" in m["event"]["payload"]["text"])
+                assert woke["event"]["payload"]["text"] == "Ivo drifts back into the dream."
+                again = _until(ws, lambda m: m["kind"] == "state_snapshot"
+                               and any(d["name"] == "Ivo" for d in m["dreaming"]))
+                assert any(t["name"] == "Ivo" for t in again["toons"])
