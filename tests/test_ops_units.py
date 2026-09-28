@@ -1,5 +1,6 @@
 """The systemd units under ops/ (installed by ops/install-prod.sh)."""
 
+import os
 from pathlib import Path
 
 import pytest
@@ -52,6 +53,62 @@ def test_sudoers_lets_prodctl_start_and_stop_what_it_manages():
         for action in ("start", "stop", "restart"):
             assert f"/usr/bin/systemctl {action} {unit}" in sudoers, (action, unit)
     assert "peter ALL=(daydream) NOPASSWD: ALL" in sudoers  # the privilege drop
+
+
+def test_sudoers_grants_exactly_the_units_the_service_user_and_the_root_helper():
+    """Every rule, pinned: a new one is a review event (docs/ADMIN-ROOT.md)."""
+    sudoers = (OPS / "sudoers.d" / "daydream").read_text()
+    rules = [line for line in sudoers.splitlines() if line.startswith("peter ")]
+    assert rules == ["peter ALL=(root) NOPASSWD: DAYDREAM_UNITS",
+                     "peter ALL=(daydream) NOPASSWD: ALL",
+                     f"peter ALL=(root) NOPASSWD: {prodctl.ROOT_HELPER}"]
+    assert str(prodctl.ROOT_HELPER) == "/usr/local/sbin/daydream-root"
+
+
+def test_the_sudoers_file_parses():
+    """A sudoers syntax error would lock the operator out of sudo."""
+    import subprocess
+
+    visudo = "/usr/sbin/visudo"
+    if not Path(visudo).exists():
+        pytest.skip("visudo is not installed")
+    r = subprocess.run([visudo, "-cf", str(OPS / "sudoers.d" / "daydream")],
+                       capture_output=True, text=True)
+    assert r.returncode == 0, r.stdout + r.stderr
+
+
+def _helper_module():
+    import importlib.util
+    from importlib.machinery import SourceFileLoader
+
+    loader = SourceFileLoader("daydream_root_ops", str(OPS / "root" / "daydream-root"))
+    spec = importlib.util.spec_from_loader("daydream_root_ops", loader)
+    mod = importlib.util.module_from_spec(spec)
+    loader.exec_module(mod)
+    return mod
+
+
+def test_the_installer_installs_the_root_helper_and_a_root_conf_it_accepts(tmp_path, monkeypatch):
+    script = (OPS / "install-prod.sh").read_text()
+    helper = 'install -o root -g root -m 0755 "$OPS/root/daydream-root" /usr/local/sbin/daydream-root'
+    conf = 'install -o root -g root -m 0644 "$tmp" /etc/daydream/root.conf'
+    sudoers = 'install -o root -g root -m 0440 "$tmp" /etc/sudoers.d/daydream'
+    assert helper in script and conf in script and sudoers in script
+    assert "install -d -o root -g root -m 0755 /etc/daydream" in script
+    # The helper and its facts are in place before sudoers names the helper.
+    assert script.index(helper) < script.index(sudoers) and script.index(conf) < script.index(sudoers)
+    # What the installer writes is what the helper reads.
+    fmt = re.search(r"printf '([^']*OPERATOR=%s[^']*)'", script).group(1)
+    text = fmt.replace("\\n", "\n").replace("%s", "peter", 1).replace("%s", "/home/peter/src/daydream", 1)
+    etc = tmp_path.resolve() / "daydream"
+    etc.mkdir(mode=0o755)
+    os.chmod(etc, 0o755)
+    (etc / "root.conf").write_text(text)
+    os.chmod(etc / "root.conf", 0o644)
+    mod = _helper_module()
+    monkeypatch.setattr(mod, "ROOT_CONF", str(etc / "root.conf"))
+    got = mod.load_conf()
+    assert (got.operator, got.repo) == ("peter", "/home/peter/src/daydream")
 
 
 def test_the_installer_installs_every_unit_and_enables_every_timer():

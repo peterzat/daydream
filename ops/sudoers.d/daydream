@@ -1,7 +1,8 @@
 # /etc/sudoers.d/daydream, installed by ops/install-prod.sh (visudo -cf checked).
 # Lets the operator (and a Claude Code session running as the operator) start,
-# stop and restart exactly the daydream prod units, and act as the service user.
-# Every other root action on this box still needs a typed password.
+# stop and restart exactly the daydream prod units, act as the service user,
+# and run the root helper. Every other root action on this box still needs a
+# typed password, including changing the helper or this file (the installer).
 Cmnd_Alias DAYDREAM_UNITS = \
     /usr/bin/systemctl start daydream-prod.service, \
     /usr/bin/systemctl stop daydream-prod.service, \
@@ -16,3 +17,11 @@ peter ALL=(root) NOPASSWD: DAYDREAM_UNITS
 # prod data dir AS daydream, so the operator's own tools never follow a path
 # the sandbox could have planted there (SECURITY WARN 2026-09-27).
 peter ALL=(daydream) NOPASSWD: ALL
+# The root helper (ops/root/daydream-root, docs/ADMIN-ROOT.md): root-owned,
+# installed only by ops/install-prod.sh, and it parses its own arguments,
+# refusing anything outside a fixed vocabulary: the release's units after its
+# validator passes them, the daydream units' start/stop/status, and
+# allowlisted prod.env keys after the release's boot guard. Every action it
+# takes is logged (journalctl -t daydream-root). Any arguments are allowed
+# here on purpose: the helper, not this line, decides what it will do.
+peter ALL=(root) NOPASSWD: /usr/local/sbin/daydream-root

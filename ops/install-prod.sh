@@ -4,11 +4,17 @@
 #     sudo ops/install-prod.sh
 #
 # It creates the sandboxed service user and the /srv/daydream layout, installs
-# cloudflared from Cloudflare's apt repo, the systemd units, and a narrow
+# cloudflared from Cloudflare's apt repo, the systemd units, the root helper
+# (/usr/local/sbin/daydream-root and its /etc/daydream/root.conf), and a narrow
 # sudoers entry. It asks for the tunnel token (typed, never echoed, never
 # passing through a Claude session). Re-running changes nothing that is
-# already right. Design and reasons: docs/GOING-LIVE.md section 7; the
-# Cloudflare side: docs/CLOUDFLARE-SETUP.md.
+# already right. Design and reasons: docs/GOING-LIVE.md section 7 and
+# docs/ADMIN-ROOT.md; the Cloudflare side: docs/CLOUDFLARE-SETUP.md.
+#
+# After the first run, unit refreshes, the timer jobs and the allowlisted
+# prod.env keys go through the helper (`bin/game prod root`,
+# docs/runbooks/root.md). This script is still how the helper itself, the
+# sudoers entry, packages, the tunnel token and group membership change.
 #
 # What it does NOT do: open any port (UFW is untouched), enable anything at
 # boot except the nightly backup timer, or start the village (that is
@@ -104,6 +110,29 @@ else
     echo "/etc/cloudflared/daydream.env exists (left as is)"
 fi
 
+# ---- the root helper -----------------------------------------------------------
+# A root-owned program with a fixed vocabulary (the release's units, validated;
+# the daydream units; allowlisted prod.env keys), so the admin console needs a
+# password only for this script (docs/ADMIN-ROOT.md). Its fixed facts come from
+# root.conf, which only this script writes.
+say "the root helper: /usr/local/sbin/daydream-root and /etc/daydream/root.conf"
+if [[ ! "$OPERATOR" =~ ^[a-z_][a-z0-9_-]*$ || "$OPERATOR" == root || "$OPERATOR" == daydream ]]; then
+    echo "error: operator '$OPERATOR' is not an ordinary user name; run this with sudo as that user" >&2
+    exit 1
+fi
+if [[ ! "$REPO" =~ ^/[A-Za-z0-9._/-]+$ ]]; then
+    echo "error: the repo path '$REPO' has characters the helper will not put in a unit file" >&2
+    exit 1
+fi
+install -d -o root -g root -m 0755 /etc/daydream
+tmp="$(mktemp)"
+printf '# Written by ops/install-prod.sh; read by /usr/local/sbin/daydream-root.\nOPERATOR=%s\nREPO=%s\n' \
+    "$OPERATOR" "$REPO" > "$tmp"
+install -o root -g root -m 0644 "$tmp" /etc/daydream/root.conf
+rm -f "$tmp"
+install -o root -g root -m 0755 "$OPS/root/daydream-root" /usr/local/sbin/daydream-root
+/usr/local/sbin/daydream-root version
+
 # ---- units + sudoers ----------------------------------------------------------
 say "systemd units"
 for u in daydream-prod.service cloudflared-daydream.service daydream-backup.service \
@@ -120,10 +149,10 @@ systemctl daemon-reload
 systemctl enable --now daydream-backup.timer daydream-keepsakes.timer daydream-offsite.timer >/dev/null
 echo "installed; only the backup, keepsakes and offsite timers are enabled at boot"
 
-say "sudoers: start/stop/restart of the daydream units only"
+say "sudoers: the daydream units, acting as the service user, and the root helper"
 tmp="$(mktemp)"
 cp "$OPS/sudoers.d/daydream" "$tmp"
-sed -i "s/^peter /$OPERATOR /" "$tmp"   # both lines: the units, and acting as daydream
+sed -i "s/^peter /$OPERATOR /" "$tmp"   # every rule: the units, acting as daydream, the helper
 visudo -cf "$tmp" >/dev/null
 install -o root -g root -m 0440 "$tmp" /etc/sudoers.d/daydream
 rm -f "$tmp"
@@ -136,6 +165,7 @@ cat <<EOF
 
 Done. Next (as $OPERATOR, after logging out and back in):
   bin/game prod deploy          # first release into $SRV/releases
+  bin/game prod root doctor     # the helper, sudoers and the release's units agree
   bin/game prod world reset     # a fresh village for prod
   bin/game prod wake            # engines, tunnel, service; the edge says awake
 EOF
