@@ -1,28 +1,28 @@
 {
-  "captured_at": "2026-09-26T18:07:18+00:00",
+  "captured_at": "2026-09-28T20:59:15+00:00",
   "sessions": [
     {
-      "entry": "You walked east to find Bell on a small ladder, coaxing a lantern alight. She greeted you with a sooty hand, warning that the wick-smoke likes new faces. As you stood there, the square filled with warm pools of light from the lanterns.",
+      "entry": "You walked east to find Bell on a small ladder, coaxing a lantern alight. You greeted her, and she grinned down, warning you gently about the wick-smoke. As you watched, the lanterns lit one by one, turning the square into a series of small, warm pools.",
       "session": "greeting-and-lanterns",
       "written": true
     },
     {
-      "entry": "You walked south to lift the cool escapement gear from the moss at the well's foot. Later, you returned north to find Tace easing their shoulders as they held the gear in the lamplight. They folded a warm brass key into your hand before you woke.",
+      "entry": "You lifted the cool escapement gear from the moss at the well's foot. Later, Tace eased their shoulders in the lamplight before folding a warm brass key into your hand.",
       "session": "the-gear-comes-home",
       "written": true
     },
     {
-      "entry": "You greeted Mott as evening fell, and he paused to offer you a quiet, friendly look. He placed a stray button on the sill for its owner, then rattled a tin of small things that had lost their people, saying they keep fine there.",
+      "entry": "You greeted Mott with a soft good evening, and he paused his sweeping to offer you a warm, unhurried look. After placing a stray button on the windowsill for its owner, he rattled a tin of small things that had lost their people, saying they keep fine there.",
       "session": "a-quiet-sweep",
       "written": true
     },
     {
-      "entry": "You pressed the dreamseed into the earth, watching it take root to open a new way. You walked south down the mossy stair, where the cool air smelled softly of rain.",
+      "entry": "You pressed the dreamseed into the earth, holding a small vision of a mossy stair. As it took root, a new way opened to the south, and you walked down the cool, rain-scented steps.",
       "session": "the-planting",
       "written": true
     },
     {
-      "entry": "You climbed up to watch the great clock stand still at that old hour, then you descended. Walking east, you found the square filled with the scent of wick-smoke and cooling stone.",
+      "entry": "You climbed up to watch the great clock stand still at a quiet hour. Then you descended and walked east, where the square held the scent of wick-smoke and cooling stone.",
       "session": "a-wander-at-dusk",
       "written": true
     }

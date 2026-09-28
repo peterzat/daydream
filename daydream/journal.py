@@ -71,8 +71,8 @@ JOURNAL_SYSTEM = (
     "urgency, no modern tech, no violence, no judgment.\n"
     "- Lines marked * carried the story (what the dreamer did, said, was "
     "given, or found): the entry keeps them before the rest.\n"
-    "- Name a time of day (dawn, dusk, night) only if an event says it "
-    "happened then; the time the dream was dreamt is given, use it.\n"
+    "- Name no time of day (morning, dawn, dusk, evening, night) unless an "
+    "event line names it or the prompt says when the dream was dreamt.\n"
     "- 60-500 characters total.\n"
     "If the events are too thin to recall anything, refuse with "
     '{"refused": true, "reason": "<one soft in-character sentence>"}.\n'
@@ -129,7 +129,8 @@ async def _write_entry_inner(toon_id: str) -> None:
     try:
         result = await client.acompletion_json(
             system=JOURNAL_SYSTEM,
-            user=_user_prompt(toon.name, lines, when=_when(toon.world_id)),
+            user=_user_prompt(toon.name, lines, when=_when(toon.world_id),
+                              people=_pronouns_of(toon.world_id, lines)),
             temperature=JOURNAL_TEMPERATURE,
             max_tokens=220,
             timeout=20.0,
@@ -231,10 +232,32 @@ def _when(world_id: str) -> str | None:
     return f"{st.get('label') or st.get('phase')}, on the village's day {st.get('day')}"
 
 
-def _user_prompt(toon_name: str, lines: list[str], when: str | None = None) -> str:
+def _pronouns_of(world_id: str, lines: list[str]) -> dict[str, str]:
+    """The authored pronouns of the characters the lines name (their voice
+    sheets), so the entry keeps them: a recap called a they/them lamplighter
+    "her" (journal probe, 2026-09-28b)."""
+    text = " ".join(lines)
+    out: dict[str, str] = {}
+    from daydream import toons
+
+    for npc in toons.get_npcs():
+        t = objects.get(npc.id)
+        if t is None or t.world_id != world_id:
+            continue
+        voice = t.properties.get("voice")
+        pron = voice.get("pronouns") if isinstance(voice, dict) else None
+        if isinstance(pron, str) and pron.strip() and t.name and t.name in text:
+            out[t.name] = pron.strip()
+    return out
+
+
+def _user_prompt(toon_name: str, lines: list[str], when: str | None = None,
+                 people: dict[str, str] | None = None) -> str:
     body = "\n".join(f"- {ln}" for ln in lines)
     time_line = f"It was {when} while they dreamt.\n" if when else ""
+    who = ("People in it, with their pronouns: "
+           + "; ".join(f"{n} ({p})" for n, p in people.items()) + ".\n") if people else ""
     return (
-        f"The dreamer is called {toon_name}. {time_line}What happened in their dream, "
+        f"The dreamer is called {toon_name}. {time_line}{who}What happened in their dream, "
         f"oldest first:\n{body}\n\nWrite the JSON entry now."
     )

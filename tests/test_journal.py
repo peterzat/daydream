@@ -261,3 +261,12 @@ def test_a_long_session_keeps_its_story_lines_and_the_time_of_day():
     assert lines[-1] == "* you ask Hob about the lamps."
     prompt = journal._user_prompt("Ada", lines, when="daylight, on the village's day 3")
     assert "It was daylight, on the village's day 3 while they dreamt." in prompt
+
+
+def test_the_prompt_names_the_pronouns_of_who_it_mentions():
+    """The journal probe (2026-09-28b) called a they/them lamplighter "her":
+    the prompt now lists the authored pronouns of the characters it names."""
+    prompt = journal._user_prompt("Ada", ["* you saw: Bell waves."],
+                                  people={"Bell": "they/them"})
+    assert "People in it, with their pronouns: Bell (they/them)." in prompt
+    assert "pronouns" not in journal._user_prompt("Ada", ["you went east"])
