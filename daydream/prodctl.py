@@ -21,6 +21,7 @@ into prod.
 Verbs:
 
 - `status`
+- `check` (live verification of the edge and prod invariants; daydream/prodcheck.py)
 - `deploy [ref] [--skip-tests]`
 - `rollback`
 - `logs [-f]`
@@ -33,9 +34,8 @@ Verbs:
 - pass-throughs to the release's `bin/game`: `world`, `dream`, `account`,
   `invite`, `prebake`, `play`
 
-Agent policy: every verb that drops sessions or changes prod data is
-ask-first for a Claude Code session; `status`, `logs` and `invite` are the
-pre-allowed ones (CLAUDE.md "Prod").
+Agent policy: CLAUDE.md "Prod" (the operator's standing grant, and the verbs
+that always prompt). Playbooks: docs/runbooks/.
 """
 
 from __future__ import annotations
@@ -164,8 +164,8 @@ def run_as_prod_bytes(release: Path, cmd: list[str]) -> bytes:
 
 # Verbs that must not run against a live service: stopped first, started after.
 STOP_FOR = {("world", "reset"), ("world", "refresh"), ("world", "restore"),
-            ("world", "snapshot-restore"), ("world", "delete"), ("world", "load"),
-            ("dream", "install"), ("prebake",)}
+            ("world", "snapshot-restore"), ("world", "restore-backup"), ("world", "delete"),
+            ("world", "load"), ("dream", "install"), ("prebake",)}
 INCOMING_ART = "incoming-art"
 
 
@@ -176,13 +176,13 @@ def passthrough(args: list[str]) -> int:
     service user can read but never write."""
     rel = _require_current()
     args = list(args)
+    _refuse_unreadable_paths(args)
     staged = None
     if args[:1] == ["prebake"] and "--from-cache" in args:
         i = args.index("--from-cache")
         staged = _stage_art(Path(args[i + 1]).expanduser())
         args[i + 1] = str(staged)
-    needs_stop = (tuple(args[:2]) in STOP_FOR or tuple(args[:1]) in STOP_FOR)
-    was_up = needs_stop and unit_active(UNIT)
+    was_up = needs_stop(args) and unit_active(UNIT)
     if was_up:
         say("stopping the service for this ...")
         systemctl("stop", UNIT)
@@ -195,6 +195,41 @@ def passthrough(args: list[str]) -> int:
         if was_up:
             systemctl("start", UNIT)
             say("service: " + ("back up" if wait_healthy() else "NOT healthy after restart"))
+
+
+# Verbs that refuse (or only look) without their confirming flag.
+NEEDS_YES = {("world", "reset"), ("world", "delete"), ("world", "restore"),
+             ("world", "snapshot-restore")}
+
+
+def needs_stop(args: list[str]) -> bool:
+    """Stop the service only for a verb that will really change prod data: not
+    `world refresh --check`, and not a destructive verb that will refuse for
+    want of `--yes` (codereview NOTE 2026-09-28: those bounced every session)."""
+    key2, key1 = tuple(args[:2]), tuple(args[:1])
+    if key2 not in STOP_FOR and key1 not in STOP_FOR:
+        return False
+    if key2 == ("world", "refresh") and "--check" in args:
+        return False
+    if key2 in NEEDS_YES and "--yes" not in args:
+        return False
+    return True
+
+
+def _refuse_unreadable_paths(args: list[str]) -> None:
+    """A pass-through runs as the service user, who cannot read the
+    operator's home: say so plainly instead of a bare usage error. A dream
+    patch reaches prod committed and deployed (docs/runbooks/content.md)."""
+    home = Path.home()
+    for n, a in enumerate(args[1:], start=1):
+        if a.startswith("-") or a.startswith(str(SRV)) or args[n - 1] == "--from-cache":
+            continue  # (--from-cache's dir is staged for the service user)
+        p = Path(a).expanduser()
+        if p.is_absolute() and (p == home or home in p.parents):
+            raise ProdError(
+                f"{a} is under {home}, which the prod service user cannot read. Commit it, "
+                "`bin/game prod deploy`, then pass its path relative to the repo (for a dream: "
+                "worlds/lost-hours/dreams/<id>/patch.json); art goes through prebake --from-cache")
 
 
 def _stage_art(src: Path) -> Path:
@@ -418,6 +453,8 @@ def deploy(ref: str, skip_tests: bool) -> int:
                   ("world_migrations_pending", "accounts_migrations_pending"))
     backup = _backup(release)
     before = current_release()
+    prev_link = SRV / "previous"
+    before_previous = prev_link.resolve() if prev_link.is_symlink() else None
     point("current", release)
     if before is not None and before != release:
         point("previous", before)
@@ -435,6 +472,12 @@ def deploy(ref: str, skip_tests: bool) -> int:
     if before is None:
         raise ProdError("no previous release to roll back to; the unit is down")
     point("current", before)
+    # Undo the previous-link move too, so a later `prod rollback` still goes
+    # one release further back (codereview NOTE 2026-09-28).
+    if before_previous is not None and before_previous.is_dir():
+        point("previous", before_previous)
+    elif prev_link.is_symlink():
+        prev_link.unlink()
     if pending and backup is not None:
         systemctl("stop", UNIT)
         _restore_backup(backup, before)
@@ -665,8 +708,7 @@ def status() -> int:
     if rel is None:
         say("release: none yet (bin/game prod deploy)")
     else:
-        behind = git("rev-list", "--count", f"{rel.name}..HEAD") if rel.name != head else "0"
-        say(f"release: {rel.name} (HEAD {head}; {behind} commit(s) behind)")
+        say(f"release: {rel.name} (HEAD {head}; {behind(rel.name, head)})")
     say(f"service: {'awake' if unit_active(UNIT) else 'asleep'} ({UNIT})")
     say(f"tunnel:  {'up' if unit_active(TUNNEL) else 'down'} ({TUNNEL})")
     for name, up in engines_reachable().items():
@@ -681,6 +723,11 @@ def status() -> int:
             body = http_ok(f"http://127.0.0.1:{port()}/status/who", headers={"Cookie": cookie})
             if body:
                 say(body.strip())
+    from daydream import prodcheck
+
+    jobs = prodcheck.timer_checks()
+    say("jobs:    " + "; ".join(f"{c.name.removesuffix(' job')} {c.detail}" for c in jobs)
+        + ("" if all(c.ok for c in jobs) else "  <- FAILED: journalctl -u daydream-<job>"))
     edge = _edge()
     if edge is not None:
         try:
@@ -690,6 +737,22 @@ def status() -> int:
     else:
         say("edge: not configured (docs/CLOUDFLARE-SETUP.md)")
     return 0
+
+
+def behind(release: str, head: str) -> str:
+    """How far the release is behind HEAD, in words. A release whose commit
+    is gone or off HEAD's history (a history rewrite) is reported, not
+    raised: status must always print (codereview NOTE 2026-09-28)."""
+    if release == head[:len(release)]:
+        return "up to date"
+    anc = subprocess.run(["git", "-C", str(REPO), "merge-base", "--is-ancestor", release, "HEAD"],
+                         capture_output=True)
+    if anc.returncode != 0:
+        return "not in HEAD's history (a rewrite or another branch): redeploy"
+    r = subprocess.run(["git", "-C", str(REPO), "rev-list", "--count", f"{release}..HEAD"],
+                       capture_output=True, text=True)
+    n = r.stdout.strip() if r.returncode == 0 else "?"
+    return f"{n} commit(s) behind"
 
 
 def logs(follow: bool) -> int:
@@ -752,6 +815,7 @@ def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(prog="bin/game prod", description=__doc__.split("\n")[0])
     sub = p.add_subparsers(dest="cmd", required=True)
     sub.add_parser("status")
+    sub.add_parser("check", help="live verification of the edge and prod invariants (read-only)")
     d = sub.add_parser("deploy")
     d.add_argument("ref", nargs="?", default="HEAD")
     d.add_argument("--skip-tests", action="store_true",
@@ -775,6 +839,9 @@ def main(argv: list[str] | None = None) -> int:
     try:
         if args.cmd == "status":
             return status()
+        if args.cmd == "check":
+            from daydream import prodcheck
+            return prodcheck.main()
         if args.cmd == "deploy":
             return deploy(args.ref, args.skip_tests)
         if args.cmd == "rollback":

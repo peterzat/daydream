@@ -57,7 +57,11 @@ def test_status_who_names_the_players():
         client.cookies.clear()
         authhelp.login(client, "keeper", role="admin")
         r = client.get("/status/who")
-    assert r.status_code == 200 and r.text.startswith("playing: Mira")
+        from daydream import toons
+
+        mira = next(t for t in toons.playing() if t.name == "Mira")
+    # the id is what moderation needs: names are not unique
+    assert r.status_code == 200 and r.text.startswith(f"playing: Mira [{mira.id}]")
 
 
 def test_rest_all_rests_everyone_and_writes_their_journals(monkeypatch, capsys):

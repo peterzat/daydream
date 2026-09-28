@@ -422,3 +422,53 @@ def test_pull_leaves_the_friends_toons_adoptable_in_dev(srv, monkeypatch, tmp_pa
     assert prodctl.pull() == 0
     got = sqlite3.connect(str(dev / "worlds-dev" / "live.db"))
     assert got.execute("SELECT owner_account FROM objects WHERE kind = 'toon'").fetchall() == [(None,)]
+
+
+def test_an_auto_rollback_keeps_the_release_before_for_prod_rollback(srv, monkeypatch):
+    """codereview NOTE 2026-09-28: the failed deploy moved `previous` to the
+    release it rolled back to, so `prod rollback` became a no-op."""
+    _fake(monkeypatch, healthy=False)
+    older, old = srv / "releases" / "000000000001", srv / "releases" / "000000000002"
+    older.mkdir()
+    old.mkdir()
+    prodctl.point("previous", older)
+    prodctl.point("current", old)
+    with pytest.raises(prodctl.ProdError, match="rolled back"):
+        prodctl.deploy("HEAD", skip_tests=True)
+    assert prodctl.current_release() == old
+    assert (srv / "previous").resolve() == older
+
+
+def test_the_service_is_bounced_only_for_verbs_that_change_prod_data():
+    """codereview NOTE 2026-09-28: `--check` and refused (no --yes) runs
+    stopped the service and dropped every session."""
+    assert not prodctl.needs_stop(["world", "refresh", "--check"])
+    assert prodctl.needs_stop(["world", "refresh"])
+    assert not prodctl.needs_stop(["world", "reset"])
+    assert prodctl.needs_stop(["world", "reset", "--yes"])
+    assert not prodctl.needs_stop(["world", "delete", "w-x"])
+    assert prodctl.needs_stop(["dream", "install", "p.json"])
+    assert prodctl.needs_stop(["prebake", "--from-cache", "x"])
+    assert not prodctl.needs_stop(["invite", "list"])
+    assert not prodctl.needs_stop(["dream", "digest"])
+    assert prodctl.needs_stop(["world", "restore-backup", "/srv/daydream/data/backups/x"])
+
+
+def test_a_path_the_service_user_cannot_read_is_refused_plainly(monkeypatch, tmp_path):
+    monkeypatch.setattr(prodctl.Path, "home", classmethod(lambda cls: tmp_path))
+    with pytest.raises(prodctl.ProdError, match="Commit it"):
+        prodctl._refuse_unreadable_paths(["dream", "check", str(tmp_path / "patch.json")])
+    prodctl._refuse_unreadable_paths(["dream", "check", "worlds/lost-hours/dreams/x/patch.json"])
+    prodctl._refuse_unreadable_paths(["prebake", "--from-cache", str(tmp_path / "cache")])
+
+
+def test_behind_survives_a_release_off_heads_history(fake_repo):
+    """codereview NOTE 2026-09-28: after a history rewrite `rev-list` raised
+    and aborted the whole status report."""
+    head = prodctl.resolve_ref("HEAD")
+    assert prodctl.behind(head[:12], head) == "up to date"
+    assert "not in HEAD's history" in prodctl.behind("0123456789ab", head)
+    (fake_repo / "x.txt").write_text("x")
+    _git(fake_repo, "add", "-A")
+    _git(fake_repo, "commit", "-q", "-m", "more")
+    assert prodctl.behind(head[:12], prodctl.resolve_ref("HEAD")) == "1 commit(s) behind"

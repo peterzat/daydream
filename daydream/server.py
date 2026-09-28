@@ -166,14 +166,15 @@ async def status_arbiter(request: Request):
 @app.get("/status/who")
 async def status_who(request: Request):
     """Who is in the village right now (for `bin/game prod status`): the
-    toons being played and whether their socket is live. Admins only."""
+    toons being played, their ids (moderation names a toon by id; names are
+    not unique) and whether their socket is live. Admins only."""
     _require_admin(request)
     from daydream import toons
 
     lines = []
     for t in toons.playing():
         live = ws.is_session_live(t.controller_session)
-        lines.append(f"{t.name}{'' if live else ' (away)'}")
+        lines.append(f"{t.name} [{t.id}]{'' if live else ' (away)'}")
     return PlainTextResponse("playing: " + (", ".join(lines) if lines else "no one") + "\n")
 
 
