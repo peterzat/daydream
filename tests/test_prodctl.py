@@ -486,3 +486,74 @@ def test_instance_goes_after_the_verb_so_the_permission_rules_see_it(monkeypatch
     assert prodctl.main(["invite", "create", "--for", "A Friend", "--instance", "zork"]) == 0
     assert seen == {"argv": ["invite", "create", "--for", "A Friend"], "inst": "zork"}
     assert prodctl.main(["backup", "--instance", "../x"]) == 2
+
+
+# ---- prod root: the validated helper (docs/ADMIN-ROOT.md) ----------------------------------
+
+
+def _fake_helper(tmp_path, monkeypatch, *, installed_sha=None, rc=0):
+    """A stand-in for /usr/local/sbin/daydream-root; every sudo call recorded."""
+    import subprocess
+
+    helper = tmp_path / "daydream-root"
+    helper.write_text("#!/usr/bin/python3 -I\n")
+    monkeypatch.setattr(prodctl, "ROOT_HELPER", helper)
+    calls = []
+
+    def fake_run(cmd, **kw):
+        calls.append(list(cmd))
+        if cmd[-1] == "version":
+            if installed_sha is None:
+                return subprocess.CompletedProcess(cmd, 1, stdout="", stderr="a password is required")
+            return subprocess.CompletedProcess(cmd, 0, stdout=f"daydream-root 1\nsha256 {installed_sha}\n",
+                                               stderr="")
+        return subprocess.CompletedProcess(cmd, rc)
+
+    monkeypatch.setattr(prodctl.subprocess, "run", fake_run)
+    return helper, calls
+
+
+def test_prod_root_hands_its_arguments_to_the_helper_through_sudo(tmp_path, monkeypatch):
+    helper, calls = _fake_helper(tmp_path, monkeypatch, rc=3)
+    for argv in (["units", "--apply"], ["env", "set", "DAYDREAM_OPERATOR_NAME", "the Night Warden"],
+                 ["status", "daydream-backup.timer"], []):
+        calls.clear()
+        assert prodctl.main(["root", *argv]) == 3  # the helper's exit code, as is
+        assert calls == [["sudo", "-n", str(helper), *argv]]
+
+
+def test_prod_root_doctor_says_when_the_repo_helper_is_newer(tmp_path, monkeypatch, capsys):
+    repo_sha = hashlib.sha256((prodctl.REPO / "ops" / "root" / "daydream-root").read_bytes()).hexdigest()
+    helper, calls = _fake_helper(tmp_path, monkeypatch, installed_sha="0" * 64)
+    assert prodctl.main(["root", "doctor"]) == 1
+    assert calls == [["sudo", "-n", str(helper), "doctor"], ["sudo", "-n", str(helper), "version"]]
+    assert ("the repo's helper is newer: the operator runs sudo ops/install-prod.sh"
+            in capsys.readouterr().out)
+    _fake_helper(tmp_path, monkeypatch, installed_sha=repo_sha)
+    assert prodctl.main(["root", "doctor"]) == 0
+    out = capsys.readouterr().out
+    assert "newer" not in out and f"the installed helper is the repo's ({repo_sha[:12]})" in out
+
+
+def test_prod_root_doctor_without_the_sudoers_line_says_so(tmp_path, monkeypatch, capsys):
+    _fake_helper(tmp_path, monkeypatch, installed_sha=None)
+    assert prodctl.main(["root", "doctor"]) == 1
+    assert "sudo ops/install-prod.sh" in capsys.readouterr().out
+
+
+def test_prod_root_before_the_helper_is_installed_names_the_installer(tmp_path, monkeypatch, capsys):
+    monkeypatch.setattr(prodctl, "ROOT_HELPER", tmp_path / "missing")
+    monkeypatch.setattr(prodctl.subprocess, "run", lambda *a, **k: pytest.fail("ran something"))
+    assert prodctl.main(["root", "units"]) == 1
+    assert "sudo ops/install-prod.sh" in capsys.readouterr().err
+
+
+def test_prod_root_arguments_reach_the_helper_before_instance_is_read(tmp_path, monkeypatch):
+    """An --instance moved into the middle must not turn `root units
+    --instance x --apply` into `units --apply` past the ask rule on
+    `prod root units --apply`: the helper gets it as typed and refuses it."""
+    helper, calls = _fake_helper(tmp_path, monkeypatch, rc=2)
+    monkeypatch.setattr(prodctl, "INSTANCE", None)
+    assert prodctl.main(["root", "units", "--instance", "zork", "--apply"]) == 2
+    assert calls == [["sudo", "-n", str(helper), "units", "--instance", "zork", "--apply"]]
+    assert prodctl.INSTANCE is None

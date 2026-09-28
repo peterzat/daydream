@@ -31,6 +31,9 @@ Verbs:
 - `keepsakes` (sync keepsakes to the edge; hourly by timer)
 - `offsite` / `offsite-restore NAME DEST` (age-encrypted backups in R2; weekly)
 - `pull` (a prod backup into dev)
+- `root <verb>` (the root-owned helper, /usr/local/sbin/daydream-root: units
+  from the release, the timer jobs, allowlisted prod.env keys;
+  docs/ADMIN-ROOT.md, docs/runbooks/root.md)
 - pass-throughs to the release's `bin/game`: `world`, `dream`, `account`,
   `invite`, `prebake`, `play`
 
@@ -61,6 +64,7 @@ UNIT = "daydream-prod.service"
 TUNNEL = "cloudflared-daydream.service"
 KEEP_RELEASES = 5
 PASSTHROUGH = ("world", "dream", "account", "invite", "prebake", "play")
+ROOT_HELPER = Path("/usr/local/sbin/daydream-root")
 
 
 class ProdError(RuntimeError):
@@ -875,6 +879,43 @@ def pull() -> int:
     return 0
 
 
+# ---- root: the validated helper (docs/ADMIN-ROOT.md) ------------------------------------
+
+
+def root(args: list[str]) -> int:
+    """`bin/game prod root <verb> ...`: the root-owned helper through its one
+    sudoers line. The helper parses and refuses its own arguments; this only
+    hands them over. `doctor` also says when the repo's copy of the helper
+    differs from the installed one (only the installer replaces it)."""
+    if not ROOT_HELPER.exists():
+        raise ProdError(f"{ROOT_HELPER} is not installed: the operator runs sudo ops/install-prod.sh")
+    rc = subprocess.run(["sudo", "-n", str(ROOT_HELPER), *args]).returncode
+    if args[:1] != ["doctor"]:
+        return rc
+    installed = _installed_helper_sha()
+    repo = hashlib.sha256((REPO / "ops" / "root" / "daydream-root").read_bytes()).hexdigest()
+    if installed is None:
+        say("helper: could not read the installed helper's version (is its sudoers line "
+            "installed? the operator runs sudo ops/install-prod.sh)")
+        return rc or 1
+    if installed != repo:
+        say(f"helper: installed {installed[:12]}, repo {repo[:12]}: the repo's helper is newer: "
+            "the operator runs sudo ops/install-prod.sh")
+        return rc or 1
+    say(f"helper: the installed helper is the repo's ({repo[:12]})")
+    return rc
+
+
+def _installed_helper_sha() -> str | None:
+    r = subprocess.run(["sudo", "-n", str(ROOT_HELPER), "version"], capture_output=True, text=True)
+    if r.returncode != 0:
+        return None
+    for line in r.stdout.splitlines():
+        if line.startswith("sha256 "):
+            return line.split()[1]
+    return None
+
+
 # ---- main ------------------------------------------------------------------------------
 
 
@@ -1037,6 +1078,16 @@ def instance_use(name: str, grace: int, note: str) -> int:
 def main(argv: list[str] | None = None) -> int:
     global INSTANCE
     argv = list(sys.argv[1:] if argv is None else argv)
+    if argv[:1] == ["root"]:
+        # The helper's arguments reach it exactly as typed, before --instance
+        # is read: the helper has no instances, and `root units --instance x
+        # --apply` must not arrive as `units --apply` around the ask rule on
+        # `prod root units --apply` (the helper refuses it as a usage error).
+        try:
+            return root(argv[1:])
+        except ProdError as e:
+            print(f"error: {e}", file=sys.stderr)
+            return 1
     if argv[:1] == ["--instance"]:
         print("put --instance after the verb: bin/game prod <verb> ... --instance NAME "
               "(the permission rules read the verb first)", file=sys.stderr)
@@ -1091,6 +1142,12 @@ def main(argv: list[str] | None = None) -> int:
     iu.add_argument("name")
     iu.add_argument("--grace", type=int, default=60, help="seconds of warning for players")
     iu.add_argument("--note", default="", help="the asleep page's note while it is closed")
+    # `root` is dispatched above, before --instance is read; listed here for --help.
+    rt = sub.add_parser("root", help="root actions through the validated helper "
+                                     "(docs/runbooks/root.md)")
+    rt.add_argument("args", nargs=argparse.REMAINDER,
+                    help="version | doctor | units [--apply] | start|stop|restart|status UNIT "
+                         "| env show | env set KEY VALUE")
     args = p.parse_args(argv)
     try:
         if args.cmd == "status":
