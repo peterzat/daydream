@@ -108,6 +108,17 @@ async function statusBody(env, state) {
   return publicState(env, unplanned(state));
 }
 
+// The attached instance's words ride on the flag (docs/INSTANCES.md); a flag
+// without them reads as the village, as before.
+export function placeOf(s) {
+  const p = s && typeof s.place === "string" && s.place.trim() ? s.place.trim() : "the village";
+  return p.slice(0, 80);
+}
+
+function capital(s) {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
 function publicState(env, s) {
   return {
     state: s.state,
@@ -115,7 +126,8 @@ function publicState(env, s) {
     note: s.note || "",
     since: s.since || null,
     unplanned: !!s.unplanned,
-    operator: env.OPERATOR || "",
+    operator: (typeof s.operator === "string" && s.operator) || env.OPERATOR || "",
+    place: placeOf(s),
   };
 }
 
@@ -216,7 +228,7 @@ function wantsHtml(request, rest) {
 async function asleep(request, env, state, rest, isWS) {
   const body = publicState(env, state);
   if (isWS) {
-    return new Response("the village is asleep", { status: 503, headers: noStore() });
+    return new Response(`${body.place} is asleep`, { status: 503, headers: noStore() });
   }
   if (!wantsHtml(request, rest)) {
     return json(body, 503, { "retry-after": "300" });
@@ -230,8 +242,11 @@ async function asleep(request, env, state, rest, isWS) {
     "{{NOTE}}": escapeHtml(body.note),
     "{{OPERATOR}}": escapeHtml(body.operator || "the person who invited you"),
     "{{SINCE}}": escapeHtml(body.since || ""),
-    "{{KEEPSAKES}}": keepsakesHtml(await keepsakesFor(request, env), env.BASE || "/daydream/"),
+    "{{KEEPSAKES}}": keepsakesHtml(await keepsakesFor(request, env, state),
+                                   env.BASE || "/daydream/", body.place),
     "{{BASE}}": escapeHtml(env.BASE || "/daydream/"),
+    "{{PLACE}}": escapeHtml(capital(body.place)),
+    "{{place}}": escapeHtml(body.place),
   };
   for (const [k, v] of Object.entries(fill)) html = html.replaceAll(k, () => v);
   return new Response(html, {
@@ -262,8 +277,16 @@ export async function sha256hex(s) {
   return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-async function passFor(request, env) {
-  const token = cookieValue(request.headers.get("cookie"), env.COOKIE_NAME || "dd_session_prod");
+// The attached instance's session cookie (per instance since the flag names
+// it: docs/INSTANCES.md), else the configured one.
+export function cookieNameFor(env, state) {
+  const c = state && typeof state.cookie === "string" ? state.cookie : "";
+  return /^dd_session_[a-z0-9_-]{1,60}$/.test(c) ? c : (env.COOKIE_NAME || "dd_session_prod");
+}
+
+async function passFor(request, env, state) {
+  const s = state || await readState(env);
+  const token = cookieValue(request.headers.get("cookie"), cookieNameFor(env, s));
   if (!token || token.length > 200) return null;
   let passes = {};
   try {
@@ -277,8 +300,8 @@ async function passFor(request, env) {
   return pass;
 }
 
-export async function keepsakesFor(request, env) {
-  const pass = await passFor(request, env);
+export async function keepsakesFor(request, env, state) {
+  const pass = await passFor(request, env, state);
   if (!pass) return null;
   try {
     const entry = JSON.parse((await env.STATE.get("keepsakes:" + pass.account)) || "null");
@@ -298,7 +321,7 @@ async function portrait(request, env) {
                                         "cache-control": "private, no-store" } });
 }
 
-export function keepsakesHtml(k, base) {
+export function keepsakesHtml(k, base, place) {
   if (!k) {
     return '<p class="keepsakes-none">Signed in on this device lately? Your journal and your ' +
       "book would be waiting here.</p>";
@@ -327,7 +350,7 @@ export function keepsakesHtml(k, base) {
   }
   const chronicle = k.chronicle || [];
   if (chronicle.length) {
-    parts.push("<h3>The village chronicle</h3>");
+    parts.push(`<h3>The chronicle of ${escapeHtml(place || "the village")}</h3>`);
     for (const c of chronicle) {
       const day = Number.isInteger(c.day) && c.day > 0 ? `Day ${c.day}: ` : "";
       parts.push(`<p class="entry">${escapeHtml(day + (c.text || ""))}</p>`);

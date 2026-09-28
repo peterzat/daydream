@@ -178,3 +178,22 @@ def test_the_target_comes_from_prod_env_and_wrangler_toml():
     assert (t.public, t.base, t.root) == ("https://www.eidolon.com", "/daydream/",
                                           "https://www.eidolon.com/daydream/")
     assert t.apex == "eidolon.com" and t.origin_host.startswith("daydream-origin.")
+
+
+def test_the_instance_check_catches_a_wrong_answer_and_a_stale_flag_cookie():
+    """Instances (docs/INSTANCES.md): after a swap, the service must answer
+    as the attached instance and the flag must name its cookie."""
+    from daydream.prodcheck import check_instance
+
+    assert check_instance(None, None, None, None, awake=True) == []  # a box without instances
+    ok = check_instance("zork", "zork", "dd_session_prod_zork", "dd_session_prod_zork", awake=True)
+    assert all(c.ok for c in ok) and len(ok) == 2
+    wrong = check_instance("zork", "village", "dd_session_prod_zork", "dd_session_prod_zork",
+                           awake=True)
+    assert [c.name for c in wrong if not c.ok] == ["instance"]
+    stale = check_instance("zork", "zork", "dd_session_prod_village", "dd_session_prod_zork",
+                           awake=True)
+    assert [c.name for c in stale if not c.ok] == ["flag cookie"]
+    asleep = check_instance("zork", None, "dd_session_prod_zork", "dd_session_prod_zork",
+                            awake=False)
+    assert [c.name for c in asleep] == ["flag cookie"]

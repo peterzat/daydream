@@ -5,7 +5,8 @@
 import { test, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { handle, rewriteLocation, upstreamHeaders, escapeHtml, stripAccessCookies }
+import { handle, rewriteLocation, upstreamHeaders, escapeHtml, stripAccessCookies,
+  placeOf, cookieNameFor }
   from "../src/worker.js";
 
 const TEMPLATE = readFileSync(new URL("../public/daydream/_edge/asleep.html", import.meta.url), "utf8");
@@ -214,4 +215,39 @@ test("escapeHtml keeps a zero (the book's \"0 of 150 found\")", () => {
   assert.equal(escapeHtml(0), "0");
   assert.equal(escapeHtml(null), "");
   assert.equal(escapeHtml(undefined), "");
+});
+
+// ---- instances (docs/INSTANCES.md): the attached instance's words on the flag ----
+
+test("the flag's words: another instance sleeps in its own words", async () => {
+  const e = env({ state: "asleep", note: "", since: null, place: "the great underground empire",
+                  operator: "the Dungeon Master", cookie: "dd_session_prod_zork" });
+  let r = await handle(req("/daydream/"), e);
+  const html = await r.text();
+  assert.match(html, /The great underground empire is asleep/);
+  assert.match(html, /when the great underground empire does/);
+  assert.match(html, /Send the Dungeon Master a note/);
+  assert.doesNotMatch(html, /The village is asleep|Night Warden/);
+  r = await handle(req("/daydream/api/me", { headers: { accept: "application/json" } }), e);
+  const body = await r.json();
+  assert.equal(body.place, "the great underground empire");
+  assert.equal(body.operator, "the Dungeon Master");
+  r = await handle(req("/daydream/ws", { headers: { upgrade: "websocket" } }), e);
+  assert.equal(await r.text(), "the great underground empire is asleep");
+});
+
+test("the flag's words are escaped, and a flag without them reads as the village", async () => {
+  const e = env({ state: "asleep", note: "", since: null, place: "the <b>vault</b>" });
+  const html = await (await handle(req("/daydream/"), e)).text();
+  assert.match(html, /The &lt;b&gt;vault&lt;\/b&gt; is asleep/);
+  assert.equal(placeOf({}), "the village");
+  assert.equal(placeOf({ place: "  " }), "the village");
+});
+
+test("the pass cookie is the flag's when it is a session cookie name, else the configured one", () => {
+  const e = env();
+  assert.equal(cookieNameFor(e, { cookie: "dd_session_prod_zork" }), "dd_session_prod_zork");
+  assert.equal(cookieNameFor(e, { cookie: "evil; path=/" }), "dd_session_prod");
+  assert.equal(cookieNameFor(e, {}), "dd_session_prod");
+  assert.equal(cookieNameFor({ ...e, COOKIE_NAME: "dd_session_x" }, null), "dd_session_x");
 });

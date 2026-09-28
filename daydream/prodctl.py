@@ -42,7 +42,9 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import json
 import os
+import re
 import shutil
 import sqlite3
 import subprocess
@@ -108,21 +110,55 @@ def prod_env() -> dict[str, str]:
 AS_USER = os.environ.get("DAYDREAM_PROD_AS_USER", "daydream")
 
 
-def data_dir() -> Path:
+# `bin/game prod --instance NAME <verb>` acts on an instance that is not the
+# attached one (docs/INSTANCES.md); unset, commands act on the attached one.
+INSTANCE: str | None = None
+INSTANCE_NAME = re.compile(r"^[a-z][a-z0-9-]{0,31}$")
+
+
+def data_root() -> Path:
+    """The box's data dir (prod.env's DAYDREAM_DATA_DIR): the GPU lock, the
+    service user's HOME, and (with instances) `instances/` and `active`."""
     return Path(prod_env().get("DAYDREAM_DATA_DIR", str(SRV / "data")))
 
 
-def release_env(release: Path) -> dict[str, str]:
+def instance_dir(name: str | None = None) -> Path:
+    """The data dir a prod command acts on: `--instance NAME`, else the
+    attached instance (the `active` link), else the whole data dir (a box
+    not yet migrated to instances). The operator only resolves the link;
+    everything inside is read and written as the service user."""
+    root = data_root()
+    name = name or INSTANCE
+    if name:
+        if not INSTANCE_NAME.match(name):
+            raise ProdError(f"{name!r} is not an instance name")
+        d = root / "instances" / name
+        if not d.is_dir():
+            raise ProdError(f"no instance {name!r} (bin/game prod instance list)")
+        return d
+    active = root / "active"
+    return active.resolve() if active.is_symlink() else root
+
+
+def data_dir() -> Path:
+    """The instance's data dir (backups, the CLI's cookie, what commands touch)."""
+    return instance_dir()
+
+
+def release_env(release: Path, data: Path | None = None) -> dict[str, str]:
     """The clean environment a prod command runs in: prod.env, the release's
-    build id, where the engines live. The service is started and stopped by
-    this module (DAYDREAM_LIFECYCLE=external), never by the command itself."""
+    build id, where the engines live, and DAYDREAM_DATA_DIR set to the
+    instance's own data dir (so bin/game's bash paths and Python agree; HOME
+    stays the box's). The service is started and stopped by this module
+    (DAYDREAM_LIFECYCLE=external), never by the command itself."""
     env = {
         "PATH": "/usr/local/bin:/usr/bin:/bin",
         "LANG": "C.UTF-8",
         "PYTHONDONTWRITEBYTECODE": "1",
     }
     env.update(prod_env())
-    env["HOME"] = str(data_dir())
+    env["DAYDREAM_DATA_DIR"] = str(data or data_dir())
+    env["HOME"] = str(data_root())
     env.update(parse_env_file(release / ".release.env"))
     env["DAYDREAM_ENGINES_ROOT"] = str(REPO)
     env["DAYDREAM_LIFECYCLE"] = "external"
@@ -149,8 +185,8 @@ def _require_current() -> Path:
 
 
 def run_release_python(release: Path, args: list[str], *, check: bool = True,
-                       capture: bool = False) -> subprocess.CompletedProcess:
-    cmd = as_prod([str(release / ".venv" / "bin" / "python"), *args], release_env(release))
+                       capture: bool = False, data: Path | None = None) -> subprocess.CompletedProcess:
+    cmd = as_prod([str(release / ".venv" / "bin" / "python"), *args], release_env(release, data))
     return subprocess.run(cmd, cwd=release, check=check, text=True, capture_output=capture)
 
 
@@ -430,9 +466,9 @@ def _preflight(release: Path) -> dict[str, str]:
     return info
 
 
-def _backup(release: Path) -> Path | None:
+def _backup(release: Path, data: Path | None = None) -> Path | None:
     r = run_release_python(release, ["-m", "daydream.admin", "backup", "--keep", "14"],
-                           check=True, capture=True)
+                           check=True, capture=True, data=data)
     say(r.stdout.strip())
     for token in r.stdout.split():
         if token.startswith(str(SRV)) and "backups" in token:
@@ -522,12 +558,27 @@ def _edge():
     return edge if edge.configured() else None
 
 
-def _set_edge_flag(edge, state: str, note: str = "") -> bool:
+def flag_words(release: Path, data: Path | None = None) -> dict | None:
+    """The attached instance's words for the edge's flag (the place, its
+    title, the operator's title, the session cookie), computed by the release
+    as the service user (docs/INSTANCES.md)."""
+    r = run_release_python(release, ["-m", "daydream.instance", "flag-words"], check=False,
+                           capture=True, data=data)
+    if r.returncode != 0:
+        return None
+    try:
+        words = json.loads(r.stdout)
+    except ValueError:
+        return None
+    return words if isinstance(words, dict) else None
+
+
+def _set_edge_flag(edge, state: str, note: str = "", words: dict | None = None) -> bool:
     """Best effort (codereview WARN 2026-09-28): a Cloudflare API error must
     not abort a sleep or wake half done. An unset asleep flag is covered
     anyway: the Worker reads an unreachable origin as asleep."""
     try:
-        edge.set_state(state, note=note)
+        edge.set_state(state, note=note, words=words)
         return True
     except (edge.EdgeError, OSError) as e:
         say(f"edge: the flag is not {state} ({e}); set it later with bin/game edge "
@@ -557,7 +608,7 @@ def wake() -> int:
     say(f"daydream prod {rel.name}: awake on 127.0.0.1:{port()}")
     edge = _edge()
     if edge is not None:
-        if _set_edge_flag(edge, "awake"):
+        if _set_edge_flag(edge, "awake", words=flag_words(rel)):
             say("edge: awake")
     else:
         say("edge: not configured yet (docs/CLOUDFLARE-SETUP.md); the edge state is unchanged")
@@ -566,9 +617,11 @@ def wake() -> int:
 
 def sleep_(note: str, grace: int, keep_engines: bool) -> int:
     rel = _require_current()
+    words = flag_words(rel)
     if unit_active(UNIT):
         if grace > 0:
-            text = ("The lamps are dimming; the village will sleep in a minute or so. "
+            place = (words or {}).get("place") or "the village"
+            text = (f"The lamps are dimming; {place} will sleep in a minute or so. "
                     "What you carry is safe, and your journal will remember today.")
             # Written by the service user (never the operator: the data dir is
             # the sandbox's); the server picks it up within seconds
@@ -577,7 +630,7 @@ def sleep_(note: str, grace: int, keep_engines: bool) -> int:
             say(f"told everyone; waiting {grace}s ...")
             time.sleep(grace)
         edge = _edge()
-        if edge is not None and _set_edge_flag(edge, "asleep", note):
+        if edge is not None and _set_edge_flag(edge, "asleep", note, words):
             say("edge: asleep")
     # Stop both whatever their state: a failed or auto-restarting unit is not
     # "active" yet may be looping; stopping an inactive unit is a no-op.
@@ -591,7 +644,7 @@ def sleep_(note: str, grace: int, keep_engines: bool) -> int:
     say(r.stdout.strip() or "rest-all: done")
     edge = _edge()
     if edge is not None:
-        _set_edge_flag(edge, "asleep", note)  # also when the service was already down
+        _set_edge_flag(edge, "asleep", note, words)  # also when the service was already down
         try:
             edge.sync_keepsakes(rel)
         except Exception as e:  # keepsakes are a courtesy; never block sleep on them
@@ -663,21 +716,34 @@ def offsite() -> int:
     if shutil.which("age") is None:
         raise ProdError("age is not installed (sudo ops/install-prod.sh installs it)")
     rel = _require_current()
-    backup = _backup(rel)
-    if backup is None:
+    # Every instance, attached or not (docs/INSTANCES.md), each under its own
+    # name; a box without instances seals its one data dir as before.
+    root = data_root() / "instances"
+    dirs = sorted(d for d in root.iterdir() if d.is_dir() and INSTANCE_NAME.match(d.name)) \
+        if (data_root() / "active").is_symlink() and root.is_dir() else [data_dir()]
+    sent = 0
+    for d in dirs:
+        backup = _backup(rel, data=d)
+        if backup is None:
+            say(f"offsite: {d.name}: nothing to back up yet")
+            continue
+        label = f"{d.name}-" if d.parent == root else ""
+        with tempfile.TemporaryDirectory(prefix="daydream-offsite-") as tmp:
+            tmpd = Path(tmp)
+            name = f"prod-{label}{backup.name}.tar.gz"
+            # The service user tars (it owns what is in the data dir); the
+            # operator only receives the bytes and encrypts them.
+            (tmpd / name).write_bytes(run_as_prod_bytes(rel, ["tar", "-czf", "-", "-C",
+                                                              str(backup), "."]))
+            sealed = tmpd / (name + ".age")
+            subprocess.run(["age", "-R", str(age_recipients(tmpd / "recipients")),
+                            "-o", str(sealed), str(tmpd / name)], check=True)
+            _wrangler(["r2", "object", "put", f"{R2_BUCKET}/{sealed.name}", "--file",
+                       str(sealed), "--remote"])
+        say(f"offsite: {sealed.name} -> r2://{R2_BUCKET}")
+        sent += 1
+    if not sent:
         raise ProdError("nothing to back up yet")
-    with tempfile.TemporaryDirectory(prefix="daydream-offsite-") as tmp:
-        tmpd = Path(tmp)
-        name = f"prod-{backup.name}.tar.gz"
-        # The service user tars (it owns what is in the data dir); the
-        # operator only receives the bytes and encrypts them.
-        (tmpd / name).write_bytes(run_as_prod_bytes(rel, ["tar", "-czf", "-", "-C", str(backup), "."]))
-        sealed = tmpd / (name + ".age")
-        subprocess.run(["age", "-R", str(age_recipients(tmpd / "recipients")),
-                        "-o", str(sealed), str(tmpd / name)], check=True)
-        _wrangler(["r2", "object", "put", f"{R2_BUCKET}/{sealed.name}", "--file", str(sealed),
-                   "--remote"])
-    say(f"offsite: {sealed.name} -> r2://{R2_BUCKET}")
     return 0
 
 
@@ -709,6 +775,11 @@ def status() -> int:
         say("release: none yet (bin/game prod deploy)")
     else:
         say(f"release: {rel.name} (HEAD {head}; {behind(rel.name, head)})")
+    active = data_root() / "active"
+    if active.is_symlink():
+        words = flag_words(rel) if rel is not None else None
+        say(f"instance: {active.resolve().name} ({(words or {}).get('title', '?')}); "
+            "others: bin/game prod instance list")
     say(f"service: {'awake' if unit_active(UNIT) else 'asleep'} ({UNIT})")
     say(f"tunnel:  {'up' if unit_active(TUNNEL) else 'down'} ({TUNNEL})")
     for name, up in engines_reachable().items():
@@ -804,8 +875,172 @@ def pull() -> int:
 # ---- main ------------------------------------------------------------------------------
 
 
+# ---- instances (docs/INSTANCES.md) ---------------------------------------------
+
+
+def _instance_cli(rel: Path, args: list[str]) -> subprocess.CompletedProcess:
+    """daydream.instance run by the release as the service user, against the
+    box's data dir (it creates, lists and links instances)."""
+    return run_release_python(rel, ["-m", "daydream.instance", *args], check=False,
+                              capture=True, data=data_root())
+
+
+def served_instance(release: Path) -> str | None:
+    cookie = cli_cookie(release)
+    body = http_ok(f"http://127.0.0.1:{port()}/status/build",
+                   headers={"Cookie": cookie}) if cookie else None
+    for line in (body or "").splitlines():
+        if line.startswith("instance: "):
+            return line.split(": ", 1)[1].strip()
+    return None
+
+
+def instance_list() -> int:
+    rel = _require_current()
+    r = _instance_cli(rel, ["list"])
+    if r.returncode != 0:
+        raise ProdError(r.stderr.strip() or "instance list failed")
+    rows = json.loads(r.stdout or "[]")
+    if not rows:
+        say("no instances: this box serves one data dir (bin/game prod instance migrate)")
+        return 0
+    for row in rows:
+        mark = "*" if row["attached"] else " "
+        world = "world" if row["world"] else "no world"
+        say(f"{mark} {row['name']:<16} {row['title']}  ({row['place']}; {world})")
+    say("(* attached to the public URL)")
+    return 0
+
+
+def instance_create(name: str, words: dict) -> int:
+    """A new instance: its dir and instance.json, then its world loaded from
+    its envelope (the release's own copy), keyless. Not attached."""
+    rel = _require_current()
+    if not (data_root() / "active").is_symlink():
+        raise ProdError("this box has no instances yet: bin/game prod instance migrate first")
+    r = _instance_cli(rel, ["create", name, json.dumps(words)])
+    if r.returncode != 0:
+        raise ProdError(r.stderr.strip() or "instance create failed")
+    d = instance_dir(name)
+    envelope = rel / (words.get("envelope") or "worlds/lost-hours.json")
+    live = d / f"worlds-{prod_env().get('DAYDREAM_ENV', 'prod')}" / "live.db"
+    r = run_release_python(rel, ["-m", "daydream.admin", "load", str(envelope), "--force",
+                                 "--output", str(live)], check=False, capture=True, data=d)
+    say(r.stdout.strip())
+    if r.returncode != 0:
+        raise ProdError(f"the world did not load: {r.stderr.strip()[-300:]}")
+    say(f"created instance {name}; attach it with: bin/game prod instance use {name}")
+    return 0
+
+
+def instance_migrate(name: str) -> int:
+    """The one-time move of this box's flat data dir into instances/<name>
+    and the active link to it. Backs up first; stops the service around the
+    move; restores the flag's words (the session cookie's name changes)."""
+    rel = _require_current()
+    if (data_root() / "active").is_symlink() or (data_root() / "instances").exists():
+        raise ProdError("this box already has instances (bin/game prod instance list)")
+    _backup(rel, data=data_root())
+    was_up = unit_active(UNIT)
+    if was_up:
+        say("stopping the service for the move ...")
+        systemctl("stop", UNIT)
+    try:
+        r = _instance_cli(rel, ["migrate", name])
+        say(r.stdout.strip())
+        if r.returncode != 0:
+            raise ProdError(r.stderr.strip() or "migrate failed")
+    finally:
+        if was_up:
+            systemctl("start", UNIT)
+            say("service: " + ("back up" if wait_healthy() else "NOT healthy after restart"))
+    edge = _edge()
+    if edge is not None:
+        _set_edge_flag(edge, edge.get_state().get("state", "awake"), words=flag_words(rel))
+        try:
+            edge.sync_keepsakes(rel)
+        except Exception as e:
+            say(f"keepsakes: not synced ({e})")
+    say(f"migrated: {name} is attached. Everyone signs in again (the cookie is per instance now).")
+    return 0
+
+
+def instance_use(name: str, grace: int, note: str) -> int:
+    """Attach another instance to the public URL (the swap). Its state and
+    the current one's are kept whole; if anything fails after the stop, the
+    previous instance is attached again and started."""
+    rel = _require_current()
+    link = data_root() / "active"
+    if not link.is_symlink():
+        raise ProdError("this box has no instances yet: bin/game prod instance migrate first")
+    current = link.resolve().name
+    target = instance_dir(name)
+    if name == current:
+        say(f"{name} is already attached")
+        return 0
+    r = run_release_python(rel, ["-m", "daydream.admin", "preflight"], check=False,
+                           capture=True, data=target)
+    say(f"preflight {name}: " + " ".join(r.stdout.split()))
+    if r.returncode == 3:
+        raise ProdError(f"{name}'s world cannot be carried forward by this release "
+                        "(WORLD_VERSION MAJOR); nothing changed")
+    _backup(rel, data=target)
+    _backup(rel, data=instance_dir(current))
+    was_up = unit_active(UNIT)
+    if was_up:
+        words = flag_words(rel) or {}
+        if grace > 0:
+            place = words.get("place") or "the village"
+            run_release_python(rel, ["-m", "daydream.announce", "send",
+                                     f"The lamps are dimming; {place} will close for a while "
+                                     "in a minute or so. What you carry is safe."], check=False)
+            say(f"told everyone; waiting {grace}s ...")
+            time.sleep(grace)
+        systemctl("stop", UNIT)
+        r = run_release_python(rel, ["-m", "daydream.admin", "rest-all", "--journal"],
+                               check=False, capture=True)
+        say(r.stdout.strip() or "rest-all: done")
+    try:
+        r = _instance_cli(rel, ["attach", name])
+        if r.returncode != 0:
+            raise ProdError(r.stderr.strip() or "attach failed")
+        if was_up:
+            systemctl("start", UNIT)
+            if not wait_healthy():
+                raise ProdError(f"{name} did not answer /healthz")
+            served = served_instance(rel)
+            if served != name:
+                raise ProdError(f"the service answers as {served!r}, not {name!r}")
+    except Exception:
+        say(f"swap failed; attaching {current} again")
+        _instance_cli(rel, ["attach", current])
+        if was_up:
+            systemctl("restart", UNIT)
+            say("service: " + ("back up" if wait_healthy() else "NOT healthy"))
+        raise
+    edge = _edge()
+    if edge is not None:
+        state = edge.get_state().get("state", "awake")
+        _set_edge_flag(edge, state if state in ("awake", "asleep") else "awake", note,
+                       flag_words(rel))
+        try:
+            edge.sync_keepsakes(rel)
+        except Exception as e:
+            say(f"keepsakes: not synced ({e})")
+    say(f"attached {name} (was {current}); run bin/game prod check")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
+    global INSTANCE
     argv = list(sys.argv[1:] if argv is None else argv)
+    if argv[:1] == ["--instance"]:
+        # `bin/game prod --instance NAME <verb>`: act on an instance that is not
+        # the attached one (an invite before it is up, its backup, its world).
+        if len(argv) < 3 or not INSTANCE_NAME.match(argv[1]):
+            print("usage: bin/game prod --instance NAME <verb> ...", file=sys.stderr)
+            return 2
+        INSTANCE, argv = argv[1], argv[2:]
     if argv and argv[0] in PASSTHROUGH:
         try:
             return passthrough(argv)
@@ -835,6 +1070,19 @@ def main(argv: list[str] | None = None) -> int:
     orr = sub.add_parser("offsite-restore", help="fetch + decrypt one offsite backup into a new dir")
     orr.add_argument("name", help="object name, e.g. prod-20261004-043000.tar.gz.age")
     orr.add_argument("dest", type=Path, help="a directory that does not exist yet")
+    ins = sub.add_parser("instance", help="several instances behind one door (docs/INSTANCES.md)")
+    isub = ins.add_subparsers(dest="icmd", required=True)
+    isub.add_parser("list", help="the instances, and which is attached")
+    im = isub.add_parser("migrate", help="one time: move this flat data dir into an instance")
+    im.add_argument("name", nargs="?", default="village")
+    ic = isub.add_parser("create", help="a new instance with its world (not attached)")
+    ic.add_argument("name")
+    for flag in ("envelope", "title", "place", "lede", "operator", "door-image", "invite-blurb"):
+        ic.add_argument(f"--{flag}", default=None)
+    iu = isub.add_parser("use", help="attach an instance to the public URL (the swap)")
+    iu.add_argument("name")
+    iu.add_argument("--grace", type=int, default=60, help="seconds of warning for players")
+    iu.add_argument("--note", default="", help="the asleep page's note while it is closed")
     args = p.parse_args(argv)
     try:
         if args.cmd == "status":
@@ -863,6 +1111,18 @@ def main(argv: list[str] | None = None) -> int:
             return offsite()
         if args.cmd == "offsite-restore":
             return offsite_restore(args.name, args.dest)
+        if args.cmd == "instance":
+            if args.icmd == "list":
+                return instance_list()
+            if args.icmd == "migrate":
+                return instance_migrate(args.name)
+            if args.icmd == "create":
+                words = {k.replace("-", "_"): v for k, v in vars(args).items()
+                         if k in ("envelope", "title", "place", "lede", "operator",
+                                  "door_image", "invite_blurb") and v is not None}
+                return instance_create(args.name, words)
+            if args.icmd == "use":
+                return instance_use(args.name, args.grace, args.note)
     except (ProdError, subprocess.CalledProcessError, OSError) as e:
         print(f"error: {e}", file=sys.stderr)
         return 1

@@ -254,7 +254,7 @@ def test_offsite_encrypts_before_anything_leaves(srv, monkeypatch, tmp_path):
     ssh.mkdir()
     (ssh / "authorized_keys").write_text("ssh-ed25519 AAAAC3laptop x\n")
     monkeypatch.setattr(prodctl, "SSH_DIR", ssh)
-    monkeypatch.setattr(prodctl, "_backup", lambda r: backup)
+    monkeypatch.setattr(prodctl, "_backup", lambda r, data=None: backup)
     monkeypatch.setattr(prodctl.shutil, "which", lambda name: "/usr/bin/" + name)
     calls = []
 
@@ -362,7 +362,7 @@ def _sleep_fakes(srv, monkeypatch, *, active, edge=None):
     monkeypatch.setattr(prodctl, "unit_active", lambda unit: active)
     monkeypatch.setattr(prodctl, "systemctl", lambda a, u: calls.append((a, u)))
     monkeypatch.setattr(prodctl, "run_release_python",
-                        lambda rel, args, check=True, capture=False:
+                        lambda rel, args, check=True, capture=False, **k:
                         subprocess.CompletedProcess(args, 0, stdout="", stderr=""))
     monkeypatch.setattr(prodctl, "_edge", lambda: edge)
     return calls

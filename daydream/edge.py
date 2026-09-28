@@ -125,12 +125,23 @@ def _now() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def set_state(state: str, note: str = "") -> dict:
+WORD_KEYS = ("place", "title", "operator", "cookie")
+
+
+def set_state(state: str, note: str = "", words: dict | None = None) -> dict:
     """Flip the edge's flag. The Worker reads it on every request; KV
-    propagates worldwide within about a minute."""
+    propagates worldwide within about a minute. The flag also carries the
+    attached instance's words (docs/INSTANCES.md: the place, its title, the
+    operator's title, the session cookie's name); without `words` it keeps
+    the ones it has, so a bare `edge sleep` never forgets which instance is
+    attached."""
     if state not in ("awake", "asleep"):
         raise EdgeError("state is 'awake' or 'asleep'")
+    if words is None:
+        prev = get_state()
+        words = {k: prev[k] for k in WORD_KEYS if isinstance(prev.get(k), str)}
     body = {"state": state, "note": (note or "")[:280], "since": _now()}
+    body.update({k: str(v)[:80] for k, v in words.items() if k in WORD_KEYS and v})
     kv_put("state", json.dumps(body))
     return body
 

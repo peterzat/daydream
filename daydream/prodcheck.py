@@ -180,6 +180,23 @@ def check_flag(service_active: bool, flag: str | None) -> list[Check]:
     return []
 
 
+def check_instance(attached: str | None, served: str | None, flag_cookie: str | None,
+                   cookie: str | None, awake: bool) -> list[Check]:
+    """Instances (docs/INSTANCES.md): the service answers as the attached
+    instance, and the edge's flag names that instance's session cookie (a
+    stale one would hide every friend's keepsakes while the box sleeps)."""
+    if attached is None:
+        return []
+    out = []
+    if awake:
+        out.append(Check("instance", served == attached,
+                         f"attached {attached}; the service answers as {served or 'nothing'}"))
+    if flag_cookie is not None or cookie is not None:
+        out.append(Check("flag cookie", flag_cookie == cookie,
+                         f"the flag names {flag_cookie or 'none'}; {attached} uses {cookie}"))
+    return out
+
+
 def check_release(release: str | None, head: str, behind: str) -> Check:
     if release is None:
         return Check("release", False, "none deployed")
@@ -318,11 +335,17 @@ def main() -> int:
     awake = prodctl.unit_active(prodctl.UNIT)
     edge = prodctl._edge()
     flag = None
+    flag_state: dict = {}
     if edge is not None:
         try:
-            flag = edge.get_state().get("state")
+            flag_state = edge.get_state()
+            flag = flag_state.get("state")
         except (edge.EdgeError, OSError):
             flag = None
+    words = (prodctl.flag_words(rel) or {}) if rel is not None else {}
+    cookie_name = words.get("cookie") or f"dd_session_{env.get('DAYDREAM_ENV', 'prod')}"
+    active = prodctl.data_root() / "active"
+    attached = active.resolve().name if active.is_symlink() else None
     head = prodctl.resolve_ref("HEAD")[:12]
     checks = [check_release(rel.name if rel else None, head,
                             prodctl.behind(rel.name, head) if rel else "")]
@@ -331,7 +354,10 @@ def main() -> int:
     # asleep; otherwise the Worker must show the asleep page (planned or not).
     expect = "awake" if (awake and flag != "asleep") else "asleep"
     cookie = prodctl.cli_cookie(rel) if (expect == "awake" and rel is not None) else None
+    served = prodctl.served_instance(rel) if (awake and rel is not None) else None
+    checks += check_instance(attached, served, flag_state.get("cookie") if edge else None,
+                             cookie_name, awake)
     checks += run(target, awake=expect == "awake", flag=expect, cookie=cookie,
-                  cookie_name=f"dd_session_{env.get('DAYDREAM_ENV', 'prod')}")
+                  cookie_name=cookie_name)
     checks += timer_checks()
     return report(checks)
