@@ -176,7 +176,13 @@ async def _session(st: dict, frame: dict | None, quiet: float = 1.2,
                 if seq <= sent_at or seq in seen:
                     return
                 seen.add(seq)
-                if me and (e.get("recipient_id") == me or e.get("actor_id") == me):
+                # Your own words told back (a talk's private echo) are not
+                # the reply: the reply is the line that follows, seconds
+                # later (beta rehearsal 2026-09-28: replies landed a command
+                # late, under "meanwhile").
+                own_echo = (e.get("kind") in ("say", "echo") and e.get("actor_id") == me
+                            and e.get("recipient_id") == me)
+                if me and not own_echo and (e.get("recipient_id") == me or e.get("actor_id") == me):
                     answered["yes"] = True
                 line = _line({"kind": "event", "event": e}, me)
                 if line:
@@ -199,6 +205,10 @@ async def _session(st: dict, frame: dict | None, quiet: float = 1.2,
                 elif f.get("kind") == "event":
                     st["last_seq"] = max(st.get("last_seq", 0), f["event"].get("seq", 0))
                     take(f["event"])
+                elif f.get("kind") == "thinking":
+                    # A reply is composing: wait for it.
+                    deadline = time.monotonic() + 25.0
+                    continue
                 else:
                     line = _line(f)
                     if line:
