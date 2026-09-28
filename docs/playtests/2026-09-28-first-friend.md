@@ -155,3 +155,45 @@ still invent a gesture in an improvised reply; that is its reach, and
 answers that matter are authored.
 
 The second playtest follows below once it has run.
+
+## The second playtest (after publishing the fix pass)
+
+A fresh friend, Hazel, on a smaller laptop (1366x768), then a phone as a
+second device. Played in dev on a pulled copy of the live village, where
+the great clock is still stopped, so this was the real first-friend path:
+the invitation, the guide, the dreamer, the repair ledger, the gear at
+the well-court, Tace, the case key, the mending, the first winding, Bell's
+welcome, the yawning nap, Mott's book and hush, resting and stepping back
+in, and a phone taking the dreamer over and the laptop taking it back.
+No page errors, no failed requests.
+
+What the fix pass did, seen live: the guide opened on the first visit
+only, and the dreamer panel over a backdrop offered one way in. Both
+columns drew rails and the margin's foot named "you carry". Typed and
+clicked looks read as the same card. "What now" pointed straight on at
+each step (the ledger, the gear, Tace, the first winding). The satchel
+tagged the gear and key "goes home when you rest". In the square, Bell's
+welcome followed the arrival line undimmed, with no second greeting. The
+ask echo and asked chips worked, and new topics glowed. Stepping back in
+told what went home ("While you rested, the case key went home to the
+Clockmaker's Loft"), and the journal said "At dusk" because it was dusk.
+"Dream here instead" worked both ways.
+
+What it found, and what was done (committed to dev, not yet published):
+
+| Finding | Done |
+|---|---|
+| The margin's index came back as an empty band after it once emptied | fixed: its cache key is forgotten with its contents |
+| The margin kept the last room's scroll, hiding "you" on arrival | fixed: a new room opens the margin at its top |
+| The satchel's thread count waited for the next move after an ask or a wind | fixed: a command that changes your threads sends them at once |
+| An answer's last line sat under the bottom fade with nothing after it | fixed: the cue needs more than a paragraph's gap below |
+| "case" in "case-key" linked to the clock case | fixed: half of a hyphened word is not an alias |
+| The gear's description said it was in the moss while you carried it | fixed (authored) |
+| Pim's clue thread still said "Mott keeps a hush" once you had it | fixed: one thread per clue, each ending with its step |
+| Tock's greeting repeated its schedule's arrival line | fixed (authored) |
+| The guide didn't mention threads | fixed: the satchel paragraph names them, and "what now?" |
+| At 1366x768 the verb ribbon wraps to two rows (ten verbs) and the reading column is about six lines, so a big moment (the mending) needs a scroll | not changed: a layout choice between the painting's height and the text's; worth deciding by eye |
+| The index sits over the margin's last lines (a peeking "around you" label, a chip's edge) | not changed: it is an overlay by design; could reserve its height instead |
+| A quiet tab learns it was taken over on its next frame (up to its 25 s keepalive) | not changed: acceptable |
+
+WORLD_VERSION 1.7 for the authored lines.
