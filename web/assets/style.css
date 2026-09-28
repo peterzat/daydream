@@ -414,6 +414,7 @@ footer .logout:hover { text-decoration: underline; }
 .slots-panel button {
   background: var(--paper); border: 1px solid var(--sage-deep);
   color: var(--sage-deep); padding: 0.25em 0.7em; border-radius: 4px; font: inherit; cursor: pointer;
+  white-space: nowrap; /* "let go" and "step back in" stay on one line on a phone */
 }
 .slots-panel button:hover { background: var(--sage); color: var(--paper); }
 /* Only a dreamer's row pushes its buttons to the right edge; the account form
