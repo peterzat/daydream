@@ -54,6 +54,32 @@ On a phone the log is a box above the margin and the topic chips sit below
 it, so an answer landed out of sight; the page now brings the log into view
 when it answers something you just did.
 
+## Later the same evening
+
+The operator played on, down to the cellar, then on an iPad mini.
+
+| Note | Cause | Fix |
+|---|---|---|
+| "Umber does like four things immediately upon meeting them" | The arrival replayed the cellar's ambient lines from 01:15 and 03:51 as if they were happening, then came the greeting, then the answer | Arrivals replay the last twenty minutes, and never drift's ambient beats (they are for whoever was there); a later same-room re-snapshot keeps the arrival's cut |
+| "the fit in Safari on my iPad Mini has the up/down/west stuff too far down, abutting the bottom of the screen" | The desktop shell sized itself by `100vh`, which on iPad and iPhone Safari counts the space behind Safari's own bars, so the compass and footer landed under the home indicator | The shell sizes by `dvh` (the visible height), keeps the safe-area inset under its foot, and the page asks for the inset (`viewport-fit=cover`) |
+
+The operator also asked for basic visual tests across screens and browsers,
+without a lot of machinery. Pixel-baseline tools (Playwright's
+`toHaveScreenshot`, pytest-playwright-visual-snapshot) work but churn with
+every painting and font and want a human to re-bless each baseline, and
+Playwright's WebKit is desktop WebKit (no collapsing toolbar, safe-area
+insets of 0), so it cannot reproduce the iPad bug anyway. The choice:
+layout rules over a screen and engine matrix on the Playwright we already
+had (`tests/test_layout_screens.py`), screenshots on request for grading by
+eye, and a static check for the iOS-only part. On its first run it found
+two more door bugs: a door taller than the window (a landscape iPad's
+invitation) could not scroll to its button, and the door's peeking leaves
+spanned the window and pushed it 11px sideways. Once the review had made
+the sideways rule honest for mobile browsers (they widen the page to fit
+instead of scrolling), it found one more: on an upright iPad the game's
+own peeking leaves stuck out 12px past the screen, so they now hide at
+900px and below, as they already did on phones.
+
 ## How it was checked
 
 A headless-browser harness took before and after screenshots at 1440x860,
