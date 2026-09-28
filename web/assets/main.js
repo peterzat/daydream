@@ -209,6 +209,7 @@ function renderSnapshot(snap) {
     loadedBuild = snap.build || loadedBuild;
     loadedWorldVersion = snap.world_version || loadedWorldVersion;
   }
+  document.body.classList.remove("awake"); // in the dream again
   document.getElementById("room-title").textContent =
     snap.room ? snap.room.title : "drifting...";
   document.getElementById("room-desc").textContent =
@@ -282,19 +283,27 @@ function renderSnapshot(snap) {
   const carriedNote = takeSleptNote(); // one carried across a redeploy reload
   if (snap.while_you_slept) showSleptPage(snap.while_you_slept);
   else if (carriedNote) showSleptPage(carriedNote);
-  // Re-hydrate the chat from the snapshot's recent events.
+  // Re-hydrate the chat from the snapshot's recent events. In the same room
+  // the reader keeps their place through the re-render, and only lines the
+  // log had not shown yet come into view (a take's own line can arrive
+  // inside the snapshot rather than ahead of it).
   const chat = document.getElementById("chat");
-  // A reader scrolled up in this same room keeps their place through the
-  // re-render; only one already at the bottom follows the newest line.
   const sameRoom = !!snap.room && snap.room.id === lastArrivalRoomId;
-  const keptScroll = [chat, chat.closest(".prose")]
-    .filter((el) => sameRoom && el && el.scrollHeight - el.scrollTop - el.clientHeight > 8)
-    .map((el) => [el, el.scrollTop]);
+  const scroller = logScroller();
+  const keptTop = sameRoom ? scroller.scrollTop : null;
+  const shownSeq = lastSeq;
+  const answerSeq = answerFrom && answerFrom.isConnected ? answerFrom.dataset.seq : null;
   clearPending();
   chat.innerHTML = "";
   lastSeq = 0; // allow snapshot replays to render
-  for (const e of snap.events) renderEvent(e);
+  replaying = true; // one settle after the whole log, not a scroll per line
+  try {
+    for (const e of snap.events) renderEvent(e);
+  } finally {
+    replaying = false;
+  }
   lastSeq = snap.last_seq;
+  answerFrom = answerSeq ? chat.querySelector(`[data-seq="${answerSeq}"]`) : null;
   // "Previously, in your dream...": a returning toon's last journal entry,
   // shown once per toon entry when the log starts empty (a fresh connect,
   // not a reconnect with replayed history).
@@ -332,9 +341,14 @@ function renderSnapshot(snap) {
       span.onclick = () => onObjectClick(span.dataset.objectId);
     });
     chat.appendChild(div);
-    pinLog();
+    followLog(div);
   }
-  for (const [el, top] of keptScroll) el.scrollTop = top;
+  if (keptTop !== null) {
+    scroller.scrollTop = keptTop;
+    const fresh = [...chat.children].filter((el) => Number(el.dataset.seq) > shownSeq);
+    if (fresh.length) followLog(fresh[fresh.length - 1], fresh[0]);
+    else trimSpacer(scroller);
+  }
   if (arrivalRoomId !== lastArrivalRoomId) requestAnimationFrame(showRoomTop);
   lastArrivalRoomId = arrivalRoomId;
   // Verb bar: Examine / Take / Drop / Talk. Click a verb to stage it, then
@@ -552,6 +566,8 @@ function clearSceneAndLog() {
   // only cleared once a toon was claimed). Mirrors renderSnapshot's empty states.
   clearPending();
   document.getElementById("chat").innerHTML = "";
+  setSpacer(0);
+  answerFrom = null;
   document.getElementById("room-title").textContent = "drifting...";
   document.getElementById("room-desc").textContent = "";
   const selfEl = document.getElementById("self");
@@ -693,6 +709,7 @@ function renderEvent(e) {
   const chat = document.getElementById("chat");
   const div = document.createElement("div");
   div.className = "evt evt-" + e.kind;
+  div.dataset.seq = e.seq;
   if (e.kind === "say") {
     // Attribute by the server-provided display name, falling back to the
     // current room's actor map; NEVER the raw actor id (no object/toon ids in
@@ -714,7 +731,7 @@ function renderEvent(e) {
         prior.dataset.text === text) {
       clearPending();
       glowElement(prior);
-      pinLog();
+      followLog(prior);
       return;
     }
     div.dataset.text = text;
@@ -739,7 +756,7 @@ function renderEvent(e) {
         div.textContent = mover + " crumples, and is elsewhere.";
         clearPending();
         chat.appendChild(div);
-        pinLog();
+        followLog(div);
       }
       return;
     }
@@ -763,7 +780,7 @@ function renderEvent(e) {
   }
   clearPending(); // a slow action just produced its line; drop the "thinking" beat
   chat.appendChild(div);
-  pinLog();
+  followLog(div);
 }
 
 function renderDetailInset(e, detail) {
@@ -782,12 +799,13 @@ function renderDetailInset(e, detail) {
       clearPending();
       chat.appendChild(prior); // move to the end, no duplicate
       glowElement(prior);
-      pinLog();
+      followLog(prior);
       return;
     }
   }
   const aside = document.createElement("aside");
   aside.className = "evt detail-inset";
+  aside.dataset.seq = e.seq;
   if (detail.objectId) aside.dataset.objectId = detail.objectId;
   aside.dataset.text = text; // for the repeat-examine glow check above
   const tab = document.createElement("span");
@@ -806,7 +824,7 @@ function renderDetailInset(e, detail) {
   aside.appendChild(dogear);
   clearPending();
   chat.appendChild(aside);
-  pinLog();
+  followLog(aside);
 }
 
 function glowElement(el) {
@@ -951,7 +969,7 @@ function renderClarify(c) {
   }
   clearPending();
   chat.appendChild(div);
-  pinLog();
+  followLog(div);
 }
 
 function showDeathOverlay() {
@@ -961,14 +979,22 @@ function showDeathOverlay() {
   setTimeout(() => o.classList.add("hidden"), 2200);
 }
 
+function youActed() {
+  // What you just did should show, even right after arriving, and its answer
+  // opens from its first line (followLog).
+  holdPinUntil = 0;
+  actedAt = Date.now();
+  answerFrom = null;
+}
+
 function sendInput(text) {
-  holdPinUntil = 0; // what you just did should show, even right after arriving
+  youActed();
   if (!ws || ws.readyState !== WebSocket.OPEN) return;
   ws.send(JSON.stringify({ kind: "input", text: text }));
 }
 
 function sendCommand(verb, dobjId, args, iobjId) {
-  holdPinUntil = 0;
+  youActed();
   // The structured command frame: the click path. Bypasses the parser, so a
   // deterministic verb makes no LLM call (the server's verb handler may). A
   // two-object verb (give/use) carries iobj_id; single-object verbs omit it.
@@ -1028,34 +1054,164 @@ function systemLine(msg) {
   div.className = "evt evt-system";
   div.textContent = msg;
   chat.appendChild(div);
-  pinLog();
+  followLog(div);
 }
 
+// ---- reading the log ------------------------------------------------------
 // Entering a room shows its description first; the arrival lines that land
-// right after (greetings, the replayed room log) must not yank the view back
-// to the bottom, so pinning holds briefly after a room change.
+// right after (greetings, the replayed room log) must not yank the view away
+// from it, so following holds briefly after a room change.
 let holdPinUntil = 0;
 const ARRIVAL_HOLD_MS = 2500;
+// A new line comes into view without leaving the column starting mid-
+// paragraph (playtest 2026-09-28: asking a resident about a topic left the
+// tail of an older line at the top). When a line needs scrolling, the view
+// comes to rest at the top of a paragraph, and an answer to what you just did
+// opens at its own first line when it is taller than the column. A spacer
+// under the log makes that resting place reachable. A reader scrolled back
+// through the log keeps their place unless they just acted.
+let actedAt = 0; // when you last did something (sendInput / sendCommand)
+const ACT_FOLLOW_MS = 30000; // lines this soon after your action answer it
+let answerFrom = null; // the first line of the answer to your last action
+let replaying = false; // a snapshot is re-rendering the log: no scrolling per line
 
-function pinLog() {
-  // Keep the newest line in view. On desktop the whole reading column (the
-  // room description plus the log) is the scroll container; on phones the
-  // log scrolls in its own box. Pin whichever is scrolling.
+function logScroller() {
+  // On desktop the whole reading column (the room description plus the log)
+  // is the scroll container; on phones the log scrolls in its own box.
   const chat = document.getElementById("chat");
-  chat.scrollTop = chat.scrollHeight;
   const prose = chat.closest(".prose");
-  if (prose && Date.now() >= holdPinUntil) prose.scrollTop = prose.scrollHeight;
+  return prose && getComputedStyle(prose).overflowY !== "visible" ? prose : chat;
+}
+
+function spacerPx() {
+  return parseFloat(document.getElementById("chat").style.paddingBottom) || 0;
+}
+
+function setSpacer(px) {
+  document.getElementById("chat").style.paddingBottom = px > 0 ? Math.ceil(px) + "px" : "";
+}
+
+function contentEnd(sc) {
+  // Where the text ends inside the scroller, not counting the spacer.
+  return sc.scrollHeight - (sc.contains(document.getElementById("chat")) ? spacerPx() : 0);
+}
+
+function trimSpacer(sc) {
+  // Keep only as much spacer as the current resting place needs.
+  const need = Math.max(0, sc.scrollTop + sc.clientHeight - (sc.scrollHeight - spacerPx()));
+  if (need < spacerPx()) setSpacer(need);
+}
+
+function offsetIn(el, sc, edge) {
+  // An element's top (margin box) or bottom, in the scroller's coordinates.
+  const r = el.getBoundingClientRect();
+  const origin = sc.getBoundingClientRect().top + sc.clientTop - sc.scrollTop;
+  if (edge === "bottom") return r.bottom - origin;
+  return r.top - (parseFloat(getComputedStyle(el).marginTop) || 0) - origin;
+}
+
+function paragraphsIn(sc) {
+  const chat = document.getElementById("chat");
+  const desc = document.getElementById("room-desc");
+  const paras = [...chat.children];
+  if (sc !== chat && desc.textContent) paras.unshift(desc);
+  return paras;
+}
+
+function revealRange(first, last, sc) {
+  // Bring first..last into view, resting on a paragraph's top.
+  const viewH = sc.clientHeight;
+  const top = offsetIn(first, sc, "top");
+  const bottom = offsetIn(last, sc, "bottom");
+  if (top >= sc.scrollTop - 1 && bottom <= sc.scrollTop + viewH + 1) {
+    trimSpacer(sc);
+    return;
+  }
+  let target = top;
+  if (bottom - top <= viewH) {
+    // The earliest paragraph top that still shows the whole range.
+    for (const p of paragraphsIn(sc)) {
+      const t = offsetIn(p, sc, "top");
+      if (t >= bottom - viewH - 1) { target = Math.min(t, top); break; }
+    }
+  }
+  target = Math.max(0, target);
+  setSpacer(Math.max(0, target + viewH - contentEnd(sc)));
+  sc.scrollTop = target;
+}
+
+function wasFollowing(el, sc) {
+  // Was the line before this one in view? Then the reader was following.
+  const prev = el.previousElementSibling ||
+    (sc !== document.getElementById("chat") ? document.getElementById("room-desc") : null);
+  if (!prev || !prev.getBoundingClientRect().height) return true;
+  return offsetIn(prev, sc, "bottom") <= sc.scrollTop + sc.clientHeight + 4;
+}
+
+function followLog(el, first) {
+  // Called with each line added to (or glowed in) the log; `first` is the
+  // earliest of several lines that arrived together.
+  if (replaying || !el || !el.isConnected) return;
+  first = first || el;
+  const sc = logScroller();
+  const answering = Date.now() - actedAt < ACT_FOLLOW_MS;
+  if (answering && !(answerFrom && answerFrom.isConnected)) answerFrom = first;
+  if (sc !== document.getElementById("chat") && Date.now() < holdPinUntil) {
+    trimSpacer(sc);
+    return;
+  }
+  if (!answering && !wasFollowing(first, sc)) {
+    trimSpacer(sc);
+    return;
+  }
+  revealRange(answering ? answerFrom : first, el, sc);
+  // On a phone the log is a box in a scrolling page, and the topic chips sit
+  // below it: bring the box into view when it answers what you just did.
+  if (answering && sc === document.getElementById("chat")) {
+    const r = sc.getBoundingClientRect();
+    if (r.bottom <= 0 || r.top >= window.innerHeight) sc.scrollIntoView({ block: "nearest" });
+  }
 }
 
 function showRoomTop() {
   // Entering a room: show its description first, not the bottom of its log.
   holdPinUntil = Date.now() + ARRIVAL_HOLD_MS;
+  answerFrom = null;
+  setSpacer(0);
   const prose = document.querySelector(".prose");
   if (prose) prose.scrollTop = 0;
   // On a phone the page itself scrolls: bring the new room's plate and title
   // back into view after a move made from the compass at the foot.
   if (window.innerWidth <= 640) window.scrollTo(0, 0);
 }
+
+// Scroll cues: overlay scrollbars (macOS, phones) stay hidden until you
+// scroll, so a column holding more than it shows fades at that edge instead
+// (playtest 2026-09-28; the .more-above / .more-below styles).
+function updateScrollCue(el) {
+  const scrollable = getComputedStyle(el).overflowY !== "visible" &&
+    el.scrollHeight - el.clientHeight > 2;
+  el.classList.toggle("more-above", scrollable && el.scrollTop > 2);
+  el.classList.toggle("more-below",
+    scrollable && el.scrollTop + el.clientHeight < contentEnd(el) - 2);
+}
+
+function watchScroll(el) {
+  if (!el) return;
+  let queued = false;
+  const update = () => {
+    if (queued) return;
+    queued = true;
+    requestAnimationFrame(() => { queued = false; updateScrollCue(el); });
+  };
+  el.addEventListener("scroll", update, { passive: true });
+  if (window.ResizeObserver) new ResizeObserver(update).observe(el);
+  new MutationObserver(update).observe(el, { childList: true, subtree: true, characterData: true });
+  window.addEventListener("resize", update);
+  update();
+}
+["chat", "scene"].forEach((id) => watchScroll(document.getElementById(id)));
+watchScroll(document.querySelector(".prose"));
 
 function clearPending() {
   // Remove the transient "thinking..." line (and its safety timer). Safe to
@@ -1080,7 +1236,7 @@ function showPending() {
   div.className = "evt evt-pending";
   div.textContent = "the dream stirs...";
   chat.appendChild(div);
-  pinLog();
+  followLog(div);
   pendingEl = div;
   pendingTimer = setTimeout(clearPending, 30000);
 }
@@ -1479,7 +1635,7 @@ async function renderSlots() {
   const list = document.getElementById("slots-list");
   const form = document.getElementById("dreamer-form");
   list.innerHTML = "";
-  if (!data) return;
+  if (!data) return null;
   for (const t of data.toons) {
     const li = document.createElement("li");
     li.className = "slot-row";
@@ -1511,6 +1667,7 @@ async function renderSlots() {
   form.classList.toggle("hidden", !data.can_create);
   document.getElementById("slots-title").textContent =
     data.toons.length > 1 ? "your dreamers" : "your dreamer";
+  return data;
 }
 
 document.getElementById("dreamer-form").addEventListener("submit", async (ev) => {
@@ -1576,13 +1733,15 @@ document.getElementById("password-form").addEventListener("submit", async (ev) =
   err.hidden = false;
 });
 
-document.getElementById("sign-out").addEventListener("click", async () => {
+async function signOut() {
   // Rest the toon first (so its journal is written), then end the session.
   awaitingPick = true; // no reconnect while we go
   try { await fetch("api/session/leave", { method: "POST", credentials: "same-origin" }); } catch (_) {}
   try { await fetch("api/logout", { method: "POST", credentials: "same-origin" }); } catch (_) {}
   location.replace(document.baseURI);
-});
+}
+document.getElementById("sign-out").addEventListener("click", signOut);
+document.getElementById("awake-signout").addEventListener("click", signOut);
 
 let pendingDelete = null;
 function askDelete(t) {
@@ -1621,6 +1780,12 @@ function reconnectAfterSlotChange() {
   }
   connect(false);
 }
+
+async function openDreamerPanel() {
+  document.getElementById("slots-panel").classList.remove("hidden");
+  await renderSlots();
+}
+document.getElementById("awake-dreamer").addEventListener("click", openDreamerPanel);
 
 document.getElementById("slots-toggle").addEventListener("click", async () => {
   const panel = document.getElementById("slots-panel");
@@ -1666,13 +1831,48 @@ document.getElementById("help-panel").addEventListener("click", (e) => {
 });
 
 // "Leave the dream": a brief wake beat, release this session's toon, and
-// return to the character picker (rather than the old no-op logout POST).
+// wake on the page between dreams (rather than the old no-op logout POST).
 function enterPicker() {
   awaitingPick = true;
   clearSceneAndLog();
-  document.getElementById("slots-panel").classList.remove("hidden");
-  renderSlots();
+  showAwake();
   maybeShowFirstVisitHelp();
+}
+
+async function showAwake() {
+  // Awake (playtest 2026-09-28: leaving used to show the empty scene, with
+  // a live input box): the village seen from outside, where your dreamer is,
+  // and the way back in. With no dreamer yet, the panel opens on its form.
+  document.body.classList.add("awake");
+  document.getElementById("room-title").textContent = "awake";
+  document.getElementById("folio").textContent = "outside the dream";
+  document.getElementById("room-bg").src = assetUrl("assets/door-village.png");
+  const text = document.getElementById("awake-text");
+  const back = document.getElementById("awake-return");
+  text.textContent = "";
+  back.hidden = true;
+  const data = await renderSlots();
+  if (!document.body.classList.contains("awake")) return; // stepped back in meanwhile
+  const dreamers = (data && data.toons) || [];
+  back.hidden = false;
+  if (dreamers.length === 1) {
+    const t = dreamers[0];
+    text.textContent = `You are awake. ${t.name} is resting in the village, ` +
+      "which keeps its own hours while you are away.";
+    back.textContent = "step back in";
+    back.onclick = () => claimSlot(t.slot);
+  } else if (dreamers.length) {
+    text.textContent = "You are awake. Your dreamers are resting in the village, " +
+      "which keeps its own hours while you are away.";
+    back.textContent = "choose a dreamer";
+    back.onclick = openDreamerPanel;
+  } else {
+    text.textContent = "The village is just past this page. " +
+      "Make your dreamer, and step inside.";
+    back.textContent = "make your dreamer";
+    back.onclick = openDreamerPanel;
+    document.getElementById("slots-panel").classList.remove("hidden");
+  }
 }
 
 document.getElementById("leave-dream").addEventListener("click", async () => {

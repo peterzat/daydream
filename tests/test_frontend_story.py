@@ -45,15 +45,39 @@ def test_the_reading_column_is_one_scroll_that_never_clips():
     """Operator 2026-09-27: on a short window the room description was cut
     mid-sentence and the log had no height. The desktop reading column
     scrolls as one (description and log together), the header shrinks with
-    the window, new lines pin to the bottom, and entering a room opens on its
+    the window, new lines come into view, and entering a room opens on its
     description."""
     shell = CSS[CSS.index("@media (min-width: 641px) {"):]
     assert re.search(r"\.prose \{[^}]*overflow-y: auto", shell)
     assert re.search(r"#chat \{[^}]*overflow: visible", shell)
     assert "clamp(76px" in shell and "max-height: 760px" in CSS
-    assert "function pinLog()" in JS and "function showRoomTop()" in JS
-    assert "chat.scrollTop = chat.scrollHeight;" in JS.split("function pinLog()")[1][:600]
-    assert JS.count("pinLog();") >= 9
+    assert "function followLog(el, first)" in JS and "function showRoomTop()" in JS
+    assert JS.count("followLog(") >= 10  # every line the log adds or glows
+
+
+def test_a_new_line_rests_on_a_paragraph_top_not_mid_paragraph():
+    """Operator 2026-09-28: asking Tace left the tail of an older line at the
+    top of the column. A line that needs scrolling to show brings the view to
+    rest on a paragraph's top (an answer to your own action opens at its own
+    first line when taller than the column), a spacer under the log makes that
+    reachable, and a reader scrolled back keeps their place unless they acted
+    (tests/test_browser_flow.py proves it in a real browser)."""
+    reveal = JS.split("function revealRange(")[1].split("\nfunction ")[0]
+    assert "for (const p of paragraphsIn(sc))" in reveal
+    assert "setSpacer(" in reveal and "sc.scrollTop = target;" in reveal
+    follow = JS.split("function followLog(")[1].split("\nfunction ")[0]
+    assert "wasFollowing(first, sc)" in follow and "answerFrom" in follow
+    assert "youActed();" in JS.split("function sendInput(")[1][:80]
+    assert "youActed();" in JS.split("function sendCommand(")[1][:80]
+
+
+def test_scrollable_columns_show_a_cue_at_the_edge_with_more():
+    """Operator 2026-09-28: overlay scrollbars hide until you scroll, so the
+    columns fade at an edge that holds more."""
+    assert ".more-below {" in CSS and ".more-above {" in CSS
+    assert "mask-image" in CSS and "-webkit-mask-image" in CSS
+    assert 'watchScroll(document.querySelector(".prose"))' in JS
+    assert '["chat", "scene"].forEach((id) => watchScroll(' in JS
 
 
 def test_input_history_and_topic_overflow():
@@ -90,7 +114,9 @@ def test_the_picker_clears_every_story_surface():
 
 def test_a_same_room_snapshot_keeps_a_scrolled_up_reader_in_place():
     assert "snap.room.id === lastArrivalRoomId" in JS
-    assert "for (const [el, top] of keptScroll) el.scrollTop = top;" in JS
+    assert "scroller.scrollTop = keptTop;" in JS
+    # Only lines the log had not shown yet come into view after the re-render.
+    assert "Number(el.dataset.seq) > shownSeq" in JS
 
 
 def test_down_never_erases_a_half_typed_line():

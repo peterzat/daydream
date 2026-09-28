@@ -54,6 +54,16 @@
       <div class="prose">
         <p id="room-desc" class="room-desc dropcap"></p>
         <section id="chat" aria-live="polite"></section>
+        <!-- Awake: the page between dreams (after leaving, or before a
+             dreamer exists), in place of an empty scene (playtest 2026-09-28). -->
+        <section id="awake" class="awake-leaf" aria-live="polite">
+          <p id="awake-text" class="room-desc dropcap"></p>
+          <div class="awake-actions">
+            <button id="awake-return" type="button" class="door-button">step back in</button>
+            <button id="awake-dreamer" type="button" class="satchel-link">your dreamer</button>
+            <button id="awake-signout" type="button" class="satchel-link">sign out</button>
+          </div>
+        </section>
       </div>
 
       <aside class="margin" id="scene" aria-label="here">
@@ -143,17 +153,19 @@
         <label class="door-field">new password
           <input type="password" name="new" autocomplete="new-password" minlength="10" required>
         </label>
-        <button type="submit" class="door-button">change password</button>
+        <button type="submit" class="form-submit">change password</button>
         <p class="door-error" role="alert" hidden></p>
       </form>
-      <button id="sign-out" type="button">sign out</button>
     </details>
     <div id="delete-confirm" class="delete-confirm hidden" role="alertdialog">
       <p id="delete-confirm-text"></p>
       <button id="delete-yes" type="button" class="slot-delete">let them go</button>
       <button id="delete-no" type="button">keep them</button>
     </div>
-    <button id="slots-close" type="button">close</button>
+    <div class="panel-actions">
+      <button id="sign-out" type="button">sign out</button>
+      <button id="slots-close" type="button">close</button>
+    </div>
   </section>
 
   <!-- keepsakes backpack foldout: a two-page spread over the live inventory -->
@@ -241,10 +253,10 @@
           minutes glint about the village, a few each day just for you; pick
           them up and they settle into <em>your book</em>.</p>
         <div class="page-eyebrow">waking</div>
-        <p class="help-note"><em>leave the dream</em> rests your toon safely and returns
-          you to the choosing page; <em>switch toon</em> takes up another. your
-          keepsakes and your book stay with you; things that belong to the village
-          find their way home while you sleep.</p>
+        <p class="help-note"><em>leave the dream</em> lets your dreamer rest, and you
+          can step back in whenever you like; <em>your dreamer</em> is where you
+          find them, and your account. your keepsakes and your book stay with you;
+          things that belong to the village find their way home while you sleep.</p>
         <p class="collection-note">this page keeps &mdash; find it again behind<br>the small <strong>?</strong> at the foot of the book.</p>
         <button id="help-close" type="button" class="back-link">&larr; begin dreaming</button>
       </section>

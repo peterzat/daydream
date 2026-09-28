@@ -701,7 +701,8 @@ def test_index_html_has_help_leaf_covering_the_basics():
     assert "ways from here" in r.text         # exits
     assert "open the satchel" in r.text       # the satchel
     assert "leave the dream" in r.text        # leaving / picking a toon
-    assert "switch toon" in r.text
+    assert "<em>your dreamer</em>" in r.text  # the footer's name since accounts
+    assert "switch toon" not in r.text        # retired with accounts (2026-09-27)
 
 
 def test_main_js_help_shows_once_per_browser_and_never_blocks():

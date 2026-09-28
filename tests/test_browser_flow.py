@@ -14,6 +14,7 @@ Chromium)."""
 from __future__ import annotations
 
 import json
+import re
 import socket
 import threading
 import time
@@ -267,4 +268,120 @@ def test_a_returning_friend_signs_in_and_a_wrong_password_stays_at_the_door(tab,
     page.wait_for_url(tab.base + "/")
     assert config.cookie_name() in {c["name"] for c in page.context.cookies()}
     _in_the_start_room(page, "Wren")
+    _assert_quiet(tab, engines)
+
+
+# ---- the first evening in prod (playtest 2026-09-28) ------------------------------
+
+UP = next(r for r in ENVELOPE["rooms"] if r["id"] == START["exits"]["up"])
+
+# Where the reading column rests, measured in the page: its scroll position,
+# whether a paragraph (the room description or a log line) starts exactly at
+# its top edge, where the newest log line ends, and its scroll-cue classes.
+READING = """() => {
+  const sc = document.querySelector(".prose");
+  const origin = sc.getBoundingClientRect().top + sc.clientTop;
+  const paras = [document.getElementById("room-desc"),
+                 ...document.querySelectorAll("#chat > *")];
+  const tops = paras.map((p) => p.getBoundingClientRect().top
+    - (parseFloat(getComputedStyle(p).marginTop) || 0) - origin);
+  const lines = document.querySelectorAll("#chat > .evt[data-seq]");
+  const last = lines[lines.length - 1];
+  return {scrollTop: sc.scrollTop, height: sc.clientHeight,
+          restsOnParagraph: tops.some((t) => Math.abs(t) < 2),
+          lastTop: last.getBoundingClientRect().top - origin,
+          lastBottom: last.getBoundingClientRect().bottom - origin,
+          cue: sc.className};
+}"""
+
+
+def _signed_in_with_a_dreamer(tab: Tab, name: str = "Marlo"):
+    """A friend from an earlier evening signs in and lands in their dreamer."""
+    friend = accounts.create_account(name.lower(), PASSWORD, display_name="A Friend")
+    toons.create_toon_in_slot(1, name, "a tall heron in a patched blue coat",
+                              "s-an-earlier-evening", owner_account=friend["id"])
+    page = tab.page
+    page.add_init_script("try { localStorage.setItem('dd-help-seen', '1'); } catch (e) {}")
+    page.goto("/login")
+    form = page.locator("#login-form")
+    form.locator("input[name=username]").fill(name.lower())
+    form.locator("input[name=password]").fill(PASSWORD)
+    form.locator("button[type=submit]").click()
+    page.wait_for_url(tab.base + "/")
+    _in_the_start_room(page, name)
+    return page
+
+
+def test_leaving_the_dream_wakes_on_a_page_with_the_way_back(tab, engines):
+    """Leaving used to leave the empty scene behind the dreamer panel:
+    "drifting...", empty margins and a live input box. Now the page between
+    dreams says where your dreamer is and steps back in with one click."""
+    page = _signed_in_with_a_dreamer(tab)
+    page.locator("#leave-dream").click()
+    expect(page.locator("#awake")).to_be_visible()
+    expect(page.locator("#room-title")).to_have_text("awake")
+    expect(page.locator("#awake-text")).to_contain_text("Marlo is resting in the village")
+    for gone in ("#input-form", "#scene", "#verb-bar", "#exit-bar", "#leave-dream",
+                 "#slots-panel"):
+        expect(page.locator(gone)).to_be_hidden()
+
+    page.locator("#awake-return").click()
+    _in_the_start_room(page, "Marlo")
+    expect(page.locator("#awake")).to_be_hidden()
+    expect(page.locator("#input-form")).to_be_visible()
+    _assert_quiet(tab, engines)
+
+
+def test_an_answer_rests_on_a_paragraph_top_and_the_columns_show_more(tab, engines):
+    """On a laptop-sized window, asking a resident about a topic pinned the
+    column to its bottom and left the tail of an older paragraph at the top,
+    and nothing showed that the columns held more (overlay scrollbars hide).
+    Each answer now comes to rest on a paragraph's top with the whole answer
+    in view, and a column with more to show fades at that edge."""
+    page = tab.page
+    page.set_viewport_size({"width": 1280, "height": 650})
+    _signed_in_with_a_dreamer(tab)
+    page.locator("#exit-bar button[data-direction=up]").click()
+    expect(page.locator("#room-title")).to_have_text(UP["title"])
+    chips = page.locator("#topics .topic-chip:not(.topic-more)")
+    expect(chips.first).to_be_visible()
+    expect(page.locator("#scene")).to_have_class(re.compile(r"\bmore-below\b"))
+
+    answers = page.locator("#chat > .evt[data-seq]")
+    scrolled = False
+    for i in range(3):
+        before = answers.count()
+        chips.nth(i).click()
+        expect(answers).to_have_count(before + 1)
+        page.wait_for_timeout(100)  # the settle runs on the frame after the line
+        r = page.evaluate(READING)
+        if r["scrollTop"] > 0:
+            scrolled = True
+            assert r["restsOnParagraph"], r  # never mid-paragraph at the top
+            assert "more-above" in r["cue"], r
+        if r["lastBottom"] - r["lastTop"] <= r["height"]:
+            assert -1 <= r["lastTop"] and r["lastBottom"] <= r["height"] + 1, r
+        else:
+            assert abs(r["lastTop"]) < 2, r  # a long answer opens at its first line
+    assert scrolled, "three answers never needed the column to scroll; the test proves nothing"
+    _assert_quiet(tab, engines)
+
+
+def test_the_account_panel_buttons_line_up(tab, engines):
+    """The blanket panel rule pushed "change password" to the right while "sign
+    out" and "close" stacked on the left. The form's action now sits under its
+    fields at their right edge, and sign out and close share one row at the
+    fields' two edges."""
+    page = _signed_in_with_a_dreamer(tab)
+    page.locator("#slots-toggle").click()
+    page.locator(".account-box summary").click()
+    field = page.locator("#password-form input[name=new]").bounding_box()
+    submit = page.locator("#password-form button[type=submit]").bounding_box()
+    out = page.locator("#sign-out").bounding_box()
+    close = page.locator("#slots-close").bounding_box()
+    right = field["x"] + field["width"]
+    assert abs(submit["x"] + submit["width"] - right) < 2, (submit, field)
+    assert abs(out["y"] - close["y"]) < 2, (out, close)
+    assert abs(out["x"] - field["x"]) < 2, (out, field)
+    assert abs(close["x"] + close["width"] - right) < 2, (close, field)
     _assert_quiet(tab, engines)

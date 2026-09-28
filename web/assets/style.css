@@ -386,12 +386,24 @@ footer .slots-toggle:hover, footer .logout:hover { text-decoration: underline; }
 .slots-panel .slot-num { opacity: 0.6; font-variant-numeric: tabular-nums; }
 .slots-panel .slot-empty { opacity: 0.5; font-style: italic; }
 .slots-panel button {
-  margin-left: auto; background: var(--paper); border: 1px solid var(--sage-deep);
+  background: var(--paper); border: 1px solid var(--sage-deep);
   color: var(--sage-deep); padding: 0.25em 0.7em; border-radius: 4px; font: inherit; cursor: pointer;
 }
 .slots-panel button:hover { background: var(--sage); color: var(--paper); }
-.slots-panel .slot-delete { margin-left: 0.4em; border-color: var(--amber); color: var(--amber); }
+/* Only a dreamer's row pushes its buttons to the right edge; the account form
+ * and the panel's own actions line up on their own (playtest 2026-09-28: the
+ * blanket rule left "change password" right and "sign out"/"close" left). */
+.slots-panel .slot-row button { margin-left: auto; }
+.slots-panel .slot-row .slot-delete { margin-left: 0.4em; }
+.slots-panel .slot-delete { border-color: var(--amber); color: var(--amber); }
 .slots-panel .slot-delete:hover { background: var(--amber); color: var(--paper); }
+/* The primary "begin dreaming" keeps the front door's look inside the panel. */
+.slots-panel .door-button { color: var(--paper); background: var(--sage); border: 0;
+  border-radius: var(--radius); padding: .15em 1.1em; font-family: var(--hand); font-size: 1.5rem; }
+.slots-panel .door-button:hover { background: var(--sage-deep); }
+.slots-panel .form-submit { align-self: flex-end; }
+.panel-actions { display: flex; justify-content: space-between; align-items: center;
+  gap: 12px; margin-top: 12px; padding-top: 10px; border-top: 1px dotted var(--sage); }
 
 /* ---------- keepsakes backpack foldout ---------- */
 .backpack-overlay {
@@ -802,3 +814,28 @@ footer .slots-toggle:hover, footer .logout:hover { text-decoration: underline; }
 .dreamer-form.hidden, .delete-confirm.hidden { display: none; }
 .account-box { margin: 14px 0 6px; font-size: .92rem; }
 .account-box summary { cursor: pointer; color: var(--sage-deep); font-style: italic; }
+
+/* ---- awake: the page between dreams (playtest 2026-09-28) ----
+ * After leaving the dream (or before a dreamer exists) the page is a quiet
+ * leaf with a way back in, not an empty scene with a live input box. */
+.awake-leaf { display: none; }
+body.awake .awake-leaf { display: block; max-width: 34em; margin: 4px auto 0; }
+body.awake .body { grid-template-columns: minmax(0, 1fr); }
+body.awake .margin, body.awake .ribbon-wrap, body.awake #input-form, body.awake .ways,
+body.awake #leave-dream, body.awake #room-desc, body.awake #chat { display: none; }
+.awake-actions { display: flex; align-items: center; justify-content: center;
+  flex-wrap: wrap; gap: 10px 26px; margin-top: 18px; }
+.awake-actions .satchel-link { margin-top: 0; }
+
+/* ---- scroll cues (playtest 2026-09-28) ----
+ * Overlay scrollbars (macOS, phones) stay hidden until you scroll, so a
+ * column holding more than it shows fades softly at that edge instead.
+ * main.js (watchScroll) toggles the classes as content and position change. */
+.more-below { -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 2.4em), transparent);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 2.4em), transparent); }
+/* The top edge only hints: the view rests on a paragraph's first line there. */
+.more-above { -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,.45), #000 1.2em);
+  mask-image: linear-gradient(to bottom, rgba(0,0,0,.45), #000 1.2em); }
+.more-above.more-below {
+  -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,.45), #000 1.2em, #000 calc(100% - 2.4em), transparent);
+  mask-image: linear-gradient(to bottom, rgba(0,0,0,.45), #000 1.2em, #000 calc(100% - 2.4em), transparent); }
