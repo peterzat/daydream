@@ -813,6 +813,9 @@ async def ws_endpoint(ws: WebSocket):
         # resolves to None here.
         await ws.accept()
         await ws.send_json({"kind": "needs_toon"})
+        # Close cleanly: a socket dropped without a close frame can lose this
+        # last frame on its way through the edge tunnel (seen live 2026-09-28).
+        await ws.close(code=status.WS_1000_NORMAL_CLOSURE)
         return
     await ws.accept()
     # Subscribe before snapshot so any events that land while we yield to send

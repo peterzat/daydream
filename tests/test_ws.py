@@ -3,6 +3,7 @@
 SPEC criteria 4 (websocket protocol) and parts of 5 (skills end to end via WS).
 LLM tests mock daydream.llm.client.acompletion_json so no GPU needed."""
 
+import threading
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
@@ -404,6 +405,20 @@ def test_ws_unclaimed_session_routes_to_picker():
         # Do NOT claim a slot.
         with client.websocket_connect("/ws") as ws:
             assert ws.receive_json() == {"kind": "needs_toon"}
+            # ...then a clean close (a dropped socket can lose that frame at the
+            # edge). Received in a thread so a missing close fails, not hangs.
+            closed = {}
+
+            def _recv():
+                try:
+                    ws.receive_json()
+                except WebSocketDisconnect as e:
+                    closed["code"] = e.code
+
+            t = threading.Thread(target=_recv, daemon=True)
+            t.start()
+            t.join(5)
+            assert closed.get("code") == 1000
 
 
 def _load_bunny_world(tmp_path, monkeypatch) -> None:
