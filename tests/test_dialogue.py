@@ -271,3 +271,34 @@ def test_one_candidate_when_the_gpu_is_busy(monkeypatch):
     monkeypatch.setattr(arbiter, "stats", lambda: {"waiting_llm": 1, "active_llm": 3,
                                                    "llm_concurrency": 3})
     assert dlg.nbest() == 1
+
+
+def test_a_reply_that_repeats_the_player_is_an_echo():
+    heard = "I would like to spend you on purpose. Shall we watch the lanterns together?"
+    assert dlg.echoes("'I would like, just once, to be spent on purpose. Shall we watch "
+                      "the lanterns together?'", heard)
+    # A shared name or short phrase is not an echo.
+    assert not dlg.echoes("'The lanterns? Hob lights them at dusk.'", heard)
+    assert not dlg.echoes("'Hello to you.'", "hello")
+
+
+async def test_an_echoing_candidate_is_never_the_reply(monkeypatch):
+    """Playtest 2026-09-28b: the model handed the player's line back as the
+    NPC's own. An echoing candidate is dropped; another one answers, and if
+    none is left the NPC listens instead."""
+    ada = player(1, "Ada", "r-green")
+    heard = "Would you like to sit with me and count the stars tonight?"
+    _mock(monkeypatch,
+          {"gesture": "Hob smiles.", "say": "Would you like to sit with me and count the stars tonight?",
+           "advance": "none"},
+          {"gesture": "Hob nods.", "say": "I'd like that.", "advance": "none"})
+    before = events.max_seq()
+    await talk(ada, "t-hob", heard)
+    told = " ".join(narrations(before))
+    assert "I'd like that" in told and "count the stars tonight" not in told
+    _mock(monkeypatch, {"gesture": "Hob smiles.",
+                        "say": "Would you like to sit with me and count the stars tonight?",
+                        "advance": "none"})
+    before = events.max_seq()
+    await talk(ada, "t-hob", heard)
+    assert dlg.ECHO_FALLBACK.replace("{npc}", "Hob") in " ".join(narrations(before))

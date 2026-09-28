@@ -315,6 +315,28 @@ def score(line: str, npc_name: str, pkey: str, openers: list[str],
     return penalty
 
 
+def _words(text: str) -> list[str]:
+    return re.findall(r"[a-z0-9']+", (text or "").lower())
+
+
+def echoes(reply: str, heard: str, run: int = 6) -> bool:
+    """True when a reply repeats a run of `run` words the player just said:
+    the small model handing the player's own line back as the NPC's
+    (playtest 2026-09-28b: "Shall we watch the lanterns together?" came back
+    word for word). A shared name or phrase is shorter than that."""
+    said = _words(heard)
+    if len(said) < run:
+        return False
+    grams = {tuple(said[i:i + run]) for i in range(len(said) - run + 1)}
+    got = _words(reply)
+    return any(tuple(got[i:i + run]) in grams for i in range(len(got) - run + 1))
+
+
+# When every candidate only repeated the player (rare), the NPC still answers
+# something: an engine line, never the player's words.
+ECHO_FALLBACK = "{npc} listens, and turns your words over as if they were worth keeping."
+
+
 def _clean(result, ids: list[str], npc_name: str = "") -> tuple[str, str | None, str, str] | None:
     """(composed line, advance, gesture, say) or None when unusable."""
     if not isinstance(result, dict) or safety.parse_refusal(result) is not None:
@@ -405,6 +427,7 @@ async def talk(actor: objects.Object, npc: objects.Object, text: str, room_id: s
                                    return_exceptions=True)
     candidates = []
     refusal = None
+    echoed = 0
     for r in results:
         if isinstance(r, BaseException):
             continue
@@ -412,9 +435,18 @@ async def talk(actor: objects.Object, npc: objects.Object, text: str, room_id: s
         if ref is not None and refusal is None:
             refusal = ref.reason
         c = _clean(r, ids, npc.name)
+        if c is not None and echoes(c[3] or c[0], text):
+            echoed += 1  # the player's own words, handed back: never the reply
+            continue
         if c is not None:
             candidates.append(c)
     if not candidates:
+        if echoed:
+            events.append("system", None, "narrate",
+                          {"text": ECHO_FALLBACK.replace("{npc}", npc.name)},
+                          room_id=room_id, recipient_id=to_actor)
+            story.note_conversation(world_id, npc.id, actor.id)
+            return True
         if all(isinstance(r, BaseException) for r in results):
             events.append("system", None, "narrate", {"text": llm_client.FOGGY_TEXT},
                           room_id=room_id, recipient_id=to_actor)
