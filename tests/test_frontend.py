@@ -717,7 +717,8 @@ def test_index_html_has_help_leaf_covering_the_basics():
 
 def test_main_js_help_shows_once_per_browser_and_never_blocks():
     """Auto-shown once per browser (localStorage['dd-help-seen']) at the
-    picker's arrival beat; reopenable from the ? affordance; dismissed by one
+    picker's arrival beat, for a first visit only (an account with no dreamer;
+    playtest 2026-09-28b); reopenable from the ? affordance; dismissed by one
     click (close button or backdrop) — it never gates input."""
     with TestClient(app) as client:
         _login(client)

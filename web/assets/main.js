@@ -219,6 +219,7 @@ function renderSnapshot(snap) {
     loadedWorldVersion = snap.world_version || loadedWorldVersion;
   }
   document.body.classList.remove("awake"); // in the dream again
+  markHelpSeen(); // someone in the dream has been here before: no guide unasked
   document.getElementById("room-title").textContent =
     snap.room ? snap.room.title : "drifting...";
   document.getElementById("room-desc").textContent =
@@ -1355,6 +1356,12 @@ document.getElementById("input-form").addEventListener("submit", (ev) => {
     return;
   }
   if (!text) return;
+  if (/^(help|\?|how (do i|to) play\??|instructions)$/i.test(text)) {
+    // The guide, not a chatter line (playtest 2026-09-28b).
+    inp.value = "";
+    openHelp();
+    return;
+  }
   sendInput(text);
   showPending();
   if (inputHistory[inputHistory.length - 1] !== text) inputHistory.push(text);
@@ -1934,15 +1941,26 @@ function closeHelp() {
   document.getElementById("help-panel").classList.add("hidden");
 }
 
-function maybeShowFirstVisitHelp() {
+async function maybeShowFirstVisitHelp() {
+  // The guide is for a first visit: an account with no dreamer yet. A second
+  // device walks straight into the dream, and leaving there opened the guide
+  // as you went (playtest 2026-09-28b), so being in the dream marks it seen
+  // (renderSnapshot) and a player with a dreamer never gets it unasked.
   // localStorage carries the once-per-browser memory; a sandboxed context
-  // (storage denied) fails open to showing it each arrival, which is the
+  // (storage denied) fails open to showing it each first visit, which is the
   // gentler failure for a help page.
+  const data = dreamerRead ? await dreamerRead : null;
+  if (!data || (data.toons || []).length) return;
+  if (!document.body.classList.contains("awake")) return; // stepped in meanwhile
   let seen = null;
   try { seen = localStorage.getItem("dd-help-seen"); } catch (_) {}
   if (seen) return;
-  try { localStorage.setItem("dd-help-seen", "1"); } catch (_) {}
+  markHelpSeen();
   openHelp();
+}
+
+function markHelpSeen() {
+  try { localStorage.setItem("dd-help-seen", "1"); } catch (_) {}
 }
 
 document.getElementById("help-toggle").addEventListener("click", openHelp);
@@ -1960,6 +1978,8 @@ function enterPicker() {
   maybeShowFirstVisitHelp();
 }
 
+let dreamerRead = null; // the awake page's read of your dreamers (a promise)
+
 async function showAwake() {
   // Awake (playtest 2026-09-28: leaving used to show the empty scene, with
   // a live input box): the village seen from outside, where your dreamer is,
@@ -1973,7 +1993,8 @@ async function showAwake() {
   text.textContent = "";
   back.hidden = true;
   document.getElementById("awake-note").hidden = true;
-  const data = await renderSlots();
+  dreamerRead = renderSlots();
+  const data = await dreamerRead;
   if (!document.body.classList.contains("awake")) return; // stepped back in meanwhile
   back.hidden = false;
   if (!data) {

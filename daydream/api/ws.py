@@ -687,6 +687,12 @@ async def _handle_input(text: str, toon_id: str, conn: dict) -> dict | None:
     # outage is still in the log; the resolution is attached after.
     input_seq = inputs.record(toon_id, "text", text=text)
     room_id = _current_room_id(toon_id)
+    if _HELP_RE.match(text):
+        # The guide, not a chatter line (playtest 2026-09-28b). The page opens
+        # its own guide; this answers any other client.
+        events.append("system", None, "narrate", {"text": HELP_TEXT},
+                      room_id=room_id, recipient_id=toon_id)
+        return None
     pending = conn.get("clarify")
     conn["clarify"] = None
     lp = await parser.parse_line(toon_id, text, pending=pending)
@@ -751,6 +757,11 @@ async def _handle_input(text: str, toon_id: str, conn: dict) -> dict | None:
         )
     return None
 
+
+_HELP_RE = re.compile(r"(?i)^(help|\?|how (do i|to) play\??|instructions)$")
+HELP_TEXT = ("The small ? at the foot of the page opens How to Dream. In short: say what "
+             "you'd like to do, touch a person's topics to ask about them, touch a way "
+             "from here to wander, and pick up the stray minutes that glint about.")
 
 _CHATTER_LINES = [
     "You think \"{text}\", and the dream lets the thought drift by like a moth past a lantern.",
