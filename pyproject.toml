@@ -69,3 +69,8 @@ target-version = "py310"
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP"]
 ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+# These browser tests import pytest fixtures from tests/test_browser_flow.py and take them as parameters.
+"tests/test_browser_playtest.py" = ["F811"]
+"tests/test_layout_screens.py" = ["F811"]

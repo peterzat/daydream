@@ -106,6 +106,9 @@ would go). It deletes:
   (as `world delete-toon` does), with their journals and books, what they
   said to each resident, their relationships and their private finds
 - everything those dreamers typed or clicked (the private input log)
+- the private lines in the event log, those addressed only to those
+  dreamers: their words to residents told back to them, and what they
+  alone were told
 
 It keeps the shared event history (what others saw happen in the village)
 and each dreamer's portrait in the art keep, retired with its provenance

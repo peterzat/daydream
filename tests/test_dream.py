@@ -247,6 +247,17 @@ def test_unknown_patch_sections_fail_loud():
     assert any("unknown section" in e for e in dream.check_patch(p))
 
 
+def test_a_dream_can_add_a_thread():
+    """A patch's threads land in the live world like its rules and storylets
+    (codereview 2026-09-28h: they checked clean and were never installed)."""
+    ada = player(1, "Ada", "r-green")
+    p = _patch()
+    p["add"]["threads"] = [{"id": "heron-watch", "text": "A heron waits at the mill."}]
+    assert dream.check_patch(p) == []
+    assert dream.apply_patch(p) == "applied"
+    assert "A heron waits at the mill." in story.threads_for(ada)
+
+
 
 async def test_a_player_who_left_is_still_a_player_to_the_dream():
     """Leaving the dream rests the toon (is_human_controlled 0, kicked_at

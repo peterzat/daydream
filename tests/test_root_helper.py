@@ -436,7 +436,7 @@ def test_env_set_replaces_one_line_and_keeps_every_other(box):
     before = box.prod_env.read_text().splitlines(keepends=True)
     assert root.main(["env", "set", "DAYDREAM_OPERATOR_NAME", "the Lamp Keeper"]) == 0
     after = box.prod_env.read_text().splitlines(keepends=True)
-    changed = [i for i, (a, b) in enumerate(zip(before, after)) if a != b]
+    changed = [i for i, (a, b) in enumerate(zip(before, after, strict=True)) if a != b]
     assert len(before) == len(after) and len(changed) == 1
     assert after[changed[0]] == 'DAYDREAM_OPERATOR_NAME="the Lamp Keeper"\n'
     assert before[changed[0]].startswith("DAYDREAM_OPERATOR_NAME=")
@@ -652,7 +652,7 @@ def test_every_command_the_helper_runs_is_a_system_tool_or_the_service_user(box)
                  ["restart", PROD], ["status", BACKUP_TIMER], ["doctor"], ["env", "show"]):
         root.main(argv)
     assert box.calls
-    for cmd, kw in zip(box.calls, box.kwargs):
+    for cmd, kw in zip(box.calls, box.kwargs, strict=True):
         assert cmd[0] in (root.SYSTEMCTL, root.LOGGER, root.RUNUSER), cmd
         assert kw["env"] == root.CLEAN_ENV and kw["cwd"] == "/"
         if any("/srv/daydream" in a or str(box.srv) in a or REPO_PATH in a for a in cmd):

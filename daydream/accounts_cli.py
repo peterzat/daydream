@@ -106,11 +106,12 @@ def cmd_account(args) -> int:
 def _delete_account(key: str, *, confirmed: bool) -> int:
     """Remove a person for good: their dreamers in the live world (carried
     things left in the room, as `world delete-toon` does), everything those
-    dreamers typed (the private input log), then the account, its sessions,
-    invites and throttle counters. What stays: the shared event history, and
-    each dreamer's portrait in the art keep with its provenance (retired, not
-    erased: docs/DATA-LIFECYCLE.md). Without --yes it only says what would go."""
-    from daydream import db, inputs, toons
+    dreamers typed (the private input log) and the lines addressed only to
+    them, then the account, its sessions, invites and throttle counters. What
+    stays: the shared event history, and each dreamer's portrait in the art
+    keep with its provenance (retired, not erased: docs/DATA-LIFECYCLE.md).
+    Without --yes it only says what would go."""
+    from daydream import db, events, inputs, toons
 
     row = accounts._require_account(key)
     world = config.live_db_path()
@@ -128,9 +129,10 @@ def _delete_account(key: str, *, confirmed: bool) -> int:
     for t in dreamers:
         typed = inputs.forget_toon(t.id)
         toons.delete_slot(t.slot)
+        private = events.forget_private(t.id)
         forgot = _forget_dreamer_state(t.world_id, t.id)
-        print(f"deleted dreamer {t.name} ({t.id}), {typed} input line(s) and {forgot} "
-              "story record(s)")
+        print(f"deleted dreamer {t.name} ({t.id}), {typed} input line(s), {private} private "
+              f"line(s) and {forgot} story record(s)")
     accounts.delete_account(row["id"])
     print(f"deleted account {row['username']} ({row['id']})")
     return 0

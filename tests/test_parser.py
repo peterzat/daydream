@@ -375,3 +375,22 @@ async def test_a_group_named_by_its_noun_takes_each_one(monkeypatch, text):
     lp = await parser.parse_line("t-wren", "take both spoons")
     assert lp.message == "You don't see any spoons here."
     assert spy.await_count == 0
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("text", ["take both the letter and the key",
+                                  "take all of the letter and the key",
+                                  "take each of the letter, the key"])
+async def test_a_quantified_and_list_takes_each_named_thing(monkeypatch, text):
+    """The group reading swallowed "and" lists: "take both the letter and the
+    key" read "You don't see any letter and the key here" (codereview
+    2026-09-28h)."""
+    spy = _mock_llm(monkeypatch, {"verb": "none"})
+    letter = objects.spawn("w-bunny", "thing", "letter", location_id="r-forge",
+                           prototype_id=objects.PROTO_THING, properties={"seed": "a letter"})
+    key = objects.spawn("w-bunny", "thing", "key", location_id="r-forge",
+                        prototype_id=objects.PROTO_THING, properties={"seed": "a key"})
+    lp = await parser.parse_line("t-wren", text)
+    assert lp.message is None
+    assert [(c.verb, c.dobj_id) for c in lp.commands] == [("take", letter.id), ("take", key.id)]
+    assert spy.await_count == 0

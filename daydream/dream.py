@@ -384,7 +384,7 @@ def apply_patch(patch: dict, world_id: str | None = None) -> str:
                 cur_v = cur_v if isinstance(cur_v, dict) else {}
                 cur_v.update(copy.deepcopy(items))
                 worldstate.set(world_id, key, cur_v)
-        for sec in ("rules", "storylets", "collectibles"):
+        for sec in ("rules", "storylets", "collectibles", "threads"):
             if add.get(sec):
                 key = _DEF_KEYS[sec]
                 cur_v = worldstate.get(world_id, key)

@@ -624,9 +624,15 @@ def _expand_multi(
     low = part.lower()
     group = _GROUP.match(part)
     if group and not re.match(r"(?i)^all\s+(?:except|but)\b", part):
-        # "take both letters": every one of them here (playtest 2026-09-28b
-        # read "You don't see the both letters here").
-        return _expand_group(actor_id, verb, group.group(1).strip(), iobj_id)
+        if _AND_SPLIT.search(group.group(1)):
+            # "take both the letter and the key" is a list: the quantifier
+            # goes, and the AND-list below takes each (codereview 2026-09-28h).
+            part = group.group(1).strip()
+            low = part.lower()
+        else:
+            # "take both letters": every one of them here (playtest 2026-09-28b
+            # read "You don't see the both letters here").
+            return _expand_group(actor_id, verb, group.group(1).strip(), iobj_id)
     is_all = low == "all" or low.startswith("all ") or low == "everything"
     listy = _AND_SPLIT.search(part) is not None
     if not is_all and not listy:

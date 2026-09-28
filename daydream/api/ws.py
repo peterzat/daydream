@@ -966,9 +966,15 @@ async def ws_endpoint(ws: WebSocket):
         _mark_session_live(session_id)
         last_seq = events.max_seq()
         first = _state_snapshot(last_seq, toon_id, view, resume_since)
-        # What went home while you rested, said once as you step back in.
-        first["went_home"] = toons.take_went_home(toon_id)
         await ws.send_json(first)
+        # What went home while you rested, said once as you step back in: a
+        # private line in your log, so a re-snapshot replays it (codereview
+        # 2026-09-28h: drawn from the snapshot alone, a re-snapshot erased it).
+        for w in toons.take_went_home(toon_id):
+            events.append("system", None, "narrate", {
+                "text": f"While you rested, {verbs._the_name(w['name'])} went home to "
+                        f"{toons.in_sentence(w.get('room'))}."},
+                room_id=_current_room_id(toon_id), recipient_id=toon_id)
         # Kick off image gen for the current room if the cache is cold.
         # Fire-and-forget; the resulting room_image_ready event reaches the
         # client through the broadcast loop below. Portraits for everyone

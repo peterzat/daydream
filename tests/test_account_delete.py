@@ -105,6 +105,32 @@ def test_delete_removes_what_the_world_kept_under_the_dreamers_id(capsys):
     assert "story record(s)" in capsys.readouterr().out
 
 
+def test_delete_removes_the_lines_only_the_dreamer_saw(capsys):
+    """Codereview WARN 2026-09-28h: what a player says to a resident is told
+    back to them alone (a private `say`), and it outlived the delete. The
+    lines addressed only to the dreamer go; what anyone else saw stays."""
+    row, inv, token, t = _a_friend_who_played()
+    other = toons.create_toon_in_slot(3, "Wren", "a heron", "s-wren")
+    room = t.current_room_id
+    said = events.append("toon", t.id, "say", {"text": "my real name is Robin Ash",
+                                               "name": "Robin", "to": "Rook"},
+                         room_id=room, recipient_id=t.id)
+    told = events.append("system", None, "narrate", {"text": "Rook leans in."},
+                         room_id=room, recipient_id=t.id)
+    theirs = events.append("system", None, "narrate", {"text": "Rook nods to Wren."},
+                           room_id=room, recipient_id=other.id)
+    shared = events.append("toon", t.id, "say", {"text": "hello, all", "name": "Robin"},
+                           room_id=room)
+
+    assert accounts_cli.main(["account", "delete", "robin", "--yes"]) == 0
+    accounts.init()
+    db.init_live()
+    seqs = {e.seq for e in events.fetch_since(0)}
+    assert said.seq not in seqs and told.seq not in seqs
+    assert theirs.seq in seqs and shared.seq in seqs
+    assert "2 private line(s)" in capsys.readouterr().out
+
+
 def test_an_unknown_account_is_an_error(capsys):
     assert accounts_cli.main(["account", "delete", "nobody", "--yes"]) == 1
     assert "no account 'nobody'" in capsys.readouterr().err

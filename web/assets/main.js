@@ -378,14 +378,6 @@ function renderSnapshot(snap) {
     beat.appendChild(p);
     chat.appendChild(beat);
   }
-  // What went home while you rested, said once (playtest 2026-09-28b: a
-  // thing given for a quest was simply gone from your hands).
-  for (const w of snap.went_home || []) {
-    const line = document.createElement("div");
-    line.className = "evt evt-echo evt-homeward";
-    line.textContent = `While you rested, ${theName(w.name)} went home to ${inSentence(w.room)}.`;
-    chat.appendChild(line);
-  }
   // Arriving in a room (a move, a fresh load, a claim) writes one line where
   // you are now: how you came ("You climb up to the attic", from your own move
   // event) and what is here, look-style. It sits below whatever the room
@@ -460,12 +452,6 @@ function renderSnapshot(snap) {
     btn.onclick = () => sendInput("go " + dir);
     exitBar.appendChild(btn);
   }
-}
-
-function theName(name) {
-  // "the lantern", but not a possessive or a name that already has "the".
-  const n = name || "something";
-  return /'s\b/.test(n) || /^the\s/i.test(n) ? n : "the " + n;
 }
 
 function inSentence(title) {
@@ -948,6 +934,17 @@ function renderEvent(e) {
     // refresh updates the scene panels and any human-readable line arrives
     // as a narrate. Their payloads carry object ids, so they are NOT dumped
     // to the chat (no raw ids in player-visible text — SPEC 2026-06-30).
+    return;
+  }
+  // Your own words told back (an ask, or what you said to a resident) come
+  // ahead of the reply: they sit above "the dream stirs...", which stays
+  // until the reply arrives (codereview 2026-09-28h).
+  const ownEcho = e.actor_id === selfToonId &&
+    (e.kind === "echo" || (e.kind === "say" && e.recipient_id === selfToonId));
+  if (ownEcho && pendingEl && pendingEl.parentNode === chat) {
+    chat.insertBefore(div, pendingEl);
+    if (answerFrom === pendingEl) answerFrom = div;
+    followLog(pendingEl, div);
     return;
   }
   clearPending(); // a slow action just produced its line; drop the "thinking" beat

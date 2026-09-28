@@ -188,6 +188,15 @@ def fetch_for_toon(toon_id: str, since: int = 0, limit: int = 50) -> list[Event]
     return [Event.from_row(r) for r in rows]
 
 
+def forget_private(toon_id: str) -> int:
+    """Delete the rows addressed only to this toon (migration 014): what it
+    said to residents, told back to it, and what it alone was told. Nobody
+    else saw them; its account was deleted (docs/DATA-LIFECYCLE.md). Seqs are
+    never reused (AUTOINCREMENT), so only a gap is left."""
+    return db.get_conn().execute(
+        "DELETE FROM events WHERE recipient_id = ?", (toon_id,)).rowcount
+
+
 def max_seq() -> int:
     conn = db.get_conn()
     row = conn.execute("SELECT MAX(seq) FROM events").fetchone()

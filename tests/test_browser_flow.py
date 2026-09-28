@@ -540,3 +540,19 @@ def test_talking_asks_for_your_words_on_the_page_not_in_a_browser_box(tab, engin
     assert [t["args"] for t in talks] == ["good evening"], frames
     assert dialogs == []
     assert tab.js_errors == [], tab.js_errors
+
+
+def test_your_own_words_told_back_keep_the_waiting_line(tab, engines):
+    """Your words to a resident are told back before the reply, and cleared
+    "the dream stirs..." for the whole of the model's call (codereview
+    2026-09-28h). They now sit above the waiting line; the reply clears it."""
+    page = _signed_in_with_a_dreamer(tab)
+    page.evaluate("() => { youActed(); showPending(); }")
+    page.evaluate("() => renderEvent({seq: 900000, kind: 'say', actor_id: selfToonId,"
+                  " recipient_id: selfToonId, payload: {name: 'Marlo', to: 'Wren', text: 'hi'}})")
+    last_two = "() => [...document.getElementById('chat').children].slice(-2).map(e => e.className)"
+    assert page.evaluate(last_two) == ["evt evt-say", "evt evt-pending"]
+    page.evaluate("() => renderEvent({seq: 900001, kind: 'narrate', payload: {text: 'Wren nods.'}})")
+    expect(page.locator("#chat .evt-pending")).to_have_count(0)
+    assert page.evaluate(last_two) == ["evt evt-say", "evt evt-narrate"]
+    _assert_quiet(tab, engines)

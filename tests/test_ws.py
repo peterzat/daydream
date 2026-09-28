@@ -749,6 +749,34 @@ def test_ws_command_take_moves_item_and_refreshes_snapshot():
     assert not any(it["name"] == "lantern" for it in snap["items"])
 
 
+def test_what_went_home_is_a_private_line_that_a_re_snapshot_keeps():
+    """What went home while you rested was drawn from the first snapshot
+    alone, so a same-room re-snapshot erased it (codereview 2026-09-28h). It
+    is now a private line in your log, sent once after the first snapshot."""
+    from daydream import objects
+
+    with TestClient(app) as client:
+        _login(client)
+        objects.set_property("t-wren", "went_home", [{"name": "kettle", "room": "The Old Mill"}])
+        with client.websocket_connect("/ws") as ws:
+            first = ws.receive_json()
+            ws.send_json({"kind": "command", "verb": "take", "dobj_id": "i-lantern"})
+            frames = []
+            for _ in range(30):  # up to the take's re-snapshot
+                frames.append(ws.receive_json())
+                if frames[-1]["kind"] == "state_snapshot":
+                    break
+        assert objects.get_property("t-wren", "went_home") == []
+    assert first["kind"] == "state_snapshot" and "went_home" not in first
+    lines = [m["event"] for m in frames if m["kind"] == "event"
+             and "While you rested" in m["event"]["payload"].get("text", "")]
+    assert [e["payload"]["text"] for e in lines] == [
+        "While you rested, the kettle went home to the Old Mill."]
+    assert lines[0]["recipient_id"] == "t-wren"
+    assert frames[-1]["kind"] == "state_snapshot"
+    assert lines[0]["seq"] in [e["seq"] for e in frames[-1]["events"]]
+
+
 def test_ws_command_examine_makes_no_llm_call():
     """SPEC: the UI command path bypasses the parser, so a deterministic verb
     issues ZERO LLM calls. examine echoes the cached seed sentinel directly."""
