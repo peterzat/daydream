@@ -4143,8 +4143,8 @@
       ]
     },
     {
-      "id": "pim-helpers",
-      "text": "Bell says Mott keeps a hush in his tin, and Tace could tell you about lullaby clocks.",
+      "id": "pim-hush",
+      "text": "Bell says Mott keeps a hush in his tin, just north in the workshop.",
       "if": [
         {
           "arc": "pim"
@@ -4154,7 +4154,43 @@
           "by": "@actor"
         },
         {
+          "beat": "pim/mott-hush",
+          "not": true
+        }
+      ]
+    },
+    {
+      "id": "pim-hush-carried",
+      "text": "You carry Mott's hush: the old-fashioned kind of quiet a birthday nap wants.",
+      "if": [
+        {
+          "arc": "pim"
+        },
+        {
+          "carried_filter": {
+            "key": "hush",
+            "eq": true
+          }
+        },
+        {
           "beat": "pim/hushed",
+          "not": true
+        }
+      ]
+    },
+    {
+      "id": "pim-lullaby",
+      "text": "Bell says Tace could tell you about lullaby clocks.",
+      "if": [
+        {
+          "arc": "pim"
+        },
+        {
+          "beat": "pim/bell-notices",
+          "by": "@actor"
+        },
+        {
+          "beat": "pim/tace-lullaby",
           "not": true
         }
       ]
@@ -12320,7 +12356,7 @@
       "mood": "curious",
       "seed": "Every so often it flickers, gone for one tick and back the next, as if it only half believes in the room",
       "appearance_seed": "a small smoke-grey cat with one white paw and clock-face eyes, half there and half not, like a drawing in pencil",
-      "presence_text": "Between one tick and the next, a small grey cat is simply there, washing one white paw as if it had always been.",
+      "presence_text": "Tock sits washing one white paw, as if it had always been here and always would be.",
       "aliases": [
         "cat",
         "the cat",
@@ -13523,7 +13559,7 @@
       "location": {
         "room": "r-well"
       },
-      "seed": "a small brass gear resting in the moss at the well's foot, its fine teeth flecked with green, cool from the shadow but sound and whole",
+      "seed": "a small brass gear, its fine teeth flecked with green moss from the well, cool from the shadow but sound and whole",
       "aliases": [
         "gear",
         "escapement",

@@ -46,8 +46,10 @@ APP_VERSION = "1.0.0"
 # v1.0 loft batch — seed propagation config, the first-planting chapter
 # close, per-NPC drift pools, SPEC 2026-07-07 criterion 7. 1.6: the first
 # friend's fixes, playtest 2026-09-28b -- room prepositions, a small clock
-# that stays wound, time-neutral lines, authored threads.)
-WORLD_VERSION = "1.6"
+# that stays wound, time-neutral lines, authored threads. 1.7: the second
+# playtest's lines -- a gear that reads right in the hand, clue threads that
+# end with their step, a greeting that doesn't repeat an arrival.)
+WORLD_VERSION = "1.7"
 
 
 @lru_cache(maxsize=1)
