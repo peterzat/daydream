@@ -406,7 +406,8 @@ def test_an_answer_rests_on_a_paragraph_top_and_the_columns_show_more(tab, engin
     for i in range(3):
         before = answers.count()
         chips.nth(i).click()
-        expect(answers).to_have_count(before + 1)
+        # The question, told back, and its answer (playtest 2026-09-28b).
+        expect(answers).to_have_count(before + 2)
         page.wait_for_timeout(100)  # the settle runs on the frame after the line
         r = page.evaluate(READING)
         if r["scrollTop"] > 0:
