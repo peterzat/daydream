@@ -166,6 +166,27 @@ destroy_object). Exactly zero or one may be timed:
 - Some endings grant a dreamseed: `{"kind": "spawn_template", "template":
   "dreamseed", "location_id": "@actor", "generated_by": "<arc>:<ending>"}`.
 
+### Threads
+
+Give every arc its **threads**: what a player is in the middle of, listed in
+their satchel and read back when they type "what now". A thread shows while
+its conditions hold for that player, so gate it on the player having met the
+thread (a per-player beat `"by": "@actor"`, or `{"helped": ARC}`) and on the
+arc being open, and end it with the beat that finishes that step. Restate
+what the player was already told, never the solution; `{count}` counts how
+many of a list of conditions hold, in words ("two of five").
+
+```json
+"threads": [
+  {"id": "letters", "text": "Fen's stray letters: {count} of five home so far.",
+   "if": [{"arc": "letters"}, {"beat": "letters/fen-strays", "by": "@actor"}],
+   "count": [{"beat": "letters/bell-letter"}, {"beat": "letters/tace-letter"}]}
+]
+```
+
+A room may say how you are there: `"properties": {"at": "on"}` reads "You are
+on the Winding Balcony" (in, on, at; in by default).
+
 ## 4. Rules
 
 World rules in an arc file fire for the whole world, so make every rule
@@ -268,8 +289,9 @@ not the director's choice.
 - Expectations are listed in `daydream/walkthrough.py`'s docstring
   (room, carrying, not_carrying, flag, pflag, arc, ending, beats, rel,
   collected, phase, day, knows, located, narrate_contains, narrate_lacks,
-  chronicle_contains). When a line has variants, assert on a word they all
-  share, or on state instead.
+  chronicle_contains, threads_contains, threads_lack). When a line has
+  variants, assert on a word they all share, or on state instead. Assert
+  your arc's threads at the steps that open and close them.
 
 ## 9. The quality bar
 

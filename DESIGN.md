@@ -118,22 +118,40 @@ of room narration takes a **drop cap** in `--amber`.
   enter a room; the plate and title shrink with the window's height so the text
   keeps its room on a laptop. Up/Down in the input recall what you typed. A
   resident with many ask-about topics shows the first six and a "+N more" chip.
+- **Scroll rail** (`.scroll-rail`): every scrolling column (the reading
+  column, the margin, the phone's log, the book's page) hides the browser's
+  own bar and draws a slim rail while it holds more: a hairline track and a
+  sage thumb that drags, the track turning a page when pressed. It sits with
+  the edge fades (`.more-above` / `.more-below`); the view rests a fade's
+  height above a paragraph, so the fade never greys the line you read first.
+- **Margin index** (`#margin-index`): at the margin's foot, the sections below
+  the fold, named ("↓ you carry · 2"), each a touch away; it glints when
+  something new lands in your hands.
 - **In-prose affordances** (`.entity-link`): in-scope object mentions become
   soft dotted-underline click targets; the staged/active target is emphasized.
+  A person links only by name (capitalized), and a line quoting your own
+  words back links nothing.
 - **Detail / ledger inset** (`.detail-inset`): the storybook expression of
-  `examine` / `read`, a revealed parchment card with a tab label.
+  `examine` / `read`, a revealed parchment card with a tab label ("you examine
+  the telescope", "you read ...", "you look at Tace"), the same card whether
+  clicked or typed (the server marks the line). Looking at someone sets their
+  painted portrait into the card; a touch opens it whole (`#portrait-panel`).
 - **Marginalia groups:** `you` / `here with you` / `around you` / `you carry`.
   Chips stay clickable. Each resident carries **ask-about topic chips**
   (`#topics`): authored answers are the default path, and the text box is for
-  the unanticipated.
+  the unanticipated. An asked topic reads quieter (dashed) in its place; one
+  that just opened glows a while. Another player with no one at their page
+  reads "(dozing)", drawn faint.
 - **Story panels:** the folio shows the village day and phase ("day 2 · dusk");
-  the satchel opens the keepsakes spread, the journal, and the **Book of Stray
-  Minutes** (`#book-panel`); a returning player sees the once-only **while you
+  the satchel opens the keepsakes spread (a village thing is tagged "goes home
+  when you rest", only what stays is "a keepsake"), the player's **threads to
+  follow**, the journal, and the **Book of Stray Minutes** (`#book-panel`); a returning player sees the once-only **while you
   slept** leaf (`#slept-panel`); **How to Dream** (`#help-panel`) and the
   ending page (`#ending-panel`, `#end-marker`) are storybook leaves too.
   Addressed speech shows its listener ("Ada to Bo").
 - **Ink-tab verb ribbon** (`#verb-bar`): "what you might do" chips; the staged verb
-  gets a pip and a one-line hint (`#verb-hint`).
+  gets a pip and a one-line hint (`#verb-hint`) that takes the ribbon label's
+  place, so the verbs never jump.
 - **Affordance ribbon** (`#skill-bar`): a quieter, italic second row beneath the verb
   ribbon for room-anchored data skills (format-1 worlds only; the Lost Hours'
   `wind`, `listen`, `sit`, `pet` and the rest are world verbs on the main ribbon),
@@ -141,8 +159,9 @@ of room narration takes a **drop cap** in `--amber`.
 - **Compass footer** (`#exit-bar`): "ways from here", one route per exit.
 - **Keepsakes backpack** (`#backpack-panel`): a two-page foldout spread of the
   carried inventory as specimen cards plus empty collection slots.
-- **Overlays:** the calm connection/hot-swap wash (`.dream-overlay`) and the
-  slot picker (`.slots-panel`), both on the paper aesthetic.
+- **Overlays:** the calm connection/hot-swap wash (`.dream-overlay`; dreaming
+  elsewhere offers "dream here instead") and the slot picker (`.slots-panel`,
+  over a soft backdrop like the books), both on the paper aesthetic.
 
 ## Interaction patterns
 
