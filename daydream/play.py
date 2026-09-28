@@ -104,12 +104,18 @@ def _scene(snap: dict) -> str:
     return "\n".join(out)
 
 
-def _line(frame: dict) -> str | None:
+def _line(frame: dict, me: str | None = None) -> str | None:
     if frame.get("kind") == "event":
         e = frame.get("event") or {}
         p = e.get("payload") or {}
         if e.get("kind") == "narrate" and p.get("text"):
             return p["text"]
+        if e.get("kind") in ("move", "arrive"):
+            # Comings and goings, as the SPA tells them: your own move once
+            # (its `you` line), anyone else's as the room saw it.
+            if me and e.get("actor_id") == me:
+                return p.get("you") if e.get("kind") == "move" else None
+            return p.get("text")
         if e.get("kind") == "say" and p.get("text"):
             to = f" to {p['to']}" if p.get("to") else ""
             return f"{p.get('name', 'someone')} says{to}: \"{p['text']}\""
@@ -145,15 +151,15 @@ async def _session(st: dict, frame: dict | None, quiet: float = 1.2,
             raise SystemExit("this session controls no toon (left or kicked); "
                              "run `bin/game play start` again")
         snap = first
+        me = (first.get("self") or {}).get("id")
         for e in first.get("events") or []:
-            line = _line({"kind": "event", "event": e})
+            line = _line({"kind": "event", "event": e}, me)
             if line:
                 meanwhile.append(line)
         st["last_seq"] = first.get("last_seq", st.get("last_seq", 0))
         if frame is not None:
             sent_at = first.get("last_seq", 0)
             seen: set[int] = {e.get("seq") for e in first.get("events") or []}
-            me = (first.get("self") or {}).get("id")
             await ws.send(json.dumps(frame))
             # Until something addressed to this player arrives (their own
             # move or speech, a private line), keep waiting: an improvised
@@ -172,7 +178,7 @@ async def _session(st: dict, frame: dict | None, quiet: float = 1.2,
                 seen.add(seq)
                 if me and (e.get("recipient_id") == me or e.get("actor_id") == me):
                     answered["yes"] = True
-                line = _line({"kind": "event", "event": e})
+                line = _line({"kind": "event", "event": e}, me)
                 if line:
                     result.append(line)
 

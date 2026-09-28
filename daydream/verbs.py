@@ -1231,12 +1231,11 @@ async def _handle_go(actor, room_id, dobj, iobj, args, spec) -> None:
     if vehicle is not None:
         objects.move(vehicle.id, target_id)
     # The move event's room_id is the DEPARTURE room so the WS broadcast filter
-    # routes it to the leaving connection (mirrors the prior `go` core skill).
-    events.append(
-        "toon", actor.id, "move",
-        {"from_room": room_id, "to_room": target_id, "direction": direction},
-        room_id=room_id,
-    )
+    # routes it to the leaving connection (mirrors the prior `go` core skill);
+    # its `arrive` twin tells the room reached (toons.announce_move).
+    from daydream import toons
+
+    toons.announce_move(actor.id, room_id, target_id, direction)
     # Authored traversal beats ("You slide down the coal chute...") run
     # after the move, in the destination, each with an optional inline "if".
     if on_traverse:

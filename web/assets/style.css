@@ -200,7 +200,12 @@ body::before {
 .evt-say .speaker { color: var(--speaker); font-weight: bold; }
 .evt-system { color: var(--amber); font-style: italic; font-size: 0.88em; }
 .evt-pending { color: var(--sage); font-style: italic; opacity: .85; }
-.evt-move { color: var(--sage-deep); font-style: italic; }
+/* Someone else's coming or going, told live (never replayed on arrival). */
+.evt-move { color: var(--sage-deep); }
+/* Arriving: lines the room replays from before you came read as earlier,
+ * and your arrival line stands just below them. */
+.evt-earlier { opacity: .62; }
+.evt-earlier + .evt-arrival { margin-top: .9em; padding-top: .7em; border-top: 1px solid var(--line); }
 
 /* In-scope object mentions inside narration: soft dotted click targets
  * ("affordance words"). The class is .entity-link (emitted by main.js). */

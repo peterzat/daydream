@@ -247,6 +247,9 @@ def _state_snapshot(
             max(0, last_seq - SNAPSHOT_HISTORY_DEPTH), room_id=room_id,
             recipient_for=toon_id, within_s=ARRIVAL_REPLAY_S if arriving else None,
             skip_ambient=arriving,
+            # Comings and goings are live news, never history: a room you
+            # return to does not replay your own (or anyone's) old departures.
+            skip_kinds=toons.PRESENCE_KINDS if arriving else (),
         )
         if (not arriving and view is not None and (cut := view.get("arrival"))
                 and cut["room"] == room_id):
@@ -1098,7 +1101,11 @@ async def _broadcast_loop(
             # snapshot_seq so any events already queued for the new state
             # aren't dropped as "covered by snapshot" when they weren't.
             is_controlled_move = event.kind == "move" and event.actor_id == toon_id
-            is_effect_mutation = event.kind in _EFFECT_MUTATION_KINDS
+            # Someone else left this room or reached it: "here with you"
+            # refreshes (their line was just sent above).
+            is_presence = (event.kind in toons.PRESENCE_KINDS
+                           and event.actor_id != toon_id)
+            is_effect_mutation = event.kind in _EFFECT_MUTATION_KINDS or is_presence
             # A `state` property flip is a visibility event (opening/closing
             # a container reveals/hides nested contents; a locked door
             # unlatches): re-snapshot so panels update live. Other

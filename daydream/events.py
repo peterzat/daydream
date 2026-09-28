@@ -130,10 +130,11 @@ def fetch_since(
     recipient_for: str | None = None,
     within_s: float | None = None,
     skip_ambient: bool = False,
+    skip_kinds: tuple[str, ...] = (),
 ) -> list[Event]:
     """Events newer than `last_seq`, optionally scoped to one room and to
-    the last `within_s` seconds of wall time, and without ambient beats
-    (drift's idle lines, `payload.ambient`).
+    the last `within_s` seconds of wall time, without ambient beats (drift's
+    idle lines, `payload.ambient`) and without the kinds in `skip_kinds`.
 
     `recipient_for` applies the private-event filter (migration 014): only
     broadcast rows (NULL recipient) and rows addressed to that toon are
@@ -150,6 +151,9 @@ def fetch_since(
         params.append(f"-{int(within_s)} seconds")
     if skip_ambient:
         sql += " AND json_extract(payload_json, '$.ambient') IS NULL"
+    if skip_kinds:
+        sql += f" AND kind NOT IN ({','.join('?' * len(skip_kinds))})"
+        params += list(skip_kinds)
     if recipient_for is not None:
         sql += (" AND (recipient_id IS NULL OR recipient_id = ?)"
                 " AND COALESCE(json_extract(payload_json, '$.except'), '') != ?")
@@ -174,6 +178,9 @@ def fetch_for_toon(toon_id: str, since: int = 0, limit: int = 50) -> list[Event]
     rows = conn.execute(
         "SELECT * FROM ("
         "  SELECT * FROM events WHERE seq > ? AND (actor_id = ? OR recipient_id = ?)"
+        # A move's `arrive` twin repeats it for the room reached: one row
+        # per move, so walking about doesn't crowd the recap window.
+        "  AND kind != 'arrive'"
         "  ORDER BY seq DESC LIMIT ?"
         ") ORDER BY seq",
         (since, toon_id, toon_id, int(limit)),

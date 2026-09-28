@@ -341,6 +341,78 @@ def claim_slot(
     return (get_toon(t.id), None)
 
 
+# ---- comings and goings ------------------------------------------------------
+#
+# A player's move is presence, not story (first prod evening, 2026-09-28: the
+# old bare "you go down." lines piled up in every room a player had left and
+# replayed there on return). The mover reads one line in the room they reach;
+# whoever is in the room left, or the room reached, reads a line naming the
+# other place, live. Arrival replays skip both kinds (ws._state_snapshot).
+
+PRESENCE_KINDS = ("move", "arrive")
+_COMPASS = frozenset({"north", "south", "east", "west",
+                      "northeast", "northwest", "southeast", "southwest"})
+
+
+def _place(title: str | None) -> str:
+    """A room title mid-sentence: "The Old Mill" -> "the Old Mill"."""
+    if not title:
+        return "somewhere"
+    return "the " + title[4:] if title.startswith("The ") else title
+
+
+def move_texts(name: str, direction: str | None, from_title: str | None,
+               to_title: str | None, *, teleport: bool = False) -> dict:
+    """The three tellings of one move: `you` (the mover, in the room reached),
+    `leave` (those in the room left) and `arrive` (those in the room reached)."""
+    to, frm = _place(to_title), _place(from_title)
+    if teleport or not direction:
+        return {"you": f"You find yourself in {to}.",
+                "leave": f"{name} is suddenly elsewhere.",
+                "arrive": f"{name} is suddenly here."}
+    if direction == "up":
+        return {"you": f"You climb up to {to}.", "leave": f"{name} climbs up to {to}.",
+                "arrive": f"{name} comes up from {frm}."}
+    if direction == "down":
+        return {"you": f"You go down to {to}.", "leave": f"{name} goes down to {to}.",
+                "arrive": f"{name} comes down from {frm}."}
+    verb = ("head", "heads") if direction in _COMPASS else ("go", "goes")
+    return {"you": f"You {verb[0]} {direction} to {to}.",
+            "leave": f"{name} {verb[1]} {direction} to {to}.",
+            "arrive": f"{name} comes in from {frm}."}
+
+
+def _title(room) -> str | None:
+    return room.properties.get("title", room.name) if room is not None else None
+
+
+def announce_move(toon_id: str, from_room: str | None, to_room: str,
+                  direction: str | None = None, *, teleport: bool = False,
+                  extra: dict | None = None):
+    """Record a toon's move as two events: `move` keyed to the room it left
+    (the WS layer's controlled-move trigger; its payload carries the mover's
+    own line) and `arrive` keyed to the room it reached. Returns the move."""
+    from daydream import events
+
+    toon = objects.get(toon_id)
+    frm = objects.get(from_room) if from_room else None
+    dest = objects.get(to_room)
+    name = toon.name if toon is not None else "someone"
+    texts = move_texts(name, direction, _title(frm), _title(dest), teleport=teleport)
+    base = {"from_room": from_room, "to_room": to_room, "name": name}
+    if direction:
+        base["direction"] = direction
+    if teleport:
+        base["teleport"] = True
+    base.update(extra or {})
+    ev = events.append("toon", toon_id, "move",
+                       {**base, "you": texts["you"], "text": texts["leave"]},
+                       room_id=from_room)
+    events.append("toon", toon_id, "arrive", {**base, "text": texts["arrive"]},
+                  room_id=to_room)
+    return ev
+
+
 def send_home_things(toon_id: str) -> list[str]:
     """World objects a resting player carries go back to their authored home
     room (`properties.home`, recorded at load for worlds that opt in, or set

@@ -29,6 +29,8 @@ let stagedVerb = null; // the verb-bar verb awaiting an object click
 let stagedDobjId = null; // step-1 direct object of a two-object (give/use) verb, awaiting the iobj click
 let verbSpecs = {}; // verb name -> {needs_iobj, valid_iobj_kinds} from the snapshot's verb_bar
 let lastArrivalRoomId = null; // room of the last arrival line shown (suppresses re-show on same-room re-snapshots)
+let arrival = null; // {roomId, seq, text}: this room's arrival line, re-placed on same-room re-snapshots
+let pendingMove = null; // your own move event's payload, told as the next room's arrival line
 let pendingEl = null; // transient "thinking..." line during a slow (LLM) action
 let pendingTimer = null; // its safety timeout
 let loadedBuild = null; // server build SHA this page's JS loaded against (redeploy detection)
@@ -327,28 +329,26 @@ function renderSnapshot(snap) {
     beat.appendChild(p);
     chat.appendChild(beat);
   }
-  // First arrival into a room (fresh connect / claim / a room with no replayed
-  // history): the event log would otherwise be empty, so synthesize a look-style
-  // arrival line from the snapshot, mirroring the server `look` ("You are in X.
-  // You see: ..."). No round-trip and no stored event (look is per-viewer).
-  // lastArrivalRoomId guards against re-showing it on same-room re-snapshots.
-  // Uses the pre-beat emptiness so the journal beat doesn't suppress it.
+  // Arriving in a room (a move, a fresh load, a claim) writes one line where
+  // you are now: how you came ("You climb up to the attic", from your own move
+  // event) and what is here, look-style. It sits below whatever the room
+  // replays, which reads as earlier; it is not a stored event (look is
+  // per-viewer), so a same-room re-snapshot puts it back in its place, and
+  // leaving a room leaves nothing of your going behind (playtest 2026-09-28).
   const arrivalRoomId = snap.room ? snap.room.id : null;
-  if (snap.room && arrivalRoomId !== lastArrivalRoomId && chatEmpty) {
-    let text = "You are in " + snap.room.title + ".";
+  if (snap.room && arrivalRoomId !== lastArrivalRoomId) {
+    const moved = pendingMove && pendingMove.to_room === arrivalRoomId ? pendingMove : null;
+    let text = moved && moved.you ? moved.you : "You are in " + inSentence(snap.room.title) + ".";
     const groundItems = snap.items || [];
     if (groundItems.length) {
       text += " You see: " + groundItems.map((o) => o.name).join(", ") + ".";
     }
-    const div = document.createElement("div");
-    div.className = "evt evt-narrate";
-    div.innerHTML = linkifyEntities(text, entities);
-    div.querySelectorAll(".entity-link").forEach((span) => {
-      span.onclick = () => onObjectClick(span.dataset.objectId);
-    });
-    chat.appendChild(div);
-    followLog(div);
+    arrival = { roomId: arrivalRoomId, seq: snap.last_seq, text };
+    followLog(placeArrival(chat));
+  } else if (arrival && arrival.roomId === arrivalRoomId) {
+    placeArrival(chat);
   }
+  pendingMove = null;
   if (keptTop !== null) {
     scroller.scrollTop = keptTop;
     const fresh = [...chat.children].filter((el) => Number(el.dataset.seq) > shownSeq);
@@ -400,6 +400,31 @@ function renderSnapshot(snap) {
     btn.onclick = () => sendInput("go " + dir);
     exitBar.appendChild(btn);
   }
+}
+
+function inSentence(title) {
+  // A room title mid-sentence: "The Old Mill" -> "the Old Mill".
+  const t = title || "somewhere";
+  return t.startsWith("The ") ? "the " + t.slice(4) : t;
+}
+
+function placeArrival(chat) {
+  // Put this room's arrival line after the lines from before it (marked
+  // earlier) and ahead of anything since. Returns the line.
+  const div = document.createElement("div");
+  div.className = "evt evt-narrate evt-arrival";
+  div.innerHTML = linkifyEntities(arrival.text, entities);
+  div.querySelectorAll(".entity-link").forEach((span) => {
+    span.onclick = () => onObjectClick(span.dataset.objectId);
+  });
+  let next = null;
+  for (const el of chat.children) {
+    if (!el.dataset.seq) continue;
+    if (Number(el.dataset.seq) > arrival.seq) { next = el; break; }
+    el.classList.add("evt-earlier");
+  }
+  chat.insertBefore(div, next);
+  return div;
 }
 
 function renderFolio(time) {
@@ -589,6 +614,8 @@ function clearSceneAndLog() {
   document.getElementById("painting-overlay").classList.add("hidden");
   clearStagedVerb();
   lastArrivalRoomId = null;
+  arrival = null;
+  pendingMove = null;
   bgShownFor = null;
   wonState = null; // the next toon/world's snapshot re-derives the ended-marker
   renderEndMarker();
@@ -745,14 +772,16 @@ function renderEvent(e) {
     div.querySelectorAll(".entity-link").forEach((span) => {
       span.onclick = () => onObjectClick(span.dataset.objectId);
     });
-  } else if (e.kind === "move") {
-    // Whose move is this? Co-located departures arrive on the room
-    // filter too (playtest 2026-07-02: another player's walk rendered as
-    // "you go west"). Only the controlled toon's moves read as "you" —
-    // and only YOUR death blacks out YOUR screen.
+  } else if (e.kind === "move" || e.kind === "arrive") {
+    // Comings and goings (toons.announce_move). Your own move is told once,
+    // as the first line of the room you reach (renderSnapshot's arrival
+    // line), and nothing of it stays in the room you left. Anyone else's
+    // reads as this room saw it, naming the other place ("Ada comes up from
+    // the cellar"). Only YOUR death blacks out YOUR screen.
     const mine = e.actor_id === selfToonId;
-    const mover = actorNames[e.actor_id] || "someone";
-    if (e.payload && e.payload.died) {
+    const p = e.payload || {};
+    const mover = p.name || actorNames[e.actor_id] || "someone";
+    if (p.died) {
       // Death interstitial: a brief black beat before the respawn snapshot
       // re-renders the world; the authored message arrives as its own
       // narrate. No "you go" line for dying.
@@ -766,16 +795,13 @@ function renderEvent(e) {
       }
       return;
     }
-    if (e.payload && e.payload.teleport) {
-      div.textContent = mine
-        ? "the world shifts around you."
-        : mover + " is suddenly elsewhere.";
-    } else {
-      const dir = e.payload.direction || "somewhere";
-      div.textContent = mine
-        ? "you go " + dir + "."
-        : mover + " heads " + dir + ".";
+    if (mine) {
+      if (e.kind === "move") pendingMove = p;
+      return;
     }
+    div.className = "evt evt-move";
+    div.textContent = p.text || (e.kind === "arrive" ? mover + " is here."
+      : mover + " heads " + (p.direction || "away") + ".");
   } else {
     // Other event kinds (object_moved / object_spawned / item_added /
     // mood_set / ...) are state-sync signals: the accompanying snapshot

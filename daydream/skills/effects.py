@@ -728,11 +728,9 @@ def _apply_teleport_actor(
         return None
     from_room = toon.location_id
     objects.move(toon.id, dest.id)
-    return events.append(
-        "toon", toon.id, "move",
-        {"from_room": from_room, "to_room": dest.id, "teleport": True},
-        room_id=from_room,
-    )
+    from daydream import toons
+
+    return toons.announce_move(toon.id, from_room, dest.id, teleport=True)
 
 
 def _apply_start_fuse(

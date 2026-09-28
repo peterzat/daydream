@@ -54,7 +54,7 @@ def test_darkness_veils_art_and_keeps_inventory():
 def test_death_interstitial_before_respawn_snapshot():
     assert 'id="death-overlay"' in INDEX
     assert "showDeathOverlay" in MAIN_JS
-    assert "e.payload.died" in MAIN_JS
+    assert "p.died" in MAIN_JS  # the move's payload (renderEvent)
     assert ".death-overlay" in CSS
 
 

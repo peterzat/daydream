@@ -594,11 +594,13 @@ def test_ws_go_north_moves_toon_and_refreshes_snapshot():
     assert move_msg["kind"] == "event"
     move = move_msg["event"]
     assert move["kind"] == "move"
-    assert move["payload"] == {
+    assert {k: move["payload"][k] for k in ("from_room", "to_room", "direction")} == {
         "from_room": "r-meadow",
         "to_room": "r-forge",
         "direction": "north",
     }
+    # The mover's own telling, shown as the first line of the room reached.
+    assert move["payload"]["you"] == "You head north to the Quiet Forge."
     assert snap2["kind"] == "state_snapshot"
     assert snap2["room"]["slug"] == "forge"
     # The new room's exits are the forge's own — NOT the meadow's.
