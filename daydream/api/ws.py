@@ -32,6 +32,7 @@ from collections import Counter
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, status
 
 from daydream import (
+    absence,
     accounts,
     collect,
     config,
@@ -373,7 +374,7 @@ def _state_snapshot(
         "threads": story.threads_for(toon_id),
         # Who else is awake in the dream, and where (self never listed).
         "dreaming": dreaming_elsewhere(toon_id),
-        "while_you_slept": dream.note_for(toon_id),
+        "while_you_slept": _slept_note(toon_id),
         "last_seq": last_seq,
         # A move's own seq: the lines it caused (a room's enter rule, a beat)
         # land before this snapshot but belong after the arrival line, so the
@@ -901,6 +902,17 @@ def is_dozing(obj: "objects.Object | None") -> bool:
     doze, and a session that never connected dozes at once."""
     return (obj is not None and obj.kind == "toon" and bool(obj.is_human_controlled)
             and not is_session_recently_live(obj.controller_session, DOZE_GRACE_S))
+
+
+def _slept_note(toon_id: str) -> dict | None:
+    """The leaf a returning player reads once: a dream's while-you-slept
+    note, and what changed since they last rested (daydream/absence.py),
+    together when both have something to say."""
+    dreamed = dream.note_for(toon_id)
+    away = absence.take_note(toon_id)
+    if dreamed and away:
+        return {**dreamed, "text": f"{dreamed.get('text', '')}\n\n{away['text']}".strip()}
+    return dreamed or away
 
 
 def dreaming_elsewhere(viewer_id: str) -> list[dict]:

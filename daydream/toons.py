@@ -491,6 +491,12 @@ def kick_slot(slot: int) -> Toon | None:
     if t is None:
         return None
     send_home_things(t.id)
+    # When they rested, by the world's clock (so a faked clock still reads
+    # right): the first connection after this composes "while you were
+    # away" from it (daydream/absence.py).
+    from daydream import worldclock
+
+    objects.set_property(t.id, "away_since", worldclock.iso())
     db.get_conn().execute(
         "UPDATE objects SET controller_session = NULL, is_human_controlled = 0, "
         "kicked_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now') WHERE id = ?",
