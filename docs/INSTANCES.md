@@ -151,8 +151,11 @@ already per instance. Nothing in this design has to be undone for that.
 
 ## The checklist
 
-Status words: **done** (built, tested, committed), **next** (this initiative,
-in order), **operator** (needs the operator's hands or decision), **later**.
+Status words: **done** (built, tested, deployed), **next** (in order),
+**operator** (needs the operator's hands or decision), **later**. This
+lists the engineering; what one instance has done with it (its migration,
+its test accounts, its recovered art) lives in that instance's own record,
+off GitHub.
 
 ### Found by the first evening in prod (2026-09-28)
 
@@ -160,6 +163,7 @@ in order), **operator** (needs the operator's hands or decision), **later**.
   dreamer panel's buttons
 - done: server log lines reach the journal (no secrets, no typed words)
 - done: arrivals replay only recent, non-ambient lines, and the cut holds
+  for the rest of the visit
 - done: the page fits iPad and iPhone Safari (dvh, the safe-area inset)
 - done: a screen and engine layout matrix (Chromium, Firefox, WebKit)
 - done: the door scrolls on a short window and no longer spills sideways
@@ -167,82 +171,49 @@ in order), **operator** (needs the operator's hands or decision), **later**.
 
 ### Data lifecycle (docs/DATA-LIFECYCLE.md)
 
-- done: `account delete` (the end of a person)
-- done: the art keep, keep-before-wipe, restore-from-keep, provenance in
-  backups
-- next: deploy, then `keep-sync` prod; import the two recovered portraits
-  from the engine's own output folder, with provenance from the pre-reset
-  backup (the instance record has the details)
-- next: remove the early test accounts in prod (`account delete --yes`)
+- done: `account delete` (the end of a person: account, sessions, invites,
+  dreamers, what they typed and said, their Book and finds)
+- done: the art keep (every render, adoption and restore; keep-before-wipe;
+  restore on a cache miss; read-only kept files; provenance in backups)
 - later: art bytes offsite (after the R2 bucket); a `prune` verb; a prune of
   ComfyUI's output folder
 
 ### Root and the admin console (docs/ADMIN-ROOT.md)
 
-- decided 2026-09-28: the validated helper, with `prod.env` through it
-- built 2026-09-28: `ops/root/daydream-root` with its unit validator and
-  tests; `bin/game prod root ...`; the installer and sudoers line
-- next: the operator's `.claude/settings.local.json` gains the ask rules for
-  `prod root units --apply` and `prod root env set` (the template,
-  `docs/claude-settings.local.example.json`, has them)
-- operator: one last `sudo ops/install-prod.sh` (installs the helper, and
-  with it today's pending keepsakes/offsite unit fix)
-- next: `prod root units --apply`, start the keepsakes job, `prod check`
-  all green
+- done: the validated helper (`ops/root/daydream-root`, its unit validator
+  and tests), `bin/game prod root ...`, the installer and sudoers line, the
+  ask rules (and a template for forks)
+- operator: one `sudo ops/install-prod.sh` to install the helper on a box
+- next, after that: `prod root doctor`, start the keepsakes job, `prod
+  check` all green; later unit changes go through `prod root units --apply`
 
 ### Instances (this document)
 
-- done: `config.data_dir()` resolution (`DAYDREAM_INSTANCE`, `active`),
-  once per process; instance.json with village defaults; tests
-- done: prodctl passes the instance dir to every command, `HOME` stays the
-  box's; `--instance NAME`; per-instance `.cli-cookie`; `prod status` and
-  `/status/build` name the instance
-- done: `bin/game world reset|refresh` default to the instance's envelope
-- done: the words: door, game page, server text, invite message, sleep
-  warning; tests that another instance's words appear, escaped, and the
-  default reads exactly as before
-- done: the per-instance cookie name, and the Worker reading it from the flag
-- done: `prod instance list|create|use|migrate`, with the swap's rollback;
-  tests against a fake box (tmp dirs, a fake systemctl)
-- done: the Worker: the flag's words on the asleep page, its API answer and
-  the WebSocket refusal; node tests
-- next: `bin/game edge deploy` (the Worker above)
-- done: a runbook (docs/runbooks/instances.md); the /village and /invite
-  skills know `--instance`
-- done: a real swap rehearsal (tests/test_instances.py): two instances, an
-  account and a dreamer in one, swap and back, everything intact
-- next: prod: `instance migrate` (the village becomes `instances/village`),
-  `prod check`
-- next (its own turn if long): prod: `instance create zork`, the art import,
-  swap, invite a friend, play, swap back
+- done: the core (resolution once per process, instance.json words, the
+  per-instance cookie, envelopes), the prod verbs (`instance
+  list|create|use|migrate` with the swap's guards and rollback; `--instance
+  NAME` for the instance-scoped verbs, only as the last two arguments), the
+  Worker's words, the runbook, a real swap rehearsal, `prod check`'s
+  instance checks
+- next (its own turn): a Zork instance in prod: `instance create`, its art
+  (the dev archive's room paintings into its keep; a door image rendered and
+  graded), `instance use zork`, invite a friend, play, swap back, and write
+  down what the practice taught
 
 ### The internet-facing system (a deep, test-driven look)
 
-- done: `prod check` learns the attached instance (served vs `active`) and
-  the flag's cookie
+- done: the uptime watch (a Worker cron trigger; debounced, closed by a
+  sleep, written only on a change), shown by `edge status` and `prod status`
+- done: the dreamer cap; a test that the Worker keeps the app's security
+  headers; the dev refusal points at a tunnel
+- done: a fresh-eyes review of the README, the setup docs and the runbooks
+  as a newcomer who wants to fork and host (docs/FORKING.md came of it)
+- next (its own turn): a capacity rehearsal in dev before twelve friends: N
+  agent players (`bin/game play`) at once; LLM p50/p95 from the log lines,
+  arbiter waits, render queueing; the numbers written down
 - later: `prod check` on the keep (provenance present) and each instance's
-  backup age
-- next: a capacity rehearsal in dev before twelve friends: N agent players
-  (`bin/game play`) at once; LLM p50/p95 from the new log lines, arbiter
-  waits, render queueing; the numbers written down
-- done: dreamer creation is capped per player per day (each one costs a
-  portrait render on the shared GPU); admins are exempt
-- next: a "fresh GitHub user" review of the README, the setup docs and the
-  runbooks: could someone clone, fork and host their own instance from
-  them alone? (the operator's ask, 2026-09-28)
-- done: an uptime record: a Worker cron trigger (free plan) probes the
-  origin while the flag says awake and records unplanned outages in KV
-  (writes only on a change); `edge status` and `prod status` show them
-- next: `bin/game edge deploy` ships it (with the instance words above)
-- later: a push notification when an outage opens (an alert channel the
-  operator chooses)
-- done: a test that the Worker passes the app's security headers (CSP,
-  nosniff, frame denial, Referrer-Policy, Permissions-Policy) unchanged
-- operator: HSTS is host-wide (it binds the Pages site on www.eidolon.com
-  too), so it belongs in the Cloudflare dashboard (SSL/TLS, Edge
-  Certificates), not in the app
-- later: a disaster-recovery drill written down (a new box: install,
-  offsite restore, Cloudflare re-pointing), once offsite exists
-- operator: the R2 bucket and its lifecycle rule (CLOUDFLARE-SETUP step 13)
-- operator (optional): leave the `docker` group (docs/ADMIN-ROOT.md)
-- operator (not daydream): the anonymous `/generate` Worker on eidolon.com
+  backup age; a push notification when an outage opens; a disaster-recovery
+  drill (a new box: install, offsite restore, Cloudflare re-pointing)
+- operator: HSTS in the Cloudflare dashboard (it is host-wide, so it binds
+  the Pages site too); the R2 bucket and its lifecycle rule
+  (CLOUDFLARE-SETUP step 13)

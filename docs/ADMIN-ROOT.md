@@ -58,7 +58,7 @@ What still needs the operator's password, and how often:
 
 | Root action | How often | Example |
 |---|---|---|
-| Install or refresh the systemd units from `ops/systemd/` | whenever a unit changes (the keepsakes/offsite `NoNewPrivileges` fix is waiting on this now) | `sudo ops/install-prod.sh` |
+| Install or refresh the systemd units from `ops/systemd/` | whenever a unit changes (the first was the keepsakes/offsite `NoNewPrivileges` fix, 2026-09-28) | `sudo ops/install-prod.sh` |
 | Start a timer job by hand to prove it | after unit changes, in incidents | `sudo systemctl start daydream-keepsakes.service` |
 | Edit `/srv/daydream/etc/prod.env` | occasionally (a log level, a feature flag) | `sudoedit` |
 | Change the sudoers entry itself | rarely | the installer |
@@ -153,7 +153,7 @@ settings.
 ## What it costs, once
 
 One last `sudo ops/install-prod.sh` by the operator: it installs the helper
-and the one-line sudoers entry (plus today's pending unit fix). After that,
+and the one-line sudoers entry (and any unit fix not yet installed). After that,
 unit changes, timer jobs and `prod.env` edits flow through the admin console.
 
 ## Decisions (2026-09-28)
