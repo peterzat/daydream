@@ -34,7 +34,7 @@
       "slug": "loft",
       "title": "The Clockmaker's Loft",
       "seed": "a clockmaker's loft under the eaves, warm with the smell of oil and brass, shelves of small resting clocks ticking softly out of time with one another, a workbench of fine tools, a round window full of amber dusk",
-      "description": "The loft is warm with the smell of clock oil and old brass. Shelves of small resting clocks tick softly, none of them agreeing about the time, and a workbench lies scattered with tools too fine for ordinary fingers. A round window holds the dusk. Stairs go down to the tower and up to the balcony.",
+      "description": "The loft is warm with the smell of clock oil and old brass. Shelves of small resting clocks tick softly, none of them agreeing about the time, and a workbench lies scattered with tools too fine for ordinary fingers. A round window looks out over the village roofs. Stairs go down to the tower and up to the balcony.",
       "exits": {
         "down": "r-clocktower",
         "up": "r-balcony"
@@ -65,6 +65,9 @@
       "description": "The balcony holds its place above the rooftops with a friendly creak. A telescope ribbed with clock-gears leans at the brass rail, pointed east, where the sky is always about to decide something. Below, the village lanterns keep an hour of their own. The loft is down the stairs.",
       "exits": {
         "down": "r-loft"
+      },
+      "properties": {
+        "at": "on"
       }
     },
     {

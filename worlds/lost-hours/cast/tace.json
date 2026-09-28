@@ -97,7 +97,7 @@
         {"label": "the great clock", "aliases": ["clock", "great clock", "the clock"],
          "if": [{"flag": "CLOCK-STARTED"}],
          "variants": [
-           "Tace tilts their head toward the tower and listens. 'Hear that? Every tick is the village keeping a promise. Dusk comes, and with it the lost hours.'",
+           "Tace tilts their head toward the stair and listens. 'Hear that? Every tick is the village keeping a promise. Dusk comes, and with it the lost hours.'",
            "Tace smiles at the ceiling. 'It ticks. I keep checking, the way you check a sleeping child is breathing.'",
            "Tace pauses, a tool in hand, and counts a few ticks under their breath. 'Right on time. Wend would be pleased with it.'"
          ]},
@@ -118,7 +118,7 @@
          ]},
         {"label": "the first winding", "aliases": ["the custom", "first winding", "winding", "custom", "a clock of my own", "my own clock"],
          "if": [{"flag": "CLOCK-STARTED"}, {"pflag": "GIVEN-CLOCK", "not": true}],
-         "text": "Tace takes a small resting clock down from the shelf and blows the dust from its face. 'By old custom, every new keeper winds one clock of their own, the first night they come. This one has been waiting for you.' They set it in your hands, warm from the shelf. 'Wind it when you're ready.'",
+         "text": "Tace takes a small resting clock down from the shelf and blows the dust from its face. 'By old custom, every new keeper winds one clock of their own, the first day they come. This one has been waiting for you.' They set it in your hands, warm from the shelf. 'Wind it when you're ready.'",
          "others": "Tace takes a small resting clock down from the shelf and sets it in {actor}'s hands, by old custom.",
          "do": [{"kind": "spawn_template", "template": "small-clock", "location_id": "@actor", "private": true},
                 {"kind": "set_pflag", "name": "GIVEN-CLOCK"}]},

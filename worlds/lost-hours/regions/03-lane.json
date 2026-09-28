@@ -12,6 +12,9 @@
         "north": "r-post",
         "east": "r-waiting",
         "south": "r-bridge"
+      },
+      "properties": {
+        "at": "on"
       }
     },
     {
@@ -162,6 +165,9 @@
         "north": "r-lane",
         "south": "r-duskroad",
         "down": "r-river"
+      },
+      "properties": {
+        "at": "on"
       }
     },
     {
@@ -188,7 +194,10 @@
             }
           ]
         }
-      ]
+      ],
+      "properties": {
+        "at": "at"
+      }
     },
     {
       "id": "r-duskroad",
@@ -256,7 +265,10 @@
             }
           ]
         }
-      ]
+      ],
+      "properties": {
+        "at": "on"
+      }
     },
     {
       "id": "r-hill",
@@ -301,7 +313,10 @@
             }
           ]
         }
-      ]
+      ],
+      "properties": {
+        "at": "on"
+      }
     }
   ],
   "things": [

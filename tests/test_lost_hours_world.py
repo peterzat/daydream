@@ -138,3 +138,17 @@ def test_every_resident_carries_a_voice_sheet_and_authored_drift():
         assert isinstance(props.get("voice"), dict), t["id"]
         if t["id"] != "t-tock":
             assert props.get("topics"), f"{t['id']} has nothing to be asked about"
+
+
+def test_rooms_say_how_you_are_there_and_a_wound_clock_says_so():
+    """Playtest 2026-09-28b: "You are in the Winding Balcony"; and a wound
+    small clock still read "its hands stopped at a quiet hour" in the satchel."""
+    ats = {r["id"]: (r.get("properties") or {}).get("at") for r in ENV["rooms"]}
+    assert ats["r-balcony"] == "on" and ats["r-hill"] == "on" and ats["r-clocktower"] is None
+    assert all(a in (None, "in", "on", "at") for a in ats.values())
+    winds = [r for r in ENV["rules"] if r.get("on") == "wind"
+             and {"prop": "own_clock", "of": "@dobj"} in (r.get("if") or [])]
+    assert winds and all(
+        any(e.get("kind") == "set_property" and e.get("key") == "seed"
+            and "ticking" in e.get("value", "") for e in r["do"]) for r in winds)
+    assert (ENV["time"]["labels"]["day"]) == "daylight"  # not "day 3 · day"

@@ -388,7 +388,8 @@ function renderSnapshot(snap) {
   const arrivalRoomId = snap.room ? snap.room.id : null;
   if (snap.room && arrivalRoomId !== lastArrivalRoomId) {
     const moved = pendingMove && pendingMove.to_room === arrivalRoomId ? pendingMove : null;
-    const lead = moved && moved.you ? moved.you : "You are in " + inSentence(snap.room.title) + ".";
+    const lead = moved && moved.you ? moved.you
+      : "You are " + (snap.room.at || "in") + " " + inSentence(snap.room.title) + ".";
     const groundItems = snap.items || [];
     const seen = groundItems.length
       ? "You see: " + groundItems.map((o) => o.name).join(", ") + "." : "";

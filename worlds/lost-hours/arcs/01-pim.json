@@ -313,6 +313,12 @@
               "value": "a lost nap curled up in the littlest armchair at the Waiting House, the hush tucked under one cheek; small and rumpled, and fast asleep at last"
             },
             {
+              "kind": "set_property",
+              "target_id": "t-pims-nap",
+              "key": "mood",
+              "value": "fast asleep"
+            },
+            {
               "kind": "grant_collectible"
             },
             {

@@ -296,6 +296,9 @@ def _state_snapshot(
                     else lighting.darkness_text(room.world_id)
                 ),
                 "dark": not lit,
+                # How one is there: "on the Winding Balcony", not "in" it
+                # (authored `properties.at`; playtest 2026-09-28b).
+                "at": _room_at(room_id),
                 # exits is the SPA's source of truth for nav buttons:
                 # {direction: dest-or-null}, secret exits hidden until
                 # passable, blocked/message-only entries kept (clicking
@@ -387,6 +390,12 @@ def _state_snapshot(
             if room else None
         ),
     }
+
+
+def _room_at(room_id: str) -> str:
+    o = objects.get(room_id)
+    at = o.properties.get("at") if o is not None else None
+    return at if at in ("in", "on", "at") else "in"
 
 
 def _object_card(o: "objects.Object", depth: int = 0) -> dict:

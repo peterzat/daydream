@@ -31,7 +31,7 @@
     "catch_up_days": 7,
     "labels": {
       "dawn": "dawn",
-      "day": "day",
+      "day": "daylight",
       "dusk": "dusk",
       "night": "night"
     }
@@ -726,6 +726,12 @@
           "name": "WOUND"
         },
         {
+          "kind": "set_property",
+          "target_id": "@dobj",
+          "key": "seed",
+          "value": "a small resting clock no bigger than a teacup, brass gone soft with handling, ticking soft and sure a half-beat apart from every other clock; by custom it is yours alone to wind"
+        },
+        {
           "kind": "adjust_rel",
           "npc": "t-tace",
           "delta": 2
@@ -769,6 +775,12 @@
           "name": "WOUND"
         },
         {
+          "kind": "set_property",
+          "target_id": "@dobj",
+          "key": "seed",
+          "value": "a small resting clock no bigger than a teacup, brass gone soft with handling, ticking soft and sure a half-beat apart from every other clock; by custom it is yours alone to wind"
+        },
+        {
           "kind": "add_fact",
           "id": "first-winding",
           "text": "{actor} wound their own small clock, by the old custom.",
@@ -801,6 +813,12 @@
             "Your small clock doesn't need winding, but it seems to like the attention.",
             "You wind your clock and hold it to your ear. Its tick is the only one in the dream that is exactly yours."
           ]
+        },
+        {
+          "kind": "set_property",
+          "target_id": "@dobj",
+          "key": "seed",
+          "value": "a small resting clock no bigger than a teacup, brass gone soft with handling, ticking soft and sure a half-beat apart from every other clock; by custom it is yours alone to wind"
         }
       ]
     },
@@ -4305,6 +4323,12 @@
               "target_id": "t-pims-nap",
               "key": "seed",
               "value": "a lost nap curled up in the littlest armchair at the Waiting House, the hush tucked under one cheek; small and rumpled, and fast asleep at last"
+            },
+            {
+              "kind": "set_property",
+              "target_id": "t-pims-nap",
+              "key": "mood",
+              "value": "fast asleep"
             },
             {
               "kind": "grant_collectible"
@@ -8056,7 +8080,7 @@
       "slug": "loft",
       "title": "The Clockmaker's Loft",
       "seed": "a clockmaker's loft under the eaves, warm with the smell of oil and brass, shelves of small resting clocks ticking softly out of time with one another, a workbench of fine tools, a round window full of amber dusk",
-      "description": "The loft is warm with the smell of clock oil and old brass. Shelves of small resting clocks tick softly, none of them agreeing about the time, and a workbench lies scattered with tools too fine for ordinary fingers. A round window holds the dusk. Stairs go down to the tower and up to the balcony.",
+      "description": "The loft is warm with the smell of clock oil and old brass. Shelves of small resting clocks tick softly, none of them agreeing about the time, and a workbench lies scattered with tools too fine for ordinary fingers. A round window looks out over the village roofs. Stairs go down to the tower and up to the balcony.",
       "exits": {
         "down": "r-clocktower",
         "up": "r-balcony"
@@ -8087,6 +8111,9 @@
       "description": "The balcony holds its place above the rooftops with a friendly creak. A telescope ribbed with clock-gears leans at the brass rail, pointed east, where the sky is always about to decide something. Below, the village lanterns keep an hour of their own. The loft is down the stairs.",
       "exits": {
         "down": "r-loft"
+      },
+      "properties": {
+        "at": "on"
       }
     },
     {
@@ -8272,6 +8299,9 @@
         "north": "r-post",
         "east": "r-waiting",
         "south": "r-bridge"
+      },
+      "properties": {
+        "at": "on"
       }
     },
     {
@@ -8422,6 +8452,9 @@
         "north": "r-lane",
         "south": "r-duskroad",
         "down": "r-river"
+      },
+      "properties": {
+        "at": "on"
       }
     },
     {
@@ -8448,7 +8481,10 @@
             }
           ]
         }
-      ]
+      ],
+      "properties": {
+        "at": "at"
+      }
     },
     {
       "id": "r-duskroad",
@@ -8516,7 +8552,10 @@
             }
           ]
         }
-      ]
+      ],
+      "properties": {
+        "at": "on"
+      }
     },
     {
       "id": "r-hill",
@@ -8561,7 +8600,10 @@
             }
           ]
         }
-      ]
+      ],
+      "properties": {
+        "at": "on"
+      }
     }
   ],
   "toons": [
@@ -8571,7 +8613,7 @@
       "slot": 100,
       "room": "r-loft",
       "mood": "wistful",
-      "seed": "They work slow and exact at the bench, and now and then glance toward the tower as if listening for the great clock",
+      "seed": "They work slow and exact at the bench, and now and then glance at the floorboards as if listening for the great clock below",
       "appearance_seed": "a slight person in a leather apron hung with fine brass tools, spectacles pushed up into greying hair, ink and oil worn into careful hands",
       "presence_text": "Tace looks up from a bench of small clocks, sets down a fine brass tool, and offers a tired, kind nod.",
       "aliases": [
@@ -8840,7 +8882,7 @@
               }
             ],
             "variants": [
-              "Tace tilts their head toward the tower and listens. 'Hear that? Every tick is the village keeping a promise. Dusk comes, and with it the lost hours.'",
+              "Tace tilts their head toward the stair and listens. 'Hear that? Every tick is the village keeping a promise. Dusk comes, and with it the lost hours.'",
               "Tace smiles at the ceiling. 'It ticks. I keep checking, the way you check a sleeping child is breathing.'",
               "Tace pauses, a tool in hand, and counts a few ticks under their breath. 'Right on time. Wend would be pleased with it.'"
             ]
@@ -8920,7 +8962,7 @@
                 "not": true
               }
             ],
-            "text": "Tace takes a small resting clock down from the shelf and blows the dust from its face. 'By old custom, every new keeper winds one clock of their own, the first night they come. This one has been waiting for you.' They set it in your hands, warm from the shelf. 'Wind it when you're ready.'",
+            "text": "Tace takes a small resting clock down from the shelf and blows the dust from its face. 'By old custom, every new keeper winds one clock of their own, the first day they come. This one has been waiting for you.' They set it in your hands, warm from the shelf. 'Wind it when you're ready.'",
             "others": "Tace takes a small resting clock down from the shelf and sets it in {actor}'s hands, by old custom.",
             "do": [
               {
@@ -12007,10 +12049,10 @@
               "to": "@actor",
               "variants": [
                 "You reach out, and Tock allows it: one slow stroke from ears to tail, and a purr that keeps perfect time. Then Tock is a tick away, washing a paw.",
-                "Tock leans into your hand for exactly one tick, purring, and then is somewhere else entirely.",
+                "Tock leans into your hand for exactly one tick, purring, and then is sitting a little way off, washing a paw, as if it had never moved.",
                 "Your hand passes through the place where Tock was. A tick later Tock is back, and bumps its head against your knuckles as if it meant to all along."
               ],
-              "others": "{actor} strokes Tock, who purrs in perfect time and then is somewhere else."
+              "others": "{actor} strokes Tock, who purrs in perfect time and then is a little way off, washing a paw."
             }
           ]
         }

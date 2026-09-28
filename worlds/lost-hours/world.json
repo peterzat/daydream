@@ -31,7 +31,7 @@
     "catch_up_days": 7,
     "labels": {
       "dawn": "dawn",
-      "day": "day",
+      "day": "daylight",
       "dusk": "dusk",
       "night": "night"
     }

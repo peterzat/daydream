@@ -79,6 +79,7 @@
      "do": [{"kind": "narrate", "text": "You turn the little key. The small clock hesitates, then begins to tick, soft and sure, a half-beat apart from every other clock on the shelf. Tace watches with their hands folded. 'There,' they say. 'Now there's an hour here that's yours. Bell will want to meet you, down in the square. And Mott keeps something for every new keeper, in the workshop.'",
              "others": "{actor} winds a small clock of their own; it ticks a half-beat apart from all the others, and Tace watches with folded hands."},
             {"kind": "set_pflag", "name": "WOUND"},
+            {"kind": "set_property", "target_id": "@dobj", "key": "seed", "value": "a small resting clock no bigger than a teacup, brass gone soft with handling, ticking soft and sure a half-beat apart from every other clock; by custom it is yours alone to wind"},
             {"kind": "adjust_rel", "npc": "t-tace", "delta": 2},
             {"kind": "add_fact", "id": "first-winding", "text": "{actor} wound their own small clock in the loft, by the old custom.",
              "known_by": ["t-tace"], "spread": [{"to": "all", "after_minutes": 60}]}]},
@@ -86,6 +87,7 @@
      "do": [{"kind": "narrate", "text": "You turn the little key. The small clock hesitates, then begins to tick, soft and sure, keeping an hour that is yours alone.",
              "others": "{actor} winds a small clock of their own, and it begins to tick, soft and sure."},
             {"kind": "set_pflag", "name": "WOUND"},
+            {"kind": "set_property", "target_id": "@dobj", "key": "seed", "value": "a small resting clock no bigger than a teacup, brass gone soft with handling, ticking soft and sure a half-beat apart from every other clock; by custom it is yours alone to wind"},
             {"kind": "add_fact", "id": "first-winding", "text": "{actor} wound their own small clock, by the old custom.",
              "known_by": ["t-tace"], "spread": [{"to": "all", "after_minutes": 60}]}]},
     {"on": "wind", "if": [{"prop": "own_clock", "of": "@dobj"}],
@@ -93,6 +95,7 @@
        "You give your small clock a quarter turn. It ticks on, pleased to be remembered.",
        "Your small clock doesn't need winding, but it seems to like the attention.",
        "You wind your clock and hold it to your ear. Its tick is the only one in the dream that is exactly yours."
-     ]}]}
+     ]},
+     {"kind": "set_property", "target_id": "@dobj", "key": "seed", "value": "a small resting clock no bigger than a teacup, brass gone soft with handling, ticking soft and sure a half-beat apart from every other clock; by custom it is yours alone to wind"}]}
   ]
 }

@@ -7,7 +7,7 @@
       "slot": 100,
       "room": "r-loft",
       "mood": "wistful",
-      "seed": "They work slow and exact at the bench, and now and then glance toward the tower as if listening for the great clock",
+      "seed": "They work slow and exact at the bench, and now and then glance at the floorboards as if listening for the great clock below",
       "appearance_seed": "a slight person in a leather apron hung with fine brass tools, spectacles pushed up into greying hair, ink and oil worn into careful hands",
       "presence_text": "Tace looks up from a bench of small clocks, sets down a fine brass tool, and offers a tired, kind nod.",
       "aliases": [
@@ -212,10 +212,10 @@
               "to": "@actor",
               "variants": [
                 "You reach out, and Tock allows it: one slow stroke from ears to tail, and a purr that keeps perfect time. Then Tock is a tick away, washing a paw.",
-                "Tock leans into your hand for exactly one tick, purring, and then is somewhere else entirely.",
+                "Tock leans into your hand for exactly one tick, purring, and then is sitting a little way off, washing a paw, as if it had never moved.",
                 "Your hand passes through the place where Tock was. A tick later Tock is back, and bumps its head against your knuckles as if it meant to all along."
               ],
-              "others": "{actor} strokes Tock, who purrs in perfect time and then is somewhere else."
+              "others": "{actor} strokes Tock, who purrs in perfect time and then is a little way off, washing a paw."
             }
           ]
         }
