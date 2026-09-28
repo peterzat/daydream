@@ -125,9 +125,27 @@ def _scrolls_sideways(page) -> bool:
 AT_END = "() => window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 1"
 
 
-def _at_the_end(page) -> dict:
+# Whether a person could scroll the page at all: the viewport scrolls by the
+# root's overflow, or by body's when the root's is visible (it propagates).
+USER_SCROLLABLE = """() => {
+  const html = getComputedStyle(document.documentElement).overflowY;
+  const body = getComputedStyle(document.body).overflowY;
+  const root = html !== "visible" ? html : body;
+  return root !== "hidden" && root !== "clip";
+}"""
+
+
+def _at_the_end(page, screen: Screen) -> dict:
     """Measure with the page scrolled as far down as a person can take it: by
-    the mouse wheel, since a script can scroll even an overflow: hidden page."""
+    the mouse wheel, since a script can scroll even an overflow: hidden page.
+    Mobile WebKit has no wheel, so a touch screen asks the page whether it
+    lets a person scroll, then scrolls by script."""
+    if screen.mobile:
+        assert page.evaluate(USER_SCROLLABLE), f"{screen.name}: the page cannot be scrolled"
+        page.evaluate("() => window.scrollTo(0, document.documentElement.scrollHeight)")
+        m = page.evaluate(MEASURE)
+        page.evaluate("() => window.scrollTo(0, 0)")
+        return m
     page.mouse.move(2, page.viewport_size["height"] // 2)
     for _ in range(12):
         if page.evaluate(AT_END):
@@ -156,7 +174,7 @@ def _fits(page, screen: Screen, stop: str) -> None:
         assert not _scrolls_sideways(page), "the page scrolls sideways; " + where
     if m["footer"] is None:
         # The front door: its whole form can be reached, however short the window.
-        end = _at_the_end(page)
+        end = _at_the_end(page, screen)
         assert end["page"]["bottom"] <= end["vh"] + 1, "the door's foot is out of reach; " + where
     elif screen.width > 640:
         # The desktop shell: the whole leaf in the window, its foot clear.
@@ -169,7 +187,7 @@ def _fits(page, screen: Screen, stop: str) -> None:
                 "the reading column has almost no height; " + where)
     else:
         # A phone: the page scrolls, and at its end the leaf's foot is clear.
-        end = _at_the_end(page)
+        end = _at_the_end(page, screen)
         assert end["page"]["bottom"] <= end["vh"] - FOOT_CLEARANCE, "the leaf's foot; " + where
         for part in ("ways", "footer"):
             if end[part] is not None:
