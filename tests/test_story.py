@@ -600,3 +600,28 @@ async def test_the_actor_condition_lets_a_callback_speak_to_its_player():
                                 source="r", known_verbs={"look"}, known_flags=set(),
                                 known_ids=set(), known_fuses=set(), known_daemons=set())
     assert not any("actor" in e for e in errs)
+
+
+async def test_what_now_reads_your_threads_and_help_answers_plainly():
+    """Playtest 2026-09-28b: "what should I do now?" and "help" got chatter
+    lines. "what now" reads the threads that hold for this player (authored
+    `threads`, {count} filled in words); with none, a gentle nudge."""
+    from daydream.api import ws
+
+    ada = player(1, "Ada", "r-green")
+    before = events.max_seq()
+    await ws._handle_input("what should I do now?", ada, {"clarify": None})
+    assert narrations(before) == [ws.WHAT_NOW_NONE]
+    worldstate.set(WORLD, "def:threads", [
+        {"id": "lamps", "text": "Hob's lamps: {count} of two lit.",
+         "if": [{"pflag": "GREETED", "not": True}],
+         "count": [{"in": "r-green"}, {"in": "r-lane"}]},
+        {"id": "never", "text": "never shown", "if": [{"pflag": "GREETED"}]},
+    ])
+    assert story.threads_for(ada) == ["Hob's lamps: one of two lit."]
+    before = events.max_seq()
+    await ws._handle_input("What now?", ada, {"clarify": None})
+    assert narrations(before) == [ws.WHAT_NOW_LEAD, "Hob's lamps: one of two lit."]
+    before = events.max_seq()
+    await ws._handle_input("help", ada, {"clarify": None})
+    assert narrations(before) == [ws.HELP_TEXT]

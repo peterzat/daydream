@@ -601,5 +601,33 @@
         "A moth takes shelter under the Rain-Wait's scrap of awning. The two of them stand together in the one-cobble rain, listening to nothing in particular."
       ]
     }
+  ],
+  "threads": [
+    {
+      "id": "rain-wait",
+      "text": "The Rain-Wait wants the end of its lighthouse story. The stranger said they'd write it down.",
+      "if": [
+        {
+          "arc": "rain-wait"
+        },
+        {
+          "beat": "rain-wait/hear-beginning",
+          "by": "@actor"
+        }
+      ]
+    },
+    {
+      "id": "rain-wait-bell",
+      "text": "Bell says Fen keeps the letters nobody posted, and Sorrel can finish anything, given enough sky.",
+      "if": [
+        {
+          "arc": "rain-wait"
+        },
+        {
+          "beat": "rain-wait/bell-rain",
+          "by": "@actor"
+        }
+      ]
+    }
   ]
 }

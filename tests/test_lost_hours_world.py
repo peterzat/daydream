@@ -152,3 +152,21 @@ def test_rooms_say_how_you_are_there_and_a_wound_clock_says_so():
         any(e.get("kind") == "set_property" and e.get("key") == "seed"
             and "ticking" in e.get("value", "") for e in r["do"]) for r in winds)
     assert (ENV["time"]["labels"]["day"]) == "daylight"  # not "day 3 · day"
+
+
+def test_threads_are_validated_like_any_story_section():
+    """Threads (playtest 2026-09-28b) are authored data: a missing text, a
+    {count} with nothing to count, or an unknown flag fails the load."""
+    env = json.loads(json.dumps(ENV))
+    env["threads"] = env.get("threads", []) + [
+        {"id": "bad-1"},
+        {"id": "bad-2", "text": "{count} things"},
+        {"id": "bad-3", "text": "x", "if": [{"flag": "NO-SUCH-FLAG"}]},
+    ]
+    with pytest.raises(Exception) as err:
+        format2.validate_envelope2(env)
+    msg = str(err.value)
+    assert "threads.bad-1: needs a 'text'" in msg
+    assert "threads.bad-2: text says {count} but there is no 'count'" in msg
+    assert "NO-SUCH-FLAG" in msg
+    assert len(ENV["threads"]) >= 20 and len({t["id"] for t in ENV["threads"]}) == len(ENV["threads"])

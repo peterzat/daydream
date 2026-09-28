@@ -893,5 +893,49 @@
       "summary": "Fen checks on the Margin Afternoon asleep in its pigeonhole",
       "text": "Fen pauses at the pigeonhole marked TO ME, LATER, where the Margin Afternoon sleeps folded small, and smooths its doodled corner without waking it."
     }
+  ],
+  "threads": [
+    {
+      "id": "margin",
+      "text": "The Margin Afternoon's best drawing, a little garden, has an empty middle, and it wants it finished.",
+      "if": [
+        {
+          "arc": "margin"
+        },
+        {
+          "beat": "margin/bell-startles",
+          "by": "@actor"
+        }
+      ]
+    },
+    {
+      "id": "margin-bell",
+      "text": "Bell says Fen has pencils, and those doodles look like Quill's garden.",
+      "if": [
+        {
+          "arc": "margin"
+        },
+        {
+          "beat": "margin/bell-startles",
+          "by": "@actor"
+        },
+        {
+          "beat": "margin/drawn",
+          "not": true
+        }
+      ]
+    },
+    {
+      "id": "margin-drawing",
+      "text": "You're keeping the Margin Afternoon's drawing a while: a garden of pendulums around an empty middle.",
+      "if": [
+        {
+          "arc": "margin"
+        },
+        {
+          "carried": "o-margin-drawing"
+        }
+      ]
+    }
   ]
 }

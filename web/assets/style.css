@@ -499,7 +499,8 @@ footer .logout:hover { text-decoration: underline; }
   color: var(--sage-deep); opacity: .8; display: flex; align-items: center; gap: 12px; margin: 22px 0 18px;
 }
 .page-eyebrow::after { content: ""; flex: 1; height: 1px; background: var(--line); }
-.right .page-eyebrow { margin-top: calc(3rem + 6px + .95rem + 22px); } /* align with left specimens */
+.right .page-eyebrow:first-child, .right .page-eyebrow.hidden + .threads + .page-eyebrow {
+  margin-top: calc(3rem + 6px + .95rem + 22px); } /* align with left specimens */
 
 .specimens { display: flex; flex-direction: column; gap: 18px; }
 .specimen {
@@ -557,6 +558,20 @@ footer .logout:hover { text-decoration: underline; }
   border-bottom: 1px dotted var(--sage);
 }
 .back-link:hover { color: var(--sage-deep); }
+
+/* ---------- threads to follow (satchel right page, playtest 2026-09-28b) ---------- */
+.page-eyebrow.hidden { display: none; }
+.threads { list-style: none; margin: 0 0 6px; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.threads li {
+  position: relative; padding-left: 18px; font-family: var(--serif); font-size: .95rem;
+  line-height: 1.5; color: var(--ink);
+}
+.threads li::before { /* a knotted thread-end, drawn, not a glyph */
+  content: ""; position: absolute; left: 2px; top: .55em; width: 7px; height: 7px; border-radius: 50%;
+  background: var(--amber); box-shadow: 0 0 0 2px rgba(200,160,110,.25);
+}
+/* With threads above it, the story's eyebrow keeps the ordinary rhythm. */
+.threads:not(:empty) + .story-eyebrow { margin-top: 22px; }
 
 /* ---------- dream journal: the story so far (satchel right page) ---------- */
 .collection { display: flex; flex-direction: column; gap: 12px; }
@@ -689,7 +704,8 @@ footer .logout:hover { text-decoration: underline; }
   .book { grid-template-columns: 1fr; }
   .book::before { display: none; }
   .pg, .pg.left, .pg.right { padding: 22px 22px 26px; }
-  .right .page-eyebrow { margin-top: 22px; } /* drop the desktop alignment hack */
+  .right .page-eyebrow, .right .page-eyebrow:first-child,
+  .right .page-eyebrow.hidden + .threads + .page-eyebrow { margin-top: 22px; } /* drop the desktop alignment hack */
   .grid2 { grid-template-columns: 1fr; }
   .back-link { position: static; display: inline-block; margin-top: 18px; }
 }

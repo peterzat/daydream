@@ -360,6 +360,9 @@ def _state_snapshot(
         "time": (village.status(room.world_id)
                  if room is not None and village.time_def(room.world_id) else None),
         "book": collect.book(room.world_id, toon_id) if room is not None else None,
+        # What this player is in the middle of (authored threads), for the
+        # satchel; self only, like the journal.
+        "threads": story.threads_for(toon_id),
         "while_you_slept": dream.note_for(toon_id),
         "last_seq": last_seq,
         # A move's own seq: the lines it caused (a room's enter rule, a beat)
@@ -708,6 +711,15 @@ async def _handle_input(text: str, toon_id: str, conn: dict) -> dict | None:
     # outage is still in the log; the resolution is attached after.
     input_seq = inputs.record(toon_id, "text", text=text)
     room_id = _current_room_id(toon_id)
+    if _WHAT_NOW_RE.match(text):
+        # What you're in the middle of, from the authored threads (playtest
+        # 2026-09-28b: "what should I do now?" got a chatter line).
+        held = story.threads_for(toon_id)
+        lines = ([WHAT_NOW_LEAD] + held) if held else [WHAT_NOW_NONE]
+        for line in lines:
+            events.append("system", None, "narrate", {"text": line},
+                          room_id=room_id, recipient_id=toon_id)
+        return None
     if _HELP_RE.match(text):
         # The guide, not a chatter line (playtest 2026-09-28b). The page opens
         # its own guide; this answers any other client.
@@ -778,6 +790,13 @@ async def _handle_input(text: str, toon_id: str, conn: dict) -> dict | None:
         )
     return None
 
+
+_WHAT_NOW_RE = re.compile(
+    r"(?i)^(what now|what next|now what|hints?|threads|what am i doing|"
+    r"what (should|do|can) i do( now| next| here)?|where (should|do) i go( now| next)?)[?.!]*$")
+WHAT_NOW_LEAD = "You turn over what you're in the middle of:"
+WHAT_NOW_NONE = ("Nothing is tugging at your sleeve just now. Wander, look closely at "
+                 "things, and ask the people you meet about what you see.")
 
 _HELP_RE = re.compile(r"(?i)^(help|\?|how (do i|to) play\??|instructions)$")
 HELP_TEXT = ("The small ? at the foot of the page opens How to Dream. In short: say what "

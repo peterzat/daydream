@@ -2229,5 +2229,43 @@
         }
       ]
     }
+  ],
+  "threads": [
+    {
+      "id": "letters",
+      "text": "Fen's stray letters: {count} of five home so far. Read the front of each, and carry it to whoever it nearly means.",
+      "if": [
+        {
+          "arc": "letters"
+        },
+        {
+          "beat": "letters/fen-strays",
+          "by": "@actor"
+        }
+      ],
+      "count": [
+        {
+          "beat": "letters/bell-letter"
+        },
+        {
+          "beat": "letters/tace-letter"
+        },
+        {
+          "beat": "letters/mott-letter"
+        },
+        {
+          "beat": "letters/umber-letter"
+        },
+        {
+          "beat": "letters/linden-letter"
+        },
+        {
+          "beat": "letters/sorrel-letter"
+        },
+        {
+          "beat": "letters/quill-letter"
+        }
+      ]
+    }
   ]
 }

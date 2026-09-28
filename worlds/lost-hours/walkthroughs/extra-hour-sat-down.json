@@ -149,7 +149,8 @@
             "beats": [
               "extra-hour/bell-shadows"
             ],
-            "narrate_contains": "Two shadows!"
+            "narrate_contains": "Two shadows!",
+            "threads_contains": "Bell would spend an extra hour on the hill bench"
           }
         },
         {
@@ -158,7 +159,8 @@
             "beats": [
               "extra-hour/hear-autumn"
             ],
-            "narrate_contains": "on purpose"
+            "narrate_contains": "on purpose",
+            "threads_contains": "would like, just once, to be spent on purpose"
           }
         },
         {
@@ -190,7 +192,9 @@
             "carrying": [
               "turned-back clock"
             ],
-            "narrate_contains": "Wind it where you mean to spend it"
+            "narrate_contains": "Wind it where you mean to spend it",
+            "threads_contains": "Tace's turned-back clock is in your hands",
+            "threads_lack": "Bell would spend an extra hour"
           }
         }
       ]
@@ -243,7 +247,8 @@
             "beats": [
               "extra-hour/linden-sit"
             ],
-            "narrate_contains": "wasn't anybody's"
+            "narrate_contains": "wasn't anybody's",
+            "threads_contains": "Linden says she might sit down"
           }
         },
         {
@@ -268,7 +273,11 @@
             "narrate_contains": "Stone cold",
             "knows": {
               "t-linden": "extra-hour-sat-down"
-            }
+            },
+            "threads_lack": [
+              "turned-back clock",
+              "spent on purpose"
+            ]
           }
         },
         {

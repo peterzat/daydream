@@ -12,6 +12,10 @@ vocabularies, full cross-reference closure, ZERO writes on any failure.
     "storylets":       [storylet]  see daydream/director.py
     "collectibles":    [{id, name, text, page}]
     "pages":           {id: {title, reward?: {text?, do?}}}
+    "threads":         [{id, text, if?, count?}]  what a player is in the
+                       middle of, listed in their satchel while `if` holds
+                       (evaluated for that player); "{count}" in the text is
+                       how many of the `count` conditions hold (story.threads_for)
 
 and per toon: `voice` (the voice sheet), `schedule`, `schedule_text`,
 `topics`; `room: "offstage"` for a guest who has not arrived yet.
@@ -314,6 +318,36 @@ def validate_story(env: dict, *, known: dict, ks: dict, room_ids: set[str],
         if extra:
             errors.append(f"{where}: unknown field(s) {sorted(extra)}")
 
+    # threads (playtest 2026-09-28b: nothing told a returning player what
+    # they were in the middle of)
+    ths = env.get("threads", [])
+    if not isinstance(ths, list):
+        errors.append("threads must be a list")
+        ths = []
+    seen_threads: set[str] = set()
+    for i, t in enumerate(ths):
+        where = f"threads[{i}]"
+        if not isinstance(t, dict) or not isinstance(t.get("id"), str):
+            errors.append(f"{where}: needs a string id")
+            continue
+        where = f"threads.{t['id']}"
+        if t["id"] in seen_threads:
+            errors.append(f"{where}: duplicate id")
+        seen_threads.add(t["id"])
+        if not isinstance(t.get("text"), str) or not t["text"].strip():
+            errors.append(f"{where}: needs a 'text'")
+        conds(t.get("if"), f"{where}.if")
+        if "count" in t:
+            if not isinstance(t["count"], list) or not t["count"]:
+                errors.append(f"{where}.count must be a non-empty list of conditions")
+            else:
+                conds(t["count"], f"{where}.count")
+        if "{count}" in (t.get("text") or "") and "count" not in t:
+            errors.append(f"{where}: text says {{count}} but there is no 'count'")
+        extra = set(t) - {"id", "text", "if", "count"}
+        if extra:
+            errors.append(f"{where}: unknown field(s) {sorted(extra)}")
+
     # collectibles + pages
     pages = env.get("pages", {})
     if not isinstance(pages, dict):
@@ -450,4 +484,5 @@ STORY_DEF_KEYS = {
     "arcs": "def:arcs", "facts": "def:facts", "storylets": "def:storylets",
     "collectibles": "def:collectibles", "pages": "def:pages", "time": "def:time",
     "player_flags": "def:player_flags", "player_counters": "def:player_counters",
+    "threads": "def:threads",
 }

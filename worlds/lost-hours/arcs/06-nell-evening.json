@@ -510,5 +510,38 @@
         }
       ]
     }
+  ],
+  "threads": [
+    {
+      "id": "nell",
+      "text": "Nell's early evening wants the song they sang while she slept. It went up the chimney in bits: one to the road, one to a kettle, one to a broom.",
+      "if": [
+        {
+          "arc": "nell-evening"
+        },
+        {
+          "beat": "nell-evening/hear-nell",
+          "by": "@actor"
+        }
+      ]
+    },
+    {
+      "id": "nell-bell",
+      "text": "Bell says to ask Sorrel, Linden, and Mott about Nell's song.",
+      "if": [
+        {
+          "arc": "nell-evening"
+        },
+        {
+          "beat": "nell-evening/bell-notices",
+          "by": "@actor"
+        },
+        {
+          "beat": "nell-evening/sorrel-line",
+          "by": "@actor",
+          "not": true
+        }
+      ]
+    }
   ]
 }

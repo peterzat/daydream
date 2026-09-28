@@ -226,5 +226,22 @@
      "summary": "Fen checks on the envelope in the TO ME, LATER pigeonhole",
      "if": [{"ending": "mott-minute/kept-for-later"}],
      "text": "Fen straightens the pigeonhole marked TO ME, LATER, finds the cream envelope still waiting, and gives it a small approving pat."}
+  ],
+  "threads": [
+    {
+      "id": "mott-minute",
+      "text": "Mott is a little afraid to look at his oldest minute. Tace would say look with a loupe; Fen would say some things keep better sealed.",
+      "if": [
+        {
+          "arc": "mott-minute"
+        },
+        {
+          "helped": "mott-minute"
+        },
+        {
+          "beat": "mott-minute/mott-confides"
+        }
+      ]
+    }
   ]
 }

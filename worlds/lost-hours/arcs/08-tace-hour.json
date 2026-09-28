@@ -358,5 +358,102 @@
      "summary": "the little clock ticks on at the foot of Wend's ladder",
      "if": [{"ending": "tace-hour/past-eleven"}],
      "text": "At the foot of Wend's ladder the little clock ticks on, soft and sure. Umber has started setting her own slow pace by it."}
+  ],
+  "threads": [
+    {
+      "id": "tace-frost",
+      "text": "Tace has stopped working since the frost came to the loft window, and gave you a little clock stopped at eleven to keep. Umber keeps a lamp lit on frost mornings.",
+      "if": [
+        {
+          "arc": "tace-hour"
+        },
+        {
+          "helped": "tace-hour"
+        },
+        {
+          "beat": "tace-hour/tace-frost"
+        },
+        {
+          "beat": "tace-hour/umber-frost",
+          "not": true
+        }
+      ]
+    },
+    {
+      "id": "wends-ladder",
+      "text": "Wend's ladder reached the highest shelf in the Hour Cellar, once, and Mott carried it off after the first hard frost.",
+      "if": [
+        {
+          "arc": "tace-hour"
+        },
+        {
+          "helped": "tace-hour"
+        },
+        {
+          "beat": "tace-hour/umber-frost"
+        },
+        {
+          "beat": "tace-hour/mott-ladder",
+          "not": true
+        }
+      ]
+    },
+    {
+      "id": "ladder-song",
+      "text": "Wend never climbed the ladder without singing, and Sorrel remembers the song.",
+      "if": [
+        {
+          "arc": "tace-hour"
+        },
+        {
+          "helped": "tace-hour"
+        },
+        {
+          "beat": "tace-hour/mott-ladder"
+        },
+        {
+          "beat": "tace-hour/sorrel-song",
+          "not": true
+        }
+      ]
+    },
+    {
+      "id": "ladder-home",
+      "text": "Wend's ladder belongs against the highest shelf in the Hour Cellar.",
+      "if": [
+        {
+          "arc": "tace-hour"
+        },
+        {
+          "helped": "tace-hour"
+        },
+        {
+          "beat": "tace-hour/mott-ladder"
+        },
+        {
+          "beat": "tace-hour/ladder-set",
+          "not": true
+        }
+      ]
+    },
+    {
+      "id": "tell-tace",
+      "text": "Wend's ladder is standing in the Hour Cellar again. Tace would want to know.",
+      "if": [
+        {
+          "arc": "tace-hour"
+        },
+        {
+          "helped": "tace-hour"
+        },
+        {
+          "beat": "tace-hour/ladder-set"
+        },
+        {
+          "beat": "tace-hour/tace-told",
+          "not": true
+        }
+      ]
+    }
   ]
 }

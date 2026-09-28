@@ -574,6 +574,36 @@ def match_in_talk(npc: objects.Object, actor_id: str, text: str) -> dict | None:
     return best
 
 
+_NUMBER_WORDS = ("none", "one", "two", "three", "four", "five", "six", "seven", "eight",
+                 "nine", "ten")
+
+
+def threads_for(actor_id: str) -> list[str]:
+    """What this player is in the middle of: the authored `threads` whose
+    conditions hold for them, in authored order, "{count}" filled with how
+    many of the thread's `count` conditions hold (in words up to ten). The
+    satchel lists them and "what now" reads them (playtest 2026-09-28b:
+    nothing told a returning friend what they had been doing)."""
+    actor = objects.get(actor_id)
+    if actor is None:
+        return []
+    defs = worldstate.get(actor.world_id, "def:threads")
+    ctx = _ctx(actor.world_id, actor.id, actor.location_id, None, "threads")
+    out: list[str] = []
+    for t in defs if isinstance(defs, list) else []:
+        if not isinstance(t, dict) or not isinstance(t.get("text"), str):
+            continue
+        if not _conds(t.get("if"), ctx):
+            continue
+        text = t["text"].strip()
+        if "{count}" in text:
+            n = sum(1 for c in t.get("count") or [] if _conds([c], ctx))
+            text = text.replace("{count}", _NUMBER_WORDS[n] if n < len(_NUMBER_WORDS) else str(n))
+        if text and text not in out:
+            out.append(text)
+    return out
+
+
 def asked_topics(world_id: str, npc_id: str, toon_id: str) -> list[str]:
     """The topic labels this player has asked this NPC about (normalized), so
     the page can show them as asked (playtest 2026-09-28b: a long list gave

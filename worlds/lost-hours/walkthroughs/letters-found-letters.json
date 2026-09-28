@@ -164,7 +164,8 @@
             "beats": [
               "letters/fen-strays"
             ],
-            "narrate_contains": "Night of Found Letters"
+            "narrate_contains": "Night of Found Letters",
+            "threads_contains": "Fen's stray letters: none of five home so far"
           }
         },
         {
@@ -263,7 +264,8 @@
               "t-bell": {
                 "gte": 2
               }
-            }
+            },
+            "threads_contains": "Fen's stray letters: one of five home so far"
           }
         }
       ]
@@ -477,7 +479,8 @@
             "arc": {
               "letters": "open"
             },
-            "narrate_contains": "Nor can I, it seems."
+            "narrate_contains": "Nor can I, it seems.",
+            "threads_contains": "Fen's stray letters: four of five home so far"
           }
         }
       ]
@@ -581,7 +584,8 @@
             },
             "knows": {
               "t-bell": "letters-night"
-            }
+            },
+            "threads_lack": "Fen's stray letters"
           }
         },
         {

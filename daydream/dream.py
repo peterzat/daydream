@@ -60,7 +60,7 @@ LATEST_KEY = "dream:latest"
 APPLIED_PREFIX = "dream:applied:"
 MARK_KEY = "dream:last_mark"
 
-_LIST_SECTIONS = ("rooms", "toons", "things", "rules", "storylets", "collectibles")
+_LIST_SECTIONS = ("rooms", "toons", "things", "rules", "storylets", "collectibles", "threads")
 _DICT_SECTIONS = ("arcs", "facts", "pages", "verbs", "fuses", "daemons")
 _NAME_SECTIONS = ("flags", "player_flags", "player_counters")
 _DEF_KEYS = {
@@ -69,7 +69,7 @@ _DEF_KEYS = {
     "config": "config", "voice": "voice", "arcs": "def:arcs", "facts": "def:facts",
     "storylets": "def:storylets", "collectibles": "def:collectibles",
     "pages": "def:pages", "time": "def:time", "player_flags": "def:player_flags",
-    "player_counters": "def:player_counters",
+    "player_counters": "def:player_counters", "threads": "def:threads",
 }
 
 

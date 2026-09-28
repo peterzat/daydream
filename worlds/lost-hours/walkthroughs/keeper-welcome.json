@@ -19,7 +19,9 @@
             "beats": [
               "prologue/read-ledger"
             ],
-            "phase": "stopped"
+            "phase": "stopped",
+            "threads_contains": "rolled away south, toward the old well-court",
+            "threads_lack": "Its repair ledger lies open"
           }
         },
         {
@@ -42,7 +44,8 @@
             ],
             "beats": [
               "prologue/found-gear"
-            ]
+            ],
+            "threads_contains": "You carry the escapement gear"
           }
         },
         {
@@ -83,7 +86,9 @@
             "beats": [
               "prologue/gave-gear"
             ],
-            "narrate_contains": "You carried it all the way home."
+            "narrate_contains": "You carried it all the way home.",
+            "threads_contains": "the clock case in the tower waits to be opened",
+            "threads_lack": "You carry the escapement gear"
           }
         },
         {
@@ -126,7 +131,9 @@
             "narrate_contains": "first slow tick",
             "day": {
               "eq": 1
-            }
+            },
+            "threads_contains": "Ask about the first winding",
+            "threads_lack": "case key"
           }
         },
         {
@@ -199,7 +206,9 @@
             "pflag": {
               "GIVEN-CLOCK": true
             },
-            "narrate_contains": "This one has been waiting for you."
+            "narrate_contains": "This one has been waiting for you.",
+            "threads_contains": "Wind it, by the old custom",
+            "threads_lack": "Ask about the first winding"
           }
         },
         {
@@ -229,7 +238,12 @@
             "pflag": {
               "WOUND": true
             },
-            "narrate_contains": "Now there's an hour here that's yours."
+            "narrate_contains": "Now there's an hour here that's yours.",
+            "threads_contains": [
+              "Bell will want to meet you",
+              "Mott keeps something for every new keeper"
+            ],
+            "threads_lack": "Wind it, by the old custom"
           }
         },
         {
@@ -271,7 +285,8 @@
                 "gte": 1
               }
             },
-            "narrate_contains": "You're Tace's new keeper!"
+            "narrate_contains": "You're Tace's new keeper!",
+            "threads_lack": "Bell will want to meet you"
           }
         },
         {

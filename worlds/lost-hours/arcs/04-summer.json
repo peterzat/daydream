@@ -770,5 +770,37 @@
       "summary": "the warm hollow in the Dusk Road grass where Marram sleeps",
       "text": "Out in the long grass, one hollow stays warm after the rest of the meadow has cooled. The stalk of dune grass beside it whistles one thin note whenever the wind comes, and Marram sleeps on, smelling of salt."
     }
+  ],
+  "threads": [
+    {
+      "id": "summer",
+      "text": "Marram, the summer, has kept only one word of its name, and wants the rest remembered.",
+      "if": [
+        {
+          "arc": "summer"
+        },
+        {
+          "beat": "summer/hear-marram",
+          "by": "@actor"
+        }
+      ]
+    },
+    {
+      "id": "summer-bell",
+      "text": "Bell says Quill will know Marram's grass, down in the garden, and Umber keeps more names than anyone.",
+      "if": [
+        {
+          "arc": "summer"
+        },
+        {
+          "beat": "summer/bell-salt",
+          "by": "@actor"
+        },
+        {
+          "beat": "summer/labeled",
+          "not": true
+        }
+      ]
+    }
   ]
 }

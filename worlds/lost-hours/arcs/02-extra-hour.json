@@ -638,5 +638,83 @@
         "A few fallen leaves blow across the cobbles from nowhere in particular. The Extra Hour gathers them up, one by one, and puts them back in its pockets."
       ]
     }
+  ],
+  "threads": [
+    {
+      "id": "extra-hour",
+      "text": "The Extra Hour would like, just once, to be spent on purpose.",
+      "if": [
+        {
+          "arc": "extra-hour"
+        },
+        {
+          "beat": "extra-hour/hear-autumn",
+          "by": "@actor"
+        }
+      ]
+    },
+    {
+      "id": "extra-hour-bell",
+      "text": "Bell would spend an extra hour on the hill bench, facing east, and says to ask Tace about turning clocks back.",
+      "if": [
+        {
+          "arc": "extra-hour"
+        },
+        {
+          "beat": "extra-hour/bell-shadows",
+          "by": "@actor"
+        },
+        {
+          "beat": "extra-hour/tace-turnback",
+          "not": true
+        }
+      ]
+    },
+    {
+      "id": "turned-back-clock",
+      "text": "Tace's turned-back clock is in your hands: wind it where you mean to spend it, or give it to someone who never sits down.",
+      "if": [
+        {
+          "arc": "extra-hour"
+        },
+        {
+          "carried": "o-extra-hour-clock"
+        }
+      ]
+    },
+    {
+      "id": "clock-on-the-shelf",
+      "text": "The turned-back clock sits on Tace's shelf in the loft again, waiting to be spent on purpose.",
+      "if": [
+        {
+          "arc": "extra-hour"
+        },
+        {
+          "helped": "extra-hour"
+        },
+        {
+          "beat": "extra-hour/tace-turnback"
+        },
+        {
+          "contains": "o-extra-hour-clock",
+          "of": "r-loft"
+        }
+      ]
+    },
+    {
+      "id": "linden-sits",
+      "text": "Linden says she might sit down, if there were ever an hour that wasn't anybody's.",
+      "if": [
+        {
+          "arc": "extra-hour"
+        },
+        {
+          "helped": "extra-hour"
+        },
+        {
+          "beat": "extra-hour/linden-sit"
+        }
+      ]
+    }
   ]
 }

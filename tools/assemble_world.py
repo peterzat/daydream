@@ -26,7 +26,8 @@ Story worlds (SPEC 2026-09-26) split further: part files live under
 `regions/`, `cast/`, `arcs/`, and `minutes/` (merged in that order, files in
 name order) and may carry, beyond rooms/toons/things:
 
-    list sections   rules, storylets, collectibles        appended
+    list sections   rules, storylets, collectibles,       appended
+                    threads
     dict sections   arcs, facts, pages, verbs, fuses,     merged (a key
                     daemons                               defined twice fails)
     name lists      flags, player_flags, player_counters  unioned in order
@@ -94,7 +95,7 @@ def _expand_toon(toon: dict, oracle_toons: dict) -> dict:
 
 
 PART_DIRS = ("regions", "cast", "arcs", "minutes")
-_LIST_SECTIONS = ("rules", "storylets", "collectibles")
+_LIST_SECTIONS = ("rules", "storylets", "collectibles", "threads")
 _DICT_SECTIONS = ("arcs", "facts", "pages", "verbs", "fuses", "daemons")
 _NAME_SECTIONS = ("flags", "player_flags", "player_counters")
 _CAST_KEYS = ("voice", "topics", "schedule", "schedule_text", "drift_pools")

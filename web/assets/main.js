@@ -41,6 +41,7 @@ let toonCards = {}; // id -> this room's toon cards (portraits for a look-closer
 let lastInventory = []; // the latest snapshot's carried things, for the keepsakes backpack foldout
 let inventorySeen = false; // a first snapshot's things are not "new" (nothing to compare)
 let lastJournal = []; // the controlled toon's journal entries from the snapshot (self only)
+let lastThreads = []; // what you're in the middle of (authored threads, self only)
 let journalBeatShown = false; // "previously in your dream" fires once per toon entry
 let bgShownFor = null; // room id whose art the plate currently shows (stale-art veil)
 let wonState = null; // the world's won-moment ({score, rank, text?}) from snapshot status / game_won
@@ -322,6 +323,12 @@ function renderSnapshot(snap) {
     setTimeout(refreshScrollCues, 6100);
   }
   lastJournal = snap.journal || []; // your own story so far (self only)
+  lastThreads = snap.threads || [];
+  // The satchel says how many threads you hold, so it is worth opening
+  // (playtest 2026-09-28b).
+  document.getElementById("backpack-toggle").textContent = "open the satchel" +
+    (lastThreads.length ? ` \u00b7 ${lastThreads.length} thread${lastThreads.length === 1 ? "" : "s"}` : "") +
+    " \u2192";
   // Your Book of Stray Minutes (self only); the link shows once it exists.
   lastBook = snap.book || null;
   document.getElementById("book-toggle").classList.toggle("hidden", !lastBook);
@@ -1730,8 +1737,20 @@ document.getElementById("slept-panel").addEventListener("click", (e) => {
   if (e.target.id === "slept-panel") document.getElementById("slept-panel").classList.add("hidden");
 });
 
+function renderThreads(threads) {
+  const box = document.getElementById("threads");
+  box.innerHTML = "";
+  document.getElementById("threads-eyebrow").classList.toggle("hidden", !threads.length);
+  for (const t of threads) {
+    const li = document.createElement("li");
+    li.textContent = t;
+    box.appendChild(li);
+  }
+}
+
 function openBackpack() {
   renderKeepsakes(lastInventory);
+  renderThreads(lastThreads);
   renderCollection(lastJournal);
   document.getElementById("backpack-panel").classList.remove("hidden");
 }

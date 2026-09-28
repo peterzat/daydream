@@ -4023,6 +4023,545 @@
       ]
     }
   },
+  "threads": [
+    {
+      "id": "stopped-clock",
+      "text": "The great clock in the tower has stopped. Its repair ledger lies open on the lectern beside it.",
+      "if": [
+        {
+          "flag": "CLOCK-STARTED",
+          "not": true
+        },
+        {
+          "beat": "prologue/read-ledger",
+          "not": true
+        }
+      ]
+    },
+    {
+      "id": "the-gear",
+      "text": "The repair ledger says the escapement gear slipped its pin the night of the first hard frost and rolled away south, toward the old well-court.",
+      "if": [
+        {
+          "flag": "CLOCK-STARTED",
+          "not": true
+        },
+        {
+          "beat": "prologue/read-ledger"
+        },
+        {
+          "beat": "prologue/found-gear",
+          "not": true
+        }
+      ]
+    },
+    {
+      "id": "carry-gear",
+      "text": "You carry the escapement gear. Tace, up in the loft, has been waiting for it.",
+      "if": [
+        {
+          "carried": "o-escapement-gear"
+        }
+      ]
+    },
+    {
+      "id": "case-key",
+      "text": "Tace has given up the case key at last: the clock case in the tower waits to be opened.",
+      "if": [
+        {
+          "flag": "CLOCK-STARTED",
+          "not": true
+        },
+        {
+          "beat": "prologue/gave-gear"
+        }
+      ]
+    },
+    {
+      "id": "first-winding",
+      "text": "Up in the Clockmaker's Loft, Tace keeps a small clock for every new keeper. Ask about the first winding.",
+      "if": [
+        {
+          "flag": "CLOCK-STARTED"
+        },
+        {
+          "pflag": "GIVEN-CLOCK",
+          "not": true
+        }
+      ]
+    },
+    {
+      "id": "wind-it",
+      "text": "Tace gave you a small clock of your own. Wind it, by the old custom, when you're ready.",
+      "if": [
+        {
+          "pflag": "GIVEN-CLOCK"
+        },
+        {
+          "pflag": "WOUND",
+          "not": true
+        }
+      ]
+    },
+    {
+      "id": "meet-bell",
+      "text": "Bell will want to meet you, down in the Lantern Square.",
+      "if": [
+        {
+          "pflag": "WOUND"
+        },
+        {
+          "pflag": "MET-BELL",
+          "not": true
+        }
+      ]
+    },
+    {
+      "id": "mott-book",
+      "text": "Mott keeps something for every new keeper, in the Old Workshop north of the square.",
+      "if": [
+        {
+          "pflag": "WOUND"
+        },
+        {
+          "pflag": "MET-BOOK",
+          "not": true
+        }
+      ]
+    },
+    {
+      "id": "pim",
+      "text": "Pim's Nap is too wound up to sleep: a birthday nap that wants the old-fashioned kind of quiet.",
+      "if": [
+        {
+          "arc": "pim"
+        },
+        {
+          "beat": "pim/hear-pim",
+          "by": "@actor"
+        }
+      ]
+    },
+    {
+      "id": "pim-helpers",
+      "text": "Bell says Mott keeps a hush in his tin, and Tace could tell you about lullaby clocks.",
+      "if": [
+        {
+          "arc": "pim"
+        },
+        {
+          "beat": "pim/bell-notices",
+          "by": "@actor"
+        },
+        {
+          "beat": "pim/hushed",
+          "not": true
+        }
+      ]
+    },
+    {
+      "id": "extra-hour",
+      "text": "The Extra Hour would like, just once, to be spent on purpose.",
+      "if": [
+        {
+          "arc": "extra-hour"
+        },
+        {
+          "beat": "extra-hour/hear-autumn",
+          "by": "@actor"
+        }
+      ]
+    },
+    {
+      "id": "extra-hour-bell",
+      "text": "Bell would spend an extra hour on the hill bench, facing east, and says to ask Tace about turning clocks back.",
+      "if": [
+        {
+          "arc": "extra-hour"
+        },
+        {
+          "beat": "extra-hour/bell-shadows",
+          "by": "@actor"
+        },
+        {
+          "beat": "extra-hour/tace-turnback",
+          "not": true
+        }
+      ]
+    },
+    {
+      "id": "turned-back-clock",
+      "text": "Tace's turned-back clock is in your hands: wind it where you mean to spend it, or give it to someone who never sits down.",
+      "if": [
+        {
+          "arc": "extra-hour"
+        },
+        {
+          "carried": "o-extra-hour-clock"
+        }
+      ]
+    },
+    {
+      "id": "clock-on-the-shelf",
+      "text": "The turned-back clock sits on Tace's shelf in the loft again, waiting to be spent on purpose.",
+      "if": [
+        {
+          "arc": "extra-hour"
+        },
+        {
+          "helped": "extra-hour"
+        },
+        {
+          "beat": "extra-hour/tace-turnback"
+        },
+        {
+          "contains": "o-extra-hour-clock",
+          "of": "r-loft"
+        }
+      ]
+    },
+    {
+      "id": "linden-sits",
+      "text": "Linden says she might sit down, if there were ever an hour that wasn't anybody's.",
+      "if": [
+        {
+          "arc": "extra-hour"
+        },
+        {
+          "helped": "extra-hour"
+        },
+        {
+          "beat": "extra-hour/linden-sit"
+        }
+      ]
+    },
+    {
+      "id": "rain-wait",
+      "text": "The Rain-Wait wants the end of its lighthouse story. The stranger said they'd write it down.",
+      "if": [
+        {
+          "arc": "rain-wait"
+        },
+        {
+          "beat": "rain-wait/hear-beginning",
+          "by": "@actor"
+        }
+      ]
+    },
+    {
+      "id": "rain-wait-bell",
+      "text": "Bell says Fen keeps the letters nobody posted, and Sorrel can finish anything, given enough sky.",
+      "if": [
+        {
+          "arc": "rain-wait"
+        },
+        {
+          "beat": "rain-wait/bell-rain",
+          "by": "@actor"
+        }
+      ]
+    },
+    {
+      "id": "summer",
+      "text": "Marram, the summer, has kept only one word of its name, and wants the rest remembered.",
+      "if": [
+        {
+          "arc": "summer"
+        },
+        {
+          "beat": "summer/hear-marram",
+          "by": "@actor"
+        }
+      ]
+    },
+    {
+      "id": "summer-bell",
+      "text": "Bell says Quill will know Marram's grass, down in the garden, and Umber keeps more names than anyone.",
+      "if": [
+        {
+          "arc": "summer"
+        },
+        {
+          "beat": "summer/bell-salt",
+          "by": "@actor"
+        },
+        {
+          "beat": "summer/labeled",
+          "not": true
+        }
+      ]
+    },
+    {
+      "id": "margin",
+      "text": "The Margin Afternoon's best drawing, a little garden, has an empty middle, and it wants it finished.",
+      "if": [
+        {
+          "arc": "margin"
+        },
+        {
+          "beat": "margin/bell-startles",
+          "by": "@actor"
+        }
+      ]
+    },
+    {
+      "id": "margin-bell",
+      "text": "Bell says Fen has pencils, and those doodles look like Quill's garden.",
+      "if": [
+        {
+          "arc": "margin"
+        },
+        {
+          "beat": "margin/bell-startles",
+          "by": "@actor"
+        },
+        {
+          "beat": "margin/drawn",
+          "not": true
+        }
+      ]
+    },
+    {
+      "id": "margin-drawing",
+      "text": "You're keeping the Margin Afternoon's drawing a while: a garden of pendulums around an empty middle.",
+      "if": [
+        {
+          "arc": "margin"
+        },
+        {
+          "carried": "o-margin-drawing"
+        }
+      ]
+    },
+    {
+      "id": "nell",
+      "text": "Nell's early evening wants the song they sang while she slept. It went up the chimney in bits: one to the road, one to a kettle, one to a broom.",
+      "if": [
+        {
+          "arc": "nell-evening"
+        },
+        {
+          "beat": "nell-evening/hear-nell",
+          "by": "@actor"
+        }
+      ]
+    },
+    {
+      "id": "nell-bell",
+      "text": "Bell says to ask Sorrel, Linden, and Mott about Nell's song.",
+      "if": [
+        {
+          "arc": "nell-evening"
+        },
+        {
+          "beat": "nell-evening/bell-notices",
+          "by": "@actor"
+        },
+        {
+          "beat": "nell-evening/sorrel-line",
+          "by": "@actor",
+          "not": true
+        }
+      ]
+    },
+    {
+      "id": "letters",
+      "text": "Fen's stray letters: {count} of five home so far. Read the front of each, and carry it to whoever it nearly means.",
+      "if": [
+        {
+          "arc": "letters"
+        },
+        {
+          "beat": "letters/fen-strays",
+          "by": "@actor"
+        }
+      ],
+      "count": [
+        {
+          "beat": "letters/bell-letter"
+        },
+        {
+          "beat": "letters/tace-letter"
+        },
+        {
+          "beat": "letters/mott-letter"
+        },
+        {
+          "beat": "letters/umber-letter"
+        },
+        {
+          "beat": "letters/linden-letter"
+        },
+        {
+          "beat": "letters/sorrel-letter"
+        },
+        {
+          "beat": "letters/quill-letter"
+        }
+      ]
+    },
+    {
+      "id": "tace-frost",
+      "text": "Tace has stopped working since the frost came to the loft window, and gave you a little clock stopped at eleven to keep. Umber keeps a lamp lit on frost mornings.",
+      "if": [
+        {
+          "arc": "tace-hour"
+        },
+        {
+          "helped": "tace-hour"
+        },
+        {
+          "beat": "tace-hour/tace-frost"
+        },
+        {
+          "beat": "tace-hour/umber-frost",
+          "not": true
+        }
+      ]
+    },
+    {
+      "id": "wends-ladder",
+      "text": "Wend's ladder reached the highest shelf in the Hour Cellar, once, and Mott carried it off after the first hard frost.",
+      "if": [
+        {
+          "arc": "tace-hour"
+        },
+        {
+          "helped": "tace-hour"
+        },
+        {
+          "beat": "tace-hour/umber-frost"
+        },
+        {
+          "beat": "tace-hour/mott-ladder",
+          "not": true
+        }
+      ]
+    },
+    {
+      "id": "ladder-song",
+      "text": "Wend never climbed the ladder without singing, and Sorrel remembers the song.",
+      "if": [
+        {
+          "arc": "tace-hour"
+        },
+        {
+          "helped": "tace-hour"
+        },
+        {
+          "beat": "tace-hour/mott-ladder"
+        },
+        {
+          "beat": "tace-hour/sorrel-song",
+          "not": true
+        }
+      ]
+    },
+    {
+      "id": "ladder-home",
+      "text": "Wend's ladder belongs against the highest shelf in the Hour Cellar.",
+      "if": [
+        {
+          "arc": "tace-hour"
+        },
+        {
+          "helped": "tace-hour"
+        },
+        {
+          "beat": "tace-hour/mott-ladder"
+        },
+        {
+          "beat": "tace-hour/ladder-set",
+          "not": true
+        }
+      ]
+    },
+    {
+      "id": "tell-tace",
+      "text": "Wend's ladder is standing in the Hour Cellar again. Tace would want to know.",
+      "if": [
+        {
+          "arc": "tace-hour"
+        },
+        {
+          "helped": "tace-hour"
+        },
+        {
+          "beat": "tace-hour/ladder-set"
+        },
+        {
+          "beat": "tace-hour/tace-told",
+          "not": true
+        }
+      ]
+    },
+    {
+      "id": "bell-dawn",
+      "text": "Bell has never seen a dawn. They'd need company and something of Linden's, hot and strong, or a sunrise they could light at dusk.",
+      "if": [
+        {
+          "arc": "bell-dawn"
+        },
+        {
+          "helped": "bell-dawn"
+        },
+        {
+          "beat": "bell-dawn/bell-confides"
+        }
+      ]
+    },
+    {
+      "id": "night-tea",
+      "text": "Linden's night tea: wake Bell in the Lamp House at night, and put it in their hands.",
+      "if": [
+        {
+          "arc": "bell-dawn"
+        },
+        {
+          "beat": "bell-dawn/linden-flask",
+          "by": "@actor"
+        },
+        {
+          "beat": "bell-dawn/bell-woken",
+          "not": true
+        }
+      ]
+    },
+    {
+      "id": "sunrise-lantern",
+      "text": "Tace will make a sunrise lantern, given one of Bell's spare lantern-skins from the Lamp House.",
+      "if": [
+        {
+          "arc": "bell-dawn"
+        },
+        {
+          "helped": "bell-dawn"
+        },
+        {
+          "beat": "bell-dawn/tace-sunburst"
+        },
+        {
+          "beat": "bell-dawn/sunrise-made",
+          "not": true
+        }
+      ]
+    },
+    {
+      "id": "mott-minute",
+      "text": "Mott is a little afraid to look at his oldest minute. Tace would say look with a loupe; Fen would say some things keep better sealed.",
+      "if": [
+        {
+          "arc": "mott-minute"
+        },
+        {
+          "helped": "mott-minute"
+        },
+        {
+          "beat": "mott-minute/mott-confides"
+        }
+      ]
+    }
+  ],
   "arcs": {
     "prologue": {
       "title": "The Stopped Clock",

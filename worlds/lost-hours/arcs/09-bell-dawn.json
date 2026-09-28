@@ -292,5 +292,58 @@
        "Last of all, Bell lights the sunrise lantern on the easternmost pole, and for a while the whole square glows rose and gold, like a morning that came early to visit.",
        "Bell saves the sunrise lantern for last, as always. It catches, the cobbles go the color of a dawn, and Bell stands under it humming."
      ]}
+  ],
+  "threads": [
+    {
+      "id": "bell-dawn",
+      "text": "Bell has never seen a dawn. They'd need company and something of Linden's, hot and strong, or a sunrise they could light at dusk.",
+      "if": [
+        {
+          "arc": "bell-dawn"
+        },
+        {
+          "helped": "bell-dawn"
+        },
+        {
+          "beat": "bell-dawn/bell-confides"
+        }
+      ]
+    },
+    {
+      "id": "night-tea",
+      "text": "Linden's night tea: wake Bell in the Lamp House at night, and put it in their hands.",
+      "if": [
+        {
+          "arc": "bell-dawn"
+        },
+        {
+          "beat": "bell-dawn/linden-flask",
+          "by": "@actor"
+        },
+        {
+          "beat": "bell-dawn/bell-woken",
+          "not": true
+        }
+      ]
+    },
+    {
+      "id": "sunrise-lantern",
+      "text": "Tace will make a sunrise lantern, given one of Bell's spare lantern-skins from the Lamp House.",
+      "if": [
+        {
+          "arc": "bell-dawn"
+        },
+        {
+          "helped": "bell-dawn"
+        },
+        {
+          "beat": "bell-dawn/tace-sunburst"
+        },
+        {
+          "beat": "bell-dawn/sunrise-made",
+          "not": true
+        }
+      ]
+    }
   ]
 }

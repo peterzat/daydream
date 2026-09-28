@@ -671,5 +671,37 @@
         }
       ]
     }
+  ],
+  "threads": [
+    {
+      "id": "pim",
+      "text": "Pim's Nap is too wound up to sleep: a birthday nap that wants the old-fashioned kind of quiet.",
+      "if": [
+        {
+          "arc": "pim"
+        },
+        {
+          "beat": "pim/hear-pim",
+          "by": "@actor"
+        }
+      ]
+    },
+    {
+      "id": "pim-helpers",
+      "text": "Bell says Mott keeps a hush in his tin, and Tace could tell you about lullaby clocks.",
+      "if": [
+        {
+          "arc": "pim"
+        },
+        {
+          "beat": "pim/bell-notices",
+          "by": "@actor"
+        },
+        {
+          "beat": "pim/hushed",
+          "not": true
+        }
+      ]
+    }
   ]
 }

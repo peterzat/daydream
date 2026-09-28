@@ -34,7 +34,9 @@ recorded session replays with its original timing.
     pflag {NAME: bool}, arc {id: status}, ending {arc: ending},
     beats [arc/beat], rel {npc: {op: n}}, collected {op: n},
     phase, day {op: n}, knows {npc: fact}, located {object: room|null},
-    narrate_contains str | [str], narrate_lacks str | [str], chronicle_contains str
+    narrate_contains str | [str], narrate_lacks str | [str], chronicle_contains str,
+    threads_contains str | [str], threads_lack str | [str]  (the player's
+    threads, joined: story.threads_for)
 """
 
 from __future__ import annotations
@@ -244,6 +246,16 @@ def check(run: Run, expect: dict, who: str, said: str, label: str) -> None:
         text = " ".join(e.get("text", "") for e in story.chronicle(world_id))
         if expect["chronicle_contains"] not in text:
             fail(f"chronicle lacks {expect['chronicle_contains']!r}")
+    if "threads_contains" in expect or "threads_lack" in expect:
+        held = " | ".join(story.threads_for(actor))
+        wants = expect.get("threads_contains", [])
+        for w in [wants] if isinstance(wants, str) else wants:
+            if w not in held:
+                fail(f"threads lack {w!r}: {held[:400]!r}")
+        lacks = expect.get("threads_lack", [])
+        for w in [lacks] if isinstance(lacks, str) else lacks:
+            if w in held:
+                fail(f"threads hold {w!r}")
 
 
 async def replay(dataset: dict, *, on_live_copy: bool = False) -> Run:
