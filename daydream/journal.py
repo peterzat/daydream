@@ -43,8 +43,14 @@ JOURNAL_TEMPERATURE = 0.5
 MAX_ENTRIES = 10
 SNAPSHOT_ENTRIES = 8
 
-# How many of the toon's own most-recent events feed one recap.
-RECAP_EVENT_WINDOW = 30
+# How many of the toon's own most-recent events are read for one recap, and
+# how many lines of them the prompt carries. A session's big moments come
+# early (the first winding), so the window is wide and the trim keeps the
+# lines that carry story (playtest 2026-09-28b: the newest 30 events were
+# the walk home, and the entry missed the session).
+RECAP_EVENT_WINDOW = 150
+RECAP_MAX_LINES = 48
+RECAP_LINE_CHARS = 260
 
 # Validation window for the LLM's entry (2-3 soft sentences).
 MIN_ENTRY_CHARS = 60
@@ -63,6 +69,10 @@ JOURNAL_SYSTEM = (
     "character did into \"you\".\n"
     "- Tone: gentle, warm, a little wistful. Spiritfarer, A Short Hike. No "
     "urgency, no modern tech, no violence, no judgment.\n"
+    "- Lines marked * carried the story (what the dreamer did, said, was "
+    "given, or found): the entry keeps them before the rest.\n"
+    "- Name a time of day (dawn, dusk, night) only if an event says it "
+    "happened then; the time the dream was dreamt is given, use it.\n"
     "- 60-500 characters total.\n"
     "If the events are too thin to recall anything, refuse with "
     '{"refused": true, "reason": "<one soft in-character sentence>"}.\n'
@@ -119,7 +129,7 @@ async def _write_entry_inner(toon_id: str) -> None:
     try:
         result = await client.acompletion_json(
             system=JOURNAL_SYSTEM,
-            user=_user_prompt(toon.name, lines),
+            user=_user_prompt(toon.name, lines, when=_when(toon.world_id)),
             temperature=JOURNAL_TEMPERATURE,
             max_tokens=220,
             timeout=20.0,
@@ -168,33 +178,63 @@ def _append(toon_id: str, entry: dict) -> None:
 
 def _event_lines(recent: list[events.Event], toon_id: str) -> list[str]:
     """Compact text lines for the recap prompt. Only kinds that carry
-    player-meaningful text; ids never appear (names/text only)."""
-    lines: list[str] = []
-    for e in recent:
+    player-meaningful text; ids never appear (names/text only). Lines that
+    carry story are marked * and survive the trim to RECAP_MAX_LINES first;
+    the rest keep the newest. Oldest first either way."""
+    scored: list[tuple[int, int, str]] = []  # (weight, order, line)
+    for i, e in enumerate(recent):
         p = e.payload
+        text = (p.get("text") or "").strip()[:RECAP_LINE_CHARS]
         if e.kind == "say":
             who = "you" if e.actor_id == toon_id else (p.get("name") or "someone")
-            text = (p.get("text") or "").strip()
+            to = f" to {p['to']}" if isinstance(p.get("to"), str) and p.get("to") else ""
             if text:
-                lines.append(f'{who} said: "{text}"')
+                scored.append((2, i, f'* {who} said{to}: "{text}"'))
+        elif e.kind == "echo" and e.actor_id == toon_id:
+            if text:
+                scored.append((2, i, "* " + text[:1].lower() + text[1:]))
         elif e.kind == "narrate":
-            text = (p.get("text") or "").strip()
             if text:
                 # Frame narration as WITNESSED: the room's prose describes
                 # other characters' deeds, and without this frame the 7B
                 # folds a named character's actions into "you" (journal
                 # probe, 2026-07-07 — the a-quiet-sweep misattribution).
-                lines.append(f"you saw: {text}")
+                # A line addressed to the dreamer with someone's words in it,
+                # or one that is theirs to keep, carried the story.
+                told = e.recipient_id == toon_id and (
+                    "'" in text or "\u201c" in text or text.startswith("You "))
+                scored.append((1 if told else 0, i, ("* " if told else "") + f"you saw: {text}"))
         elif e.kind == "move" and e.actor_id == toon_id:
             direction = p.get("direction")
             if isinstance(direction, str) and direction:
-                lines.append(f"you went {direction}")
-    return lines
+                scored.append((0, i, f"you went {direction}"))
+    if len(scored) > RECAP_MAX_LINES:
+        keep = sorted(scored, key=lambda t: (-t[0], -t[1]))[:RECAP_MAX_LINES]
+        scored = sorted(keep, key=lambda t: t[1])
+    return [line for _w, _i, line in scored]
 
 
-def _user_prompt(toon_name: str, lines: list[str]) -> str:
+def _when(world_id: str) -> str | None:
+    """The village's time of day as the dreamer left, for the entry (a
+    recap once said dusk at noon, playtest 2026-09-28b). None for a world
+    that keeps no time."""
+    from daydream import village
+
+    try:
+        if not village.time_def(world_id):
+            return None
+        st = village.status(world_id)
+    except Exception:
+        return None
+    if not st.get("running"):
+        return None
+    return f"{st.get('label') or st.get('phase')}, on the village's day {st.get('day')}"
+
+
+def _user_prompt(toon_name: str, lines: list[str], when: str | None = None) -> str:
     body = "\n".join(f"- {ln}" for ln in lines)
+    time_line = f"It was {when} while they dreamt.\n" if when else ""
     return (
-        f"The dreamer is called {toon_name}. What happened in their dream, "
+        f"The dreamer is called {toon_name}. {time_line}What happened in their dream, "
         f"oldest first:\n{body}\n\nWrite the JSON entry now."
     )

@@ -241,3 +241,23 @@ def test_snapshot_journal_is_self_only(tmp_path, monkeypatch):
         assert "journal" not in card  # never on toon cards
     text = str(snap)
     assert "rook's secret" not in text
+
+
+def test_a_long_session_keeps_its_story_lines_and_the_time_of_day():
+    """Playtest 2026-09-28b: the recap read only the newest 30 events (the walk
+    home) and said dusk at noon. The story-carrying lines survive the trim,
+    oldest first, and the prompt carries the time the dream was dreamt."""
+    from daydream.events import Event
+
+    def ev(seq, kind, payload, recipient=None, actor=None):
+        return Event(seq, "", "system", actor, kind, payload, "r-x", recipient)
+
+    recent = [ev(1, "narrate", {"text": "You turn the little key. 'There,' they say."}, "t-me")]
+    recent += [ev(i, "move", {"direction": "east"}, actor="t-me") for i in range(2, 80)]
+    recent += [ev(80, "echo", {"text": "You ask Hob about the lamps."}, "t-me", actor="t-me")]
+    lines = journal._event_lines(recent, "t-me")
+    assert len(lines) == journal.RECAP_MAX_LINES
+    assert lines[0].startswith("* you saw: You turn the little key")
+    assert lines[-1] == "* you ask Hob about the lamps."
+    prompt = journal._user_prompt("Ada", lines, when="daylight, on the village's day 3")
+    assert "It was daylight, on the village's day 3 while they dreamt." in prompt
