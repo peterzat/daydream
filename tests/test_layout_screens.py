@@ -23,6 +23,7 @@ that reason until then."""
 from __future__ import annotations
 
 import os
+import re
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -37,7 +38,7 @@ pytestmark = pytest.mark.tier_medium
 
 ROOT = Path(__file__).resolve().parent.parent
 FOOT_CLEARANCE = 8  # px between the leaf's foot and the window's bottom edge
-WEBKIT_DEPS = "sudo .venv/bin/python -m playwright install-deps webkit"
+INSTALL_DEPS = "sudo .venv/bin/python -m playwright install-deps"
 
 
 @dataclass(frozen=True)
@@ -47,6 +48,11 @@ class Screen:
     width: int
     height: int  # the area a page gets, the browser's own bars excluded
     touch: bool = False
+
+    @property
+    def mobile(self) -> bool:
+        """Emulated as a mobile browser (Playwright's Firefox has no is_mobile)."""
+        return self.touch and self.engine != "firefox"
 
 
 SCREENS = [
@@ -86,9 +92,13 @@ def engines():
         try:
             launched[name] = getattr(pw, name).launch()
         except Exception as e:
-            first = (str(e).strip().splitlines() or [""])[0]
-            hint = f"; once: {WEBKIT_DEPS}" if name == "webkit" else ""
-            launched[name] = f"{name} cannot run here ({first[:120]}){hint}"
+            # The message opens with a bare "BrowserType.launch:" line and
+            # draws its cause in a box: keep the words.
+            why = " ".join(re.sub(r"[\u2500-\u257f]", " ", str(e)).split())
+            why = why.removeprefix("BrowserType.launch:").strip()
+            missing = re.search(r"missing (dependencies|libraries)", why, re.I)
+            hint = f"; once: {INSTALL_DEPS} {name}" if missing else ""
+            launched[name] = f"{name} cannot run here ({why[:160]}){hint}"
     yield launched
     for b in launched.values():
         if not isinstance(b, str):
@@ -112,9 +122,22 @@ def _scrolls_sideways(page) -> bool:
     }""")
 
 
+AT_END = "() => window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 1"
+
+
 def _at_the_end(page) -> dict:
-    """Measure with the page scrolled as far down as it goes."""
-    page.evaluate("() => window.scrollTo(0, document.documentElement.scrollHeight)")
+    """Measure with the page scrolled as far down as a person can take it: by
+    the mouse wheel, since a script can scroll even an overflow: hidden page."""
+    page.mouse.move(2, page.viewport_size["height"] // 2)
+    for _ in range(12):
+        if page.evaluate(AT_END):
+            break
+        y = page.evaluate("() => window.scrollY")
+        page.mouse.wheel(0, 600)
+        try:
+            page.wait_for_function(f"() => window.scrollY !== {y}", timeout=300)
+        except sync_api.TimeoutError:
+            break  # the wheel moves nothing here
     m = page.evaluate(MEASURE)
     page.evaluate("() => window.scrollTo(0, 0)")
     return m
@@ -124,7 +147,13 @@ def _fits(page, screen: Screen, stop: str) -> None:
     """The layout rules, checked where the page stands now."""
     m = page.evaluate(MEASURE)
     where = f"{screen.name} at {stop}: {m}"
-    assert not _scrolls_sideways(page), "the page scrolls sideways; " + where
+    if screen.mobile:
+        # A mobile browser widens its layout viewport to fit wider content
+        # instead of scrolling it, so hold the page to the screen's width.
+        assert m["vw"] == screen.width and m["sw"] <= screen.width + 1, (
+            "the page is wider than the screen; " + where)
+    else:
+        assert not _scrolls_sideways(page), "the page scrolls sideways; " + where
     if m["footer"] is None:
         # The front door: its whole form can be reached, however short the window.
         end = _at_the_end(page)
@@ -160,8 +189,8 @@ def test_the_page_fits_the_screen(screen: Screen, engines, live_server):
             "viewport": {"width": screen.width, "height": screen.height}}
     if screen.touch:
         opts["has_touch"] = True
-        if screen.engine != "firefox":
-            opts["is_mobile"] = True
+    if screen.mobile:
+        opts["is_mobile"] = True
     context = browser.new_context(**opts)
     context.set_default_timeout(10_000)
     page = context.new_page()
@@ -195,15 +224,21 @@ def test_the_shell_uses_the_visible_height_and_keeps_clear_of_the_home_indicator
     """What emulation cannot reproduce, held statically: iOS Safari's 100vh
     counts the space behind its own bars, so the shell sizes by dvh (with vh
     as the fallback) and keeps the safe-area inset under its foot, and the
-    page asks for the inset with viewport-fit=cover."""
+    page asks for the inset with viewport-fit=cover. The dvh heights sit in
+    @supports: env() in the declaration lets it parse where dvh is unknown,
+    and it then computes to height: auto (codereview 2026-09-28c)."""
     css = (ROOT / "web/assets/style.css").read_text()
     html = (ROOT / "web/index.html").read_text()
     assert "viewport-fit=cover" in html
     shell = css[css.index("@media (min-width: 641px) {"):]
-    for rule in ("height: calc(100dvh - 24px - env(safe-area-inset-bottom, 0px));",
-                 "height: calc(100dvh - 16px - env(safe-area-inset-bottom, 0px));",
+    for rule in ("height: calc(100vh - 24px);", "height: calc(100vh - 16px);",
                  "margin: 12px auto calc(12px + env(safe-area-inset-bottom, 0px));",
                  "margin: 8px auto calc(8px + env(safe-area-inset-bottom, 0px));"):
         assert rule in shell, rule
+    guarded = re.findall(
+        r"@supports \(height: 100dvh\) \{\s*#app\.page \{ (height: [^;]+;) \}\s*\}", shell)
+    assert guarded == ["height: calc(100dvh - 24px - env(safe-area-inset-bottom, 0px));",
+                       "height: calc(100dvh - 16px - env(safe-area-inset-bottom, 0px));"], guarded
+    assert css.count("calc(100dvh") == 2, "a dvh height outside @supports"
     phone = css[css.index("@media (max-width: 640px) {"):]
     assert "calc(24px + env(safe-area-inset-bottom, 0px))" in phone

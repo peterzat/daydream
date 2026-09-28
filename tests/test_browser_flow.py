@@ -321,7 +321,7 @@ def test_leaving_the_dream_wakes_on_a_page_with_the_way_back(tab, engines):
     expect(page.locator("#awake")).to_be_visible()
     expect(page.locator("#room-title")).to_have_text("awake")
     expect(page.locator("#awake-text")).to_contain_text("Marlo is resting in the village")
-    for gone in ("#input-form", "#scene", "#verb-bar", "#exit-bar", "#leave-dream",
+    for gone in ("#input-form", "#scene", ".ribbon-wrap", "#exit-bar", "#leave-dream",
                  "#slots-panel"):
         expect(page.locator(gone)).to_be_hidden()
 
@@ -329,6 +329,54 @@ def test_leaving_the_dream_wakes_on_a_page_with_the_way_back(tab, engines):
     _in_the_start_room(page, "Marlo")
     expect(page.locator("#awake")).to_be_hidden()
     expect(page.locator("#input-form")).to_be_visible()
+    _assert_quiet(tab, engines)
+
+
+def test_a_lapsed_session_steps_back_in_at_the_door(tab, engines):
+    """Awake, every failure went to the hidden log, so "step back in" with a
+    lapsed session did nothing (codereview 2026-09-28c). It goes to the door."""
+    page = _signed_in_with_a_dreamer(tab)
+    page.locator("#leave-dream").click()
+    expect(page.locator("#awake-text")).to_contain_text("Marlo is resting in the village")
+    page.context.clear_cookies()
+    page.locator("#awake-return").click()
+    expect(page.locator("#login-form")).to_be_visible()
+    _assert_quiet(tab, engines)
+
+
+def test_an_unreachable_village_is_not_read_as_no_dreamer(tab, engines):
+    """A failed read of your dreamer offered to make one (codereview
+    2026-09-28c). The leaf says the village could not be reached, the note
+    says why (here, asleep), and the button tries again."""
+    page = _signed_in_with_a_dreamer(tab)
+    asleep = json.dumps({"asleep": True, "note": "Back at first light."})
+    page.route("**/api/dreamer", lambda route: route.fulfill(
+        status=503, content_type="application/json", body=asleep))
+    page.locator("#leave-dream").click()
+    expect(page.locator("#awake-text")).to_have_text("The village could not be reached just now.")
+    expect(page.locator("#awake-note")).to_contain_text("The village is asleep. Back at first light.")
+    page.unroute("**/api/dreamer")
+    expect(page.locator("#awake-return")).to_have_text("try again")
+    page.locator("#awake-return").click()
+    expect(page.locator("#awake-text")).to_contain_text("Marlo is resting in the village")
+    expect(page.locator("#awake-return")).to_have_text("step back in")
+    expect(page.locator("#awake-note")).to_be_hidden()
+    _assert_quiet(tab, engines)
+
+
+def test_letting_your_dreamer_go_while_awake_offers_a_new_one(tab, engines):
+    """Letting your only dreamer go while awake left the leaf saying it was
+    resting, with a "step back in" that claimed an empty slot (codereview
+    2026-09-28c). The leaf now offers to make a new one."""
+    page = _signed_in_with_a_dreamer(tab)
+    page.locator("#leave-dream").click()
+    expect(page.locator("#awake-text")).to_contain_text("Marlo is resting in the village")
+    page.locator("#awake-dreamer").click()
+    page.locator("#slots-list .slot-delete").click()
+    page.locator("#delete-yes").click()
+    expect(page.locator("#awake-return")).to_have_text("make your dreamer")
+    expect(page.locator("#awake-text")).to_contain_text("Make your dreamer")
+    expect(page.locator("#dreamer-form")).to_be_visible()
     _assert_quiet(tab, engines)
 
 
@@ -364,6 +412,34 @@ def test_an_answer_rests_on_a_paragraph_top_and_the_columns_show_more(tab, engin
         else:
             assert abs(r["lastTop"]) < 2, r  # a long answer opens at its first line
     assert scrolled, "three answers never needed the column to scroll; the test proves nothing"
+    _assert_quiet(tab, engines)
+
+
+LONG_ANSWER = " ".join(["The clock ticks softly, and dust settles on its gears like snow."] * 30)
+
+
+def test_a_reader_inside_a_long_answer_keeps_their_place(tab, engines):
+    """A line soon after you acted pulled a reader who had scrolled down inside
+    a long answer back to its first line (codereview 2026-09-28c). The answer
+    still opens at its first line; after that the reader's place holds."""
+    page = tab.page
+    page.set_viewport_size({"width": 1280, "height": 650})
+    _signed_in_with_a_dreamer(tab)
+    page.wait_for_timeout(100)  # the arrival's settle has run
+    page.evaluate("() => youActed()")
+    page.evaluate("(t) => renderEvent({seq: 900000, kind: 'narrate', payload: {text: t}})",
+                  LONG_ANSWER)
+    page.wait_for_timeout(100)
+    opened = page.evaluate(READING)
+    assert opened["lastBottom"] - opened["lastTop"] > opened["height"], opened
+    assert abs(opened["lastTop"]) < 2, opened  # it opens at its first line
+    page.evaluate("() => { document.querySelector('.prose').scrollTop += 250; }")
+    reading = page.evaluate(READING)["scrollTop"]
+    assert reading > opened["scrollTop"] + 200, (reading, opened)
+    page.evaluate("() => renderEvent({seq: 900001, kind: 'say', actor_id: 't-someone',"
+                  " payload: {name: 'Someone', text: 'hello'}})")
+    page.wait_for_timeout(100)
+    assert page.evaluate(READING)["scrollTop"] >= reading - 1  # no pull backward
     _assert_quiet(tab, engines)
 
 

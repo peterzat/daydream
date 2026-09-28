@@ -398,7 +398,7 @@ async def execute(
             system=system, user=prompt, purpose="dialogue"
         )
     except llm_client.LLMUnavailable as e:
-        logger.warning("skill %r LLM unavailable: %s", spec.name, e)
+        logger.warning("skill %r LLM unavailable: %s", spec.name, type(e).__name__)
         _emit_narrate(_FOGGY_FALLBACK_TEXT, room_id)
         return
     logger.debug("skill %r response: %s", spec.name, response)

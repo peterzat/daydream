@@ -21,9 +21,10 @@ with its time, each journal entry written or skipped, and any session that
 ended on an error, with its traceback. They name accounts and dreamers, never
 a password, an invitation link or what anyone typed (that stays in the
 world's private input log). `DAYDREAM_LOG_LEVEL=WARNING` in prod.env quiets
-everything but trouble. To see what a friend actually did (their input
-log, the events around them), `bin/game prod pull` brings a fresh backup into
-dev ([backups.md](backups.md)); never open the live file.
+the app's own lines (uvicorn's WebSocket lines follow its --log-level). To see
+what a friend actually did (their input log, the events around them),
+`bin/game prod pull` brings a fresh backup into dev ([backups.md](backups.md));
+never open the live file.
 
 ## Symptoms and causes
 

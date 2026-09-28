@@ -1134,6 +1134,10 @@ function revealRange(first, last, sc) {
       const t = offsetIn(p, sc, "top");
       if (t >= bottom - viewH - 1) { target = Math.min(t, top); break; }
     }
+  } else {
+    // Taller than the view: it opens at its first line, and a reader already
+    // reading inside it keeps their place (codereview 2026-09-28c).
+    target = Math.min(Math.max(sc.scrollTop, top), bottom - viewH);
   }
   target = Math.max(0, target);
   setSpacer(Math.max(0, target + viewH - contentEnd(sc)));
@@ -1600,10 +1604,30 @@ function keepsakeGlyph(name) {
 // player reconnects the WS so the new connection's session→toon
 // resolution picks up the new claim.
 
+function notice(msg) {
+  // The log is hidden while awake: say it on the awake leaf instead.
+  if (!document.body.classList.contains("awake")) {
+    systemLine(msg);
+    return;
+  }
+  const note = document.getElementById("awake-note");
+  note.textContent = msg;
+  note.hidden = false;
+}
+
+function refused(status, body, msg) {
+  // A lapsed session goes to the front door, a sleeping village says so, and
+  // anything else is a notice you can see (codereview 2026-09-28c).
+  if (status === 401) location.replace(document.baseURI);
+  else notice(status === 503 && body && body.asleep ? asleepText(body) : msg);
+}
+
 async function fetchDreamer() {
   const r = await fetch("api/dreamer", { credentials: "same-origin" });
   if (!r.ok) {
-    systemLine(`(could not open your dreamer: ${r.status})`);
+    let j = null;
+    try { j = await r.json(); } catch (_) {}
+    refused(r.status, j, `(could not open your dreamer: ${r.status})`);
     return null;
   }
   return r.json();
@@ -1618,11 +1642,12 @@ async function postSlotAction(slot, action, body) {
   });
   if (!r.ok) {
     let detail = `${r.status}`;
+    let j = null;
     try {
-      const j = await r.json();
+      j = await r.json();
       if (j.detail) detail = j.detail;
     } catch (_) {}
-    systemLine(`(${detail})`);
+    refused(r.status, j, `(${detail})`);
     return null;
   }
   return r.json();
@@ -1761,7 +1786,8 @@ document.getElementById("delete-yes").addEventListener("click", async () => {
   document.getElementById("delete-confirm").classList.add("hidden");
   if (!t) return;
   const result = await postSlotAction(t.slot, "delete", null);
-  if (result) await renderSlots();
+  // Awake, the leaf names the dreamer: rebuild it too (it re-reads the list).
+  if (result) await (document.body.classList.contains("awake") ? showAwake() : renderSlots());
 });
 
 function reconnectAfterSlotChange() {
@@ -1851,10 +1877,18 @@ async function showAwake() {
   const back = document.getElementById("awake-return");
   text.textContent = "";
   back.hidden = true;
+  document.getElementById("awake-note").hidden = true;
   const data = await renderSlots();
   if (!document.body.classList.contains("awake")) return; // stepped back in meanwhile
-  const dreamers = (data && data.toons) || [];
   back.hidden = false;
+  if (!data) {
+    // Not "no dreamer": the read failed (its reason is on the note).
+    text.textContent = "The village could not be reached just now.";
+    back.textContent = "try again";
+    back.onclick = showAwake;
+    return;
+  }
+  const dreamers = data.toons || [];
   if (dreamers.length === 1) {
     const t = dreamers[0];
     text.textContent = `You are awake. ${t.name} is resting in the village, ` +

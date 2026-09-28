@@ -517,7 +517,7 @@ async def execute_plant(
                 purpose="growth",
             )
         except client.LLMUnavailable as e:
-            logger.warning("plant: LLM unavailable: %s", e)
+            logger.warning("plant: LLM unavailable: %s", type(e).__name__)
             _narrate(room_id, _FOGGY)
             return False
 

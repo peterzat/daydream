@@ -171,3 +171,48 @@ def test_walking_into_a_room_replays_only_its_recent_history():
     assert "an old line" not in texts
     assert "a recent ambient beat" not in texts
 
+
+def test_the_arrivals_cut_holds_for_later_snapshots_in_the_room():
+    """Codereview 2026-09-28c: the cut held only for the move's own snapshot,
+    so the next one in the room (a face painted, which arriving itself sets
+    off, or a take) replayed the old and ambient lines. Ambient beats seen
+    live since arriving stay."""
+    with TestClient(app) as client:
+        _enter(client)
+        old = events.append("system", None, "narrate", {"text": "an old line"},
+                            room_id="r-forge")
+        db.get_conn().execute(
+            "UPDATE events SET created_at = datetime('now', '-2 hours') WHERE seq = ?",
+            (old.seq,))
+        events.append("system", None, "narrate", {"text": "a recent line"}, room_id="r-forge")
+        events.append("system", None, "narrate",
+                      {"text": "a recent ambient beat", "ambient": True}, room_id="r-forge")
+        with client.websocket_connect("/ws") as ws:
+            ws.receive_json()  # the meadow
+            ws.send_json({"kind": "input", "text": "go north"})
+            stage = "arriving"
+            for _ in range(30):
+                msg = ws.receive_json()
+                if stage == "arriving" and msg["kind"] == "state_snapshot":
+                    assert msg["room"]["id"] == "r-forge"
+                    events.append("system", None, "narrate",
+                                  {"text": "a beat after arriving", "ambient": True},
+                                  room_id="r-forge")
+                    events.append("system", None, "toon_image_ready",
+                                  {"toon_id": "t-someone", "image_url": None},
+                                  room_id="r-forge")
+                    ws.send_json({"kind": "ping"})  # wakes the server loop for the appends
+                    stage = "painting"
+                elif (stage == "painting" and msg["kind"] == "event"
+                      and msg["event"]["kind"] == "toon_image_ready"):
+                    stage = "painted"
+                elif stage == "painted" and msg["kind"] == "state_snapshot":
+                    break
+            else:
+                raise AssertionError(f"no snapshot after the face was painted ({stage})")
+    texts = [e["payload"].get("text") for e in msg["events"]]
+    assert msg["room"]["id"] == "r-forge"
+    assert "a recent line" in texts and "a beat after arriving" in texts
+    assert "an old line" not in texts
+    assert "a recent ambient beat" not in texts
+

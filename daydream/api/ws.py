@@ -248,6 +248,14 @@ def _state_snapshot(
             recipient_for=toon_id, within_s=ARRIVAL_REPLAY_S if arriving else None,
             skip_ambient=arriving,
         )
+        # The arrival's cut holds for the rest of the visit: a later re-snapshot
+        # here (a take, a face painted) keeps the lines from before arriving
+        # to those the arrival showed (codereview 2026-09-28c).
+        if view is not None and arriving:
+            view["arrival"] = {"room": room_id, "seq": last_seq,
+                               "kept": {e.seq for e in recent}}
+        elif view is not None and (cut := view.get("arrival")) and cut["room"] == room_id:
+            recent = [e for e in recent if e.seq > cut["seq"] or e.seq in cut["kept"]]
     elif resume_since is None:
         recent = []  # fresh session: empty log, only new events stream in
     else:
@@ -1042,6 +1050,7 @@ async def _broadcast_loop(
             # any `.seq` access (the sentinel is not an Event).
             if event is events.WORLD_CHANGED:
                 snapshot_seq = events.max_seq()
+                view.pop("arrival", None)  # its seqs belonged to the old world
                 await ws.send_json({"kind": "world_changed"})
                 await ws.send_json(_state_snapshot(snapshot_seq, toon_id, view))
                 continue

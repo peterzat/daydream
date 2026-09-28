@@ -484,7 +484,7 @@ async def _llm_narrate(npc: dict[str, Any]) -> str | None:
             temperature=0.8,
         )
     except llm_client.LLMUnavailable as e:
-        logger.info("drift LLM: unavailable, falling back to canned: %s", e)
+        logger.info("drift LLM: unavailable, falling back to canned: %s", type(e).__name__)
         return None
     except Exception as e:
         logger.warning("drift LLM: unexpected call failure: %s", e, exc_info=True)

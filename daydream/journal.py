@@ -126,7 +126,8 @@ async def _write_entry_inner(toon_id: str) -> None:
             purpose="journal",
         )
     except client.LLMUnavailable as e:
-        logger.info("journal: LLM unavailable for %s (entry skipped): %s", toon_id, e)
+        logger.info("journal: LLM unavailable for %s (entry skipped): %s", toon_id,
+                    type(e).__name__)
         return
 
     if safety.parse_refusal(result) is not None:

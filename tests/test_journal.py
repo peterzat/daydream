@@ -7,6 +7,7 @@ banlist) skips silently without advancing the idempotency marker, the FIFO
 cap holds, authored beats append with zero LLM, the snapshot carries the
 controlled toon's journal only, and the leave endpoint always succeeds."""
 
+import logging
 from pathlib import Path
 from unittest.mock import AsyncMock
 
@@ -134,6 +135,23 @@ async def test_write_entry_llm_outage_is_silent(monkeypatch):
     _act()
     await journal.write_entry("t-wren")  # must not raise
     assert _journal() == []
+
+
+async def test_an_outage_is_logged_without_the_models_words(monkeypatch, caplog):
+    """Codereview 2026-09-28c: a non-JSON reply's LLMUnavailable carries raw
+    model output, which can quote what the player typed. The skip is logged
+    by the exception's type alone."""
+    monkeypatch.setattr(
+        "daydream.llm.client.acompletion_json",
+        AsyncMock(side_effect=client.LLMUnavailable(
+            "LLM returned non-JSON: i whisper the secret word marmalade")),
+    )
+    _act()
+    with caplog.at_level(logging.INFO, logger="daydream"):
+        await journal.write_entry("t-wren")
+    text = "\n".join(r.getMessage() for r in caplog.records)
+    assert "entry skipped" in text and "LLMUnavailable" in text
+    assert "marmalade" not in text
 
 
 async def test_write_entry_never_raises(monkeypatch):
