@@ -1,20 +1,9 @@
-## Review — 2026-09-28b (commit: f3f46dc) — full
+## Review — 2026-09-28c (commit: cca5c50) — full
 
-**Summary:** Pre-push review of the operating turn against origin/main
-(`fdf4077`): 5 commits, 34 files, +1,774 / -90 (`bin/game prod check`, the
-prodctl NOTE fixes, the review-NOTE fixes in accounts/auth/admin/SPA/Worker,
-a headless-browser test, ops and runbook tests, and the playbooks in
-docs/runbooks/). Two fresh reviewers read it in parallel: one for the code
-(all new tests confirmed to fail when their fix is reverted), one
-fact-checking every playbook and doc claim against the code. Each finding
-below was re-checked against the code before inclusion. Baseline: medium
-tier 1685 passed, Worker tests 27/27, browser tests 2/2 with Chromium; after
-two fix passes 1701 passed, Worker 27/27, ruff clean. A /security scan of the
-code changed since its last run found 0 BLOCK / 0 WARN / 2 NOTE (the
-`/status/who` spoof, fixed here, and the timer units awaiting the operator's
-`sudo ops/install-prod.sh`).
+**Summary:** Pre-push review of the first prod evening's turn against origin/main (`9b738f9`): 5 commits, 26 files. The SPA's notes (answers resting on a paragraph top, scroll cues, the awake page, the dreamer panel), the server's own log lines, the arrival replay window and ambient beats, the iPad Safari fit, and a screen and engine layout matrix. Three fresh reviewers read it (the SPA; the server and docs; the two later commits), each reproducing its findings in a browser or against the app; every finding below was re-checked against the code. Baseline: medium tier 1709 passed; after two /codefix passes 1725 passed, 2 skipped (WebKit needs system libraries on this box). /security of `d9a8ac6..7f9af5a` and then of `7f9af5a..0aa9792`: 0 BLOCK / 0 WARN / 1 NOTE each (the timer units awaiting the operator's installer run); the second scan also found the cycle-2 correctness gap below.
 
-**External reviewers:** None configured.
+**External reviewers:**
+None configured.
 
 ### Findings
 
@@ -22,76 +11,62 @@ No BLOCK findings.
 
 **WARN**
 
-[WARN] daydream/server.py:177 — `/status/who` prints player-chosen names inside its own `name [id], ` layout, so a toon name can fake another toon's id entry and steer moderation onto the wrong friend.
-  Evidence: names allow `[`, `]` and `,` (printable, at most 24 characters). A toon named `B [t-slot2-9f4f6ed2], A` makes the line read as if a second toon carried Mira's id; docs/runbooks/friends.md tells the operator to take the id from this output, and `delete-toon <id>` then deletes the real Mira (the name isn't equal to the key, so the ambiguity refusal never fires).
-  Suggested fix (the code reviewer and the /security scan agree): (1) one toon per line, id first, name JSON-quoted (`json.dumps(name, ensure_ascii=False)`), then the owner's username and `(away)` when not live, e.g. `playing:\n  t-slot5-aaaa1111  "B [t-…], A"  owner robin  (away)`; keep `playing: no one`. (2) Refuse `[`, `]` and any substring shaped like a toon id (`t-slot\d+-[0-9a-f]{8}`, and any existing toon id) in toon names at create (daydream/api/slots.py). (3) `_find_toons` also counts a toon whose NAME contains the key as a match, so an id quoted inside another name is ambiguous. Update tests/test_admin_surfaces.py; add tests that a bracketed, id-bearing name is refused at create and cannot produce a line starting with another toon's id. `prodctl.status()` prints the body as is.
+[WARN] web/assets/main.js:1130-1140 (revealRange) with 1157-1167 (followLog) — a new line within ACT_FOLLOW_MS of your action pulls a reader who scrolled down inside a long answer back to the answer's first line.
+  Evidence: answering and answerFrom connected, so revealRange(answerFrom, el); the reader is below answerFrom's top, so the range is "out of view"; bottom - top > viewH, so target = top. Reproduced at 1280x650: scrollTop 277 (answer top), reader scrolls to 527, one unrelated say line returns it to 277.
+  Suggested fix: when the range is taller than the view, keep the reader's place when it is already inside the range: target = clamp(sc.scrollTop, top, bottom - viewH) instead of top. Test: in the browser test, scroll into a long answer, append a line, the view does not move backward.
 
-[WARN] daydream/prodcheck.py:169-205, 290 — one probe's network error aborts the whole check with no per-check output, in the verifier docs/runbooks/incident.md says to run first.
-  Evidence: `http_request`, `ws_session` and `run` catch nothing, and `report()` runs only after every probe. A DNS/TLS failure or a WebSocket `open_timeout` reaches `prodctl.main` as a bare "error: timed out"; `websockets.exceptions.InvalidMessage` and `http.client.IncompleteRead` are not OSError subclasses and end in a traceback.
-  Suggested fix: wrap each probe so an exception becomes a failing `Check(name, False, f"{type(e).__name__}: {e}")`, and always reach `report()` (timer checks included). Test: a `request` that raises for one URL yields one failing check and the rest still run.
+[WARN] web/assets/main.js:1606 (fetchDreamer) and 1625 (postSlotAction) with style.css (body.awake #chat hidden) — on the awake page every failure goes to the hidden #chat, so "step back in" silently does nothing (401 revoked/expired session, 503 asleep village, 404 dreamer gone); and a failed api/dreamer in showAwake reads as "no dreamer" (the "make your dreamer" text for an account that has one).
+  Evidence: clearing cookies then clicking #awake-return leaves the page awake with "(401)" in the invisible chat.
+  Suggested fix: a notice helper: while body.awake, write the message into a visible role="alert" line on the awake leaf (e.g. a #awake-note p), else systemLine. On a 401 from fetchDreamer/postSlotAction go to the door (location.replace(document.baseURI)); on a 503 whose JSON says asleep, show asleepText. In showAwake, data === null means "the village could not be reached just now" with the button retrying showAwake, not the no-dreamer branch. Test in tests/test_browser_flow.py: awake, cookies cleared, "step back in" lands on the door.
 
-[WARN] daydream/prodcheck.py:147-155 — a timer job that is not installed, or whose timer is not enabled, reads "ok (not run yet)" forever.
-  Evidence: `systemctl show nonexistent.service -p Result -p ExecMainExitTimestamp` prints `Result=success`, `ExecMainExitTimestamp=n/a` (verified on the box, `LoadState=not-found`).
-  Suggested fix: also read `LoadState` of the service (fail unless `loaded`) and `ActiveState` of the matching `.timer` (fail unless `active`); `check_timer` takes both. Tests for not-found and an inactive timer.
+[WARN] web/assets/main.js:1758-1765 (delete-yes) — deleting your only dreamer while awake leaves the leaf saying "<name> is resting" with "step back in", which then claims an empty slot (404, invisible per the finding above).
+  Suggested fix: after a successful delete, call showAwake() when body.awake is set (it re-reads api/dreamer and rebuilds the leaf). Test: awake, delete the dreamer, the leaf offers "make your dreamer".
 
-[WARN] daydream/prodcheck.py:288 with docs/runbooks/verify.md:20 — an awake box behind an asleep flag passes `prod check`, and verify.md says it fails.
-  Evidence: `expect` is derived from the flag itself (`"awake" if (awake and flag != "asleep") else "asleep"`), so after a `prod wake` that could not flip the flag (the case incident.md and sleep-and-wake.md describe) every check passes with "edge status: asleep" while friends cannot get in.
-  Suggested fix: when the service is active and the flag is `asleep`, add a failing check ("the flag says asleep while the service runs: friends see the asleep page; `bin/game edge wake` unless that is intended"). Update verify.md's row: a stale awake flag on an asleep box is harmless (the Worker reads an unreachable origin as asleep), so it is not a failure. Test both.
+[WARN] tests/test_browser_flow.py:325 — the `#verb-bar` hidden assertion in test_leaving_the_dream_wakes_on_a_page_with_the_way_back passes vacuously (clearSceneAndLog empties it, and an empty flex nav has zero height). Reclassified from NOTE (a test that proves nothing).
+  Suggested fix: assert `.ribbon-wrap` is hidden instead.
 
-[WARN] daydream/dream.py:842 and :780 — in prod, `dream rehearse` crashes copying its report into the read-only release, and `dream install` is gated only by the rehearsal committed from dev.
-  Evidence: rehearse writes `data/dreams/<id>/rehearsal.json`, then `shutil.copyfile(... , pdir / "rehearsal.json")`; a release is `chmod -R a-w` (prodctl.py:385) and the process runs as the service user, so it raises PermissionError. `install_ready(patch, pdir)` reads only `pdir/rehearsal.json`. docs/runbooks/content.md steps 4-5 therefore fail, and a prod install is gated on a rehearsal against dev's world.
-  Suggested fix: in rehearse, skip the copy (say where the report is) when `pdir` is not writable; make install-check/install accept a passing rehearsal of exactly this patch from `config.data_dir() / "dreams" / <id> / "rehearsal.json"` first, then `pdir`. Tests: a read-only patch dir rehearses and installs from the data-dir report.
+[WARN] daydream/api/ws.py (_state_snapshot / the broadcast loop's re-snapshot, around lines 245 and 1100) — the arrival's cut applies only to the move's own snapshot. Every later same-room re-snapshot (object_moved from any take or drop, a state change, and toon_image_ready, which the arrival itself sets off by painting an unpainted face) replays the room's last 50 events unbounded, and renderSnapshot re-renders #chat from them, so the hours-old and ambient lines come back seconds after walking in: the playtest symptom again.
+  Evidence: a scratch test moves into r-forge (the arrival snapshot omits a 2-hour-old line), then appends toon_image_ready in r-forge; the next snapshot's events include the old line (scratchpad/review-server/test_arrival_regress.py).
+  Suggested fix: on an arriving snapshot, record in `view` the room, the arrival's last_seq, and the set of pre-arrival seqs the arrival replay kept (`view["arrival"] = {"room": room_id, "seq": last_seq, "kept": {e.seq for e in recent}}`). On a later non-arriving replay-recent snapshot in the same room, drop events with seq <= arrival seq that are not in kept. Do not pass skip_ambient to every re-snapshot: ambient beats the player saw live after arriving must stay. Test in tests/test_ws_limits.py: after the move, append toon_image_ready (or a take) in the room; the next snapshot still omits the old line and the pre-arrival ambient beat, and keeps a post-arrival ambient beat.
 
-[WARN] docs/runbooks/content.md:38-39 — "Undo a bad dream by restoring the pre-dream snapshot it printed": no prod verb can (`world snapshot-restore` refuses while a live DB exists, admin.py:599-605, and only the service user can move it).
-  Suggested fix: take `bin/game prod backup` immediately before `dream install`, and undo with `bin/game prod world restore-backup /srv/daydream/data/backups/<that ts>` (which also rolls the accounts DB back to that moment).
+[WARN] daydream/journal.py:129, daydream/growth.py:520, daydream/skills/data.py:401, daydream/drift.py:487 — a log line prints an LLMUnavailable's message, which for a non-JSON reply carries up to 200 characters of raw model output (daydream/llm/client.py:171); the journal and growth prompts quote the player's own words, so typed text can reach the prod journal, against the "never typed text" promise (logs.py, incident.md, CLAUDE.md, tests/test_logs.py).
+  Suggested fix: log the exception type only (`type(e).__name__`) at those four sites, as usage_logger already does. Test: journal.write_entry with a client raising LLMUnavailable("LLM returned non-JSON: <typed words>") logs the skip without the words.
 
-[WARN] docs/runbooks/friends.md:27 — "closing it there ... takes it back": after a 4409 close the tab stops retrying (`dreamingElsewhere`), so closing the other tab does not bring this one back.
-  Suggested fix: "reload this tab, or press enter in 'your dreamer' here, to take it back."
+[WARN] web/assets/style.css:658-659 and 691-692 — the vh fallback is dead where it is needed: env() inside the dvh calc makes the declaration parse-valid, so a browser with env() but not dvh (Safari 11.2-15.3, Chrome 69-107, Firefox 65-100) drops the vh line, then finds the dvh one invalid at computed-value time and gives #app.page height: auto; the input and footer fall off an unscrollable page.
+  Evidence: `height: calc(100vh - 24px); height: calc(100zzz - 24px - env(...))` computes to 19px in Chromium and Firefox (676px without env()); in the app at 1133x702 the footer landed at y=838-869 with the wheel unable to scroll.
+  Suggested fix: keep the vh declarations (with the env() margin) unconditional and put the two dvh height declarations inside `@supports (height: 100dvh) { ... }`. Update the comment and tests/test_layout_screens.py's static test to pin the @supports form.
 
-[WARN] docs/runbooks/backups.md:41-47 — "restore from any machine holding one of the SSH keys" is followed by `bin/game prod offsite-restore`, which decrypts only with the box's own key and needs cloudflare.env and wrangler (prodctl.py:695).
-  Suggested fix: prove the round trip on the box with `prod offsite-restore`; from another machine, fetch the object from R2 and `age -d -i <your ssh key>`.
+[WARN] tests/test_layout_screens.py:104-110 (_scrolls_sideways) — on the mobile-emulated screens (is_mobile) Chromium widens the layout viewport to fit the content, so scrollTo(400, ...) has nothing to scroll and the check cannot fail on the phone or either iPad.
+  Evidence: with the phone block's overflow-x rule and the leaf/door fixes removed (the 11px bug), the phone and both iPad tests pass; innerWidth 400, scrollWidth 400, visualViewport.width 390.
+  Suggested fix: compare against the configured width: assert m["vw"] == screen.width and m["sw"] <= screen.width + 1 (keep the scroll probe for non-mobile screens).
 
-[WARN] .claude/skills/village/SKILL.md:43-46 — the numbered `sleep` steps are out of order (the code: warn and wait, flag asleep, stop tunnel and service, rest everyone and write journals, sync keepsakes, stop the engines; prodctl.py:567-605).
-  Suggested fix: list them in that order, as sleep-and-wake.md does.
+[WARN] tests/test_layout_screens.py:113-118 (_at_the_end) and 125-128 — the door's "whole form reachable" check scrolls by script, and window.scrollTo moves an overflow: hidden viewport, so it passes when a person cannot scroll.
+  Evidence: with `html { height: 100%; overflow: hidden; }` back in the desktop media, all 7 runnable cases pass; at 1133x650 on /invite a mouse wheel leaves scrollY 0 with the form's foot at 723.
+  Suggested fix: scroll the way a person does (page.mouse.wheel over the page, repeated, or keyboard End) before measuring, and/or assert the scrolling element's computed overflow-y is not hidden.
 
-[WARN] daydream/edge.py:44 — `PUBLIC_STATUS` hardcodes `https://www.eidolon.com/daydream/edge/status`, so a fork's `bin/game edge status` probes this instance, contradicting "a fork changes the few committed instance values" (README, GOING-LIVE, CLOUDFLARE-SETUP's list).
-  Suggested fix: derive it from edge/wrangler.toml's `PUBLIC_HOST` and `BASE` vars (edge.py already reads that file for the KV id). Test with a synthetic wrangler.toml.
+[WARN] tests/test_layout_screens.py:84-86 — the engine skip reason loses its cause: Playwright's error starts with a bare "BrowserType.launch: " line, so the skip reads "(BrowserType.launch: )", and the install-deps hint is appended whatever the cause. Reclassified from NOTE (the skip reason is the only guidance an operator gets).
+  Suggested fix: collapse the message's whitespace, strip the "BrowserType.launch:" prefix, keep 160 characters; add the install-deps hint only when the text mentions missing libraries or dependencies.
 
-[WARN] daydream/accounts.py `commit_password_change` — the password change is split around an await, so a reset redeemed in that window could be overwritten by a change still in flight from a session the reset just ended (recorded by the /security scan as a non-finding; the fix is two lines).
-  Suggested fix: `prepare_password_change` returns the hash it verified against; `commit_password_change` updates `WHERE id = ? AND password_hash = <that hash>` and, if no row changed (or the kept session no longer exists), raises AccountError("your password changed meanwhile; sign in again"). Test: a hash change between prepare and commit is refused.
+[WARN] docs/runbooks/incident.md ("Reading the log") — "DAYDREAM_LOG_LEVEL=WARNING in prod.env quiets everything but trouble": it sets only the daydream logger; uvicorn's own INFO lines (WebSocket accepted, connection open/closed, startup) follow uvicorn's --log-level. Reclassified from NOTE (a playbook claim an agent would act on).
+  Suggested fix: "quiets the app's own lines (uvicorn's WebSocket lines follow its --log-level)".
 
-**WARN (reclassified from NOTE: cheap, and each is a playbook inaccuracy an agent would act on or a small invariant gap)**
+**Re-review of the first fix pass (cycle 2), from the /security scan of 7f9af5a..0aa9792**
 
-[WARN] daydream/keepsakes.py:122 with accounts.py:442 — the 180-day cap is applied when passes sync, but the Worker trusts the published `expires` (the 30-day sliding expiry), so a session crossing 180 days during a sleep keeps its keepsakes until that expiry. Publish `min(expires_at, created_at + SESSION_MAX_DAYS)`.
+[WARN] daydream/api/ws.py:245-258 (_state_snapshot) — the cut is recorded only on an arriving (move) snapshot. After a fresh page load (resume_since None: an empty log) or a reconnect (?since=), view has no cut, so the next same-room re-snapshot (a take or drop, a state change, toon_image_ready from the connect's own portrait enqueue) replays the room's last 50 events however old, ambient beats included, and renderSnapshot rebuilds #chat from them: the first-evening symptom through another door.
+  Evidence: scratchpad/sec-fresh/test_fresh_connect_replay.py against the real WebSocket; by reading: the fresh branch sets recent = [] and no view["arrival"], and the later branch applies a cut only when one exists.
+  Suggested fix: record the cut on EVERY first snapshot of a room, not just a move: for the fresh branch (kept = empty set) and the reconnect branch (kept = the seqs it replayed; the SPA rebuilds its log from exactly those on reconnect) as well as arriving, i.e. `view["arrival"] = {"room": room_id, "seq": last_seq, "kept": {e.seq for e in recent}}` whenever resume_since is not _REPLAY_RECENT or arriving; apply it on later same-room replay-recent snapshots as now. Tests in tests/test_ws_limits.py: a fresh connect then a same-room effect re-snapshot does not bring back an old line or an old ambient beat; a reconnect then a re-snapshot keeps the replayed lines and adds nothing older.
 
-[WARN] .claude/settings.local.json (local) with docs/runbooks/README.md, CLAUDE.md, README.md — `prod account cli-cookie` (prints an admin session cookie) and `prod world load ... --force` (overwrites the live world) are not among the prompting verbs the docs list. The ask rules were added locally outside the fix pass; the fix pass adds both verbs to the documented lists (docs/runbooks/README.md, CLAUDE.md "Agent policy for prod" and "This repo and this instance", README.md).
+**NOTE**
 
-[WARN] docs/runbooks/content.md:43 — "Prod never renders room or resident art": a target missing from the copy is painted lazily by prod on first entry; `prebake --from-cache` lists such targets as `missing`.
+[NOTE] daydream/api/ws.py (the broadcast loop) — a toon moved by something other than its own move event (an effect relocating a player) gets no arrival cut for the new room, so its later same-room re-snapshots there still replay the last 50 lines. No such effect targets players in The Village of Lost Hours today; walking, teleports, death respawns and vehicle rides all emit the toon's own move. (From the cycle-2 /codefix report.)
 
-[WARN] docs/runbooks/deploy.md:21 — "~1650 tests"; the tiers collect ~1690.
-
-[WARN] docs/GOING-LIVE.md:243 — lists "prod listens only on loopback" among what `prod check` verifies; no check looks at the bind address.
-
-[WARN] docs/GOING-LIVE.md:261 — the browser test runs "in CI's tier and in the deploy gate"; CI skips it (no browser).
-
-**Re-review of the first fix pass (cycle 2)**
-
-[WARN] daydream/api/slots.py `_mimics_a_toon_id` — a new name is refused if it contains ANY existing toon id, residents included (`t-bell`, `t-fen`, `t-mott`, ...), so ordinary names are refused: "Matt-Fenwick" contains "t-fen", "Kat-bell" contains "t-bell".
-  Evidence: `any(t.id.lower() in low for t in toons._query("world_id = ?", ...))` scans every toon in the world. Moderation (`_find_toons`, `rest-toon`/`delete-toon`) acts only on player toons, slots 1-99.
-  Suggested fix: scan only player toons (`"world_id = ? AND slot BETWEEN 1 AND 99"`), keep the bracket and `t-slot…` shape rules. Test: "Matt-Fenwick" is accepted in the Lost Hours world (whose resident ids include `t-fen`), and a name containing a player toon's id is still refused.
+[NOTE] ops/systemd/daydream-keepsakes.service, daydream-offsite.service (installed copies) — carried from SECURITY.md: the installed units still set NoNewPrivileges, so the hourly keepsakes sync fails while prod is awake and the weekly offsite will too. Needs the operator's `sudo ops/install-prod.sh`.
 
 ### Fixes Applied
 
-All 18 WARNs, in `f3f46dc` (two /codefix passes, each re-reviewed here against the
-code): the `/status/who` layout, name rules and substring-aware moderation;
-`prod check`'s per-probe isolation, timer install/active checks and the
-asleep-flag-over-a-running-service check; prod dream rehearse and
-install-check reading the data dir; the password change's compare-and-swap;
-the 180-day cap on published pass expiry; `edge status` deriving its URL from
-wrangler.toml; the playbook and doc corrections; and (cycle 2) the name rule
-narrowed to player toons so residents' short ids don't refuse ordinary names.
-The two local ask rules (`prod account cli-cookie`, `prod world load`) were
-added outside the fix pass.
+All 12 WARNs, over two /codefix passes, each re-reviewed here against the code and the tests (every new test fails on the code before its fix):
+- `842a856`: a reader inside a long answer keeps their place; the awake page's visible note, 401 to the door, the asleep text, "could not be reached" with "try again", and the rebuild after letting your dreamer go; the `.ribbon-wrap` assertion; the arrival's cut kept by later same-room re-snapshots (cleared on a world swap); the four log lines printing only the error type; the dvh heights in `@supports`; the layout matrix's configured-width rule for mobile screens, wheel scrolling for the door, and the real skip reason; incident.md's log-level wording. The honest width rule then found the upright iPad's leaves 12px past the screen; they hide at 900px and below.
+- `cca5c50` (cycle 2): every first snapshot of a room (a move, a fresh load, a reconnect) sets the cut, not only a move.
 
 ### Accepted Risks
 
@@ -102,8 +77,7 @@ Carried forward (the standing register lives in SECURITY.md):
 - Stored prompt-injection via captured NPC memory; bootstrap `$MODEL` heredoc;
   `cmd_logs` path component; qpeek clone; `world reset` rm -rf operator trust;
   CGNAT hardcoding in tailscale mode.
-
 ---
-*Prior review (2026-09-28, refresh, `3df294b`): the going-live push; 3 BLOCK (the Worker's Access-cookie leak on WebSocket answers, the front door's empty credentials, "rest" re-entering) and 9 of 10 WARNs fixed before it was pushed as `fdf4077`; the tenth (the /village deploy wording) was fixed by the operator's direction in this turn.*
+*Prior review (2026-09-28b, full, `f3f46dc`): the operating turn; 0 BLOCK / 18 WARN, all fixed in `f3f46dc` over two /codefix passes and pushed as `9b738f9`.*
 
-<!-- REVIEW_META: {"date":"2026-09-28","commit":"f3f46dc","reviewed_up_to":"f3f46dc9505542ed84cf56b8c6bdc659535723e2","base":"origin/main","tier":"full","block":0,"warn":18,"note":0,"fixed":18} -->
+<!-- REVIEW_META: {"date":"2026-09-28","commit":"cca5c50","reviewed_up_to":"cca5c50c5606345d69b646d7e8f9740134fabd86","base":"origin/main","tier":"full","block":0,"warn":12,"note":2,"fixed":12} -->
