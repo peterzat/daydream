@@ -71,6 +71,22 @@ def test_after_leaving_the_next_connect_is_your_dreamer_not_the_toon():
             assert ws.receive_json() == {"kind": "needs_toon"}
 
 
+def test_resting_the_toon_you_play_is_leaving_not_an_instant_wake():
+    """Codereview BLOCK 2026-09-28: kick left the session 'in', so the next
+    connect's auto-enter woke the toon at once, in the start room, and the
+    room never heard the dreamer go."""
+    with TestClient(app) as client:
+        _fresh_login(client)
+        mira = client.post("/api/dreamer/create", json=MIRA).json()
+        assert client.post(f"/api/slots/{mira['slot']}/kick").status_code == 200
+        assert any("Mira drifts out of the dream" in e.payload.get("text", "")
+                   for e in events.fetch_since(0) if e.kind == "narrate")
+        cookie = client.cookies[config.cookie_name()]
+        client.cookies.clear()
+        with _ws(client, cookie) as ws:
+            assert ws.receive_json() == {"kind": "needs_toon"}
+
+
 def test_a_second_tab_takes_over_and_the_first_is_told():
     with TestClient(app) as client:
         first = _fresh_login(client)
@@ -91,6 +107,27 @@ def test_a_second_tab_takes_over_and_the_first_is_told():
                 assert {"kind": "elsewhere"} in seen
 
 
+def test_a_stale_tab_reconnecting_leaves_the_toon_with_the_device_in_use():
+    """Codereview WARN 2026-09-28: a laptop wakes and reconnects (?since=)
+    while the friend plays on the phone; the phone keeps Mira and the laptop
+    is told it is dreaming elsewhere."""
+    with TestClient(app) as client:
+        laptop = _fresh_login(client)
+        client.post("/api/dreamer/create", json=MIRA)
+        phone = _fresh_login(client)
+        client.cookies.clear()
+        with _ws(client, phone) as ws_phone:  # a fresh load takes Mira over
+            assert ws_phone.receive_json()["self"]["name"] == "Mira"
+            with client.websocket_connect(
+                    "/ws?since=5", headers={"cookie": f"{config.cookie_name()}={laptop}"}) as ws_lap:
+                assert ws_lap.receive_json() == {"kind": "elsewhere"}
+                with pytest.raises(WebSocketDisconnect) as closed:
+                    ws_lap.receive_json()
+                assert closed.value.code == ws_module.ELSEWHERE
+            ws_phone.send_json({"kind": "command", "verb": "look"})
+            assert ws_phone.receive_json()["kind"] == "event"  # still hers
+
+
 def test_an_admin_with_several_toons_chooses():
     with TestClient(app) as client:
         client.cookies.clear()
@@ -100,4 +137,24 @@ def test_an_admin_with_several_toons_chooses():
         cookie = _fresh_login(client, "keeper")
         client.cookies.clear()
         with _ws(client, cookie) as ws:
+            assert ws.receive_json() == {"kind": "needs_toon"}
+
+
+def test_an_admin_switches_toons_and_leaving_rests_the_one_in_play():
+    """Codereview WARN 2026-09-28: taking a toon lets go of the one the
+    session held, so the socket follows the pick, the released toon can be
+    taken back, and leaving leaves nothing claimed."""
+    with TestClient(app) as client:
+        client.cookies.clear()
+        authhelp.login(client, "keeper", role="admin")
+        mira = client.post("/api/dreamer/create", json=MIRA).json()
+        ivo = client.post("/api/dreamer/create",
+                          json={"name": "Ivo", "appearance_seed": "a heron"}).json()
+        for pick, name in ((mira, "Mira"), (ivo, "Ivo"), (mira, "Mira")):
+            assert client.post(f"/api/slots/{pick['slot']}/claim").status_code == 200
+            with client.websocket_connect("/ws") as ws:
+                assert ws.receive_json()["self"]["name"] == name
+        assert client.post("/api/session/leave").status_code == 200
+        assert not any(t["claimed_by_me"] for t in client.get("/api/dreamer").json()["toons"])
+        with client.websocket_connect("/ws") as ws:
             assert ws.receive_json() == {"kind": "needs_toon"}

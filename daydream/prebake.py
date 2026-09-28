@@ -80,6 +80,7 @@ def _adopt_from_cache(target, workflow, path: Path, from_cache: Path) -> bool:
 async def prebake(db_path: Path, only: str | None = None, force: set[str] | None = None,
                   reseed: dict[str, int] | None = None,
                   from_cache: Path | None = None) -> list[dict]:
+    from daydream.gpu import arbiter
     from daydream.images import cache, client
 
     force, reseed = force or set(), reseed or {}
@@ -113,6 +114,8 @@ async def prebake(db_path: Path, only: str | None = None, force: set[str] | None
                            seconds=round(time.monotonic() - t0, 1))
             except client.ComfyUIError as e:
                 rec.update(status="failed", error=str(e)[:300])
+            except arbiter.GpuBusyElsewhere as e:  # another process kept the card
+                rec.update(status="busy", error=str(e)[:300])
             print(f"{rec['status']:8s} {kind:4s} {tid:24s} {rec.get('seconds', '')}",
                   flush=True)
             results.append(rec)
@@ -126,7 +129,7 @@ def contact_sheet(results: list[dict], out_dir: Path) -> Path:
     cards = []
     for r in results:
         img = (f'<img src="file://{html.escape(r["path"])}" loading="lazy">'
-               if r["status"] != "failed" else f"<p>{html.escape(r.get('error', ''))}</p>")
+               if "error" not in r else f"<p>{html.escape(r.get('error', ''))}</p>")
         cards.append(f'<figure><figcaption><b>{html.escape(r["label"])}</b> '
                      f'({r["kind"]} {html.escape(r["id"])}, {r["status"]})</figcaption>'
                      f'{img}<p class="p">{html.escape(r["prompt"])}</p></figure>')
@@ -177,11 +180,15 @@ def main(argv: list[str] | None = None) -> int:
     sheet = contact_sheet(results, config.data_dir() / "prebake" / stamp)
     failed = [r for r in results if r["status"] == "failed"]
     missing = [r for r in results if r["status"] == "missing"]
+    busy = [r for r in results if r["status"] == "busy"]
     print(f"{len(results)} targets ({len(failed)} failed); contact sheet: {sheet}")
     if missing:
         print(f"{len(missing)} not in the graded cache (render them in dev, grade, then copy again): "
               + ", ".join(r["id"] for r in missing))
-    return 1 if failed else 0
+    if busy:
+        print(f"{len(busy)} skipped while another daydream process held the GPU (run prebake "
+              "again; it paints only what is missing): " + ", ".join(r["id"] for r in busy))
+    return 1 if failed or busy else 0
 
 
 if __name__ == "__main__":

@@ -81,3 +81,28 @@ async def test_prebake_from_cache_copies_graded_art_and_renders_nothing(lost_hou
     assert {s for i, s in by_id.items() if i != missing_id} == {"copied"}
     loft = next(r for r in results if r["id"] == "r-loft")
     assert Path(loft["path"]).read_bytes() == PNG
+
+
+async def test_a_target_the_gpu_is_busy_for_is_skipped_not_fatal(lost_hours_db, monkeypatch):
+    """Codereview WARN 2026-09-28: a render that cannot get the card from
+    another daydream process (GpuBusyElsewhere) is recorded busy; the rest
+    still paint and the run ends with its contact sheet."""
+    from contextlib import asynccontextmanager
+
+    from daydream.gpu import arbiter
+
+    path, render = lost_hours_db
+    real, tries = client.render_slot, []
+
+    @asynccontextmanager
+    async def busy():
+        raise arbiter.GpuBusyElsewhere("another daydream process holds the GPU")
+        yield  # pragma: no cover
+
+    def slot():
+        tries.append(1)
+        return busy() if len(tries) == 1 else real()
+
+    monkeypatch.setattr(client, "render_slot", slot)
+    statuses = [r["status"] for r in await prebake.prebake(path)]
+    assert statuses[0] == "busy" and set(statuses[1:]) == {"rendered"}

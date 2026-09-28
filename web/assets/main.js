@@ -1531,8 +1531,11 @@ async function claimSlot(slot) {
 async function kickSlot(slot) {
   const result = await postSlotAction(slot, "kick", null);
   if (result) {
-    await renderSlots();
-    reconnectAfterSlotChange();
+    // Resting the toon you play is leaving the dream (the server marks the
+    // session left): stay on "your dreamer" rather than reconnecting.
+    awaitingPick = true;
+    if (ws) { try { ws.close(); } catch (_) {} }
+    enterPicker();
   }
 }
 

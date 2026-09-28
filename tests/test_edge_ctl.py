@@ -77,3 +77,16 @@ def test_public_status_names_its_user_agent(monkeypatch):
     monkeypatch.setattr(edge.urllib.request, "urlopen", fake_urlopen)
     assert edge.public_status() == {"state": "asleep"}
     assert seen["ua"] and not seen["ua"].startswith("Python-urllib")
+
+
+def test_node_is_found_under_nvm_when_path_lacks_it(tmp_path, monkeypatch):
+    """Codereview WARN 2026-09-28: the weekly offsite timer's PATH has no
+    ~/.nvm, so npx went unfound. The newest nvm install goes first on PATH."""
+    for v in ("v9.1.0", "v24.14.1", "v18.2.0"):
+        (tmp_path / ".nvm" / "versions" / "node" / v / "bin").mkdir(parents=True)
+        (tmp_path / ".nvm" / "versions" / "node" / v / "bin" / "node").touch()
+    monkeypatch.setattr(edge.Path, "home", lambda: tmp_path)
+    monkeypatch.setattr(edge.shutil, "which", lambda name: None)
+    monkeypatch.setenv("PATH", "/usr/bin:/bin")
+    first = edge._node_env()["PATH"].split(":")[0]
+    assert first == str(tmp_path / ".nvm" / "versions" / "node" / "v24.14.1" / "bin")

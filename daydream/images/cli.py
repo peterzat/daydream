@@ -66,8 +66,13 @@ def main(argv: list[str] | None = None) -> int:
                 seed=args.seed,
             )
 
+    from daydream.gpu import arbiter
+
     try:
         path = asyncio.run(_run())
+    except arbiter.GpuBusyElsewhere as e:
+        print(f"{e}; try again in a moment", file=sys.stderr)
+        return 2
     except client.ComfyUIError as e:
         print(f"ComfyUI error: {e}", file=sys.stderr)
         print(

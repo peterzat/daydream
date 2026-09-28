@@ -29,6 +29,7 @@ import argparse
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import urllib.error
@@ -235,11 +236,26 @@ def sync_keepsakes(release: Path) -> dict:
 # ---- wrangler ------------------------------------------------------------------------
 
 
+def _node_env() -> dict[str, str]:
+    """The environment with node's bin dir first on PATH: node on PATH, else
+    the newest ~/.nvm install. A systemd timer's PATH has no ~/.nvm, so the
+    weekly offsite could not find npx (codereview WARN 2026-09-28)."""
+    env = dict(os.environ)
+    node = shutil.which("node")
+    if node is None:
+        installs = sorted((Path.home() / ".nvm" / "versions" / "node").glob("*/bin/node"),
+                          key=lambda p: [int(n) for n in re.findall(r"\d+", p.parent.parent.name)])
+        node = str(installs[-1]) if installs else None
+    if node is not None:
+        env["PATH"] = str(Path(node).parent) + os.pathsep + env.get("PATH", "")
+    return env
+
+
 def _wrangler_env() -> dict[str, str]:
     c = _creds()
     if not c.get("CLOUDFLARE_API_TOKEN"):
         raise EdgeError(f"no CLOUDFLARE_API_TOKEN in {CREDENTIALS}")
-    env = dict(os.environ)
+    env = _node_env()
     env["CLOUDFLARE_API_TOKEN"] = c["CLOUDFLARE_API_TOKEN"]
     if c.get("CLOUDFLARE_ACCOUNT_ID"):
         env["CLOUDFLARE_ACCOUNT_ID"] = c["CLOUDFLARE_ACCOUNT_ID"]
@@ -249,7 +265,8 @@ def _wrangler_env() -> dict[str, str]:
 
 def _ensure_node_modules() -> None:
     if not (EDGE / "node_modules" / ".bin" / "wrangler").exists():
-        subprocess.run(["npm", "ci", "--no-audit", "--no-fund"], cwd=EDGE, check=True)
+        subprocess.run(["npm", "ci", "--no-audit", "--no-fund"], cwd=EDGE, check=True,
+                       env=_node_env())
 
 
 def deploy() -> int:
@@ -293,7 +310,7 @@ def tail() -> int:
 
 def test() -> int:
     files = sorted(str(p) for p in (EDGE / "test").glob("*.test.js"))
-    r = subprocess.run(["node", "--test", *files], cwd=EDGE)
+    r = subprocess.run(["node", "--test", *files], cwd=EDGE, env=_node_env())
     if r.returncode != 0:
         raise EdgeError("the edge Worker's tests failed")
     return 0

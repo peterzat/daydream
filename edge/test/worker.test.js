@@ -5,7 +5,8 @@
 import { test, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { handle, rewriteLocation, upstreamHeaders, escapeHtml } from "../src/worker.js";
+import { handle, rewriteLocation, upstreamHeaders, escapeHtml, stripAccessCookies }
+  from "../src/worker.js";
 
 const TEMPLATE = readFileSync(new URL("../public/daydream/_edge/asleep.html", import.meta.url), "utf8");
 
@@ -88,6 +89,31 @@ test("the app's redirects reach the browser (not followed), inside the base", as
   originReply = () => new Response(null, { status: 302, headers: { location: "/login" } });
   r = await handle(req("/daydream/x"), env());
   assert.equal(r.headers.get("location"), "/daydream/login");
+});
+
+test("Access's CF_ cookies are stripped; the app's own cookies stay", () => {
+  const h = stripAccessCookies(new Headers([
+    ["set-cookie", "CF_Authorization=jwt; Path=/; Secure"],
+    ["set-cookie", "dd_session_prod=tok; Path=/daydream/; HttpOnly"],
+    ["set-cookie", "CF_AppSession=x; Path=/"],
+  ]));
+  assert.deepEqual(h.getSetCookie(), ["dd_session_prod=tok; Path=/daydream/; HttpOnly"]);
+});
+
+test("a refused WebSocket upgrade reaches the client without Access's cookie", async () => {
+  originReply = () => new Response("forbidden", { status: 403, headers: [
+    ["set-cookie", "CF_Authorization=jwt; Path=/; Secure; SameSite=none"]] });
+  const r = await handle(req("/daydream/ws", { headers: { upgrade: "websocket" } }), env());
+  assert.equal(r.status, 403);
+  assert.deepEqual(r.headers.getSetCookie(), []);
+  assert.equal(r.headers.get("set-cookie"), null);
+});
+
+test("an HTTP response keeps the app's cookie and loses Access's", async () => {
+  originReply = () => new Response("ok", { status: 200, headers: [
+    ["set-cookie", "CF_Authorization=jwt; Path=/"], ["set-cookie", "dd_session_prod=t"]] });
+  const r = await handle(req("/daydream/api/me"), env());
+  assert.deepEqual(r.headers.getSetCookie(), ["dd_session_prod=t"]);
 });
 
 test("rewriteLocation fixes an absolute origin URL and leaves others alone", () => {

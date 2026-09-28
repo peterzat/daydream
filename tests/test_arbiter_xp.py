@@ -31,10 +31,24 @@ asyncio.run(main())
 """
 
 
-def _holder(lock: Path, kind: str, hold: float) -> subprocess.Popen:
+RENDER_LOOP = """
+import asyncio, sys, time
+sys.path.insert(0, {root!r})
+from daydream.gpu import arbiter
+async def main():
+    for i in range({n}):
+        async with arbiter.acquire("exclusive"):
+            if i == 0:
+                print("held", time.monotonic(), flush=True)
+            await asyncio.sleep({hold})
+asyncio.run(main())
+"""
+
+
+def _holder(lock: Path, kind: str, hold: float, script: str = HOLDER, **fmt) -> subprocess.Popen:
     env = {**os.environ, "DAYDREAM_GPU_LOCK": str(lock)}
-    p = subprocess.Popen([sys.executable, "-c", HOLDER.format(root=str(ROOT), kind=kind, hold=hold)],
-                         env=env, stdout=subprocess.PIPE, text=True)
+    code = script.format(root=str(ROOT), kind=kind, hold=hold, **fmt)
+    p = subprocess.Popen([sys.executable, "-c", code], env=env, stdout=subprocess.PIPE, text=True)
     line = p.stdout.readline()
     assert line.startswith("held"), line
     return p
@@ -74,6 +88,21 @@ async def test_llm_calls_in_two_processes_run_together(lock):
         waited = time.monotonic() - t0
     other.wait(timeout=10)
     assert waited < 0.3
+
+
+async def test_back_to_back_renders_elsewhere_let_text_in(lock, monkeypatch):
+    """Codereview WARN 2026-09-28: a process rendering in a loop (a prebake)
+    yields after each render, so another process's text call gets in at the
+    next gap instead of timing out while the loop runs."""
+    monkeypatch.setattr(arbiter, "XP_TEXT_WAIT_S", 3.0)
+    other = _holder(lock, "exclusive", 0.3, script=RENDER_LOOP, n=15)  # ~4.5 s of renders
+    t0 = time.monotonic()
+    try:
+        async with arbiter.acquire("llm"):
+            waited = time.monotonic() - t0
+    finally:
+        other.kill()
+    assert waited < 2.0
 
 
 async def test_a_render_gives_up_rather_than_stall_text(lock, monkeypatch):

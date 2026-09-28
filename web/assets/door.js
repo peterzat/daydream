@@ -41,8 +41,8 @@
   login.addEventListener("submit", async (ev) => {
     ev.preventDefault();
     say(login, "");
+    const f = new FormData(login); // before busy(): FormData skips disabled inputs
     busy(login, true);
-    const f = new FormData(login);
     const r = await post("api/login", { username: f.get("username"), password: f.get("password") });
     busy(login, false);
     if (r.ok) return enter();
@@ -84,8 +84,8 @@
   form.addEventListener("submit", async (ev) => {
     ev.preventDefault();
     say(form, "");
+    const f = new FormData(form); // before busy(): FormData skips disabled inputs
     busy(form, true);
-    const f = new FormData(form);
     const r = await post("api/invite/redeem", {
       slug, username: (f.get("username") || "").trim().toLowerCase(), password: f.get("password"),
     });

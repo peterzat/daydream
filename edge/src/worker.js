@@ -66,8 +66,17 @@ export async function handle(request, env) {
   if (ASLEEP_STATUSES.has(resp.status)) {
     return asleep(request, env, unplanned(state), rest, isWS);
   }
-  if (isWS) return resp; // the 101 and its socket, passed straight through
+  if (isWS) return passWebSocket(resp, env, prefix);
   return rewriteResponse(resp, env, prefix);
+}
+
+// The 101 and its socket pass through minus Access's cookie; any other answer
+// to an upgrade (a refusal) is an ordinary response. Node's Response rejects
+// status 101, so the unit tests reach the cookie filter and the refusal path.
+function passWebSocket(resp, env, prefix) {
+  if (resp.status !== 101) return rewriteResponse(resp, env, prefix);
+  const headers = stripAccessCookies(new Headers(resp.headers));
+  return new Response(null, { status: 101, headers, webSocket: resp.webSocket });
 }
 
 // ---- state ------------------------------------------------------------------
@@ -157,14 +166,19 @@ export function rewriteResponse(resp, env, prefix) {
   const out = new Response(resp.body, resp);
   const loc = out.headers.get("location");
   if (loc) out.headers.set("location", rewriteLocation(loc, env, prefix));
-  // Access may add its own cookie to an origin response; it is not the
-  // browser's business.
-  const cookies = out.headers.getSetCookie ? out.headers.getSetCookie() : [];
-  if (cookies.some((c) => c.startsWith("CF_"))) {
-    out.headers.delete("set-cookie");
-    for (const c of cookies) if (!c.startsWith("CF_")) out.headers.append("set-cookie", c);
-  }
+  stripAccessCookies(out.headers);
   return out;
+}
+
+// Access may add its own cookie to an origin response; it is not the
+// browser's business.
+export function stripAccessCookies(headers) {
+  const cookies = headers.getSetCookie ? headers.getSetCookie() : [];
+  if (cookies.some((c) => c.startsWith("CF_"))) {
+    headers.delete("set-cookie");
+    for (const c of cookies) if (!c.startsWith("CF_")) headers.append("set-cookie", c);
+  }
+  return headers;
 }
 
 export function rewriteLocation(loc, env, prefix) {

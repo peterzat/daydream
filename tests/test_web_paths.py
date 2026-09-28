@@ -45,6 +45,16 @@ def test_every_image_sink_rebases_through_asset_url():
     assert "new URL(\"ws\", document.baseURI)" in js
 
 
+def test_the_front_door_reads_its_form_before_disabling_it():
+    """FormData skips disabled controls: a submit handler that calls busy()
+    first posts empty credentials (codereview BLOCK 2026-09-28)."""
+    js = (ROOT / "web" / "assets" / "door.js").read_text()
+    handlers = js.split('addEventListener("submit"')[1:]
+    assert len(handlers) == 2
+    for body in handlers:
+        assert body.index("new FormData(") < body.index("busy("), body[:300]
+
+
 def _login(client):
     authhelp.login(client)
 

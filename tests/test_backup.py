@@ -52,6 +52,25 @@ def test_backup_rotation_keeps_the_newest(tmp_path, monkeypatch):
     assert len(kept) == 2 and "20260101-000000" not in kept and "20260102-000000" not in kept
 
 
+def test_backup_retention_is_days_with_a_count_floor(tmp_path):
+    """Codereview WARN 2026-09-28: twenty deploy backups in one afternoon must
+    not prune the nightly ones. A backup goes only when it is older than 14
+    days AND not among the newest 14."""
+    from datetime import datetime, timedelta
+
+    db.init_live()
+    root = tmp_path / "backups"
+    now = datetime.now()
+    recent = [(now - timedelta(minutes=10 * i)).strftime("%Y%m%d-%H%M%S") for i in range(1, 21)]
+    nights = [(now - timedelta(days=d)).strftime("%Y%m%d-%H%M%S") for d in (3, 9, 13)]
+    stale = [(now - timedelta(days=d)).strftime("%Y%m%d-%H%M%S") for d in (15, 30)]
+    for name in recent + nights + stale:
+        (root / name).mkdir(parents=True)
+    assert admin.cmd_backup(keep=14) == 0
+    kept = {d.name for d in root.iterdir()}
+    assert set(recent + nights) <= kept and not set(stale) & kept
+
+
 def test_backup_with_nothing_yet_is_a_quiet_no_op(tmp_path, capsys):
     assert admin.cmd_backup(keep=14) == 0
     assert "nothing to back up" in capsys.readouterr().out

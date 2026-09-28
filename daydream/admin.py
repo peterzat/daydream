@@ -50,7 +50,7 @@ import sqlite3
 import sys
 import tarfile
 import tempfile
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 from daydream import assets, config, db, objects
@@ -393,11 +393,14 @@ def _online_copy(src: Path, dest: Path) -> None:
         s.close()
 
 
-def cmd_backup(keep: int) -> int:
+def cmd_backup(keep: int, keep_days: int = 14) -> int:
     """A consistent online copy of this env's live world DB and accounts DB
-    into backups/<ts>/, keeping the newest `keep` (SPEC 2026-09-27 criterion
-    13). Safe while the server runs; the nightly prod timer calls it, and
-    `bin/game prod deploy` calls it before switching releases."""
+    into backups/<ts>/ (SPEC 2026-09-27 criterion 13). A backup is pruned only
+    when it is older than `keep_days` AND not among the newest `keep`: deploys,
+    pulls and offsites share the pool with the nightly copies, and a busy day
+    must not prune the nights (codereview WARN 2026-09-28). Safe while the
+    server runs; the nightly prod timer calls it, and `bin/game prod deploy`
+    calls it before switching releases."""
     root = config.data_dir() / "backups"
     ts = datetime.now().strftime("%Y%m%d-%H%M%S")
     out = root / ts
@@ -413,7 +416,13 @@ def cmd_backup(keep: int) -> int:
         return 0
     print(f"backup -> {out}: " + ", ".join(copied))
     olds = sorted((d for d in root.iterdir() if d.is_dir()), key=lambda d: d.name)
+    cutoff = datetime.now() - timedelta(days=keep_days)
     for d in olds[:-keep] if keep > 0 else []:
+        try:
+            if datetime.strptime(d.name, "%Y%m%d-%H%M%S") >= cutoff:
+                continue  # inside the retention window
+        except ValueError:
+            continue  # not a backup this command named: never pruned
         shutil.rmtree(d)
         print(f"  pruned {d.name}")
     return 0
@@ -1041,7 +1050,8 @@ def main(argv: list[str] | None = None) -> int:
     p_backup = sub.add_parser(
         "backup", help="online copy of the live world + accounts DBs to backups/<ts>/"
     )
-    p_backup.add_argument("--keep", type=int, default=14, help="how many backups to keep")
+    p_backup.add_argument("--keep", type=int, default=14,
+                          help="keep at least this many (and every one from the last 14 days)")
     sub.add_parser("preflight", help="read-only deploy checks (world version, pending migrations)")
     p_rb = sub.add_parser("restore-backup", help="put a backup's DBs back (server stopped)")
     p_rb.add_argument("backup_dir", type=Path)

@@ -113,18 +113,29 @@ def _resolve_controlled_toon_id(session_id: str | None) -> str | None:
     return None
 
 
-def _auto_enter(who) -> str | None:
+_HELD_ELSEWHERE = object()  # _auto_enter: a reconnect found the toon in use elsewhere
+
+
+def _auto_enter(who, *, reconnect: bool = False):
     """A returning player lands straight in their toon (SPEC 2026-09-27
     criterion 8): with no toon under this session, a session that has not
     left the dream takes the account's one toon, even from another tab of the
     same account (that tab is told it is dreaming elsewhere). An account with
-    no toon, or several (an admin), goes to "your dreamer" instead."""
+    no toon, or several (an admin), goes to "your dreamer" instead.
+
+    A reconnect (`?since=`, e.g. a laptop waking from sleep) never takes the
+    toon from another live session: the device in use keeps it, and this
+    returns _HELD_ELSEWHERE (codereview WARN 2026-09-28)."""
     if who.left:
         return None
     mine = toons.owned_toons(who.account_id)
     if len(mine) != 1:
         return None
-    toon, _ = toons.claim_slot(mine[0].slot, who.session_id, can_take_over=lambda cs: True)
+    toon, reason = toons.claim_slot(
+        mine[0].slot, who.session_id,
+        can_take_over=lambda cs: not (reconnect and is_session_live(cs)))
+    if reason == "controlled":
+        return _HELD_ELSEWHERE
     return toon.id if toon is not None else None
 
 
@@ -803,7 +814,13 @@ async def ws_endpoint(ws: WebSocket):
     # Resolve the controlled toon for this connection. Slot picker's
     # create / claim endpoints set controller_session = <session id>.
     session_id = who.session_id
-    toon_id = _resolve_controlled_toon_id(session_id) or _auto_enter(who)
+    reconnect = ws.query_params.get("since") is not None
+    toon_id = _resolve_controlled_toon_id(session_id) or _auto_enter(who, reconnect=reconnect)
+    if toon_id is _HELD_ELSEWHERE:
+        await ws.accept()
+        await ws.send_json({"kind": "elsewhere"})
+        await ws.close(code=ELSEWHERE)
+        return
     if toon_id is None:
         # No claimed/controllable toon (a fresh connect, a session that left
         # the dream, or one whose toon was kicked/deleted): route to the

@@ -312,7 +312,13 @@ async def _main_async(out_dir: Path) -> int:
     voice_note: str | None = None
 
     if comfy:
-        images = await _render_anchors(out_dir)
+        from daydream.gpu import arbiter
+
+        try:
+            images = await _render_anchors(out_dir)
+        except arbiter.GpuBusyElsewhere:
+            image_note = ("Another daydream process held the GPU; anchor renders "
+                          "skipped. Run `bin/game review` again once it is free.")
     else:
         image_note = (
             "ComfyUI unreachable; anchor renders skipped. "

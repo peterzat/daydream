@@ -44,6 +44,7 @@ import argparse
 import hashlib
 import os
 import shutil
+import sqlite3
 import subprocess
 import sys
 import tempfile
@@ -478,6 +479,19 @@ def _edge():
     return edge if edge.configured() else None
 
 
+def _set_edge_flag(edge, state: str, note: str = "") -> bool:
+    """Best effort (codereview WARN 2026-09-28): a Cloudflare API error must
+    not abort a sleep or wake half done. An unset asleep flag is covered
+    anyway: the Worker reads an unreachable origin as asleep."""
+    try:
+        edge.set_state(state, note=note)
+        return True
+    except (edge.EdgeError, OSError) as e:
+        say(f"edge: the flag is not {state} ({e}); set it later with bin/game edge "
+            + ("wake" if state == "awake" else "sleep"))
+        return False
+
+
 def wake() -> int:
     rel = _require_current()
     reach = engines_reachable()
@@ -500,8 +514,8 @@ def wake() -> int:
     say(f"daydream prod {rel.name}: awake on 127.0.0.1:{port()}")
     edge = _edge()
     if edge is not None:
-        edge.set_state("awake", note="")
-        say("edge: awake")
+        if _set_edge_flag(edge, "awake"):
+            say("edge: awake")
     else:
         say("edge: not configured yet (docs/CLOUDFLARE-SETUP.md); the edge state is unchanged")
     return 0
@@ -520,12 +534,13 @@ def sleep_(note: str, grace: int, keep_engines: bool) -> int:
             say(f"told everyone; waiting {grace}s ...")
             time.sleep(grace)
         edge = _edge()
-        if edge is not None:
-            edge.set_state("asleep", note=note)
+        if edge is not None and _set_edge_flag(edge, "asleep", note):
             say("edge: asleep")
-        systemctl("stop", TUNNEL)
-        systemctl("stop", UNIT)
-        say("service + tunnel: stopped")
+    # Stop both whatever their state: a failed or auto-restarting unit is not
+    # "active" yet may be looping; stopping an inactive unit is a no-op.
+    systemctl("stop", TUNNEL)
+    systemctl("stop", UNIT)
+    say("service + tunnel: stopped")
     # Rest everyone and write their journals while the engines are still up
     # (the release's own code, against prod data, with the server stopped).
     r = run_release_python(rel, ["-m", "daydream.admin", "rest-all", "--journal"], check=False,
@@ -533,7 +548,7 @@ def sleep_(note: str, grace: int, keep_engines: bool) -> int:
     say(r.stdout.strip() or "rest-all: done")
     edge = _edge()
     if edge is not None:
-        edge.set_state("asleep", note=note)  # also when the service was already down
+        _set_edge_flag(edge, "asleep", note)  # also when the service was already down
         try:
             edge.sync_keepsakes(rel)
         except Exception as e:  # keepsakes are a courtesy; never block sleep on them
@@ -668,7 +683,10 @@ def status() -> int:
                 say(body.strip())
     edge = _edge()
     if edge is not None:
-        say("edge: " + edge.describe_state())
+        try:
+            say("edge: " + edge.describe_state())
+        except (edge.EdgeError, OSError) as e:
+            say(f"edge: unknown ({e})")
     else:
         say("edge: not configured (docs/CLOUDFLARE-SETUP.md)")
     return 0
@@ -706,8 +724,17 @@ def pull() -> int:
     live.parent.mkdir(parents=True, exist_ok=True)
     # Read by the service user, written by the operator into their own dir.
     live.write_bytes(run_as_prod_bytes(rel, ["cat", str(backup / "live.db")]))
+    # Prod's account ids mean nothing in dev: unowned, a friend's toon can be
+    # adopted by a dev account to reproduce their bug (codereview WARN 2026-09-28).
+    conn = sqlite3.connect(str(live))
+    try:
+        with conn:
+            conn.execute("UPDATE objects SET owner_account = NULL WHERE kind = 'toon'")
+    finally:
+        conn.close()
     say(f"prod world ({backup.name}) installed as the dev world; `{dev_game} up` to look. "
-        "Dev accounts are separate: an admin dev account can enter any toon.")
+        "Its toons are unowned here: a dev account adopts one with POST api/slots/<slot>/claim "
+        "(GET api/slots lists them to an admin).")
     return 0
 
 
@@ -769,7 +796,7 @@ def main(argv: list[str] | None = None) -> int:
             return offsite()
         if args.cmd == "offsite-restore":
             return offsite_restore(args.name, args.dest)
-    except (ProdError, subprocess.CalledProcessError) as e:
+    except (ProdError, subprocess.CalledProcessError, OSError) as e:
         print(f"error: {e}", file=sys.stderr)
         return 1
     return 2

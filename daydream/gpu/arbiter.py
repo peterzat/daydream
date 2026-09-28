@@ -78,6 +78,11 @@ _max_wait_ms = {"llm": 0, "exclusive": 0, "background": 0}
 # ---- the cross-process layer (flock) ------------------------------------------
 
 XP_POLL_S = 0.05
+# After its own render a process waits this long (three polls) before trying
+# for the exclusive lock again, so another process's waiters get a turn: a
+# render loop would otherwise re-take the lock within microseconds and starve
+# their text calls (codereview WARN 2026-09-28).
+XP_YIELD_S = 0.15
 XP_RENDER_WAIT_S = 20.0
 # A text call waits longer (a render elsewhere takes ~20 s) but not forever:
 # a process holding the lock file indefinitely must not stall this one's
@@ -87,6 +92,7 @@ _xp_fd: int | None = None
 _xp_fd_path: str | None = None
 _xp_shared = 0
 _xp_mutex: asyncio.Lock | None = None
+_xp_excl_released = float("-inf")  # monotonic time of this process's last render
 
 
 class GpuBusyElsewhere(RuntimeError):
@@ -124,6 +130,9 @@ async def _xp_enter(kind: str) -> None:
     if fd is None:
         return
     if kind == "exclusive":
+        gap = _xp_excl_released + XP_YIELD_S - time.monotonic()
+        if gap > 0:
+            await asyncio.sleep(gap)
         await _xp_poll(fd, fcntl.LOCK_EX, XP_RENDER_WAIT_S)
         return
     if _xp_mutex is None:
@@ -136,11 +145,12 @@ async def _xp_enter(kind: str) -> None:
 
 def _xp_exit(kind: str) -> None:
     """Synchronous (flock unlock never blocks), so safe in a `finally`."""
-    global _xp_shared
+    global _xp_shared, _xp_excl_released
     if _xp_fd is None or config.gpu_lock_path() is None:
         return
     if kind == "exclusive":
         fcntl.flock(_xp_fd, fcntl.LOCK_UN)
+        _xp_excl_released = time.monotonic()
         return
     _xp_shared = max(0, _xp_shared - 1)
     if _xp_shared == 0:
@@ -280,6 +290,7 @@ def reset() -> None:
     """Test helper: drop all gate state so each test starts fresh.
     Not for production paths."""
     global _active_llm, _active_exclusive, _active_bg, _xp_fd, _xp_fd_path, _xp_shared, _xp_mutex
+    global _xp_excl_released
     if _xp_fd is not None:
         try:
             fcntl.flock(_xp_fd, fcntl.LOCK_UN)
@@ -289,6 +300,7 @@ def reset() -> None:
     _xp_fd = _xp_fd_path = None
     _xp_shared = 0
     _xp_mutex = None
+    _xp_excl_released = float("-inf")
     _active_llm = 0
     _active_exclusive = False
     _active_bg = 0

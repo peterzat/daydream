@@ -234,10 +234,28 @@ async def kick_slot(slot: int, request: Request) -> dict:
     if t is None:
         raise HTTPException(status_code=404, detail="slot is empty")
     _require_actionable(t, who)
+    held_here = t.controller_session == who.session_id
     toon = toons.kick_slot(slot)
     if toon is None:
         raise HTTPException(status_code=404, detail="slot is empty")
+    if held_here:
+        # Resting the toon you are playing is leaving the dream: otherwise the
+        # next connect's auto-enter wakes it at once, in the start room.
+        accounts.set_left(who.session_id, True)
+        _departed(toon)
     return _toon_to_dict(toon, who.session_id)
+
+
+def _departed(t: toons.Toon) -> None:
+    """A dreamer leaves: the room sees them go (playtest 2026-09-26: players
+    vanished mid-conversation with no line at all), and their journal recap
+    is written in the background (fail-closed, never awaited)."""
+    if t.current_room_id:
+        from daydream import events
+        events.append("system", None, "narrate",
+                      {"text": f"{t.name} drifts out of the dream for now.", "except": t.id},
+                      room_id=t.current_room_id)
+    asyncio.create_task(journal.write_entry(t.id))
 
 
 @router.post("/api/session/leave")
@@ -256,15 +274,7 @@ async def leave_session(request: Request) -> dict:
     released = toons.release_session_toon(sid)
     accounts.set_left(sid, True)
     if released is not None:
-        if released.current_room_id:
-            # The room sees a dreamer go (playtest 2026-09-26: players
-            # vanished mid-conversation with no line at all).
-            from daydream import events
-            events.append("system", None, "narrate",
-                          {"text": f"{released.name} drifts out of the dream for now.",
-                           "except": released.id},
-                          room_id=released.current_room_id)
-        asyncio.create_task(journal.write_entry(released.id))
+        _departed(released)
     return {"ok": True, "released": released.id if released else None}
 
 

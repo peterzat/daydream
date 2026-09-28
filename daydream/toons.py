@@ -280,7 +280,17 @@ def create_toon_in_slot(
             owner_account,
         ),
     )
+    _release_others(session_id, toon_id)
     return get_toon(toon_id)
+
+
+def _release_others(session_id: str, keep_id: str) -> None:
+    """A session plays one toon at a time: taking one lets go of any other it
+    held (a release, not a rest: they keep their room and things, and any
+    session of their account may claim them again)."""
+    db.get_conn().execute(
+        "UPDATE objects SET controller_session = NULL WHERE kind = 'toon' "
+        "AND controller_session = ? AND id != ?", (session_id, keep_id))
 
 
 def _toon_properties(*, appearance_seed: str, mood: str = "curious") -> str:
@@ -307,9 +317,10 @@ def claim_slot(
     t = _slot_occupied(slot)
     if t is None:
         return (None, "empty")
-    if t.is_human_controlled and t.kicked_at is None:
-        controller = t.controller_session
-        takeover = bool(can_take_over and controller and can_take_over(controller))
+    controller = t.controller_session
+    if t.is_human_controlled and t.kicked_at is None and controller:
+        # (No controller: released by a session that took another toon.)
+        takeover = bool(can_take_over and can_take_over(controller))
         if not takeover:
             return (None, "controlled")
     from daydream import rooms
@@ -326,6 +337,7 @@ def claim_slot(
         "kicked_at = NULL, location_id = ? WHERE id = ?",
         (session_id, spawn, t.id),
     )
+    _release_others(session_id, t.id)
     return (get_toon(t.id), None)
 
 
@@ -368,12 +380,15 @@ def kick_slot(slot: int) -> Toon | None:
 
 
 def release_session_toon(session_id: str) -> Toon | None:
-    """Rest (kick) the toon controlled by `session_id`, if any. 'Leave the
-    dream' calls this. Returns the released toon, or None."""
-    t = get_toon_by_session(session_id)
-    if t is None:
+    """Rest (kick) every toon controlled by `session_id` (one, since taking a
+    toon releases the others; more only in a world from before that). 'Leave
+    the dream' calls this. Returns the first released toon, or None."""
+    if not session_id:
         return None
-    return kick_slot(t.slot)
+    held = _query("controller_session = ? AND kicked_at IS NULL AND is_human_controlled = 1 "
+                  "ORDER BY slot", (session_id,))
+    rested = [kick_slot(t.slot) for t in held]
+    return next((t for t in rested if t is not None), None)
 
 
 def delete_slot(slot: int) -> Toon | None:

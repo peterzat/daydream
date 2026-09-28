@@ -350,3 +350,75 @@ def test_deploy_tests_run_with_the_dev_venv_in_the_worktree(tmp_path, monkeypatc
     monkeypatch.setattr(prodctl.subprocess, "run", fake_run)
     prodctl.run_tests_at("a" * 40)
     assert seen["venv"]
+
+
+def _sleep_fakes(srv, monkeypatch, *, active, edge=None):
+    import subprocess
+
+    rel = srv / "releases" / "aaaaaaaaaaaa"
+    rel.mkdir(parents=True, exist_ok=True)
+    prodctl.point("current", rel)
+    calls = []
+    monkeypatch.setattr(prodctl, "unit_active", lambda unit: active)
+    monkeypatch.setattr(prodctl, "systemctl", lambda a, u: calls.append((a, u)))
+    monkeypatch.setattr(prodctl, "run_release_python",
+                        lambda rel, args, check=True, capture=False:
+                        subprocess.CompletedProcess(args, 0, stdout="", stderr=""))
+    monkeypatch.setattr(prodctl, "_edge", lambda: edge)
+    return calls
+
+
+def test_sleep_stops_a_unit_that_is_not_exactly_active(srv, monkeypatch):
+    """Codereview WARN 2026-09-28: a failed or auto-restarting unit (not
+    "active") was left looping with the tunnel up."""
+    calls = _sleep_fakes(srv, monkeypatch, active=False)
+    assert prodctl.sleep_("", 0, keep_engines=True) == 0
+    assert ("stop", prodctl.TUNNEL) in calls and ("stop", prodctl.UNIT) in calls
+
+
+def test_a_cloudflare_error_does_not_abort_sleep_or_wake(srv, monkeypatch):
+    """Codereview WARN 2026-09-28: the edge flag is best effort; the village
+    still stops (or starts) when the Cloudflare API fails."""
+    from daydream import edge as edge_mod
+
+    def fail(*a, **k):
+        raise edge_mod.EdgeError("Cloudflare API unreachable")
+
+    fake_edge = type("E", (), {"EdgeError": edge_mod.EdgeError, "set_state": staticmethod(fail),
+                               "describe_state": staticmethod(fail),
+                               "sync_keepsakes": staticmethod(lambda rel: None)})
+    calls = _sleep_fakes(srv, monkeypatch, active=True, edge=fake_edge)
+    assert prodctl.sleep_("", 0, keep_engines=True) == 0
+    assert ("stop", prodctl.UNIT) in calls
+    monkeypatch.setattr(prodctl, "engines_reachable", lambda: {"vllm": True, "comfyui": True})
+    monkeypatch.setattr(prodctl, "wait_healthy", lambda seconds=45.0: True)
+    assert prodctl.wake() == 0
+    assert ("start", prodctl.UNIT) in calls
+
+
+def test_pull_leaves_the_friends_toons_adoptable_in_dev(srv, monkeypatch, tmp_path):
+    """Codereview WARN 2026-09-28: pulled toons belonged to prod account ids
+    that do not exist in dev, so nobody could enter one to reproduce a bug."""
+    import sqlite3
+    import subprocess
+
+    src = tmp_path / "prod-live.db"
+    c = sqlite3.connect(str(src))
+    c.execute("CREATE TABLE objects (id TEXT, kind TEXT, owner_account TEXT)")
+    c.execute("INSERT INTO objects VALUES ('t-mira', 'toon', 'a-prod1'), ('i-key', 'thing', NULL)")
+    c.commit()
+    c.close()
+    backup = tmp_path / "backup"
+    backup.mkdir()
+    (backup / "live.db").write_bytes(src.read_bytes())
+    rel = srv / "releases" / "aaaaaaaaaaaa"
+    rel.mkdir(parents=True)
+    prodctl.point("current", rel)
+    monkeypatch.setattr(prodctl, "_backup", lambda rel: backup)
+    monkeypatch.setattr(prodctl, "run_as_prod_bytes", lambda rel, cmd: src.read_bytes())
+    monkeypatch.setattr(prodctl.subprocess, "run", lambda cmd, **kw: subprocess.CompletedProcess(cmd, 7))
+    dev = tmp_path / "dev"
+    monkeypatch.setenv("DAYDREAM_DATA_DIR", str(dev))
+    assert prodctl.pull() == 0
+    got = sqlite3.connect(str(dev / "worlds-dev" / "live.db"))
+    assert got.execute("SELECT owner_account FROM objects WHERE kind = 'toon'").fetchall() == [(None,)]
