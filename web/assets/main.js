@@ -567,7 +567,7 @@ function toggleStagedVerb(verb, btn) {
 function clearStagedVerb() {
   stagedVerb = null;
   stagedDobjId = null;
-  hideStagedHint();
+  if (!textTarget) hideStagedHint(); // a waiting prompt keeps its hint; cancelText lets it go
   document
     .querySelectorAll("#verb-bar button.verb-staged")
     .forEach((b) => b.classList.remove("verb-staged"));
@@ -661,6 +661,7 @@ function applyVerbGating() {
 }
 
 function onObjectClick(objectId, objectVerbs, objectKind) {
+  cancelText(); // choosing something else lets any unsent words go
   const spec = stagedVerb ? verbSpecs[stagedVerb] : null;
   if (stagedVerb && spec && spec.needs_iobj) {
     // Two-step (give/use). Step 1: record the direct object; step 2: the click

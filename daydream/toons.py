@@ -387,8 +387,7 @@ def _title(room) -> str | None:
 
 
 def announce_move(toon_id: str, from_room: str | None, to_room: str,
-                  direction: str | None = None, *, teleport: bool = False,
-                  extra: dict | None = None):
+                  direction: str | None = None, *, teleport: bool = False):
     """Record a toon's move as two events: `move` keyed to the room it left
     (the WS layer's controlled-move trigger; its payload carries the mover's
     own line) and `arrive` keyed to the room it reached. Returns the move."""
@@ -404,7 +403,6 @@ def announce_move(toon_id: str, from_room: str | None, to_room: str,
         base["direction"] = direction
     if teleport:
         base["teleport"] = True
-    base.update(extra or {})
     ev = events.append("toon", toon_id, "move",
                        {**base, "you": texts["you"], "text": texts["leave"]},
                        room_id=from_room)

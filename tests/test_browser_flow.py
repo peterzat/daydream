@@ -498,9 +498,10 @@ def test_talking_asks_for_your_words_on_the_page_not_in_a_browser_box(tab, engin
     """Talk opened the browser's own prompt box ("www.eidolon.com says").
     The words now go on the page's input line: the hint names who you are
     talking to, Enter sends one talk command, and "never mind" lets it go."""
-    dialogs, sent = [], []
+    dialogs, sent, got = [], [], []
     tab.page.on("dialog", lambda d: (dialogs.append(d.message), d.dismiss()))
-    tab.page.on("websocket", lambda w: w.on("framesent", lambda f: sent.append(f)))
+    tab.page.on("websocket", lambda w: (w.on("framesent", lambda f: sent.append(f)),
+                                         w.on("framereceived", lambda f: got.append(f))))
     page = _signed_in_with_a_dreamer(tab)
     page.locator("#exit-bar button[data-direction=up]").click()
     expect(page.locator("#room-title")).to_have_text(UP["title"])
@@ -521,6 +522,12 @@ def test_talking_asks_for_your_words_on_the_page_not_in_a_browser_box(tab, engin
 
     page.locator("#verb-bar button[data-verb=talk]").click()
     resident.click()
+    # A same-room re-snapshot (someone comes or goes, a face is painted) keeps
+    # the waiting prompt's hint (codereview 2026-09-28g).
+    snaps = [json.loads(f) for f in got if isinstance(f, str) and f.startswith("{")]
+    page.evaluate("(s) => renderSnapshot(s)",
+                  [s for s in snaps if s.get("kind") == "state_snapshot"][-1])
+    expect(hint).to_contain_text(who)
     inp.fill("good evening")
     inp.press("Enter")
     expect(hint).to_be_hidden()
