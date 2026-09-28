@@ -645,6 +645,7 @@ footer .logout:hover { text-decoration: underline; }
     padding: 16px 18px 18px; }
 
   #room-bg { height: 132px; }
+  #chat { padding-right: 14px; }
   .chapter-title { font-size: 2.4rem; }
   .dropcap::first-letter { font-size: 3.4rem; padding: 4px 9px 0 0; }
 
@@ -704,13 +705,9 @@ footer .logout:hover { text-decoration: underline; }
    * 2026-09-27: at 1280x650 the description was clipped mid-sentence and the
    * log had no height at all). main.js pins new lines to the bottom and shows
    * the description on entering a room. */
-  .prose { min-height: 0; overflow-y: auto; padding-right: 6px; scrollbar-gutter: stable; }
+  .prose { min-height: 0; overflow-y: auto; padding-right: 16px; }
   #chat { max-height: none; overflow: visible; }
-  .margin { min-height: 0; overflow-y: auto; }
-  .prose, .margin { scrollbar-width: thin; scrollbar-color: rgba(90,122,106,.35) transparent; }
-  .prose::-webkit-scrollbar, .margin::-webkit-scrollbar { width: 6px; }
-  .prose::-webkit-scrollbar-thumb, .margin::-webkit-scrollbar-thumb {
-    background: rgba(90,122,106,.3); border-radius: 3px; }
+  .margin { min-height: 0; overflow-y: auto; padding-right: 14px; }
 
   /* The plate and title give room back to the text as the window gets
    * shorter: full size at 900px and up, compact on a laptop. */
@@ -826,7 +823,7 @@ footer .logout:hover { text-decoration: underline; }
 .book-page-link:hover { color: var(--sage-deep); border-bottom-color: var(--sage); }
 .book-page-link.current { color: var(--sage-deep); font-weight: 600; }
 .book-page-link.complete::after { content: "  \2766"; color: var(--quest); }
-.book-entries { display: flex; flex-direction: column; gap: 10px; max-height: 52vh; overflow-y: auto; padding-right: 6px; }
+.book-entries { display: flex; flex-direction: column; gap: 10px; max-height: 52vh; overflow-y: auto; padding-right: 16px; }
 .book-entry { font-family: var(--serif); color: var(--sage); opacity: .55; letter-spacing: .3em; }
 .book-entry.found { opacity: 1; letter-spacing: normal; }
 .book-entry-name { font-family: var(--hand); font-size: 1.35rem; color: var(--sage-deep); line-height: 1; }
@@ -887,9 +884,55 @@ body.awake #chat { display: none; }
  * main.js (watchScroll) toggles the classes as content and position change. */
 .more-below { -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 2.4em), transparent);
   mask-image: linear-gradient(to bottom, #000 calc(100% - 2.4em), transparent); }
-/* The top edge only hints: the view rests on a paragraph's first line there. */
-.more-above { -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,.45), #000 1.2em);
-  mask-image: linear-gradient(to bottom, rgba(0,0,0,.45), #000 1.2em); }
+/* The top edge fades to nothing over the space the view rests above a
+ * paragraph (main.js restAbove), so the line you read first is never greyed
+ * and a half-cut line above it never shows its glyphs (playtest 2026-09-28b). */
+.more-above { -webkit-mask-image: linear-gradient(to bottom, transparent, #000 1.1em);
+  mask-image: linear-gradient(to bottom, transparent, #000 1.1em); }
 .more-above.more-below {
-  -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,.45), #000 1.2em, #000 calc(100% - 2.4em), transparent);
-  mask-image: linear-gradient(to bottom, rgba(0,0,0,.45), #000 1.2em, #000 calc(100% - 2.4em), transparent); }
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 1.1em, #000 calc(100% - 2.4em), transparent);
+  mask-image: linear-gradient(to bottom, transparent, #000 1.1em, #000 calc(100% - 2.4em), transparent); }
+
+/* ---- the scroll rail (playtest 2026-09-28b: scrolling was not discoverable) ----
+ * The browser's own bar is hidden on the page's scrolling columns (it hid
+ * itself anyway on macOS and phones), and each draws a slim rail instead,
+ * always shown while there is more to see: a hairline track and a sage thumb
+ * that drags, the track turning a page when pressed. main.js updateRail. */
+.prose, .margin, #chat, .book-entries { scrollbar-width: none; }
+.prose::-webkit-scrollbar, .margin::-webkit-scrollbar, #chat::-webkit-scrollbar,
+.book-entries::-webkit-scrollbar { display: none; }
+.body { position: relative; }
+.margin { position: relative; }
+.scroll-rail {
+  position: absolute; z-index: 4; width: 11px; cursor: pointer; touch-action: none;
+  background: linear-gradient(90deg, transparent 5px, rgba(90,122,106,.18) 5px, rgba(90,122,106,.18) 6px, transparent 6px);
+}
+.scroll-rail.hidden { display: none; }
+.scroll-thumb {
+  position: absolute; top: 0; left: 3px; width: 5px; border-radius: 3px; cursor: grab;
+  background: rgba(90,122,106,.42); box-shadow: 0 1px 3px -1px rgba(74,106,90,.5);
+  transition: background .15s ease, width .15s ease, left .15s ease;
+}
+.scroll-rail:hover .scroll-thumb, .scroll-rail.dragging .scroll-thumb {
+  background: rgba(74,106,90,.7); width: 7px; left: 2px; }
+.scroll-rail.dragging .scroll-thumb { cursor: grabbing; }
+
+/* The margin's thumb index: the sections below the fold, named at its foot. */
+.margin-index {
+  position: absolute; z-index: 5; display: flex; flex-wrap: wrap; justify-content: flex-end;
+  gap: 4px 12px; padding: 5px 16px 3px 26px;
+  background: linear-gradient(180deg, rgba(251,249,243,0), var(--paper) 40%);
+}
+.margin-index.hidden { display: none; }
+.index-tab {
+  background: none; border: none; padding: 0; cursor: pointer;
+  font-family: var(--sans); font-size: .6rem; letter-spacing: .2em; text-transform: uppercase;
+  color: var(--sage-deep); border-bottom: 1px dotted var(--sage);
+}
+.index-tab:hover { color: var(--ink); }
+.index-tab.glint { color: var(--quest); border-bottom-color: var(--quest);
+  animation: index-glint 1.2s ease-in-out 3; }
+@keyframes index-glint { 50% { color: var(--amber); text-shadow: 0 0 8px rgba(200,160,110,.8); } }
+/* Something new in your hands glints once. */
+#inventory .obj-new { animation: carry-glint 1.6s ease-out 2; border-radius: 6px; }
+@keyframes carry-glint { 30% { background: rgba(200,160,110,.28); box-shadow: 0 0 0 4px rgba(200,160,110,.18); } }

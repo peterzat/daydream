@@ -39,6 +39,7 @@ let loadedWorldVersion = null;
 let lastCmd = null; // {key, t} -- debounce an accidental double-fire of one command
 let pendingDetail = null; // {verb, name, t} -- a targeted examine/read whose next narrate renders as a detail inset (the ledger reveal)
 let lastInventory = []; // the latest snapshot's carried things, for the keepsakes backpack foldout
+let inventorySeen = false; // a first snapshot's things are not "new" (nothing to compare)
 let lastJournal = []; // the controlled toon's journal entries from the snapshot (self only)
 let journalBeatShown = false; // "previously in your dream" fires once per toon entry
 let bgShownFor = null; // room id whose art the plate currently shows (stale-art veil)
@@ -282,8 +283,23 @@ function renderSnapshot(snap) {
   renderObjects("things", snap.items || [], "nothing around you");
   // WHAT YOU'RE CARRYING: inventory (things located on you). Cached so the
   // keepsakes backpack foldout can render the same list as specimen cards.
+  const carriedBefore = new Set(lastInventory.map((o) => o.id));
+  const hadInventory = inventorySeen;
   lastInventory = snap.inventory || [];
+  inventorySeen = true;
   renderObjects("inventory", lastInventory, "your hands are empty");
+  // Something new in your hands glints, here and on the margin's index when
+  // "you carry" is below the fold (playtest 2026-09-28b: a gift from a
+  // resident landed out of sight).
+  const fresh = hadInventory ? lastInventory.filter((o) => !carriedBefore.has(o.id)) : [];
+  for (const o of fresh) {
+    const chip = document.querySelector(`#inventory .obj[data-object-id="${o.id}"]`);
+    if (chip) chip.classList.add("obj-new");
+  }
+  if (fresh.length) {
+    carryGlintUntil = Date.now() + 6000;
+    setTimeout(refreshScrollCues, 6100);
+  }
   lastJournal = snap.journal || []; // your own story so far (self only)
   // Your Book of Stray Minutes (self only); the link shows once it exists.
   lastBook = snap.book || null;
@@ -622,6 +638,8 @@ function clearSceneAndLog() {
   renderObjects("toons", [], "no one else is here");
   renderObjects("things", [], "nothing around you");
   renderObjects("inventory", [], "your hands are empty");
+  lastInventory = [];
+  inventorySeen = false;
   document.getElementById("verb-bar").innerHTML = "";
   document.getElementById("skill-bar").innerHTML = "";
   document.getElementById("exit-bar").innerHTML = "";
@@ -1204,26 +1222,34 @@ function paragraphsIn(sc) {
   return paras;
 }
 
+function restAbove(sc) {
+  // The view rests this far above a paragraph's top, so the top edge's fade
+  // falls on the gap and the line before, never on the first line you read
+  // (playtest 2026-09-28b: the resting line came out greyed).
+  return Math.round(1.1 * (parseFloat(getComputedStyle(sc).fontSize) || 17));
+}
+
 function revealRange(first, last, sc) {
-  // Bring first..last into view, resting on a paragraph's top.
+  // Bring first..last into view, resting just above a paragraph's top.
   const viewH = sc.clientHeight;
+  const pad = restAbove(sc);
   const top = offsetIn(first, sc, "top");
   const bottom = offsetIn(last, sc, "bottom");
   if (top >= sc.scrollTop - 1 && bottom <= sc.scrollTop + viewH + 1) {
     trimSpacer(sc);
     return;
   }
-  let target = top;
-  if (bottom - top <= viewH) {
+  let target = top - pad;
+  if (bottom - top + pad <= viewH) {
     // The earliest paragraph top that still shows the whole range.
     for (const p of paragraphsIn(sc)) {
-      const t = offsetIn(p, sc, "top");
-      if (t >= bottom - viewH - 1) { target = Math.min(t, top); break; }
+      const t = offsetIn(p, sc, "top") - pad;
+      if (t >= bottom - viewH - 1) { target = Math.min(t, top - pad); break; }
     }
   } else {
     // Taller than the view: it opens at its first line, and a reader already
     // reading inside it keeps their place (codereview 2026-09-28c).
-    target = Math.min(Math.max(sc.scrollTop, top), bottom - viewH);
+    target = Math.min(Math.max(sc.scrollTop, top - pad), bottom - viewH);
   }
   target = Math.max(0, target);
   setSpacer(Math.max(0, target + viewH - contentEnd(sc)));
@@ -1276,15 +1302,126 @@ function showRoomTop() {
 }
 
 // Scroll cues: overlay scrollbars (macOS, phones) stay hidden until you
-// scroll, so a column holding more than it shows fades at that edge instead
-// (playtest 2026-09-28; the .more-above / .more-below styles).
+// scroll, so a column holding more than it shows fades at that edge
+// (playtest 2026-09-28; the .more-above / .more-below styles) and carries a
+// slim rail of its own, always drawn while there is more to see: the
+// browser's own bar is hidden, and the rail is the scrollbar, drag and all
+// (playtest 2026-09-28b: "scrolling is not discoverable").
+function isScrollable(el) {
+  return el.offsetParent !== null && getComputedStyle(el).overflowY !== "visible" &&
+    contentEnd(el) - el.clientHeight > 2;
+}
+
 function updateScrollCue(el) {
-  const scrollable = getComputedStyle(el).overflowY !== "visible" &&
-    el.scrollHeight - el.clientHeight > 2;
+  const scrollable = isScrollable(el);
   el.classList.toggle("more-above", scrollable && el.scrollTop > 2);
   el.classList.toggle("more-below",
     scrollable && el.scrollTop + el.clientHeight < contentEnd(el) - 2);
+  updateRail(el, scrollable);
+  if (el.id === "scene") updateMarginIndex(scrollable);
 }
+
+const RAIL_MIN_THUMB = 28;
+
+function railGeometry(el) {
+  const viewH = el.clientHeight;
+  const contentH = Math.max(viewH, contentEnd(el));
+  const thumbH = Math.max(RAIL_MIN_THUMB, Math.round(viewH * viewH / contentH));
+  const maxScroll = Math.max(1, contentH - viewH);
+  return { viewH, thumbH, maxScroll, perPx: maxScroll / Math.max(1, viewH - thumbH) };
+}
+
+function railFor(el) {
+  if (el._rail) return el._rail;
+  const rail = document.createElement("div");
+  rail.className = "scroll-rail hidden";
+  rail.setAttribute("aria-hidden", "true"); // the column itself scrolls by keys and wheel
+  const thumb = document.createElement("div");
+  thumb.className = "scroll-thumb";
+  rail.appendChild(thumb);
+  el.parentElement.appendChild(rail);
+  // Drag the thumb; press the track above or below it to turn a page.
+  thumb.addEventListener("pointerdown", (ev) => {
+    ev.preventDefault();
+    ev.stopPropagation();
+    const startY = ev.clientY;
+    const startTop = el.scrollTop;
+    const perPx = railGeometry(el).perPx;
+    rail.classList.add("dragging");
+    try { thumb.setPointerCapture(ev.pointerId); } catch (_) {}
+    const move = (m) => { el.scrollTop = startTop + (m.clientY - startY) * perPx; };
+    const up = () => {
+      rail.classList.remove("dragging");
+      thumb.removeEventListener("pointermove", move);
+      thumb.removeEventListener("pointerup", up);
+      thumb.removeEventListener("pointercancel", up);
+    };
+    thumb.addEventListener("pointermove", move);
+    thumb.addEventListener("pointerup", up);
+    thumb.addEventListener("pointercancel", up);
+  });
+  rail.addEventListener("pointerdown", (ev) => {
+    if (ev.target !== rail) return;
+    const above = ev.clientY < thumb.getBoundingClientRect().top;
+    el.scrollBy({ top: (above ? -1 : 1) * el.clientHeight * 0.85, behavior: "smooth" });
+  });
+  el._rail = rail;
+  return rail;
+}
+
+function updateRail(el, scrollable) {
+  const rail = railFor(el);
+  rail.classList.toggle("hidden", !scrollable);
+  if (!scrollable) return;
+  const g = railGeometry(el);
+  rail.style.top = el.offsetTop + "px";
+  rail.style.left = (el.offsetLeft + el.offsetWidth - rail.offsetWidth) + "px";
+  rail.style.height = g.viewH + "px";
+  const thumb = rail.firstChild;
+  thumb.style.height = g.thumbH + "px";
+  const at = Math.min(1, Math.max(0, el.scrollTop / g.maxScroll));
+  thumb.style.transform = `translateY(${Math.round(at * (g.viewH - g.thumbH))}px)`;
+}
+
+// The margin's thumb index: sections below the fold, named at its foot
+// ("you carry · 2"), each a touch away, so a laptop-height window still
+// shows where your things are (playtest 2026-09-28b).
+let carryGlintUntil = 0;
+
+function updateMarginIndex(scrollable) {
+  const m = document.getElementById("scene");
+  const idx = document.getElementById("margin-index");
+  const bottom = m.scrollTop + m.clientHeight;
+  const below = scrollable
+    // A section counts as below until its label and first line both show.
+    ? [...m.querySelectorAll(".mgroup")].filter(
+      (g) => bottom - g.offsetTop < Math.min(g.offsetHeight, 52)) : [];
+  idx.classList.toggle("hidden", !below.length);
+  if (!below.length) { idx.innerHTML = ""; return; }
+  const key = below.map((g) => g.id).join(",") + "|" + lastInventory.length;
+  if (idx.dataset.key !== key) {
+    idx.dataset.key = key;
+    idx.innerHTML = "";
+    for (const g of below) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "index-tab";
+      b.dataset.region = g.id;
+      const label = (g.querySelector(".mlabel") || {}).textContent || "";
+      const n = g.id === "carrying-region" ? lastInventory.length : 0;
+      b.textContent = "\u2193 " + label + (n ? " \u00b7 " + n : "");
+      b.onclick = () => m.scrollTo({ top: g.offsetTop - 6, behavior: "smooth" });
+      idx.appendChild(b);
+    }
+  }
+  const carry = idx.querySelector('[data-region="carrying-region"]');
+  if (carry) carry.classList.toggle("glint", Date.now() < carryGlintUntil);
+  idx.style.left = m.offsetLeft + "px";
+  idx.style.width = m.offsetWidth + "px";
+  idx.style.top = (m.offsetTop + m.clientHeight - idx.offsetHeight) + "px";
+}
+
+const scrollWatchers = new Map(); // element -> its queued update
 
 function watchScroll(el) {
   if (!el) return;
@@ -1294,13 +1431,18 @@ function watchScroll(el) {
     queued = true;
     requestAnimationFrame(() => { queued = false; updateScrollCue(el); });
   };
+  scrollWatchers.set(el, update);
   el.addEventListener("scroll", update, { passive: true });
   if (window.ResizeObserver) new ResizeObserver(update).observe(el);
   new MutationObserver(update).observe(el, { childList: true, subtree: true, characterData: true });
   window.addEventListener("resize", update);
   update();
 }
-["chat", "scene"].forEach((id) => watchScroll(document.getElementById(id)));
+
+function refreshScrollCues() {
+  for (const update of scrollWatchers.values()) update();
+}
+["chat", "scene", "book-entries"].forEach((id) => watchScroll(document.getElementById(id)));
 watchScroll(document.querySelector(".prose"));
 
 function clearPending() {

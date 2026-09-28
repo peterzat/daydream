@@ -279,10 +279,13 @@ def test_a_returning_friend_signs_in_and_a_wrong_password_stays_at_the_door(tab,
 UP = next(r for r in ENVELOPE["rooms"] if r["id"] == START["exits"]["up"])
 
 # Where the reading column rests, measured in the page: its scroll position,
-# whether a paragraph (the room description or a log line) starts exactly at
-# its top edge, where the newest log line ends, and its scroll-cue classes.
+# whether a paragraph (the room description or a log line) starts at its
+# resting place (a fade's height, `pad`, below the top edge, so the fade never
+# greys the first line: playtest 2026-09-28b), where the newest log line ends,
+# and its scroll-cue classes.
 READING = """() => {
   const sc = document.querySelector(".prose");
+  const pad = restAbove(sc);
   const origin = sc.getBoundingClientRect().top + sc.clientTop;
   const paras = [document.getElementById("room-desc"),
                  ...document.querySelectorAll("#chat > *")];
@@ -290,8 +293,8 @@ READING = """() => {
     - (parseFloat(getComputedStyle(p).marginTop) || 0) - origin);
   const lines = document.querySelectorAll("#chat > .evt[data-seq]");
   const last = lines[lines.length - 1];
-  return {scrollTop: sc.scrollTop, height: sc.clientHeight,
-          restsOnParagraph: tops.some((t) => Math.abs(t) < 2),
+  return {scrollTop: sc.scrollTop, height: sc.clientHeight, pad,
+          restsOnParagraph: tops.some((t) => Math.abs(t - pad) < 2),
           lastTop: last.getBoundingClientRect().top - origin,
           lastBottom: last.getBoundingClientRect().bottom - origin,
           cue: sc.className};
@@ -413,7 +416,7 @@ def test_an_answer_rests_on_a_paragraph_top_and_the_columns_show_more(tab, engin
         if r["lastBottom"] - r["lastTop"] <= r["height"]:
             assert -1 <= r["lastTop"] and r["lastBottom"] <= r["height"] + 1, r
         else:
-            assert abs(r["lastTop"]) < 2, r  # a long answer opens at its first line
+            assert abs(r["lastTop"] - r["pad"]) < 2, r  # a long answer opens at its first line
     assert scrolled, "three answers never needed the column to scroll; the test proves nothing"
     _assert_quiet(tab, engines)
 
@@ -435,7 +438,7 @@ def test_a_reader_inside_a_long_answer_keeps_their_place(tab, engines):
     page.wait_for_timeout(100)
     opened = page.evaluate(READING)
     assert opened["lastBottom"] - opened["lastTop"] > opened["height"], opened
-    assert abs(opened["lastTop"]) < 2, opened  # it opens at its first line
+    assert abs(opened["lastTop"] - opened["pad"]) < 2, opened  # it opens at its first line
     page.evaluate("() => { document.querySelector('.prose').scrollTop += 250; }")
     reading = page.evaluate(READING)["scrollTop"]
     assert reading > opened["scrollTop"] + 200, (reading, opened)

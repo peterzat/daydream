@@ -77,3 +77,26 @@ def test_a_welcome_a_move_causes_follows_the_arrival_line_undimmed(tab, engines)
     # The resident named in the welcome does not greet again.
     expect(page.locator("#chat .evt", has_text=re.compile(r"^Tace (stands|is|works)"))).to_have_count(0)
     _assert_quiet(tab, engines)
+
+
+def test_a_column_with_more_draws_its_rail_and_the_margin_names_what_is_below(tab, engines):
+    """Scrolling was not discoverable (the operator's note): on a laptop the
+    margin ended at "around you" with no sign "you carry" was below, and the
+    reading column gave no sign it scrolled. Each scrolling column now draws
+    a rail while it holds more, and the margin's foot names what is below."""
+    page = tab.page
+    page.set_viewport_size({"width": 1280, "height": 650})
+    _signed_in_with_a_dreamer(tab)
+    scene = page.locator("#scene")
+    rails = page.evaluate("""() => [...document.querySelectorAll('.body > .scroll-rail')]
+        .filter((r) => !r.classList.contains('hidden')).length""")
+    assert rails >= 1, rails
+    assert page.evaluate("getComputedStyle(document.querySelector('.prose')).scrollbarWidth") == "none"
+    tab_ = page.locator("#margin-index .index-tab", has_text="you carry")
+    expect(tab_).to_be_visible()
+    tab_.click()
+    page.wait_for_timeout(900)  # the smooth scroll settles (the CSP forbids wait_for_function)
+    expect(page.locator("#carrying-region .mlabel")).to_be_in_viewport()
+    expect(page.locator("#margin-index")).to_be_hidden()
+    assert scene.evaluate("(m) => m.scrollTop") > 0
+    _assert_quiet(tab, engines)

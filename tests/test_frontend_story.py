@@ -77,7 +77,9 @@ def test_scrollable_columns_show_a_cue_at_the_edge_with_more():
     assert ".more-below {" in CSS and ".more-above {" in CSS
     assert "mask-image" in CSS and "-webkit-mask-image" in CSS
     assert 'watchScroll(document.querySelector(".prose"))' in JS
-    assert '["chat", "scene"].forEach((id) => watchScroll(' in JS
+    assert '["chat", "scene", "book-entries"].forEach((id) => watchScroll(' in JS
+    # ...and draw a rail while they hold more (playtest 2026-09-28b).
+    assert "function updateRail(" in JS and ".scroll-rail {" in CSS
 
 
 def test_input_history_and_topic_overflow():
