@@ -1,10 +1,10 @@
 # Going live: the village opens its doors (2026-09-27)
 
-Status: design approved by the operator on 2026-09-27. Building is in
-progress; SPEC.md is the contract, and where this file and the spec differ,
-the spec wins. This is the durable record of *why* daydream is hosted the way
-it is. The operator's one-time steps are in `docs/CLOUDFLARE-SETUP.md`, and
-the day-to-day verbs are in CLAUDE.md.
+Status: designed and approved 2026-09-27; live since 2026-09-28. SPEC.md is
+the contract, and where this file and the spec differ, the spec wins. This is
+the durable record of *why* daydream is hosted the way it is and what
+bringing it up taught us (section 11). The one-time setup is
+`docs/CLOUDFLARE-SETUP.md`; the day-to-day playbooks are `docs/runbooks/`.
 
 ## 1. What we are doing
 
@@ -19,6 +19,31 @@ static Pages site, fronts it.
   operator's title; players never see a name) will wake it.
 - The admin console is a Claude Code session on the box. The web surface
   only plays.
+
+### The shape of it: one box, one edge, one repo, one agent
+
+- **One box.** A Hetzner GEX44 runs dev and prod side by side. Prod is a
+  second environment, not a second machine: its own system user, releases,
+  data and accounts, sharing the GPU engines with dev behind a
+  cross-process lock. The runtime stays local-only (the generation policy).
+- **One edge.** Cloudflare's Worker is the only always-up piece, so it owns
+  the public face: it proxies to an Access-guarded tunnel while the box is
+  awake, and tells friends the village is asleep (with their keepsakes)
+  when it isn't. The box opens no inbound port.
+- **One repo, forkable.** Everything general is committed: the engine, the
+  world, `bin/game prod`, `ops/`, `edge/`, the playbooks. Everything that
+  makes this instance *this* one stays local: tokens, the dashboard's
+  settings, `/srv/daydream/etc/prod.env`, and the gitignored
+  `instance/NOTES.md`. A fork changes the few committed instance values
+  (hostnames, the operator's title) and brings its own box and Cloudflare
+  account (CLAUDE.md "This repo and this instance"; a check before every
+  push keeps the split honest).
+- **One agent at the console.** Operations happen in a Claude Code session
+  on the box: the operator asks, the agent drives `bin/game prod` and
+  `bin/game edge` under a standing grant, following `docs/runbooks/` and the
+  `/village` and `/invite` skills. The verbs that mint credentials or
+  replace the world always ask; root-owned files and the dashboard stay with
+  the human.
 
 ## 2. The finding that shaped everything
 
@@ -208,37 +233,76 @@ is lent out.
 
 ## 10. Where it stands (2026-09-28: live)
 
-**Live since 2026-09-28** at www.eidolon.com/daydream, following
-`docs/CLOUDFLARE-SETUP.md` end to end in one session. Criteria 1-8, 14, 18,
-19, 21 and 23 are met. Verified on the real edge:
-- the Worker's route wins over the Pages site on the same host (the asleep
-  page showed there before anything on the box was exposed)
-- the origin refuses a request without the service token, or with a wrong
-  one (403); `cf-cache-status: DYNAMIC` shows the never-cache rule
+**Live since 2026-09-28** at www.eidolon.com/daydream, brought up by
+following `docs/CLOUDFLARE-SETUP.md` end to end in one session. Criteria 1-8,
+14, 18, 19, 21 and 23 are met. `bin/game prod check` now verifies, on
+demand, everything the bring-up proved by hand:
+- the Worker's route wins over the Pages site on the same host
+- the origin refuses anyone without the service token (403)
 - `/daydream` and the apex redirect to `https://www.eidolon.com/daydream/`;
-  workers.dev and preview URLs are off; prod listens only on loopback
+  prod listens only on loopback
 - the front door, a 401 for a signed-out API call, a 403 for a cross-origin
   login
-- a WebSocket through Worker, Access and tunnel (`needs_toon`, then a clean
-  close)
-
-**Found and fixed during the bring-up:**
-- `prod deploy`'s test gate could never pass on a real box: its worktree had
-  no `.venv` for the `bin/game` smoke test, and with prod awake the suite's
-  blanked GPU lock made `bin/game` refuse `image-test`. The worktree now
-  borrows the dev venv, and the smoke test ignores an awake prod.
-- The app dropped the socket right after `needs_toon` without a close frame;
-  through the tunnel that last frame was lost on the first connection after
-  a wake. It now closes with 1000.
-- `bin/game edge status` read the public edge as down: Cloudflare's Browser
-  Integrity Check refuses Python's default User-Agent.
-- The setup runbook gained what the real dashboard needed: two token
-  permissions (Workers Tail Read, Zone Read), the IPv6 address in the token's
-  IP filter, deploying the Worker before its secrets, the JWT-validation
-  switch on the tunnel route, and the R2 command with the token loaded.
+- no WebSocket answer carries Access's cookie, and a session's socket
+  closes cleanly
+- each timer job's last run
 
 **Still to demonstrate (criteria 9-13, 15-17, 22):** a live dialogue and
 portrait under the sandbox, a rollback drill, a backup restored into dev,
 `prod sleep`/`wake` with keepsakes, the first friend's full flow from a
-phone, and the R2 offsite bucket. This instance's own record of what exists
-where is the gitignored `instance/NOTES.md`.
+phone, and the R2 offsite bucket.
+
+## 11. What bringing it up taught us
+
+**Rehearsals that skip the real client miss real bugs.** The prod rehearsal
+drove the whole flow through the API and passed. A real browser could not
+sign in: the front door disabled its inputs before reading the form, and
+FormData skips disabled inputs. Now a headless-browser test walks a friend
+from an invitation to the start room, in CI's tier and in the deploy gate.
+
+**A gate that never ran is not a gate.** `prod deploy`'s test step had never
+passed on the box: its worktree had no venv for the `bin/game` smoke test,
+and once prod was awake the suite's blanked GPU lock made `bin/game` refuse.
+Both failures were test isolation, not product bugs, and both were invisible
+until the first real deploy. The fix was isolation, not a way around the gate.
+
+**Every response path is a security path.** The Worker stripped Access's
+`CF_Authorization` cookie on HTTP responses but passed WebSocket answers
+through untouched, handing anonymous visitors a day-long token for the
+origin. One helper now filters every path, a unit test covers the 101 and
+the refusal, and `prod check` probes for the cookie live. The blast radius
+was small (the token opened nothing behind the sign-in gate, and expired
+within a day), which is the point of layering the gate behind the edge.
+
+**Close sockets properly.** Dropping a WebSocket without a close frame lost
+the last frame (`needs_toon`) somewhere between tunnel and browser, on the
+first connection after a wake. A 1000 close makes every hop flush.
+
+**Silent jobs fail silently.** The keepsakes and offsite timers could not
+drop to the service user (`NoNewPrivileges` blocks setuid sudo), and a hand
+run succeeded, so a demonstration would have passed. Job results now show in
+`prod status` and `prod check`.
+
+**Review in layers.** A security audit, fresh-eyes code reviewers per area,
+and live probes each caught things the others missed. The pre-push review of
+this turn found three BLOCKs after the security audit had passed, and live
+probing confirmed or ruled out each claim before anything was fixed.
+
+**The dashboard drifts; write down what you clicked.** The API token needed
+Workers Tail and Zone Read beyond the plan; the box reaches Cloudflare over
+IPv6 first, so an IP filter needs both addresses; `wrangler secret put`
+before the first deploy creates a placeholder Worker; Cloudflare refuses
+Python's default User-Agent. CLOUDFLARE-SETUP.md records the layout as
+walked, and the instance record says what exists where.
+
+**Keep the split honest before the first push.** The unpushed history
+carried the box's addresses, an account id, the operator's name and a
+friend's surname; they were rewritten out before anything went public. A
+separation check now runs before every push.
+
+**An agent can run production when the boundaries are explicit.** A
+standing grant lets the agent drive prod in a session like this one; ask
+rules keep the credential-minting and world-replacing verbs behind a prompt;
+the permission layer refused an agent loosening its own rules; sudo and the
+dashboard stay human. The playbooks are written for that agent, and a test
+fails when they name a verb that doesn't exist.

@@ -1,12 +1,13 @@
 ---
 name: village
-description: Check on or operate the prod village (www.eidolon.com/daydream). Subcommands - status, wake, sleep "<note>", deploy [ref]. Use when the operator types /village, or asks whether the village is up, to wake it, put it to sleep (e.g. to use the GPU for something else), or ship the current code to prod.
+description: Check on or operate the prod village (www.eidolon.com/daydream). Subcommands - status, check, wake, sleep "<note>", maintenance "<note>", deploy [ref]. Use when the operator types /village, or asks whether the village is up or healthy, to wake it, put it to sleep (e.g. to use the GPU for something else), take it down for maintenance, or ship the current code to prod.
 ---
 
-# /village status | wake | sleep "<note>" | deploy [ref]
+# /village status | check | wake | sleep "<note>" | maintenance "<note>" | deploy [ref]
 
 Operate daydream prod (SPEC 2026-09-27 criterion 18). Background: CLAUDE.md
-"Prod"; docs/GOING-LIVE.md.
+"Prod"; the playbooks in docs/runbooks/ (read the one that fits before
+anything unusual); this instance's record in instance/NOTES.md, if present.
 
 ## status (default when no subcommand)
 
@@ -15,7 +16,15 @@ lines:
 - awake or asleep, with the note
 - the release vs HEAD (commits behind)
 - engines up or down
+- the timer jobs (backup, keepsakes, offsite): name any that failed
 - who is playing
+
+## check
+
+Run `bin/game prod check` (read-only; safe any time). Report the one-line
+verdict, and for each FAIL what it means and the next step, from
+docs/runbooks/verify.md. Run it yourself after every wake, deploy or edge
+deploy.
 
 ## wake
 
@@ -38,15 +47,25 @@ playing). It:
 
 Use `--keep-engines` only if the operator wants the GPU engines left running.
 
+## maintenance "<note>"
+
+A window for work on the box (updates, a reboot, disk work):
+docs/runbooks/sleep-and-wake.md. Sleep with the note (as `sleep` above),
+tell the operator the box is theirs, and when they say it is done:
+`bin/game prod wake`, then `check`. After a reboot nothing daydream starts
+by itself; the edge shows friends the asleep page until the wake.
+
 ## deploy [ref]
 
-Always ask-first, and confirm what is going out:
-`git log --oneline <current>..<ref>` (the current release name is in
-`bin/game prod status`). Then run `bin/game prod deploy <ref>` (default HEAD).
+When the operator's message asks for the deploy (typing `/village deploy` is
+the ask), show what is going out, `git log --oneline <current>..<ref>` (the
+current release name is in `bin/game prod status`), and run it; ask first
+only when the deploy was not requested. Run `bin/game prod deploy <ref>`
+(default HEAD).
 It tests that exact commit, builds a release, backs up prod, switches, and
 rolls back by itself if the new release is unhealthy.
 
-Report:
+Report (and run `check` after it):
 - which release is live
 - whether migrations ran
 - whether players' sessions were dropped (a restart drops them briefly;

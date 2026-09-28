@@ -290,6 +290,21 @@ Liveness gates are orthogonal:
 
 So `bin/game test long` with both engines down still runs ~1225 tests (short + medium) and skips the engine-gated probes with a clear "engine unreachable" reason.
 
+## Prod and ops (added 2026-09-28, after the first bring-up)
+
+The live instance is guarded at four layers, each of which caught something
+the others missed on the day it went live (docs/GOING-LIVE.md section 11):
+
+| Layer | What | Where it runs |
+|---|---|---|
+| The real client | `tests/test_browser_flow.py`: headless Chromium through the front door, an invitation to the start room, a returning login, a wrong password. Fails with what the door posted. | tier_medium; skips without the browser (CI); runs in `prod deploy`'s gate on the box. One-time: `.venv/bin/python -m playwright install chromium-headless-shell`. |
+| The deploy machinery | `tests/test_prodctl.py` (deploy, auto-rollback and the release before it, the test worktree's venv, which verbs stop the service, the path guard, "behind" after a rewrite), `tests/test_backup.py` (retention by age with a floor), `tests/test_edge_ctl.py` | tier_short / tier_medium |
+| The ops files against each other | `tests/test_ops_units.py`: sudoers covers what prodctl starts and stops; the installer installs every unit and enables only timers; `ops/prod.env.example` passes the boot guard and matches the Worker's vars; the prod unit keeps its sandbox; operator jobs may use sudo. `tests/test_runbooks.py`: every `bin/game prod|edge` verb a playbook, skill, README or CLAUDE.md names exists. | tier_short |
+| The live site | `bin/game prod check` (daydream/prodcheck.py): the edge and prod invariants, read-only, against the real network. Its checks are pure functions, unit-tested against the failures they must catch (`tests/test_prodcheck.py`, e.g. the Access-cookie leak). | By hand or by an agent after every deploy, wake or edge deploy; never in CI (it needs the box and the network). |
+
+The Worker's own tests are `node --test edge/test/*.test.js` (also run by
+`bin/game edge deploy` before it ships).
+
 ## Glossary
 
 - **Probe.** A test that measures something against a committed baseline, typically under `tests/drift/`. Distinct from a correctness test.

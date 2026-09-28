@@ -71,9 +71,24 @@ Every scanned file was read in full, along with the callers and callees each fin
 - Strangers can keep invitations paused (20 failures an hour, 40 a day, global). `bin/game invite unblock` reopens them.
 - On the Workers Free plan, an anonymous client can use up the daily request quota. The one WAF rule covers only the login and invite paths.
 - The operator's Cloudflare token is account-wide, because Workers Scripts edit cannot be scoped to one Worker.
-- Toon names are not unique. Exact duplicates are now refused at moderation; NOTE 1 covers what remains.
+- Toon names are not unique. Moderation now refuses any key that matches more than one toon by id or name, and `/status/who` shows ids; lookalike Unicode names are not folded.
 - Supply-chain pinning: the prod lock pins versions but not hashes, and CI actions use tags.
-- Another repository's concern: `www.eidolon.com/generate` accepts anonymous POSTs that spend Workers AI, on the origin daydream shares.
+- The standing prod grant's `ask` rules (`.claude/settings.local.json`, local) are text patterns: a quoted word may slip past one (untested, since testing it would mint a real reset link). A PreToolUse hook that parses the command would be firmer.
+
+### Closed by the operator's decision (2026-09-28)
+
+- **The Worker leaked Access's cookie on WebSocket answers** (found by the
+  pre-push code review, a BLOCK; fixed in `3df294b`, deployed about 02:40
+  UTC on 2026-09-28). For about five hours an anonymous HTTP/1.1 upgrade to
+  `/daydream/ws` received a 24-hour `CF_Authorization` token for the origin
+  hostname. Every such token has expired by about 02:40 UTC on 2026-09-29.
+  The operator chose not to revoke tokens or shorten the Access session in
+  the dashboard: a token opens nothing behind the sign-in gate; it only
+  skips the edge rate limit and lets the per-address throttle key be forged,
+  while the per-username limit, the global invite cap and the 4-slot argon2
+  cap still hold; and no accounts existed during the window. Guarded by
+  `edge/test/worker.test.js` (a 101 and a refused upgrade, both stripped)
+  and by `bin/game prod check`, which probes for the cookie on every run.
 
 ### Accepted Risks
 

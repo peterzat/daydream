@@ -14,6 +14,16 @@ Every hour that goes missing ends up somewhere: the afternoon you daydreamed thr
 
 Daydream is a small, shared, persistent coffee-break world running on one GPU box, open to a few invited friends at [www.eidolon.com/daydream](https://www.eidolon.com/daydream): text you can type or click, watercolor rooms, and stories that respond to what the people playing it actually do. A visit might go: arrive at the Clocktower, wind a small clock of your own by the old custom, meet the lamplighter and the clockmaker, help a lost hour find its way home, pick up the stray minutes that glint about the village for you alone, and leave something changed for the next dreamer to find.
 
+## Where it runs, and how to make it yours
+
+Daydream is meant to be forked: take the repo, make it your own game (or keep the village), and run it on your own box behind your own Cloudflare account. The repo carries everything general: the engine, the world, the prod tooling (`bin/game prod`), the ops templates (`ops/`), the edge Worker (`edge/`), and the playbooks an agent follows to operate it (`docs/runbooks/`). What makes an instance *yours* never enters the repo: your tokens, your dashboard settings, your box's prod environment, and a local record of what exists where (`instance/NOTES.md`, gitignored). This repo's own history is one operator pushing for exactly one instance, the village at [www.eidolon.com/daydream](https://www.eidolon.com/daydream), invitation only.
+
+- **One GPU box: a Hetzner GEX44** (one RTX 4000 SFF Ada, 20 GB). It runs both environments: dev on the tailnet, and prod as a sandboxed system user with its own releases, data and accounts, loopback-only egress, and no secrets. Both share the local engines (vLLM and ComfyUI) behind a cross-process GPU lock. The running game calls no cloud model.
+- **Cloudflare in front.** A Worker at `/daydream` proxies to an Access-guarded Cloudflare Tunnel, so the box opens no inbound port. The box is often lent to other GPU work; when it sleeps, the Worker shows friends a storybook "the village is asleep" page with their own journal and book. The free plan covers all of it (R2, for offsite backups, needs a card on file).
+- **Operations are agentic.** The admin console is a Claude Code session on the box. The operator asks; the agent runs the prod verbs (deploy, sleep, wake, invite, check), follows the playbooks, and keeps the instance record current. `/village` and `/invite` are skills for the everyday verbs. Only root-owned files and the Cloudflare dashboard need the human's hands, and the verbs that mint a credential or replace the world always ask.
+
+To make it yours: [`docs/CLOUDFLARE-SETUP.md`](docs/CLOUDFLARE-SETUP.md) lists what you need and what to change first; [`docs/GOING-LIVE.md`](docs/GOING-LIVE.md) is the design and what bringing it up taught us.
+
 ## Reflexes, not voice
 
 **The local GPU is the game's reflexes, not its voice.** Everything that carries the story is written by Opus: ahead of time (every beat, ending, fact, room, and line of the village, 29 endings across 11 story arcs) and in *dreams* between sessions that read what players did. The small models on one local 20 GB GPU handle only what cannot be prepared in advance:
@@ -104,7 +114,8 @@ Requirements: Linux with an NVIDIA GPU of about 20 GB (an RTX 4000 SFF Ada here;
 The live village runs as a second, sandboxed environment on the same box: its own system user, data, accounts and release directory, sharing the GPU engines with dev. Friends reach it through a Cloudflare Worker that proxies to an Access-guarded Cloudflare Tunnel, so the box opens no inbound port, and when the box is off or lent to other work the Worker shows a storybook "the village is asleep" page (with each friend's own journal and book). Requirements on top of the dev setup: Node.js 20 or newer, and a Cloudflare account with a domain on Cloudflare DNS (the free plan covers it: Workers, KV, Zero Trust with no seats used, a tunnel; R2 for offsite backups needs a payment method on file). The design is [`docs/GOING-LIVE.md`](docs/GOING-LIVE.md); the one-time setup, dashboard and box, is [`docs/CLOUDFLARE-SETUP.md`](docs/CLOUDFLARE-SETUP.md). After that the shell is the admin console:
 
 ```sh
-bin/game prod status | logs          # release vs HEAD, service, tunnel, engines, who is playing
+bin/game prod status | logs          # release vs HEAD, service, tunnel, engines, jobs, who is playing
+bin/game prod check                  # the live edge and prod invariants, verified (read-only)
 bin/game prod deploy [ref]           # test that ref, build a release, back up, switch, health-check, roll back on failure
 bin/game prod sleep --note "..."     # rest everyone, write journals, show the asleep page, free the GPU
 bin/game prod wake                   # engines, tunnel, service; the edge says awake
@@ -112,17 +123,17 @@ bin/game prod invite create --for "Name"   # a friend's single-use link
 bin/game prod world|dream|account ...      # the prod release's own bin/game, as the service user
 ```
 
-The committed hostnames and names (`edge/wrangler.toml`, `ops/prod.env.example`) are this instance's own; a fork changes them first.
+The committed hostnames and names (`edge/wrangler.toml`, `ops/prod.env.example`) are this instance's own; a fork changes them first. Everyday operations (sleep and wake, a maintenance window, deploys and rollbacks, content, friends, backups, incidents) are playbooks in [`docs/runbooks/`](docs/runbooks/).
 
 ## Tests
 
 ```sh
-bin/game test short     # ~1080 tests, ~9 s: the pre-commit gate
-bin/game test medium    # ~1630 tests, ~37 s: the pre-push gate (CI runs this)
+bin/game test short     # ~1110 tests, ~9 s: the pre-commit gate
+bin/game test medium    # ~1690 tests, ~38 s: the pre-push gate (CI runs this; prod deploy's gate too)
 bin/game test long      # + real-GPU drift probes against committed goldens (~3 min)
 ```
 
-Every arc ending has a walkthrough replayed with zero model calls; a static analyzer proves every room reachable and every arc solvable; Zork I still ends at exactly 350 points. The drift probes compare the real models against git-committed baselines, so a changed golden is a reviewed commit. The contract is [`TESTING.md`](TESTING.md).
+Every arc ending has a walkthrough replayed with zero model calls; a static analyzer proves every room reachable and every arc solvable; Zork I still ends at exactly 350 points. A headless-browser test walks a new friend from an invitation to the start room, and the ops files and playbooks are tested against the code (`bin/game prod check` verifies the live site itself). The drift probes compare the real models against git-committed baselines, so a changed golden is a reviewed commit. The contract is [`TESTING.md`](TESTING.md).
 
 ## Technical choices
 
@@ -144,7 +155,8 @@ Every arc ending has a walkthrough replayed with zero model calls; a static anal
 | [`docs/playtests/`](docs/playtests/) | Agent playtest critiques and summaries |
 | [`WHIMSY.md`](WHIMSY.md), [`DESIGN.md`](DESIGN.md) | Tone and interface design language |
 | [`CLAUDE.md`](CLAUDE.md) | The operating manual (lifecycle, engines, conventions) |
-| [`docs/GOING-LIVE.md`](docs/GOING-LIVE.md), [`docs/CLOUDFLARE-SETUP.md`](docs/CLOUDFLARE-SETUP.md) | Hosting for friends: the design, and the one-time setup |
+| [`docs/GOING-LIVE.md`](docs/GOING-LIVE.md), [`docs/CLOUDFLARE-SETUP.md`](docs/CLOUDFLARE-SETUP.md) | Hosting for friends: the design and its lessons, and the one-time setup |
+| [`docs/runbooks/`](docs/runbooks/) | Playbooks for operating a live instance (written for an agent) |
 | [`SECURITY.md`](SECURITY.md) | Threat model, trust boundaries, residual risks |
 | [`docs/gpu-and-models.md`](docs/gpu-and-models.md) | GPU and model decisions |
 | [`CHANGELOG.md`](CHANGELOG.md), [`docs/RELEASES.md`](docs/RELEASES.md) | Release history |
