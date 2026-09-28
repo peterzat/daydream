@@ -46,11 +46,16 @@ migrated the world, restore the pre-deploy backup the deploy printed
 ## After changing ops files
 
 A deploy ships code, not the box's own config. When a change touches
-`ops/systemd/*`, `ops/sudoers.d/*` or `ops/install-prod.sh`, the operator
-re-runs `sudo ops/install-prod.sh` (idempotent; it keeps `prod.env` and the
-tunnel token). A change to `ops/prod.env.example` does not reach
-`/srv/daydream/etc/prod.env`: the operator edits that with sudo. A change to
-`edge/` ships with `bin/game edge deploy` ([edge.md](edge.md)).
+`ops/systemd/*`, deploy it, then `bin/game prod root units` and `bin/game
+prod root units --apply` ([root.md](root.md)): the helper installs the
+deployed release's units after validating them. When it touches
+`ops/root/*`, `ops/sudoers.d/*` or `ops/install-prod.sh` (or the helper is
+not installed yet), the operator re-runs `sudo ops/install-prod.sh`
+(idempotent; it keeps `prod.env` and the tunnel token). A change to
+`ops/prod.env.example` does not reach `/srv/daydream/etc/prod.env`: an
+allowlisted key goes through `bin/game prod root env set` ([root.md](root.md)),
+the rest the operator edits with sudo. A change to `edge/` ships with
+`bin/game edge deploy` ([edge.md](edge.md)).
 
 ## If the deploy gate fails
 

@@ -1,9 +1,21 @@
 # Root and the admin console
 
-Status: **decided 2026-09-28** (the operator chose the validated helper,
-with `prod.env` through it); being built. It answers: "I shouldn't have to do
-the `sudo ops/install-prod.sh` thing; you should be able to do it from this
-repo", without adding sudo scripts carelessly.
+Status: **built 2026-09-28** (decided the same day: the validated helper,
+with `prod.env` through it). It answers: "I shouldn't have to do the `sudo
+ops/install-prod.sh` thing; you should be able to do it from this repo",
+without adding sudo scripts carelessly. As shipped (`ops/root/daydream-root`,
+`bin/game prod root <verb>`, playbook [`docs/runbooks/root.md`](runbooks/root.md)):
+`version` (its own sha256); `doctor` (read-only: root.conf, the sudoers file,
+the service user's groups, each unit against the deployed release, drop-ins;
+`prod root doctor` adds whether the installed helper is the repo's, since the
+helper itself never reads the repo); `units [--apply]`; `start|stop|restart`
+for the five daydream services and `status` for those and the three timers;
+`env show` and `env set KEY VALUE` for nine allowlisted keys. Its fixed facts
+come from `/etc/daydream/root.conf`, which the installer writes. It takes
+effect after the operator's one run of `sudo ops/install-prod.sh`, and the
+ask rules for `prod root units --apply` and `prod root env set` belong in the
+operator's local permission settings (`docs/claude-settings.local.example.json`
+carries them).
 
 ## Security posture (the operator's policy, 2026-09-28)
 

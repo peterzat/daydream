@@ -176,9 +176,12 @@ in order), **operator** (needs the operator's hands or decision), **later**.
 
 ### Root and the admin console (docs/ADMIN-ROOT.md)
 
-- operator: decide on the helper (or another shape)
-- next, once decided: build `ops/root/daydream-root` with its unit validator
-  and tests; `bin/game prod root ...`; ask rules for `--apply` and `env set`
+- decided 2026-09-28: the validated helper, with `prod.env` through it
+- built 2026-09-28: `ops/root/daydream-root` with its unit validator and
+  tests; `bin/game prod root ...`; the installer and sudoers line
+- next: the operator's `.claude/settings.local.json` gains the ask rules for
+  `prod root units --apply` and `prod root env set` (the template,
+  `docs/claude-settings.local.example.json`, has them)
 - operator: one last `sudo ops/install-prod.sh` (installs the helper, and
   with it today's pending keepsakes/offsite unit fix)
 - next: `prod root units --apply`, start the keepsakes job, `prod check`

@@ -18,6 +18,7 @@ hands can do (sudo, the Cloudflare dashboard).
 | [backups.md](backups.md) | Nightly and offsite backups; restoring into dev or prod |
 | [incident.md](incident.md) | Something is wrong and you don't know what yet |
 | [edge.md](edge.md) | The Cloudflare side: the Worker, its flag, secrets, tokens |
+| [root.md](root.md) | Root through the helper: refresh the units, run a timer job, change a prod.env key |
 
 First-time setup is not here: it is [`docs/CLOUDFLARE-SETUP.md`](../CLOUDFLARE-SETUP.md).
 The design behind all of it is [`docs/GOING-LIVE.md`](../GOING-LIVE.md).
@@ -44,9 +45,14 @@ The design behind all of it is [`docs/GOING-LIVE.md`](../GOING-LIVE.md).
   reset|delete|restore|snapshot-restore|restore-backup|load`, `prod root units
   --apply`, `prod root env set`), which always prompt. `--instance NAME` goes
   after the verb, so these rules still see it.
+- **The root helper** (`bin/game prod root`, [root.md](root.md)) is how the
+  agent refreshes the units, runs a timer job, and changes an allowlisted
+  prod.env key, with no password: it validates what it installs and logs
+  every action.
 - **The operator** does what needs a password or a browser: installing or
   changing the root helper and sudoers (`sudo ops/install-prod.sh`), system
-  packages, the tunnel token, and the Cloudflare dashboard.
+  packages, the tunnel token, the prod.env keys the helper refuses, and the
+  Cloudflare dashboard.
 - **Nobody** mends the great clock with the operator's own account in prod:
   the prologue belongs to the first friend.
 
