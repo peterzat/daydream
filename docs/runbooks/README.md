@@ -12,6 +12,7 @@ hands can do (sudo, the Cloudflare dashboard).
 | [sleep-and-wake.md](sleep-and-wake.md) | Lend the GPU, a maintenance window, a reboot, waking up |
 | [deploy.md](deploy.md) | Ship code; roll back |
 | [content.md](content.md) | Authored fixes, dreams and art reaching the live village |
+| [reset.md](reset.md) | A deliberate fresh village: what goes, what stays, the art |
 | [friends.md](friends.md) | Invites, sign-in trouble, passwords, moderation |
 | [backups.md](backups.md) | Nightly and offsite backups; restoring into dev or prod |
 | [incident.md](incident.md) | Something is wrong and you don't know what yet |
