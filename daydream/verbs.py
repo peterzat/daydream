@@ -1427,6 +1427,13 @@ async def _handle_talk(actor, room_id, dobj, args, spec) -> None:
             return False
         events.append("toon", actor.id, "say",
                       {"text": text, "name": actor.name, "to": dobj.name}, room_id=room_id)
+        from daydream.api import ws as ws_mod
+
+        if ws_mod.is_dozing(dobj):
+            # No one is at their page: say so, rather than let a hello meet
+            # silence (playtest 2026-09-28b).
+            _narrate(room_id, f"{dobj.name} is dozing, far off in a dream of their own, "
+                     "and doesn't stir.", recipient_id=actor.id)
         return None
     if isinstance(dobj.properties.get("voice"), dict):
         # A voice-sheet NPC (SPEC 2026-09-26 criteria 6, 10): a line naming

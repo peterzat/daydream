@@ -272,8 +272,10 @@ function renderSnapshot(snap) {
   }
   // WHO ELSE IS HERE: co-located toons, excluding yourself.
   const others = (snap.toons || []).filter((t) => t.id !== selfId);
+  // Another player whose page is closed is dozing: they will not hear you.
   renderObjects("toons", others, "no one else is here",
-    (t) => (t.mood && /^[a-z][a-z -]*$/.test(t.mood) ? `${t.name} (${t.mood})` : t.name));
+    (t) => (t.away ? `${t.name} (dozing)`
+      : t.mood && /^[a-z][a-z -]*$/.test(t.mood) ? `${t.name} (${t.mood})` : t.name));
   renderTopics(others);
   // WHAT'S ON THE GROUND: room things (previously sent but never rendered).
   renderObjects("things", snap.items || [], "nothing around you");
@@ -534,7 +536,8 @@ function objectChip(o, label) {
   span.dataset.verbs = (o.verbs || []).join(",");
   span.dataset.name = o.name || "";
   span.textContent = label;
-  if (o.kind === "toon") span.prepend(toonFace(o.image_url));
+  if (o.kind === "toon") span.prepend(toonFace(o.image_url)); // decorative: the name is beside it
+  if (o.away) span.classList.add("obj-away");
   span.onclick = () => onObjectClick(o.id, o.verbs || [], o.kind);
   // A see-through container nests its contents as indented child chips
   // (criterion 4/12); each child is itself clickable (and may nest again).

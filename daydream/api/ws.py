@@ -430,6 +430,10 @@ def _toon_card(t: "toons.Toon", viewer_id: str | None = None) -> dict:
         "mood": t.mood,
         "kind": "toon",
         "topics": topics,
+        # Another player whose page is closed stands here dozing: they will
+        # not hear you (playtest 2026-09-28b: a player held by a long-gone
+        # session read as present, and a hello met silence).
+        "away": bool(viewer_id and t.id != viewer_id and is_dozing(obj)),
         "verbs": objects.verbs_for(obj) if obj is not None else [],
         # The painted face, cached-only (a snapshot never triggers a render;
         # painting happens through the portrait enqueue). None until painted
@@ -821,6 +825,13 @@ def is_session_live(session_id: str | None) -> bool:
     controling a toon. Used by the slot-claim takeover logic
     (daydream/api/slots.py)."""
     return bool(session_id) and _live_session_counts.get(session_id, 0) > 0
+
+
+def is_dozing(obj: "objects.Object | None") -> bool:
+    """A player's dreamer with no one at the page: controlled by a session
+    that has no live connection. Characters never doze."""
+    return (obj is not None and obj.kind == "toon" and bool(obj.is_human_controlled)
+            and not is_session_live(obj.controller_session))
 
 
 def is_session_recently_live(session_id: str | None, grace_s: float) -> bool:
