@@ -1,17 +1,29 @@
-## Review — 2026-09-28f (commit: 33d871f) — light
+## Review — 2026-09-28g (commit: 44d8690)
 
-**Summary:** Light review of one docs-only commit on top of the pushed `48c5b2d`: docs/INSTANCES.md's checklist rewritten as engineering status (instance state moved to the local record) and two sentences in docs/ADMIN-ROOT.md that described this box's pending state. Every "done" claim checked against what this turn built, tested and deployed; links and references resolve; no secret or instance detail.
+**Summary:** Refresh review of seven unpushed commits on `origin/main` (`e1adc76`), every file touched since the prior review: comings and goings (`toons.announce_move`, the `arrive` event, arrival replays without presence kinds, the SPA's arrival line and "earlier" marking, others' moves refreshing "here with you"), the dreamer panel and invitation note, Talk's in-page prompt, player-worded form refusals, `bin/game prod plan`, and the publish loop (docs/runbooks/publish.md, the /publish skill, README "Typical use", CLAUDE.md). Every changed file read in full. 0 BLOCK / 3 WARN / 1 NOTE; all three WARNs fixed in one /codefix pass plus a local commit-message reword; tests stable (medium 1957 passed before and after).
 
 **External reviewers:**
-Skipped (light review).
+None configured.
 
 ### Findings
 
-No issues found.
+[WARN] web/assets/main.js:570 — `clearStagedVerb()` hid the Talk hint while the text prompt it belonged to stayed open
+  Evidence: `renderSnapshot` calls `clearStagedVerb()` on every snapshot, and presence re-snapshots now fire whenever anyone comes or goes; `textTarget` and the "What do you say?" placeholder survived, so the next Enter still spoke to the earlier person with no cue and no "never mind".
+  Resolution: fixed (below).
+
+[WARN] daydream/toons.py:389 — `announce_move`'s `extra` parameter had no caller
+  Resolution: fixed (below).
+
+[WARN] (security) commit `67e1db3` message — used the deleted prod test account's username as an example; `instance/NOTES.md` records that history was rewritten once to remove it. Not pushed.
+  Resolution: fixed (below).
+
+[NOTE] (security) tests/test_config_edge.py:61 — a real tailnet address in a test fixture (outside this diff; public since `5f2bd3d`). Swap in `100.64.0.1` the next time the file is touched; not worth a history rewrite.
 
 ### Fixes Applied
 
-None.
+- [WARN] web/assets/main.js:570 — `clearStagedVerb` hides the hint only when no text prompt waits; `onObjectClick` first lets a waiting prompt go (`cancelText()`); the browser test re-renders a snapshot mid-prompt and checks the hint holds (verified to fail against the old line). (`44d8690`)
+- [WARN] daydream/toons.py:389 — removed the unused `extra` parameter. (`44d8690`)
+- [WARN] (security) the commit message reworded locally (`git filter-branch --msg-filter` over `origin/main..HEAD`, tree byte-identical, backup ref dropped): the example is now `"robin_ash" becomes "Robin Ash"`; the commit is now `4a59178`.
 
 ### Accepted Risks
 
@@ -23,6 +35,6 @@ Carried forward (the standing register lives in SECURITY.md):
   `cmd_logs` path component; qpeek clone; `world reset` rm -rf operator trust;
   CGNAT hardcoding in tailscale mode.
 ---
-*Prior review (2026-09-28e, full, `03a5b08`): instances, the art keep and lifecycle, `account delete`, the root helper, the uptime watch and the fork path; 0 BLOCK / 15 WARN, all fixed in one /codefix pass; pushed as `48c5b2d`.*
+*Prior review (2026-09-28f, light, `33d871f`): the INSTANCES.md checklist rewrite; no issues.*
 
-<!-- REVIEW_META: {"date":"2026-09-28","commit":"33d871f","reviewed_up_to":"33d871f32f4617244dd6a8b2086eb77ebcacdcd6","base":"origin/main","tier":"light","block":0,"warn":0,"note":0} -->
+<!-- REVIEW_META: {"date":"2026-09-28","commit":"44d8690","reviewed_up_to":"44d8690cad800c2740f316da52ef69c2932de12e","base":"origin/main","tier":"refresh","block":0,"warn":3,"note":1} -->

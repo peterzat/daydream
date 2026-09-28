@@ -2,155 +2,194 @@
 
 ## Security Review — 2026-09-28 (scope: paths)
 
-**Summary:** Path-scoped review of the 28 files in scope, covering the work
-committed from `0aa9792` to HEAD `1e65f3a`: the root-owned admin helper
-(`ops/root/daydream-root`) and its sudoers line and installer, the instances
-layer (`daydream/instance.py`, prodctl's `--instance` and `root`
-pass-through, the per-instance cookie and words), the art keep
-(`daydream/images/keep.py` and its callers), `account delete`, the daily
-dreamer cap, and the Worker's uptime watch and per-instance words. One WARN:
-the helper's unit validator strips Unicode whitespace (e.g. U+00A0) where
-systemd does not, so a unit with a no-break space in a sandbox directive's
-key passes the validator while systemd silently drops that directive. One
-NOTE carries over from prior reviews and was re-verified on the box: the
-installed keepsakes/offsite units still set `NoNewPrivileges`, so the hourly
-keepsakes sync still fails while prod is awake (0 BLOCK / 1 WARN / 1 NOTE).
+**Summary:** Path-scoped review of the 37 files in scope: the code changed
+from `1e65f3a` (the last review) to HEAD `8c39d4a`, which is the 15-WARN
+codereview fix pass plus the six unpushed commits (comings and goings, the
+dreamer panel and door note, Talk on the input line, `prod plan`). No code
+vulnerability found. One WARN: an unpushed commit message names the deleted
+prod test account's username, which the operator already once rewrote out of
+history. One NOTE, outside these paths: a committed test holds the box's
+tailnet address. Both prior findings are closed (0 BLOCK / 1 WARN / 1 NOTE).
 
 ### Scope and method
 
-The 28 scanned files are every path in the review argument. Each file's diff
-from `0aa9792` to HEAD was read in full, along with the code it touches or
-calls: the helper end to end against the committed units and its own tests;
-prodctl's new `data_root`/`instance_dir`/`--instance` parsing, `root`
-dispatch, and instance verbs; `config.data_dir` resolution and the
-per-instance cookie/operator words; the Worker's `watch`, `publicState`,
-`asleep`, `keepsakesHtml`, `cookieNameFor` and header helpers; `edge.set_state`
-words and `get_uptime`; the server's `_page` word substitution and lifespan;
-`door.js`/`main.js` sinks for the instance words; `accounts.delete_account`,
-`accounts_cli._delete_account` and `inputs.forget_toon`; the art keep's
-content-addressed store, `sync`, and the prebake/admin/refresh/bin-game
-callers; and the slots dreamer cap. The unit validator was differentially
-tested against systemd 249's own parser on this box. Recent history of every
-scanned file (last 3 commits each) and the full outgoing diff
-(`origin/main..HEAD`, 17 commits) were scanned for credential patterns, the
-Cloudflare account id, the box's addresses and hostname, the operator's
-surname, and this instance's account and invite names; `instance/` is still
-gitignored. The 281 tests covering the scanned code pass.
+The 37 scanned files are every path in the review argument. Each file's diff
+from `1e65f3a` to HEAD was read in full, along with the code it touches or
+calls:
+
+- `toons.announce_move` and `move_texts`, and their callers (`go`, rule
+  teleport).
+- The WebSocket broadcast loop's room filter and the new presence
+  re-snapshot.
+- `events.fetch_since` (`skip_kinds`) and `fetch_for_toon`.
+- The SPA's arrival line (`placeArrival`, `escape`, `linkifyEntities`), the
+  move/arrive renderer, `askForText`/`sendText`, `refused`/`notice`, and the
+  door note.
+- `images/client.restore_from_keep` on the live render path, with
+  `keep.find`/`_store`/`records`/`put`, and `_generate_and_emit`'s error
+  handling.
+- `admin.cmd_restore`'s unlink and `cmd_keep_sync`.
+- `accounts_cli._forget_dreamer_state` and how toon ids are minted.
+- `instance.discard`/`load`/`migrate`.
+- prodctl's `plan`, `resolve_ref`, `_detached`, the `--instance` verb
+  allowlist, and `instance_create`/`use`/`migrate`.
+- `edge.set_state(note=None)`, the Worker's `watch`, the installer's
+  operator check, and the root helper's ASCII guard (read against the
+  rendered units it validates).
+
+HTML, SQL, subprocess and filesystem sinks in every scoped module were swept
+by pattern. Credential-handling files' last three commits and the full
+outgoing range (`origin/main..HEAD`, messages included) were scanned for
+secrets and instance details. The 418 Python tests in the 13 scoped test
+files pass, as do the Worker's 35 tests (`node --test test/*.test.js`).
 
 ### Findings
 
-[WARN] ops/root/daydream-root:272,320,335 (parse_unit) — The unit validator
-strips Unicode whitespace where systemd strips only ASCII, so a sandbox
-directive can be present to the validator and absent to systemd.
-  Attack vector: `parse_unit` uses Python `str.strip()`/`str.split()`, which
-treat U+00A0 (no-break space) and other Unicode spaces as whitespace; systemd
-(verified on this box, v249) treats only space and tab as whitespace around a
-key or value. A release unit line `ProtectHome<U+00A0>=yes` is read by the
-validator as the required, valid key `ProtectHome=yes` (the NBSP is stripped
-off the key, `_KEY_RE` then matches), so `validate_unit` returns clean; systemd
-reads the key as `ProtectHome<U+00A0>`, an unknown key it ignores, leaving
-`ProtectHome` at its weaker default. The same holds for a value
-(`NoNewPrivileges=yes<U+00A0>` fails systemd's boolean parse and is ignored).
-The NBSP is invisible in the diff `bin/game prod root units` prints, so the
-human ask-gate review of `units --apply` would not catch it either. This
-defeats the validator's stated invariant (docs/ADMIN-ROOT.md: "the prod
-sandbox no weaker than the committed unit"; "cannot weaken the prod sandbox").
-Reachability is gated: the validated input is the deployed release's unit
-files, i.e. committed repo content, which the threat model treats as
-operator-owned ("local attackers: best efforts only"); the one
-adversary-reachable path (an injected agent) still faces the human ask prompt
-on `units --apply` plus a committed, deployed malicious unit. It is a
-defense-in-depth gap in a security-critical control, not an independently
-reachable escalation, hence WARN.
-  Evidence: `ops/root/daydream-root:272` (`s = line.strip()`), `:320`
-(`s = line.strip()`), `:335` (`key, value = key.strip(), value.strip()`); the
-control-character guard at `:312-316` catches ord<32 and 127 but not NBSP
-(ord 160). Differential test on this box: validator returns `[]` for
-`ProtectHome<U+00A0>=yes`, while `systemd-analyze verify` reports
-`Unknown key name 'ProtectHome '`.
-  Remediation: reject any non-ASCII (or specifically any non-ASCII whitespace)
-in unit text before parsing, the same way `parse_unit` already rejects control
-characters. The committed units are pure ASCII, so an ASCII-only guard breaks
-nothing. Add a hostile variant to `tests/test_root_helper.py`.
+[WARN] commit `67e1db3` (message lines 9-10; not yet pushed) — The commit
+message names the prod test account's username, in lowercase and
+capitalized forms, as the example of the "name given at the door" feature.
+  Attack vector: Not an exploit. It is instance data that becomes public on
+the next push, since the GitHub repo is public. `instance/NOTES.md` records
+three things: this username belonged to the operator's own test account
+(display name the operator's own), the account has since been deleted, and
+"History before the push was rewritten once to take a friend's name and the
+test account's username out of committed docs". The project's separation
+rule (CLAUDE.md, "Before any push, check the separation") covers exactly
+this. Because the account is deleted, the name no longer identifies a
+working login. The exposure is the name itself.
+  Evidence: `git show --no-patch 67e1db3` lines 9-10 (the name itself is
+kept out of this file). No tracked file at HEAD contains it. The other five
+outgoing commits and all their patches are clean.
+  Remediation: Before pushing, reword `67e1db3`'s message so it uses the
+neutral example the code comment already uses (`robin_ash` becomes
+`Robin Ash`). Do this non-interactively: a rebase from `origin/main` with a
+scripted sequence editor and message editor, or
+`git filter-branch --msg-filter` limited to `origin/main..HEAD`. Then
+re-run the separation check on the rewritten range.
 
-[NOTE] Installed daydream-keepsakes.service / daydream-offsite.service
-(`/etc/systemd/system/*`, line 1 `NoNewPrivileges=yes`) — Carried from prior
-reviews, re-verified on the box, outside this review's paths.
-The repo units no longer set the flag; the installed copies still do, and the
-hourly keepsakes sync fails whenever prod is awake.
-  Attack vector: Unchanged. While the village is awake, a disabled account or
-a revoked session stays on the Worker's pass list, and the Worker serves that
-pass its keepsakes whenever the origin is unreachable. The weekly offsite run
-(next 2026-10-04 05:33 UTC) fails the same way.
-  Evidence: The 16:02 UTC run today exited 1 with `sudo: The "no new
-privileges" flag is set`; the unit is `failed`. `bin/game prod check` fails on
-the job line (daydream/prodcheck.py). The repo now installs the fix through
-`bin/game prod root units --apply`, which needs one last `sudo
-ops/install-prod.sh` first (docs/ADMIN-ROOT.md).
-  Remediation: `sudo ops/install-prod.sh`, then `bin/game prod root units
---apply`, start `daydream-keepsakes.service` once, and confirm `bin/game prod
-check` passes its job lines.
+[NOTE] tests/test_config_edge.py:61 (outside this review's paths) — The test
+that proves a non-loopback bind host is refused uses this box's real tailnet
+IPv4 as its example.
+  Attack vector: Minimal. The address belongs to Tailscale's CGNAT range and
+is reachable only by members of the operator's tailnet, so disclosing it
+gives an outsider nothing to connect to. It is still "the box's addresses",
+which CLAUDE.md keeps off GitHub. It has been public since `5f2bd3d`
+(2026-09-27, on `origin/main`), and earlier outgoing-diff scans missed it
+because it predates them.
+  Evidence: An exact match for `tailscale ip -4` on this box, at
+`tests/test_config_edge.py:61` (the value is not reproduced here).
+  Remediation: The next time the file is touched, replace it with a neutral
+address such as `100.64.0.1`; the test needs only a non-loopback address.
+No history rewrite is warranted for a tailnet-only address.
+
+### Closed since the last review
+
+- **The unit validator's Unicode whitespace (prior WARN).** Fixed in
+  `03a5b08`. `parse_unit` now refuses any non-ASCII line before parsing
+  (`ops/root/daydream-root:317-323`). Lines are split on `"\n"` only, so
+  Unicode line separators stay inside a line and are refused too. The check
+  runs on the rendered text that gets installed. Two hostile tests carry
+  real U+00A0 bytes. The installed `/usr/local/sbin/daydream-root` is
+  byte-identical to the repo copy, and the prod release (`e1adc76`)
+  contains the fix.
+- **`NoNewPrivileges` on the installed timer units (prior NOTE).** Resolved
+  by the operator's installer run (2026-09-28 17:30 UTC). The installed
+  keepsakes unit matches the repo's rendered unit, and the 18:03 UTC
+  keepsakes run exited 0.
 
 ### Traced and cleared this run (not findings)
 
-- **The root helper.** Runs `python3 -I` (isolated), reads its fixed facts
-  from root-owned `/etc/daydream/root.conf` not its arguments or environment,
-  and its one command runner (`_run`) admits only systemctl/logger/runuser
-  with a clean env from `/`, refuses any path argument to systemctl/logger,
-  and lets runuser drop only to the service user. File reads go
-  component-by-component with `O_NOFOLLOW` (`_open_dir`/`_read_at`), reject
-  symlinks, hard-linked files, non-regular files and >64 KiB. The validator
-  pins each unit's identity, forbids privilege prefixes/`AmbientCapabilities`/
-  `LoadCredential`/root groups/`%` specifiers, requires the prod sandbox keys,
-  and rejects CR and whitespace-after-backslash. `env set` refuses the
-  trust-deciding keys, validates each allowlisted value, and runs the
-  release's boot guard as the service user before writing. The one gap is the
-  WARN above.
-- **The sudoers line.** `NOPASSWD: /usr/local/sbin/daydream-root` with any
-  arguments is by design: the root-owned helper, installed only by the
-  password-gated installer, decides what it will do. Installed 0440 via
-  `visudo -cf`.
-- **prodctl `--instance` and `root`.** `--instance` is accepted only as the
-  last two arguments and its name is regex-checked, so it cannot split a
-  two-word verb past an ask rule; a leading `--instance` is refused. `root`'s
-  arguments are forwarded to the helper before `--instance` is parsed, so the
-  ask rule on `prod root units --apply` cannot be walked around.
-- **The Worker's words.** `place`, `title`, `operator` and the session-cookie
-  name ride on the KV flag; every one is HTML-escaped (`escapeHtml`) before it
-  reaches the asleep page, `place` is clamped to 80 chars (`placeOf`), and the
-  cookie name is accepted only if it matches `^dd_session_[a-z0-9_-]{1,60}$`
-  (`cookieNameFor`), so a malformed flag falls back to the configured cookie.
-  Template fills use function replacements, so player text cannot inject `$&`
-  substitution patterns. The `uptime` KV key is never exposed on a public
-  route. CSP and the page headers are unchanged.
-- **The server and SPA words.** `server._page` substitutes the instance words
-  with `html.escape(quote=True)`; `instance.validate` bounds every value
-  (printable, <=200 chars) and shape-checks `door_image` and `envelope`
-  (`^assets/...\.(png|jpg|webp)$`, `^worlds/[a-z0-9_-]+\.json$`), so neither
-  can point outside the assets dir or at an arbitrary file. `door.js`/`main.js`
-  read the words from `body.dataset` into `textContent` and template literals,
-  and the door image only through `assetUrl(...).src`. A malformed
-  `instance.json` refuses boot rather than serving half-worded.
-- **`account delete`.** Behind an ask rule; deletes the account, its sessions,
-  every tied invite, its throttle counters, its dreamers (carried things drop
-  to the room), and the dreamers' private input lines; parameterized SQL
-  throughout. The shared event history is intentionally kept.
-- **The art keep.** Content-addressed by sha256, hard-linked from the cache,
-  append-only provenance; `sync` walks only `generated_assets` rows and PNGs
-  under the world's own cache dir, skips symlinks, and bounds path shape;
-  `keep_render` never fails a render. Runs as the owner of the data dir.
-- **The dreamer cap.** 6/day per account through the same throttle table, on
-  both create routes (`_create`), admins exempt; refuses with 429, no mutation.
+- **Comings and goings.** Presence events are room broadcasts: `move` is
+  keyed to the room left and `arrive` to the room reached, with no
+  recipient. The broadcast loop's room filter and private-event filter are
+  unchanged. The mover's own `arrive` does not re-snapshot twice. The line
+  text interpolates three things only:
+  - the toon's validated name (printable, capped, banlisted, not id-shaped)
+  - room titles
+  - `direction`, which `_handle_go` accepts only as an existing exit key,
+    never raw player text
+
+  Every SPA sink is `textContent` or `escape()`d. `escape` covers
+  `& < > "`, and every attribute it feeds is double-quoted. `linkifyEntities`
+  escapes before matching. `play.py` prints the same text; a name cannot
+  carry ESC because `isprintable()` refuses it. `skip_kinds` adds only
+  placeholders, bound to a code constant. Re-snapshots on others' moves are
+  bounded by the per-connection rate (3 frames/s, burst 12) among invited
+  friends.
+- **The live keep restore.** The cache key is seed text plus workflow, and
+  the sampler seed derives from the same text. A keep hit is therefore the
+  painting a fresh render would produce, and a matching seed is the only way
+  to hit another target's painting. `find` takes the newest record, so an
+  admin repaint wins over the original.
+  - Only `keep.put` writes provenance lines. They are JSON-encoded and read
+    by `\n` bytes, and nothing imports provenance back from a backup.
+    `rec["sha256"]` is used unvalidated in `art_path`, but no attacker
+    input reaches it.
+  - The restore replaces its temp file and never writes into it. Kept files
+    are 0444, so a write through a hard link fails loudly
+    (`SameFileError` and `EACCES` both fall back to a render).
+  - `prompt_text` is nullable, and `_generate_and_emit`'s broad catch keeps
+    any failure off the session.
+  - The only other writer into cache paths, prebake's adopt step, runs only
+    when the path is absent.
+- **`world restore`'s new unlink.** It removes only a non-symlink regular
+  file whose resolved path is inside the data dir. An archive could already
+  write any file there, so the unlink adds no reach. Archives remain
+  operator-trusted, and the verb is behind an ask rule in prod.
+- **`account delete`'s forgetting.** SQL is parameterized. The
+  `:<toon id>` suffix match is anchored by the colon, so it cannot catch a
+  longer id. Toon ids carry 32 random bits per slot, so a later toon never
+  inherits an old one's `pq:`/`talk:` state. It is CLI only, behind the ask
+  rule. The dreamer-cap throttle key goes with the account.
+- **`instance.discard`.** Reached only from `instance_create`'s failure
+  path, run by the release as the service user. It refuses:
+  - a symlink or a non-directory
+  - the attached instance
+  - any dir holding a world or accounts DB
+
+  `rmtree` is symlink-attack resistant on Linux.
+- **prodctl.**
+  - `plan` is read-only. `resolve_ref` returns a verified full SHA
+    (`rev-parse --verify <ref>^{commit}`), and every later git call takes
+    that SHA or a release dir name, in list form with no shell.
+  - `--instance` is now refused outside the passthrough verbs and `backup`,
+    and still only as the last two arguments.
+  - `_detached()` compares the resolved `active` link to the name. A
+    symlinked `instances/<name>` would mislead it, but only the service user
+    can create one there, and the effect would be a consistency risk to its
+    own data, not privilege.
+- **Edge.** `set_state(note=None)` keeps the flag's note, capped at 280
+  characters. Words are still capped, allowlisted and escaped by the Worker.
+  `watch` changes only outage bookkeeping, writes KV only on a change, and
+  the `uptime` key is on no public route.
+- **Installer.** The operator is now `SUDO_USER` and never a guess, and it
+  refuses empty or `root`. The name is regex-checked before it reaches
+  `root.conf` or sudoers.
+- **UI.** Slot refusals now name `instance.place()` (validated operator
+  words) and reach `notice()` through `textContent`. `/api/dreamer` returns
+  the caller's own username, used only as `textContent` and an input value.
+  Talk's words now go from the page's input line as a structured command
+  frame, which the server still checks for scope, verb applicability, length
+  and rate. The door note keeps criterion 8's two facts.
 
 ### Secrets, PII and the instance
 
-The scanned diffs and each scanned file's last three commits hold only test
-constants (an empty username/password body, throttle key strings). The 17
-commits not yet on `origin/main` (full diff, every file) contain no
-token-shaped value, not the Cloudflare account id, none of the box's global
-addresses, not the operator's surname, and none of this instance's account or
-invite names. The `hostname` matches only because the box is named `dev`
-(a common substring). `instance/` is gitignored.
+- **Credentials.** The Cloudflare API token and account id (read from
+  `~/.config/daydream/cloudflare.env` and compared without printing) appear
+  in no tracked file, no commit since `1e65f3a`, and no outgoing commit.
+  Neither do the zone id, the Zero Trust team, the Access AUD tag, the
+  tunnel id, or the invite ids that `instance/NOTES.md` records.
+- **Deliberate instance values.** The origin hostname and KV id appear only
+  in the deliberately committed places (`edge/wrangler.toml`, the tunnel
+  unit, the setup doc, the Worker tests).
+- **Addresses.** The box's public IPv4 and IPv6 are absent. Its tailnet
+  IPv4 is the NOTE above.
+- **Operator identity.** The operator's surname appears only in LICENSE's
+  copyright line and in commit author metadata.
+- **Pattern scans.** No token-shaped value, invite link or cookie value
+  appears in the range. Test fixtures use fictional names.
+- **Ignored directory.** `instance/` is still gitignored.
+- **The one exception** is the username in `67e1db3`'s message (the WARN).
 
 ### Accepted Risks
 
@@ -184,8 +223,8 @@ Carried register (from prior reviews, still open, not re-flagged):
 - NPC dialogue and growth are exposed to prompt injection; input is wrapped,
   capped and banlisted, output validated before any mutation; refusal `reason`
   text is narrated without an output-banlist pass, through escaped sinks.
-- World envelopes and `bin/game` are trusted as the operator's own (world
-  load/reset content, `reset`'s `rm -rf`, dev `.env` sourcing, the dev
+- World envelopes, archives and `bin/game` are trusted as the operator's own
+  (world load/reset content, `reset`'s `rm -rf`, dev `.env` sourcing, the dev
   `0.0.0.0` bind, the deprecated `bootstrap_world`). None take network input.
 - Event queues are bounded (256, drop-oldest).
 - DNS (127.0.0.53) and AF_UNIX leave the prod sandbox; any local process can
@@ -206,13 +245,16 @@ Carried register (from prior reviews, still open, not re-flagged):
   tags.
 - The standing prod grant's `ask` rules are text patterns; a quoted word may
   slip past one (a PreToolUse hook would be firmer).
+- Player text (names, speech, now also move lines) reaches the agent's
+  context through `bin/game play`; the verbs an injected instruction would
+  want stay behind ask rules.
 
 ---
-*Prior review (2026-09-28, paths, commit `0aa9792`): covered the 14 files
-changed from `7f9af5a` (arrival cut, log lines without model output, the awake
-page, the iPad layout) and found 0 BLOCK / 0 WARN / 1 NOTE (the installed
-timer units' `NoNewPrivileges`, unchanged here). It closed the Worker's
-WebSocket cookie-leak note (fixed `3df294b`). Earlier entry at
-`git show 9b738f9:SECURITY.md`.*
+*Prior review (2026-09-28, paths, commit `1e65f3a`): the root helper,
+instances, the art keep, `account delete`, the dreamer cap and the Worker's
+uptime watch (28 files). It found 0 BLOCK / 1 WARN / 1 NOTE: the unit
+validator's Unicode-whitespace gap and the installed timer units'
+`NoNewPrivileges`, both now closed. Earlier entry at
+`git show 48c5b2d:SECURITY.md`.*
 
-<!-- SECURITY_META: {"date":"2026-09-28","commit":"1e65f3a36af90f76a4ac43395807b57917474a4d","scope":"paths","scanned_files":["bin/game","daydream/accounts.py","daydream/accounts_cli.py","daydream/admin.py","daydream/api/access.py","daydream/api/slots.py","daydream/api/ws.py","daydream/config.py","daydream/edge.py","daydream/images/client.py","daydream/images/keep.py","daydream/inputs.py","daydream/instance.py","daydream/prebake.py","daydream/prodcheck.py","daydream/prodctl.py","daydream/refresh.py","daydream/server.py","docs/claude-settings.local.example.json","edge/public/daydream/_edge/asleep.html","edge/src/worker.js","edge/wrangler.toml","ops/install-prod.sh","ops/root/daydream-root","ops/sudoers.d/daydream","web/assets/door.js","web/assets/main.js","web/door.html","web/index.html"],"block":0,"warn":1,"note":1} -->
+<!-- SECURITY_META: {"date":"2026-09-28","commit":"8c39d4afc45e3f9dbcf5f09c509567ac102a0341","scope":"paths","scanned_files":["daydream/accounts.py","daydream/accounts_cli.py","daydream/admin.py","daydream/api/slots.py","daydream/api/ws.py","daydream/edge.py","daydream/events.py","daydream/images/client.py","daydream/images/keep.py","daydream/instance.py","daydream/play.py","daydream/prebake.py","daydream/prodctl.py","daydream/skills/effects.py","daydream/toons.py","daydream/verbs.py","edge/src/worker.js","edge/test/worker.test.js","ops/install-prod.sh","ops/root/daydream-root","tests/test_account_delete.py","tests/test_art_keep.py","tests/test_browser_flow.py","tests/test_comings_and_goings.py","tests/test_edge_ctl.py","tests/test_frontend.py","tests/test_frontend_zork.py","tests/test_instances.py","tests/test_ops_units.py","tests/test_prodctl.py","tests/test_root_helper.py","tests/test_slots.py","tests/test_ws.py","web/assets/door.js","web/assets/main.js","web/assets/style.css","web/index.html"],"block":0,"warn":1,"note":1} -->
