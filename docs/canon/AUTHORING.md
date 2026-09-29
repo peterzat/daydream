@@ -105,7 +105,9 @@ matching name wins, so write one entry per story state with the same names
 (the highest shelf has three: the jar at rest, the ladder standing, the clean
 circle after within-reach). `examine` covers look and read unless they have
 their own line. Choose names no object here answers to (a stray minute
-answers "glint"). Without an entry, a look reads the sentence that names the
+answers "glint"), three words at most: the parser passes a longer phrase by
+its head ("lantern" for "the lantern by the stair"), so the loader refuses a
+longer name. Without an entry, a look reads the sentence that names the
 thing, and any other verb gets one short local-model line drawn from that
 sentence (tagged local, listed in the dream digest), so author the things the
 prose makes inviting: what glints, is sealed, hung high, someone's own.

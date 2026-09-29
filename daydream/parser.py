@@ -50,6 +50,16 @@ _LEADING_ARTICLES = ("the ", "a ", "an ", "my ", "some ", "any ")
 _TRAILING_PHRASE = re.compile(
     r"(?i)\s+(?:for|to|with|at|on|in|near|by|toward|towards|beside|under|over|into|onto|from)\s+.*$")
 
+# After an alias of take or examine ("check", "grab", "lift"), words that open
+# with a preposition, end on a split particle, or name the dreamer or their
+# satchel are an idiom, not a name: "check on the keeper", "check it out",
+# "check my pockets" (codereview 2026-09-29g).
+_ALIAS_IDIOM = re.compile(
+    r"(?i)^(?:on|for|with|up|in|at|about|over|under|into|out)(?:\s|$)|^my\s|\s(?:out|up)$")
+_SELF_WORDS = frozenset({"me", "myself", "self", "yourself"})
+_SATCHEL_WORDS = frozenset({"satchel", "bag", "inventory", "pockets"})
+_ROOM_WORDS = frozenset({"room", "here", "around", "surroundings", "view", "place"})
+
 # "both letters", "all the clocks", "every lantern": a group named by its noun.
 _GROUP = re.compile(r"(?i)^(?:both|each|every|all(?:\s+of)?)\s+(?:the\s+)?(?:of\s+the\s+)?(.+)$")
 
@@ -341,11 +351,29 @@ def _fast_path(actor_id: str, text: str, room: rooms.Room | None):
         target = _strip_article(rest[look_prep.end():].strip())
         target = re.sub(r"(?i)\s+(toward|towards|at|to)\s+.*$", "", target) or target
         matches = _ground(actor_id, target)
+        if not matches and len(target.split()) >= 4 and not _AND_SPLIT.search(target):
+            # "look at the lantern by the stair": a whole phrase is looked at
+            # by its head (codereview 2026-09-29g).
+            head = _TRAILING_PHRASE.sub("", target).strip()
+            if head and len(head.split()) < 4:
+                target, matches = head, _ground(actor_id, head)
         if len(matches) == 1 and "examine" in objects.verbs_for(matches[0]):
             return [Parse("examine", dobj_id=matches[0].id)]
         if len(matches) > 1:
             return _clarify("examine", "dobj", target, matches)
         if target and len(target.split()) < 4:
+            # "look at me", "look at the room", "look in my satchel", "look at
+            # the keeper's hands": the dreamer, the place, what they carry, the one
+            # named (codereview 2026-09-29g: each read "You don't see the me").
+            low = target.lower()
+            if low in _SELF_WORDS | _ROOM_WORDS | _SATCHEL_WORDS:
+                return [Parse("examine", dobj_id=actor_id) if low in _SELF_WORDS
+                        else Parse("look" if low in _ROOM_WORDS else "inventory")]
+            owner = re.match(r"(.+?)['’]s\s+\S", target)
+            toons = [o for o in _ground(actor_id, owner.group(1))
+                     if o.kind == "toon"] if owner else []
+            if len(toons) == 1:
+                return [Parse("examine", dobj_id=toons[0].id)]
             # A name not in scope reads like "examine <name>": the executor
             # answers from what the scene says of it, or that it isn't here
             # (playtest 2026-09-29b: "look at the lantern" by the cellar stair
@@ -363,6 +391,7 @@ def _fast_path(actor_id: str, text: str, room: rooms.Room | None):
         return None
 
     verb = spec.name
+    said = " ".join(words[:len(words) - len(rest.split())]).lower()  # the verb as typed
     if verb == "ask":
         return _ask_fast_path(actor_id, rest)
     if rest and verb == "say":
@@ -454,6 +483,12 @@ def _fast_path(actor_id: str, text: str, room: rooms.Room | None):
             head_matches = _ground(actor_id, head)
             if len(head_matches) == 1:
                 name, matches = head, head_matches
+            elif (not head_matches and len(name.split()) >= 4 and len(head.split()) < 4
+                  and not _AND_SPLIT.search(name)):
+                # "take the lantern by the stair": a whole phrase reaches what
+                # the scene shows by its head (codereview 2026-09-29g); one
+                # with "and" is a sentence for the model ("...and listen").
+                name = head
     if len(matches) == 0:
         # Named but not in scope ("take the moon"): pass the name through so
         # the executor reads "you don't see the <name> here". If an iobj
@@ -462,6 +497,10 @@ def _fast_path(actor_id: str, text: str, room: rooms.Room | None):
         # to the LLM instead.
         if iobj_part is not None or len(name.split()) >= 4:
             return None
+        if said != verb and verb in ("take", "examine") and (
+                _ALIAS_IDIOM.search(dobj_part)
+                or _strip_article(dobj_part).lower() in _SELF_WORDS | _SATCHEL_WORDS):
+            return None  # an alias's idiom: the model reads it, as before the aliases
         return [Parse(verb, dobj_name=name)]
     if len(matches) > 1:
         return _clarify(verb, "dobj", name, matches, iobj_id=iobj_id)

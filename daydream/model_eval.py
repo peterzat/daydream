@@ -770,9 +770,10 @@ async def suite_glimpse(tmp: Path) -> dict:
     from daydream import glimpse
 
     _current_purpose.set("glimpse")
+    never = _shipped_growth()[0].get("never_words") or ()  # the village's canon-breakers
     out = []
     for case in GLIMPSE["cases"]:
-        line, raw = await glimpse.compose(case["sentence"], case["verb"], case["noun"])
+        line, raw = await glimpse.compose(case["sentence"], case["verb"], case["noun"], never)
         out.append({"case": f"{case['verb']} {case['noun']}", "sentence": case["sentence"],
                     "line": line, "raw": raw})
     good = [r for r in out if r["line"]]

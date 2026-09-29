@@ -105,7 +105,9 @@ VERBS: dict[str, VerbSpec] = {
         # adjust_score is rule-only in general; take declares it explicitly
         # for the authored first-take treasure award (score_take property).
         allowed_effects=frozenset({"move_object", "narrate", "adjust_score"}),
-        on_bar=True, aliases=("get", "grab", "pick up", "lift", "carry", "reach for"),
+        # Not "carry": "carry the letter to a friend" is a give, for the
+        # model to read (codereview 2026-09-29g).
+        on_bar=True, aliases=("get", "grab", "pick up", "lift", "reach for"),
     ),
     "drop": VerbSpec(
         name="drop", ui_hint="Drop",

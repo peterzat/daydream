@@ -131,7 +131,7 @@ async def test_look_at_npc_grounds_to_examine(monkeypatch):
 @pytest.mark.asyncio
 @pytest.mark.parametrize("line,verb", [
     ("pick up the moon", "take"), ("grab the moon", "take"), ("lift the moon", "take"),
-    ("carry the moon", "take"), ("reach for the moon", "take"),
+    ("reach for the moon", "take"),
     ("x moon", "examine"), ("inspect the moon", "examine"), ("study the moon", "examine"),
     ("describe the moon", "examine"), ("check out the moon", "examine"),
 ])
@@ -141,6 +141,44 @@ async def test_the_ways_players_say_take_and_examine_stay_deterministic(monkeypa
     spy = _mock_llm(monkeypatch, {"verb": "none"})
     p = await parser.parse("t-wren", line)
     assert p.verb == verb and p.dobj_name == "moon"
+    spy.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_carry_to_someone_is_not_a_take(monkeypatch):
+    # Codereview 2026-09-29g: the letters thread says "carry it to whoever it
+    # nearly means"; as a take alias, "carry the letter to Bell" answered
+    # "You're already carrying" instead of reaching the model, which has give.
+    spy = _mock_llm(monkeypatch, {"verb": "give", "dobj_id": "i-lantern",
+                                  "iobj_id": "t-rook", "args": ""})
+    objects.move("i-lantern", "t-wren")
+    p = await parser.parse("t-wren", "carry the lantern to rook")
+    assert (p.verb, p.dobj_id, p.iobj_id) == ("give", "i-lantern", "t-rook")
+    assert spy.await_count == 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("line", [
+    "check on rook", "check it out", "check inventory", "check my pockets",
+    "check the satchel", "check myself", "grab at the moon", "lift up the moon",
+])
+async def test_an_alias_idiom_is_not_a_name(monkeypatch, line):
+    # Codereview 2026-09-29g: "check on Mott" read "You don't see the on Mott
+    # here" and "check my pockets" a pocket watch's sentence. After an alias of
+    # take or examine, a preposition, a split particle, or the dreamer's self
+    # or satchel goes to the model, as before the aliases.
+    spy = _mock_llm(monkeypatch, {"verb": "none"})
+    p = await parser.parse("t-wren", line)
+    assert p.dobj_name is None
+    assert spy.await_count == 1
+
+
+@pytest.mark.asyncio
+async def test_an_alias_still_grounds_what_you_carry(monkeypatch):
+    spy = _mock_llm(monkeypatch, {"verb": "none"})
+    objects.move("i-lantern", "t-wren")
+    p = await parser.parse("t-wren", "check my lantern")
+    assert (p.verb, p.dobj_id) == ("examine", "i-lantern")
     spy.assert_not_called()
 
 
@@ -159,6 +197,38 @@ async def test_look_at_an_absent_name_passes_it_through_like_examine(monkeypatch
     p = await parser.parse("t-wren", "look at the moon")
     assert p.verb == "examine" and p.dobj_id is None and p.dobj_name == "moon"
     spy.assert_not_called()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("line,verb,dobj_id", [
+    ("look at me", "examine", "t-wren"), ("look at myself", "examine", "t-wren"),
+    ("look at the room", "look", None), ("look at the view", "look", None),
+    ("look in my satchel", "inventory", None), ("look at my pockets", "inventory", None),
+    ("look at rook's hands", "examine", "t-rook"),
+])
+async def test_look_at_self_room_or_satchel_is_not_a_missing_name(monkeypatch, line, verb, dobj_id):
+    # Codereview 2026-09-29g: "look at me" read "You don't see the me here",
+    # "look at the room" the same; each is the dreamer, the place or the
+    # satchel, and "<someone>'s X" looks at them.
+    spy = _mock_llm(monkeypatch, {"verb": "none"})
+    p = await parser.parse("t-wren", line)
+    assert (p.verb, p.dobj_id, p.dobj_name) == (verb, dobj_id, None)
+    spy.assert_not_called()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("line,verb", [
+    ("take the moon by the stair", "take"), ("look at the moon over the far hill", "examine"),
+])
+async def test_a_long_name_passes_its_head(monkeypatch, line, verb):
+    # Codereview 2026-09-29g: "take the lantern by the stair" went to the model,
+    # which never sets a name, so the glimpse never heard of the lantern.
+    spy = _mock_llm(monkeypatch, {"verb": "none"})
+    p = await parser.parse("t-wren", line)
+    assert (p.verb, p.dobj_id, p.dobj_name) == (verb, None, "moon")
+    spy.assert_not_called()
+    p = await parser.parse("t-wren", "take the stub of blue chalk")  # no trailing phrase
+    assert p.dobj_name is None and spy.await_count == 1
 
 
 @pytest.mark.asyncio

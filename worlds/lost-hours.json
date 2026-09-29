@@ -8759,7 +8759,7 @@
               "clock's face",
               "great clock's face",
               "clock hands",
-              "hands of the clock",
+              "hands",
               "great clock's hands"
             ],
             "if": [
@@ -8784,7 +8784,7 @@
               "clock's face",
               "great clock's face",
               "clock hands",
-              "hands of the clock",
+              "hands",
               "great clock's hands"
             ],
             "if": [
@@ -8809,7 +8809,7 @@
               "clock's face",
               "great clock's face",
               "clock hands",
-              "hands of the clock",
+              "hands",
               "great clock's hands"
             ],
             "text": "The great clock hangs far up in the tower, still. Winding won't help from down here: the repair ledger says what it's missing, its escapement gear.",
@@ -8876,7 +8876,6 @@
             "names": [
               "lantern",
               "cellar lantern",
-              "lantern by the stair",
               "light",
               "cellar light"
             ],
@@ -8891,7 +8890,6 @@
             "names": [
               "lantern",
               "cellar lantern",
-              "lantern by the stair",
               "light",
               "cellar light"
             ],
@@ -8903,8 +8901,7 @@
               "little jar",
               "nap's jar",
               "pim's jar",
-              "nap jar",
-              "jar on the low shelf"
+              "nap jar"
             ],
             "if": [
               {
@@ -8917,8 +8914,7 @@
             "names": [
               "everyone's jar",
               "help yourself jar",
-              "extra hour's jar",
-              "jar on the lowest shelf"
+              "extra hour's jar"
             ],
             "if": [
               {
@@ -14247,8 +14243,7 @@
               "thimble",
               "chalk",
               "blue chalk",
-              "stub of chalk",
-              "stub of blue chalk"
+              "stub of chalk"
             ],
             "text": "These are Mott's small found things, kept in his tin. He lets you look, and that is all."
           }

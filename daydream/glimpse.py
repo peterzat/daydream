@@ -28,8 +28,9 @@ import hashlib
 import logging
 import re
 
-from daydream import config, objects, rules, worldstate
+from daydream import config, growth, lighting, objects, rules, worldstate
 from daydream.llm import client, safety
+from daydream.skills import effects
 
 logger = logging.getLogger(__name__)
 
@@ -58,11 +59,18 @@ def _singular(word: str) -> str:
     return word
 
 
+def _plural(noun: str) -> bool:
+    words = noun.split()
+    return bool(words) and _singular(words[-1]) != words[-1]
+
+
 def _phrase_pattern(phrase: str) -> re.Pattern:
-    """Whole words, the last one plural-tolerant: "jar" finds "jar" and "jars"."""
+    """Whole words, the last one plural-tolerant: "jar" finds "jar" and "jars".
+    A typed plural finds only a plural: "hands" is no "looping hand", nor
+    "pockets" a pocket watch (codereview 2026-09-29g)."""
     words = phrase.split()
     head = [re.escape(w) for w in words[:-1]]
-    last = re.escape(_singular(words[-1])) + r"(?:s|es)?"
+    last = re.escape(words[-1]) + ("" if _plural(phrase) else r"(?:s|es)?")
     return re.compile(r"\b" + r"\s+".join(head + [last]) + r"\b", re.IGNORECASE)
 
 
@@ -100,9 +108,12 @@ def _name_matches(typed: str, name: str) -> bool:
 
 
 def _hosts(actor: objects.Object, room_id: str) -> list[objects.Object]:
-    """What can hold a glimpse: the room and the things in scope (no toons)."""
+    """What can hold a glimpse: the room and the things in scope (no toons).
+    An unlit room shows nothing its prose names (codereview 2026-09-29g)."""
+    lit = lighting.room_lit(room_id)
     return [o for o in objects.in_scope(actor.id)
-            if o.id != actor.id and o.kind in ("room", "thing")]
+            if o.id != actor.id and o.kind in ("room", "thing")
+            and (lit or o.kind != "room")]
 
 
 def authored(actor: objects.Object, room_id: str, name: str, verb: str) -> str | None:
@@ -187,7 +198,27 @@ def _terminated(text: str) -> str:
 
 def plain_line(noun: str) -> str:
     """When the model is quiet or its line fails: seen, and out of reach."""
-    return f"You can see the {noun} from where you stand, but it isn't within reach just now."
+    it = "they aren't" if _plural(noun) else "it isn't"
+    return f"You can see the {noun} from where you stand, but {it} within reach just now."
+
+
+_COMPASS = frozenset({"north", "south", "east", "west",
+                      "northeast", "northwest", "southeast", "southwest"})
+
+
+def _way(actor: objects.Object, room_id: str, noun: str, sentence: str) -> str | None:
+    """The one compass exit here that the clause naming `noun` points to ("a
+    gate in the south wall"), else None. Up, down, in and out are everyday
+    words in prose ("looks down"), so only the compass counts."""
+    from daydream import rooms, verbs
+
+    room = rooms.get_room(room_id)
+    exits = {d for d, dest in verbs.visible_exits(room, actor).items()
+             if dest and d in _COMPASS} if room is not None else set()
+    pattern = _phrase_pattern(noun)
+    clause = next((c for c in re.split(r"[;,:]", sentence) if pattern.search(c)), "")
+    named = [d for d in sorted(exits) if re.search(rf"\b{d}\b", clause, re.IGNORECASE)]
+    return named[0] if len(named) == 1 else None
 
 
 _SYSTEM = (
@@ -222,18 +253,20 @@ below near after before perhaps maybe instead whatever somewhere
 _REFUSAL = re.compile(r"^\s*(?:i\b|as an ai|sorry)|\bi can(?:not|'t)\b", re.IGNORECASE)
 _URGENT = re.compile(r"\b(?:hurry|must|quickly|danger)\b", re.IGNORECASE)
 _CAPS = re.compile(r"\b[A-Z][a-z]+\b")
+_ALL_CAPS = re.compile(r"\b[A-Z]{2,}\b")
 
 
-def valid_line(line, sentence: str) -> bool:
+def valid_line(line, sentence: str, never_words=()) -> bool:
     """One or two short sentences of narration that name nothing the source
-    doesn't: no new names, no dialogue, no urgency, no numbers it never gave."""
+    doesn't: no new names, no dialogue, no urgency, no numbers it never gave,
+    none of the world's canon-breakers (`never_words`, as growth reads them)."""
     if not isinstance(line, str):
         return False
     line = line.strip()
     if not 12 <= len(line) <= 220 or len(_SENTENCE.findall(line)) > 2:
         return False
-    if any(q in line for q in "\"“”"):
-        return False  # no dialogue
+    if any(q in line for q in "\"“”") or effects._QUOTED.search(line):
+        return False  # no dialogue, single-quoted included
     if _REFUSAL.search(line) or _URGENT.search(line):
         return False
     if re.search(r"\d", line) and not re.search(r"\d", sentence):
@@ -242,7 +275,19 @@ def valid_line(line, sentence: str) -> bool:
     for cap in _CAPS.findall(line):
         if cap.lower() not in source_words and cap.lower() not in _OPENERS:
             return False  # a name the scene never said, even opening a sentence
+    if any(w.lower() not in source_words for w in _ALL_CAPS.findall(line)):
+        return False  # an all-caps name the scene never said
+    if growth._never_word_hit({"never_words": list(never_words or ())}, line):
+        return False
     return safety.first_banned(line) is None
+
+
+def _never_words(world_id: str) -> list:
+    """The world's canon-breakers: its dreamseed's growth `never_words`."""
+    node = worldstate.get(world_id, "config")
+    for key in ("templates", "dreamseed", "properties", "growth", "never_words"):
+        node = node.get(key) if isinstance(node, dict) else None
+    return node if isinstance(node, list) else []
 
 
 def _cache_key(room_id: str, noun: str, verb: str, sentence: str) -> str:
@@ -254,7 +299,8 @@ def user_prompt(sentence: str, verb: str, noun: str) -> str:
     return f"Scene: {sentence}\nTried: {verb} the {noun}."
 
 
-async def compose(sentence: str, verb: str, noun: str) -> tuple[str | None, object]:
+async def compose(sentence: str, verb: str, noun: str,
+                  never_words=()) -> tuple[str | None, object]:
     """One local-model call: (the validated line or None, the raw answer).
     model-eval measures this same prompt and validator."""
     try:
@@ -265,7 +311,7 @@ async def compose(sentence: str, verb: str, noun: str) -> tuple[str | None, obje
     except client.LLMUnavailable:
         return None, None
     raw = result.get("line") if isinstance(result, dict) else None
-    if not valid_line(raw, sentence):
+    if not valid_line(raw, sentence, never_words):
         logger.info("glimpse: a line for %r failed validation", noun)
         return None, raw
     return _terminated(raw.strip()), raw
@@ -277,7 +323,7 @@ async def _local_line(world_id: str, room_id: str, noun: str, verb: str,
     cached = worldstate.get(world_id, key)
     if isinstance(cached, str) and cached:
         return cached
-    line, _ = await compose(sentence, verb, noun)
+    line, _ = await compose(sentence, verb, noun, _never_words(world_id))
     if line is not None:
         worldstate.set(world_id, key, line)
     return line
@@ -295,6 +341,11 @@ async def answer(actor: objects.Object, room_id: str, name: str, verb: str) -> d
     noun, sentence = seen
     if verb in LOOK_VERBS:
         return {"kind": "narrate", "text": _terminated(_sentence_case(sentence)), "to": "@actor"}
+    way = _way(actor, room_id, noun, sentence)
+    if way is not None:  # "open the gate" at the south exit (codereview 2026-09-29g)
+        be = "are" if _plural(noun) else "is"
+        return {"kind": "narrate", "text": f"The {noun} {be} the way {way} from here.",
+                "to": "@actor"}
     line = None
     if config.glimpse_llm_enabled():
         line = await _local_line(actor.world_id, room_id, noun, verb, sentence)
@@ -321,6 +372,9 @@ def validate_glimpsed(entries, where: str, *, known_flags: set[str], known_ids: 
         if not (isinstance(names, list) and names
                 and all(isinstance(n, str) and _norm(n) for n in names)):
             errors.append(f"{ew}.names must be a non-empty list of names")
+        elif any(len(_norm(n).split()) >= 4 for n in names):
+            errors.append(f"{ew}.names: a name of four words or more never reaches a "
+                          f"glimpse (the parser passes its head); shorten it")
         if not (isinstance(entry.get("text"), str) and entry["text"].strip()):
             errors.append(f"{ew}.text must be a non-empty string")
         verbs = entry.get("verbs")

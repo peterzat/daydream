@@ -71,6 +71,13 @@ async def test_the_jar_on_the_shelf_says_why_in_authored_words(cellar, llm):
     assert llm.await_count == 0
 
 
+async def test_a_long_name_reaches_its_glimpse_by_its_head(cellar, llm):
+    for line in ("take the lantern by the stair", "look at the lantern by the stair"):
+        said = await _said(cellar, line)
+        assert "It's the cellar's only light" in said[0].payload["text"]
+    assert llm.await_count == 0
+
+
 async def test_a_look_at_a_name_the_room_says_reads_the_room(cellar, llm):
     said = await _said(cellar, "examine the brick walls")
     assert [e.payload["text"] for e in said] == [WALLS]
@@ -95,6 +102,10 @@ async def test_a_line_that_fails_or_a_quiet_model_reads_plainly(cellar, llm):
     llm.side_effect = client.LLMUnavailable("down")
     said = await _said(cellar, "lift the shelves")  # the jars' alias: a real thing answers
     assert said and "You don't see" not in said[0].payload["text"]
+    asked = llm.await_count
+    said = await _said(cellar, "take the folded slip")  # prose only, never asked: the outage
+    assert [e.payload["text"] for e in said] == [glimpse.plain_line("folded slip")]
+    assert llm.await_count == asked + 1
 
 
 async def test_the_switch_off_reads_plainly_with_no_model_call(cellar, llm, monkeypatch):
@@ -149,6 +160,50 @@ def test_names_match_whole_not_by_a_word_inside(typed, name, ok):
     assert glimpse._name_matches(glimpse._norm(typed), name) is ok
 
 
+async def test_a_dark_room_shows_nothing_its_prose_names(cellar, llm):
+    # Codereview 2026-09-29g: in Zork's unlit cellar "examine the ramp" read
+    # the room's ramp sentence while `look` said it was pitch black.
+    objects.set_property("r-cellar", "dark", True)
+    said = []
+    for line in ("examine the brick walls", "take the brick walls", "take the lantern"):
+        said += await _said(cellar, line)
+    assert [e.payload["text"] for e in said] == [
+        "You don't see the brick walls here.", "You don't see the brick walls here.",
+        "You don't see the lantern here."]
+    assert llm.await_count == 0
+
+
+@pytest.mark.parametrize("typed,prose,ok", [
+    ("jar", "rows of small glass jars", True), ("jar", "a jar glints", True),
+    ("jars", "a jar glints", False), ("pockets", "a pocket watch ticks", False),
+    ("hands", "an older, looping hand", False), ("hands", "its hands stand still", True),
+])
+def test_a_typed_plural_finds_only_a_plural(typed, prose, ok):
+    assert bool(glimpse._phrase_pattern(typed).search(prose)) is ok
+
+
+async def test_the_hands_are_the_great_clocks_not_the_ledgers_hand(village, llm):
+    # Codereview 2026-09-29g: after the clock's look ("Its hands stand
+    # still."), "look at the hands" read the ledger's "older, looping hand".
+    said = await _said(village, "look at the hands")
+    assert said[0].payload["text"].endswith("Its hands stand still.")
+    assert llm.await_count == 0
+
+
+async def test_a_way_the_prose_names_is_the_way_not_out_of_reach(village, llm):
+    # Codereview 2026-09-29g: in the well-court "open the gate" (the south
+    # exit) read "You can see the gate ... but it isn't within reach".
+    objects.move(village, "r-well")
+    said = await _said(village, "open the gate")
+    assert [e.payload["text"] for e in said] == ["The gate is the way south from here."]
+    assert llm.await_count == 0
+
+
+def test_a_plain_line_says_they_for_a_plural():
+    assert "but they aren't within reach" in glimpse.plain_line("stairs")
+    assert "but it isn't within reach" in glimpse.plain_line("gate")
+
+
 async def test_a_name_the_scene_never_said_is_not_here(cellar, llm):
     said = await _said(cellar, "take the moon")
     assert [e.payload["text"] for e in said] == ["You don't see the moon here."]
@@ -169,13 +224,39 @@ SOURCE = "The lantern by the stair burns low and steady."
     ("I cannot help with that, but you may look.", False),           # a refusal
     ("You " + "leave it " * 40, False),                              # too long
     (None, False),
+    ("It burns on by the stair, and it seems to say 'not you, not yet'.", False),  # speech
+    ("The lantern burns on by the stair, where OONA set it.", False),              # all caps
 ])
 def test_a_local_line_says_nothing_the_scene_did_not(line, ok):
     assert glimpse.valid_line(line, SOURCE) is ok
 
 
+def test_an_all_caps_word_the_scene_said_may_stay():
+    assert glimpse.valid_line("You leave the jar be, as its label says: DO NOT WAKE.",
+                              "A label on the jar reads DO NOT WAKE.")
+
+
+def test_a_local_line_keeps_the_worlds_canon_words():
+    # As growth applies never_words: a lowercase entry in any case, a
+    # capitalized one (a name) only as written (codereview 2026-09-29g).
+    baker = "The baker left it by the stair, far from your hands."
+    assert glimpse.valid_line(baker, SOURCE)
+    assert not glimpse.valid_line(baker, SOURCE, ["baker"])
+    assert glimpse.valid_line("You wend past the lantern by the stair, and leave it be.",
+                              SOURCE, ["Wend"])
+
+
+async def test_a_local_line_that_breaks_the_village_canon_reads_plainly(cellar, llm):
+    line = "The walls keep the jars for the mayor of the village, far too steady for your hands."
+    assert glimpse.valid_line(line, WALLS)  # only the village's never_words refuse it
+    llm.return_value = {"line": line}
+    said = await _said(cellar, "take the brick walls")
+    assert [e.payload["text"] for e in said] == [glimpse.plain_line("brick walls")]
+
+
 @pytest.mark.parametrize("mutate,needle", [
     (lambda g: g[0].update(names=[]), "names must be"),
+    (lambda g: g[0].update(names=["jar on the top shelf"]), "four words or more"),
     (lambda g: g[0].update(text=""), "text must be"),
     (lambda g: g[0].update(verbs={"examine": 3}), "verbs must map"),
     (lambda g: g[0].update(when="soon"), "unknown key"),
