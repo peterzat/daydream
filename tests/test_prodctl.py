@@ -641,8 +641,11 @@ def test_a_venv_is_sealed_read_only_and_refused_if_not_the_operators(tmp_path, m
     assert not os.stat(pth).st_mode & 0o022
     assert not os.stat(venv / "lib").st_mode & 0o022
     monkeypatch.setattr(prodctl.os, "getuid", lambda: os.stat(pth).st_uid + 1)
+    ran = []
+    monkeypatch.setattr(prodctl.subprocess, "run", lambda *a, **k: ran.append(a))
     with pytest.raises(prodctl.ProdError, match="not yours"):
         prodctl._seal_venv(venv)
+    assert ran == []  # refused before any chmod, whose EPERM would hide the reason
 
 
 @pytest.mark.parametrize("argv,ok", [

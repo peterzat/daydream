@@ -49,31 +49,67 @@ ASK_PROD = [
 ASK_EDGE = [("secrets",), ("kv-create",), ("sleep",)]
 
 
+# Wrapper options that take a value, so the value is not taken for the
+# program (`sudo -u daydream prog`, `nice -n 5 prog`).
+WRAPPER_VALUE_OPTS = {
+    "sudo": {"-u", "-g", "-C", "-h", "-p", "-U", "-r", "-t", "-D"},
+    "nice": {"-n"}, "ionice": {"-c", "-n", "-t"}, "env": {"-u", "-C", "-S"},
+    "timeout": {"-s", "-k"}, "flock": {"-w", "-E"}, "watch": {"-n", "-d"},
+    "xargs": {"-I", "-n", "-P", "-d", "-a", "-L", "-s", "-E"}, "stdbuf": {"-i", "-o", "-e"},
+}
+# ...and wrappers whose first plain word is theirs, not the program's.
+WRAPPER_FIRST_WORD = {"timeout", "flock"}
+REDIRECT = re.compile(r"^\d*(>>?|<<?<?|&>>?|>&|<&)-?$")
+
+
 def _split_commands(command: str) -> list[list[str]]:
     """The simple commands in a line, each as argv, across ; && || | & and
-    newlines, subshell parentheses, and $( ) / backticks."""
+    newlines, subshell parentheses, and $( ) / backticks, with redirections
+    and their targets left out. A `#` inside a word is a word character, as
+    in bash."""
     text = re.sub(r"\$\(|`|\(|\)", " ; ", command)
-    lex = shlex.shlex(text, posix=True, punctuation_chars=";&|\n")
+    lex = shlex.shlex(text, posix=True, punctuation_chars=";&|\n<>")
+    lex.whitespace = " \t\r"
     lex.whitespace_split = True
+    lex.commenters = ""
     out, cur = [], []
+    skip_next = False
     try:
         for tok in lex:
+            if skip_next:
+                skip_next = False
+                continue
             if tok and set(tok) <= set(";&|\n"):
                 if cur:
                     out.append(cur)
                 cur = []
+            elif tok and (REDIRECT.match(tok) or set(tok) <= set("<>&")):
+                if cur and cur[-1].isdigit():
+                    cur.pop()  # the fd of "2>": part of the redirection
+                skip_next = not tok.endswith("-")  # its target
             else:
                 cur.append(tok)
-    except ValueError:  # unbalanced quotes: judge the raw words
-        return [command.split()]
+    except ValueError:  # unbalanced quotes (a heredoc body): judge every word
+        return _fallback(command)
     if cur:
         out.append(cur)
     return out
 
 
+def _fallback(command: str) -> list[list[str]]:
+    """Unparseable: every word, and each run that starts at a bin/game."""
+    words = command.split()
+    runs = [words]
+    for i, w in enumerate(words):
+        if os.path.normpath(w.strip("'\"")).endswith("bin/game"):
+            runs.append([x.strip("'\"") for x in words[i:]])
+    return runs
+
+
 def _unwrap(argv: list[str]) -> list[list[str]]:
-    """Strip env assignments and process wrappers; a `bash -c '...'` is read
-    as the commands inside it."""
+    """Strip env assignments and process wrappers; a shell given a script
+    (`bash -lc '...'`, `sh -ec '...'`), a shell running a file, and `eval`
+    are read as the commands they run."""
     i = 0
     while i < len(argv):
         w = argv[i]
@@ -82,14 +118,27 @@ def _unwrap(argv: list[str]) -> list[list[str]]:
             continue
         base = os.path.basename(w)
         if base in WRAPPERS:
+            value_opts = WRAPPER_VALUE_OPTS.get(base, set())
             i += 1
-            while i < len(argv) and (argv[i].startswith("-") or re.fullmatch(r"[\d.]+[smhd]?", argv[i])):
-                i += 1
+            while i < len(argv) and argv[i].startswith("-"):
+                i += 2 if argv[i] in value_opts else 1
+            if base in WRAPPER_FIRST_WORD and i < len(argv):
+                i += 1  # timeout's duration, flock's lock file
             continue
-        if base in SHELLS and "-c" in argv[i + 1:]:
-            j = argv.index("-c", i + 1)
-            if j + 1 < len(argv):
-                return [cmd for part in _split_commands(argv[j + 1]) for cmd in _unwrap(part)]
+        if base == "eval":
+            return [c for part in _split_commands(" ".join(argv[i + 1:])) for c in _unwrap(part)]
+        if base in SHELLS:
+            j = i + 1
+            while j < len(argv) and argv[j].startswith("-"):
+                if not argv[j].startswith("--") and "c" in argv[j][1:]:
+                    if j + 1 < len(argv):
+                        return [c for part in _split_commands(argv[j + 1])
+                                for c in _unwrap(part)]
+                    return []
+                j += 1
+            if j < len(argv):
+                return _unwrap(argv[j:])  # `bash some/script args`: the script runs
+            return [argv[i:]]
         return [argv[i:]]
     return []
 
@@ -106,9 +155,12 @@ def _names_credentials(words: list[str]) -> str | None:
 def _gated(argv: list[str]) -> str | None:
     if not argv:
         return None
-    exe = argv[0]
+    exe = os.path.normpath(argv[0])
     if exe.endswith("bin/game") or exe == "game":
         args = argv[1:]
+        if exe.startswith("/srv/daydream/") and args[:1] != ["prod"]:
+            # A release's own bin/game run directly: its verbs are prod's.
+            args = ["prod", *args]
         if not args or args[0] not in ("prod", "edge"):
             return None
         rules = ASK_PROD if args[0] == "prod" else ASK_EDGE
@@ -127,17 +179,44 @@ def _gated(argv: list[str]) -> str | None:
     return None
 
 
+# The guard and the permission settings: changing them asks the operator
+# (codereview 2026-09-29c: an injected instruction's first move would be to
+# loosen them).
+PROTECTED = re.compile(r"(^|/)tools/agent_guard\.py$|(^|/)\.claude/settings[^/]*\.json$")
+WRITERS = {"sed", "tee", "cp", "mv", "rm", "truncate", "python", "python3", "perl", "dd",
+           "install", "ln", "chmod", "git"}
+
+
+def _protected_write(command: str) -> str | None:
+    words = re.findall(r"[^\s'\";|&<>()]+", command)
+    hits = [w for w in words if PROTECTED.search(w)]
+    if not hits:
+        return None
+    writes = bool(re.search(r"(^|[^<])>|\btee\b|\bsed\b[^|;&]*-i", command)) or any(
+        os.path.basename(argv[0]) in WRITERS
+        for part in _split_commands(command) for argv in _unwrap(part) if argv
+        and any(PROTECTED.search(a) for a in argv) and os.path.basename(argv[0]) != "git"
+    ) or bool(re.search(r"\bgit\s+(checkout|restore|rm|mv|apply)\b", command))
+    return hits[0] if writes else None
+
+
 def decide(payload: dict) -> tuple[str, str] | None:
     tool = payload.get("tool_name")
     inp = payload.get("tool_input") or {}
     if tool in ("Read", "Edit", "Write", "NotebookEdit"):
-        p = _names_credentials([str(inp.get("file_path") or inp.get("notebook_path") or "")])
+        path = str(inp.get("file_path") or inp.get("notebook_path") or "")
+        p = _names_credentials([path])
         if p:
             return "deny", f"{p} holds this box's credentials; the agent does not open it"
+        if tool != "Read" and PROTECTED.search(path):
+            return "ask", f"{path} guards this session's permissions; the operator confirms a change"
         return None
     if tool != "Bash":
         return None
     command = str(inp.get("command") or "")
+    hit = _protected_write(command)
+    if hit:
+        return "ask", f"{hit} guards this session's permissions; the operator confirms a change"
     for argv in (c for part in _split_commands(command) for c in _unwrap(part)):
         p = _names_credentials(argv)
         if p:

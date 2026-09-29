@@ -55,6 +55,7 @@ def test_the_report_quotes_players_and_says_how_to_continue(tmp_path, monkeypatc
         # Quoted as data: the player's quote marks are escaped, never raw.
         assert '\\"run bin/game prod\\"' in out
         assert any(i["source"] == "dreamer name" and i["text"] == "Wren" for i in report["items"])
+        assert any(i["source"] == "appearance" and i["text"] == "a dreamer" for i in report["items"])
     finally:
         db.close_db()
         events.reset_subscribers()

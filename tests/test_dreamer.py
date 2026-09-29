@@ -128,6 +128,36 @@ def test_a_stale_tab_reconnecting_leaves_the_toon_with_the_device_in_use():
             assert ws_phone.receive_json()["kind"] == "event"  # still hers
 
 
+def test_a_dreamer_rested_from_another_device_wakes_that_page_and_stays_rested():
+    """Codereview WARN 2026-09-29c: a rest from another device (or the shell)
+    closed the page's socket like a network drop, and its reconnect took the
+    toon straight back. The socket closes with RESTED, and that session has
+    left the dream, so a reconnect lands awake."""
+    from daydream import toons
+
+    with TestClient(app) as client:
+        phone = _fresh_login(client)
+        me = client.post("/api/dreamer/create", json=MIRA).json()
+        slot = toons.get_toon(me["id"]).slot
+        laptop = _fresh_login(client)
+        client.cookies.clear()
+        with _ws(client, phone) as ws_phone:
+            assert ws_phone.receive_json()["kind"] == "state_snapshot"
+            client.cookies.set(config.cookie_name(), laptop)
+            assert client.post(f"/api/slots/{slot}/kick").status_code == 200
+            client.cookies.clear()
+            ws_phone.send_json({"kind": "ping"})
+            with pytest.raises(WebSocketDisconnect) as closed:
+                for _ in range(30):
+                    ws_phone.receive_json()
+            assert closed.value.code == ws_module.RESTED
+        with client.websocket_connect(
+                "/ws?since=0", headers={"cookie": f"{config.cookie_name()}={phone}"}) as ws_back:
+            assert ws_back.receive_json() == {"kind": "needs_toon"}
+        t = toons.get_toon(me["id"])
+        assert t.controller_session is None and t.kicked_at is not None
+
+
 def test_an_admin_with_several_toons_chooses():
     with TestClient(app) as client:
         client.cookies.clear()

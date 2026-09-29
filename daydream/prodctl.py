@@ -447,8 +447,10 @@ def build_release(sha: str) -> Path:
         say(f"venv {venv.name}: reused")
     _seal_venv(venv)
     (tmp / ".venv").symlink_to(Path("..") / ".." / "venvs" / venv.name)
-    subprocess.run([str(venv / "bin" / "python"), "-m", "compileall", "-q", str(tmp / "daydream")],
-                   check=True, env={"PATH": "/usr/bin:/bin"})
+    # -I -S: the stdlib's compileall only, never the venv's site (a .pth
+    # there would run as the operator).
+    subprocess.run([str(venv / "bin" / "python"), "-I", "-S", "-m", "compileall", "-q",
+                    str(tmp / "daydream")], check=True, env={"PATH": "/usr/bin:/bin"})
     subprocess.run(["chmod", "-R", "a-w", str(tmp)], check=True)
     os.chmod(tmp, 0o2750)  # the dir itself stays renameable/removable by us
     tmp.rename(release)
@@ -462,14 +464,15 @@ def _seal_venv(venv: Path) -> None:
     service's group, and the operator runs its python on every deploy, so a
     process running as the service user outside its sandbox could plant a
     .pth that ran as the operator (security review 2026-09-29). Refuses a
-    venv holding anything the operator does not own."""
-    subprocess.run(["chmod", "-R", "go-w", str(venv)], check=True)
+    venv holding anything the operator does not own, before the chmod (which
+    could not change such a file anyway)."""
     me = os.getuid()
     for root, dirs, files in os.walk(venv):
         for name in [*dirs, *files]:
             if os.lstat(os.path.join(root, name)).st_uid != me:
                 raise ProdError(f"{venv} holds {os.path.join(root, name)}, which is not "
                                 "yours; move the venv aside and deploy again to rebuild it")
+    subprocess.run(["chmod", "-R", "go-w", str(venv)], check=True)
 
 
 def _force_rmtree(path: Path) -> None:

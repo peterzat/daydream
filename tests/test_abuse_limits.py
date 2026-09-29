@@ -3,14 +3,15 @@
 claim, open socket after socket, or send long words in a command frame."""
 
 import asyncio
+import time
 from pathlib import Path
-from unittest.mock import AsyncMock
 
 import pytest
 from fastapi.testclient import TestClient
 
 from daydream import config, db, events, journal, objects, toons
-from daydream.api import slots, ws as ws_mod
+from daydream.api import slots
+from daydream.api import ws as ws_mod
 from daydream.server import app
 from tests import authhelp
 
@@ -47,12 +48,17 @@ def test_leave_and_claim_share_a_small_budget():
         me = client.post("/api/dreamer/create",
                          json={"name": "Loop", "appearance_seed": "a restless one"}).json()
         slot = toons.get_toon(me["id"]).slot
-        codes = []
+        leaves, claims = [], []
         for _ in range(slots.PRESENCE_RATE[0] // 2 + 2):
-            codes.append(client.post("/api/session/leave").status_code)
-            codes.append(client.post(f"/api/slots/{slot}/claim").status_code)
-        assert codes[:slots.PRESENCE_RATE[0]] == [200] * slots.PRESENCE_RATE[0]
-        assert 429 in codes[slots.PRESENCE_RATE[0]:]
+            leaves.append(client.post("/api/session/leave").status_code)
+            claims.append(client.post(f"/api/slots/{slot}/claim").status_code)
+        # A leave always rests the dreamer (past the budget, quietly); only
+        # claims past the budget are refused.
+        assert leaves == [200] * len(leaves)
+        within = slots.PRESENCE_RATE[0] // 2
+        assert claims[:within] == [200] * within
+        assert 429 in claims[within:]
+        assert toons.get_toon(me["id"]).controller_session is None
 
 
 async def test_one_recap_at_a_time_per_dreamer(monkeypatch, tmp_path):
@@ -101,8 +107,43 @@ def test_a_session_keeps_at_most_three_sockets():
                     _until(s, lambda m: m["kind"] == "state_snapshot")
                 # The oldest is told it is dreaming elsewhere.
                 assert _until(s1, lambda m: m["kind"] == "elsewhere")
-                assert ws_mod._bucket_for(next(iter(ws_mod._session_buckets))) is \
-                    ws_mod._bucket_for(next(iter(ws_mod._session_buckets)))
+
+
+def test_a_sessions_sockets_share_one_budget_that_a_reconnect_does_not_refill(monkeypatch):
+    monkeypatch.setattr(ws_mod, "RATE_PER_SECOND", 0.0)  # no refill while the test runs
+    long_line = {"kind": "input", "text": "x" * (ws_mod.MAX_INPUT_CHARS + 1)}
+    with TestClient(app) as client:
+        me = _login(client, "one-budget")
+        client.post("/api/dreamer/create", json={"name": "Budget", "appearance_seed": "a steady one"})
+        client.cookies.clear()
+        hdr = {"cookie": f"{config.cookie_name()}={me}"}
+        half = ws_mod.RATE_BURST // 2
+        with client.websocket_connect("/ws", headers=hdr) as s1, \
+                client.websocket_connect("/ws", headers=hdr) as s2:
+            for s in (s1, s2):
+                _until(s, lambda m: m["kind"] == "state_snapshot")
+            for _ in range(half - 1):
+                s1.send_json({"kind": "ping"})
+            s1.send_json(long_line)  # answered, so s1's frames are all counted
+            _until(s1, lambda m: m["kind"] == "notice" and "keep it under" in m["text"])
+            for _ in range(ws_mod.RATE_BURST - half + 1):  # one more than is left
+                s2.send_json({"kind": "ping"})
+            _until(s2, lambda m: m["kind"] == "notice" and "slow down" in m["text"])
+        for _ in range(100):  # both closed and unregistered: the session had no socket
+            if not ws_mod._session_sockets:
+                break
+            time.sleep(0.02)
+        assert not ws_mod._session_sockets
+        # The session comes back on a new socket, still spent: the ping is
+        # refused (a refilled budget would pass it and answer the long line).
+        with client.websocket_connect("/ws", headers=hdr) as s3:
+            _until(s3, lambda m: m["kind"] == "state_snapshot")
+            for b in ws_mod._session_buckets.values():
+                b.warned_at = 0.0  # the "slow down" note may speak again at once
+            s3.send_json({"kind": "ping"})
+            s3.send_json(long_line)
+            note = _until(s3, lambda m: m["kind"] == "notice")
+            assert "slow down" in note["text"], note
 
 
 def test_a_command_frame_keeps_to_the_typed_line_cap():

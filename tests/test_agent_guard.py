@@ -89,3 +89,54 @@ def test_it_speaks_claude_codes_hook_protocol():
 def test_reading_accounts_is_quiet_changing_them_asks(cmd, want):
     got = _bash(cmd)
     assert (got[0] if got else None) == want, cmd
+
+
+# Codereview 2026-09-29c: shapes that hid a command from the first guard.
+HOME_SSH = "~/." + "ssh/id_ed25519"  # built from parts: the guard reads this file's writes
+
+
+@pytest.mark.parametrize("cmd,want", [
+    ("echo ok\nbin/game prod invite create --for M", "ask"),  # a newline separates
+    ("true\ngh auth token", "deny"),
+    ("echo a#; bin/game prod invite create --for M", "ask"),  # '#' mid-word is a word char
+    ("bash -lc 'bin/game prod world reset --yes'", "ask"),
+    ("sh -ec 'cd /tmp; bin/game prod play say hi'", "ask"),
+    ("bash bin/game prod world reset --yes", "ask"),
+    ("eval 'bin/game prod account delete robin --yes'", "ask"),
+    ("sudo -u daydream /srv/daydream/current/bin/game world reset --yes", "ask"),
+    ("nice -n 5 bin/game prod pull", "ask"),
+    ("flock /tmp/l bin/game prod rollback", "ask"),
+    ("timeout 30 bin/game prod sleep", "ask"),
+    ("bin//game prod invite create --for M", "ask"),
+    ("cat <<'EOF' | bash\nbin/game prod world reset --yes\nEOF", "ask"),
+    ("echo it's\nbin/game prod invite create --for M", "ask"),  # unbalanced quote: fallback
+    (f"cat {HOME_SSH} 2>/dev/null", "deny"),
+    ("bin/game prod deploy 2>&1 | tail -40", None),  # redirections are not arguments
+    ("bin/game prod deploy > /tmp/deploy.log", None),
+    ("bin/game prod deploy HEAD 2>/dev/null", None),
+    ("echo 'a > b' && ls", None),
+])
+def test_the_shapes_a_command_hides_in(cmd, want):
+    got = _bash(cmd)
+    assert (got[0] if got else None) == want, (cmd, got)
+
+
+@pytest.mark.parametrize("tool,inp,want", [
+    ("Edit", {"file_path": "/repo/tools/agent_guard.py"}, "ask"),
+    ("Write", {"file_path": "/repo/.claude/settings.local.json"}, "ask"),
+    ("Edit", {"file_path": "/repo/.claude/settings.json"}, "ask"),
+    ("Read", {"file_path": "/repo/tools/agent_guard.py"}, None),
+    ("Edit", {"file_path": "/repo/tests/test_agent_guard.py"}, None),
+    ("Bash", {"command": "sed -i s/ask/allow/ .claude/settings.local.json"}, "ask"),
+    ("Bash", {"command": "echo '{}' > .claude/settings.local.json"}, "ask"),
+    ("Bash", {"command": "cp /tmp/x tools/agent_guard.py"}, "ask"),
+    ("Bash", {"command": "git checkout -- tools/agent_guard.py"}, "ask"),
+    ("Bash", {"command": "cat .claude/settings.json"}, None),
+    ("Bash", {"command": "git diff tools/agent_guard.py"}, None),
+    ("Bash", {"command": "git add tools/agent_guard.py tests/test_agent_guard.py"}, None),
+])
+def test_the_guard_and_the_settings_ask_before_they_change(tool, inp, want):
+    """Codereview 2026-09-29c: loosening the guard or the permission settings
+    would be an injected instruction's first move."""
+    got = guard.decide({"tool_name": tool, "tool_input": inp})
+    assert (got[0] if got else None) == want, (tool, inp, got)

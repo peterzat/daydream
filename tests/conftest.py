@@ -160,6 +160,17 @@ def _reset_presence_throttle():
 
 
 @pytest.fixture(autouse=True)
+def _reset_heard_cache():
+    """The askable-subject vocabulary is cached in module state; clear it so
+    a test that rebuilds a world with other topics never reads the last one's."""
+    from daydream import heard
+
+    heard.clear_cache()
+    yield
+    heard.clear_cache()
+
+
+@pytest.fixture(autouse=True)
 def _reset_in_flight():
     """The WS layer dedups in-flight image gen via a module-level set;
     reset between tests so prior state never bleeds through."""

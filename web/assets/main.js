@@ -163,6 +163,12 @@ function connect(isReconnect) {
       showElsewhere();
       return;
     }
+    if (ev.code === 4410) {
+      // Rested from the shell or another device: wake here, as needs_toon
+      // does (enterPicker sets awaitingPick, so there is no retry).
+      enterPicker();
+      return;
+    }
     // Why did it close? A refused handshake reads as 1006 in the browser, so
     // ask: a lapsed session goes to the front door; a sleeping village (the
     // edge answers 503 while the box is down) shows its note and waits.
@@ -548,8 +554,7 @@ function renderTopics(others) {
       if (asked.has(label)) chip.title = "you've asked about this";
       chip.textContent = label;
       chip.onclick = () => {
-        sendCommand("ask", t.id, label);
-        showPending();
+        if (sendCommand("ask", t.id, label)) showPending();
       };
       row.appendChild(chip);
     }
@@ -674,6 +679,9 @@ function theName(objectId) {
   const chip = document.querySelector(`#scene .obj[data-object-id="${objectId}"]`);
   const name = nameForObject(objectId);
   if ((chip && chip.dataset.kind === "toon") || /^(the|a|an) /i.test(name)) return name;
+  // Someone's own thing ("Ada's lantern") takes no article; a common
+  // possessive ("the miller's cart") and a title ("the Book of Days") do.
+  if (/^[A-Z][^\s'’]*['’]s\s/.test(name)) return name;
   return "the " + name;
 }
 
@@ -714,8 +722,11 @@ function gateNote(verb, objectId) {
   const spec = verbSpecs[verb] || {};
   const carried = !!document.querySelector(`#inventory .obj[data-object-id="${objectId}"]`);
   const who = theName(objectId);
-  if (spec.where === "here" && carried) return `You're already carrying ${who}.`;
-  if (spec.where === "carried" && !carried) return `You aren't carrying ${who}.`;
+  // Only things are carried or not; a person gets the generic line.
+  const chip = document.querySelector(`#scene .obj[data-object-id="${objectId}"]`);
+  const thing = !(chip && chip.dataset.kind === "toon");
+  if (thing && spec.where === "here" && carried) return `You're already carrying ${who}.`;
+  if (thing && spec.where === "carried" && !carried) return `You aren't carrying ${who}.`;
   return `${spec.ui_hint || capitalize(verb)} doesn't work on ${who}.`;
 }
 
@@ -745,7 +756,8 @@ function clearStagedVerb(opts = {}) {
   stagedDobjId = null;
   // A waiting prompt keeps its hint (cancelText lets it go), and a snapshot
   // leaves a note that is still showing (its own timer lets it go).
-  if (!textTarget && !(opts.keepNote && noteTimer)) hideStagedHint();
+  const noteShowing = document.getElementById("verb-hint").classList.contains("ribbon-note");
+  if (!textTarget && !(opts.keepNote && noteShowing)) hideStagedHint();
   document
     .querySelectorAll("#verb-bar button.verb-staged")
     .forEach((b) => b.classList.remove("verb-staged"));
@@ -765,6 +777,8 @@ function showStagedHint(verb, dobjName) {
   const word = (spec.preps && spec.preps[0]) ||
     (kinds.indexOf("toon") !== -1 ? "to" : "on");
   const hint = document.getElementById("verb-hint");
+  clearTimeout(noteTimer); // the prompt replaces a note: its timer goes too
+  noteTimer = null;
   hint.classList.remove("ribbon-note");
   const whom = kinds.indexOf("toon") !== -1 ? "someone" : "something";
   hint.textContent = `${verb} ${dobjName} ${word}... (touch ${whom}, or ${verb} again to change your mind)`;
@@ -911,6 +925,8 @@ function askForText(verb, objectId, spec) {
   // answer with its own authored question); Esc lets it go.
   textTarget = { verb, objectId };
   const hint = document.getElementById("verb-hint");
+  clearTimeout(noteTimer); // the prompt replaces a note: its timer goes too
+  noteTimer = null;
   hint.classList.remove("ribbon-note");
   hint.innerHTML = "";
   const what = document.createElement("b");
@@ -941,8 +957,7 @@ function sendText(text) {
   // beat (the action may be LLM-backed).
   const t = textTarget;
   cancelText();
-  sendCommand(t.verb, t.objectId, text);
-  showPending();
+  if (sendCommand(t.verb, t.objectId, text)) showPending();
 }
 
 function nameForObject(objectId) {
@@ -1327,7 +1342,9 @@ function sendCommand(verb, dobjId, args, iobjId) {
   // The structured command frame: the click path. Bypasses the parser, so a
   // deterministic verb makes no LLM call (the server's verb handler may). A
   // two-object verb (give/use) carries iobj_id; single-object verbs omit it.
-  if (!ws || ws.readyState !== WebSocket.OPEN) return;
+  // Returns whether it sent, so a caller shows "the dream stirs..." only for
+  // a command that went.
+  if (!ws || ws.readyState !== WebSocket.OPEN) return false;
   // Some browsers fire a click handler twice on a single tap, and a touch
   // that seems slow to answer gets a second one, either of which would echo
   // the line twice (e.g. a doubled "You ask someone about ..."). Drop an
@@ -1336,7 +1353,7 @@ function sendCommand(verb, dobjId, args, iobjId) {
   // let an iPad's second touch through).
   const key = verb + "|" + (dobjId || "") + "|" + (iobjId || "") + "|" + (args || "");
   const now = Date.now();
-  if (lastCmd && lastCmd.key === key && now - lastCmd.t < CMD_REPEAT_MS) return;
+  if (lastCmd && lastCmd.key === key && now - lastCmd.t < CMD_REPEAT_MS) return false;
   lastCmd = { key, t: now };
   ws.send(
     JSON.stringify({
@@ -1347,6 +1364,7 @@ function sendCommand(verb, dobjId, args, iobjId) {
       args: args || "",
     })
   );
+  return true;
 }
 
 function escapeRegex(s) {

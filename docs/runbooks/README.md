@@ -39,13 +39,27 @@ The design behind all of it is [`docs/GOING-LIVE.md`](../GOING-LIVE.md).
 
 - **The agent** runs every `bin/game prod` and `bin/game edge` verb when the
   operator asks for the work, with a one-line note per step (CLAUDE.md
-  "Agent policy for prod"). A local permission rule lets them run without a
-  prompt, except the verbs that mint a credential or a privilege, replace
-  the world, remove a person, or change what root has installed (`prod invite
-  reset`, `prod account role|create|cli-cookie|delete`, `prod world
-  reset|delete|restore|snapshot-restore|restore-backup|load`, `prod root units
-  --apply`, `prod root env set`), which always prompt. `--instance NAME` must be
-  the last two arguments, so these rules always see the whole verb.
+  "Agent policy for prod"). Two layers in `.claude/settings.local.json`
+  (template: `docs/claude-settings.local.example.json`) decide what prompts:
+  its permission rules, and its PreToolUse hook, `tools/agent_guard.py`,
+  which reads each command the way the shell will and asks for the same
+  verbs however they are spelled (and before any change to itself or to the
+  settings files). They always prompt for the verbs that mint
+  a credential or a privilege, reach players, replace the world, remove a
+  person, or change the edge or what root has installed (`prod invite
+  create|reset|revoke|unblock`, `prod account
+  create|role|cli-cookie|delete|disable|enable|rename`, `prod account
+  sessions --revoke`, `prod world
+  reset|delete|restore|snapshot-restore|restore-backup|load|delete-toon|rest-toon|skill|swap`,
+  `prod world patch` without `--check`, `prod dream apply`, `prod play`,
+  `prod pull`, `prod instance`, `prod sleep`, `prod rollback`,
+  `prod offsite-restore`, `prod root units` and `prod root env` in any form,
+  `prod deploy` of another ref or with `--skip-tests`,
+  `edge secrets|kv-create|sleep`). The hook also denies any command or file
+  read that names the box's credential paths, or prints the GitHub token.
+  `prod invite list` and `prod status|logs|check|plan|text-scan` never
+  prompt. `--instance NAME` must be the last two arguments, so these rules
+  always see the whole verb.
 - **The root helper** (`bin/game prod root`, [root.md](root.md)) is how the
   agent refreshes the units, runs a timer job, and changes an allowlisted
   prod.env key, with no password: it validates what it installs and logs

@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import builtins
 import json
 import os
 import re
@@ -36,6 +37,14 @@ import httpx
 import websockets
 
 DEFAULT_BASE = f"http://127.0.0.1:{os.environ.get('DAYDREAM_PORT', '54321')}"
+
+# C0 and C1 control characters, newline and tab aside: players' words never
+# reach the terminal as an escape sequence.
+_CONTROL = re.compile(r"[\x00-\x08\x0b-\x1f\x7f-\x9f]")
+
+
+def print(*args, **kwargs) -> None:  # every line this bridge prints passes here
+    builtins.print(*(_CONTROL.sub("", str(a)) for a in args), **kwargs)
 
 
 def _state_dir() -> Path:
@@ -116,6 +125,10 @@ def _line(frame: dict, me: str | None = None) -> str | None:
         e = frame.get("event") or {}
         p = e.get("payload") or {}
         if e.get("kind") == "narrate" and p.get("text"):
+            if p.get("from_player"):
+                # A player's own words (a letter, another dreamer's looks):
+                # quoted and marked like their speech, so the banner prints.
+                return f"{UNTRUSTED_MARK} {json.dumps(p['text'], ensure_ascii=False)}"
             return p["text"]
         if e.get("kind") in ("move", "arrive"):
             # Comings and goings, as the SPA tells them: your own move once

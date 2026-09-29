@@ -12,6 +12,19 @@ from pathlib import Path
 from daydream import config
 
 _conn: sqlite3.Connection | None = None
+_generation = 0
+
+
+def generation() -> int:
+    """Which live connection this is: bumped whenever it opens or closes, so
+    a cache keyed on it never outlives the database it read (a freed
+    connection's id() is reused)."""
+    return _generation
+
+
+def _bump() -> None:
+    global _generation
+    _generation += 1
 
 
 def open_db(path: Path) -> sqlite3.Connection:
@@ -56,6 +69,7 @@ def init_live(
         path = config.live_db_path()
     if migrations_dir is None:
         migrations_dir = config.MIGRATIONS_DIR
+    _bump()
     _conn = open_db(path)
     init_schema(_conn, migrations_dir)
     return _conn
@@ -71,6 +85,7 @@ def close_db() -> None:
     """Close the live connection. For tests and shutdown."""
     global _conn
     if _conn is not None:
+        _bump()
         _conn.close()
         _conn = None
 
@@ -143,6 +158,7 @@ def swap_live_db(target_path: Path) -> None:
             _conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
         except sqlite3.Error:
             pass
+        _bump()
         _conn.close()
         _conn = None
 

@@ -26,8 +26,8 @@ from __future__ import annotations
 
 import logging
 import re
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Iterable
 
 from daydream import db, objects
 
@@ -103,10 +103,13 @@ _cache: dict[tuple[str, int], dict[str, list[Form]]] = {}
 def vocabulary(world_id: str) -> dict[str, list[Form]]:
     """Every askable subject in the world, indexed by its first stem: the
     residents' topics and the talk beats' topics. Cached per world and live
-    connection (a refresh, a swap or a new test database starts afresh)."""
+    connection generation (`db.generation()`, bumped whenever the live
+    connection opens or closes), so a swap, a restart or a new test database
+    starts afresh. A change to topics over the same connection is not seen
+    until then (`clear_cache` forgets at once)."""
     from daydream import story
 
-    ck = (world_id, id(db.get_conn()))
+    ck = (world_id, db.generation())
     got = _cache.get(ck)
     if got is not None:
         return got
@@ -219,8 +222,10 @@ def on_event(event) -> None:
     if room is None:
         return
     skip = event.payload.get("except")
+    # Only those dreaming now: a rested player keeps their place but is not
+    # there to hear it.
     hearers = [t.id for t in objects.contents(room.id, kind="toon")
-               if t.is_player and t.id != skip]
+               if t.is_human_controlled and t.id != skip]
     note(room.world_id, hearers, text)
 
 

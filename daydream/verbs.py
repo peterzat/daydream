@@ -714,6 +714,8 @@ async def _handle_examine(actor, room_id, dobj, iobj, args, spec) -> None:
         body = " ".join(_terminate(p[:1].upper() + p[1:]) for p in parts)
         line = f"You see {dobj.name}: {body}" if body else f"You see {dobj.name}."
         eff = {"kind": "narrate", "text": line, "to": "@actor"}
+        if dobj.is_player:
+            eff["from_player"] = True  # their looks are their own words
         if body:
             eff["card"] = _card("examine", dobj, body)
         _dispatch(actor, room_id, [eff], spec)
@@ -1181,8 +1183,10 @@ async def _handle_read(actor, room_id, dobj, iobj, args, spec) -> None:
     text = dobj.properties.get("text")
     if isinstance(text, str) and text.strip():
         text = text.strip() + _roster_tail(dobj, actor)
-        _dispatch(actor, room_id, [{"kind": "narrate", "text": text, "to": "@actor",
-                                    "card": _card("read", dobj, text)}], spec)
+        eff = {"kind": "narrate", "text": text, "to": "@actor", "card": _card("read", dobj, text)}
+        if dobj.properties.get("letter"):
+            eff["from_player"] = True  # a letter's body is its writer's words
+        _dispatch(actor, room_id, [eff], spec)
         return
     _dispatch(actor, room_id, [{"kind": "narrate", "to": "@actor",
         "text": f"There's nothing written on the {dobj.name} to read."}], spec)

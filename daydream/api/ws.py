@@ -155,22 +155,25 @@ def _auto_enter(who, *, reconnect: bool = False):
     return toon.id if toon is not None else None
 
 
-def _still_mine(toon_id: str, session_id: str) -> bool:
-    """False only once ANOTHER session controls this toon (a second tab of
-    the same account took it). A missing toon (a world swap, a delete) or a
-    rested one is not "elsewhere": those flows keep their own handling."""
+def _hold(toon_id: str, session_id: str) -> str:
+    """Whose this toon is now, in one read per frame or event: "elsewhere"
+    once ANOTHER session controls it (a second tab of the same account took
+    it), "rested" once it no longer dreams under this session (left the
+    dream, or rested from the shell or another device), else "mine". A
+    missing toon (a world swap, a delete) reads "mine": those flows keep
+    their own handling."""
     t = toons.get_toon(toon_id)
-    return t is None or t.controller_session in (None, session_id)
+    if t is None:
+        return "mine"
+    if t.controller_session not in (None, session_id):
+        return "elsewhere"
+    if t.controller_session == session_id and t.is_human_controlled:
+        return "mine"
+    return "rested"
 
 
 ELSEWHERE = 4409  # close code: this toon is being dreamed in another window
-
-
-def _still_dreaming(toon_id: str, session_id: str) -> bool:
-    """This session still holds the toon, awake (not rested). A missing toon
-    keeps its own handling (a swap, a delete)."""
-    t = toons.get_toon(toon_id)
-    return t is None or (t.controller_session == session_id and bool(t.is_human_controlled))
+RESTED = 4410  # close code: this dreamer was rested; the page wakes, no retry
 
 
 def _current_room_id(toon_id: str) -> str:
@@ -259,9 +262,11 @@ def _state_snapshot(
     # (all co-located toons) for back-compat; the client filters it out there.
     self_toon = next((t for t in toons_in if t.id == toon_id), None) or toons.get_toon(toon_id)
     # What stands in front of the player is known from now on: the ask-about
-    # chips wait for the fiction to name a subject (daydream.heard).
+    # chips wait for the fiction to name a subject (daydream.heard). Read
+    # once here, and every resident's card below offers from it.
+    known: set[str] | None = None
     if room is not None and lit:
-        heard.known_keys(room.world_id, toon_id)
+        known = heard.known_keys(room.world_id, toon_id)
     if resume_since is _REPLAY_RECENT:
         # Move / effect re-snapshots: the room's recent history. Private
         # events addressed to other toons are filtered out (migration 014).
@@ -343,7 +348,7 @@ def _state_snapshot(
         # (room things) were previously sent but never rendered; `inventory`
         # is the actor's carried things.
         "items": [_object_card(o, viewer_id=toon_id) for o in things_in],
-        "toons": [_toon_card(t, viewer_id=toon_id) for t in toons_in],
+        "toons": [_toon_card(t, viewer_id=toon_id, known=known) for t in toons_in],
         # WHO YOU ARE: the controlled toon, named explicitly so the SPA never
         # has to guess which co-located toon is the player.
         "self": _toon_card(self_toon) if self_toon is not None else None,
@@ -466,7 +471,8 @@ def _object_card(o: "objects.Object", depth: int = 0, carried: bool = False,
     return card
 
 
-def _toon_card(t: "toons.Toon", viewer_id: str | None = None) -> dict:
+def _toon_card(t: "toons.Toon", viewer_id: str | None = None,
+               known: set[str] | None = None) -> dict:
     obj = objects.get(t.id)
     # What the viewer could ask this NPC about right now (open talk beats
     # first, then authored topics): the clickable ask-about chips, the
@@ -476,7 +482,7 @@ def _toon_card(t: "toons.Toon", viewer_id: str | None = None) -> dict:
     if viewer_id and obj is not None and obj.id != viewer_id \
             and not obj.is_human_controlled:
         # Only what this viewer has come across (daydream.heard).
-        topics = [tp["label"] for tp in story.offered_topics(obj, viewer_id)]
+        topics = [tp["label"] for tp in story.offered_topics(obj, viewer_id, known=known)]
         heard = set(story.asked_topics(obj.world_id, obj.id, viewer_id))
         asked = [label for label in topics if story.normalize_topic(label) in heard]
     return {
@@ -941,8 +947,12 @@ def _unregister_socket(session_id: str | None, ws: WebSocket) -> None:
     if ws in socks:
         socks.remove(ws)
     if not socks:
+        # The rate budget stays: a close-and-reopen must not refill it.
         _session_sockets.pop(session_id, None)
-        _session_buckets.pop(session_id, None)
+
+
+BUCKETS_KEPT = 1000     # past this many sessions, forget the idle budgets
+BUCKET_IDLE_S = 600.0   # a budget untouched this long, with no socket, is idle
 
 
 def _bucket_for(session_id: str | None) -> "_Bucket":
@@ -950,6 +960,11 @@ def _bucket_for(session_id: str | None) -> "_Bucket":
         return _Bucket()
     b = _session_buckets.get(session_id)
     if b is None:
+        if len(_session_buckets) > BUCKETS_KEPT:
+            now = time.monotonic()
+            for sid, old in list(_session_buckets.items()):
+                if now - old.at > BUCKET_IDLE_S and sid not in _session_sockets:
+                    del _session_buckets[sid]
         b = _session_buckets[session_id] = _Bucket()
     return b
 
@@ -1234,14 +1249,16 @@ async def _receive_loop(ws: WebSocket, toon_id: str, token: str | None = None,
             if accounts.resolve(token) is None:
                 await ws.close(code=4401)
                 return
-            if session_id is not None and not _still_mine(toon_id, session_id):
+            hold = _hold(toon_id, session_id) if session_id is not None else "mine"
+            if hold == "elsewhere":
                 await ws.send_json({"kind": "elsewhere"})
                 await ws.close(code=ELSEWHERE)
                 return
-            if session_id is not None and not _still_dreaming(toon_id, session_id):
-                # Rested (left the dream, or rested from the shell): a page
-                # that stayed open does not go on acting unlisted.
-                await ws.close(code=status.WS_1000_NORMAL_CLOSURE)
+            if hold == "rested":
+                # Rested (left the dream, or rested from the shell or another
+                # device): a page that stayed open does not go on acting
+                # unlisted, and wakes instead of reconnecting.
+                await ws.close(code=RESTED)
                 return
             if not bucket.take():
                 now = time.monotonic()
@@ -1328,14 +1345,15 @@ async def _broadcast_loop(
                 continue
             # Another tab of this account took the toon: say so once and stop
             # (the SPA shows a calm "dreaming elsewhere" note, no reconnect loop).
-            if session_id is not None and not _still_mine(toon_id, session_id):
+            hold = _hold(toon_id, session_id) if session_id is not None else "mine"
+            if hold == "elsewhere":
                 await ws.send_json({"kind": "elsewhere"})
                 await ws.close(code=ELSEWHERE)
                 return
             # Rested: nor does it go on hearing the room unlisted (security
             # review 2026-09-29: a page kept open after "leave" did).
-            if session_id is not None and not _still_dreaming(toon_id, session_id):
-                await ws.close(code=status.WS_1000_NORMAL_CLOSURE)
+            if hold == "rested":
+                await ws.close(code=RESTED)
                 return
             # Private events (migration 014): addressed to this toon, always
             # delivered — even across a room change (a death respawn's message

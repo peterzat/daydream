@@ -92,15 +92,22 @@ PRESENCE_RATE = (10, 60.0)  # actions, seconds
 _presence_hits: dict[str, deque] = {}
 
 
-def _presence_throttle(who: accounts.Principal) -> None:
+def _presence_ok(who: accounts.Principal) -> bool:
+    """Within the budget (and counted), or over it."""
     n, window = PRESENCE_RATE
     now = time.monotonic()
     q = _presence_hits.setdefault(who.account_id, deque())
     while q and now - q[0] > window:
         q.popleft()
     if len(q) >= n:
-        raise HTTPException(status_code=429, detail="slow down a moment")
+        return False
     q.append(now)
+    return True
+
+
+def _presence_throttle(who: accounts.Principal) -> None:
+    if not _presence_ok(who):
+        raise HTTPException(status_code=429, detail="slow down a moment")
 
 
 def reset_presence_throttle() -> None:
@@ -332,6 +339,10 @@ async def kick_slot(slot: int, request: Request) -> dict:
         raise HTTPException(status_code=404, detail="that dreamer isn't here any more")
     _require_actionable(t, who)
     held_here = t.controller_session == who.session_id
+    if t.controller_session and not held_here:
+        # Rested from another device: that session has left the dream too,
+        # so its reconnect wakes instead of taking the toon straight back.
+        accounts.set_left(t.controller_session, True)
     toon = toons.kick_slot(slot)
     if toon is None:
         raise HTTPException(status_code=404, detail="that dreamer isn't here any more")
@@ -378,15 +389,20 @@ async def leave_session(request: Request) -> dict:
     succeeds regardless of LLM state and never waits on the write. The WS
     disconnect is deliberately NOT a trigger: the reconnect overlay rides
     out transient drops all the time and would double-write."""
-    _presence_throttle(_require_authed(request))
+    # The release itself is never refused (a refused leave left the dreamer
+    # awake under a session sign-out then revoked); over the budget it is
+    # quiet: no line to the room, no journal.
+    within = _presence_ok(_require_authed(request))
     sid = _session_id(request)
     released = toons.release_session_toon(sid)
     accounts.set_left(sid, True)
     if released is not None:
         who = auth_mod.principal(request)
-        logger.info("left the dream: %s (%s)", released.name,
-                    who.username if who else "unknown account")
-        _departed(released)
+        logger.info("left the dream: %s (%s)%s", released.name,
+                    who.username if who else "unknown account",
+                    "" if within else ", quietly (over the presence budget)")
+        if within:
+            _departed(released)
         from daydream.api import ws as ws_mod
 
         await ws_mod.close_session_sockets(sid)  # a page kept open stops listening

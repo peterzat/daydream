@@ -318,6 +318,8 @@ body::before {
 .obj-toon { font-family: var(--hand); font-size: 1.24rem; color: var(--sage-deep); font-weight: 600; }
 .obj-thing { font-family: var(--serif); font-style: italic; color: var(--ink); opacity: .9; }
 #inventory .obj-thing { font-family: var(--hand); font-style: normal; font-size: 1.2rem; color: var(--sage-deep); opacity: 1; }
+/* The dim of a staged verb that can't use it wins over the carried ink. */
+#inventory .obj-ungated, #toons .obj-ungated, #things .obj-ungated { opacity: .34; }
 /* Another player with no one at their page: dozing, drawn a little faint. */
 .obj-away { opacity: .6; }
 .obj-away .toon-face { filter: saturate(.5); }

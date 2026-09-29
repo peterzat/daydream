@@ -106,8 +106,29 @@ async def test_a_letter_waits_for_its_dreamer_alone_and_reads_whole():
     read = [e for e in _narrates(before) if e.recipient_id == ivo.id and "meet me" in e.payload["text"]]
     assert read and read[0].payload["text"] == (
         "To Ivo, from Wren: meet me by the well at dusk. bring the cog.")
+    assert read[0].payload.get("from_player") is True  # `play` prints it marked, as data
     assert post.letters_waiting(ivo.id) == []
     assert story.threads_for(ivo.id) == []
+
+
+@pytest.mark.asyncio
+async def test_another_dreamers_looks_are_marked_as_their_words():
+    """Codereview WARN 2026-09-29c: an appearance is a player's own words, so
+    its narration carries `from_player` (a resident's does not)."""
+    ivo = _ivo(room="r-meadow")
+    objects.set_property(ivo.id, "appearance_seed", "a small man in a paper crown")
+    _go("r-meadow")
+    before = events.max_seq()
+    await verbs.execute_command("t-wren", "examine", dobj_id=ivo.id)
+    seen = [e for e in _narrates(before) if e.recipient_id == "t-wren"]
+    assert seen and "paper crown" in seen[0].payload["text"]
+    assert seen[0].payload.get("from_player") is True
+    npc = objects.spawn("w-bunny", "toon", "Moss", "r-meadow", prototype_id=objects.PROTO_NPC,
+                        properties={"seed": "a quiet gardener"})
+    before = events.max_seq()
+    await verbs.execute_command("t-wren", "examine", dobj_id=npc.id)
+    mine = [e for e in _narrates(before) if e.recipient_id == "t-wren"]
+    assert mine and not any(e.payload.get("from_player") for e in mine)
 
 
 @pytest.mark.asyncio

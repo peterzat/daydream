@@ -358,6 +358,11 @@ def _apply_narrate(
         # Absent means authored or engine text. Read by the dream digest and
         # the playtest analysis; the SPA ignores it.
         payload["src"] = "local"
+    if eff.get("from_player") is True:
+        # A player's own words ride this line (a letter's body, another
+        # dreamer's looks): `bin/game play` prints it marked, as data. The
+        # SPA ignores it.
+        payload["from_player"] = True
     card = eff.get("card")
     if isinstance(card, dict) and all(isinstance(v, str) for v in card.values()):
         # A look-closer card (examine / read): the page shows it as the same

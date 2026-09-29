@@ -449,10 +449,12 @@ def cmd_rest_all(journal_too: bool) -> int:
     if rc is not None:
         return rc
     db.init_live()
-    from daydream import journal, toons
+    from daydream import accounts, journal, toons
 
     rested = []
     for t in toons.playing():
+        if t.controller_session:  # its page wakes, not walks straight back in
+            accounts.set_left(t.controller_session, True)
         toons.kick_slot(t.slot)
         rested.append(t)
     written = 0
@@ -536,6 +538,10 @@ def cmd_toon_moderate(key: str, action: str) -> int:
         return 2
     t = found[0]
     if action == "rest":
+        if t.controller_session:  # its page wakes, not walks straight back in
+            from daydream import accounts
+
+            accounts.set_left(t.controller_session, True)
         toons.kick_slot(t.slot)
         print(f"rested {t.name} ({t.id})")
     else:

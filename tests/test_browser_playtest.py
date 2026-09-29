@@ -146,6 +146,27 @@ def test_the_give_hint_takes_the_label_place_and_the_verbs_stay_put(tab, engines
     _assert_quiet(tab, engines)
 
 
+def test_a_quiet_verb_and_a_touch_it_cannot_use_both_say_why(tab, engines):
+    """Playtest 2026-09-29 (codereview test gap 2026-09-29c): a verb with
+    nothing to act on is drawn quiet and says so when touched; a staged verb
+    touched on a thing it can't use says why under the ribbon, and stays
+    staged."""
+    page = _signed_in_with_a_dreamer(tab)  # the start room: fixtures only
+    take = page.locator("#verb-bar button[data-verb=take]")
+    expect(take).to_have_class(re.compile(r"\bverb-idle\b"))
+    take.click()
+    note = page.locator("#verb-hint.ribbon-note")
+    expect(note).to_contain_text("take")
+    expect(take).not_to_have_class(re.compile(r"\bverb-staged\b"))
+    read = page.locator("#verb-bar button[data-verb=read]")
+    read.click()
+    expect(read).to_have_class(re.compile(r"\bverb-staged\b"))
+    page.locator("#things .obj", has_text="clock case").click()
+    expect(note).to_contain_text("clock case")
+    expect(read).to_have_class(re.compile(r"\bverb-staged\b"))
+    _assert_quiet(tab, engines)
+
+
 def test_the_margin_index_redraws_and_a_new_room_opens_the_margin_at_its_top(tab, engines):
     """Playtest 2026-09-28c: the index came back as an empty band after it had
     once emptied, and the margin kept the last room's scroll, hiding "you"

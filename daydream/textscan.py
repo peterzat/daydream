@@ -4,7 +4,7 @@ What friends write reaches the operator's Claude Code session: the dream
 digest reads typed lines, `play` prints other dreamers' words, the logs name
 dreamers. This tool gathers the new player-authored text in one place (typed
 lines and command words, which include letters and plant phrases; dreamer
-names; places grown from a player's phrase; usernames), marks what looks like
+names and appearances; places grown from a player's phrase; usernames), marks what looks like
 an attempt to steer a reader (instructions to an AI, prompt markup, shell
 commands, credential paths, links, encoded runs, invisible characters,
 lookalike letters, bursts of scripted typing), and prints it quoted, as data.
@@ -100,6 +100,9 @@ def gather(since_seq: int | None = None, hours: float | None = 192.0) -> dict:
     for t in objects.all_of_kind(world, "toon"):
         if t.is_player:
             items.append({"source": "dreamer name", "who": t.name, "text": t.name})
+            look = t.properties.get("appearance_seed")
+            if isinstance(look, str) and look.strip():
+                items.append({"source": "appearance", "who": t.name, "text": look})
     for room in objects.all_of_kind(world, "room"):
         gb = room.properties.get("generated_by")
         if isinstance(gb, str) and gb.startswith("plant:"):

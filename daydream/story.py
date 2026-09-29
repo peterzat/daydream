@@ -536,14 +536,17 @@ def available_topics(npc: objects.Object, actor_id: str) -> list[dict]:
     return out
 
 
-def offered_topics(npc: objects.Object, actor_id: str) -> list[dict]:
+def offered_topics(npc: objects.Object, actor_id: str,
+                   known: set[str] | None = None) -> list[dict]:
     """The ask-about chips: the available topics whose subject this player
     has come across (`daydream.heard`), or that are authored `open`. Typing
     reaches every available topic; only the chips wait for the fiction to
-    name them (playtest 2026-09-29)."""
+    name them (playtest 2026-09-29). `known` is the player's knowledge when
+    the caller already read it (a snapshot reads it once for every card)."""
     from daydream import heard
 
-    known = heard.known_keys(npc.world_id, actor_id)
+    if known is None:
+        known = heard.known_keys(npc.world_id, actor_id)
     return [t for t in available_topics(npc, actor_id) if heard.knows(t, known)]
 
 
