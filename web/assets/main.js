@@ -861,7 +861,8 @@ function nameForObject(objectId) {
 function renderEvent(e) {
   if (e.seq <= lastSeq && lastSeq > 0) return; // dedupe on reconnect overlap
   lastSeq = Math.max(lastSeq, e.seq);
-  clearThinking(); // whatever was coming has come
+  // Whatever was coming has come; your own words told back are not it.
+  if (e.kind !== "say" && e.kind !== "echo") clearThinking();
 
   // room_image_ready does not flow into the chat log; it just updates the bg.
   if (e.kind === "room_image_ready") {

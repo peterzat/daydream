@@ -699,3 +699,21 @@ async def test_a_short_line_naming_a_topic_selects_and_a_long_one_is_its_own_que
         args="Two friends of mine were here earlier and one of them said your anvil sang. What were they like?")
     assert calls == [["Rook pats the anvil. 'Old friend.'"]]
     assert "They came by, both of them." in _last_narrate()
+
+
+@pytest.mark.asyncio
+async def test_a_target_rides_along_on_a_verb_that_needs_none():
+    """"ring the bell": a verb that needs no target still carries the one
+    named, so the thing's own rules can answer (beta rehearsal 2026-09-28).
+    An engine verb with no target of its own (look) stands in for a world
+    verb here."""
+    from daydream import events
+
+    bell = objects.spawn("w-bunny", "thing", "bell", "r-meadow", prototype_id=objects.PROTO_THING,
+                         properties={"seed": "a small bell", "rules": [
+                             {"on": "look", "do": [{"kind": "narrate", "to": "@actor",
+                                                    "text": "The bell winks at you."}]}]})
+    before = events.max_seq()
+    await verbs.execute_command("t-wren", "look", dobj_id=bell.id)
+    texts = [e.payload["text"] for e in events.fetch_since(before) if e.kind == "narrate"]
+    assert texts == ["The bell winks at you."]

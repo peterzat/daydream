@@ -285,6 +285,7 @@ body::before {
 }
 .region-body { min-height: 1em; }
 .dreaming-line { font-style: italic; opacity: 0.85; }
+#dreaming-region.hidden { display: none; }
 .evt-thinking { font-style: italic; opacity: 0.55; animation: thinking-breathe 2.4s ease-in-out infinite; }
 @keyframes thinking-breathe { 0%, 100% { opacity: 0.35; } 50% { opacity: 0.7; } }
 .region-empty { font-family: var(--serif); font-style: italic; color: var(--sage); opacity: .82; font-size: .9rem; line-height: 1.5; }

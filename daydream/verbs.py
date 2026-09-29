@@ -433,6 +433,13 @@ async def _execute_resolved(
             _narrate(room_id, f"You can't {spec.name} {_the(dobj)}.",
                      recipient_id=actor_id)
             return
+    elif dobj_id:
+        # A verb that needs no target may still be given one ("ring the
+        # bell"): the thing rides along so its own authored rules can answer
+        # (beta rehearsal 2026-09-28: a bell a player's seed grew, given a
+        # ring rule by a dream, could never be rung, because the target was
+        # dropped before the rules were asked). Out of scope is no target.
+        dobj = _resolve_in_scope(actor_id, dobj_id)
 
     iobj = _resolve_in_scope(actor_id, iobj_id) if iobj_id else None
     if spec.needs_iobj:
