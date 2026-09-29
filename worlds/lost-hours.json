@@ -38,6 +38,12 @@
     }
   },
   "config": {
+    "engine_verbs_off": [
+      "attack",
+      "diagnose",
+      "board",
+      "disembark"
+    ],
     "director": {
       "max_open_guests": 2,
       "event_minutes": 40

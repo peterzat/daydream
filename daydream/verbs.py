@@ -271,14 +271,34 @@ def get(name: str) -> VerbSpec | None:
     return VERBS.get(canonical) if canonical else None
 
 
+def engine_off(world_id: str | None) -> frozenset[str]:
+    """The engine verbs a world opts out of (`config.engine_verbs_off`): they
+    never parse there and never reach its verb bar, so another world's verbs
+    don't answer in this one ("who am I" reading a health report;
+    spec 2026-09-29 criterion 7)."""
+    if not world_id:
+        return frozenset()
+    from daydream import worldstate
+
+    cfg = worldstate.get(world_id, "config")
+    off = cfg.get("engine_verbs_off") if isinstance(cfg, dict) else None
+    return frozenset(v for v in off if isinstance(v, str)) if isinstance(off, list) else frozenset()
+
+
+def offered(world_id: str | None, spec: VerbSpec | None) -> bool:
+    """Whether an engine verb is part of this world."""
+    return spec is not None and spec.name not in engine_off(world_id)
+
+
 def resolve(world_id: str | None, name: str) -> VerbSpec | None:
     """Resolve a verb word to its spec: engine verbs (name or alias) first,
     then the world's declared verbs (`daydream.worldverbs`). Engine wins on
     collision by construction — and the format-2 validator refuses a world
-    verb that would collide, so the shadowing case never loads."""
+    verb that would collide, so the shadowing case never loads. An engine
+    verb the world opts out of resolves to nothing."""
     spec = get(name)
     if spec is not None:
-        return spec
+        return spec if offered(world_id, spec) else None
     if world_id:
         from daydream import worldverbs
 
@@ -336,7 +356,7 @@ def bar_verbs(
     from daydream import worldverbs
 
     if actor_id is None:
-        out = [v for v in VERBS.values() if v.on_bar]
+        out = [v for v in VERBS.values() if v.on_bar and offered(world_id, v)]
         if world_id:
             out.extend(worldverbs.bar_verbs(world_id))
         return out
@@ -367,6 +387,8 @@ def bar_verbs(
         if name in CORE_BAR:
             continue
         spec = VERBS.get(name)
+        if spec is not None and not offered(world_id, spec):
+            continue
         if spec is None and world_id:
             spec = worldverbs.get(world_id, name)
         if spec is None or not spec.needs_dobj:

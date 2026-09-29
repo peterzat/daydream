@@ -440,6 +440,16 @@ def validate_story(env: dict, *, known: dict, ks: dict, room_ids: set[str],
             isinstance(x, dict) and isinstance(x.get("min"), int)
             and isinstance(x.get("label"), str) for x in tiers)):
         errors.append("config.relationship_tiers must be [{min, label}]")
+    off = cfg.get("engine_verbs_off")
+    if off is not None:
+        from daydream.verbs import VERBS
+
+        if not (isinstance(off, list) and all(isinstance(v, str) for v in off)):
+            errors.append("config.engine_verbs_off must be a list of engine verb names")
+        else:
+            for v in off:
+                if v not in VERBS:
+                    errors.append(f"config.engine_verbs_off: {v!r} is not an engine verb")
     return errors
 
 

@@ -646,10 +646,10 @@ def _verb_by_word(world_id: str | None, word: str) -> verbs.VerbSpec | None:
     verb by name/alias."""
     spec = verbs.VERBS.get(word)
     if spec is not None:
-        return spec
+        return spec if verbs.offered(world_id, spec) else None
     for v in verbs.VERBS.values():
         if word in v.aliases:
-            return v
+            return v if verbs.offered(world_id, v) else None
     if world_id:
         return worldverbs.get(world_id, word)
     return None
@@ -910,7 +910,7 @@ def _verb_vocabulary(actor_id: str, room_id: str, world_id: str) -> list[dict]:
     prompt), plus any in-scope room-affordance (non-NPC) data skills."""
     vocab = [
         {"name": v.name, "description": v.description}
-        for v in verbs.VERBS.values()
+        for v in verbs.VERBS.values() if verbs.offered(world_id, v)
     ]
     if world_id:
         for spec in worldverbs.all_specs(world_id):
