@@ -428,3 +428,39 @@ kept with that deployment, not here.
 - **Why deferred:** Accepted: the window is short, sessions last thirty days, and the per-username cap is what stops guessing.
 - **Revisit criteria:** A friend locked out by someone else.
 - **Origin:** security review 2026-09-29 (L6).
+
+### agent-sessions-without-root
+- **One-line description:** The operator's Claude Code session runs as a user in the docker group (root-equivalent) and holds the box's credentials, while player text reaches its context. The structural fix is agent sessions under a separate OS user with no docker group, no credentials beyond what prod work needs, and an egress allowlist, so nothing depends on the model's judgement or on pattern-matched permission rules. A lighter step first: run dreams and playtests (the sessions that read player text) in a session without the prod grant, and hand the committed patch to a short prod session.
+- **Why deferred:** A box-level change (users, groups, where the credentials live) and a workflow change; the guard hook, the player-text policy and the scan cover the near term.
+- **Revisit criteria:** Before more than a handful of players, or the first flagged text-scan item.
+- **Origin:** security review 2026-09-29 (H1).
+
+### engines-under-their-own-user
+- **One-line description:** vLLM and ComfyUI listen unauthenticated on loopback and run as the operator, and the prod service can reach both. Run the engines as their own system user with no home, no docker group and write access only to their model and output directories, so a foothold in the prod service cannot become the operator through an engine.
+- **Why deferred:** Accepted risk since going live (SECURITY.md); ComfyUI now runs without its API nodes, and the prod venv is sealed.
+- **Revisit criteria:** The next time the engine lifecycle (`bin/game vllm-up|comfyui-up`) is reworked.
+- **Origin:** security review 2026-09-29 (L7).
+
+### agent-guard-credential-mentions
+- **One-line description:** `tools/agent_guard.py` denies any command that names a credential path, including a commit message, a grep pattern or a heredoc that merely mentions one. Denying only path-shaped words and asking on bare mentions would cut the friction, but it loosens a control on the agent's own actions, so it is the operator's decision.
+- **Why deferred:** Kept strict on purpose (CODEREVIEW 2026-09-29c); the friction is small.
+- **Revisit criteria:** The guard blocks routine work often enough to matter.
+- **Origin:** codereview 2026-09-29c.
+
+### prod-check-probes-the-new-edge-rules
+- **One-line description:** `bin/game prod check` verifies the edge's redirects and locks, but not the two rules added on 2026-09-29: plain http under the base answers 301 to https, and an encoded slash under the base answers 400. Add both probes so a Worker regression shows up in the check.
+- **Why deferred:** Small; verified by hand at deploy time.
+- **Revisit criteria:** The next change to `edge/src/worker.js` or `daydream/prodcheck.py`.
+- **Origin:** security review 2026-09-29 (M1, L4).
+
+### topic-chips-link-in-the-text
+- **One-line description:** When a line names something a resident can be asked about, the chip appears (and glows), but nothing in the line itself marks the word. Morrowind hyperlinked a topic where it was first mentioned; a quiet link style for askable subjects in a resident's answer would tie "who is Bell?" to the sentence that raised it. Related: chips reorder on the next snapshot after an ask, under a finger that may be about to tap again (settle the order per visit instead).
+- **Why deferred:** The chip rule shipped first (playtest 2026-09-29); this wants a second link style that does not blur with the in-scope object links.
+- **Revisit criteria:** A playtest where a player misses a newly opened topic.
+- **Origin:** playtest 2026-09-29 and its research (Morrowind, Blue Lacuna).
+
+### quiet-verbs-for-secret-affordances
+- **One-line description:** The verb bar offers a world verb whenever something in view takes it, which is a fair nudge for a windable clock but would give away a puzzle whose answer is an unusual action on a hidden thing. An authored per-object `quiet_verbs` list (answered when typed, never a button) would keep such secrets; room-rule verbs are already never shown.
+- **Why deferred:** No shipped content needs it yet (DESIGN.md "What the page offers" records the rule).
+- **Revisit criteria:** The first puzzle whose answer is a verb on a thing in view.
+- **Origin:** playtest 2026-09-29.
