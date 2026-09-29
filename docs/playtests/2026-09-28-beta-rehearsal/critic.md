@@ -129,3 +129,79 @@ Three things that would make this more satisfying for a writer:
 2. **Make the people hear the question.** When I ask Tace what she misses, let her miss something. When I say my grandmother forgot everyone, let her put the loupe down. She proved she can remember me twenty minutes later; let her be that person in the moment. And say my name once. "Friend" six times is a tell.
 
 3. **Tell the truth in the ledger, and sign the rooms.** Write down who actually did what, including the small things ("Wren carried Pollen home"). Let a grown room carry its maker's name and their wish in their own words, and let it grow in their voice instead of in the one voice all the grown rooms share. And let dreamers hand each other things; a gift dropped on the floor is still a gift, but a gift placed in a hand is a scene.
+
+## Day two (the morning after)
+
+A coffee-break return the next morning: day 2, daylight, about 40 commands including the arrival and the leave, roughly twenty minutes, ten seconds between moves. Vex and Halloran had both been and gone ("last here earlier today"); a fourth dreamer, Peek, stood in the Clocktower the whole time and never spoke.
+
+### What the arrival showed me
+
+`bin/game play look Wren` (what I was told to type) answered: "this session controls no toon (left or kicked); run `bin/game play start` again." A bare `start Wren`, no `--look`, put me back into my own dreamer with everything I was carrying (chipped cup, warm brass cog), so nothing was lost, but the first thing a returning player read was an error.
+
+I woke in the Clocktower, not in my room, and under the scene was this, in full:
+
+> ** The Night the Lamps Learned Three Names ** While you slept, the village turned over once. Vex carried the gear home and sang Pim's nap home the same evening, and Tace has left the loft door open at dusk ever since, in case another quick pair of hands comes up the stair. Wren brought Pollen home to her pole after a certain treehouse borrowed her, and Bell has chalked a small W on the pole so the lantern knows who to thank. Halloran wrote the first two letters ever posted between dreamers, and Fen has started a pigeonhole for every keeper. Four new places grew in one evening, and the village has been busy in each.
+
+Is it true? Mostly, and better than true in one place: it gives Vex the gear and the nap, which the ledger still refuses to do. Pollen: true. The W: true by Bell's word (Bell pointed at it), false by the lantern's (examine shows no W). Halloran's letters: true, I read one. Fen's keeper pigeonholes: I could not find them; the pigeonholes are still the five authored ones. Four new places: I found two new exits off the cellar (mine and Halloran's) and the Bowl still north of the tower; I did not go looking for the fourth.
+
+Then, on my first command: "A letter is waiting for you at the Little Post Office, north off Lamplight Lane."
+
+### Every trace of Vex and Halloran
+
+Vex:
+- The arrival note (gear, nap, the treehouse that "borrowed" Pollen).
+- The ledger's new last page: "the keepers who have dreamed here have signed: Wren (here now), Peek (here now), Halloran (last here earlier today) and Vex (last here earlier today)."
+- Bell, chip "Vex": "Vex borrowed Pollen for a treehouse. A treehouse! I'd have lent her, if asked. Then Vex went and sang a nap home, so I've forgiven the lantern business entirely. Mostly." Every word of that is what I watched happen.
+- Fen: Halloran wrote "one for Wren and one for Vex, and left a brass hand and a bookmark in the drawer for them besides." The polished brass hand in the dead-letter drawer is Vex's; I left it there.
+- Tace has a "Vex" chip now. I did not spend a move on it.
+- The Bowl of Turned Time, still north of the tower.
+
+Halloran:
+- The arrival note and the ledger's signature page.
+- Bell, in free talk (a move late): "Halloran? Oh, they are the one who wound their own small clock in the loft by the old custom! I haven't met them myself, but I heard they are resting now, away from the dream after being here earlier today." Consistent with Tace's "the first winding" chip; I could not check it further.
+- Fen, chip "Halloran": "Halloran wrote the first two letters ever posted between dreamers in this office, one for Wren and one for Vex, and left a brass hand and a bookmark in the drawer for them besides. I've started a pigeonhole for every keeper since. Precedent, you see."
+- The letter itself (below), and the linen bookmark in the drawer, "holding the memory of a long afternoon read in someone's favorite chair," which I took.
+- A whole room. The cellar now reads: "A new way opens to the east, toward the Quiet Bookmark Shelf, grown from Halloran's dreamseed." Inside: three armchairs in a circle, a book open in each with a bookmark at a page "someone meant to come back to," "the lamp turned low, the way it is when readers are expected." The card in Umber's hand: "THE QUIET BOOKMARK SHELF. Grown by Halloran, first evening, for three housemates who leave bookmarks in each other's books. Chairs: three. Books: three, plus one spare. Do not lose anyone's place." Halloran grew a room for the three of us. I did not open the books; I ran out of morning.
+
+### What was remembered of me
+
+More than yesterday, and in the places I asked for it.
+- Bell, chip "Wren": "Bell points the hooked pole at a small chalk W on Pollen's pole, and grins under the soot. 'That's you. So she knows who carried her home. She's burned a shade brighter since, and I'm not saying that's you, but I'm not saying it isn't.'"
+- Fen, when I asked in my own words: "Post for you, Wren: one, from Halloran." My name, first try.
+- My room has been rewritten overnight, and rewritten well: "A low lamplit room north of the cellar, warm as the inside of a coat. Letters lie open on every table, their pages weighted with river stones, kept warm until their writers come back for them; a small iron stove ticks in the corner like a slow clock. Fen has been down: the tables are sorted now, by how long each letter has waited." The greeting card "hums with a quiet warmth" is gone. There is a card in Fen's hand: "THE WARMTH OF UNSENT WORDS. Grown by Wren, on the first evening, who asked for a lamplit room where unsent letters are kept warm until their writers come back for them. Sorted by how long they've waited, oldest nearest the stove. Nothing in this room is dead. F." My name, my wish in my words, signed.
+- The letter nearest the stove, the oldest: "Only the top of the first page is turned toward the lamp, and the rest is the writer's own. It begins: 'Dear Gran, I am writing this down so that one of us remembers it.' The river stone on it is warm right through." That is the sentence Tace answered with clock oil yesterday.
+- Tace, free talk, when I asked whether she had told anyone: "No one else heard your words. I keep them safe in the quiet between ticks, where lost hours rest until they are ready to be helped home." Heard the question, answered it. Tace now has a chip, "the notebook": "Tace puts the loupe down, all the way down, and folds their hands. 'You told me why you keep the notebook, friend, the night the clock started again. I've thought about it since. A clock is only a notebook that ticks; it keeps what you give it, and it doesn't mind being read twice.' They nod at the little clock that is yours. 'Yours will keep her hour, if you'd like it to.'" The little brass clock scratched W is mine. Still "friend," though.
+- The ledger's signature page: "Wren (here now)."
+
+### The post
+
+Got: one letter, on the counter, and Fen lifted it out of a pigeonhole when I asked. "To Wren, from Halloran: I found your name in the Ledger of Returned Hours before I found anything else. The clock you two mended is ticking; Bell says she can hear mine from the square now. Leave me a line here if you come back before I do. H." Note what the ledger's lie has done: a stranger's first impression of me is a thing I did not do.
+
+Sent: my first reply, about 540 characters, correcting the ledger, asking what Halloran wound and planted, signed "Wren, who came to read," vanished without a word (defect 4). The second, shorter, posted: `write to Halloran: H, it was Vex who mended the clock, not me. I only carried Pollen home. Tell me what you wound in the loft. Wren.` Fen: "Fen finds you paper without being asked and goes back to her addresses while you write. When you slide it across she squares it against the counter, reads the front only, and tucks it into a pigeonhole. 'For Halloran. Filed. They'll have it the moment they think to ask.'" I also kept the letter and the linen bookmark.
+
+### Defects
+
+1. `bin/game play look Wren` on return: "this session controls no toon (left or kicked); run `bin/game play start` again." Expected: a rested dreamer to wake on `look`, or the message to say "start, without --look, and you'll be yourself."
+2. `do Wren "read the Ledger of Returned Hours"`: unchanged from yesterday. "The great clock was mended by Wren and Vex together" and "Day 1: Wren and Vex sang Pim's missing nap home." The overnight note corrected it; the book of record did not, and Halloran's letter now repeats it ("The clock you two mended"). The invented fact is in three places and I spent my one letter on it. Expected: the ledger to agree with the village's own morning note.
+3. The nag. "A letter is waiting for you at the Little Post Office, north off Lamplight Lane." printed on every command from the second one on, fourteen times, twice in the same call three times (in the meanwhile block and again after it: `read the Ledger`, `say Morning, Peek`, `examine the pigeonholes`), and it kept going after I had read the letter, until I picked it up. Expected: once on arrival, once if I dawdle, silence after `read`.
+4. `do Wren "write to Halloran: Dear H. I have to correct the ledger, since nobody else will: ..."` (about 540 characters): no output at all but the nag line, nothing filed, nothing refused. The 130-character retry worked. Expected: a limit I can see ("Fen's paper runs out at the bottom of the page"), or the letter.
+5. `do Wren "open the dead-letter drawer"`: "You can't open the dead-letter drawer." Fen had just said Halloran left things in it; `examine` then showed it "left open a hand's width" with the contents listed. Expected: open to look inside, or "it's already open."
+6. `do Wren "examine the paper lantern"` at day 2, daylight: "its small flame warm and steady against the deepening blue," and no chalk W, though Bell points at one. The square, same morning: "The stones still hold the last of the day's heat." Expected: the W where Bell says it is, and a sky that agrees with the clock.
+7. `do Wren "talk to Bell: Who is Halloran? ..."`: no reply in the call; Bell's answer arrived in the meanwhile after my next move (`east`). Same one-move lag as yesterday's Nap. Also "I haven't met them myself" about someone who wound a clock two rooms away.
+8. `write` is not in the verbs line at the post office (examine, take, drop, ask, give, put, read, talk). I knew it only because I was told. Expected: `write` on the counter, or Fen to mention the paper when she hands over a letter.
+9. My room's fresh dreamseed from last night is gone; the room now lists a "spent dreamseed" and nothing says whether Halloran planted mine or whose husk this is (their card says "from Halloran's dreamseed"). Expected: a line, anywhere, about where the seed went.
+10. Peek: "Peek drifts back into the dream," then stood in the Clocktower, "(curious)", through all three of my passes and never answered `say Morning, Peek...`. If they were dozing the card did not say so.
+11. Halloran's card: "Books: three, plus one spare." The room lists "three open books" and one "oak bookmark." No spare. Small.
+12. Tace: "friend" again, in the very line that proves she remembers me. Fen and Bell managed my name.
+
+No slow replies. No crash. `leave` worked ("left the dream (200)").
+
+### Three best moments of the return
+
+1. `read the letter nearest the stove`: "It begins: 'Dear Gran, I am writing this down so that one of us remembers it.' The river stone on it is warm right through." The sentence nobody heard yesterday, kept as the oldest letter in the room I grew, in a room now sorted "by how long they've waited." I sat with that one.
+2. `ask Tace "the notebook"`: "Tace puts the loupe down, all the way down." I wrote "let her put the loupe down" in this file last night. Then: "A clock is only a notebook that ticks; it keeps what you give it, and it doesn't mind being read twice." And the little clock scratched W turned out to be mine.
+3. Halloran's room, which I did not know existed until the cellar said "grown from Halloran's dreamseed": three chairs, a bookmark in every book, the lamp low "the way it is when readers are expected," and a card that ends "Do not lose anyone's place." Someone I have never met made a room for the house. Runners-up: Fen's "They'll have it the moment they think to ask," and Bell's "That's you. So she knows who carried her home."
+
+### Verdict
+
+Yes, I want to come back tomorrow, and this time I can say exactly why: the village did the three things I asked it for. It let me write, and kept it (a letter of mine is filed in a pigeonhole with Halloran's name on the front). It heard the question in the moment (Tace answered what I actually asked, twice, and put the loupe down). It signed the rooms with our names and our wishes in our own words, and it rewrote my room overnight into something I would be glad to have written myself. What pulls me back is concrete: Halloran's reply, if they think to ask; the little clock that will "keep her hour"; the crayon letter still in the drawer; the three books I did not open and the spare chair; 168 minutes. What holds me back is the same thing as last night in a new coat: the book of record still says I mended a clock I only read about, and the lie has now reached another player's letter, so the first thing I wrote in this village was a correction. Fix the ledger, tell Fen to say when a letter is too long, and stop the nag after I have read my post, and this is the morning I would tell a friend about.

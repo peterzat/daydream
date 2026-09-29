@@ -111,12 +111,14 @@ full disposition list is docs/playtests/2026-09-26/SUMMARY.md).
 - **Origin:** docs/REFLEXES.md; playtest 2026-09-26 (chatterbox: "free-form talk is a coin flip").
 
 ### npc-memory-of-player-disclosures
+- **2026-09-28 (beta rehearsal):** half of this landed another way. Residents now remember DREAMERS (`daydream/trace.py`: asked about a player by name they read the record, last seen and the deeds they know, and the prompt carries it), and a disclosure can come back as a dream's second-person topic for that player alone (dream-2026-09-28: Tace on the notebook). What still stands is the runtime half: a per-player "what they told me" list in the prompt without a dream in between.
 - **One-line description:** Residents remember what a player told them about themself (name, a keepsake, "I keep bees") across sessions and days, not only the last few exchanges; the dialogue context gets a short per-player "what they told me" list.
 - **Why deferred:** Keeping a line whole (the parser fix) and recent exchanges cover a session; durable disclosure memory needs extraction (deterministic or local) and a privacy story (a per-player, per-NPC note, never gossiped).
 - **Revisit criteria:** Being remembered stays the lowest rubric score (2.5 on the first day).
 - **Origin:** playtest 2026-09-26 (chatterbox, rule-breaker).
 
-### thinking-indicator
+### thinking-indicator — CLOSED 2026-09-28 (shipped, beta rehearsal)
+- **Closure:** `daydream/live.py` sends a transient `thinking` frame to the asker's page before the model is asked (dialogue and growth); the SPA shows "Tace considers..." / "the seed stirs" until the reply lands. Both beta rehearsal playtests had read the silence as a lost line.
 - **One-line description:** While an improvised reply is coming (2 to 8 seconds), the SPA shows a quiet transient line ("Tace considers...") so a player knows it is on its way; a WS frame, never a logged event.
 - **Why deferred:** Client plus one WS frame; the turn cut latency instead (one candidate when busy, no parser call for say/talk).
 - **Revisit criteria:** The operator or a playtest still reads silence as a lost line.
@@ -129,17 +131,47 @@ full disposition list is docs/playtests/2026-09-26/SUMMARY.md).
 - **Origin:** playtest 2026-09-26 (explorer, rule-breaker).
 
 ### shared-thread-contention
+- **2026-09-28 (beta rehearsal):** seen again with a household's pace: the gamer closed the prologue and Pim's nap within the hour, and the two who came after met two closed arcs. Eased, not fixed: Quill now gives every keeper a dreamseed of their own, three stray minutes a day are private, and letters, hand-overs and the record of dreamers give the latecomer something the fast player left rather than took. Still open: a per-player beat for a closed guest (a small thing of your own to do for it, with a keepsake), and `config.director.max_open_guests` 3 with a second arrival on a dusk an arc closed early (docs/playtests/2026-09-28-beta-rehearsal/SUMMARY.md, proposals).
 - **One-line description:** Latecomers found both open threads finished by others ("both main threads were finished by others before I got to them"). More concurrent threads per day, per-player versions of small guest threads, or a director that brings the next guest sooner when a thread closes early.
 - **Why deferred:** One day, four players at once, is a heavy load for a village designed around one or two coffee-break visitors; the director already brings a guest each dusk.
 - **Revisit criteria:** The operator or a later playtest runs out of things to do on day one.
 - **Origin:** playtest 2026-09-26 (rule-breaker).
 
 ### scenery-nouns
+- **2026-09-28 (beta rehearsal):** the sharpest cases are now in GROWN rooms, whose things the local model names in prose but never spawns ("crumpled notes", a paperweight that cannot be read); a dream furnishes them (the second dream did), and the last words of a name now ground ("brass hand"). The general map is still the engine feature.
 - **One-line description:** Details named in room text should answer when touched, in general: an engine scenery map on rooms (noun to short text, examine only, never listed), so every described detail can say something without cluttering "Around you".
 - **Why deferred:** The world-data pass covered the details playtesters named with aliases and a few fixtures; a general map is an engine feature.
 - **Known gaps (2026-09-26):** a bare "read a letter" in the post office asks which letter (a bare alias would collide with the rain-spotted letter); a four-word target ("scratch Tock behind the ears") is past the fast path's name grounding and goes to the model.
 - **Revisit criteria:** More "You don't see the X here" on things the prose describes.
 - **Origin:** playtest 2026-09-26 (explorer: "a prose detail that refuses to exist is the most deflating response").
+
+## The household (captured 2026-09-28, beta rehearsal)
+
+Proposals from docs/playtests/2026-09-28-beta-rehearsal/SUMMARY.md not built in the session.
+
+### dusk-names-who-walked-through
+- **One-line description:** A dusk ritual line in the square names the dreamers who were in the village today ("Two dreamers walked through today: Wren and Halloran"), from the input log: the evening player's honest substitute for a friends list, in Bell's voice.
+- **Why deferred:** The margin's "also dreaming" and the Ledger's signature page cover the live and the durable case; this is the in-between, and it needs a storylet whose text the engine fills.
+- **Revisit criteria:** A household member says they never know who was on that day.
+- **Origin:** beta rehearsal 2026-09-28 (the veteran's "as a social game").
+
+### leave-a-thing-for-someone
+- **One-line description:** `give X to Fen for Wren` files a thing the way a letter is filed (private to the recipient, told on arrival, listed in threads), so a dead-drop in the dead-letter drawer carries a name.
+- **Why deferred:** Letters cover the words; the veteran used the drawer for things and the world kept them but not the addressing. The post's machinery is there; it needs the parser form and Fen's line.
+- **Revisit criteria:** The digest shows things left in the drawer for someone by name.
+- **Origin:** beta rehearsal 2026-09-28 (the veteran's defect 13).
+
+### per-dreamer-beat-for-a-closed-guest
+- **One-line description:** After a guest arc closes, each dreamer who did not help can still do one small authored thing for it (sit with the kept nap, read to it), once, for a keepsake: the latecomer's share of a story the fast player finished.
+- **Why deferred:** Content across six arcs; the day-two fixes give latecomers other things of their own first.
+- **Revisit criteria:** The digest shows a household member meeting closed arcs two days running.
+- **Origin:** beta rehearsal 2026-09-28 (the gamer closed both day-one arcs within the hour).
+
+### room-prose-by-phase
+- **One-line description:** Grown and furnished room descriptions are written once and read at every hour ("deepening blue" at breakfast); a per-phase sentence the engine appends from authored data, or a rule that furnish text names no hour.
+- **Why deferred:** The runbook rule is in place; the engine half waits for a second offender.
+- **Revisit criteria:** A player reads dusk at breakfast again.
+- **Origin:** beta rehearsal 2026-09-28 (the critic's day two, defect 6).
 
 ## Quality and tooling (GPU/ML follow-ups)
 
