@@ -16,8 +16,8 @@ let originReply;
 
 function env(state = null) {
   return {
-    ORIGIN: "https://daydream-origin.eidolon.com",
-    PUBLIC_HOST: "www.eidolon.com",
+    ORIGIN: "https://daydream-origin.example.com",
+    PUBLIC_HOST: "www.example.com",
     BASE: "/daydream/",
     OPERATOR: "the Night Warden",
     ACCESS_CLIENT_ID: "id.access",
@@ -46,7 +46,7 @@ beforeEach(() => {
 });
 
 const req = (path, opts = {}) =>
-  new Request("https://www.eidolon.com" + path, {
+  new Request("https://www.example.com" + path, {
     headers: { accept: "text/html", "cf-connecting-ip": "203.0.113.5", ...(opts.headers || {}) },
     method: opts.method || "GET",
     body: opts.body,
@@ -55,16 +55,16 @@ const req = (path, opts = {}) =>
 test("the bare prefix and the apex redirect to the canonical base", async () => {
   let r = await handle(req("/daydream"), env());
   assert.equal(r.status, 301);
-  assert.equal(r.headers.get("location"), "https://www.eidolon.com/daydream/");
-  r = await handle(new Request("https://eidolon.com/daydream/x"), env());
+  assert.equal(r.headers.get("location"), "https://www.example.com/daydream/");
+  r = await handle(new Request("https://example.com/daydream/x"), env());
   assert.equal(r.status, 301);
-  assert.equal(r.headers.get("location"), "https://www.eidolon.com/daydream/x");
+  assert.equal(r.headers.get("location"), "https://www.example.com/daydream/x");
 });
 
 test("awake: the prefix is stripped and the request proxied with the service token", async () => {
   const r = await handle(req("/daydream/api/me?x=1"), env());
   assert.equal(await r.text(), "from origin");
-  assert.equal(calls[0].url, "https://daydream-origin.eidolon.com/api/me?x=1");
+  assert.equal(calls[0].url, "https://daydream-origin.example.com/api/me?x=1");
   const h = calls[0].init.headers;
   assert.equal(h.get("cf-access-client-id"), "id.access");
   assert.equal(h.get("cf-access-client-secret"), "secret-value");
@@ -119,8 +119,8 @@ test("an HTTP response keeps the app's cookie and loses Access's", async () => {
 
 test("rewriteLocation fixes an absolute origin URL and leaves others alone", () => {
   const e = env();
-  assert.equal(rewriteLocation("https://daydream-origin.eidolon.com/login", e, "/daydream"),
-    "https://www.eidolon.com/daydream/login");
+  assert.equal(rewriteLocation("https://daydream-origin.example.com/login", e, "/daydream"),
+    "https://www.example.com/daydream/login");
   assert.equal(rewriteLocation("https://example.com/x", e, "/daydream"), "https://example.com/x");
   assert.equal(rewriteLocation("/daydream/", e, "/daydream"), "/daydream/");
 });
@@ -197,7 +197,7 @@ test("the Worker's own assets are served from ASSETS", async () => {
 
 test("paths that only share the prefix are not ours", async () => {
   await handle(req("/daydreams"), env());
-  assert.equal(calls[0].url, "https://www.eidolon.com/daydreams");
+  assert.equal(calls[0].url, "https://www.example.com/daydreams");
 });
 
 test("escapeHtml", () => {
@@ -348,9 +348,9 @@ test("the watch leaves a planned sleep alone", async () => {
 });
 
 test("plain http is sent to https before anything else (security review 2026-09-29)", async () => {
-  const r = await handle(new Request("http://www.eidolon.com/daydream/login?x=1"), env());
+  const r = await handle(new Request("http://www.example.com/daydream/login?x=1"), env());
   assert.equal(r.status, 301);
-  assert.equal(r.headers.get("location"), "https://www.eidolon.com/daydream/login?x=1");
+  assert.equal(r.headers.get("location"), "https://www.example.com/daydream/login?x=1");
   assert.equal(calls.length, 0);
 });
 

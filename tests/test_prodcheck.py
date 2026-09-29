@@ -173,11 +173,11 @@ def test_report_exit_status():
 
 
 def test_the_target_comes_from_prod_env_and_wrangler_toml():
-    t = prodcheck.target_from_config({"DAYDREAM_PUBLIC_ORIGIN": "https://www.eidolon.com/",
+    t = prodcheck.target_from_config({"DAYDREAM_PUBLIC_ORIGIN": "https://www.example.com/",
                                       "DAYDREAM_PUBLIC_BASE": "/daydream/"})
-    assert (t.public, t.base, t.root) == ("https://www.eidolon.com", "/daydream/",
-                                          "https://www.eidolon.com/daydream/")
-    assert t.apex == "eidolon.com" and t.origin_host.startswith("daydream-origin.")
+    assert (t.public, t.base, t.root) == ("https://www.example.com", "/daydream/",
+                                          "https://www.example.com/daydream/")
+    assert t.apex == "example.com" and t.origin_host.startswith("daydream-origin.")
 
 
 def test_the_instance_check_catches_a_wrong_answer_and_a_stale_flag_cookie():

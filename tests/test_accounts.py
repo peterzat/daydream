@@ -393,12 +393,12 @@ def test_cli_account_lifecycle(capsys):
 def test_cli_invite_json_carries_link_and_message(capsys, monkeypatch):
     from daydream import accounts_cli
 
-    monkeypatch.setenv("DAYDREAM_PUBLIC_ORIGIN", "https://www.eidolon.com")
+    monkeypatch.setenv("DAYDREAM_PUBLIC_ORIGIN", "https://www.example.com")
     monkeypatch.setenv("DAYDREAM_PUBLIC_BASE", "/daydream/")
     assert accounts_cli.main(["invite", "create", "--for", "Robin Ash", "--json"]) == 0
     data = json.loads(capsys.readouterr().out)
     assert data["for"] == "Robin Ash" and data["kind"] == "join"
-    assert data["link"] == f"https://www.eidolon.com/daydream/invite/{data['slug']}"
+    assert data["link"] == f"https://www.example.com/daydream/invite/{data['slug']}"
     assert data["link"] in data["message"] and data["message"].startswith("Hi Robin!")
     accounts.init()
     assert accounts.peek_invite(data["slug"]) is not None

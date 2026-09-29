@@ -48,10 +48,10 @@ def test_headers_on_pages_assets_api_and_refusals():
 
 def test_edge_csp_names_the_public_websocket_origin(monkeypatch):
     monkeypatch.setenv("DAYDREAM_ACCESS", "edge")
-    monkeypatch.setenv("DAYDREAM_PUBLIC_ORIGIN", "https://www.eidolon.com")
+    monkeypatch.setenv("DAYDREAM_PUBLIC_ORIGIN", "https://www.example.com")
     with TestClient(app, client=("127.0.0.1", 5000)) as client:
         csp = client.get("/healthz").headers["content-security-policy"]
-    assert "connect-src 'self' wss://www.eidolon.com" in csp
+    assert "connect-src 'self' wss://www.example.com" in csp
 
 
 def test_the_client_stays_csp_clean():

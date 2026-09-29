@@ -66,11 +66,11 @@ def test_invite_path_serves_the_same_door_for_any_slug():
 
 def test_login_sets_a_hardened_session_cookie(monkeypatch):
     monkeypatch.setenv("DAYDREAM_PUBLIC_BASE", "/daydream/")
-    monkeypatch.setenv("DAYDREAM_PUBLIC_ORIGIN", "https://www.eidolon.com")
+    monkeypatch.setenv("DAYDREAM_PUBLIC_ORIGIN", "https://www.example.com")
     _account()
     with TestClient(app) as client:
         r = client.post("/api/login", json={"username": "Wren", "password": PW},
-                        headers={"origin": "https://www.eidolon.com"})
+                        headers={"origin": "https://www.example.com"})
     assert r.status_code == 200 and r.json()["next"] == "/daydream/"
     c = _cookie_header(r).lower()
     assert "httponly" in c and "samesite=lax" in c and "secure" in c
@@ -261,7 +261,7 @@ def test_edge_mode_throttles_by_the_workers_client_ip_header(monkeypatch):
     the throttle keys on X-Daydream-Client-IP, so one abuser does not lock
     out everyone else."""
     monkeypatch.setenv("DAYDREAM_ACCESS", "edge")
-    monkeypatch.setenv("DAYDREAM_PUBLIC_ORIGIN", "https://www.eidolon.com")
+    monkeypatch.setenv("DAYDREAM_PUBLIC_ORIGIN", "https://www.example.com")
     _account()
     with TestClient(app, client=("127.0.0.1", 5000)) as client:  # cloudflared's peer
         for i in range(accounts.LOGIN_PER_ADDRESS[0]):
@@ -400,7 +400,7 @@ def test_ipv6_throttles_key_on_the_64():
 def test_edge_csrf_checks_the_scheme_too(monkeypatch):
     from daydream.api.csrf import origin_allows
 
-    monkeypatch.setenv("DAYDREAM_PUBLIC_ORIGIN", "https://www.eidolon.com")
-    assert origin_allows([(b"origin", b"https://www.eidolon.com")])
-    assert not origin_allows([(b"origin", b"http://www.eidolon.com")])
-    assert not origin_allows([(b"origin", b"https://eidolon.com")])
+    monkeypatch.setenv("DAYDREAM_PUBLIC_ORIGIN", "https://www.example.com")
+    assert origin_allows([(b"origin", b"https://www.example.com")])
+    assert not origin_allows([(b"origin", b"http://www.example.com")])
+    assert not origin_allows([(b"origin", b"https://example.com")])

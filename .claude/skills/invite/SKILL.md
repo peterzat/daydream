@@ -1,6 +1,6 @@
 ---
 name: invite
-description: Invite a friend to the prod village (www.eidolon.com/daydream). Mints a single-use two-word invite link for the named person, records who it is for, and drafts a text message to send. Use when the operator types /invite <name>, or asks to invite someone, re-send an invite, or reset a friend's password.
+description: Invite a friend to the prod village. Mints a single-use two-word invite link for the named person, records who it is for, and drafts a text message to send. Use when the operator types /invite <name>, or asks to invite someone, re-send an invite, or reset a friend's password.
 ---
 
 # /invite <name>

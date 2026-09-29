@@ -51,7 +51,7 @@ def srv(tmp_path, monkeypatch, fake_repo):
         (root / d).mkdir(parents=True)
     (root / "etc" / "prod.env").write_text(
         "# prod\nDAYDREAM_ENV=prod\nDAYDREAM_ACCESS=edge\n"
-        "DAYDREAM_PUBLIC_ORIGIN='https://www.eidolon.com'\nDAYDREAM_PORT=54322\n"
+        "DAYDREAM_PUBLIC_ORIGIN='https://www.example.com'\nDAYDREAM_PORT=54322\n"
         f"DAYDREAM_DATA_DIR={root / 'data'}\n")
     monkeypatch.setattr(prodctl, "SRV", root)
     monkeypatch.setattr(prodctl, "AS_USER", "")  # no daydream user in the suite
@@ -81,7 +81,7 @@ def test_release_env_is_a_clean_slate(srv, monkeypatch, tmp_path):
     (rel / ".release.env").write_text("DAYDREAM_BUILD_SHA=abc123def456\n")
     env = prodctl.release_env(rel)
     assert env["DAYDREAM_ACCESS"] == "edge" and env["DAYDREAM_ENV"] == "prod"
-    assert env["DAYDREAM_PUBLIC_ORIGIN"] == "https://www.eidolon.com"
+    assert env["DAYDREAM_PUBLIC_ORIGIN"] == "https://www.example.com"
     assert env["DAYDREAM_BUILD_SHA"] == "abc123def456"
     assert env["DAYDREAM_LIFECYCLE"] == "external"
     assert env["DAYDREAM_ENGINES_ROOT"] == str(prodctl.REPO)  # the checkout that ran us

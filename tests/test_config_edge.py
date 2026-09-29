@@ -11,7 +11,7 @@ pytestmark = pytest.mark.tier_short
 PROD_OK = {
     "DAYDREAM_ENV": "prod",
     "DAYDREAM_ACCESS": "edge",
-    "DAYDREAM_PUBLIC_ORIGIN": "https://www.eidolon.com",
+    "DAYDREAM_PUBLIC_ORIGIN": "https://www.example.com",
     "DAYDREAM_PUBLIC_BASE": "/daydream/",
     "DAYDREAM_BIND_HOST": "127.0.0.1",
 }
@@ -27,8 +27,8 @@ def test_public_base_is_normalized(monkeypatch, raw, want):
 
 
 def test_public_origin_drops_trailing_slash(monkeypatch):
-    monkeypatch.setenv("DAYDREAM_PUBLIC_ORIGIN", "https://www.eidolon.com/")
-    assert config.public_origin() == "https://www.eidolon.com"
+    monkeypatch.setenv("DAYDREAM_PUBLIC_ORIGIN", "https://www.example.com/")
+    assert config.public_origin() == "https://www.example.com"
     monkeypatch.delenv("DAYDREAM_PUBLIC_ORIGIN")
     assert config.public_origin() == ""
 
@@ -55,7 +55,7 @@ def test_a_complete_prod_config_boots(monkeypatch):
     ({"DAYDREAM_ACCESS": "tailscale"}, "edge"),
     ({"DAYDREAM_ACCESS": "public"}, "edge"),
     ({"DAYDREAM_PUBLIC_ORIGIN": ""}, "PUBLIC_ORIGIN"),
-    ({"DAYDREAM_PUBLIC_ORIGIN": "http://www.eidolon.com"}, "https"),
+    ({"DAYDREAM_PUBLIC_ORIGIN": "http://www.example.com"}, "https"),
     ({"DAYDREAM_PUBLIC_BASE": ""}, "PUBLIC_BASE"),
     ({"DAYDREAM_BIND_HOST": "0.0.0.0"}, "loopback"),
     ({"DAYDREAM_BIND_HOST": "100.70.19.124"}, "loopback"),

@@ -27,7 +27,7 @@ SPOOF = {
 }
 EDGE = {
     "DAYDREAM_ACCESS": "edge",
-    "DAYDREAM_PUBLIC_ORIGIN": "https://www.eidolon.com",
+    "DAYDREAM_PUBLIC_ORIGIN": "https://www.example.com",
     "DAYDREAM_PUBLIC_BASE": "/daydream/",
 }
 
@@ -144,7 +144,7 @@ def test_world_swap_does_not_exist_in_edge_mode(monkeypatch):
         # origin sees the request; the browser still sends it. Send it here.
         name = config.cookie_name()
         token = next(c.value for c in client.cookies.jar if c.name == name)
-        h = {"cookie": f"{name}={token}", "origin": "https://www.eidolon.com"}
+        h = {"cookie": f"{name}={token}", "origin": "https://www.example.com"}
         assert client.get("/api/me", headers=h).status_code == 200
         r = client.post("/api/world/swap", json={"target": "x"}, headers=h)
     assert r.status_code == 404

@@ -1,7 +1,7 @@
 # Hosting the village: one-time setup
 
 How to put daydream on the internet the way this repo's own instance runs, at
-`https://www.eidolon.com/daydream`, behind a Cloudflare Worker and an
+`https://www.<domain>/daydream`, behind a Cloudflare Worker and an
 Access-guarded tunnel, with no inbound port on the box. The reasons behind each
 piece are in [`GOING-LIVE.md`](GOING-LIVE.md); the day-to-day verbs are in
 `CLAUDE.md` ("Prod").
@@ -37,7 +37,6 @@ Cloudflare's apt repo), `age` (offsite backup encryption), `acl`.
 |---|---|
 | `edge/wrangler.toml` | the two `routes`, `ORIGIN`, `PUBLIC_HOST`, `OPERATOR`; and `[[kv_namespaces]] id`, which is this instance's namespace: set it to `REPLACE_WITH_YOUR_KV_ID` now, and step 8 fills in yours |
 | `ops/prod.env.example` | `DAYDREAM_PUBLIC_ORIGIN`, `DAYDREAM_OPERATOR_NAME` |
-| these steps | `eidolon.com`, `www.eidolon.com/daydream`, `daydream-origin.eidolon.com` |
 
 `OPERATOR` / `DAYDREAM_OPERATOR_NAME` is how players see whoever runs the
 village ("Send the Night Warden a note and the lamps will be lit"). This

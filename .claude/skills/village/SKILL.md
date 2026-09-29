@@ -1,6 +1,6 @@
 ---
 name: village
-description: Check on or operate the prod village (www.eidolon.com/daydream). Subcommands - status, check, wake, sleep "<note>", maintenance "<note>", deploy [ref]. Use when the operator types /village, or asks whether the village is up or healthy, to wake it, put it to sleep (e.g. to use the GPU for something else), take it down for maintenance, or ship the current code to prod.
+description: Check on or operate the prod village. Subcommands - status, check, wake, sleep "<note>", maintenance "<note>", deploy [ref]. Use when the operator types /village, or asks whether the village is up or healthy, to wake it, put it to sleep (e.g. to use the GPU for something else), take it down for maintenance, or ship the current code to prod.
 ---
 
 # /village status | check | wake | sleep "<note>" | maintenance "<note>" | deploy [ref]

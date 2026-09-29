@@ -8,10 +8,10 @@ bringing it up taught us (section 11). The one-time setup is
 
 ## 1. What we are doing
 
-We are hosting The Village of Lost Hours for about twelve invited friends at
-`https://www.eidolon.com/daydream`. The game keeps running on the Hetzner
-GEX44 (RTX 4000, 20 GB). Cloudflare, which already serves eidolon.com as a
-static Pages site, fronts it.
+We are hosting The Village of Lost Hours for about twelve invited players, at
+a path on a domain the author already serves from Cloudflare as a static Pages
+site (`https://www.<domain>/daydream`). The game keeps running on the same GPU
+box (an RTX 4000 SFF Ada, 20 GB), and Cloudflare fronts it.
 
 - The box is often down, or lent to other GPU work, for days at a time. That
   is expected. When it happens, a friend who opens the page should know at
@@ -22,7 +22,7 @@ static Pages site, fronts it.
 
 ### The shape of it: one box, one edge, one repo, one agent
 
-- **One box.** A Hetzner GEX44 runs dev and prod side by side. Prod is a
+- **One box.** One GPU box runs dev and prod side by side. Prod is a
   second environment, not a second machine: its own system user, releases,
   data and accounts, sharing the GPU engines with dev behind a
   cross-process lock. The runtime stays local-only (the generation policy).
@@ -66,7 +66,7 @@ access mode:
 ## 3. Architecture
 
 ```
-browser ── https://www.eidolon.com/daydream/* ──► Cloudflare
+browser ── https://www.<domain>/daydream/* ──► Cloudflare
   Worker "daydream-edge" (edge/ in this repo)
    ├─ asleep (KV flag, or origin 502/530/1033/unreachable) → the asleep page,
    │     plus the friend's own keepsakes when their session is on the synced
@@ -235,13 +235,13 @@ is lent out.
 
 ## 10. Where it stands (2026-09-28: live)
 
-**Live since 2026-09-28** at www.eidolon.com/daydream, brought up by
+**Live since 2026-09-28** on the author's own domain, brought up by
 following `docs/CLOUDFLARE-SETUP.md` end to end in one session. Criteria 1-8,
 14, 18, 19, 21 and 23 are met. `bin/game prod check` now verifies, on
 demand, everything the bring-up proved by hand:
 - the Worker's route wins over the Pages site on the same host
 - the origin refuses anyone without the service token (403)
-- `/daydream` and the apex redirect to `https://www.eidolon.com/daydream/`
+- `/daydream` and the apex redirect to `https://www.<domain>/daydream/`
 - the front door, a 401 for a signed-out API call, a 403 for a cross-origin
   login
 - no WebSocket answer carries Access's cookie, and a session's socket

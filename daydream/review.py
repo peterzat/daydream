@@ -236,7 +236,7 @@ def _compose_html(
     )
     p.append(
         "<li>Asleep page: <code>bin/game edge sleep \"back Sunday\"</code>, then open "
-        "<code>https://www.eidolon.com/daydream/</code> in a browser that signed "
+        "the instance's public URL in a browser that signed "
         "in recently and in a private window. The first shows the night village, "
         "the note, and your keepsakes; the private one only the note. "
         "<code>bin/game edge wake</code> after.</li>"

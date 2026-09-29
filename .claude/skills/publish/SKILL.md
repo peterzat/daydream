@@ -1,6 +1,6 @@
 ---
 name: publish
-description: Ship what this session built to the prod village (www.eidolon.com/daydream) - commit, plan, the review gate and push, prod deploy, the follow-ups the plan names (world refresh, edge deploy), prod check, the instance record. Use when the operator says "publish", types /publish, or asks to push and deploy the current work to prod.
+description: Ship what this session built to the prod village - commit, plan, the review gate and push, prod deploy, the follow-ups the plan names (world refresh, edge deploy), prod check, the instance record. Use when the operator says "publish", types /publish, or asks to push and deploy the current work to prod.
 ---
 
 # /publish [ref]

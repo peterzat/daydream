@@ -58,7 +58,7 @@ class Check:
 
 @dataclass
 class Target:
-    """Where to look. `public` is scheme://host (https://www.eidolon.com);
+    """Where to look. `public` is scheme://host (e.g. https://www.example.com);
     `base` the path prefix (/daydream/); `origin_host` the tunnel hostname."""
     public: str
     base: str

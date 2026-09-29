@@ -1,7 +1,7 @@
 // The daydream edge Worker (SPEC 2026-09-27 criteria 14-16; docs/GOING-LIVE.md
 // section 3). It is the only always-up piece, so it owns the asleep state.
 //
-// Routes: www.eidolon.com/daydream* (and the apex, redirected).
+// Routes: the ones in wrangler.toml (www.<domain>/daydream*, and the apex, redirected).
 // - /daydream              -> 301 /daydream/ (relative URLs need the slash)
 // - apex host              -> 301 to PUBLIC_HOST
 // - /daydream/_edge/*      -> this Worker's own assets (the asleep page's art)

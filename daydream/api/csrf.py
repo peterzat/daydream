@@ -65,7 +65,7 @@ def origin_allows(headers: list[tuple[bytes, bytes]]) -> bool:
     public = config.public_origin()
     got = urlparse(source)
     if public:
-        # Scheme and host both: http://www.eidolon.com is not the public
+        # Scheme and host both: http://www.example.com is not the public
         # origin (SECURITY NOTE 2026-09-27).
         want = urlparse(public)
         return (got.scheme, got.netloc) == (want.scheme, want.netloc)

@@ -77,7 +77,7 @@ def public_base() -> str:
 
 
 def public_origin() -> str:
-    """scheme://host the browser uses (prod: https://www.eidolon.com), no
+    """scheme://host the browser uses (prod: e.g. https://www.example.com), no
     trailing slash. Empty in dev, where CSRF compares Origin to Host. Behind
     the Worker, Host is the tunnel hostname, so edge mode requires this."""
     return os.environ.get("DAYDREAM_PUBLIC_ORIGIN", "").strip().rstrip("/")
@@ -140,7 +140,7 @@ def boot_problems() -> list[str]:
     if mode not in ACCESS_MODES:
         problems.append(f"DAYDREAM_ACCESS={mode!r} is not one of {', '.join(ACCESS_MODES)}")
     if mode == "edge" and not public_origin():
-        problems.append("edge mode needs DAYDREAM_PUBLIC_ORIGIN (e.g. https://www.eidolon.com)")
+        problems.append("edge mode needs DAYDREAM_PUBLIC_ORIGIN (e.g. https://www.example.com)")
     if env() == "prod":
         if mode != "edge":
             problems.append(f"prod must run with DAYDREAM_ACCESS=edge (got {mode!r})")

@@ -4,9 +4,9 @@ Status: 2026-09-28, built through the checklist's instance section except the pr
 operator's ask: swap prod between The Village of Lost Hours and a Zork I
 playthrough (invite a friend, let them play, shelve it, go back), preserving
 every instance's state (accounts, world, art, everything), all from the same
-`www.eidolon.com/daydream`, as the beginning of multi-tenancy. It is also the
+public URL, as the beginning of multi-tenancy. It is also the
 moment for a deep, test-driven look at the internet-facing system, since
-Cloudflare and eidolon.com are new.
+the Cloudflare side is new.
 
 ## What an instance is
 

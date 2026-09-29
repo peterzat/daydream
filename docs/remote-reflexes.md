@@ -7,7 +7,7 @@ deliberately and recorded in CLAUDE.md, never a config flip in passing.
 
 ## Why it exists
 
-The Hetzner box is often lent to other GPU work. Today that means the
+The GPU box is often lent to other GPU work. Today that means the
 village sleeps. A remote "reflex" backend would let it stay awake on
 someone else's GPU for the few things the runtime generates:
 
@@ -19,7 +19,7 @@ someone else's GPU for the few things the runtime generates:
 
 Everything that carries story is authored in advance and needs no model at
 all (docs/REFLEXES.md). Cloudflare Workers AI is the natural candidate:
-eidolon.com already lives there, and it serves open-weight models (Qwen,
+the instance's domain already lives there, and it serves open-weight models (Qwen,
 Llama, Flux, SDXL) behind one account.
 
 ## What the code already allows
@@ -51,7 +51,7 @@ Llama, Flux, SDXL) behind one account.
 
 ## The Workers AI calls (for the day it is built)
 
-Account: the one that owns eidolon.com. Auth: an API token with only the
+Account: the one that owns the instance's domain. Auth: an API token with only the
 Workers AI permission (`Account > Workers AI > Read`, which covers running
 models).
 

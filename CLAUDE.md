@@ -4,7 +4,7 @@ A small atmospheric multiplayer web game running on a single dev box. Players en
 
 ## This repo and this instance
 
-The GitHub repo is public, and a stranger should be able to fork it: the engine, The Village of Lost Hours, the ops templates (`ops/`), the edge Worker (`edge/`), the runbooks. It also serves exactly one live instance, the operator's village at www.eidolon.com/daydream, developed, tested and deployed from this checkout. Everything that makes that instance *this* instance stays off GitHub:
+The GitHub repo is public, and a stranger should be able to fork it: the engine, The Village of Lost Hours, the ops templates (`ops/`), the edge Worker (`edge/`), the runbooks. It also serves exactly one live instance, the operator's village (its public URL, like every other fact about that instance, is in `instance/NOTES.md`), developed, tested and deployed from this checkout. Everything that makes that instance *this* instance stays off GitHub:
 
 | Local only | What it holds |
 |---|---|
@@ -201,9 +201,9 @@ The release turn's four flagships and their operational facts:
 
 Middleware order per request: security headers (CSP, nosniff, no framing, noindex; `daydream/api/headers.py`) > access (network) > CSRF > gate (account) > no-cache assets > app. The SPA is base-relative (`<base href>` from `DAYDREAM_PUBLIC_BASE`; `tests/test_web_paths.py` fails on a root-absolute path in `web/`), so the same build serves at `/` in dev and under `/daydream/` behind the Worker, which strips the prefix before proxying.
 
-## Prod: the village at www.eidolon.com/daydream (SPEC 2026-09-27)
+## Prod: the live village (SPEC 2026-09-27)
 
-Friends reach it through a Cloudflare Worker (`edge/`, route `www.eidolon.com/daydream*`) that proxies to an Access-guarded Cloudflare Tunnel into `daydream-prod.service` on `127.0.0.1:54322`. The box opens no port. Design: `docs/GOING-LIVE.md`; your one-time Cloudflare steps: `docs/CLOUDFLARE-SETUP.md`.
+Players reach it through a Cloudflare Worker (`edge/`, on the routes in `edge/wrangler.toml`) that proxies to an Access-guarded Cloudflare Tunnel into `daydream-prod.service` on `127.0.0.1:54322`. The box opens no port. Design: `docs/GOING-LIVE.md`; your one-time Cloudflare steps: `docs/CLOUDFLARE-SETUP.md`.
 
 - **Layout** (made by `sudo ops/install-prod.sh`): `/srv/daydream/{releases/<sha>, venvs/<lockhash>, current, previous, data, etc/prod.env}`. Releases are read-only `git archive`s; venvs come from `ops/requirements-prod.lock` (regenerate with `tools/lock_prod_requirements.sh` after a dev-venv upgrade; a test fails on drift). Prod data is its own `DAYDREAM_DATA_DIR`, so dev (`~/data/daydream`) can never delete it.
 - **The service** runs as the `daydream` system user in a systemd sandbox: no shell, no docker, `ProtectHome`, write access only to `/srv/daydream/data`, and loopback-only IP egress (the generation policy enforced by the kernel). It holds no secrets. It is NOT enabled at boot; nor is `cloudflared-daydream.service`. A narrow sudoers entry lets the operator (and so a Claude session) start/stop/restart exactly these units.

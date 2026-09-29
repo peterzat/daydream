@@ -6,7 +6,7 @@ come from `~/.config/daydream/cloudflare.env` (0600, never in the repo, never
 readable by the prod service user):
 
     CLOUDFLARE_API_TOKEN=...   Workers Scripts:Edit, Workers KV Storage:Edit,
-                               Workers Routes:Edit on eidolon.com
+                               Workers Routes:Edit on your zone
     CLOUDFLARE_ACCOUNT_ID=...
 
 The KV namespace id is not secret; it lives in edge/wrangler.toml.

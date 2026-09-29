@@ -499,7 +499,7 @@ def test_walking_up_and_down_tells_where_you_went_and_leaves_nothing_behind(tab,
 
 
 def test_talking_asks_for_your_words_on_the_page_not_in_a_browser_box(tab, engines):
-    """Talk opened the browser's own prompt box ("www.eidolon.com says").
+    """Talk opened the browser's own prompt box ("www.example.com says").
     The words now go on the page's input line: the hint names who you are
     talking to, Enter sends one talk command, and "never mind" lets it go."""
     dialogs, sent, got = [], [], []

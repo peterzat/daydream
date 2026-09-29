@@ -23,14 +23,14 @@ async function envWith({ expires = "2099-01-01T00:00:00Z", portrait = true } = {
     "portrait:a-1": new Uint8Array([137, 80, 78, 71]).buffer,
   };
   return {
-    BASE: "/daydream/", PUBLIC_HOST: "www.eidolon.com", OPERATOR: "the Night Warden",
-    ORIGIN: "https://daydream-origin.eidolon.com",
+    BASE: "/daydream/", PUBLIC_HOST: "www.example.com", OPERATOR: "the Night Warden",
+    ORIGIN: "https://daydream-origin.example.com",
     STATE: { get: async (k, opts) => kv[k] ?? null },
     ASSETS: { fetch: async () => new Response(TEMPLATE) },
   };
 }
 
-const page = (cookie) => new Request("https://www.eidolon.com/daydream/", {
+const page = (cookie) => new Request("https://www.example.com/daydream/", {
   headers: { accept: "text/html", ...(cookie ? { cookie } : {}) },
 });
 
@@ -58,7 +58,7 @@ test("no cookie, an unknown token, or an expired pass: only the notice", async (
 
 test("the portrait is served only to its owner", async () => {
   const e = await envWith();
-  const url = "https://www.eidolon.com/daydream/_edge/portrait";
+  const url = "https://www.example.com/daydream/_edge/portrait";
   let r = await handle(new Request(url, { headers: { cookie: `dd_session_prod=${TOKEN}` } }), e);
   assert.equal(r.status, 200);
   assert.equal(r.headers.get("content-type"), "image/png");

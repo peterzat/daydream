@@ -9,7 +9,7 @@ the path, in order, with the values you change.
 ## What you need
 
 - **A GPU box you control.** An NVIDIA GPU with about 20 GB (the author's is
-  an RTX 4000 SFF Ada in a Hetzner GEX44), a driver new enough for CUDA 13
+  an RTX 4000 SFF Ada), a driver new enough for CUDA 13
   (vLLM 0.30's wheels; [`gpu-and-models.md`](gpu-and-models.md)), Ubuntu
   22.04 (the prod installer uses apt and Cloudflare's `jammy` repo), Python
   3.10 or newer, `git` and `wget`, and about 30 GB of disk for the engines
@@ -43,9 +43,8 @@ the path, in order, with the values you change.
 |---|---|
 | `edge/wrangler.toml` | the two `routes`, `ORIGIN`, `PUBLIC_HOST`, `OPERATOR`, and `[[kv_namespaces]] id`: the committed id is the author's namespace, so set it to `REPLACE_WITH_YOUR_KV_ID` before CLOUDFLARE-SETUP step 1 and fill in yours at step 8 |
 | `ops/prod.env.example` | `DAYDREAM_PUBLIC_ORIGIN`, `DAYDREAM_OPERATOR_NAME` (a title players see; unset, "the person who invited you") |
-| `.claude/skills/invite`, `.claude/skills/village` | the URL in each skill's description |
 | `ops/sudoers.d/daydream` | nothing: `peter` there is a placeholder the installer replaces with the user who runs `sudo` |
-| the prose of CLOUDFLARE-SETUP | read `eidolon.com` as your domain |
+| the prose of CLOUDFLARE-SETUP | `<domain>` stands for your domain throughout |
 
 `tests/test_ops_units.py` checks that `edge/wrangler.toml` and
 `ops/prod.env.example` describe the same site, so change them together.
