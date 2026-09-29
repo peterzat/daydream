@@ -36,7 +36,7 @@ import logging
 import re
 from dataclasses import dataclass
 
-from daydream import objects, pronouns, rooms, verbs, worldverbs
+from daydream import absent, objects, pronouns, rooms, verbs, worldverbs
 from daydream.llm import client
 from daydream.skills import registry
 
@@ -569,6 +569,13 @@ def _talk_fast_path(actor_id: str, rest: str):
         words = words[1:]
     who, k = _toon_prefix(actor_id, words)
     if who is None:
+        actor = objects.get(actor_id)
+        for n in range(min(len(words), 3), 0, -1):
+            name = _strip_article(" ".join(words[:n]).strip(",;:.!?"))
+            if actor is not None and name and absent.elsewhere(actor, name) is not None:
+                # Someone of this world who isn't here (spec 2026-09-29
+                # criterion 1): the executor says where they are.
+                return [Parse("talk", dobj_name=name, args="hello")]
         return None
     text = _LEAD_PUNCT.sub("", " ".join(words[k:]))
     if text.lower().startswith("about "):
@@ -638,6 +645,12 @@ def _ask_fast_path(actor_id: str, rest: str):
         return [Parse("ask", dobj_id=matches[0].id, args=topic.strip())]
     if len(matches) > 1:
         return _clarify("ask", "dobj", who, matches, args=topic.strip())
+    actor = objects.get(actor_id)
+    if actor is not None and absent.elsewhere(actor, who) is not None:
+        # Someone of this world who isn't here: never the model, which grounds
+        # only to who is present and let them answer in the absent one's place
+        # (spec 2026-09-29 criterion 1).
+        return [Parse("ask", dobj_name=who, args=topic.strip())]
     return None
 
 

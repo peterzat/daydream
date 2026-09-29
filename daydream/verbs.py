@@ -478,11 +478,18 @@ async def _execute_resolved(
         # or out-of-reach grab never spams a co-located player's log.
         if not dobj_id:
             if dobj_name:
+                # Someone of this world who is elsewhere: say where they are
+                # (spec 2026-09-29 criterion 1).
+                from daydream import absent, glimpse
+
+                who = absent.elsewhere(actor, dobj_name)
+                if who is not None:
+                    _narrate(room_id, absent.line(who), recipient_id=actor_id)
+                    return
                 # Named in the scene's prose but not a thing to handle (a jar
                 # on a shelf out of reach): say why, authored first (the
                 # glimpse module; playtest 2026-09-29b). Only a name the
                 # scene never said reads as not here.
-                from daydream import glimpse
 
                 seen = await glimpse.answer(actor, room_id, dobj_name, spec.name)
                 if seen is not None:
