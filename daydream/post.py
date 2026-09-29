@@ -281,6 +281,23 @@ def letters_waiting(toon_id: str) -> list[objects.Object]:
     return out
 
 
+def arrival_notes(toon_id: str) -> list[str]:
+    """The waiting_text once per letter, on the first connection after it
+    was filed (each letter is marked told; the thread keeps listing it until
+    it is taken). Beta rehearsal 2026-09-28: the note printed on every
+    reconnect, fourteen times in a morning."""
+    fresh = [o for o in letters_waiting(toon_id) if not (o.properties.get("letter") or {}).get("told")]
+    if not fresh:
+        return []
+    for o in fresh:
+        letter = dict(o.properties.get("letter") or {})
+        letter["told"] = True
+        objects.set_property(o.id, "letter", letter)
+    toon = objects.get(toon_id)
+    post = config_for(toon.world_id) if toon is not None else None
+    return [_line(post or {}, "waiting_text")]
+
+
 def thread_lines(toon_id: str) -> list[str]:
     """What the satchel and "what now" add while post waits: the world's
     `waiting_text`, once."""

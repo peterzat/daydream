@@ -1021,9 +1021,9 @@ async def ws_endpoint(ws: WebSocket):
                 "text": f"While you rested, {verbs._the_name(w['name'])} went home to "
                         f"{toons.in_sentence(w.get('room'))}."},
                 room_id=_current_room_id(toon_id), recipient_id=toon_id)
-        # Post waiting for you, said once as you step back in (beta rehearsal
-        # 2026-09-28: letters between dreamers).
-        for line in post.thread_lines(toon_id):
+        # Post waiting for you, said once per letter as you step back in
+        # (beta rehearsal 2026-09-28: letters between dreamers).
+        for line in post.arrival_notes(toon_id):
             events.append("system", None, "narrate", {"text": line},
                           room_id=_current_room_id(toon_id), recipient_id=toon_id)
         # Kick off image gen for the current room if the cache is cold.

@@ -125,6 +125,9 @@ def _line(frame: dict, me: str | None = None) -> str | None:
     if frame.get("kind") == "clarify":
         opts = ", ".join(o["name"] for o in frame.get("options", []))
         return f"[{frame.get('prompt')}] options: {opts}"
+    if frame.get("kind") == "notice" and frame.get("text"):
+        # A gentle limit (too long, too fast): the page shows it; so does this.
+        return f"[{frame['text']}]"
     return None
 
 

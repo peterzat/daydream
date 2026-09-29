@@ -340,7 +340,8 @@
         "one of the letters"
       ],
       "verbs": [
-        "read"
+        "read",
+        "write"
       ],
       "rules": [
         {

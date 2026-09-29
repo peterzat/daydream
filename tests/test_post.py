@@ -230,3 +230,15 @@ async def test_letter_tellings_vary():
         await verbs.execute_command("t-wren", "write", args=f"to Ivo: letter {i}")
         seen.add([e for e in _narrates(before) if e.recipient_id == "t-wren"][0].payload["text"])
     assert seen == {"One Ivo.", "Two Ivo."}
+
+
+@pytest.mark.asyncio
+async def test_a_waiting_letter_is_told_once_on_arrival_and_listed_until_taken():
+    ivo = _ivo()
+    _go("r-forge")
+    await verbs.execute_command("t-wren", "write", args="to Ivo: hello")
+    assert post.arrival_notes(ivo.id) == ["A letter waits for you at the forge."]
+    assert post.arrival_notes(ivo.id) == []  # told; a reconnect says nothing
+    assert story.threads_for(ivo.id) == ["A letter waits for you at the forge."]
+    await verbs.execute_command("t-wren", "write", args="to Ivo: and another")
+    assert post.arrival_notes(ivo.id) == ["A letter waits for you at the forge."]  # the new one

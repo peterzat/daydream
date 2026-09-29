@@ -882,6 +882,36 @@ New lines (dreams included) should not add more of them.
 Each dream's patch lives in `worlds/lost-hours/dreams/<id>/` with its digest
 and rehearsal. What each made canon:
 
+### dream-2026-09-28: The Night the Lamps Learned Three Names (after the beta rehearsal's first evening)
+
+Written for the dev village of the beta rehearsal (three agent playtesters,
+docs/playtests/2026-09-28-beta-rehearsal/); the prod village had not yet
+opened. What it made canon, and the shapes a later dream can reuse:
+
+- A grown place is signed: a card in a keeper's hand (Tace's, Fen's,
+  Umber's) names who grew it and what they wished for, in their words. The
+  Bowl of Turned Time (Vex, "a skate bowl where the ramps are giant clock
+  hands") is a sunken bowl whose sides are the great clock's hands laid
+  down; Tock skids down the minute hand between ticks and lands on the
+  hour. The Waiting Bell Loft (Vex, a treehouse with a rope ladder, a
+  password and a bell) has a bell that rings and carries to the square,
+  where Pollen flares; its slate reads, in Bell's sooty capitals, THE WORD
+  IS POLLEN. The Warmth of Unsent Words (Wren, "a lamplit room of unsent
+  letters, kept warm until their writers come back for them") is sorted by
+  Fen, oldest nearest the stove; the oldest begins "Dear Gran, I am writing
+  this down so that one of us remembers it." The Quiet Bookmark Shelf
+  (Halloran, "a reading nook where three housemates leave bookmarks in each
+  other's books") holds three open books with the three keepers' names in
+  them and a fourth, closed, with a blank bookmark.
+- Tace leaves the loft door open at dusk since Vex came up the stair with
+  the gear. Bell chalked a small W on Pollen's pole after Wren carried her
+  home. Fen keeps a pigeonhole for every keeper since Halloran posted the
+  first two letters between dreamers. Umber's label: THREE KEEPERS. ONE
+  EVENING. WREN, VEX, HALLORAN.
+- A disclosure a player made to a keeper (Wren's grandmother, to Tace) may
+  come back once, gently, as a second-person topic for that player alone
+  ("a clock is only a notebook that ticks").
+
 ### dream-2026-09-26: The First Dream (after the agent playtest day)
 
 - Four keepers wound their first clocks on the first evening: Marlow,

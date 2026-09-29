@@ -13760,7 +13760,8 @@
         "one of the letters"
       ],
       "verbs": [
-        "read"
+        "read",
+        "write"
       ],
       "rules": [
         {
@@ -14247,7 +14248,22 @@
         "state_text": {
           "locked": "It is shut now and tied round with blue ribbon, and Fen has chalked on the front: ANOTHER WINTER."
         }
-      }
+      },
+      "verbs": [
+        "open"
+      ],
+      "rules": [
+        {
+          "on": "open",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "The drawer is already open a hand's width, and that is as far as Fen likes it. You can see what waits inside from where you stand; anything in it is for the taking, if it is yours to take."
+            }
+          ]
+        }
+      ]
     },
     {
       "id": "o-letters-crayon",
