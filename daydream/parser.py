@@ -339,7 +339,13 @@ def _fast_path(actor_id: str, text: str, room: rooms.Room | None):
             return [Parse("examine", dobj_id=matches[0].id)]
         if len(matches) > 1:
             return _clarify("examine", "dobj", target, matches)
-        return None  # "look at <unresolved>" -> hand to the LLM to ground
+        if target and len(target.split()) < 4:
+            # A name not in scope reads like "examine <name>": the executor
+            # answers from what the scene says of it, or that it isn't here
+            # (playtest 2026-09-29b: "look at the lantern" by the cellar stair
+            # fell to the model and came back "nothing takes that up").
+            return [Parse("examine", dobj_name=target)]
+        return None  # a whole phrase: hand to the LLM to ground
 
     if spec is None:
         # Legacy first-word data-skill name (`rook hi`, `forge a ring`), gated on

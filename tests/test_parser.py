@@ -129,6 +129,16 @@ async def test_look_at_npc_grounds_to_examine(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_look_at_an_absent_name_passes_it_through_like_examine(monkeypatch):
+    # Playtest 2026-09-29b: "look at the lantern" for a lantern the room's prose
+    # names (no object) fell to the LLM and read "nothing takes that up".
+    spy = _mock_llm(monkeypatch, {"verb": "none"})
+    p = await parser.parse("t-wren", "look at the moon")
+    assert p.verb == "examine" and p.dobj_id is None and p.dobj_name == "moon"
+    spy.assert_not_called()
+
+
+@pytest.mark.asyncio
 async def test_verb_plus_absent_name_passes_name_through(monkeypatch):
     # "take the moon": a known verb + a name not in scope. The fast-path passes
     # the (article-stripped) name through as dobj_name so the executor can say
