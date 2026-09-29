@@ -179,6 +179,12 @@ Proposals from docs/playtests/2026-09-28-beta-rehearsal/SUMMARY.md not built in 
 - **Revisit criteria:** A village thing goes missing into a dozing friend's satchel in play, or the walkthrough runner gains live sessions.
 - **Origin:** codereview 2026-09-29 (the beta rehearsal's review).
 
+### placeholders-over-player-text
+- **One-line description:** `trace.expand_placeholders` fills `{dreamers_today}` in every narrated text, player text included (a letter's body, a dreamer's name); neutralise braces in player fields or expand authored strings only.
+- **Why deferred:** No confidentiality impact (the clause is public); found by the security scan at the end of the beta rehearsal's review.
+- **Revisit criteria:** A second placeholder is added, or a player pranks a letter with one.
+- **Origin:** /security 2026-09-29b.
+
 ## Quality and tooling (GPU/ML follow-ups)
 
 Captured from the comprehensive GPU/ML doc pass; full rationale per item lives in `docs/gpu-and-models.md` "Things we have not tried yet".

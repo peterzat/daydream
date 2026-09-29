@@ -2,241 +2,182 @@
 
 ## Security Review — 2026-09-29 (scope: paths)
 
-**Summary:** Path-scoped review of 48 files: the code, tests and world
-sources changed between the last scan (`4cef786`) and HEAD `43fba6b`. That
-is the beta rehearsal's layer (letters and parcels through the post, handing
-things between dreamers, who else is awake and where, traces of dreamers and
-rosters, the while-you-were-away note, transient "thinking" frames, the
-typed plant and a target on a no-target verb) and the dream
-`dream-2026-09-28`, at WORLD_VERSION 1.9. No exploitable vulnerability. One
-WARN: a player can file letters without limit, and every waiting letter is
-loaded on every player's every command. Two new NOTEs: a parcel puts a
-shared authored thing outside the rest-returns-things net and `account
-delete` destroys it; the input log's metadata has a new audience (other
-players) that the redeem card and the docs do not mention. The two prior
-NOTEs are carried (0 BLOCK / 1 WARN / 4 NOTE).
+**Summary:** Path-scoped review of the 22 files named by the caller, read as
+their change from the last scan (`43fba6b`) to HEAD `69760f7`: the codereview
+fix pass over the beta rehearsal's household layer (the post's caps and its
+narrower query, a parcel refused for a village thing, `set_property` declared
+on `give`, one turn per `open`, the placeholder filled on every telling path,
+the away note kept for the leaver's return, world-scoped presence), the
+onboarding words, and the door's disclosure. No exploitable vulnerability. The
+prior WARN (uncapped letters read on every command) is fixed and re-measured,
+and both prior data NOTEs are addressed. Two new NOTEs: the placeholder
+expander now runs over a player's letter body, and a leave-and-claim loop
+re-snapshots every connected player from two unthrottled endpoints. The two
+carried NOTEs stand (0 BLOCK / 0 WARN / 4 NOTE).
 
 ### Scope and method
 
-Each scoped file's diff from `4cef786` to HEAD was read in full (the four
-new modules `post.py`, `absence.py`, `trace.py` and `live.py` whole), along
-with the code it calls:
-
-- **The post.** `write_letter`, `file_parcel`, `letters_waiting`,
-  `arrival_notes`, `thread_lines`, `inbox`, `on_taken` and `_ring_for`;
-  the `write` verb's allowlist; the parser's `write` and `give ... for`
-  paths; how `private_to` gates scope (`objects.visible_to`,
-  `contents_for`, `in_scope`), how `verbs_for` unions a letter's verbs, and
-  what `take`, `give`, `send_home_things`, `world refresh` and `account
-  delete` do with a private thing.
-- **Between dreamers.** `_hand_to_player` and the carried check ahead of
-  it, `dreaming_elsewhere`, `announce_wake`, `presence_changed`, the doze
-  grace.
-- **Traces.** `trace.last_seen`, `dreamers_today`, `report`,
-  `roster_text`, `for_prompt`, and where each is shown (`ask`, `read`,
-  `examine`, the dusk line, `{dreamers_today}`); `absence.take_note` and
-  its merge into the slept leaf.
-- **The model's inputs.** `dialogue.build_prompt`'s new OTHER DREAMERS
-  and grounding sections, `TALK_SELECT_MAX_WORDS`, the plant fast path,
-  the husk text that now carries the planter's phrase.
-- **Page sinks.** Every changed one: the card path (`renderDetailInset`,
-  `linkifyEntities`), `showThinking`, `renderDreaming`, the slept leaf,
-  the keepsake card and glyph, and the How to Dream text.
-- **Executor changes.** A rider target on a no-target verb, `use` on a
-  toon becoming `give`, the carried key re-entering `execute_command`.
-- **World sources.** `config.post`, the rosters, Quill's seed topic, the
-  dream patch and its rehearsal record, the two walkthroughs (authored
-  text and commands only); `tools/assemble_world.py --check` passes.
-
-Two candidates were checked with a scratch script outside the repo (a
-throwaway DB, the real functions): the cost of the waiting-letters scan as
-letters pile up, and what `account delete` does to a filed parcel. Secrets
-and instance values were compared without printing (below). The 260 tests
-in the 12 scoped test files pass.
+- Each scoped file's diff from `43fba6b` to HEAD was read in full; `post.py`,
+  `absence.py`, `trace.py`, `live.py` and `door.js` were re-read whole.
+- The code each change calls was read wherever the change could widen a trust
+  boundary: `objects.things_where_property` (the new letter query),
+  `verbs._execute_resolved` (the executor `open` now re-enters),
+  `_handle_give`, `_hand_to_player` and `file_parcel` (everything dispatched
+  under `give`'s widened allowlist), `_handle_read` and
+  `effects._apply_narrate` / `tell_others` (what text reaches the new
+  `expand_placeholders`), the WS event filter and re-snapshot trigger
+  (`ws.py:1240-1290`), `_auto_enter` and `claim_slot` (when `announce_wake`
+  fires), `server.py`'s `{{place}}` fill, and the dreamer-name rule
+  (`slots.py:131`).
+- Three scratch scripts against throwaway DBs under the scratchpad (nothing
+  under `~/data/daydream`): the cost of `letters_waiting` / `threads_for` with
+  1,000 and 5,000 letters waiting for someone else, an end-to-end letter
+  carrying `{dreamers_today}` read by its recipient, and the cost of one
+  `_state_snapshot`.
+- `tools/assemble_world.py --check` passes; the six scoped test files pass
+  (126 tests).
 
 ### Findings
 
-[WARN] daydream/post.py:187-253 and :329-342; daydream/story.py:636-639;
-daydream/api/ws.py:1185-1192 — A player can file letters without limit,
-and every letter waiting for anyone is loaded on every player's every
-command.
-  Attack vector: An invited friend, or a runaway `bin/game play` loop, at
-the post room repeats `write to <name>: x`. Nothing caps letters per
-sender, per recipient or in all; the only brakes are the 500-character
-line and the socket's token bucket (12 frames, then 3 a second;
-ws.py:1091-1094), so one connection files about 10,000 letters an hour,
-each a persisted thing at the post room that waits until the recipient
-takes it. The recipient cannot refuse them and no operator verb clears
-them. The cost lands on everyone: after each command the server recomputes
-the acting player's threads (`_send_threads_if_changed`), which calls
-`post.thread_lines`, then `letters_waiting`, then
-`objects.contents_for(post room)`, which loads and JSON-parses every thing
-at the post room and filters in Python. So each command by any player,
-anywhere in the village, costs time proportional to all the letters
-waiting for anyone. Every snapshot carries `threads` too, and the post
-room's own scope and snapshot grow the same way.
-  Evidence: Measured in the scratch repro: each `write_letter` takes about
-1 ms and none is refused. With 1,000 letters waiting for someone else,
-`story.threads_for` for a player with no post takes 6 ms (baseline
-0.1 ms); with 5,000 it takes 31 ms, and `objects.in_scope` at the post
-room the same. That is roughly 65 ms added to every player's every
-command after an hour of it, and around 0.6 s after a night.
-  Remediation: Cap in `write_letter`: a few letters waiting from one
-sender to one recipient, and a few dozen per recipient, refused with an
-authored line (Fen's pigeonhole is full). Have `letters_waiting` query
-only the viewer's letters (location = the post room and
-`json_extract(properties_json, '$.letter.to') = ?`), so the per-command
-cost is the viewer's own post. Consider an admin verb that lists and
-clears a sender's letters.
+[NOTE] daydream/skills/effects.py:347 (and :309), daydream/trace.py:185-193,
+daydream/post.py:94-112 and :257, daydream/verbs.py:1152-1156 — The
+placeholder expander now runs over every narrated text, a player's own words
+included.
+  Attack vector: Not an exploit today; a template applied to untrusted text.
+A letter's stored `text` is the authored `read_text` with the writer's body
+substituted in (post.py:257); `read` narrates it (verbs.py:1152-1156)
+through `_apply_narrate`, which since this fix pass calls
+`trace.expand_placeholders` on every text (effects.py:347). So a writer who
+types `{dreamers_today}` has it replaced, in the recipient's reading, with the
+names of the dreamers who typed today. A dreamer may also be named
+`{dreamers_today}` (16 printable characters; slots.py:131 allows any printable
+name up to 24), which would expand in every line that names them. The only
+placeholder is that one, and what it reveals is what Bell's tally and the dusk
+line already tell every player, so there is no confidentiality impact; the
+class matters if a later placeholder ever carries something a player should
+not read.
+  Evidence: Scratch repro: `write to Ivo: today {dreamers_today}; also
+{actor} {to} {text}` stored the body verbatim; Ivo's `read` narrated "today
+one dreamer, Wren, came through today; also {actor} {to} {text}" (only the
+new placeholder expands; `{actor}` is replaced only in `others` lines).
+  Remediation: Expand placeholders on authored strings only: substitute
+player-supplied fields after expansion, or have `post._line` neutralise `{`
+in the letter body and in dreamer names (`{text}`, `{from}`, `{to}`), and
+refuse a dreamer name containing braces at slots.py:131.
 
-[NOTE] daydream/post.py:265-303; daydream/accounts_cli.py:155-157;
-daydream/toons.py:440-452 — A parcel makes a shared authored thing
-`private_to` one player, which puts it outside two safety nets written
-before the post existed.
-  Attack vector: Not an exploit; ordinary play. `give gear to Fen for Ada`
-files any carried, non-private thing, the escapement gear or Pollen
-included, as private to Ada at the post room. `rest_returns_things` sends
-home only what a resting player carries (toons.py:450), and a filed parcel
-is carried by no one, so it never goes home; `world refresh` keeps
-`private_to` (refresh.py:49). If Ada never comes back, the thing is
-invisible to everyone else for good. If the operator then deletes Ada's
-account, `_forget_dreamer_state` deletes every `private_to` thing of hers
-on the assumption that such things exist for her alone (finds, letters),
-so the authored thing is destroyed. A later `world refresh` inserts a
-missing authored object again at its home (refresh.py:198-206), which is
-the recovery.
-  Evidence: Scratch repro: filed the lantern for Ivo, rested the giver
-(the lantern stayed at the post room, private), then ran
-`_forget_dreamer_state` for Ivo: one record removed, and
-`objects.get("i-lantern")` returned None.
-  Remediation: In `_forget_dreamer_state`, a thing whose `letter.parcel`
-is set, or that has a `home`, should be made public again and sent home
-rather than deleted. Consider refusing to file a thing that has a `home`
-(the world's own things), or sending an uncollected parcel home after
-some days. DATA-LIFECYCLE.md's `account delete` section should also say
-what stays: the letters and parcels the person left for others (their
-typed words, now in the recipient's keeping) and the planter's phrase on a
-spent seed's husk (growth.py:654-656).
+[NOTE] daydream/api/slots.py:311-312 and :317-337 (leave), daydream/toons.py:121
+with daydream/api/slots.py:235-272 (claim), daydream/api/ws.py:93 and
+:1272-1285 — A world-scoped `presence_changed` re-snapshots every connected
+player, and the two endpoints that emit it are not throttled.
+  Attack vector: A signed-in friend, or a misbehaving `bin/game play` script
+(the gate and the CSRF check keep strangers and other origins out), loops
+`POST /api/session/leave` then `POST /api/slots/<own slot>/claim`. Each leave
+emits a world-scoped `presence_changed` (slots.py:311, `room_id=None` since
+this fix pass), and each claim after a rest calls `announce_wake`, which emits
+another (toons.py:121). The kind is in `_EFFECT_MUTATION_KINDS` (ws.py:93) and
+the event has no room, so every connection's loop builds and sends a fresh
+`_state_snapshot` (ws.py:1272-1285): two full snapshots per connected player
+per cycle, and a journal task per leave. Neither endpoint has a per-session
+rate (the only throttle in slots.py is `DREAMERS_PER_DAY` on create, :164),
+and the WS token bucket does not cover HTTP. Before this pass the fan-out
+reached only the leaver's room. Transient, and `account disable` ends it, so
+a rate-limiting note rather than a WARN.
+  Evidence: One `_state_snapshot` measured 0.74 ms in a two-toon room of the
+seed world (a fuller village room costs more); with twelve connected players
+a cycle is roughly 20 ms of event-loop time plus the leave's own work, so a
+loop at ten cycles a second takes a fifth or more of the single loop for
+everyone.
+  Remediation: A small per-session throttle on leave and claim (a few a
+minute is generous for a person), or deliver the world-scoped presence event
+to viewers in other rooms as a light `dreaming` refresh rather than a full
+re-snapshot.
 
-[NOTE] daydream/trace.py:29-34, :153-170 and :212-241;
-daydream/absence.py:39-48 — The raw input log has a second audience.
-CLAUDE.md and DATA-LIFECYCLE.md describe it as private, read by the dream
-digest. Now its metadata (who typed, when, in which room) reaches every
-other player: `ask <resident> about <dreamer>` tells when and where they
-were last seen and whether they are awake, dozing or resting; the ledger's
-keepers roster lists every dreamer the same way; Bell's tally and the dusk
-line name who came through today; a returning player reads who was here
-while they rested. No typed text is shown, and this is the requested
-household feature, so it is not a vulnerability. The redeem card's
-disclosure ("the village keeps what players do and the operator reads
-summaries of it") and the docs do not say that other dreamers see when you
-were last here and where.
-  Remediation: One sentence on the redeem card or in How to Dream, and in
-DATA-LIFECYCLE.md's row for the input log. Optionally, a dreamer who has
-rested for longer than some weeks drops off the roster.
+[NOTE] daydream/accounts_cli.py:129-136 (outside these paths; carried
+unchanged) — `account delete --yes` during a resident's reply leaves that
+reply and its `talk:`/`rel:` records behind; `account delete` is not in
+`prodctl.STOP_FOR`, and `dialogue.talk` does not re-check the dreamer after
+the model call. The remediation stands as written.
 
-[NOTE] daydream/accounts_cli.py:129-136 (carried unchanged) — `account
-delete --yes` can leave a few records behind if the person is talking to
-a resident at that moment: a reply still being generated is written after
-the purge, with the `talk:`/`rel:` records. Still open: `account delete`
-is not in `prodctl.STOP_FOR` (daydream/prodctl.py:211-213), and
-`dialogue.talk` does not re-check the dreamer after the model call. The
-remediation stands as written last time.
+[NOTE] tests/test_config_edge.py:61 (outside these paths; carried unchanged)
+— The non-loopback bind-host test still uses this box's tailnet IPv4 (one
+line; the value is not reproduced here). Swap in `100.64.0.1` the next time
+the file is touched.
 
-[NOTE] tests/test_config_edge.py:61 (outside these paths; carried
-unchanged) — The non-loopback bind-host test still uses this box's real
-tailnet IPv4 (it still matches `tailscale ip -4`; the value is not
-reproduced here). Swap in `100.64.0.1` the next time the file is touched.
+### Resolved since the last review
+
+- **WARN, uncapped letters read on every command.** Fixed: `write_letter`
+  refuses past five waiting from one hand or twenty for one dreamer
+  (post.py:50-51, :233-238) in authored words (`too_many_text`), and
+  `letters_waiting` reads only the viewer's own letters by `letter.to`
+  (post.py:349-361, through `objects.things_where_property`: a parameterised
+  `json_extract` whose key is a code constant). Re-measured in the same
+  scratch shape as last time: with 5,000 letters waiting for someone else,
+  `letters_waiting` for another player takes 0.62 ms (was 31 ms) and
+  `threads_for` 0.63 ms; with 1,000, 0.14 ms (was 6 ms). The scans that still
+  grow with the post room's contents (`in_scope` there, and the recipient's
+  own `letters_waiting`, about 6 ms per 1,000) are now bounded by the caps.
+  Parcels are uncapped, but each needs a carried keepsake with no home, a
+  supply the world's content bounds.
+- **NOTE, a parcel of an authored thing destroyed by `account delete`.**
+  Fixed: `file_parcel` refuses a thing whose `toons.home_of` is set
+  (post.py:305-310, authored `belongs_text`), so a village thing is never
+  made private to one dreamer, and DATA-LIFECYCLE.md now says what a delete
+  keeps of the post. A gift to a dozing dreamer is the accepted risk below.
+- **NOTE, the input log's second audience.** The redeem card now says other
+  dreamers can see when you were last here and where (door.js:82-85), and
+  DATA-LIFECYCLE.md describes what other dreamers see of a dreamer and that
+  typed text stays private.
 
 ### Traced and cleared this run (not findings)
 
-- **Letter privacy.** A letter is spawned at the post room with
-  `private_to` the recipient. `objects.visible_to`, `contents_for` and
-  `in_scope` honor it, so no other player sees, examines, takes or reads
-  it, and the executor's scope gate rejects a guessed id. Its `verbs`
-  union with the prototype's, so the recipient can take it; a dropped
-  letter stays private; `_hand_to_player` and `file_parcel` refuse a
-  private thing; only a parcel loses its privacy on take (`on_taken`).
-  Letters never reach the model: the parser's `write` fast path returns
-  the line whole and `write_letter` makes no call. The banlist is a tone
-  check, not a control. `write` and `file_parcel` tell the writer whether
-  a dreamer by that name exists, which the rosters already show.
-- **Carried things only.** `_handle_give` requires the thing to be in the
-  giver's hands before `_hand_to_player` or `file_parcel` run
-  (verbs.py:818), so no fixture or room thing can be moved or made
-  private. A gift to a dozing dreamer moves into their satchel by design;
-  `send_home_things` returns world things when they rest.
-- **Names.** A dreamer's name is bounded (`MAX_NAME_CHARS`) and
-  printable, not otherwise restricted; every sink that shows it escapes
-  or uses `textContent`. Names are not unique: a letter to a shared name
-  goes to the lower slot (the carried accepted risk).
-- **Page sinks.** The card path escapes before linking
-  (`linkifyEntities`, main.js:1259) and the replacement escapes the id;
-  `showThinking`, `renderDreaming`, the slept leaf and the keepsake card
-  use `textContent`; `keepsakeGlyph` hashes the name only. A letter's
-  newlines collapse in the card (cosmetic). No new client-to-server frame
-  kind: `thinking` is server-to-client and carries a name or an engine
-  line.
-- **The model's inputs.** `trace.for_prompt` adds engine-composed lines
-  (names, room titles, a state word) for dreamers the player named;
-  `grounding` is authored topic text; `{dreamers_today}` is substituted
-  only in authored narrations (the LLM data-skill path does not exist in
-  this world). A letter's words reach a model only later, as part of the
-  recipient's own journal, which is the existing `say` class.
-- **Executor.** A rider target on a no-target verb is resolved in scope
-  (verbs.py:442) or dropped; `use` on a toon becomes `give` with give's
-  gates; the carried-key path re-enters `execute_command`, which
-  re-validates, and cannot loop (a still-locked target falls through to
-  the locked line).
-- **Growth.** Refusals and the seed's question are the planter's alone;
-  the husk keeps the planter's phrase (at most 120 characters, banlisted),
-  read later through the escaped card path; the parent room's description
-  names the planter.
-- **`live` frames.** Registered per toon by the receive loop, unregistered
-  only by the same sender (a takeover cannot unregister the new page),
-  never persisted, and a failed send is ignored.
-- **Presence.** `dreaming` lists other awake players and their room
-  titles, never the viewer or a dozing dreamer; `presence_changed` carries
-  an id the page never renders.
-- **Delete's other paths.** Letters to the deleted person go
-  (`private_to`); a letter they had taken is dropped by `delete_slot` and
-  then deleted; letters they wrote stay with the recipient (the NOTE
-  above).
-- **Logs.** `post` logs dreamer and thing names and a length, never the
-  text. No new route, no new dependency.
-- **World data.** The assembled world byte-matches its sources; the dream
-  patch is additive and its rehearsal ran every walkthrough with zero LLM
-  calls; `config.post` is validated (room must exist, tellings must be
-  strings); no URL, script or markup in any scoped data file.
+- **`give` declares `set_property`.** Everything dispatched under it is
+  engine-composed: `_handle_give` (a move, the authored `gives_mood` and
+  `gives` reward, a narrate), `_hand_to_player` (a move, a narrate) and
+  `file_parcel` (a move, `private_to`, `letter`, a narrate). Authored `give`
+  rules run under `effects.RULE_KINDS`, not the verb's set, and no model
+  output reaches `dispatch_effects` with `give`'s allowlist. The call-site
+  widening is gone.
+- **`open` with the key in hand.** `_execute_resolved(VERBS["use"], key,
+  target)` re-resolves both objects in scope, requires `use` among the key's
+  verbs and a thing as the target, and runs the authored `use` rule as if
+  typed; the recursion is bounded (the second `_handle_open` sees a state
+  other than `locked`, or falls through to the locked line).
+- **World-scoped `presence_changed` with `except`.** The WS filter checks
+  `except` before the room filter (ws.py:1244), so the leaver's own open page
+  skips it and cannot consume the away note; `take_note` also refuses to
+  clear the stamp for a toon no longer human-controlled. The payload is a
+  toon id the page never renders.
+- **Beats select at any length.** A long line naming an open beat now
+  advances it deterministically, and `topic_text` returns None for beats, so
+  a beat's payoff is never grounding for the model: less model exposure, not
+  more.
+- **The index page's new `{{place}}` uses.** Filled by `server.py:236-240`
+  with `html.escape(..., quote=True)` from `instance.json`, the operator's
+  own file.
+- **`config.post.keeper`** is validated against the world's toon ids at load;
+  the assembled world byte-matches its sources; the two new authored strings
+  carry no markup or URL.
+- **Page.** `showThinking` and `renderSnapshot` only clear transient lines;
+  door.js's new sentence is `textContent`; `.dreamer-note` is style only.
+- **Tests and logs.** The six scoped test files use fictional names; `post`
+  logs names and a length, never the text.
 
 ### Secrets, PII and the instance
 
-- **Credentials and addresses.** The values in
-  `~/.config/daydream/cloudflare.env`, the box's addresses (`hostname -I`,
-  `tailscale ip`), and the ids and hostnames in `instance/NOTES.md` were
-  compared against every added line from `4cef786` to HEAD without
-  printing. None appears. The box's hostname appears in the beta
-  rehearsal's playtest docs (outside these paths); it is already in 122
-  committed files (README, CLAUDE.md, `.env.example`), so that is not new.
-- **Names.** Every account, display and invitee name in the dev accounts
-  DB, and prod's (`prod account list`, `prod invite list`: only
-  `cli-operator`, no open invites), were compared the same way. The only
-  hits are `Peter`/`peter`: SECURITY.md's own carried text, and
-  `worlds/lost-hours/dreams/dream-2026-09-28/rehearsal.json:9`, where
-  `bin/game dream rehearse` recorded the pre-dream snapshot's absolute
-  path under the operator's home. The Unix account name is already in the
-  accepted-risk text and in five committed files (SPEC.md,
-  docs/playtests/BRIEF.md, tests/test_ops_units.py, the previous dream's
-  rehearsal record), so it is not flagged; a cheap tidy-up is for
-  `rehearse` to record the path relative to the data dir. Wren, Vex and
-  Halloran in the dream patch and walkthroughs are the beta rehearsal's
-  agent personas (docs/playtests/2026-09-28-beta-rehearsal/SUMMARY.md),
-  and the patch's toon ids are dev ids. No friend's name: prod holds no
-  player account.
-- **History.** The last three commits of the session-handling scoped
-  files (`ws.py`, `slots.py`, `play.py`) hold no token-shaped string.
-  `instance/` is still ignored. Players see the operator only as the
-  Night Warden in every scoped file.
+- Every added line from `43fba6b` to HEAD was compared, without printing,
+  against the values in `~/.config/daydream/cloudflare.env`, the box's
+  addresses (`hostname -I`, `tailscale ip`) and its hostname: no credential
+  value and no address. The hostname matched only SECURITY.md's own carried
+  accepted-risk text (it is the operator's Unix account name, already in 110
+  committed files), as the prior version did.
+- Added lines were scanned for email addresses, IPv4 and CGNAT addresses and
+  the operator's names: the only hits are SECURITY.md's prior text.
+- The last three commits of `slots.py`, `post.py`, `trace.py`, `absence.py`
+  and `door.js` hold no token-shaped string (the only keyword hits are
+  door.js's "set password" button label).
+- `instance/` is still ignored; the working tree was clean at the start of
+  the review; players see the operator only as the Night Warden in every
+  scoped file.
 
 ### Accepted Risks
 
@@ -262,6 +203,15 @@ docs/ADMIN-ROOT.md "Security posture", 2026-09-28):
   design).
 - **What friends type reaches the local LLM.** Role separation, length
   caps, banlists and strict output validation stand between them.
+
+Accepted in the 2026-09-29 codereview (CODEREVIEW.md):
+
+- **A village thing handed to a dozing dreamer** (`verbs._hand_to_player`,
+  the tuck-away branch) waits in their satchel until they rest; a page that
+  never returns holds it until `world rest-toon` or `account delete` sends
+  it home. Refusing it broke the arc contract (walkthrough players never
+  open a socket, so every walkthrough hand-over runs through the dozing
+  branch). BACKLOG `dozing-handover-of-village-things`.
 
 Carried register (from prior reviews; still open, not re-flagged):
 
@@ -306,11 +256,13 @@ Carried register (from prior reviews; still open, not re-flagged):
   behind ask rules.
 
 ---
-*Prior review (2026-09-28, paths, commit `4cef786`): 21 files covering the
-codereview fix pass and the second playtest's fixes and lines. It found
-0 BLOCK / 0 WARN / 2 NOTE: the prior WARN (account delete kept a player's
-private lines) was confirmed fixed, and the two NOTEs (a delete during a
-talk, the tailnet address in a test) are carried above. Full entry at
-`git show 5db3142:SECURITY.md`.*
+*Prior review (2026-09-29, paths, commit `43fba6b`): 48 files, the beta
+rehearsal's household layer (letters and parcels, hand-overs, who else is
+awake, traces and rosters, the away note, thinking frames, the typed plant)
+and the dream `dream-2026-09-28`, at WORLD_VERSION 1.9. It found 0 BLOCK /
+1 WARN / 4 NOTE: the WARN (uncapped letters read on every command) and two
+NOTEs (a parcel of an authored thing under `account delete`; the input log's
+second audience undisclosed) are resolved above, and the other two NOTEs are
+carried. Full entry at `git show 69760f7:SECURITY.md`.*
 
-<!-- SECURITY_META: {"date":"2026-09-29","commit":"43fba6bc6bc5f55dbc01004b265fdda924bd48c4","scope":"paths","scanned_files":["daydream/absence.py","daydream/api/slots.py","daydream/api/ws.py","daydream/collect.py","daydream/dialogue.py","daydream/drift.py","daydream/growth.py","daydream/live.py","daydream/llm/story_format.py","daydream/objects.py","daydream/parser.py","daydream/play.py","daydream/post.py","daydream/rules.py","daydream/skills/effects.py","daydream/story.py","daydream/toons.py","daydream/trace.py","daydream/verbs.py","daydream/version.py","tests/test_absence.py","tests/test_between_dreamers.py","tests/test_dialogue.py","tests/test_dozing.py","tests/test_growth.py","tests/test_linkify.py","tests/test_parser.py","tests/test_post.py","tests/test_story.py","tests/test_trace.py","tests/test_verbs.py","tests/test_ws_grow.py","web/assets/main.js","web/assets/style.css","web/index.html","worlds/lost-hours.json","worlds/lost-hours/arcs/00-prologue.json","worlds/lost-hours/arcs/07-letters.json","worlds/lost-hours/cast/bell-mott.json","worlds/lost-hours/cast/others.json","worlds/lost-hours/dreams/dream-2026-09-28/patch.json","worlds/lost-hours/dreams/dream-2026-09-28/rehearsal.json","worlds/lost-hours/regions/01-clocktower.json","worlds/lost-hours/regions/03-lane.json","worlds/lost-hours/regions/10-residents.json","worlds/lost-hours/walkthroughs/prologue-together.json","worlds/lost-hours/walkthroughs/quill-seed.json","worlds/lost-hours/world.json"],"block":0,"warn":1,"note":4} -->
+<!-- SECURITY_META: {"date":"2026-09-29","commit":"69760f7baca60dce17002d0d843efd0b572f610a","scope":"paths","scanned_files":["daydream/absence.py","daydream/api/slots.py","daydream/live.py","daydream/llm/story_format.py","daydream/post.py","daydream/skills/effects.py","daydream/story.py","daydream/toons.py","daydream/trace.py","daydream/verbs.py","tests/test_absence.py","tests/test_dozing.py","tests/test_post.py","tests/test_story.py","tests/test_trace.py","tests/test_verbs.py","web/assets/door.js","web/assets/main.js","web/assets/style.css","web/index.html","worlds/lost-hours.json","worlds/lost-hours/world.json"],"block":0,"warn":0,"note":4} -->
