@@ -1,0 +1,154 @@
+"""GitHub Actions, read from the shell (2026-09-29: CI had failed on every
+push for a day and nobody saw it, since the operator rarely opens
+github.com).
+
+    bin/game ci               the latest runs on main
+    bin/game ci watch [ref]   wait for the run of a commit (HEAD by default);
+                              exit 1 if it fails, so a red run is never silent
+    bin/game ci --line        one line for `bin/game status`
+
+`bin/game prod plan` says when main is red, `bin/game prod check` carries a
+CI line, and a publish watches its own push's run before it deploys
+(docs/runbooks/publish.md). It reads through the `gh` CLI, already
+authenticated on the box; without `gh` (or a repo without Actions) it says so
+and passes.
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+REPO = Path(__file__).resolve().parent.parent
+
+
+def _gh(*args: str, timeout: float = 30.0) -> str | None:
+    try:
+        r = subprocess.run(["gh", *args], cwd=REPO, capture_output=True, text=True,
+                           timeout=timeout)
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    return r.stdout if r.returncode == 0 else None
+
+
+def runs(branch: str = "main", limit: int = 5, sha: str | None = None) -> list[dict] | None:
+    """The newest runs on a branch (optionally only one commit's), newest
+    first, or None when GitHub cannot be asked. Through the REST API (`gh
+    api`), which any `gh` version speaks: older `gh run list` has no branch
+    or commit filter."""
+    query = f"branch={branch}&per_page={limit}" + (f"&head_sha={sha}" if sha else "")
+    out = _gh("api", f"repos/{{owner}}/{{repo}}/actions/runs?{query}")
+    if out is None:
+        return None
+    try:
+        got = json.loads(out or "{}")
+    except ValueError:
+        return None
+    if isinstance(got, list):  # already in our shape (the tests' fakes)
+        return got
+    shaped = [_shape(r) for r in (got.get("workflow_runs") or []) if isinstance(r, dict)]
+    return sorted(shaped, key=lambda r: r["createdAt"], reverse=True)  # newest first, always
+
+
+def _shape(r: dict) -> dict:
+    title = r.get("display_title") or ((r.get("head_commit") or {}).get("message") or "")
+    return {"databaseId": r.get("id"), "status": r.get("status"),
+            "conclusion": r.get("conclusion"), "headSha": r.get("head_sha", ""),
+            "displayTitle": title.splitlines()[0] if title else "",
+            "createdAt": r.get("created_at", ""), "url": r.get("html_url", "")}
+
+
+def state(run: dict) -> str:
+    """"passed", "failed", "running", or the conclusion as GitHub gives it."""
+    if run.get("status") != "completed":
+        return "running"
+    c = run.get("conclusion") or ""
+    return {"success": "passed", "failure": "failed", "timed_out": "failed",
+            "startup_failure": "failed"}.get(c, c or "unknown")
+
+
+def describe(run: dict) -> str:
+    return (f"{state(run)} at {str(run.get('headSha', ''))[:7]} "
+            f"({str(run.get('displayTitle', ''))[:70]})")
+
+
+def main_status(branch: str = "main") -> tuple[str, str]:
+    """(verdict, words) for the branch: verdict is "passed", "failed",
+    "running" or "unknown". A run in progress on top of a failed one says
+    both, so a red main is never hidden behind a new push."""
+    got = runs(branch, limit=5)
+    if got is None:
+        return "unknown", "GitHub not reachable (is `gh` installed and signed in?)"
+    if not got:
+        return "unknown", f"no runs on {branch}"
+    newest = got[0]
+    if state(newest) != "running":
+        return state(newest), describe(newest)
+    done = next((r for r in got if state(r) != "running"), None)
+    words = describe(newest)
+    if done is not None and state(done) == "failed":
+        words += f"; the last finished run {describe(done)}"
+    return "running", words
+
+
+def _head(ref: str) -> str:
+    return subprocess.run(["git", "-C", str(REPO), "rev-parse", ref], capture_output=True,
+                          text=True, check=True).stdout.strip()
+
+
+def watch(ref: str = "HEAD", branch: str = "main", appear_s: float = 180.0,
+          finish_s: float = 1200.0, poll_s: float = 15.0, say=print,
+          sleep=time.sleep) -> int:
+    """Wait for the run of `ref` on `branch` and report it: 0 passed, 1 failed
+    or timed out, 2 GitHub unreachable."""
+    sha = _head(ref)
+    waited = 0.0
+    run = None
+    while True:
+        got = runs(branch, limit=5, sha=sha)
+        if got is None:
+            say("ci: GitHub not reachable (is `gh` installed and signed in?)")
+            return 2
+        run = got[0] if got else None
+        if run is not None and state(run) != "running":
+            break
+        limit = appear_s if run is None else finish_s
+        if waited >= limit:
+            say(f"ci: no finished run for {sha[:7]} after {int(waited)} s"
+                + (f" ({run.get('url')})" if run else " (was it pushed?)"))
+            return 1
+        sleep(poll_s)
+        waited += poll_s
+    say(f"ci: {describe(run)}")
+    if state(run) != "passed":
+        say(f"ci: RED. See {run.get('url')} (`gh run view {run.get('databaseId')} --log-failed`); "
+            "fix it before publishing.")
+        return 1
+    return 0
+
+
+def main(argv: list[str] | None = None) -> int:
+    p = argparse.ArgumentParser(prog="bin/game ci", description=__doc__.split("\n")[0])
+    p.add_argument("--line", action="store_true", help="one line, for bin/game status")
+    sub = p.add_subparsers(dest="cmd")
+    w = sub.add_parser("watch", help="wait for a commit's run; exit 1 if it fails")
+    w.add_argument("ref", nargs="?", default="HEAD")
+    args = p.parse_args(argv)
+    if args.cmd == "watch":
+        return watch(args.ref)
+    verdict, words = main_status()
+    if args.line:
+        print(f"ci: {'RED: ' if verdict == 'failed' else ''}{words}")
+        return 0
+    got = runs(limit=8) or []
+    print(f"main: {verdict}: {words}")
+    for r in got:
+        print(f"  {describe(r)}  {r.get('createdAt', '')}")
+    return 1 if verdict == "failed" else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

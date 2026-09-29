@@ -943,6 +943,15 @@ def plan(ref: str) -> int:
         return 0
     pushed = git("branch", "-r", "--contains", sha)
     say("pushed: yes" if pushed else "pushed: not yet (a publish pushes first, through the review gate)")
+    # CI on main, so a red run is seen before anything ships (2026-09-29: it
+    # failed silently for a day).
+    from daydream import ci
+
+    verdict, words = ci.main_status()
+    say(f"ci on main: {words}")
+    if verdict == "failed":
+        say("  CI is RED on main: fix it before publishing (`bin/game ci`, then "
+            "`gh run view <id> --log-failed`)")
     base = rel.name if rel is not None else None
     if base is not None and subprocess.run(
             ["git", "-C", str(REPO), "merge-base", "--is-ancestor", base, sha],

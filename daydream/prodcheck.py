@@ -197,6 +197,16 @@ def check_instance(attached: str | None, served: str | None, flag_cookie: str | 
     return out
 
 
+def check_ci(verdict: str, words: str) -> Check:
+    """GitHub Actions on main: red fails the check, a run in progress or an
+    unreachable GitHub is a note (2026-09-29: CI failed silently for a day)."""
+    if verdict == "passed":
+        return Check("ci on main", True, words)
+    if verdict == "failed":
+        return Check("ci on main", False, words + " (`bin/game ci`)")
+    return Check("ci on main", True, words, warn_only=True)
+
+
 def check_release(release: str | None, head: str, behind: str) -> Check:
     if release is None:
         return Check("release", False, "none deployed")
@@ -360,4 +370,7 @@ def main() -> int:
     checks += run(target, awake=expect == "awake", flag=expect, cookie=cookie,
                   cookie_name=cookie_name)
     checks += timer_checks()
+    from daydream import ci
+
+    checks.append(_probe("ci on main", lambda: check_ci(*ci.main_status())))
     return report(checks)

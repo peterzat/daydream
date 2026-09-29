@@ -524,6 +524,10 @@ cmd_status() {
     fi
     echo "rundir: $RUNDIR"
     echo "live db: $LIVE_DB"
+    # CI on main, so a red run on GitHub is never silent (2026-09-29).
+    if [[ -x "$VENV_PY" ]]; then
+        timeout 20 "$VENV_PY" -m daydream.ci --line 2>/dev/null || true
+    fi
 }
 
 cmd_logs() {
@@ -955,6 +959,7 @@ case "${1:-}" in
     invite)        cmd_accounts "$@" ;;
     model-eval)    shift; cmd_model_eval "$@" ;;
     text-scan)     shift; _require_venv; exec "$VENV_PY" -m daydream.textscan "$@" ;;
-    "")            echo "usage: bin/game {up|up-all|deploy|down|status|logs|image-test|comfyui-up|comfyui-down|vllm-up|vllm-down|world|dream|play|prebake|account|invite|prod|edge|test|voice-samples|drift-samples|review|model-eval|text-scan}" >&2; exit 2 ;;
-    *)             echo "usage: bin/game {up|up-all|deploy|down|status|logs|image-test|comfyui-up|comfyui-down|vllm-up|vllm-down|world|dream|play|prebake|account|invite|prod|edge|test|voice-samples|drift-samples|review|model-eval|text-scan} (got: $1)" >&2; exit 2 ;;
+    ci)            shift; _require_venv; exec "$VENV_PY" -m daydream.ci "$@" ;;
+    "")            echo "usage: bin/game {up|up-all|deploy|down|status|logs|image-test|comfyui-up|comfyui-down|vllm-up|vllm-down|world|dream|play|prebake|account|invite|prod|edge|test|voice-samples|drift-samples|review|model-eval|text-scan|ci}" >&2; exit 2 ;;
+    *)             echo "usage: bin/game {up|up-all|deploy|down|status|logs|image-test|comfyui-up|comfyui-down|vllm-up|vllm-down|world|dream|play|prebake|account|invite|prod|edge|test|voice-samples|drift-samples|review|model-eval|text-scan|ci} (got: $1)" >&2; exit 2 ;;
 esac
