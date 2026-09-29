@@ -525,7 +525,10 @@ def test_main_js_renders_self_and_filters_others_with_empty_states():
         r = client.get("/assets/main.js")
     assert "snap.self" in r.text
     assert "t.id !== selfId" in r.text  # co-located toons exclude self
-    assert "your hands are empty" in r.text  # carrying empty state
+    # Empty hands say nothing (playtest 2026-09-29: "your hands are empty"
+    # was the first thing the eye found under "you carry").
+    assert 'renderObjects("inventory", lastInventory, null)' in r.text
+    assert "your hands are empty" not in r.text
     assert "emptyLine" in r.text
 
 
@@ -710,7 +713,7 @@ def test_index_html_has_help_leaf_covering_the_basics():
     assert "speak, friend" in r.text          # speaking
     assert "what you might do" in r.text      # clicking verbs + objects
     assert "ways from here" in r.text         # exits
-    assert "open the satchel" in r.text       # the satchel
+    assert "<em>your satchel</em>" in r.text  # the satchel, under you carry
     assert "leave the dream" in r.text        # leaving / picking a toon
     assert "<em>your dreamer</em>" in r.text  # the footer's name since accounts
     assert "switch toon" not in r.text        # retired with accounts (2026-09-27)

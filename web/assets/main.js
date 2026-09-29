@@ -358,7 +358,7 @@ function renderSnapshot(snap) {
   const hadInventory = inventorySeen;
   lastInventory = snap.inventory || [];
   inventorySeen = true;
-  renderObjects("inventory", lastInventory, "your hands are empty");
+  renderObjects("inventory", lastInventory, null); // empty hands say nothing
   // Something new in your hands glints, here and on the margin's index when
   // "you carry" is below the fold (playtest 2026-09-28b: a gift from a
   // resident landed out of sight).
@@ -376,6 +376,7 @@ function renderSnapshot(snap) {
   // Your Book of Stray Minutes (self only); the link shows once it exists.
   lastBook = snap.book || null;
   document.getElementById("book-toggle").classList.toggle("hidden", !lastBook);
+  if (lastBook) setBookCaption(lastBook);
   if (!document.getElementById("book-panel").classList.contains("hidden")) {
     renderBook(lastBook); // keep an open book live as minutes are found
   }
@@ -586,6 +587,19 @@ function renderTopics(others) {
       if (asked.has(label)) chip.title = "you've asked about this";
       chip.textContent = label;
       chip.onclick = () => {
+        if (stagedVerb) {
+          // A staged verb and a chip naming a thing it acts on: the verb, on
+          // that thing (playtest 2026-09-29: a staged verb, then a chip
+          // naming a thing on a shelf, asked the resident about the thing).
+          // Any other chip lets the verb go and asks.
+          const target = chipTarget(label);
+          if (target) {
+            onObjectClick(target.dataset.objectId,
+              (target.dataset.verbs || "").split(",").filter(Boolean), target.dataset.kind);
+            return;
+          }
+          clearStagedVerb();
+        }
         if (sendCommand("ask", t.id, label)) showPending();
       };
       row.appendChild(chip);
@@ -797,6 +811,9 @@ function clearStagedVerb(opts = {}) {
     .querySelectorAll("#scene .obj.obj-ungated")
     .forEach((o) => o.classList.remove("obj-ungated"));
   document
+    .querySelectorAll("#topics .topic-quiet")
+    .forEach((c) => c.classList.remove("topic-quiet"));
+  document
     .querySelectorAll("#scene .obj.obj-staged-dobj")
     .forEach((o) => o.classList.remove("obj-staged-dobj"));
 }
@@ -850,7 +867,7 @@ function clearSceneAndLog() {
   selfEl.appendChild(emptyLine("drifting..."));
   renderObjects("toons", [], "no one else is here");
   renderObjects("things", [], "nothing around you");
-  renderObjects("inventory", [], "your hands are empty");
+  renderObjects("inventory", [], null);
   lastInventory = [];
   inventorySeen = false;
   document.getElementById("verb-bar").innerHTML = "";
@@ -875,6 +892,21 @@ function clearSceneAndLog() {
   document.getElementById("slept-panel").classList.add("hidden");
 }
 
+const TOPIC_VERBS = new Set(["ask", "talk"]); // staged, a topic chip is what they want
+
+function chipTarget(label) {
+  // The scene's chip for the thing a topic label names (by the snapshot's
+  // in-scope aliases, less a leading article), when the staged verb can
+  // act on it; else null.
+  if (!stagedVerb || TOPIC_VERBS.has(stagedVerb)) return null;
+  const bare = (x) => String(x || "").toLowerCase().replace(/^(the|a|an)\s+/, "").trim();
+  const want = bare(label);
+  const ent = (entities || []).find((e) => e.kind !== "toon" && bare(e.alias) === want);
+  if (!ent) return null;
+  const el = document.querySelector(`#scene .obj[data-object-id="${CSS.escape(ent.object_id)}"]`);
+  return el && !el.classList.contains("obj-ungated") ? el : null;
+}
+
 function applyVerbGating() {
   // Dim + disable scene objects the staged verb can't apply to. Single-object
   // verbs (and step 1 of a two-object verb) gate by the object's own verb list
@@ -895,6 +927,13 @@ function applyVerbGating() {
     else applies = verbs.includes(stagedVerb);
     el.classList.toggle("obj-ungated", !applies);
     el.classList.toggle("obj-staged-dobj", !!isStagedDobj);
+  });
+  // With a verb staged, a topic chip stays lit when it names a thing the
+  // verb can act on (a touch then acts on it), or when the verb is asking;
+  // the rest go quiet.
+  document.querySelectorAll("#topics .topic-chip:not(.topic-more)").forEach((chip) => {
+    chip.classList.toggle("topic-quiet", !!stagedVerb && !TOPIC_VERBS.has(stagedVerb) &&
+      !chipTarget(chip.textContent));
   });
 }
 
@@ -1964,13 +2003,34 @@ document.getElementById("slept-panel").addEventListener("click", (e) => {
 });
 
 function setThreads(threads) {
-  // The satchel says how many threads you hold, so it is worth opening
-  // (playtest 2026-09-28b); an open satchel keeps its list live.
+  // The satchel's line says there is a thread to follow inside, so it is
+  // worth opening (playtest 2026-09-28b), in words rather than a count
+  // (playtest 2026-09-29: "open the satchel \u00b7 1 thread" read as a
+  // riddle); a new thread glints it a moment. An open satchel keeps its
+  // list live.
+  const grew = threads.length > lastThreads.length;
   lastThreads = threads;
-  document.getElementById("backpack-toggle").textContent = "open the satchel" +
-    (threads.length ? ` \u00b7 ${threads.length} thread${threads.length === 1 ? "" : "s"}` : "") +
-    " \u2192";
+  document.getElementById("satchel-note").textContent = threads.length === 1
+    ? "a thread to follow"
+    : threads.length ? `${threads.length} threads to follow` : "keepsakes and your journal";
+  if (grew) {
+    const satchel = document.getElementById("backpack-toggle");
+    satchel.classList.remove("glint");
+    void satchel.offsetWidth; // restart the glint
+    satchel.classList.add("glint");
+    carryGlintUntil = Date.now() + 6000;
+    setTimeout(refreshScrollCues, 6100);
+  }
   if (!document.getElementById("backpack-panel").classList.contains("hidden")) renderThreads(threads);
+}
+
+function setBookCaption(book) {
+  // The book beside the satchel says what it is for: the minutes found so
+  // far, or, before the first, that a few glint about each day.
+  document.getElementById("book-name").textContent =
+    (book.title || "your book").replace(/^the\s+/i, "");
+  document.getElementById("book-note").textContent = book.found === 1
+    ? "one found so far" : book.found ? `${book.found} found so far` : "a few glint about each day";
 }
 
 function renderThreads(threads) {

@@ -614,3 +614,75 @@ def test_a_drop_nobody_acts_in_shows_the_note_after_the_grace(tab, engines):
     page.evaluate("() => ws.close()")
     expect(page.locator("#dream-overlay")).to_have_text("the dream is sleeping...", timeout=4000)
     _assert_quiet(tab, engines)
+
+
+def test_you_carry_names_the_satchel_and_the_book_and_not_empty_hands(tab, engines):
+    """Playtest 2026-09-29: "your hands are empty" was the first line under
+    "you carry", "open the satchel · 1 thread" read as a riddle, and the book
+    beside it said nothing of what it was."""
+    page = _signed_in_with_a_dreamer(tab)
+    carry = page.locator("#carrying-region")
+    expect(carry).not_to_contain_text("empty")
+    expect(page.locator("#inventory")).to_be_hidden()  # nothing in your hands: nothing said
+    expect(page.locator("#backpack-toggle .carry-name")).to_have_text("your satchel")
+    expect(page.locator("#backpack-toggle .carry-sketch")).to_be_visible()
+    expect(page.locator("#satchel-note")).to_have_text("a thread to follow")
+    expect(page.locator("#book-name")).to_have_text("Book of Stray Minutes")
+    expect(page.locator("#book-note")).to_have_text("a few glint about each day")
+    page.locator("#backpack-toggle").click()
+    expect(page.locator("#backpack-panel")).to_be_visible()
+    expect(page.locator("#threads li")).to_have_count(1)
+    _assert_quiet(tab, engines)
+
+
+def _in_the_loft(tab: Tab):
+    """A dreamer standing in the loft with Tace and the little brass clock,
+    its chip on Tace's row (the room names the clock to the player)."""
+    from daydream import objects
+    page = _signed_in_with_a_dreamer(tab)
+    toon = next(t for t in toons.owned_toons(accounts.get_account("marlo")["id"]))
+    page.locator("#exit-bar button", has_text="up").click()
+    expect(page.locator("#room-title")).to_contain_text("Loft")
+    assert objects.get(toon.id).location_id == "r-loft"
+    expect(page.locator("#topics .topic-chip", has_text="the little brass clock")).to_be_visible()
+    sent: list[dict] = []
+    return page, sent
+
+
+def _record_frames(page, sent: list) -> None:
+    def on_ws(ws):
+        ws.on("framesent", lambda payload: sent.append(json.loads(payload)))
+    page.on("websocket", on_ws)
+
+
+def test_a_staged_verb_and_a_chip_naming_a_thing_act_on_the_thing(tab, engines):
+    """Playtest 2026-09-29: Wind staged, then a touch on Tace's "the little
+    brass clock" chip asked Tace about the clock instead of winding it."""
+    page, sent = _in_the_loft(tab)
+    _record_frames(page, sent)
+    page.reload()  # a fresh socket, so its frames are recorded
+    expect(page.locator("#room-title")).to_contain_text("Loft")
+    page.locator("#verb-bar button", has_text="Wind").click()
+    clock_chip = page.locator("#topics .topic-chip", has_text="the little brass clock")
+    expect(clock_chip).not_to_have_class(re.compile("topic-quiet"))
+    expect(page.locator("#topics .topic-chip", has_text="the great clock")).to_have_class(
+        re.compile("topic-quiet"))
+    clock_chip.click()
+    expect(page.locator("#chat")).to_contain_text("Not that one, friend")
+    commands = [f for f in sent if f.get("kind") == "command"]
+    assert [(c["verb"], c["dobj_id"]) for c in commands] == [("wind", "o-tace-hour-clock")]
+    _assert_quiet(tab, engines)
+
+
+def test_ask_staged_then_a_chip_still_asks(tab, engines):
+    page, sent = _in_the_loft(tab)
+    _record_frames(page, sent)
+    page.reload()  # a fresh socket, so its frames are recorded
+    expect(page.locator("#room-title")).to_contain_text("Loft")
+    page.locator("#verb-bar button", has_text="Ask").click()
+    expect(page.locator("#topics .topic-quiet")).to_have_count(0)
+    page.locator("#topics .topic-chip", has_text="the little brass clock").click()
+    expect(page.locator("#chat")).to_contain_text("You ask Tace about the little brass clock")
+    commands = [f for f in sent if f.get("kind") == "command"]
+    assert [(c["verb"], c["args"]) for c in commands] == [("ask", "the little brass clock")]
+    _assert_quiet(tab, engines)

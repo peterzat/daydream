@@ -137,10 +137,18 @@ of room narration takes a **drop cap** in `--amber`.
   clicked or typed (the server marks the line). Looking at someone sets their
   painted portrait into the card; a touch opens it whole (`#portrait-panel`).
 - **Marginalia groups:** `you` / `here with you` / `around you` / `you carry`.
-  Chips stay clickable. Each resident carries **ask-about topic chips**
+  Chips stay clickable. `you carry` lists what is in your hands only when
+  something is (no "your hands are empty"), then two margin sketches, each a
+  hand-lettered name over a line saying what it holds: **your satchel** ("a
+  thread to follow", or "keepsakes and your journal"; it glints when a new
+  thread arrives) and the **Book of Stray Minutes** ("3 found so far", or "a
+  few glint about each day"). No bare counts (playtest 2026-09-29). Each resident carries **ask-about topic chips**
   (`#topics`): authored answers are the default path, and the text box is for
   the unanticipated. An asked topic reads quieter (dashed) in its place; one
-  that just opened glows a while. Another player with no one at their page
+  that just opened glows a while. With a verb staged, a chip that names a
+  thing the verb acts on stays lit and acts on it (Wind, then "the little
+  brass clock", winds the clock); the rest go quiet, and Ask or Talk leaves
+  them all lit. Another player with no one at their page
   reads "(dozing)", drawn faint.
 - **Story panels:** the folio shows the village day and phase ("day 2 · dusk");
   the satchel opens the keepsakes spread (a village thing is tagged "goes home

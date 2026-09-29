@@ -340,6 +340,26 @@ body::before {
 }
 .satchel-link:hover { color: var(--sage-deep); }
 .satchel-link.hidden { display: none; }
+/* The satchel and the book under "you carry": a margin sketch and a
+ * hand-lettered name, with a line saying what each holds (playtest
+ * 2026-09-29). Nothing in your hands shows nothing, not "empty". */
+#inventory:empty { display: none; }
+.carry-item {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  margin-top: 6px; padding: 3px 4px 3px 0; text-align: left;
+  background: none; border: none; border-radius: 8px; cursor: pointer; color: var(--sage);
+}
+#inventory:empty + .carry-item { margin-top: 2px; }
+.carry-item.hidden { display: none; }
+.carry-sketch { flex: none; color: var(--sage); opacity: .9; }
+.carry-words { display: flex; flex-direction: column; min-width: 0; line-height: 1.2; }
+.carry-name {
+  align-self: flex-start; font-family: var(--hand); font-size: 1.15rem; color: var(--sage);
+  border-bottom: 1px dotted var(--sage);
+}
+.carry-note { font-family: var(--serif); font-style: italic; font-size: .8rem; color: var(--sage); opacity: .82; }
+.carry-item:hover .carry-name, .carry-item:hover .carry-sketch { color: var(--sage-deep); }
+.carry-item.glint { animation: carry-glint 1.6s ease-out 2; }
 
 /* ---------- action ribbon ---------- */
 .ribbon-wrap { margin-top: 12px; }
@@ -866,6 +886,9 @@ footer .logout:hover { text-decoration: underline; }
   font-family: var(--sans); font-size: .6rem; letter-spacing: .16em; text-transform: uppercase;
   color: var(--sage-deep); opacity: .8; margin-right: 2px;
 }
+/* A staged verb quiets the chips it can't use; one that names a thing the
+ * verb applies to stays lit and acts on that thing (playtest 2026-09-29). */
+.topic-chip.topic-quiet { opacity: .34; }
 .topic-chip {
   font-family: var(--serif); font-style: italic; font-size: .86rem; line-height: 1.25;
   color: var(--sage-deep); cursor: pointer;

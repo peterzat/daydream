@@ -96,11 +96,34 @@
         </div>
         <div class="mgroup" id="carrying-region">
           <div class="mlabel">you carry</div>
+          <!-- The things in your hands, only when there are some (playtest
+               2026-09-29: "your hands are empty" was the first thing the
+               eye found here, looking for the inventory). -->
           <div id="inventory" class="region-body"></div>
-          <button id="backpack-toggle" type="button" class="satchel-link"
-                  title="open your keepsakes">open the satchel &rarr;</button>
-          <button id="book-toggle" type="button" class="satchel-link hidden"
-                  title="your Book of Stray Minutes">open your book &rarr;</button>
+          <!-- The satchel and the book, sketched in the margin so the eye
+               finds them, each saying in a line what it holds. -->
+          <button id="backpack-toggle" type="button" class="carry-item"
+                  title="your satchel: keepsakes, the threads you're following, your journal">
+            <svg class="carry-sketch" width="28" height="28" viewBox="0 0 26 26" aria-hidden="true">
+              <path d="M5 11 C4.5 1.5 21.5 1.5 21 11" fill="none" stroke="currentColor" stroke-width="1.1" opacity=".65"/>
+              <rect x="3.5" y="10" width="19" height="13" rx="2.5" fill="currentColor" fill-opacity=".08" stroke="currentColor" stroke-width="1.2"/>
+              <path d="M3.5 12.5 H22.5 V15.5 C22.5 17.6 21 18.6 19 18.6 H7 C5 18.6 3.5 17.6 3.5 15.5 Z" fill="currentColor" fill-opacity=".16" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round"/>
+              <path d="M13 18.6 V21" stroke="currentColor" stroke-width="1.1" opacity=".7"/>
+              <rect x="11.5" y="16.6" width="3" height="3" rx=".5" fill="var(--paper)" stroke="currentColor" stroke-width="1"/>
+            </svg>
+            <span class="carry-words"><span class="carry-name">your satchel</span>
+              <span id="satchel-note" class="carry-note">keepsakes and your journal</span></span>
+          </button>
+          <button id="book-toggle" type="button" class="carry-item hidden"
+                  title="your Book of Stray Minutes">
+            <svg class="carry-sketch" width="28" height="28" viewBox="0 0 26 26" aria-hidden="true">
+              <path d="M13 7.5 C10 5.8 6.5 5.5 3 6.3 V20.5 C6.5 19.7 10 20 13 21.7 C16 20 19.5 19.7 23 20.5 V6.3 C19.5 5.5 16 5.8 13 7.5 Z" fill="currentColor" fill-opacity=".1" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>
+              <path d="M13 7.5 V21.7" stroke="currentColor" stroke-width="1" opacity=".7"/>
+              <path d="M5.5 10.2 C7.5 9.8 9.5 10 11 10.7 M5.5 13.2 C7.5 12.8 9.5 13 11 13.7 M15 10.7 C16.5 10 18.5 9.8 20.5 10.2" fill="none" stroke="currentColor" stroke-width=".8" opacity=".45"/>
+            </svg>
+            <span class="carry-words"><span id="book-name" class="carry-name">your book</span>
+              <span id="book-note" class="carry-note"></span></span>
+          </button>
         </div>
       </aside>
       <!-- The margin's thumb index: sections below the fold, a touch away
@@ -289,11 +312,12 @@
         <p class="help-note">the <em>ways from here</em> compass at the foot of the
           page lists every path out of a room. touch one to wander.</p>
         <div class="page-eyebrow">the satchel</div>
-        <p class="help-note"><em>open the satchel</em> lays out your keepsakes &mdash;
-          the things you carry, the threads you&rsquo;re following, and in time
-          the story of your dreams (or just ask <em>what now?</em>). stray
-          minutes glint about {{place}}, a few each day just for you; pick
-          them up and they settle into <em>your book</em>.</p>
+        <p class="help-note">under <em>you carry</em>, <em>your satchel</em> lays out
+          your keepsakes &mdash; the things you carry, the threads you&rsquo;re
+          following, and in time the story of your dreams (or just ask
+          <em>what now?</em>). stray minutes glint about {{place}}, a few each
+          day just for you; pick them up and they settle into the
+          <em>book</em> beside it.</p>
         <div class="page-eyebrow">waking</div>
         <p class="help-note"><em>leave the dream</em> lets your dreamer rest, and you
           can step back in whenever you like. touch your own name, under <em>you</em>,
