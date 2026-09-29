@@ -29,7 +29,7 @@ import re
 from collections.abc import Iterable
 from dataclasses import dataclass
 
-from daydream import db, objects
+from daydream import db, events, objects
 
 logger = logging.getLogger("daydream.heard")
 
@@ -221,11 +221,10 @@ def on_event(event) -> None:
     room = objects.get(event.room_id)
     if room is None:
         return
-    skip = event.payload.get("except")
     # Only those dreaming now: a rested player keeps their place but is not
     # there to hear it.
     hearers = [t.id for t in objects.contents(room.id, kind="toon")
-               if t.is_human_controlled and t.id != skip]
+               if t.is_human_controlled and not events.excepted(event.payload, t.id)]
     note(room.world_id, hearers, text)
 
 

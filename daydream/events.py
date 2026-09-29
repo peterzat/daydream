@@ -167,8 +167,11 @@ def fetch_since(
         sql += f" AND kind NOT IN ({','.join('?' * len(skip_kinds))})"
         params += list(skip_kinds)
     if recipient_for is not None:
+        # `except` is one toon id or a list of them (a gesture between two
+        # dreamers leaves both out of the room's telling).
         sql += (" AND (recipient_id IS NULL OR recipient_id = ?)"
-                " AND COALESCE(json_extract(payload_json, '$.except'), '') != ?")
+                " AND NOT EXISTS (SELECT 1 FROM json_each(payload_json, '$.except')"
+                " WHERE value = ?)")
         params += [recipient_for, recipient_for]
     sql += " ORDER BY seq"
     if limit is not None:
@@ -207,6 +210,13 @@ def forget_private(toon_id: str) -> int:
     never reused (AUTOINCREMENT), so only a gap is left."""
     return db.get_conn().execute(
         "DELETE FROM events WHERE recipient_id = ?", (toon_id,)).rowcount
+
+
+def excepted(payload: dict, toon_id: str | None) -> bool:
+    """Whether a room event's `except` (one toon id or a list) leaves this
+    toon out: they read their own telling instead."""
+    ex = payload.get("except") if isinstance(payload, dict) else None
+    return toon_id is not None and (ex == toon_id or (isinstance(ex, list) and toon_id in ex))
 
 
 def max_seq() -> int:

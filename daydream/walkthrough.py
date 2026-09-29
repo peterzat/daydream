@@ -181,7 +181,7 @@ async def run_step(run: Run, step: dict, *, honor_at: bool = True) -> None:
         heard.known_keys(world_id, a)
     said = [e.payload.get("text", "") for e in events.fetch_since(before)
             if e.kind == "narrate" and (e.recipient_id in (None, actor))
-            and e.payload.get("except") != actor]
+            and not events.excepted(e.payload, actor)]
     if "cmd" in step or "command" in step:
         run.transcript.append(f"> [{step.get('as', 'A')}] {label}")
         run.transcript.extend(f"  {t}" for t in said)

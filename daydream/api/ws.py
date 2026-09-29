@@ -1431,7 +1431,7 @@ async def _broadcast_loop(
             if event.recipient_id is not None:
                 if event.recipient_id != toon_id:
                     continue
-            elif event.payload.get("except") == toon_id:
+            elif events.excepted(event.payload, toon_id):
                 # The others-telling of this toon's own private moment.
                 continue
             else:
