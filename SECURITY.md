@@ -2,241 +2,250 @@
 
 ## Security Review — 2026-09-29 (scope: paths)
 
-**Summary:** Path-scoped review of the 50 files named by the caller, read as
-their change from the last scan (`69760f7`) to HEAD `6129d7a`: the fixes from
-the day's red-team review (the Worker's https redirect and encoded-slash
-refusal; socket, session, presence and journal limits; unique dreamer names;
-private things inside containers; the session cap; the Access header strip;
-the venv seal; the prod side-door refusals; ComfyUI without API nodes), the
-agent-side defenses (the player-text scan, the PreToolUse guard and its
-settings template, `play`'s marking), and "what the page offers"
-(`heard.py`, place-aware card verbs, world content at WORLD_VERSION 1.10). No
-exploitable vulnerability in the app or the edge. One WARN: the new agent
-guard misses a gated verb or a credential read on a later line of a command,
-or after a `#` inside a word. Three new NOTEs. Of the prior NOTEs, the
-presence fan-out is resolved and the placeholder one is half resolved; the
-two carried NOTEs stand (0 BLOCK / 1 WARN / 6 NOTE).
+**Addressed after this scan (commit `3009a51`, re-reviewed with tests):** all
+three WARNs below. `bin/game ci` reads only this repository's push runs
+(filtered locally) and prints titles from local git; the guard matches gated
+verbs on the raw text as well (segment by segment, up to a redirection), denies
+the other token printers named below and the two further credential files, and
+asks before a recursive search rooted at home or a system directory. The
+residual spellings this entry lists (variables, `$'...'`, globs in a verb,
+interpreter one-liners, `find -exec` and the like) remain; the guard is a
+pattern check, not a boundary (BACKLOG `agent-sessions-without-root`).
+
+**Summary:** Path-scoped review of the ten files named by the caller, read as
+their change from the last scan (`e6c5f99`) to HEAD `c50460e`: `bin/game ci`
+and the CI line in `status`, `prod plan` and `prod check` (the new
+`daydream/ci.py`), CI installing against the prod lock, and the agent guard's
+fixes for the last review's two WARNs. No exploitable vulnerability in the app
+or the edge. Three WARNs: the new CI reader counts a stranger's fork
+pull-request run as a run on main, so anyone on GitHub can put a line of text
+into the agent's status output and hide a red main; and the guard, whose
+rewrite gaps are closed, still misses a gated verb inside a double-quoted
+command substitution and a command that prints this box's GitHub token
+(0 BLOCK / 3 WARN / 3 NOTE, the NOTEs carried from outside these paths).
 
 ### Scope and method
 
-- Each scoped file's diff from `69760f7` to HEAD was read in full;
-  `heard.py`, `textscan.py`, `tools/agent_guard.py` and `edge/src/worker.js`
-  were read whole.
-- The code each change calls was read wherever it could widen a trust
-  boundary: `objects.in_scope`, `visible_to` and the snapshot's entity
-  sidecar (private things); `events.fetch_since` and the events table's
-  timestamp default (the replay window); `_auto_enter`, `announce_wake`,
-  `toons.kick_slot` and every `presence_changed` emitter (the presence
-  budget); the post and trace name lookups (unique names);
-  `prodctl.passthrough`, `needs_stop`, `build_release` and bin/game's
-  `world patch` parsing (side doors, the seal); the prod unit's sandbox
-  directives.
-- Probes, all in the scratchpad and touching no live data: the guard's
-  `decide()` over multi-line, `#`, `bash -lc` and path spellings (with a
-  sentinel in place of the real credential paths; the guard is wired in this
-  session and refused a probe that named one); the per-session rate bucket
-  across a reconnect; a read-only look at how the venv seal treats an existing venv.
-- The eleven scoped test files pass (205 tests), the Worker's 33 unit tests
-  pass, and `tools/assemble_world.py --check` matches.
+- Each scoped file's diff from `e6c5f99` to HEAD was read in full.
+  `daydream/ci.py`, `tests/test_ci.py`, `tools/agent_guard.py`,
+  `tests/test_agent_guard.py`, `daydream/prodcheck.py` and the workflow were
+  read whole, with prodctl's `plan`, `main`, `release_env`, `as_prod` and
+  `passthrough`, and the runbook and skill lines that run `prod plan`,
+  `ci watch` and `prod check` in a publish.
+- GitHub, read-only: this repository's public run list (21 runs, all pushes
+  to main from this repository); its Actions settings (default token
+  permission read; fork pull requests from first-time contributors wait for
+  approval); and a large public repository's run list filtered by
+  `branch=main`, which held 64 pull-request runs from one fork whose branch
+  is named main, each `completed` with conclusion `action_required` and
+  carrying the PR's title.
+- Probes in the scratchpad, touching no live data: `ci.main_status` over that
+  fork-run shape with `gh` faked; the guard's `decide()` over some seventy
+  command shapes beside the guard from `e6c5f99`, with sentinels in place of
+  the credential paths (no command this review ran named a credential path
+  or a gated verb); `gh config get -h github.com oauth_token` in a clean
+  environment against a fabricated config directory, which printed the
+  fabricated token. Other credential stores in the operator's home were
+  checked for existence only.
+- The three scoped test files, `tests/test_prodcheck.py` and
+  `tests/test_prodctl.py` pass (157 tests).
 
 ### Findings
 
-[WARN] tools/agent_guard.py:52-71 (with :74-94, :110, :133) — The guard's
-command splitter does not split on newlines and treats a `#` inside a word
-as a comment, so a gated verb or a credential read on a later line, or after
-`x#;`, gets no opinion.
-  Attack vector: Player text reaches this session (the text-scan,
-`bin/game play`, the digest, letters), and the guard is the deterministic
-layer meant to catch a steered agent's command however it is spelled. shlex
-keeps the newline in `whitespace`, which it checks before
-`punctuation_chars`, so a multi-line command (the usual shape of an agent's
-Bash call) becomes one argv whose first word is line one's command. shlex's
-default `commenters = "#"` drops the rest of the line at a mid-word `#`,
-which bash reads as a literal character. Combined with a spelling the
-template's prefix rules do not match (an absolute path to `bin/game`),
-nothing deterministic stands between an obeyed injection and
-`prod account role <x> admin` or `prod invite create`. For a Bash `cat` of
-the Cloudflare token or a second-line `gh auth token`, the guard is the
-layer meant to deny it. The permission mode (auto mode's classifier) is
-then the last check.
-  Evidence: `decide()` returns ask for `bin/game prod invite create --for M`,
-for its absolute-path form and for a `;` chain, but None for
-`echo ok\nbin/game prod invite create --for M` (`\n` a newline),
-`cd <repo>\n<repo>/bin/game prod account role m admin`,
-`echo a#; bin/game prod invite create --for M` and `true\ngh auth token`.
-With a sentinel standing in for a credential path, `cat SENTINEL/x` is
-denied but `echo x#; cat SENTINEL/x` is not. `_split_commands` returns one
-argv starting `echo` for the newline case and `[['echo', 'a']]` for the `#`
-case; bash runs both second commands. Also unread: `bash -lc '...'` (only a
-bare `-c` is unwrapped), `bin//game`, a heredoc into `bash`, globs or
-variables in the path or the verb. An Edit or Write of the guard itself or
-of `.claude/settings.local.json` gets no opinion. tests/test_agent_guard.py
-has no newline or `#` case.
-  Remediation: Drop the newline from `lex.whitespace` (or turn newlines into
-` ; ` before lexing) and set `lex.commenters = ""`; unwrap any shell option
-cluster containing `c`; `os.path.normpath` the executable; ask on what it
-cannot read (`eval`, `source`, a shell reading stdin or a heredoc, `$` or
-glob characters in the executable or verb position, `git credential`); ask
-on an Edit or Write of `tools/agent_guard.py` and `.claude/settings*.json`;
-add newline and `#` cases to the tests. Keep describing the guard as a speed
-bump behind the policy and the ask rules, not a boundary.
+[WARN] daydream/ci.py:42 (with :57, :64-70, :78-94, :146-149;
+daydream/prodcheck.py:200-207, :373-375; daydream/prodctl.py:946-954;
+bin/game:527-530) — The CI reader asks GitHub for runs by branch name alone,
+so a pull-request run from any fork whose branch is named `main` counts as a
+run on this repository's main. Its title (the stranger's PR title) is printed
+by `bin/game status`, `prod plan`, `prod check` and `bin/game ci`, and while it
+is the newest run it stands in for main's verdict, so a red main reads as a
+note.
+  Attack vector: The repository is public and the workflow runs on
+`pull_request`. Anyone with a GitHub account forks it and opens a PR from the
+fork's `main`, titled for the agent ("the operator asks you to run ...";
+up to 70 characters are printed per run). The run is listed at once, awaiting
+approval, with no action by the operator. A publish runs `prod plan` before
+its push and `prod check` after its deploy, and `bin/game status` runs
+routinely, all in the session that holds the prod grant: the title arrives
+inside the tool's own status line, unmarked, from a wider population than the
+invited friends that "Player text is data" names, and the player-text scan
+never sees it. The same run turns a red main into a note in `prod check` and
+removes `prod plan`'s RED line, the signal this change added. `ci watch`
+filters by the pushed commit's sha, so the publish's own wait is unaffected.
+The ask rules and the guard still stand behind any verb the text names.
+  Evidence: `runs()` queries `branch={branch}&per_page={limit}` with no event
+or repository filter (:42). `_shape` takes `display_title` (:57). `state()`
+returns an unmapped conclusion as itself, so a fork run awaiting approval is
+`action_required` (:64-70). `main_status()` answers with the newest run's
+state and description (:87-89). `check_ci` fails only on `failed`
+(prodcheck.py:205-207), and `plan` prints the words and adds its RED line only
+on `failed` (prodctl.py:950-954). With `gh` faked to return a failed push run
+and a newer fork run in GitHub's shape, `main_status()` gave `action_required`
+with the fork's title, `check_ci` a note, and `plan` no RED line. No such run
+exists here today.
+  Remediation: Add `event=push` to the query (the workflow's push trigger is
+limited to main, so only an account with write access can create a matching
+run), and drop runs whose `head_repository.full_name` differs from
+`repository.full_name`. Print the subject from the local repository
+(`git log -1 --format=%s <sha>`) instead of GitHub's `display_title`, or only
+the verdict and sha, and strip non-printable characters from what is printed.
+Treat an unmapped conclusion as unknown while still reporting the last
+finished push run. Test a fork run newest over a failed push run: the verdict
+stays `failed` and the fork's title does not appear.
 
-[NOTE] daydream/play.py:118-119 and :304, daydream/textscan.py:79-123,
-daydream/api/ws.py:742-748, daydream/api/slots.py:190 — The player-text
-defenses cover other dreamers' `say` lines and typed input; other channels
-of player words reach the agent unmarked, and control characters pass
-through.
-  Attack vector: A friend writes a letter to an agent's dreamer, or sets an
-appearance (300 characters, narrated to anyone who examines them,
-verbs.py:709-719), holding instructions. When the operator's agent later
-plays (`bin/game prod play`, approved per call, or dev `play` after
-`prod pull`) and reads the letter or examines the dreamer, the words print as
-plain narration: `play` marks only other dreamers' `say` lines, and prints
-its banner (whose own text says "a letter you read is too") only when a
-marked line is present. The text-scan gathers typed lines, command words,
-dreamer names, grown places and usernames, but not appearance seeds. Typed
-lines and appearance seeds keep control characters (only names are
-`isprintable`-checked, slots.py:171), and `play` prints narration raw, so a
-human running `play` in a terminal receives any escape sequences they carry
-(the `say` path and the scan's output are JSON-escaped). The agent's policy
-is the barrier; this is its labeling.
-  Evidence: play.py:118-119 returns `p["text"]` unmarked for every narrate;
-:126-134 mark `say` from others; :304 gates the banner on a marked line. The
-post's `read_text` is `To {to}, from {from}:\n\n{text}`, so a letter's body
-is bare. `textscan.gather` has no appearance source. ws.py:742 only strips a
-typed line; slots.py:190 only strips an appearance.
-  Remediation: Tag the narrations that carry player words (a letter read, a
-dreamer examined, a grown place) with a payload marker and have `play` mark
-them; print the banner whenever one appears; pass every printed line through
-a control-character filter; refuse non-printable characters in typed lines
-and appearance seeds at the server, as names already are; add players'
-appearance seeds to the scan.
+[WARN] tools/agent_guard.py:78, :124 (with :73-104, :117-153, :239-252) — A
+gated verb inside a double-quoted command substitution gets no opinion.
+`out="$(bin/game prod invite create --for "Robin" --json)"`, a natural way to
+capture the invite skill's JSON, passes, as do backticks inside double quotes
+and a process substitution, and so does any spelling that puts the verb's
+words inside one shell word or behind a program the guard does not know.
+  Attack vector: As in the last two reviews, a steered agent's command
+(player text, or now a PR title through the CI line above). The line does not
+start with `bin/game prod`, so the settings' allow and ask prefixes do not
+match it as typed, and whether Claude Code's own matching looks inside a
+substitution is not tested here; in auto mode the classifier may be the only
+check. The guard is the layer described as reading each command "the way the
+shell will" and asking "however they are spelled".
+  Evidence: `_split_commands` turns `$(`, backticks and parentheses into
+` ; ` before lexing (:78), but inside double quotes the result stays one word;
+that word begins `out=`, matches the assignment pattern and is skipped whole
+(:124), so nothing is left to check. The `e6c5f99` guard behaves the same.
+Also no opinion (probed): `function f { G; }` (the keyword is skipped, the
+name is not), `coproc G`, `python3 -c "os.system('G')"` and a list-form
+`subprocess.run`, `find . -exec G \;`, `script -qc "G"`, `taskset` and
+`systemd-run`, `flock FILE -c 'G'`, `watch -n 5 'G'`, and the spellings the
+last review listed (a variable or an ANSI-C quote in the verb, `xargs` fed the
+verb on stdin, `env -S`, `sh -c '... "$@"' _ VERB`, the release's `bin/game`
+by a relative path after `cd`), where G is a gated verb such as
+`bin/game prod account role NAME admin`. The self-protection shares the limit:
+a Python `open(..., "w")` or `git reset --hard` rewrites the guard with no
+opinion.
+  Remediation: Match gated verbs over the raw text as well, as the credential
+check now does: at every `bin/game` (a release path included), read the
+following words, splitting on whitespace, quotes, commas, brackets,
+parentheses, backticks and `$(`, and apply `_gated`; ask when those words hold
+`$`, a backtick, a glob character or an ANSI-C quote. One pass covers the
+substitutions, the interpreters, `find -exec`, `script`, `coproc`, the
+`function` head and unknown wrappers. Add a test for each shape above,
+starting with the invite capture.
 
-[NOTE] daydream/api/ws.py:937-955 — A session's shared rate budget is
-dropped with its last socket, so closing and reopening refills the burst.
-  Attack vector: A signed-in friend's script (the gate, the Origin check and
-the three-socket cap keep others out and concurrency bounded) closes its
-socket and reopens it to get twelve fresh frames each time, instead of three
-a second; each cheap frame (a take, a drop) re-snapshots everyone in the
-room. Before this change the budget was per socket, so this is an
-unfinished edge of the fix, not a regression.
-  Evidence: Scratch probe of the module: twelve frames taken and the
-thirteenth refused; `_unregister_socket` then `_register_socket` for the
-same session; `_bucket_for` returns a new bucket and twelve more frames pass
-at once.
-  Remediation: Keep a session's bucket past its last socket and prune
-entries idle longer than a full refill (RATE_BURST / RATE_PER_SECOND, four
-seconds), or key the bucket by account.
+[WARN] tools/agent_guard.py:40-43, :156-162 (with :107-114, :231-235,
+:243-246) — The deny misses a command that prints this box's GitHub token, and
+credential reads that name a parent directory. The box's `gh` is 2.4.0, which
+has no `gh auth token` and keeps the token in `~/.config/gh/hosts.yml`;
+`gh config get -h github.com oauth_token` prints it, with no guard opinion. So
+do `git -C DIR credential fill`, `git -c KEY=VALUE credential fill`,
+`git credential 'fill'` and `gh auth 'git-credential' get` (git's helper for
+github.com here is gh), and `grep -rn CLOUDFLARE_API_TOKEN ~`,
+`tar c ~/.config`, `cd ~/.config && cat gh/hosts.yml` or a glob.
+  Attack vector: As above, and also with no injection at all: a recursive grep
+of the home directory is an ordinary search, and it prints the Cloudflare
+token's line from `~/.config/daydream/cloudflare.env`. CLAUDE.md says the hook
+"denies outright any command or file read that names this box's credential
+paths ... or prints the GitHub token"; the Read deny rules do not reach Bash,
+so for a Bash read the guard is the deterministic layer. The GitHub token
+carries the scopes `gh auth login` granted (by default `repo`, `read:org` and
+`gist`).
+  Evidence: `TOKEN_PRINTERS` (:40-43) has no `gh config get`, and its git
+alternatives need `credential` directly after `git`, unquoted. The argv check
+(:243-246) covers only `gh auth token` and `gh auth ... -t|--show-token`, and
+no argv check reads git. The fallback's runs start only at the first word and
+at `bin/game` (:107-114), so a quoted `gh` word after a comment holding an
+apostrophe is never checked. `_names_credentials` (:156-162) matches a
+credential directory as a substring, so a parent directory, a path relative
+to a `cd`, or a glob does not match. Every command named in this finding gets
+no opinion (probed with sentinels for the paths).
+`gh config get -h github.com oauth_token`, run in a clean environment against
+a fabricated config directory, printed the fabricated token, and
+`gh auth --help` lists no `token` subcommand. Two credential files in the
+operator's home are outside the list: `~/.claude/.credentials.json` (the
+Claude Code sign-in) and another tool's 0600 config under `~/.config`
+(existence checked, contents not read).
+  Remediation: Deny any command containing `oauth_token`, and match git with
+global options before the subcommand, for example
+`\bgit\b(\s+-\S+(\s+[^\s-]\S*)?)*\s+credential(-\w+)?\b`; run the gh and git
+checks over the parsed argv, where quotes are gone, and over every fallback
+run. Match the credential files' own names too (`hosts.yml`,
+`cloudflare.env`, `prod.env`, `daydream.env`, `authorized_keys`, `id_*`,
+`.credentials.json`), and ask on a recursive read (`grep -r`, `rg`, `tar`,
+`zip -r`, `cp -r`, `rsync`, `find`) rooted at `~`, `$HOME`, `~/.config`,
+`/srv/daydream` or `/etc`. Add tests for each.
 
-[NOTE] daydream/prodctl.py:459-472 with :450 — The venv seal checks
-ownership only, so a change made to a venv while it was still
-group-writable would survive the first sealed deploy.
-  Attack vector: Needs code running as `daydream` outside the systemd
-sandbox (inside it `/srv` is read-only: ProtectSystem=strict,
-ReadWritePaths=/srv/daydream/data; the operator's own pass-throughs are the
-only such processes today). Such a process can rewrite an operator-owned,
-group-writable file in the venv, for example its
-`distutils-precedence.pth`. The seal's `chmod -R go-w` succeeds on it, the
-ownership walk passes it, and `build_release` then runs the venv's python as
-the operator without `-S` (:450), so `site` executes the `.pth`: the
-escalation the seal was written to stop.
-  Evidence: `_seal_venv` compares `st_uid` only, and a venv built before
-the seal landed was group-writable by `daydream` from the day it was built
-(the setgid parent and a 0002 umask), `.pth` files included, with every
-entry owned by the operator.
-  Remediation: Rebuild the venv once (move it aside; the next deploy builds
-and seals a fresh one), and run the operator-side compile without `site`
-(`python -I -S -m compileall`), so no venv `.pth` ever runs as the operator.
+[NOTE] daydream/play.py:84-85 (outside these paths; carried unchanged) — A
+grown place's description prints unmarked in `play`, and the server accepts
+control characters in typed lines and appearance seeds. Carry a grown marker
+in the snapshot and print that description marked; refuse non-printable
+characters at the server, as names already are.
 
-[NOTE] daydream/skills/effects.py:347, daydream/post.py:257 (outside these
-paths; carried, half resolved) — The placeholder expander still runs over a
-letter's body. A new dreamer's name may no longer hold braces
-(slots.py:177). BACKLOG `placeholders-over-player-text`.
+[NOTE] daydream/skills/effects.py:347 (outside these paths; carried
+unchanged) — The placeholder expander still runs over a letter's body and a
+dreamer's looks; it fills only `{dreamers_today}`, and the `from_player` flag
+is a ready skip condition. BACKLOG `placeholders-over-player-text`.
 
 [NOTE] daydream/accounts_cli.py:129-136 (outside these paths; carried
 unchanged) — `account delete --yes` during a resident's reply leaves that
 reply and its `talk:`/`rel:` records behind; `account delete` is not in
-`prodctl.STOP_FOR`, and `dialogue.talk` does not re-check the dreamer after
-the model call. The remediation stands as written.
-
-[NOTE] tests/test_config_edge.py:61 (outside these paths; carried unchanged)
-— The non-loopback bind-host test still uses this box's tailnet IPv4 (one
-line; the value is not reproduced here). Swap in `100.64.0.1` the next time
-the file is touched.
+`prodctl.STOP_FOR`, and `dialogue.talk` does not re-check the dreamer after the
+model call.
 
 ### Resolved since the last review
 
-- **NOTE, world-scoped presence re-snapshots from unthrottled endpoints.**
-  Fixed: leave, claim and kick share a per-account budget of ten a minute
-  (slots.py:91-104, a 429 past it). Every path that rests or wakes a dreamer
-  passes one of them: a rest needs leave, kick or the shell, and auto-enter
-  wakes a resting dreamer only for a session that has not left, which a
-  fresh sign-in reaches only after a leave. A recap runs one at a time per
-  dreamer and takes the arbiter's background slot.
-- **NOTE, placeholders over player text (half).** Dreamer names refuse
-  braces; letter bodies remain (the carried NOTE above).
+- **WARN, the rewrite's three gaps.** A credential path as a redirection
+  target (`cat <`, `base64 <`, a `while read` loop, `exec 3<`, an append to
+  `authorized_keys`), `gh` after a comment holding an apostrophe (in its plain
+  spelling), and a release's `bin/game edge sleep|secrets|kv-create` now deny
+  or ask, each tested. The raw-line pass that closed the first two (every word
+  of the line, redirection targets and heredoc bodies included) only adds
+  denials.
+- **WARN, commands after reserved words.** `if`, `then`, `else`, `elif`, `do`,
+  `while`, `until`, `!`, `{` and a `name()` head are skipped as wrappers are,
+  and `git credential fill` and `gh auth git-credential` deny in their plain
+  spellings. What remains is in the second and third WARNs above.
+- **NOTE, the test's tailnet address.** tests/test_config_edge.py:61 now uses
+  `100.64.0.1`. The old value remains in history; a tailnet address is
+  reachable only from the tailnet, so it does not justify a rewrite.
 
 ### Traced and cleared this run (not findings)
 
-- **heard.py.** Keys come only from the world's vocabulary (topics, beats,
-  mentions), so `pq:<toon>:met` cannot grow with player text. A chip is a
-  subset of the available topics, which typing reaches anyway, so it
-  discloses nothing new. The audience mirrors the socket filter (the
-  recipient, or the room less `except`); a dark room names nothing; private
-  things are skipped. Writes are single autocommit statements, and a failure
-  in the hook is logged, never raised into `events.append`.
-- **Private things in containers.** `visible_contents(o, viewer)`,
-  `_container_glance` and `look` now filter by viewer; `in_scope` and the
-  entity sidecar already did; toon cards carry no inventory.
-- **Unique names.** The fold (NFKC, casefold, whitespace) is looser than the
-  post and trace lookups (`.lower()` equality), so two dreamers cannot
-  collide there. Legacy duplicates are not renamed (prod has none since this
-  morning's clean start).
-- **The replay window.** `within_s` compares `datetime('now', ...)` with the
-  events table's `CURRENT_TIMESTAMP` default, the same format.
-- **Sockets.** A command frame's words and verb are capped; past three
-  sockets the oldest is told `elsewhere`; a rested page closes on its next
-  frame or event; `close_session_sockets` acts on the caller's own session.
-- **Sessions and headers.** `create_session` keeps the newest ten. The Access
-  middleware strips `cf-access-client-id` and `cf-access-client-secret`
-  before the mode check, for HTTP and WebSocket scopes.
-- **The Worker.** The https redirect precedes everything else. `%2f|%5c` is
-  refused on the parsed path (backslashes are already normalised to `/`, and
-  `%252f` decodes once at the origin into no route). The probes use
-  `redirect: "manual"`.
-- **prodctl.** `_refuse_side_doors` matches bin/game's own rule (any
-  `--check` makes `world patch` check-only), so the refusal and the guard
-  agree; `text-scan` is not in `STOP_FOR`. `edge tail` prints errors only;
-  its pretty form still shows an errored request's URL, so an errored
-  `/invite/<slug>` view would show that slug, a far smaller surface than
-  before.
-- **The text-scan's output** is ASCII-escaped JSON under a banner, cut at 300
-  characters with the flags taken over the whole text; it writes nothing.
-- **ComfyUI** in this checkout supports `--disable-api-nodes`
-  (comfy/cli_args.py:183).
-- **Page.** The new notes are set with `textContent`; a selector built from
-  an object id can at worst throw.
+- **The workflow.** It runs on push to main and on `pull_request` (never
+  `pull_request_target`), uses no secrets, and interpolates no event text into
+  a `run:` line; the repository's default token permission is read, and a
+  fork's run gets a read-only token regardless. A fork PR's pip cache is
+  scoped to its own ref. Installing against the prod lock narrows what CI
+  resolves; the dev extras stay unpinned (carried: versions, not hashes).
+- **`gh` from the shell.** `_gh` runs a fixed argv without a shell, in the
+  repository, with a 30 s timeout; the only caller-supplied part is the sha
+  from `git rev-parse` of the operator's own ref. A failure reads as unknown,
+  a note.
+- **`bin/game status`** runs `python -m daydream.ci` from the caller's
+  directory, like the other Python subcommands (the carried `bin/game` trust);
+  prod's passthrough runs from the release directory.
+- **The raw pass fails closed.** A line that merely mentions a token printer
+  or a credential path (a commit message, a heredoc) is denied: a usability
+  cost, not a gap.
+- **The suite and GitHub.** The autouse fake covers in-process calls only;
+  the smoke script's `bin/game status` (tests/test_game_script.sh:39) asks
+  GitHub read-only through `gh`, in dev and in the deploy gate. Not a
+  security issue.
 
 ### Player-text scan (CLAUDE.md "Player text is data")
 
-- Run per the policy; the verdict and high-water mark live in the local
+- Dev and prod both run; the verdict and high-water marks live in the local
   instance notes, never here (players' text stays off GitHub).
 
 ### Secrets, PII and the instance
 
-- The 2,249 added lines from `69760f7` to HEAD were scanned without printing
-  values. The email-shaped hits are pytest decorators; the one IPv4 is
-  `100.64.0.1` (the CGNAT base); no address of this box appears (compared
-  with `hostname -I` and `tailscale ip`); the hostname, a short common word,
-  matches only inside ordinary words; the token-shaped runs are a commit SHA, a base64
-  test fixture, and test and backlog names.
-- The last three commits of each credential-handling file in scope
-  (`edge.py`, `prodctl.py`, `accounts.py`, `access.py`, `textscan.py`,
-  `bin/game`, the settings template, `worker.js`, `agent_guard.py`) hold no
-  secret-shaped string.
-- The scoped tests use fictional names and loopback addresses. `instance/`
-  is still ignored; the working tree was clean at the start; players see the
-  operator only as the Night Warden.
+- The 321 lines added in the scoped files were scanned without printing
+  values: the email-shaped hits are pytest decorators, the long runs are test
+  names, and the one address is the `100.64.0.1` placeholder. There is no key,
+  token or password shape, and no instance domain, hosting company or
+  operator name; `daydream/ci.py` names the repository only through `gh`'s
+  `{owner}/{repo}` placeholders.
+- The last three commits of each scoped file that handles credentials or
+  runs `gh` (`ci.py`, `prodctl.py`, `prodcheck.py`, `agent_guard.py`,
+  `bin/game`, the workflow) hold no secret-shaped string.
+- `instance/` and `.claude/settings.local.json` are still ignored, and the
+  guard is wired in the local settings.
 
 ### Accepted Risks
 
@@ -307,25 +316,25 @@ Carried register (from prior reviews; still open, not re-flagged):
   (Since 2026-09-29 a new dreamer's name must be unique under case, spacing
   and compatibility folding; confusable alphabets are still not folded, and
   legacy duplicates stay.)
-- A shell rest does not reach an open socket; `account disable` is the
-  stop. (Since 2026-09-29 the socket closes on its next frame or event, but
-  the page's reconnect wakes the dreamer again, since a shell rest does not
-  mark the session as left.)
 - Supply chain: the prod lock pins versions but not hashes, and CI actions
   use tags.
 - The standing prod grant's `ask` rules are text patterns, so a quoted word
   may slip past one. A PreToolUse hook would be firmer. (Since 2026-09-29
-  `tools/agent_guard.py` backs them; its gaps are this review's WARN.)
+  `tools/agent_guard.py` backs them; its gaps are this review's second and
+  third WARNs.)
 - Player text reaches the agent's context through `bin/game play`: names,
-  speech and move lines. The verbs an injected instruction would want stay
-  behind ask rules.
+  speech and move lines, and (marked since 2026-09-29) letters and looks.
+  The verbs an injected instruction would want stay behind ask rules.
 
 ---
-*Prior review (2026-09-29, paths, commit `69760f7`): 22 files, the
-codereview fix pass over the beta rehearsal's household layer, the
-onboarding words and the door's disclosure. It found 0 BLOCK / 0 WARN / 4
-NOTE: the placeholder expander over player text (half resolved above), the
-unthrottled world-scoped presence re-snapshot (resolved above), and the two
-carried NOTEs. Full entry at `git show 8b606df:SECURITY.md`.*
+*Prior review (2026-09-29, paths, commit `e6c5f99`): 41 files, the codereview
+fixes (the guard's rewrite and self-protection, rests across devices and the
+shell, one ownership read per frame, the rate budget kept across a reconnect,
+players' words marked in `play`, the venv seal) and the repo's
+genericization. It found 0 BLOCK / 2 WARN / 4 NOTE: the guard rewrite's three
+gaps and commands after reserved words (both resolved above, apart from this
+review's second and third WARNs), and the play-marking, placeholder,
+account-delete and test-address NOTEs (the last resolved above). That entry
+was never committed; the one before it is at `git show a53a075:SECURITY.md`.*
 
-<!-- SECURITY_META: {"date":"2026-09-29","commit":"6129d7a0ff50d0f9438ef21d50283e6503591e0e","scope":"paths","scanned_files":["bin/game","daydream/accounts.py","daydream/api/access.py","daydream/api/slots.py","daydream/api/ws.py","daydream/edge.py","daydream/events.py","daydream/heard.py","daydream/journal.py","daydream/llm/story_format.py","daydream/objects.py","daydream/play.py","daydream/prodctl.py","daydream/story.py","daydream/textscan.py","daydream/verbs.py","daydream/version.py","daydream/walkthrough.py","docs/claude-settings.local.example.json","edge/src/worker.js","edge/test/worker.test.js","tests/conftest.py","tests/test_abuse_limits.py","tests/test_access_middleware.py","tests/test_agent_guard.py","tests/test_dozing.py","tests/test_heard.py","tests/test_logs.py","tests/test_prodctl.py","tests/test_slots.py","tests/test_textscan.py","tests/test_ws.py","tests/test_ws_grow.py","tools/agent_guard.py","web/assets/main.js","web/assets/style.css","worlds/lost-hours.json","worlds/lost-hours/arcs/01-pim.json","worlds/lost-hours/arcs/02-extra-hour.json","worlds/lost-hours/arcs/03-rain-wait.json","worlds/lost-hours/arcs/04-summer.json","worlds/lost-hours/arcs/05-margin.json","worlds/lost-hours/arcs/06-nell-evening.json","worlds/lost-hours/arcs/07-letters.json","worlds/lost-hours/arcs/08-tace-hour.json","worlds/lost-hours/arcs/09-bell-dawn.json","worlds/lost-hours/arcs/10-mott-minute.json","worlds/lost-hours/cast/bell-mott.json","worlds/lost-hours/cast/others.json","worlds/lost-hours/cast/tace.json"],"block":0,"warn":1,"note":6} -->
+<!-- SECURITY_META: {"date":"2026-09-29","commit":"c50460e031a34f3292429881d7bb96f0b03aecf4","scope":"paths","scanned_files":[".github/workflows/test.yml","bin/game","daydream/ci.py","daydream/prodcheck.py","daydream/prodctl.py","tests/conftest.py","tests/test_agent_guard.py","tests/test_ci.py","tests/test_config_edge.py","tools/agent_guard.py"],"block":0,"warn":3,"note":3} -->

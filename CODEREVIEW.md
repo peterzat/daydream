@@ -1,19 +1,25 @@
-## Review — 2026-09-29d (commit: dc9a532)
+## Review — 2026-09-29e (commit: 3009a51)
 
-**Summary:** Light review (documentation only) of one commit: the README rewritten around what daydream is for (an agentic-first codebase, frontier models as storytellers, local AI for the reflexes, Zork I as the engine's proof), a current UI screenshot replacing the pre-pivot one, and six new BACKLOG entries. Checked every relative link (all resolve), the stated counts against the world data (17 places, 9 residents, 6 guests, 11 arcs, 29 endings, 172 stray minutes on 12 pages, 38 walkthroughs) and the test tiers (short 1465, medium 2144), the claims about the two client modules, the Worker and the GPU against the code, and the screenshot for anything instance-specific (no browser chrome, URL or real name). No live-instance link, host name or hosting company appears; `tests/test_runbooks.py` (which reads the README's `bin/game prod` verbs) passes.
+**Summary:** Refresh review of seven commits over `5da5d66`: the repo made instance-neutral (no live-instance domain or hosting company outside `edge/wrangler.toml`, `ops/prod.env.example`, SPEC.md's contract and one unit-file comment; test fixtures on example.com), the README's open-weight line, lowercase title and admin paragraph, BACKLOG's credential guidance, CI installing against the prod lock (the two CI-only failures since 2026-09-28), `bin/game ci` with CI on main in `status`, `prod plan`, `prod check` and every publish, and two rounds of agent-guard fixes. Focus set read in full; `/security` ran twice (the fix cycles and guard at `e6c5f99`: 0 BLOCK / 2 WARN / 4 NOTE; the CI tooling and guard at `c50460e`: 0 BLOCK / 3 WARN / 3 NOTE carried), and every WARN was fixed and re-tested (`3009a51`). Tests: short 1493, medium 2172, Worker 38, `ruff check .` clean; a clean venv installed with `-c ops/requirements-prod.lock` passes the two tests that failed in CI.
 
 **External reviewers:**
-Skipped (light review).
+None configured.
 
 ### Findings
 
-No issues found.
+No open BLOCK or WARN.
 
-[NOTE] BACKLOG.md (`agent-sessions-without-root`) — describes the operator's agent user as holding the docker group; SECURITY.md's accepted-risk register already says so publicly, so this adds no disclosure.
+[NOTE] tools/agent_guard.py — residual spellings stay unread (variables and `$'...'` in a verb, globs, interpreter one-liners, `find -exec`, `script -c`); the guard is a pattern check, and the structural fix is BACKLOG `agent-sessions-without-root`. Its raw-text checks deny a line that merely quotes a token-printing command or credential path (commit messages go through a file).
+
+[NOTE] daydream/ci.py — reads through `gh api`, which prompts nothing and needs `gh` signed in; without it, status/plan/check say so and pass. The first push after this commit is the first CI run on the lock-pinned install.
+
+[NOTE] (security, carried) placeholders over letter bodies and appearances; `play` prints a grown place's description unmarked and the server keeps control characters in typed lines; the delete-during-talk gap.
 
 ### Fixes Applied
 
-None.
+- CI: `pip install -c ops/requirements-prod.lock -e '.[dev]'` (e73fd5b).
+- Security scan 1 (e6c5f99), guard: credential paths checked on the raw line (redirection targets), token printers denied on the raw line, a release's edge verbs ask, commands after shell keywords read, the test fixture's tailnet address replaced (c50460e).
+- Security scan 2 (c50460e): `bin/game ci` counts only this repository's pushes and prints local git's titles; the guard matches gated verbs on the raw text, denies the old gh's config read, `git -C/-c ... credential fill` and quoted forms, reads of Claude Code's and rclone's credential files, and asks before recursive searches rooted at home or a system directory (3009a51).
 
 ### Accepted Risks
 
@@ -26,9 +32,9 @@ Carried forward (the standing register lives in SECURITY.md):
 - Stored prompt-injection via captured NPC memory; bootstrap `$MODEL` heredoc;
   `cmd_logs` path component; qpeek clone; `world reset` rm -rf operator trust;
   CGNAT hardcoding in tailscale mode.
-- (security, carried) daydream/accounts_cli.py:129 — an account deleted while its player waits on a resident's reply leaves that reply and its `talk:`/`rel:` records behind. tests/test_config_edge.py:61 — a real tailnet address in a test fixture.
+- (security, carried) daydream/accounts_cli.py:129 — an account deleted while its player waits on a resident's reply leaves that reply and its `talk:`/`rel:` records behind.
 
 ---
-*Prior review (2026-09-29c, refresh, `b488335`): the playtest fixes, what the page offers, the edge rules, the availability limits, the security review's lows and the agent mitigations; 1 BLOCK / 17 WARN found and resolved in two cycles (the guard's tightening made by the main session after /codefix declined to edit its own guard; its credential denial kept strict by decision), 4 NOTE.*
+*Prior review (2026-09-29d, light, `dc9a532`): the README rewrite, a current screenshot and six BACKLOG entries; no issues, 1 NOTE.*
 
-<!-- REVIEW_META: {"date":"2026-09-29","commit":"dc9a532","reviewed_up_to":"dc9a5327da64fd82a838a0c10f93da255e7bb6d9","base":"origin/main","tier":"light","block":0,"warn":0,"note":1} -->
+<!-- REVIEW_META: {"date":"2026-09-29","commit":"3009a51","reviewed_up_to":"3009a517083d8973f00379896a40655ed033955f","base":"origin/main","tier":"refresh","block":0,"warn":0,"note":3} -->
