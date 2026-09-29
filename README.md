@@ -1,4 +1,4 @@
-# Daydream
+# daydream
 
 [![tests](https://github.com/peterzat/daydream/actions/workflows/test.yml/badge.svg)](https://github.com/peterzat/daydream/actions/workflows/test.yml)
 [![license: MIT](https://img.shields.io/badge/license-MIT-a3be8c.svg)](LICENSE)
