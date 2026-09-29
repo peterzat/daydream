@@ -59,6 +59,9 @@
        "folded": "Folded, it tucks under one arm.",
        "standing": "It stands against the highest shelf of the Hour Cellar now, reaching, just."}},
      "rules": [
+       {"on": "climb", "if": [{"prop": "state", "of": "@self", "eq": "standing"}, {"present": "t-umber"}], "do": [{"kind": "narrate", "to": "@actor", "text": "You reach for a rung, and stop. 'Not mine to climb,' Umber says, without looking up. 'Not yours either.'"}]},
+       {"on": "climb", "if": [{"prop": "state", "of": "@self", "eq": "standing"}], "do": [{"kind": "narrate", "to": "@actor", "text": "You reach for a rung, and stop. Whoever this climb belongs to, it isn't you."}]},
+       {"on": "climb", "do": [{"kind": "narrate", "to": "@actor", "text": "Folded, the ladder is only something to carry. It would have to stand against something first."}]},
        {"on": "use", "if": [{"prop": "state", "of": "@self", "eq": "standing"}],
         "do": [{"kind": "narrate", "to": "@actor",
                 "text": "It already stands against the highest shelf, reaching, just."}]},

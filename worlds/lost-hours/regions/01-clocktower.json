@@ -631,7 +631,36 @@
             }
           }
         ]
-      }
+      },
+      "rules": [
+        {
+          "on": "climb",
+          "if": [
+            {
+              "prop": "state",
+              "of": "o-tace-hour-ladder",
+              "eq": "standing"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "Wend's ladder reaches the highest shelf again, just, but the climb isn't yours to make."
+            }
+          ]
+        },
+        {
+          "on": "climb",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "The highest shelf is far above the lantern's reach, and nothing in the cellar is tall enough to climb it by."
+            }
+          ]
+        }
+      ]
     }
   ]
 }

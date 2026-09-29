@@ -81,6 +81,12 @@ class VerbSpec:
     iobj_default: dict | None = None
     # True for world-declared (data) verbs, which execute only through rules.
     world: bool = False
+    # A world verb any object of its valid kinds answers to, without listing
+    # it (smell, touch, knock: spec 2026-09-29 criterion 6).
+    universal: bool = False
+    # A world verb's no-rule answers, rotated so none repeats among the recent
+    # tellings; a line with {the_thing} is for a target, one without for none.
+    fail_variants: tuple[str, ...] = ()
 
 
 VERBS: dict[str, VerbSpec] = {
@@ -511,7 +517,9 @@ async def _execute_resolved(
         if dobj is None:
             _narrate(room_id, "You don't see that here.", recipient_id=actor_id)
             return
-        if spec.name not in objects.verbs_for(dobj):
+        if spec.name not in objects.verbs_for(dobj) and not (
+                spec.universal and (not spec.valid_dobj_kinds
+                                    or dobj.kind in spec.valid_dobj_kinds)):
             _narrate(room_id, f"You can't {spec.name} {_the(dobj)}.",
                      recipient_id=actor_id)
             return
@@ -567,7 +575,7 @@ async def _execute_resolved(
         # handler, so reaching here without one otherwise is a bug narrated
         # gently rather than raised.
         if spec.world:
-            _narrate(room_id, spec.fail_text or "Nothing happens.",
+            _narrate(room_id, _world_fail(actor, room_id, spec, dobj),
                      recipient_id=actor_id)
         else:
             _narrate(room_id, _DONT_UNDERSTAND, recipient_id=actor_id)
@@ -591,6 +599,25 @@ def _resolve_in_scope(actor_id: str, object_id: str | None) -> objects.Object | 
         if o.id == object_id:
             return o
     return None
+
+
+def _world_fail(actor: objects.Object, room_id: str, spec: VerbSpec,
+                dobj: objects.Object | None) -> str:
+    """A world verb's answer when no rule took it: one of its authored
+    variants that fits (naming the thing when there is one), in turn, else
+    its single fail text."""
+    fits = [v for v in spec.fail_variants if ("{the_thing}" in v.lower()) == (dobj is not None)]
+    if fits:
+        from daydream import variants
+
+        line = variants.pick(actor.world_id, f"fail:{spec.name}", fits, room_id=None)
+        if line:
+            if dobj is not None:
+                name = _the(dobj)
+                line = line.replace("{The_thing}", name[:1].upper() + name[1:])
+                line = line.replace("{the_thing}", name)
+            return line
+    return spec.fail_text or "Nothing happens."
 
 
 def _narrate(room_id: str, text: str, recipient_id: str | None = None) -> None:

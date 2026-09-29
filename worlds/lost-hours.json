@@ -255,6 +255,204 @@
     }
   },
   "verbs": {
+    "touch": {
+      "ui_hint": "Touch",
+      "description": "Touch or feel something. Target: the thing.",
+      "aliases": [
+        "feel"
+      ],
+      "needs_dobj": true,
+      "universal": true,
+      "valid_dobj_kinds": [
+        "thing"
+      ],
+      "fail_text": "Touch what?",
+      "fail_variants": [
+        "{The_thing} feels just as it looks, and the dream seems pleased you checked.",
+        "You lay a hand on {the_thing} for a moment. Nothing changes, which is its own small comfort.",
+        "You touch {the_thing}. It is exactly as real as it looks, which in a dream is a kindness."
+      ]
+    },
+    "smell": {
+      "ui_hint": "Smell",
+      "description": "Smell something. Target: the thing.",
+      "aliases": [
+        "sniff"
+      ],
+      "needs_dobj": true,
+      "universal": true,
+      "valid_dobj_kinds": [
+        "thing"
+      ],
+      "fail_text": "Smell what?",
+      "fail_variants": [
+        "{The_thing} smells faintly of dust and time, like most things in the village.",
+        "You breathe in close to {the_thing}: a whisper of something like old paper and evening air.",
+        "Up close, {the_thing} keeps its smell to itself."
+      ]
+    },
+    "knock": {
+      "ui_hint": "Knock",
+      "description": "Knock on something. Target: the thing.",
+      "aliases": [
+        "knock on",
+        "rap",
+        "rap on"
+      ],
+      "needs_dobj": true,
+      "universal": true,
+      "valid_dobj_kinds": [
+        "thing"
+      ],
+      "fail_text": "Knock on what?",
+      "fail_variants": [
+        "You knock on {the_thing}, politely. Nothing knocks back.",
+        "Knock, knock. {The_thing} keeps its own counsel.",
+        "You rap on {the_thing}. The sound goes a little way into the quiet and settles there."
+      ]
+    },
+    "push": {
+      "ui_hint": "Push",
+      "description": "Push something. Target: the thing.",
+      "aliases": [
+        "shove",
+        "press"
+      ],
+      "needs_dobj": true,
+      "universal": true,
+      "valid_dobj_kinds": [
+        "thing"
+      ],
+      "fail_text": "Push what?",
+      "fail_variants": [
+        "You push {the_thing}. It stays exactly where the dream put it.",
+        "{The_thing} doesn't budge, and doesn't seem to mind being asked."
+      ]
+    },
+    "pull": {
+      "ui_hint": "Pull",
+      "description": "Pull something. Target: the thing.",
+      "aliases": [
+        "tug",
+        "yank"
+      ],
+      "needs_dobj": true,
+      "universal": true,
+      "valid_dobj_kinds": [
+        "thing"
+      ],
+      "fail_text": "Pull what?",
+      "fail_variants": [
+        "You give {the_thing} a gentle tug. It stays where it belongs.",
+        "{The_thing} won't come any nearer, however kindly you pull."
+      ]
+    },
+    "climb": {
+      "ui_hint": "Climb",
+      "description": "Climb something. Target: the thing.",
+      "aliases": [
+        "scale",
+        "clamber",
+        "climb on",
+        "climb onto"
+      ],
+      "needs_dobj": true,
+      "universal": true,
+      "valid_dobj_kinds": [
+        "thing"
+      ],
+      "fail_text": "Climb what?",
+      "fail_variants": [
+        "You set a foot on {the_thing}, think better of it, and step down again.",
+        "{The_thing} isn't made for climbing, and the dream would rather you didn't."
+      ]
+    },
+    "light": {
+      "ui_hint": "Light",
+      "description": "Light something. Target: the thing.",
+      "aliases": [
+        "ignite",
+        "kindle"
+      ],
+      "needs_dobj": true,
+      "universal": true,
+      "valid_dobj_kinds": [
+        "thing"
+      ],
+      "fail_text": "Light what?",
+      "fail_variants": [
+        "You've nothing to light {the_thing} with, and it doesn't seem to want lighting.",
+        "Lighting things is Bell's trade, and {the_thing} isn't one of Bell's."
+      ]
+    },
+    "look behind": {
+      "ui_hint": "Look behind",
+      "description": "Look behind something. Target: the thing.",
+      "aliases": [
+        "peer behind",
+        "check behind",
+        "search behind"
+      ],
+      "needs_dobj": true,
+      "universal": true,
+      "valid_dobj_kinds": [
+        "thing"
+      ],
+      "fail_text": "Look behind what?",
+      "fail_variants": [
+        "There's nothing behind {the_thing} but a little dust and a little quiet.",
+        "You peer behind {the_thing}. Only shadow, and not an interesting one."
+      ]
+    },
+    "look under": {
+      "ui_hint": "Look under",
+      "description": "Look under something. Target: the thing.",
+      "aliases": [
+        "peer under",
+        "check under",
+        "search under",
+        "look beneath",
+        "look underneath"
+      ],
+      "needs_dobj": true,
+      "universal": true,
+      "valid_dobj_kinds": [
+        "thing"
+      ],
+      "fail_text": "Look under what?",
+      "fail_variants": [
+        "Nothing under {the_thing} but what it stands on, and a little dust.",
+        "You look under {the_thing}. Whatever was lost there has already been found."
+      ]
+    },
+    "dance": {
+      "ui_hint": "Dance",
+      "description": "Dance a few steps. No target.",
+      "aliases": [
+        "twirl",
+        "spin"
+      ],
+      "needs_dobj": false,
+      "fail_text": "You dance a few steps. The dream keeps time for you, softly.",
+      "fail_variants": [
+        "You dance a few steps. The dream keeps time for you, softly.",
+        "You twirl once. Somewhere a clock ticks along, a little behind the beat."
+      ]
+    },
+    "jump": {
+      "ui_hint": "Jump",
+      "description": "Jump or hop. No target.",
+      "aliases": [
+        "hop",
+        "leap"
+      ],
+      "needs_dobj": false,
+      "fail_text": "You jump. The dream lets you land gently, as it always does.",
+      "fail_variants": [
+        "You jump. The dream lets you land gently, as it always does.",
+        "You hop on the spot, and come down a little lighter."
+      ]
+    },
     "wind": {
       "ui_hint": "Wind",
       "description": "Wind a clock. Target: the clock.",
@@ -495,6 +693,41 @@
           "kind": "narrate",
           "to": "@actor",
           "text": "You sip from Linden's cup. The tea is stone cold, and somehow that is the loveliest thing about it."
+        }
+      ]
+    },
+    {
+      "on": "drink",
+      "if": [
+        {
+          "in": "r-cellar"
+        },
+        {
+          "present": "t-umber"
+        }
+      ],
+      "do": [
+        {
+          "kind": "narrate",
+          "to": "@actor",
+          "text": "Umber fills a chipped cup from the brown pot without asking how you take it. 'Cellar tea. Drink while warm,' she says, as if reading it off a label.",
+          "others": "Umber pours {actor} a cup of cellar tea from the brown pot."
+        },
+        {
+          "kind": "spawn_object",
+          "name": "chipped cup",
+          "location_id": "@actor",
+          "seed": "a plain teacup with a chip in its rim, holding Umber's strong cellar tea, still warm; a paper label tied to the handle says, in a small square hand, DRINK WHILE WARM",
+          "aliases": [
+            "cup",
+            "chipped teacup",
+            "cellar tea",
+            "umber's tea"
+          ],
+          "generated_by": "umber:tea",
+          "properties": {
+            "cellar_tea": true
+          }
         }
       ]
     },
@@ -14472,7 +14705,36 @@
             }
           }
         ]
-      }
+      },
+      "rules": [
+        {
+          "on": "climb",
+          "if": [
+            {
+              "prop": "state",
+              "of": "o-tace-hour-ladder",
+              "eq": "standing"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "Wend's ladder reaches the highest shelf again, just, but the climb isn't yours to make."
+            }
+          ]
+        },
+        {
+          "on": "climb",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "The highest shelf is far above the lantern's reach, and nothing in the cellar is tall enough to climb it by."
+            }
+          ]
+        }
+      ]
     },
     {
       "id": "o-paper-lantern",
@@ -17035,6 +17297,53 @@
         }
       },
       "rules": [
+        {
+          "on": "climb",
+          "if": [
+            {
+              "prop": "state",
+              "of": "@self",
+              "eq": "standing"
+            },
+            {
+              "present": "t-umber"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "You reach for a rung, and stop. 'Not mine to climb,' Umber says, without looking up. 'Not yours either.'"
+            }
+          ]
+        },
+        {
+          "on": "climb",
+          "if": [
+            {
+              "prop": "state",
+              "of": "@self",
+              "eq": "standing"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "You reach for a rung, and stop. Whoever this climb belongs to, it isn't you."
+            }
+          ]
+        },
+        {
+          "on": "climb",
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "Folded, the ladder is only something to carry. It would have to stand against something first."
+            }
+          ]
+        },
         {
           "on": "use",
           "if": [

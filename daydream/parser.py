@@ -60,6 +60,11 @@ _SELF_WORDS = frozenset({"me", "myself", "self", "yourself"})
 _SATCHEL_WORDS = frozenset({"satchel", "bag", "inventory", "pockets"})
 _ROOM_WORDS = frozenset({"room", "here", "around", "surroundings", "view", "place"})
 
+# Moving, said as people say it: "run east", "climb up", "head down the stairs".
+_MOVE_RE = re.compile(
+    r"^(?:run|walk|head|hurry|stroll|wander|jog|climb|step|go)\s+(?:back\s+)?"
+    r"(?P<dir>[a-z]+)(?:\s+(?:the\s+)?(?:stairs|steps|stair|ladder))?[.!]*$")
+
 # "both letters", "all the clocks", "every lantern": a group named by its noun.
 _GROUP = re.compile(r"(?i)^(?:both|each|every|all(?:\s+of)?)\s+(?:the\s+)?(?:of\s+the\s+)?(.+)$")
 
@@ -314,6 +319,11 @@ def _fast_path(actor_id: str, text: str, room: rooms.Room | None):
     # idle chatter for the LLM.
     if low in verbs.DIRECTION_WORDS:
         return [Parse("go", args=verbs.canonical_direction(low))]
+    moved = _MOVE_RE.match(low)
+    if moved and moved.group("dir") in verbs.DIRECTION_WORDS:
+        # "run east", "climb up", "head down the stairs": a way out, said as
+        # people say it (spec 2026-09-29 criterion 6).
+        return [Parse("go", args=verbs.canonical_direction(moved.group("dir")))]
     if room is not None and low in room.exits:
         return [Parse("go", args=low)]
 

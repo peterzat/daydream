@@ -34,8 +34,8 @@ from daydream.verbs import VERBS, VerbSpec
 logger = logging.getLogger(__name__)
 
 _STR_FIELDS = ("ui_hint", "description", "text_prompt", "fail_text")
-_BOOL_FIELDS = ("needs_dobj", "needs_iobj", "on_bar", "needs_text", "free_text")
-_LIST_FIELDS = ("aliases", "preps", "valid_dobj_kinds", "valid_iobj_kinds")
+_BOOL_FIELDS = ("needs_dobj", "needs_iobj", "on_bar", "needs_text", "free_text", "universal")
+_LIST_FIELDS = ("aliases", "preps", "valid_dobj_kinds", "valid_iobj_kinds", "fail_variants")
 _KIND_VALUES = frozenset({"thing", "toon", "room"})
 
 
@@ -72,6 +72,9 @@ def _to_spec(name: str, d: dict) -> VerbSpec:
         dobj_default=d.get("dobj_default") if isinstance(d.get("dobj_default"), dict) else None,
         iobj_default=d.get("iobj_default") if isinstance(d.get("iobj_default"), dict) else None,
         world=True,
+        universal=bool(d.get("universal", False)),
+        fail_variants=tuple(v for v in d.get("fail_variants", [])
+                            if isinstance(v, str) and v.strip()),
     )
 
 
