@@ -19,6 +19,7 @@
         "the stranger"
       ],
       "properties": {
+       "reactions": {"default": [{"text": "Pim's Nap yawns enormously and waves back, very slowly.", "others": "Pim's Nap yawns enormously at {actor} and waves back, very slowly."}, {"text": "Pim's Nap rubs one eye and smiles at you, rumpled.", "others": "Pim's Nap rubs one eye and smiles at {actor}, rumpled."}]},
         "wants": "hush",
         "gives_text": "The nap holds the hush to its cheek like a shell, and its yawn softens into a long, contented sigh. It is quieter now, but it still cannot quite sleep. It needs something slow to fall asleep to.",
         "gives_mood": "drowsy",

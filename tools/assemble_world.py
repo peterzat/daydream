@@ -98,7 +98,7 @@ PART_DIRS = ("regions", "cast", "arcs", "minutes")
 _LIST_SECTIONS = ("rules", "storylets", "collectibles", "threads")
 _DICT_SECTIONS = ("arcs", "facts", "pages", "verbs", "fuses", "daemons")
 _NAME_SECTIONS = ("flags", "player_flags", "player_counters")
-_CAST_KEYS = ("voice", "topics", "schedule", "schedule_text", "drift_pools")
+_CAST_KEYS = ("voice", "topics", "schedule", "schedule_text", "drift_pools", "reactions")
 
 
 def assemble(source: Path) -> tuple[dict, dict]:

@@ -18,6 +18,7 @@
         "figure with two shadows"
       ],
       "properties": {
+       "reactions": {"default": [{"text": "The Extra Hour tugs its autumn coat closer and nods, pleased to be noticed.", "others": "The Extra Hour tugs its autumn coat closer and nods to {actor}, pleased to be noticed."}, {"text": "The Extra Hour's two shadows wave back at you, a little out of time with it.", "others": "The Extra Hour's two shadows wave back at {actor}, a little out of time with it."}]},
         "declines_text": "The Extra Hour looks at what you're offering and shakes its head, gently, twice. It doesn't want to be given anything. It wants to be spent.",
         "topics": [
           {

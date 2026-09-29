@@ -19,6 +19,7 @@
         "the sleepy evening"
       ],
       "properties": {
+       "reactions": {"default": [{"text": "Nell's Evening nods to you, soft as a candle settling.", "others": "Nell's Evening nods to {actor}, soft as a candle settling."}, {"text": "Nell's Evening smiles at you, warm as a lit window.", "others": "Nell's Evening smiles at {actor}, warm as a lit window."}]},
         "wants": "windfall",
         "gives_text": "The evening tucks the windfall under its shawl and holds it there, warm, the way you hold a cup of tea you have forgotten to drink.",
         "gives_mood": "content",

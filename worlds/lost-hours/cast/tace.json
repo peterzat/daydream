@@ -2,6 +2,42 @@
   "comment": "Tace, the clockmaker (canon section 3). Voice sheet, topics, drift pools. Samples are flavor for the local model: gesture + one quoted line, narration never says 'you', narration pronouns they/them only. Never lines must not state the secret (how the gear left the clock) to the model.",
   "cast": {
     "t-tace": {
+    "reactions": {
+      "hug": [
+        {
+          "text": "Tace blinks behind their spectacles, then pats your back twice, the way you'd settle a pendulum. 'There now, friend.'",
+          "others": "Tace blinks behind their spectacles, then pats {actor}'s back twice, the way you'd settle a pendulum."
+        },
+        {
+          "text": "Tace sets the tweezers down first, carefully, and only then hugs you back. 'Mind the little wheels.'",
+          "others": "Tace sets the tweezers down first, carefully, and only then hugs {actor} back."
+        }
+      ],
+      "thank": [
+        {
+          "text": "Tace nods over the bench without looking up. 'Nothing to thank, friend. It was a small repair.'",
+          "others": "Tace nods over the bench at {actor}'s thanks without looking up."
+        },
+        {
+          "text": "Tace pushes their spectacles up into their hair. 'Kept and wound, friend. Thank you.'",
+          "others": "Tace pushes their spectacles up into their hair and nods to {actor}."
+        }
+      ],
+      "default": [
+        {
+          "text": "Tace lifts the tweezers an inch in greeting and goes back to the wheel.",
+          "others": "Tace lifts the tweezers an inch toward {actor} and goes back to the wheel."
+        },
+        {
+          "text": "Tace nods once, the small nod of someone counting beats. 'Friend.'",
+          "others": "Tace nods once at {actor}, the small nod of someone counting beats."
+        },
+        {
+          "text": "Tace answers with a crinkle behind their spectacles, and a tick later, a smile.",
+          "others": "Tace answers {actor} with a crinkle behind their spectacles, and a tick later, a smile."
+        }
+      ]
+    },
       "voice": {
         "pronouns": "they/them",
         "role": "the clockmaker, in the loft",

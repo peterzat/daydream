@@ -18,6 +18,7 @@
         "the margin afternoon"
       ],
       "properties": {
+       "reactions": {"default": [{"text": "The Margin Afternoon doodles a small wave in the air with one finger.", "others": "The Margin Afternoon doodles a small wave in the air at {actor} with one finger."}, {"text": "The Margin Afternoon looks up from somewhere far away and smiles at you.", "others": "The Margin Afternoon looks up from somewhere far away and smiles at {actor}."}]},
         "declines_text": "The Afternoon looks at what you're offering the polite way you'd look at a sum, and hands it back. It's still thinking about its drawing.",
         "voice": {
           "pronouns": "it/its",

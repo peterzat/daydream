@@ -18,6 +18,7 @@
         "figure under the awning"
       ],
       "properties": {
+       "reactions": {"default": [{"text": "The Rain-Wait shakes a few drops from its sleeve and nods.", "others": "The Rain-Wait shakes a few drops from its sleeve and nods to {actor}."}, {"text": "The Rain-Wait smiles at you the way you'd smile at someone under the same awning.", "others": "The Rain-Wait smiles at {actor} the way you'd smile at someone under the same awning."}]},
         "declines_text": "The Rain-Wait looks at what you're holding, politely, the way you listen to the wrong story. It shakes its head, and a few drops fly from the awning. 'That's not the end,' it says.",
         "topics": [
           {

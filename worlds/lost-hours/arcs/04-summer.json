@@ -16,6 +16,7 @@
         "sun-bleached figure"
       ],
       "properties": {
+       "reactions": {"default": [{"text": "Marram lifts a sandy hand to you, and for a breath the air smells of salt.", "others": "Marram lifts a sandy hand to {actor}, and for a breath the air smells of salt."}, {"text": "Marram squints and smiles at you, as if the sun were in its eyes.", "others": "Marram squints and smiles at {actor}, as if the sun were in its eyes."}]},
         "declines_text": "Marram turns what you offer over in its sandy hands, then gives it back with a small, salty smile. That isn't the part of its name that went missing.",
         "voice": {
           "pronouns": "it/its",

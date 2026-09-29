@@ -249,6 +249,13 @@ VERBS: dict[str, VerbSpec] = {
         description="Move through an exit. Args: a direction (e.g. 'north').",
         allowed_effects=frozenset(),
     ),
+    "gesture": VerbSpec(
+        name="gesture", ui_hint="Gesture",
+        description="A gesture at someone or something, or at no one: hug, wave, "
+                    "thank, bow, nod, smile, wink. Target: optional. Args: the gesture.",
+        valid_dobj_kinds=frozenset({"toon", "thing"}),
+        allowed_effects=frozenset({"narrate"}),
+    ),
     "inventory": VerbSpec(
         name="inventory", ui_hint="Inventory",
         description="List what you're carrying. No target.",
@@ -1613,6 +1620,25 @@ async def _handle_ask(actor, room_id, dobj, iobj, args, spec) -> None:
     story.ask(actor, dobj, topic, room_id)
 
 
+async def _handle_gesture(actor, room_id, dobj, iobj, args, spec) -> None:
+    """A gesture the room sees (daydream/gestures.py; spec 2026-09-29
+    criterion 2). A gesture meant for someone that names no one aims at the
+    one other person here, and says so."""
+    from daydream import gestures
+
+    name = (args or "").strip().lower()
+    gesture = name if name in gestures.GESTURES else gestures.WORDS.get(
+        name.split()[0] if name else "", "gesture")
+    target = dobj
+    if target is None and not gestures.GESTURES[gesture][2]:
+        others = [o for o in objects.in_scope(actor.id)
+                  if o.kind == "toon" and o.id != actor.id]
+        if len(others) == 1:
+            target = others[0]
+            _narrate(room_id, f"({target.name})", recipient_id=actor.id)
+    gestures.perform(actor, room_id, gesture, target)
+
+
 _ENGINE_HANDLERS = {
     "ask": _handle_ask,
     "look": _handle_look,
@@ -1634,6 +1660,7 @@ _ENGINE_HANDLERS = {
     "write": _handle_write,
     "go": _handle_go,
     "inventory": _handle_inventory,
+    "gesture": _handle_gesture,
 }
 
 

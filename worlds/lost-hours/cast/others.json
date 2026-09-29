@@ -236,6 +236,42 @@
           "Fen feeds the little stove one careful stick and closes the stove door softly.",
           "Fen tilts her blue postal cap back and surveys the pigeonholes like a gardener surveying rows."
         ]
+      },
+      "reactions": {
+        "hug": [
+          {
+            "text": "Fen stamps nothing, for once, and hugs you back. 'Delivered by hand. My favorite service.'",
+            "others": "Fen stamps nothing, for once, and hugs {actor} back. 'Delivered by hand. My favorite service.'"
+          },
+          {
+            "text": "Fen tucks her pencil behind her ear to free both hands, and hugs you briskly. 'Received with thanks.'",
+            "others": "Fen tucks her pencil behind her ear to free both hands, and hugs {actor} briskly."
+          }
+        ],
+        "thank": [
+          {
+            "text": "Fen taps a stack of letters square. 'Noted, filed, and very welcome.'",
+            "others": "Fen taps a stack of letters square at {actor}'s thanks. 'Noted, filed, and very welcome.'"
+          },
+          {
+            "text": "Fen peers over her reading glasses and smiles. 'First class, that.'",
+            "others": "Fen peers over her reading glasses at {actor} and smiles. 'First class, that.'"
+          }
+        ],
+        "default": [
+          {
+            "text": "Fen lifts her pencil in salute and tucks it back behind her ear.",
+            "others": "Fen lifts her pencil to {actor} in salute and tucks it back behind her ear."
+          },
+          {
+            "text": "Fen waves you through like a letter with the right postage.",
+            "others": "Fen waves {actor} through like a letter with the right postage."
+          },
+          {
+            "text": "Fen nods briskly and taps an envelope on the counter, which is her hello.",
+            "others": "Fen nods briskly at {actor} and taps an envelope on the counter."
+          }
+        ]
       }
     },
     "t-umber": {
@@ -531,6 +567,42 @@
           "Umber lowers herself onto the cellar stool with a small creak, and the lantern steadies.",
           "Umber glances once toward the shadows above the highest shelf, then very deliberately at something else."
         ]
+      },
+      "reactions": {
+        "hug": [
+          {
+            "text": "Umber allows it, and pats your arm twice. 'Hugged. Handle with care.'",
+            "others": "Umber allows {actor}'s hug, and pats {actor} twice on the arm. 'Hugged. Handle with care.'"
+          },
+          {
+            "text": "Umber sets her pen down first, then returns the hug, briefly and exactly. 'Kept. Keep warm.'",
+            "others": "Umber sets her pen down first, then returns {actor}'s hug, briefly and exactly."
+          }
+        ],
+        "thank": [
+          {
+            "text": "Umber writes a small label and doesn't show you. 'Thanks, received. Store somewhere dry.'",
+            "others": "Umber writes a small label at {actor}'s thanks and doesn't show it. 'Thanks, received. Store somewhere dry.'"
+          },
+          {
+            "text": "Umber inclines her head, very slightly, the way she'd set a jar down. 'Welcome. Mind the step.'",
+            "others": "Umber inclines her head to {actor}, very slightly, the way she'd set a jar down."
+          }
+        ],
+        "default": [
+          {
+            "text": "Umber turns a jar slowly toward you, which may be a greeting.",
+            "others": "Umber turns a jar slowly toward {actor}, which may be a greeting."
+          },
+          {
+            "text": "Umber nods once, without hurrying it. 'Seen.'",
+            "others": "Umber nods once at {actor}, without hurrying it. 'Seen.'"
+          },
+          {
+            "text": "Umber's pen pauses over a label. 'And to you. Keep upright.'",
+            "others": "Umber's pen pauses over a label as {actor} greets her. 'And to you. Keep upright.'"
+          }
+        ]
       }
     },
     "t-sorrel": {
@@ -753,6 +825,42 @@
           "Sorrel shoulders the long net, then sets it down again, in no rush at all.",
           "Sorrel runs a thumb along the soft grey mesh of the net, checking for snags.",
           "Sorrel hums something low and tuneless, like wind in long grass."
+        ]
+      },
+      "reactions": {
+        "hug": [
+          {
+            "text": "Sorrel shifts the long net to one shoulder and hugs you back, warm as the last of an afternoon. 'Fair and mild, then.'",
+            "others": "Sorrel shifts the long net to one shoulder and hugs {actor} back. 'Fair and mild, then.'"
+          },
+          {
+            "text": "Sorrel laughs, low, and pats your back the way you'd pat down tall grass. 'Clearing up nicely, you are.'",
+            "others": "Sorrel laughs, low, and pats {actor}'s back the way you'd pat down tall grass."
+          }
+        ],
+        "thank": [
+          {
+            "text": "Sorrel touches the brim of their hat. 'No need. The wind did most of it.'",
+            "others": "Sorrel touches the brim of their hat to {actor}. 'No need. The wind did most of it.'"
+          },
+          {
+            "text": "Sorrel leans on the net's long pole and nods. 'Thanks keep well out here, like good weather.'",
+            "others": "Sorrel leans on the net's long pole and nods to {actor}."
+          }
+        ],
+        "default": [
+          {
+            "text": "Sorrel lifts the long net an inch in greeting, slow as a cloud deciding.",
+            "others": "Sorrel lifts the long net an inch toward {actor}, slow as a cloud deciding."
+          },
+          {
+            "text": "Sorrel nods from under their hat brim. 'Settled, with a light breeze of company.'",
+            "others": "Sorrel nods to {actor} from under their hat brim."
+          },
+          {
+            "text": "Sorrel smiles, the kind that comes on slowly, like a clear evening.",
+            "others": "Sorrel smiles at {actor}, the kind that comes on slowly, like a clear evening."
+          }
         ]
       }
     },
@@ -1026,6 +1134,42 @@
           "Linden lifts the kettle off the hob the moment the muttering starts.",
           "Linden flicks the tea towel over one shoulder and surveys the room, pleased.",
           "Linden rewrites a chalk name on the board of room keys, neater than before."
+        ]
+      },
+      "reactions": {
+        "hug": [
+          {
+            "text": "Linden hugs you back and holds on a moment, then steps away to see you're warm. 'There, pet. Tea after.'",
+            "others": "Linden hugs {actor} back and holds on a moment, then steps away to see they're warm."
+          },
+          {
+            "text": "Linden folds you into a hug that smells of bergamot and clean towels. 'Sit, lamb. The kettle's nearly there.'",
+            "others": "Linden folds {actor} into a hug that smells of bergamot and clean towels."
+          }
+        ],
+        "thank": [
+          {
+            "text": "Linden waves a tea towel at the thanks. 'Oh, go on. Have a cup and thank me after.'",
+            "others": "Linden waves a tea towel at {actor}'s thanks. 'Oh, go on. Have a cup and thank me after.'"
+          },
+          {
+            "text": "Linden plumps a cushion that didn't need it, pleased. 'Anytime, pet. Anytime at all.'",
+            "others": "Linden plumps a cushion that didn't need it, pleased with {actor}'s thanks."
+          }
+        ],
+        "default": [
+          {
+            "text": "Linden waves back with a teaspoon still in her hand.",
+            "others": "Linden waves back at {actor} with a teaspoon still in her hand."
+          },
+          {
+            "text": "Linden nods you toward the kettle, which is her way of saying hello and sit down at once.",
+            "others": "Linden nods {actor} toward the kettle, which is her way of saying hello and sit down at once."
+          },
+          {
+            "text": "Linden smiles and sets out one more cup.",
+            "others": "Linden smiles at {actor} and sets out one more cup."
+          }
         ]
       }
     },
@@ -1347,6 +1491,42 @@
           "Quill touches a brass bob to still the swing, then lets the swing begin again.",
           "Quill pauses at the orchard arch and breathes in the six o'clock light."
         ]
+      },
+      "reactions": {
+        "hug": [
+          {
+            "text": "Quill tugs his hat brim down over his ears, then hugs you back, a little muddy. 'Oh. Well. A hug grows on you.'",
+            "others": "Quill tugs his hat brim down over his ears, then hugs {actor} back, a little muddy."
+          },
+          {
+            "text": "Quill sets the watering can down so carefully you'd think it was asleep, and returns the hug.",
+            "others": "Quill sets the watering can down so carefully you'd think it was asleep, and returns {actor}'s hug."
+          }
+        ],
+        "thank": [
+          {
+            "text": "Quill straightens a trellis that was already straight. 'Oh, thank the garden. I only water it.'",
+            "others": "Quill straightens a trellis that was already straight at {actor}'s thanks."
+          },
+          {
+            "text": "Quill ducks under his hat brim. 'Thanks take root, you know. Give it a season.'",
+            "others": "Quill ducks under his hat brim at {actor}'s thanks."
+          }
+        ],
+        "default": [
+          {
+            "text": "Quill lifts the watering can in greeting and slops a little on his boots.",
+            "others": "Quill lifts the watering can toward {actor} in greeting and slops a little on his boots."
+          },
+          {
+            "text": "Quill nods along with the nearest pendulum, which seems to count as hello.",
+            "others": "Quill nods to {actor} along with the nearest pendulum, which seems to count as hello."
+          },
+          {
+            "text": "Quill smiles shyly from under his hat brim.",
+            "others": "Quill smiles shyly at {actor} from under his hat brim."
+          }
+        ]
       }
     },
     "t-tock": {
@@ -1591,6 +1771,42 @@
           "Tock washes one white paw, slowly and thoroughly, as if keeping an appointment.",
           "Between one tick and the next, Tock is simply there, and then, a tick later, is not.",
           "Tock blinks slowly at the room, the way a colleague nods across a workroom."
+        ]
+      },
+      "reactions": {
+        "hug": [
+          {
+            "text": "Tock allows exactly one tick of hugging, purrs once, and is somewhere else.",
+            "others": "Tock allows {actor} exactly one tick of hugging, purrs once, and is somewhere else."
+          },
+          {
+            "text": "Tock leans into you, purring, then slips out of your arms between ticks.",
+            "others": "Tock leans into {actor}, purring, then slips away between ticks."
+          }
+        ],
+        "thank": [
+          {
+            "text": "Tock blinks slowly, which is as good as a you're-welcome.",
+            "others": "Tock blinks slowly at {actor}, which is as good as a you're-welcome."
+          },
+          {
+            "text": "Tock chirps once, very small.",
+            "others": "Tock chirps once at {actor}, very small."
+          }
+        ],
+        "default": [
+          {
+            "text": "Tock blinks slowly back at you.",
+            "others": "Tock blinks slowly at {actor}."
+          },
+          {
+            "text": "Tock's tail curls once, which may be a wave.",
+            "others": "Tock's tail curls once toward {actor}, which may be a wave."
+          },
+          {
+            "text": "Tock looks up at you for exactly one tick, and then for none.",
+            "others": "Tock looks up at {actor} for exactly one tick, and then for none."
+          }
         ]
       }
     }

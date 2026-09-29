@@ -317,6 +317,10 @@ def _fast_path(actor_id: str, text: str, room: rooms.Room | None):
     if room is not None and low in room.exits:
         return [Parse("go", args=low)]
 
+    gesture = _gesture_fast_path(actor_id, text, world_id)
+    if gesture is not None:
+        return gesture
+
     words = text.split()
     # Longest-prefix verb-word match: two-word heads ("turn on", "blow out")
     # beat one-word heads ("turn"). Engine names/aliases + world vocabulary.
@@ -557,6 +561,37 @@ def _say_fast_path(actor_id: str, rest: str):
         if who is not None and not isinstance(who, list) and k == len(tail.split()):
             return [Parse("talk", dobj_id=who.id, args=rest[:idx].strip())]
     return [Parse("say", args=rest)]
+
+
+def _gesture_fast_path(actor_id: str, text: str, world_id: str | None):
+    """A gesture ("hug <someone>", "wave to <someone>", "give <someone> a hug",
+    "thank you"),
+    unless the world declares the word as a verb of its own (another world's
+    "wave" is a spell). Spec 2026-09-29 criterion 2."""
+    from daydream import gestures
+
+    found = gestures.match(text)
+    if found is None:
+        return None
+    first = text.strip().split()[0].lower()
+    if world_id and worldverbs.get(world_id, first) is not None:
+        return None
+    gesture, who = found
+    if who is None:
+        return [Parse("gesture", args=gesture)]
+    who = _strip_article(re.sub(r"(?i)\s+for\b.*$", "", who)).strip(",.!? ")
+    if not who or who.lower() in ("me", "myself", "yourself", "everyone", "everybody", "all"):
+        return [Parse("gesture", args=gesture)]
+    matches = [o for o in _ground(actor_id, who) if o.kind in ("toon", "thing")]
+    if len(matches) == 1:
+        return [Parse("gesture", dobj_id=matches[0].id, args=gesture)]
+    if len(matches) > 1:
+        return _clarify("gesture", "dobj", who, matches, args=gesture)
+    actor = objects.get(actor_id)
+    elsewhere = absent.elsewhere(actor, who) if actor is not None else None
+    if elsewhere is not None:
+        return LineParse(message=absent.line(elsewhere))
+    return LineParse(message=f"You don't see {who} here.")
 
 
 def _talk_fast_path(actor_id: str, rest: str):

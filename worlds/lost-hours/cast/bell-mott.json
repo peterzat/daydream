@@ -617,6 +617,42 @@
           "Bell yawns hugely, catches the yawn halfway, and laughs at it under their breath.",
           "Bell taps the hooked pole against one boot to keep time, and keeps watching the east."
         ]
+      },
+      "reactions": {
+        "hug": [
+          {
+            "text": "Bell hugs you back with both sooty arms. 'Oh! Now you're smudged too. Right, we match.'",
+            "others": "Bell hugs {actor} back with both sooty arms and laughs: now they match."
+          },
+          {
+            "text": "Bell nearly drops the lighting pole, rescues it, and hugs you one-armed. 'Careful, the ladder gets jealous.'",
+            "others": "Bell nearly drops the lighting pole, rescues it, and hugs {actor} one-armed."
+          }
+        ],
+        "thank": [
+          {
+            "text": "Bell flaps a sooty hand. 'Oh, thank the lanterns, they do all the work. I just talk to them.'",
+            "others": "Bell flaps a sooty hand at {actor}'s thanks and laughs."
+          },
+          {
+            "text": "Bell beams, tries to look modest, and fails. 'Right! You're welcome. Very welcome.'",
+            "others": "Bell beams at {actor}, tries to look modest, and fails."
+          }
+        ],
+        "default": [
+          {
+            "text": "Bell waves back with the whole arm, the way you'd wave to someone on a far-off roof.",
+            "others": "Bell waves back at {actor} with the whole arm, the way you'd wave to someone on a far-off roof."
+          },
+          {
+            "text": "Bell grins and flicks a little soot off one sleeve in your direction, which seems to be a greeting.",
+            "others": "Bell grins and flicks a little soot off one sleeve toward {actor}, which seems to be a greeting."
+          },
+          {
+            "text": "Bell tips an imaginary hat, notices there's no hat, and laughs. 'Oh! Next time.'",
+            "others": "Bell tips an imaginary hat at {actor}, notices there's no hat, and laughs."
+          }
+        ]
       }
     },
     "t-mott": {
@@ -1103,6 +1139,42 @@
           "Mott leans the broom in the corner and gives the room a long, kindly look.",
           "Mott turns the tin of oddments once in both hands, like a thought being settled.",
           "Mott brushes cedar shavings from his smock, unhurried, one sleeve and then the other."
+        ]
+      },
+      "reactions": {
+        "hug": [
+          {
+            "text": "Mott holds very still, then pats your shoulder once with a broad hand. 'Well. There's a thing.'",
+            "others": "Mott holds very still, then pats {actor}'s shoulder once with a broad hand."
+          },
+          {
+            "text": "Mott takes the hug the way he takes a found button: carefully, as if it might belong to someone. 'Thank you, little one.'",
+            "others": "Mott takes {actor}'s hug the way he takes a found button: carefully, as if it might belong to someone."
+          }
+        ],
+        "thank": [
+          {
+            "text": "Mott gives the tin a small rattle. 'Nothing to it. Things want finding.'",
+            "others": "Mott gives the tin a small rattle at {actor}'s thanks. 'Nothing to it.'"
+          },
+          {
+            "text": "Mott's broom makes one slow arc across the boards, which from him is a bow.",
+            "others": "Mott's broom makes one slow arc across the boards at {actor}'s thanks, which from him is a bow."
+          }
+        ],
+        "default": [
+          {
+            "text": "Mott nods, slow as the slant light moving across the floor.",
+            "others": "Mott nods at {actor}, slow as the slant light moving across the floor."
+          },
+          {
+            "text": "Mott lifts two fingers from the tin by way of hello.",
+            "others": "Mott lifts two fingers from the tin toward {actor} by way of hello."
+          },
+          {
+            "text": "Mott's mouth tucks up at one corner, which you're learning is his smile.",
+            "others": "Mott's mouth tucks up at one corner at {actor}, which is Mott's smile."
+          }
         ]
       }
     }

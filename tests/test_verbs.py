@@ -57,6 +57,8 @@ def test_closed_verb_registry_with_arg_specs():
         "ask",
         # write: a letter to another dreamer (beta rehearsal 2026-09-28).
         "write",
+        # gesture: hug, wave, thank, the room sees it (spec 2026-09-29 criterion 2).
+        "gesture",
     }
     # Arg-specs: object-targeted verbs declare a dobj + valid kinds.
     assert verbs.VERBS["take"].needs_dobj

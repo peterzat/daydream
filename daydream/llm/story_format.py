@@ -440,6 +440,20 @@ def validate_story(env: dict, *, known: dict, ks: dict, room_ids: set[str],
             isinstance(x, dict) and isinstance(x.get("min"), int)
             and isinstance(x.get("label"), str) for x in tiers)):
         errors.append("config.relationship_tiers must be [{min, label}]")
+    gest = cfg.get("gestures")
+    if gest is not None:
+        from daydream import gestures
+
+        if not isinstance(gest, dict):
+            errors.append("config.gestures must be an object")
+        else:
+            thing = gest.get("thing")
+            if thing is not None and not (isinstance(thing, list) and all(
+                    isinstance(x, str) and x.strip() for x in thing)):
+                errors.append("config.gestures.thing must be a list of lines")
+            if "npc_default" in gest:
+                errors.extend(gestures.validate_reactions(
+                    {"default": gest["npc_default"]}, "config.gestures.npc_default"))
     off = cfg.get("engine_verbs_off")
     if off is not None:
         from daydream.verbs import VERBS
@@ -455,9 +469,14 @@ def validate_story(env: dict, *, known: dict, ks: dict, room_ids: set[str],
 
 def validate_toon_story(t: dict, where: str, *, known: dict, ks: dict,
                         room_ids: set[str]) -> list[str]:
-    """The per-toon story fields: voice, schedule, schedule_text, topics."""
+    """The per-toon story fields: voice, schedule, schedule_text, topics,
+    reactions."""
     errors: list[str] = []
     props = t.get("properties") if isinstance(t.get("properties"), dict) else {}
+    if "reactions" in props:
+        from daydream import gestures
+
+        errors.extend(gestures.validate_reactions(props["reactions"], f"{where}.properties.reactions"))
     voice = props.get("voice")
     if voice is not None:
         vw = f"{where}.properties.voice"

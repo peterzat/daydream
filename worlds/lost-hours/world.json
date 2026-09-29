@@ -39,6 +39,19 @@
   },
   "config": {
     "engine_verbs_off": ["attack", "diagnose", "board", "disembark"],
+    "gestures": {
+      "thing": [
+        "It takes the kindness quietly.",
+        "Nothing in the dream minds, and {the_thing} seems, if anything, a little pleased.",
+        "The dream lets it be, the way it lets most small kindnesses be."
+      ],
+      "npc_default": [
+        {
+          "text": "{npc} notices, and seems glad of it.",
+          "others": "{npc} notices {actor}, and seems glad of it."
+        }
+      ]
+    },
     "director": {
       "max_open_guests": 2,
       "event_minutes": 40
