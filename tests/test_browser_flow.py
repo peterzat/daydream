@@ -627,6 +627,8 @@ def test_you_carry_names_the_satchel_and_the_book_and_not_empty_hands(tab, engin
     expect(page.locator("#backpack-toggle .carry-name")).to_have_text("your satchel")
     expect(page.locator("#backpack-toggle .carry-sketch")).to_be_visible()
     expect(page.locator("#satchel-note")).to_have_text("a thread to follow")
+    # A page's first threads are not new: no glint on arrival (review 2026-09-29).
+    expect(page.locator("#backpack-toggle")).not_to_have_class(re.compile("glint"))
     expect(page.locator("#book-name")).to_have_text("Book of Stray Minutes")
     expect(page.locator("#book-note")).to_have_text("a few glint about each day")
     page.locator("#backpack-toggle").click()
@@ -685,4 +687,24 @@ def test_ask_staged_then_a_chip_still_asks(tab, engines):
     expect(page.locator("#chat")).to_contain_text("You ask Tace about the little brass clock")
     commands = [f for f in sent if f.get("kind") == "command"]
     assert [(c["verb"], c["args"]) for c in commands] == [("ask", "the little brass clock")]
+    _assert_quiet(tab, engines)
+
+
+def test_words_for_a_chosen_verb_wait_out_a_drop(tab, engines):
+    """Review NOTE 2026-09-29: words typed after choosing Talk were cleared,
+    and the chosen verb dropped, when the socket could not take them."""
+    page, _ = _in_the_loft(tab)
+    page.locator("#verb-bar button", has_text="Talk").click()
+    page.locator("#toons .obj", has_text="Tace").click()
+    expect(page.locator("#verb-hint")).to_contain_text("Tace")
+    page.evaluate(_DEAD_SOCKETS)
+    page.evaluate("() => ws.close()")
+    page.locator("#input-text").fill("what is that little clock?")
+    page.locator("#input-text").press("Enter")
+    expect(page.locator("#dream-overlay")).to_have_text("the dream is sleeping...", timeout=500)
+    expect(page.locator("#input-text")).to_have_value("what is that little clock?")
+    page.evaluate("() => { window.WebSocket = window.__RealWebSocket; }")
+    expect(page.locator("#dream-overlay")).to_be_hidden(timeout=15_000)
+    expect(page.locator("#verb-hint")).to_contain_text("Tace")  # still talking to Tace
+    expect(page.locator("#input-text")).to_have_value("what is that little clock?")
     _assert_quiet(tab, engines)

@@ -43,6 +43,7 @@ let lastInventory = []; // the latest snapshot's carried things, for the keepsak
 let inventorySeen = false; // a first snapshot's things are not "new" (nothing to compare)
 let lastJournal = []; // the controlled toon's journal entries from the snapshot (self only)
 let lastThreads = []; // what you're in the middle of (authored threads, self only)
+let threadsSeen = false; // a first snapshot's threads are not "new"
 let journalBeatShown = false; // "previously in your dream" fires once per toon entry
 let bgShownFor = null; // room id whose art the plate currently shows (stale-art veil)
 let wonState = null; // the world's won-moment ({score, rank, text?}) from snapshot status / game_won
@@ -171,7 +172,8 @@ function connect(isReconnect) {
   // A fresh page load omits `since` and starts with an empty log; a reconnect
   // resumes from the last event the client rendered.
   const url = isReconnect ? wsUrl + "?since=" + lastSeq : wsUrl;
-  ws = new WebSocket(url);
+  const sock = new WebSocket(url);
+  ws = sock;
   ws.onopen = () => {
     reconnectDelay = 0; // the dream wakes: reset the backoff
     outageSince = 0;
@@ -184,6 +186,9 @@ function connect(isReconnect) {
     }, 25000);
   };
   ws.onclose = async (ev) => {
+    // Only the page's current socket speaks for the page: an orphan from a
+    // connect race must not stop the live one's pings or start a retry.
+    if (ws !== sock) return;
     clearInterval(pingTimer);
     if (awaitingPick || dreamingElsewhere) return; // left, or another window has us
     if (ev.code === 4409) {
@@ -205,6 +210,8 @@ function connect(isReconnect) {
     // ask: a lapsed session goes to the front door; a sleeping village (the
     // edge answers 503 while the box is down) shows its note and waits.
     const why = await whyClosed();
+    // Left the dream, or took up another socket, while asking: nothing to say.
+    if (ws !== sock || awaitingPick || dreamingElsewhere) return;
     if (why === "signed-out") {
       location.replace(document.baseURI);
       return;
@@ -617,6 +624,7 @@ function renderTopics(others) {
     }
     box.appendChild(row);
   }
+  if (stagedVerb) applyVerbGating(); // "+N more" redraws: keep the quiet chips quiet
 }
 
 function renderObjects(containerId, objs, emptyText, labelFn) {
@@ -855,6 +863,7 @@ function clearSceneAndLog() {
   // Entering the picker (no controllable toon): wipe the previous session's
   // scene + log so stale text doesn't sit visible under the picker (before, it
   // only cleared once a toon was claimed). Mirrors renderSnapshot's empty states.
+  threadsSeen = false; // stepping back in: its threads are not new
   clearPending();
   cancelText();
   document.getElementById("chat").innerHTML = "";
@@ -902,7 +911,7 @@ function chipTarget(label) {
   const bare = (x) => String(x || "").toLowerCase().replace(/^(the|a|an)\s+/, "").trim();
   const want = bare(label);
   const ent = (entities || []).find((e) => e.kind !== "toon" && bare(e.alias) === want);
-  if (!ent) return null;
+  if (!ent || ent.object_id === stagedDobjId) return null; // already chosen: not a target
   const el = document.querySelector(`#scene .obj[data-object-id="${CSS.escape(ent.object_id)}"]`);
   return el && !el.classList.contains("obj-ungated") ? el : null;
 }
@@ -1025,10 +1034,16 @@ function cancelText() {
 
 function sendText(text) {
   // The words for a chosen verb: one structured command, and the pending
-  // beat (the action may be LLM-backed).
+  // beat (the action may be LLM-backed). Returns whether it went: with the
+  // socket down the words and the chosen verb both stay, to send again.
   const t = textTarget;
+  if (!ws || ws.readyState !== WebSocket.OPEN) {
+    connectionDown();
+    return false;
+  }
   cancelText();
   if (sendCommand(t.verb, t.objectId, text)) showPending();
+  return true;
 }
 
 function nameForObject(objectId) {
@@ -1859,8 +1874,7 @@ document.getElementById("input-form").addEventListener("submit", (ev) => {
   const inp = document.getElementById("input-text");
   const text = inp.value.trim();
   if (textTarget) {
-    sendText(text);
-    inp.value = "";
+    if (sendText(text)) inp.value = "";
     return;
   }
   if (!text) return;
@@ -1901,6 +1915,11 @@ document.getElementById("input-text").addEventListener("keydown", (ev) => {
 // two-page specimen spread), replacing the old "print inventory to chat". No
 // server round-trip: it renders the last snapshot's inventory client-side.
 document.getElementById("backpack-toggle").addEventListener("click", openBackpack);
+// The glint plays once: a margin hidden and shown again (awake, then back)
+// would otherwise replay it.
+document.getElementById("backpack-toggle").addEventListener("animationend", (e) => {
+  e.currentTarget.classList.remove("glint");
+});
 document.getElementById("backpack-close").addEventListener("click", closeBackpack);
 document.getElementById("backpack-panel").addEventListener("click", (e) => {
   if (e.target.id === "backpack-panel") closeBackpack(); // click the backdrop to close
@@ -2008,7 +2027,8 @@ function setThreads(threads) {
   // (playtest 2026-09-29: "open the satchel \u00b7 1 thread" read as a
   // riddle); a new thread glints it a moment. An open satchel keeps its
   // list live.
-  const grew = threads.length > lastThreads.length;
+  const grew = threadsSeen && threads.length > lastThreads.length;
+  threadsSeen = true; // a page's first threads are not new (as with inventorySeen)
   lastThreads = threads;
   document.getElementById("satchel-note").textContent = threads.length === 1
     ? "a thread to follow"
