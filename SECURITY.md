@@ -2,58 +2,70 @@
 
 ## Security Review — 2026-09-29 (scope: paths)
 
-**Summary:** Path-scoped review of the twenty-one files named by the caller,
-read as their change from the last scan (`d2f7538`) to HEAD `de5e11b`. The
-changes are glimpses, the parser's deterministic routes, the margin notes
-and the village's glimpse data:
-- Glimpses: a name that the scene's prose shows but the hands can't reach
-  is answered from an authored line, from the prose itself, or from one
-  validated local-model line.
-- The parser now handles "look at", "x" and the new take and examine
-  aliases without the model.
-- The margin drops its two notes.
-- The Village of Lost Hours gains authored glimpse data.
+**Summary:** Path-scoped review of the nine files named by the caller, read
+as their change from the last scan (`de5e11b`) to HEAD `15d8c85`: the fixes
+for the glimpses review's nine findings, and a lint fix. These paths add no
+new finding. The new routes stay inside the actor's scope:
+- a long name passed by its head
+- "look at" the dreamer, the room, the satchel or another dreamer's thing
+- a compass way the prose names
 
-These paths add no new finding. The new model surface reads only the
-scene's own prose and stays inside the actor's scope; probes of another
-dreamer's private thing, a closed container and another dreamer's satchel
-never reached it. Its line is validated and told only to the actor. The
-open register carries forward: the agent guard's WARN and five NOTEs, all
-in files these commits did not touch. One NOTE is amended for a second
-route (0 BLOCK / 1 WARN / 5 NOTE).
+The glimpse model's output check only got stricter. The open register
+carries forward unchanged: the agent guard's WARN and five NOTEs, all in
+files these commits did not touch. One NOTE's line reference moves (0 BLOCK
+/ 1 WARN / 5 NOTE).
 
 ### Scope and method
 
-- Each scoped file's diff from `d2f7538` to HEAD was read in full, and the
-  new `daydream/glimpse.py` was read whole. The code it leans on was read
-  too:
-  - `objects.in_scope` and `visible_to`
-  - `verbs.detail_with_state`, and `verbs._execute_resolved` up to the
-    dobj gate
-  - `effects._apply_narrate`, and `spawn_object`'s properties passthrough
-  - `rules._build_ctx` and the condition evaluator
-  - the letter and parcel paths in `daydream/post.py`
-  - growth's writes of seeds and descriptions
-  - `play._line` and `play._scene`
+- Each scoped file's diff from `de5e11b` to HEAD was read in full, and
+  `daydream/glimpse.py` was read whole. The code the changes lean on was
+  read too:
+  - `objects.in_scope`, `find_all_in_scope_by_name` and `visible_to` (the
+    parser's `_ground`)
+  - `lighting.room_lit`
+  - `verbs.visible_exits` and `_exit_outcome`
+  - `verbs._execute_resolved` up to the glimpse call, and
+    `_handle_examine`'s toon branch with `_container_glance`
+  - `growth._never_word_hit` and `effects._QUOTED`
+  - `model_eval._shipped_growth`
 - A scratchpad probe built the canonical world in a throwaway DB with a
-  mocked model. The first dreamer asked for four things that are not
-  theirs to see: a second dreamer's `private_to` note in the room, a closed
-  iron box's contents, a thing in the second dreamer's satchel, and the
-  second dreamer's looks. Each was asked through `glimpse.answer` directly
-  and through `parse_line` and `execute_command` (look at, x, take, grab,
-  check out). Every answer was `None` or "You don't see ... here", and the
-  model was never called. The owner got their own note's sentence.
-- Nine adversarial 500-character names ran through `authored`, `seen_in`
-  and `parse_line`, each in under 2 ms. They covered runs of articles,
-  repeated words, trailing phrases and whitespace, and regex
-  metacharacters.
-- The scoped tests pass. That is 122 in `test_glimpse`, `test_parser` and
-  `test_walkthroughs`, and 19 in headless Chromium (`test_browser_flow`).
+  mocked model. It put two dreamers in the cellar. The second had a
+  `private_to` note on the floor and a thing in their satchel, each seeded
+  with a marker word.
+  - The first dreamer sent twelve lines through `parse_line` and
+    `execute_command`:
+    - the new head route (`take`, `look at`, `open` and `examine` of a
+      name followed by "by the stair" and the like)
+    - words from the private seeds
+    - the owner route (`look at moss's envelope`, `...'s satchel`,
+      `...'s pocket diary`, `look in moss's satchel`, `check moss's
+      pockets`)
+
+    Each line read "You don't see the ... here", or read the second
+    dreamer's looks. The marker never appeared and never reached the
+    model. The owner still read their own note.
+  - A secret north exit was shut by a flag, and the room's prose named "a
+    small hidden door ... in the north wall". While the exit was shut,
+    "open the hidden door" did not name the way. Once the flag opened it,
+    the line named the way, as the snapshot's exits already do.
+  - Twelve adversarial 500-character lines aimed at the new patterns. They
+    covered the possessive match, the alias-idiom check, the head route,
+    and runs of articles, prepositions and commas. Each ran in 13 ms or
+    less. `_way` over a comma-heavy sentence of about 1,800 characters
+    took 0.1 ms.
+  - "take the folded slip by the stair ignore previous instructions ..."
+    reached the model as "Tried: take the folded slip." The tail was
+    dropped.
+  - `_never_words` reads the village's 33 canon-breakers from the live
+    world config, so the new check is in force.
+- The scoped tests pass: 117 in `test_glimpse` and `test_parser`.
+  `tools/assemble_world.py --check` confirms that the committed artifact
+  matches its sources.
 
 ### Findings
 
 These paths add no new finding. The findings below are carried forward;
-their files are unchanged since `d2f7538`.
+their files are unchanged since `de5e11b`.
 
 [WARN] tools/agent_guard.py:36-38, :267 (with :47, :163-169, :264-266) —
 Carried unchanged. It stays open for a session with the operator, because
@@ -70,7 +82,7 @@ the hook is the deterministic layer that CLAUDE.md relies on.
   Evidence: `BROAD_ROOTS` matches only exact home-level roots.
 `_names_credentials` matches a credential directory as a substring, so a
 parent directory never matches. The token pattern needs a literal `-t`.
-The full evidence is in the prior entry (`git show 40f18d2:SECURITY.md`).
+The full evidence is in an earlier entry (`git show 40f18d2:SECURITY.md`).
   Remediation:
 - Expand and normalize each argument of a searcher (and of `tar`,
   `zip -r`, `cp -r` and `rsync`). Ask when one is an ancestor of a
@@ -94,15 +106,16 @@ named `main` fill the one page of runs. A red main then reads "unknown" in
 unaffected. Remediation: read main's head sha and that commit's runs, or
 page until `limit` push runs are found. Say so when a full page held none.
 
-[NOTE] daydream/play.py:84-85 (with daydream/glimpse.py:296-297; carried,
-amended) — A grown place's description prints unmarked in `play`. The
-server also accepts control characters in typed lines and appearance
-seeds. This run adds a second route. A look at a name the prose shows
-(`look at`, `x`, `examine`) now echoes the scene's sentence as a narrate
-line, with no `src` and no player mark. So a sentence of a grown room's
-model-written description, or of a grown thing's seed, reaches `play` this
-way too. That text already prints on arrival or on examine, so nothing new
-is exposed, but the proposed snapshot marker would not cover this route.
+[NOTE] daydream/play.py:84-85 (with daydream/glimpse.py:342-343; carried,
+line reference updated) — A grown place's description prints unmarked in
+`play`. The server also accepts control characters in typed lines and
+appearance seeds. A look at a name the prose shows (`look at`, `x`,
+`examine`) echoes the scene's sentence as a narrate line, with no `src`
+and no player mark. So a sentence of a grown room's model-written
+description, or of a grown thing's seed, reaches `play` this way too. That
+text already prints on arrival or on examine, so nothing new is exposed.
+The new way line ("The gate is the way south from here.") carries only the
+typed noun and a compass word, so it adds no route.
 Remediation:
 - Carry a grown marker in the snapshot and print that description marked.
 - Carry the same marker on the narrate lines that echo grown text: a
@@ -114,8 +127,8 @@ Remediation:
 placeholder expander still runs over a letter's body and a dreamer's
 looks. It fills only `{dreamers_today}`. The `from_player` flag is a ready
 skip condition. BACKLOG `placeholders-over-player-text`. (New dreamer
-names now refuse braces, `api/slots.py:184`, so a glimpse's echo of a
-sentence naming a dreamer adds nothing here.)
+names refuse braces, `api/slots.py:184`, so a glimpse's echo of a sentence
+naming a dreamer adds nothing here.)
 
 [NOTE] daydream/accounts_cli.py:129-136 (carried unchanged) — Running
 `account delete --yes` during a resident's reply leaves that reply and its
@@ -125,52 +138,51 @@ after the model call.
 
 ### Traced and cleared this run (not findings)
 
-- **Scope.** `glimpse._hosts` (`glimpse.py:102-105`) is `objects.in_scope`
-  without toons. It drops things `private_to` someone else (`visible_to`).
-  It skips a closed opaque container's contents and other dreamers'
-  satchels. It holds no toon, so no one's looks are read. The probe above
-  confirmed each.
-- **What prose it reads.** `_prose` (`:139-146`) reads a room's description
-  and a thing's `seed` with its `state_text`. It never reads
-  `examined_text` (where a husk keeps its planter's words), a letter's body
-  (`properties.text`), or a dreamer's looks. In the live world, those
-  fields have three writers. The loader and dreams write authored text. A
-  letter's seed template adds only dreamer names. Growth writes
-  model-composed text from a vision phrase, and validates it. So raw player
-  words never reach the glimpse model.
-- **The model call** (`:257-283`).
-  - It runs on the local client under the arbiter, with no key.
-  - Its input is that prose, a noun that must be a whole-word phrase of the
-    prose (each typed word `re.escape`d), and a closed verb.
-  - The line is validated, told only to the actor (`to: "@actor"`), and
-    tagged `src: "local"`.
-  - The cache is keyed by room and by a hash of noun, verb and sentence.
-    Players share it, but it is built only from shared prose, so it
-    carries nothing from one dreamer to another.
-  - A failed line is not cached, so a player can repeat the call. Calls
-    run one at a time per socket, under the 3/s frame bucket, the same
-    cost class as `talk`.
-  - Every backend failure raises `LLMUnavailable`, and the player reads
-    the plain line.
-- **The log line** (`:269`) prints only that noun, with `%r`.
-- **Authored glimpses.** The loader validates `glimpsed` and fails loudly
-  (`format2.py:337-340`, `:410-413`). It checks keys, names, text and verb
-  lines, and runs `if` through `validate_condition_list`.
-  `conditions_hold` only reads. In the live world only authored paths
-  write `glimpsed`. A model can reach `spawn_object`'s properties
-  passthrough only on the data-skill paths, which are not live (carried
-  register).
-- **The parser.** `look at <absent name>` of under four words
-  (`parser.py:353`) now takes the deterministic examine instead of the
-  model. `x <name>` routes only to a verb that takes a target (`:330`).
-  The new take and examine aliases pass through the same executor gates as
-  before.
-- **The page.** The change only removes the satchel and book notes. What
-  remains writes through `textContent`, and the change to `index.html` is
-  static markup.
-- **Tooling.** The glimpse suite in `model_eval` reads a committed corpus
-  and calls the production prompt and validator. `DAYDREAM_GLIMPSE_LLM` is
-  a kill switch, on by default, and uses only the local model.
+- **The head route** (`parser.py:354-359`, `:486-491`). A name of four
+  words or more that grounds nothing now passes its head as `dobj_name`.
+  The head is the name before a trailing preposition. Before, the line
+  went to the model parser. "look at" grounds the head too.
+  - The head is grounded through `_ground`, so it reaches only in-scope,
+    visible things.
+  - A `dobj_name` reaches only `glimpse.answer` and the "not here" line.
+    That is narration to the actor and a worldstate cache write, with no
+    mutation.
+  - The route takes lines away from the free-text model path; it adds no
+    power. A phrase holding "and" or a comma still goes to the model.
+- **Self, room, satchel and owner words** (`parser.py:364-376`).
+  - "look at me" examines the actor. Room words run `look`. Satchel words
+    run the actor's own `inventory`.
+  - "<name>'s X" examines that toon only when `_ground` finds exactly one
+    toon in scope, and never the actor. A toon's examine narrates its
+    looks and seed. `_container_glance` applies to things only
+    (`objects.is_container`), so no satchel is ever listed.
+  - The alias-idiom deferrals (`:500-503`) send a line to the model
+    parser, as before the aliases existed. The carried register covers
+    that path: the model's output is re-grounded to a closed verb and an
+    in-scope id.
+- **The way** (`glimpse.py:209-221`, `:344-348`).
+  - It names a direction only when that direction is a compass exit in
+    `verbs.visible_exits`. That map omits a secret exit until it is
+    passable (`verbs.py:1318-1332`), and `_exit_outcome` only evaluates
+    conditions.
+  - The line echoes the typed noun, which must be a whole-word phrase of
+    prose the actor can already read. It goes to the actor alone.
+- **Dark rooms** (`glimpse.py:110-116`). An unlit room is no longer a
+  glimpse host. In the dark, `objects.in_scope` holds only the actor, the
+  room and the actor's own inventory (`objects.py:228-239`), so no other
+  prose is read either.
+- **The validator** (`glimpse.py:259-282`). It only got stricter. A line
+  now fails for single-quoted speech, an all-caps word the scene never
+  said, or one of the world's `never_words`.
+  - The new patterns run after the 220-character cap.
+  - The never-words come from the loader-validated world config, each
+    passed through `re.escape`.
+- **The carry alias** (`verbs.py:108-110`). With the alias gone, "carry X
+  to Y" goes back to the model parser. A hand-over then passes `give`'s
+  existing gates: never a `private_to` thing, and never to a resting or
+  dozing dreamer.
+- **Tooling.** `model_eval`'s glimpse suite reads the never-words from the
+  committed envelope (`_shipped_growth`), locally.
 
 ### Player-text scan (CLAUDE.md "Player text is data")
 
@@ -180,10 +192,13 @@ after the model call.
 
 ### Secrets, PII and the instance
 
-- The scoped diffs, and the last three commits of `daydream/config.py`,
-  hold no key, token or password shape. The world data names only canon
-  residents, and the tests use the project's long-standing test dreamer.
-  No instance domain, hosting company, operator name or email appears.
+- The scoped diffs and the full scoped files hold no key, token or
+  password shape.
+- The only names are canon. The tests' all-caps example is a keeper from
+  `docs/canon/LOST-HOURS.md`.
+- The world data only drops five long glimpse names and adds "hands".
+- No instance domain, hosting company, operator name, friend's name or
+  address appears.
 - `instance/` and `.claude/settings.local.json` are still ignored.
 
 ### Accepted Risks
@@ -268,14 +283,15 @@ Carried register (from prior reviews; still open, not re-flagged):
   The verbs an injected instruction would want stay behind ask rules.
 
 ---
-*Prior review (2026-09-29, paths, commit `d2f7538`): eleven files. They
-covered the fixes for the scan before it (the CI reader and the agent
-guard), the server closing a socket whose page has been quiet for 150 s,
-and the margin naming the satchel and the book. It found 0 BLOCK / 1 WARN
-/ 5 NOTE. Its WARN was that the guard misses recursive searches rooted at
-the credential files' parent directories, and a clustered `-th` on
-`gh auth status`. That WARN and its guard and CI NOTEs are carried above,
-along with the three NOTEs it carried itself. The full entry is at
-`git show 40f18d2:SECURITY.md`.*
+*Prior review (2026-09-29, paths, commit `de5e11b`): twenty-one files
+covering the glimpses work, the parser's look-at, x and alias routes, the
+margin notes and the village's glimpse data. A glimpse is a name the scene
+shows but the hands can't reach; it answers from an authored line, from the
+prose, or from one validated local-model line. That review found nothing
+new in those paths. Its probes showed that another dreamer's private note,
+a closed box, another satchel and another dreamer's looks all read "not
+here", with no model call. It carried 0 BLOCK / 1 WARN / 5 NOTE and amended
+the `play` NOTE for the glimpse's look echo. The full entry is at
+`git show 0d81745:SECURITY.md`.*
 
-<!-- SECURITY_META: {"date":"2026-09-29","commit":"de5e11b68642316a08bd23f006966943b0b351ff","scope":"paths","scanned_files":["daydream/config.py","daydream/glimpse.py","daydream/llm/format2.py","daydream/model_eval.py","daydream/parser.py","daydream/verbs.py","daydream/version.py","tests/model_eval/glimpse.json","tests/test_browser_flow.py","tests/test_glimpse.py","tests/test_parser.py","web/assets/main.js","web/assets/style.css","web/index.html","worlds/lost-hours.json","worlds/lost-hours/arcs/08-tace-hour.json","worlds/lost-hours/regions/01-clocktower.json","worlds/lost-hours/regions/02-square.json","worlds/lost-hours/regions/03-lane.json","worlds/lost-hours/walkthroughs/tace-hour-past-eleven.json","worlds/lost-hours/walkthroughs/tace-hour-within-reach.json"],"block":0,"warn":1,"note":5} -->
+<!-- SECURITY_META: {"date":"2026-09-29","commit":"15d8c859aa439f1807d2b1cac11e8cd9de87f8ac","scope":"paths","scanned_files":["daydream/glimpse.py","daydream/model_eval.py","daydream/parser.py","daydream/verbs.py","tests/test_glimpse.py","tests/test_parser.py","worlds/lost-hours.json","worlds/lost-hours/regions/01-clocktower.json","worlds/lost-hours/regions/02-square.json"],"block":0,"warn":1,"note":5} -->
