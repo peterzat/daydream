@@ -113,7 +113,7 @@ VERBS: dict[str, VerbSpec] = {
         allowed_effects=frozenset({"move_object", "narrate", "adjust_score"}),
         # Not "carry": "carry the letter to a friend" is a give, for the
         # model to read (codereview 2026-09-29g).
-        on_bar=True, aliases=("get", "grab", "pick up", "lift", "reach for"),
+        on_bar=True, aliases=("get", "grab", "pick up", "lift", "reach for", "catch"),
     ),
     "drop": VerbSpec(
         name="drop", ui_hint="Drop",

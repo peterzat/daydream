@@ -206,7 +206,7 @@ async def test_a_way_the_prose_names_is_the_way_not_out_of_reach(village, llm):
     # exit) read "You can see the gate ... but it isn't within reach".
     objects.move(village, "r-well")
     said = await _said(village, "open the gate")
-    assert [e.payload["text"] for e in said] == ["The gate is the way south from here."]
+    assert [e.payload["text"] for e in said] == ["The gate is the way south to the Pendulum Garden."]
     assert llm.await_count == 0
 
 

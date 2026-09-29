@@ -334,6 +334,19 @@ def validate_envelope2(env: dict) -> list[str]:
             ))
         if "properties" in r and not isinstance(r["properties"], dict):
             errors.append(f"{where}.properties must be an object")
+        elif "exit_names" in r.get("properties", {}):
+            named = r["properties"]["exit_names"]
+            ways = set((r.get("exits") or {}).keys())
+            if not isinstance(named, dict):
+                errors.append(f"{where}.properties.exit_names must be {{direction: [names]}}")
+            else:
+                for d, names in named.items():
+                    if d not in ways:
+                        errors.append(f"{where}.properties.exit_names.{d}: not an exit of this room")
+                    if not (isinstance(names, list) and names and all(
+                            isinstance(n, str) and n.strip() and len(n.split()) < 4 for n in names)):
+                        errors.append(f"{where}.properties.exit_names.{d} must be a list of "
+                                      "names of three words or fewer")
         elif "glimpsed" in r.get("properties", {}):
             errors.extend(glimpse.validate_glimpsed(
                 r["properties"]["glimpsed"], f"{where}.properties.glimpsed",

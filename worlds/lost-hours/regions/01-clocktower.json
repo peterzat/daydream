@@ -99,7 +99,19 @@
               "examine": "High in the tower the great clock's brass face looks down, patient as a moon. Its hands stand still."
             }
           }
-        ]
+        ],
+        "exit_names": {
+          "up": [
+            "stairs",
+            "stair",
+            "staircase",
+            "steps"
+          ],
+          "down": [
+            "low door",
+            "cellar door"
+          ]
+        }
       }
     },
     {
@@ -128,7 +140,17 @@
             }
           ]
         }
-      ]
+      ],
+      "properties": {
+        "exit_names": {
+          "up": [
+            "stairs",
+            "stair",
+            "steps",
+            "balcony stair"
+          ]
+        }
+      }
     },
     {
       "id": "r-balcony",
@@ -140,7 +162,14 @@
         "down": "r-loft"
       },
       "properties": {
-        "at": "on"
+        "at": "on",
+        "exit_names": {
+          "down": [
+            "stairs",
+            "stair",
+            "steps"
+          ]
+        }
       }
     },
     {
@@ -205,7 +234,15 @@
             ],
             "text": "The Extra Hour dozes in its jar on the lowest shelf, curled in its autumn coat. HELP YOURSELF, says the label, and you find that sitting near it a moment is help enough."
           }
-        ]
+        ],
+        "exit_names": {
+          "up": [
+            "stairs",
+            "stair",
+            "steps",
+            "cellar stair"
+          ]
+        }
       }
     }
   ],

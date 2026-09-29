@@ -440,6 +440,26 @@ def validate_story(env: dict, *, known: dict, ks: dict, room_ids: set[str],
             isinstance(x, dict) and isinstance(x.get("min"), int)
             and isinstance(x.get("label"), str) for x in tiers)):
         errors.append("config.relationship_tiers must be [{min, label}]")
+    scenery = cfg.get("scenery")
+    if scenery is not None:
+        from daydream import glimpse
+
+        if not isinstance(scenery, list):
+            errors.append("config.scenery must be a list")
+        else:
+            for i, entry in enumerate(scenery):
+                where = f"config.scenery[{i}]"
+                rooms_of = entry.get("rooms") if isinstance(entry, dict) else None
+                if not (isinstance(rooms_of, list) and rooms_of):
+                    errors.append(f"{where}.rooms must be a non-empty list of rooms")
+                else:
+                    errors.extend(f"{where}.rooms: unknown room {r!r}"
+                                  for r in rooms_of if r not in room_ids)
+                body = {k: v for k, v in entry.items() if k != "rooms"} \
+                    if isinstance(entry, dict) else entry
+                errors.extend(glimpse.validate_glimpsed(
+                    [body], where, known_flags=set(known.get("known_flags") or ()),
+                    known_ids=set(known.get("known_ids") or ()), known_story=ks))
     gest = cfg.get("gestures")
     if gest is not None:
         from daydream import gestures

@@ -39,6 +39,187 @@
   },
   "config": {
     "engine_verbs_off": ["attack", "diagnose", "board", "disembark"],
+    "scenery": [
+      {
+        "names": [
+          "sky",
+          "clouds",
+          "the sky"
+        ],
+        "rooms": [
+          "r-square",
+          "r-well",
+          "r-garden",
+          "r-orchard",
+          "r-lane",
+          "r-bridge",
+          "r-river",
+          "r-duskroad",
+          "r-hill",
+          "r-balcony"
+        ],
+        "text": "The sky is far out of reach, which the village seems to think is just as well.",
+        "verbs": {
+          "examine": "The sky over the village is the soft color of an evening that hasn't quite made up its mind."
+        }
+      },
+      {
+        "names": [
+          "wall",
+          "walls",
+          "floor",
+          "floorboards",
+          "ceiling"
+        ],
+        "rooms": [
+          "r-clocktower",
+          "r-loft",
+          "r-cellar",
+          "r-workshop",
+          "r-post",
+          "r-waiting",
+          "r-lamphouse"
+        ],
+        "text": "It's part of the room, and it means to stay that way.",
+        "verbs": {
+          "examine": "Plain and old and well kept, like everything the keepers look after."
+        }
+      },
+      {
+        "names": [
+          "lanterns",
+          "paper lanterns",
+          "poles",
+          "crooked poles"
+        ],
+        "rooms": [
+          "r-square"
+        ],
+        "text": "The lanterns are Bell's, every one, and they stay on their poles, where Bell can find them at dusk.",
+        "verbs": {
+          "examine": "Paper lanterns glow in their own warm pools of light, each a little different, and each with a name Bell knows."
+        }
+      },
+      {
+        "names": [
+          "lanterns",
+          "lantern",
+          "brackets"
+        ],
+        "rooms": [
+          "r-lane",
+          "r-bridge"
+        ],
+        "text": "The lanterns hang where Bell hung them, and they stay there, warm and patient.",
+        "verbs": {
+          "examine": "Lanterns glow along the way, each in its own small pool of light."
+        }
+      },
+      {
+        "names": [
+          "lanterns",
+          "village lanterns"
+        ],
+        "rooms": [
+          "r-balcony"
+        ],
+        "text": "The village lanterns are far below, keeping an hour of their own.",
+        "verbs": {
+          "examine": "Below, the village lanterns keep an hour of their own, like a second, softer clock."
+        }
+      },
+      {
+        "names": [
+          "cobbles",
+          "cobblestones",
+          "cobble",
+          "stones"
+        ],
+        "rooms": [
+          "r-square"
+        ],
+        "text": "The cobbles are worn smooth and very much part of the square; they stay where they are.",
+        "verbs": {
+          "examine": "The cobbles are worn smooth by a great many footsteps, and still hold the last of the day's heat."
+        }
+      },
+      {
+        "names": [
+          "moths",
+          "moth"
+        ],
+        "rooms": [
+          "r-square"
+        ],
+        "text": "The moths turn slow above the cobbles and won't be caught; they're busy.",
+        "verbs": {
+          "examine": "Moths turn slow circles above the cobbles, as if keeping time for someone."
+        }
+      },
+      {
+        "names": [
+          "blue doors",
+          "blue door",
+          "doors",
+          "houses",
+          "leaning houses",
+          "window boxes"
+        ],
+        "rooms": [
+          "r-lane"
+        ],
+        "text": "The blue doors stay shut. The leaning houses are there to lean, and to keep the lane company.",
+        "verbs": {
+          "examine": "The leaning houses have blue doors and window boxes full of moss, and they keep the lane company."
+        }
+      },
+      {
+        "names": [
+          "grass",
+          "meadow",
+          "silver grass"
+        ],
+        "rooms": [
+          "r-duskroad",
+          "r-hill"
+        ],
+        "text": "The silver-green grass bends and straightens again, and stays where it grows."
+      },
+      {
+        "names": [
+          "water",
+          "river"
+        ],
+        "rooms": [
+          "r-bridge",
+          "r-river"
+        ],
+        "text": "The river slips on by, slow as an afternoon, and won't be held."
+      },
+      {
+        "names": [
+          "reeds",
+          "reed"
+        ],
+        "rooms": [
+          "r-river"
+        ],
+        "text": "The reeds sway and whisper, rooted in the soft bank, and stay where they grow."
+      },
+      {
+        "names": [
+          "roofs",
+          "rooftops",
+          "village roofs"
+        ],
+        "rooms": [
+          "r-loft",
+          "r-balcony",
+          "r-hill"
+        ],
+        "text": "The rooftops lean together below you, well out of reach."
+      }
+    ],
     "gestures": {
       "thing": [
         "It takes the kindness quietly.",

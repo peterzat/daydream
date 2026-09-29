@@ -36,7 +36,7 @@ import logging
 import re
 from dataclasses import dataclass
 
-from daydream import absent, objects, pronouns, rooms, verbs, worldverbs
+from daydream import absent, glimpse, objects, pronouns, rooms, verbs, worldverbs
 from daydream.llm import client
 from daydream.skills import registry
 
@@ -59,6 +59,10 @@ _ALIAS_IDIOM = re.compile(
 _SELF_WORDS = frozenset({"me", "myself", "self", "yourself"})
 _SATCHEL_WORDS = frozenset({"satchel", "bag", "inventory", "pockets"})
 _ROOM_WORDS = frozenset({"room", "here", "around", "surroundings", "view", "place"})
+
+# Verbs that move you through a way named in prose, and the words before it.
+_MOVE_VERBS = frozenset({"go", "climb", "take", "use"})
+_THROUGH = re.compile(r"(?i)^(?:through|into|in|to|toward|towards|onto|up|down|out of|out)\s+")
 
 # Moving, said as people say it: "run east", "climb up", "head down the stairs".
 _MOVE_RE = re.compile(
@@ -406,6 +410,15 @@ def _fast_path(actor_id: str, text: str, room: rooms.Room | None):
 
     verb = spec.name
     said = " ".join(words[:len(words) - len(rest.split())]).lower()  # the verb as typed
+    if rest and verb in _MOVE_VERBS:
+        # "take the stairs", "go through the gate", "climb the steps": a way
+        # out named in the room's prose (spec 2026-09-29 criterion 9).
+        target = _strip_article(_THROUGH.sub("", rest.strip()))
+        actor = objects.get(actor_id)
+        if actor is not None and target and not _ground(actor_id, target):
+            way = glimpse.exit_named(actor, target)
+            if way is not None:
+                return [Parse("go", args=way)]
     if verb == "ask":
         return _ask_fast_path(actor_id, rest)
     if rest and verb == "say":

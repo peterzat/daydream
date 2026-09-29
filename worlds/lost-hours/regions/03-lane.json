@@ -14,7 +14,21 @@
         "south": "r-bridge"
       },
       "properties": {
-        "at": "on"
+        "at": "on",
+        "exit_names": {
+          "north": [
+            "post office",
+            "little post office"
+          ],
+          "east": [
+            "crooked house",
+            "tall crooked house",
+            "lit window"
+          ],
+          "south": [
+            "bridge"
+          ]
+        }
       }
     },
     {
@@ -57,7 +71,14 @@
             }
           ]
         }
-      ]
+      ],
+      "properties": {
+        "exit_names": {
+          "south": [
+            "door"
+          ]
+        }
+      }
     },
     {
       "id": "r-waiting",
@@ -115,7 +136,17 @@
             }
           ]
         }
-      ]
+      ],
+      "properties": {
+        "exit_names": {
+          "up": [
+            "stair",
+            "stairs",
+            "steep stair",
+            "steps"
+          ]
+        }
+      }
     },
     {
       "id": "r-lamphouse",
@@ -208,7 +239,14 @@
             ],
             "text": "The wicks are Bell's spares, hung in bundles from the rafters against the lanterns' long nights, and they stay where Bell can reach them."
           }
-        ]
+        ],
+        "exit_names": {
+          "down": [
+            "stair",
+            "stairs",
+            "steps"
+          ]
+        }
       }
     },
     {
@@ -223,7 +261,18 @@
         "down": "r-river"
       },
       "properties": {
-        "at": "on"
+        "at": "on",
+        "exit_names": {
+          "down": [
+            "steps",
+            "worn steps",
+            "stairs"
+          ],
+          "south": [
+            "road",
+            "meadow road"
+          ]
+        }
       }
     },
     {
@@ -252,7 +301,13 @@
         }
       ],
       "properties": {
-        "at": "at"
+        "at": "at",
+        "exit_names": {
+          "up": [
+            "steps",
+            "stairs"
+          ]
+        }
       }
     },
     {
@@ -375,7 +430,15 @@
             ],
             "text": "There are no lights just now. They drift down at dusk, the villagers say, like slow snow."
           }
-        ]
+        ],
+        "exit_names": {
+          "east": [
+            "hill"
+          ],
+          "north": [
+            "bridge"
+          ]
+        }
       }
     },
     {
@@ -423,7 +486,13 @@
         }
       ],
       "properties": {
-        "at": "on"
+        "at": "on",
+        "exit_names": {
+          "west": [
+            "road",
+            "dusk road"
+          ]
+        }
       }
     }
   ],

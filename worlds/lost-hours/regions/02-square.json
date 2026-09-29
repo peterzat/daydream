@@ -88,6 +88,14 @@
       "description": "Curls of brass and cedar shavings lie soft underfoot, and one long blade of slant light falls through a shutter. A broom leans patient in the corner. On a shelf by the door sits a battered tin that rattles, now and then, with small found things. The square is south.",
       "exits": {
         "south": "r-square"
+      },
+      "properties": {
+        "exit_names": {
+          "south": [
+            "door",
+            "workshop door"
+          ]
+        }
       }
     },
     {
@@ -116,7 +124,15 @@
             }
           ]
         }
-      ]
+      ],
+      "properties": {
+        "exit_names": {
+          "south": [
+            "gate",
+            "garden gate"
+          ]
+        }
+      }
     },
     {
       "id": "r-garden",
@@ -127,6 +143,17 @@
       "exits": {
         "north": "r-well",
         "east": "r-orchard"
+      },
+      "properties": {
+        "exit_names": {
+          "north": [
+            "well-court"
+          ],
+          "east": [
+            "arch",
+            "low arch"
+          ]
+        }
       }
     },
     {
@@ -161,7 +188,14 @@
             }
           ]
         }
-      ]
+      ],
+      "properties": {
+        "exit_names": {
+          "west": [
+            "arch"
+          ]
+        }
+      }
     }
   ],
   "things": [

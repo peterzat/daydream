@@ -44,6 +44,187 @@
       "board",
       "disembark"
     ],
+    "scenery": [
+      {
+        "names": [
+          "sky",
+          "clouds",
+          "the sky"
+        ],
+        "rooms": [
+          "r-square",
+          "r-well",
+          "r-garden",
+          "r-orchard",
+          "r-lane",
+          "r-bridge",
+          "r-river",
+          "r-duskroad",
+          "r-hill",
+          "r-balcony"
+        ],
+        "text": "The sky is far out of reach, which the village seems to think is just as well.",
+        "verbs": {
+          "examine": "The sky over the village is the soft color of an evening that hasn't quite made up its mind."
+        }
+      },
+      {
+        "names": [
+          "wall",
+          "walls",
+          "floor",
+          "floorboards",
+          "ceiling"
+        ],
+        "rooms": [
+          "r-clocktower",
+          "r-loft",
+          "r-cellar",
+          "r-workshop",
+          "r-post",
+          "r-waiting",
+          "r-lamphouse"
+        ],
+        "text": "It's part of the room, and it means to stay that way.",
+        "verbs": {
+          "examine": "Plain and old and well kept, like everything the keepers look after."
+        }
+      },
+      {
+        "names": [
+          "lanterns",
+          "paper lanterns",
+          "poles",
+          "crooked poles"
+        ],
+        "rooms": [
+          "r-square"
+        ],
+        "text": "The lanterns are Bell's, every one, and they stay on their poles, where Bell can find them at dusk.",
+        "verbs": {
+          "examine": "Paper lanterns glow in their own warm pools of light, each a little different, and each with a name Bell knows."
+        }
+      },
+      {
+        "names": [
+          "lanterns",
+          "lantern",
+          "brackets"
+        ],
+        "rooms": [
+          "r-lane",
+          "r-bridge"
+        ],
+        "text": "The lanterns hang where Bell hung them, and they stay there, warm and patient.",
+        "verbs": {
+          "examine": "Lanterns glow along the way, each in its own small pool of light."
+        }
+      },
+      {
+        "names": [
+          "lanterns",
+          "village lanterns"
+        ],
+        "rooms": [
+          "r-balcony"
+        ],
+        "text": "The village lanterns are far below, keeping an hour of their own.",
+        "verbs": {
+          "examine": "Below, the village lanterns keep an hour of their own, like a second, softer clock."
+        }
+      },
+      {
+        "names": [
+          "cobbles",
+          "cobblestones",
+          "cobble",
+          "stones"
+        ],
+        "rooms": [
+          "r-square"
+        ],
+        "text": "The cobbles are worn smooth and very much part of the square; they stay where they are.",
+        "verbs": {
+          "examine": "The cobbles are worn smooth by a great many footsteps, and still hold the last of the day's heat."
+        }
+      },
+      {
+        "names": [
+          "moths",
+          "moth"
+        ],
+        "rooms": [
+          "r-square"
+        ],
+        "text": "The moths turn slow above the cobbles and won't be caught; they're busy.",
+        "verbs": {
+          "examine": "Moths turn slow circles above the cobbles, as if keeping time for someone."
+        }
+      },
+      {
+        "names": [
+          "blue doors",
+          "blue door",
+          "doors",
+          "houses",
+          "leaning houses",
+          "window boxes"
+        ],
+        "rooms": [
+          "r-lane"
+        ],
+        "text": "The blue doors stay shut. The leaning houses are there to lean, and to keep the lane company.",
+        "verbs": {
+          "examine": "The leaning houses have blue doors and window boxes full of moss, and they keep the lane company."
+        }
+      },
+      {
+        "names": [
+          "grass",
+          "meadow",
+          "silver grass"
+        ],
+        "rooms": [
+          "r-duskroad",
+          "r-hill"
+        ],
+        "text": "The silver-green grass bends and straightens again, and stays where it grows."
+      },
+      {
+        "names": [
+          "water",
+          "river"
+        ],
+        "rooms": [
+          "r-bridge",
+          "r-river"
+        ],
+        "text": "The river slips on by, slow as an afternoon, and won't be held."
+      },
+      {
+        "names": [
+          "reeds",
+          "reed"
+        ],
+        "rooms": [
+          "r-river"
+        ],
+        "text": "The reeds sway and whisper, rooted in the soft bank, and stay where they grow."
+      },
+      {
+        "names": [
+          "roofs",
+          "rooftops",
+          "village roofs"
+        ],
+        "rooms": [
+          "r-loft",
+          "r-balcony",
+          "r-hill"
+        ],
+        "text": "The rooftops lean together below you, well out of reach."
+      }
+    ],
     "gestures": {
       "thing": [
         "It takes the kindness quietly.",
@@ -9069,7 +9250,19 @@
               "examine": "High in the tower the great clock's brass face looks down, patient as a moon. Its hands stand still."
             }
           }
-        ]
+        ],
+        "exit_names": {
+          "up": [
+            "stairs",
+            "stair",
+            "staircase",
+            "steps"
+          ],
+          "down": [
+            "low door",
+            "cellar door"
+          ]
+        }
       }
     },
     {
@@ -9098,7 +9291,17 @@
             }
           ]
         }
-      ]
+      ],
+      "properties": {
+        "exit_names": {
+          "up": [
+            "stairs",
+            "stair",
+            "steps",
+            "balcony stair"
+          ]
+        }
+      }
     },
     {
       "id": "r-balcony",
@@ -9110,7 +9313,14 @@
         "down": "r-loft"
       },
       "properties": {
-        "at": "on"
+        "at": "on",
+        "exit_names": {
+          "down": [
+            "stairs",
+            "stair",
+            "steps"
+          ]
+        }
       }
     },
     {
@@ -9175,7 +9385,15 @@
             ],
             "text": "The Extra Hour dozes in its jar on the lowest shelf, curled in its autumn coat. HELP YOURSELF, says the label, and you find that sitting near it a moment is help enough."
           }
-        ]
+        ],
+        "exit_names": {
+          "up": [
+            "stairs",
+            "stair",
+            "steps",
+            "cellar stair"
+          ]
+        }
       }
     },
     {
@@ -9265,6 +9483,14 @@
       "description": "Curls of brass and cedar shavings lie soft underfoot, and one long blade of slant light falls through a shutter. A broom leans patient in the corner. On a shelf by the door sits a battered tin that rattles, now and then, with small found things. The square is south.",
       "exits": {
         "south": "r-square"
+      },
+      "properties": {
+        "exit_names": {
+          "south": [
+            "door",
+            "workshop door"
+          ]
+        }
       }
     },
     {
@@ -9293,7 +9519,15 @@
             }
           ]
         }
-      ]
+      ],
+      "properties": {
+        "exit_names": {
+          "south": [
+            "gate",
+            "garden gate"
+          ]
+        }
+      }
     },
     {
       "id": "r-garden",
@@ -9304,6 +9538,17 @@
       "exits": {
         "north": "r-well",
         "east": "r-orchard"
+      },
+      "properties": {
+        "exit_names": {
+          "north": [
+            "well-court"
+          ],
+          "east": [
+            "arch",
+            "low arch"
+          ]
+        }
       }
     },
     {
@@ -9338,7 +9583,14 @@
             }
           ]
         }
-      ]
+      ],
+      "properties": {
+        "exit_names": {
+          "west": [
+            "arch"
+          ]
+        }
+      }
     },
     {
       "id": "r-lane",
@@ -9353,7 +9605,21 @@
         "south": "r-bridge"
       },
       "properties": {
-        "at": "on"
+        "at": "on",
+        "exit_names": {
+          "north": [
+            "post office",
+            "little post office"
+          ],
+          "east": [
+            "crooked house",
+            "tall crooked house",
+            "lit window"
+          ],
+          "south": [
+            "bridge"
+          ]
+        }
       }
     },
     {
@@ -9396,7 +9662,14 @@
             }
           ]
         }
-      ]
+      ],
+      "properties": {
+        "exit_names": {
+          "south": [
+            "door"
+          ]
+        }
+      }
     },
     {
       "id": "r-waiting",
@@ -9454,7 +9727,17 @@
             }
           ]
         }
-      ]
+      ],
+      "properties": {
+        "exit_names": {
+          "up": [
+            "stair",
+            "stairs",
+            "steep stair",
+            "steps"
+          ]
+        }
+      }
     },
     {
       "id": "r-lamphouse",
@@ -9547,7 +9830,14 @@
             ],
             "text": "The wicks are Bell's spares, hung in bundles from the rafters against the lanterns' long nights, and they stay where Bell can reach them."
           }
-        ]
+        ],
+        "exit_names": {
+          "down": [
+            "stair",
+            "stairs",
+            "steps"
+          ]
+        }
       }
     },
     {
@@ -9562,7 +9852,18 @@
         "down": "r-river"
       },
       "properties": {
-        "at": "on"
+        "at": "on",
+        "exit_names": {
+          "down": [
+            "steps",
+            "worn steps",
+            "stairs"
+          ],
+          "south": [
+            "road",
+            "meadow road"
+          ]
+        }
       }
     },
     {
@@ -9591,7 +9892,13 @@
         }
       ],
       "properties": {
-        "at": "at"
+        "at": "at",
+        "exit_names": {
+          "up": [
+            "steps",
+            "stairs"
+          ]
+        }
       }
     },
     {
@@ -9714,7 +10021,15 @@
             ],
             "text": "There are no lights just now. They drift down at dusk, the villagers say, like slow snow."
           }
-        ]
+        ],
+        "exit_names": {
+          "east": [
+            "hill"
+          ],
+          "north": [
+            "bridge"
+          ]
+        }
       }
     },
     {
@@ -9762,7 +10077,13 @@
         }
       ],
       "properties": {
-        "at": "on"
+        "at": "on",
+        "exit_names": {
+          "west": [
+            "road",
+            "dusk road"
+          ]
+        }
       }
     }
   ],

@@ -116,14 +116,62 @@ def _hosts(actor: objects.Object, room_id: str) -> list[objects.Object]:
             and (lit or o.kind != "room")]
 
 
+def _scenery(actor: objects.Object, room_id: str) -> list[dict]:
+    """The world's shared scenery shown in this room (`config.scenery`: the
+    sky, the walls, the lanterns, defined once for every room that shows
+    them; spec 2026-09-29 criterion 9). None in an unlit room."""
+    if not lighting.room_lit(room_id):
+        return []
+    cfg = worldstate.get(actor.world_id, "config")
+    entries = cfg.get("scenery") if isinstance(cfg, dict) else None
+    return [e for e in entries if isinstance(e, dict) and room_id in (e.get("rooms") or [])] \
+        if isinstance(entries, list) else []
+
+
+def exit_named(actor: objects.Object, name: str) -> str | None:
+    """The way out of the actor's room that `name` names (`properties.
+    exit_names` on the room: {direction: [names]}), if it is a way out now."""
+    room = objects.get(actor.location_id) if actor.location_id else None
+    names = room.properties.get("exit_names") if room is not None else None
+    if not isinstance(names, dict):
+        return None
+    typed = _norm(name)
+    from daydream import rooms, verbs
+
+    r = rooms.get_room(room.id)
+    open_ways = verbs.visible_exits(r, actor) if r is not None else {}
+    for direction, words in names.items():
+        if direction in open_ways and any(_name_matches(typed, w) for w in words or []):
+            return direction
+    return None
+
+
+def _way_line(actor: objects.Object, noun: str, direction: str) -> str:
+    """"The low door is the way down to the Hour Cellar." """
+    from daydream import rooms, verbs
+
+    room = rooms.get_room(actor.location_id)
+    dest = verbs.visible_exits(room, actor).get(direction) if room is not None else None
+    to = rooms.get_room(dest) if isinstance(dest, str) else None
+    be = "are" if _plural(noun) else "is"
+    place = ""
+    if to is not None:
+        title = to.title
+        place = " to " + ("the " + title[4:] if title.startswith("The ") else title)
+    return f"The {noun} {be} the way {direction}{place}."
+
+
 def authored(actor: objects.Object, room_id: str, name: str, verb: str) -> str | None:
     """The authored reason for `verb` on `name`, from a glimpse whose
-    conditions hold for this actor; the longest matching name wins."""
+    conditions hold for this actor, or the world's scenery here; the longest
+    matching name wins."""
     typed = _norm(name)
     best: tuple[int, str] | None = None  # (length of the matching name, line)
-    for host in _hosts(actor, room_id):
-        entries = host.properties.get("glimpsed")
-        if not isinstance(entries, list):
+    room = objects.get(room_id)
+    sources = [(host, host.properties.get("glimpsed")) for host in _hosts(actor, room_id)]
+    sources.append((room, _scenery(actor, room_id)))
+    for host, entries in sources:
+        if not isinstance(entries, list) or host is None:
             continue
         for entry in entries:
             if not isinstance(entry, dict):
@@ -336,6 +384,9 @@ async def answer(actor: objects.Object, room_id: str, name: str, verb: str) -> d
     if text:
         return {"kind": "narrate", "text": text, "to": "@actor"}
     seen = seen_in(actor, room_id, name)
+    way_out = exit_named(actor, name)
+    if way_out is not None and (seen is None or verb not in LOOK_VERBS):
+        return {"kind": "narrate", "text": _way_line(actor, _norm(name), way_out), "to": "@actor"}
     if seen is None:
         return None
     noun, sentence = seen
