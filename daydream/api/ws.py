@@ -174,6 +174,7 @@ def _hold(toon_id: str, session_id: str) -> str:
 
 ELSEWHERE = 4409  # close code: this toon is being dreamed in another window
 RESTED = 4410  # close code: this dreamer was rested; the page wakes, no retry
+QUIET = 4408  # close code: nothing heard from the page for IDLE_CLOSE_S; it reconnects
 
 
 def _current_room_id(toon_id: str) -> str:
@@ -1136,12 +1137,14 @@ async def ws_endpoint(ws: WebSocket):
             _maybe_enqueue_image_gen(room.world_id, room.id, room.seed)
             _maybe_enqueue_toon_portraits(room.id)
         token = auth.token_from_cookie_header(ws.headers.get("cookie"))
+        heard = {"at": time.monotonic()}  # when the page last sent a frame
         receive_task = asyncio.create_task(_receive_loop(ws, toon_id, token, session_id,
-                                                         threads=first.get("threads")))
+                                                         threads=first.get("threads"),
+                                                         heard=heard))
         broadcast_task = asyncio.create_task(
             _broadcast_loop(ws, queue, last_seq, toon_id, view, session_id)
         )
-        watch_task = asyncio.create_task(_session_watch(ws, token))
+        watch_task = asyncio.create_task(_session_watch(ws, token, heard))
         done, pending = await asyncio.wait(
             [receive_task, broadcast_task, watch_task],
             return_when=asyncio.FIRST_COMPLETED,
@@ -1154,6 +1157,9 @@ async def ws_endpoint(ws: WebSocket):
             if not t.cancelled() and t.exception() is not None:
                 logger.error("ws: %s's session ended on an error", who.username,
                              exc_info=t.exception())
+            elif t is watch_task and not t.cancelled() and t.result() == "quiet":
+                logger.info("ws: %s's page went quiet (nothing for %ds); closed",
+                            who.username, int(IDLE_CLOSE_S))
     finally:
         _unmark_session_live(session_id)
         _unregister_socket(session_id, ws)
@@ -1196,6 +1202,12 @@ MAX_VERB_CHARS = 32      # the longest verb name is a word
 RATE_BURST = 12          # frames available at once
 RATE_PER_SECOND = 3.0    # refill
 SESSION_RECHECK_S = 30.0  # an idle socket's session is re-read this often
+# A socket that has sent nothing for this long is closed. The page pings every
+# 25 s (a hidden tab about once a minute). Behind the edge, a browser whose
+# connection drops can leave the origin's side open with Cloudflare answering
+# the server's protocol pings, so without this the server holds a ghost that
+# keeps its dreamer awake and hears every room line (seen live 2026-09-29).
+IDLE_CLOSE_S = 150.0
 
 
 class _Bucket:
@@ -1215,7 +1227,8 @@ class _Bucket:
 
 
 async def _receive_loop(ws: WebSocket, toon_id: str, token: str | None = None,
-                        session_id: str | None = None, threads: list | None = None) -> None:
+                        session_id: str | None = None, threads: list | None = None,
+                        heard: dict | None = None) -> None:
     # Per-connection parser state: the pending clarify question, if any. A
     # click (command frame) resolves or abandons it just like a typed reply.
     # `threads` are the ones the first snapshot carried (sent again only
@@ -1232,6 +1245,8 @@ async def _receive_loop(ws: WebSocket, toon_id: str, token: str | None = None,
     try:
         while True:
             raw = await ws.receive_text()
+            if heard is not None:
+                heard["at"] = time.monotonic()  # any frame: the page is there
             if len(raw) > MAX_FRAME_CHARS:
                 # Checked before parsing, for every kind: a command frame's
                 # args are as much a player's words as a typed line.
@@ -1308,10 +1323,13 @@ async def _send_threads_if_changed(ws: WebSocket, toon_id: str, conn: dict) -> N
         await ws.send_json({"kind": "threads", "threads": held})
 
 
-async def _session_watch(ws: WebSocket, token: str | None) -> None:
+async def _session_watch(ws: WebSocket, token: str | None,
+                         heard: dict | None = None) -> str:
     """Re-read the session while the socket is quiet, so disabling an account
     or revoking its sessions also ends a tab that only listens (SECURITY WARN
-    2026-09-27; the receive loop checks on every frame too)."""
+    2026-09-27; the receive loop checks on every frame too). And close a
+    socket the page has not spoken on for IDLE_CLOSE_S: a ghost the edge
+    keeps open, or a page too asleep to ping (it reconnects when it wakes)."""
     while True:
         await asyncio.sleep(SESSION_RECHECK_S)
         if accounts.resolve(token) is None:
@@ -1319,7 +1337,13 @@ async def _session_watch(ws: WebSocket, token: str | None) -> None:
                 await ws.close(code=4401)
             except Exception:
                 pass
-            return
+            return "revoked"
+        if heard is not None and time.monotonic() - heard["at"] > IDLE_CLOSE_S:
+            try:
+                await ws.close(code=QUIET)
+            except Exception:
+                pass
+            return "quiet"
 
 
 async def _broadcast_loop(

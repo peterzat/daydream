@@ -127,6 +127,40 @@ def test_an_idle_socket_of_a_revoked_account_is_closed(monkeypatch):
             assert closed.value.code == 4401
 
 
+def test_a_socket_the_page_never_speaks_on_is_closed(monkeypatch):
+    """Seen live 2026-09-29: a browser's connection to the edge dropped, and
+    Cloudflare kept the origin's side open answering the server's protocol
+    pings, so the server held a ghost that kept the dreamer awake."""
+    monkeypatch.setattr(ws_module, "SESSION_RECHECK_S", 0.1)
+    monkeypatch.setattr(ws_module, "IDLE_CLOSE_S", 0.4)
+    with TestClient(app) as client:
+        _enter(client)
+        with client.websocket_connect("/ws") as ws:
+            ws.receive_json()
+            with pytest.raises(WebSocketDisconnect) as closed:
+                for _ in range(50):
+                    ws.receive_json()
+            assert closed.value.code == ws_module.QUIET
+        assert not ws_module._session_sockets  # unregistered: no ghost left
+
+
+def test_a_page_that_pings_stays_open_past_the_quiet_limit(monkeypatch):
+    import time as _time
+    monkeypatch.setattr(ws_module, "SESSION_RECHECK_S", 0.1)
+    monkeypatch.setattr(ws_module, "IDLE_CLOSE_S", 0.4)
+    with TestClient(app) as client:
+        _enter(client)
+        with client.websocket_connect("/ws") as ws:
+            ws.receive_json()
+            end = _time.monotonic() + 1.2  # three quiet limits
+            while _time.monotonic() < end:
+                ws.send_json({"kind": "ping"})
+                _time.sleep(0.15)
+            ws.send_json({"kind": "input", "text": "a" * (ws_module.MAX_INPUT_CHARS + 1)})
+            # Still open and answering.
+            assert str(ws_module.MAX_INPUT_CHARS) in _next_notice(ws)["text"]
+
+
 def test_the_spa_sends_a_keepalive_ping():
     js = (Path(__file__).resolve().parent.parent / "web" / "assets" / "main.js").read_text()
     assert 'JSON.stringify({ kind: "ping" })' in js and "clearInterval(pingTimer)" in js
