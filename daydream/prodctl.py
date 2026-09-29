@@ -65,7 +65,7 @@ SRV = Path(os.environ.get("DAYDREAM_PROD_ROOT", "/srv/daydream"))
 UNIT = "daydream-prod.service"
 TUNNEL = "cloudflared-daydream.service"
 KEEP_RELEASES = 5
-PASSTHROUGH = ("world", "dream", "account", "invite", "prebake", "play")
+PASSTHROUGH = ("world", "dream", "account", "invite", "prebake", "play", "text-scan")
 ROOT_HELPER = Path("/usr/local/sbin/daydream-root")
 
 
@@ -221,6 +221,7 @@ def passthrough(args: list[str]) -> int:
     service user can read but never write."""
     rel = _require_current()
     args = list(args)
+    _refuse_side_doors(args)
     _refuse_unreadable_paths(args)
     staged = None
     if args[:1] == ["prebake"] and "--from-cache" in args:
@@ -266,6 +267,19 @@ def needs_stop(args: list[str]) -> bool:
     if key2 in NEEDS_YES and "--yes" not in args:
         return False
     return True
+
+
+def _refuse_side_doors(args: list[str]) -> None:
+    """A dream reaches the live village only through `dream install`, which
+    proves it by rehearsal and stops the service around it. The lower-level
+    appliers would change the live DB unproven, under a running service
+    (security review 2026-09-29)."""
+    key = tuple(args[:2])
+    if key == ("world", "patch") and "--check" not in args:
+        raise ProdError("in prod a dream goes in by `dream install <patch>` (rehearsed first); "
+                        "`world patch` here only checks (--check)")
+    if key == ("dream", "apply"):
+        raise ProdError("in prod a dream goes in by `dream install <patch>` (rehearsed first)")
 
 
 def _refuse_unreadable_paths(args: list[str]) -> None:

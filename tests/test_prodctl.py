@@ -198,7 +198,8 @@ def test_prune_keeps_current_previous_and_the_newest(srv, monkeypatch):
 
 
 def test_passthrough_names():
-    assert set(prodctl.PASSTHROUGH) == {"world", "dream", "account", "invite", "prebake", "play"}
+    assert set(prodctl.PASSTHROUGH) == {"world", "dream", "account", "invite", "prebake", "play",
+                                        "text-scan"}
 
 
 def test_the_lock_pins_what_the_dev_venv_tests_against():
@@ -642,3 +643,18 @@ def test_a_venv_is_sealed_read_only_and_refused_if_not_the_operators(tmp_path, m
     monkeypatch.setattr(prodctl.os, "getuid", lambda: os.stat(pth).st_uid + 1)
     with pytest.raises(prodctl.ProdError, match="not yours"):
         prodctl._seal_venv(venv)
+
+
+@pytest.mark.parametrize("argv,ok", [
+    (["world", "patch", "p.json"], False), (["world", "patch", "p.json", "--check"], True),
+    (["dream", "apply", "p.json"], False), (["dream", "install", "p.json"], True),
+    (["dream", "digest"], True),
+])
+def test_a_dream_reaches_prod_only_through_install(argv, ok):
+    """Security review 2026-09-29: `world patch` and `dream apply` changed the
+    live DB with no rehearsal and the service running."""
+    if ok:
+        prodctl._refuse_side_doors(argv)
+    else:
+        with pytest.raises(prodctl.ProdError, match="dream install"):
+            prodctl._refuse_side_doors(argv)

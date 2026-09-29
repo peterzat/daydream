@@ -954,6 +954,7 @@ case "${1:-}" in
     account)       cmd_accounts "$@" ;;
     invite)        cmd_accounts "$@" ;;
     model-eval)    shift; cmd_model_eval "$@" ;;
-    "")            echo "usage: bin/game {up|up-all|deploy|down|status|logs|image-test|comfyui-up|comfyui-down|vllm-up|vllm-down|world|dream|play|prebake|account|invite|prod|edge|test|voice-samples|drift-samples|review|model-eval}" >&2; exit 2 ;;
-    *)             echo "usage: bin/game {up|up-all|deploy|down|status|logs|image-test|comfyui-up|comfyui-down|vllm-up|vllm-down|world|dream|play|prebake|account|invite|prod|edge|test|voice-samples|drift-samples|review|model-eval} (got: $1)" >&2; exit 2 ;;
+    text-scan)     shift; _require_venv; exec "$VENV_PY" -m daydream.textscan "$@" ;;
+    "")            echo "usage: bin/game {up|up-all|deploy|down|status|logs|image-test|comfyui-up|comfyui-down|vllm-up|vllm-down|world|dream|play|prebake|account|invite|prod|edge|test|voice-samples|drift-samples|review|model-eval|text-scan}" >&2; exit 2 ;;
+    *)             echo "usage: bin/game {up|up-all|deploy|down|status|logs|image-test|comfyui-up|comfyui-down|vllm-up|vllm-down|world|dream|play|prebake|account|invite|prod|edge|test|voice-samples|drift-samples|review|model-eval|text-scan} (got: $1)" >&2; exit 2 ;;
 esac

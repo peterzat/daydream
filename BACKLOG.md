@@ -392,3 +392,39 @@ Resolved and rejected entries, compressed to a line each; full narratives live i
 - **forge-render-drift-anchor — done 2026-06-30, golden pending re-ratification.** The forge dHash anchor + golden shipped; NOTE (2026-07-01): the render was later judged NOT to read as a forge (see `forge-render-legibility`, still open), so the golden gets re-ratified after that fix.
 - **present-player-drift-cadence-guard — rejected 2026-06-30.** Redundant: the busy-cadence magnitude is already pinned in tier_short (`test_compute_next_interval_busy_default`). Kept so a future design pass does not re-propose it.
 - **voice-baseline-add-model-helper — done 2026-06-30.** `tests/test_voice_baseline.py` derives its parametrization from a glob + `baseline-class` markers; new tracked baselines auto-extend the regression with no code edit.
+
+## Security review follow-ups (captured 2026-09-29)
+
+What the security review of 2026-09-29 left open in the repo itself, for any
+instance. Items that concern one deployment's own account, zone or box are
+kept with that deployment, not here.
+
+### shared-origin-with-the-pages-site
+- **One-line description:** An instance served under a path of a shared host (the Worker's route, e.g. `/daydream*`) shares its origin with whatever else that host serves: any script on that origin can use a signed-in player's session and register a service worker over the instance's path. Guard the rest of the host with a strict CSP on every page it serves (`script-src 'none'` or `'self'`, `worker-src 'none'`, `frame-ancestors 'none'`), and keep other Workers off the host's routes. The structural fix is the instance on its own hostname.
+- **Why deferred:** The rest of a shared host lies outside this repo; an own hostname is a product decision (cookies, the edge flag, CLOUDFLARE-SETUP.md).
+- **Revisit criteria:** Before anything else on the host gains a script or a third-party embed; or at the next edge rework.
+- **Origin:** security review 2026-09-29 (L2).
+
+### sign-in-rate-rule-covers-every-post
+- **One-line description:** The Worker refuses encoded slashes, so a spelling of a path cannot slip a POST past a WAF rule written for the login and invite paths. A fork's rate rule may cover every POST under its base instead (players rarely POST; commands ride the socket), which makes the rule independent of how a path is spelled.
+- **Why deferred:** A dashboard setting, per instance; the Worker's refusal already closes the known gap.
+- **Revisit criteria:** When a rate rule is next touched, or if another path trick turns up.
+- **Origin:** security review 2026-09-29 (L4).
+
+### sleeping-page-polls-gently
+- **One-line description:** A tab left open while the village sleeps retries every 30 s (a socket and `api/me`), and the asleep page polls `edge/status` every 60 s; a dozen forgotten tabs over a long sleep spend a large share of the free quota. Back off to 5-10 minutes once the answer is "planned sleep", with one `edge/status` request instead of two.
+- **Why deferred:** Small client change; not urgent at today's scale.
+- **Revisit criteria:** Before a multi-day sleep with friends' tabs open.
+- **Origin:** security review 2026-09-29 (info).
+
+### prod-supply-chain-pins
+- **One-line description:** Pin hashes in `ops/requirements-prod.lock` (`--require-hashes --only-binary=:all:`), pin ComfyUI to a commit and refresh it deliberately (the checkout is April's), and consider replacing litellm (a very large dependency used only to call a local endpoint) with plain httpx. The keepsakes and offsite timers run the working tree's `bin/game` rather than a tested release; point them at `/srv/daydream/current`.
+- **Why deferred:** Each is a small change with its own test run; none is exploitable on its own.
+- **Revisit criteria:** At the next dependency upgrade.
+- **Origin:** security review 2026-09-29 (info).
+
+### username-lockout-softer
+- **One-line description:** Five wrong guesses from anywhere lock a known username out of password sign-in for fifteen minutes (existing sessions are unaffected). Count a username's failures only from addresses without a recent success, or give each address its own softer budget.
+- **Why deferred:** Accepted: the window is short, sessions last thirty days, and the per-username cap is what stops guessing.
+- **Revisit criteria:** A friend locked out by someone else.
+- **Origin:** security review 2026-09-29 (L6).

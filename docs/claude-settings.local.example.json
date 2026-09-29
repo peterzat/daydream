@@ -17,7 +17,44 @@
       "Bash(bin/game prod world restore-backup *)",
       "Bash(bin/game prod world load *)",
       "Bash(bin/game prod root units --apply*)",
-      "Bash(bin/game prod root env set *)"
+      "Bash(bin/game prod root env set *)",
+      "Bash(bin/game prod account cli-cookie)",
+      "Bash(bin/game prod invite create *)",
+      "Bash(bin/game prod invite revoke *)",
+      "Bash(bin/game prod play *)",
+      "Bash(bin/game prod world patch *)",
+      "Bash(bin/game prod dream apply *)",
+      "Bash(bin/game prod world delete-toon *)",
+      "Bash(bin/game prod world skill *)",
+      "Bash(bin/game prod offsite-restore *)",
+      "Bash(bin/game prod pull*)",
+      "Bash(bin/game prod instance *)",
+      "Bash(bin/game edge secrets*)",
+      "Bash(bin/game edge kv-create*)",
+      "Bash(bin/game prod account disable *)",
+      "Bash(bin/game prod account enable *)",
+      "Bash(bin/game prod account rename *)"
+    ],
+    "deny": [
+      "Read(~/.ssh/**)",
+      "Read(~/.config/gh/**)",
+      "Read(~/.config/daydream/**)",
+      "Read(//srv/daydream/etc/**)",
+      "Read(//etc/cloudflared/**)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|Read|Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/tools/agent_guard.py\"",
+            "timeout": 5
+          }
+        ]
+      }
     ]
   }
 }
