@@ -68,6 +68,16 @@ advance:**
 7. **The journal written when a player leaves.** Same-day immediacy is nice;
    a dream could write a far better "morning page."
 8. **Descriptions for objects the local model spawned.** Rare.
+9. **Why a thing the prose names can't be handled** (playtest 2026-09-29b;
+   `daydream/glimpse.py`). "Get the jar" used to read "You don't see the jar
+   here" right after the shelf's look said a jar glinted there. The reason
+   is authored where it matters (an object's `glimpsed` list, per verb and
+   per story state), a look reads the prose itself, and only the rest (the
+   lantern by the stair, the reeds) gets one short 9B line drawn from the
+   sentence that names it, validated and cached. Measured 11 of 11 valid
+   (`bin/game model-eval --suites glimpse`): storybook enough, sometimes a
+   little purple. Each is tagged local, so the digest turns the ones players
+   meet into authored reasons.
 
 ## The honest risk
 
@@ -105,7 +115,8 @@ The stance held, and the decisions followed from it:
 
 The marginal surfaces each have a switch, for when play shows they are not
 missed: `DAYDREAM_DRIFT_VARY_PROB` (default 0.3), `DAYDREAM_DIRECTOR_LLM`
-(default on), `DAYDREAM_JOURNAL_ENABLED` (default on), and
+(default on), `DAYDREAM_JOURNAL_ENABLED` (default on), `DAYDREAM_GLIMPSE_LLM`
+(default on; off reads a plain "out of reach" line), and
 `DAYDREAM_RETELL_ENABLED` (Zork only).
 
 One caveat on pictures: "only what players create is painted live" holds

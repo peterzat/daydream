@@ -1,0 +1,310 @@
+"""Things the prose shows that the hands can't reach (playtest 2026-09-29b).
+
+A room's description or a thing's look can name something that is not an
+object: a jar glinting on a shelf too high to reach. Asked for by name ("get
+the jar"), it used to read "You don't see the jar here", which was false: the
+player had just seen it. The answer now comes in the reflexes-not-voice order
+(docs/REFLEXES.md):
+
+1. Authored. Any room or thing may carry `properties.glimpsed`, a list of
+   entries `{"names": [...], "text": "...", "verbs"?: {verb: text},
+   "if"?: [conditions]}`: what its prose names, why a dreamer can't handle
+   it, per verb when looking differs from reaching, and when (story
+   conditions, `self` being the holder). Among the entries whose conditions
+   hold, the longest matching name wins.
+2. Seen but unwritten. When the name is in the scene's own prose (the room's
+   description, or the look of a thing here), a look answers with that
+   prose, deterministically, and any other verb gets one local-model line
+   saying why, drawn only from that sentence: validated, cached per sentence
+   in worldstate, tagged `src: "local"` so the dream digest lists it for an
+   authored rewrite. A model outage or a line that fails validation reads a
+   plain line instead.
+3. Named nowhere here: None, and the caller says "You don't see the X here."
+"""
+
+from __future__ import annotations
+
+import hashlib
+import logging
+import re
+
+from daydream import config, objects, rules, worldstate
+from daydream.llm import client, safety
+
+logger = logging.getLogger(__name__)
+
+# Verbs that look rather than reach: they answer with what can be seen.
+LOOK_VERBS = frozenset({"examine", "look", "read"})
+
+_ARTICLE = re.compile(r"^(?:the|a|an|that|this|those|these|some|one|your|my)\s+")
+_SENTENCE = re.compile(r"[^.!?]+[.!?]?")
+_STOPWORDS = frozenset({"it", "them", "that", "this", "one", "thing", "things", "up", "there",
+                        "here", "all", "some"})
+
+
+def _norm(text: str) -> str:
+    s = re.sub(r"\s+", " ", (text or "").lower()).strip(" .,!?;:'\"")
+    prev = None
+    while prev != s:
+        prev, s = s, _ARTICLE.sub("", s)
+    return s
+
+
+def _singular(word: str) -> str:
+    if len(word) > 3 and word.endswith("es") and word[-3] in "sxz":
+        return word[:-2]
+    if len(word) > 3 and word.endswith("s") and not word.endswith("ss"):
+        return word[:-1]
+    return word
+
+
+def _phrase_pattern(phrase: str) -> re.Pattern:
+    """Whole words, the last one plural-tolerant: "jar" finds "jar" and "jars"."""
+    words = phrase.split()
+    head = [re.escape(w) for w in words[:-1]]
+    last = re.escape(_singular(words[-1])) + r"(?:s|es)?"
+    return re.compile(r"\b" + r"\s+".join(head + [last]) + r"\b", re.IGNORECASE)
+
+
+def _name_matches(typed: str, name: str) -> bool:
+    name = _norm(name)
+    if not name or not typed:
+        return False
+    return bool(_phrase_pattern(name).search(typed))
+
+
+def _hosts(actor: objects.Object, room_id: str) -> list[objects.Object]:
+    """What can hold a glimpse: the room and the things in scope (no toons)."""
+    return [o for o in objects.in_scope(actor.id)
+            if o.id != actor.id and o.kind in ("room", "thing")]
+
+
+def authored(actor: objects.Object, room_id: str, name: str, verb: str) -> str | None:
+    """The authored reason for `verb` on `name`, from a glimpse whose
+    conditions hold for this actor; the longest matching name wins."""
+    typed = _norm(name)
+    best: tuple[int, str] | None = None
+    for host in _hosts(actor, room_id):
+        entries = host.properties.get("glimpsed")
+        if not isinstance(entries, list):
+            continue
+        for entry in entries:
+            if not isinstance(entry, dict):
+                continue
+            names = [n for n in entry.get("names") or [] if isinstance(n, str)]
+            hit = max((len(_norm(n)) for n in names if _name_matches(typed, n)), default=0)
+            if not hit or (best is not None and hit <= best[0]):
+                continue
+            ctx = rules._build_ctx(actor, None, None, room_id, host, f"glimpse:{host.id}")
+            if not rules.conditions_hold(entry.get("if"), ctx):
+                continue
+            per_verb = entry.get("verbs") if isinstance(entry.get("verbs"), dict) else {}
+            text = per_verb.get(verb)
+            if not isinstance(text, str) and verb in LOOK_VERBS:
+                text = next((per_verb[v] for v in ("examine", "look", "read")
+                             if isinstance(per_verb.get(v), str)), None)
+            if not isinstance(text, str):
+                text = entry.get("text")
+            if isinstance(text, str) and text.strip():
+                best = (hit, text.strip())
+    return best[1] if best else None
+
+
+def _prose(host: objects.Object) -> str:
+    """What a player reads of a room (its description) or a thing (its look)."""
+    if host.kind == "room":
+        text = host.properties.get("description_cached") or host.seed
+        return text if isinstance(text, str) else ""
+    from daydream import verbs  # the look the examine card shows
+
+    return verbs.detail_with_state(host) or ""
+
+
+def seen_in(actor: objects.Object, room_id: str, name: str) -> tuple[str, str] | None:
+    """(noun, sentence): where the scene's own prose names the whole phrase
+    typed (articles aside, a plural tolerated). Never its head noun alone: a
+    "button letter" is not any letter. The noun as written outranks a plural,
+    a plural outranks a possessive ("the lantern's reach" names the lantern
+    less than "the lantern by the stair"), and at the same rank a thing's
+    look outranks the room's description."""
+    noun = _norm(name)
+    if len(noun) < 3 or noun in _STOPWORDS:
+        return None
+    pattern = _phrase_pattern(noun)
+    found: list[tuple[int, str]] = []
+    for host in sorted(_hosts(actor, room_id), key=lambda h: h.kind == "room"):
+        for sentence in _SENTENCE.findall(_prose(host)):
+            ranks = [_match_rank(m, noun) for m in pattern.finditer(sentence)]
+            if ranks:
+                found.append((min(ranks), sentence.strip()))
+    if not found:
+        return None
+    found.sort(key=lambda f: f[0])  # stable: things before the room at a rank
+    return noun, found[0][1]
+
+
+def _match_rank(m: re.Match, noun: str) -> int:
+    if m.string[m.end():m.end() + 2] in ("'s", "’s"):
+        return 2
+    return 0 if m.group(0).lower() == noun else 1
+
+
+def _sentence_case(text: str) -> str:
+    text = text.strip()
+    return text[:1].upper() + text[1:] if text else text
+
+
+def _terminated(text: str) -> str:
+    text = text.strip()
+    return text if not text or text[-1] in ".!?" else text + "."
+
+
+def plain_line(noun: str) -> str:
+    """When the model is quiet or its line fails: seen, and out of reach."""
+    return f"You can see the {noun} from where you stand, but it isn't within reach just now."
+
+
+_SYSTEM = (
+    "You are the gentle narrator of a cozy watercolor storybook game. The "
+    "player tried to do something with a thing the scene describes, but it "
+    "can't be handled. In ONE short sentence addressed to the player (\"you\"), "
+    "show why, the way a storybook would: borrow a concrete detail from the "
+    "scene sentence and let the reason follow from it, softly. Never write "
+    "\"cannot be taken\", \"is not possible\" or any game-rule phrasing. Invent "
+    "nothing: no names, people, places, objects, or facts the sentence doesn't "
+    "give, and no hint about how to reach it. No dialogue, no urgency.\n"
+    "Examples (another story, for the shape only):\n"
+    "Scene: A kettle sings on the hob. Tried: take the kettle. -> "
+    "{\"line\": \"The kettle is singing away on the hob, far too hot and busy "
+    "for your hands just now.\"}\n"
+    "Scene: Moss grows thick between the stones. Tried: take the moss. -> "
+    "{\"line\": \"You brush the moss with a fingertip, but it holds fast "
+    "between the stones, where it has always been.\"}\n"
+    "Return strict JSON: {\"line\": \"...\"}."
+)
+
+# Words a line may open a sentence with, capitalized, though the scene never
+# said them: plain English openers, never a name.
+_OPENERS = frozenset("""
+you your it its the a an this that these those there here up down from only
+nothing still even just some no not one for with without in on at by past
+beyond too so but and now then though while when where as if yet each every
+all both none far high out over under behind between through against above
+below near after before perhaps maybe instead whatever somewhere
+""".split())
+
+_REFUSAL = re.compile(r"^\s*(?:i\b|as an ai|sorry)|\bi can(?:not|'t)\b", re.IGNORECASE)
+_URGENT = re.compile(r"\b(?:hurry|must|quickly|danger)\b", re.IGNORECASE)
+_CAPS = re.compile(r"\b[A-Z][a-z]+\b")
+
+
+def valid_line(line, sentence: str) -> bool:
+    """One or two short sentences of narration that name nothing the source
+    doesn't: no new names, no dialogue, no urgency, no numbers it never gave."""
+    if not isinstance(line, str):
+        return False
+    line = line.strip()
+    if not 12 <= len(line) <= 220 or len(_SENTENCE.findall(line)) > 2:
+        return False
+    if any(q in line for q in "\"“”"):
+        return False  # no dialogue
+    if _REFUSAL.search(line) or _URGENT.search(line):
+        return False
+    if re.search(r"\d", line) and not re.search(r"\d", sentence):
+        return False
+    source_words = {w.lower() for w in re.findall(r"[A-Za-z]+", sentence)}
+    for cap in _CAPS.findall(line):
+        if cap.lower() not in source_words and cap.lower() not in _OPENERS:
+            return False  # a name the scene never said, even opening a sentence
+    return safety.first_banned(line) is None
+
+
+def _cache_key(room_id: str, noun: str, verb: str, sentence: str) -> str:
+    digest = hashlib.sha1(f"{noun}|{verb}|{sentence}".encode()).hexdigest()[:16]
+    return f"glimpse:{room_id}:{digest}"
+
+
+def user_prompt(sentence: str, verb: str, noun: str) -> str:
+    return f"Scene: {sentence}\nTried: {verb} the {noun}."
+
+
+async def compose(sentence: str, verb: str, noun: str) -> tuple[str | None, object]:
+    """One local-model call: (the validated line or None, the raw answer).
+    model-eval measures this same prompt and validator."""
+    try:
+        result = await client.acompletion_json(
+            system=_SYSTEM, user=user_prompt(sentence, verb, noun),
+            purpose="glimpse", temperature=0.4, max_tokens=120,
+        )
+    except client.LLMUnavailable:
+        return None, None
+    raw = result.get("line") if isinstance(result, dict) else None
+    if not valid_line(raw, sentence):
+        logger.info("glimpse: a line for %r failed validation", noun)
+        return None, raw
+    return _terminated(raw.strip()), raw
+
+
+async def _local_line(world_id: str, room_id: str, noun: str, verb: str,
+                      sentence: str) -> str | None:
+    key = _cache_key(room_id, noun, verb, sentence)
+    cached = worldstate.get(world_id, key)
+    if isinstance(cached, str) and cached:
+        return cached
+    line, _ = await compose(sentence, verb, noun)
+    if line is not None:
+        worldstate.set(world_id, key, line)
+    return line
+
+
+async def answer(actor: objects.Object, room_id: str, name: str, verb: str) -> dict | None:
+    """A private narrate effect for `verb` on `name`, or None when the scene
+    never named it (the caller says it isn't here)."""
+    text = authored(actor, room_id, name, verb)
+    if text:
+        return {"kind": "narrate", "text": text, "to": "@actor"}
+    seen = seen_in(actor, room_id, name)
+    if seen is None:
+        return None
+    noun, sentence = seen
+    if verb in LOOK_VERBS:
+        return {"kind": "narrate", "text": _terminated(_sentence_case(sentence)), "to": "@actor"}
+    line = None
+    if config.glimpse_llm_enabled():
+        line = await _local_line(actor.world_id, room_id, noun, verb, sentence)
+    if line is None:
+        return {"kind": "narrate", "text": plain_line(noun), "to": "@actor"}
+    return {"kind": "narrate", "text": line, "to": "@actor", "src": "local"}
+
+
+def validate_glimpsed(entries, where: str, *, known_flags: set[str], known_ids: set[str],
+                      known_story: dict | None = None) -> list[str]:
+    """Named errors for an authored `properties.glimpsed` list (the loader)."""
+    if not isinstance(entries, list):
+        return [f"{where} must be a list"]
+    errors: list[str] = []
+    for i, entry in enumerate(entries):
+        ew = f"{where}[{i}]"
+        if not isinstance(entry, dict):
+            errors.append(f"{ew} must be an object")
+            continue
+        unknown = set(entry) - {"names", "text", "verbs", "if"}
+        if unknown:
+            errors.append(f"{ew}: unknown key(s) {sorted(unknown)}")
+        names = entry.get("names")
+        if not (isinstance(names, list) and names
+                and all(isinstance(n, str) and _norm(n) for n in names)):
+            errors.append(f"{ew}.names must be a non-empty list of names")
+        if not (isinstance(entry.get("text"), str) and entry["text"].strip()):
+            errors.append(f"{ew}.text must be a non-empty string")
+        verbs = entry.get("verbs")
+        if verbs is not None and not (
+                isinstance(verbs, dict)
+                and all(isinstance(k, str) and isinstance(v, str) and v.strip()
+                        for k, v in verbs.items())):
+            errors.append(f"{ew}.verbs must map verb names to lines")
+        if "if" in entry:
+            errors.extend(rules.validate_condition_list(
+                entry["if"], f"{ew}.if", known_flags=known_flags, known_ids=known_ids,
+                known_story=known_story))
+    return errors

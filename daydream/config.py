@@ -324,5 +324,15 @@ def journal_enabled() -> bool:
     )
 
 
+def glimpse_llm_enabled() -> bool:
+    """Whether a thing the scene's prose names, with no authored reason, gets
+    a local-model line saying why it can't be handled (daydream/glimpse.py;
+    playtest 2026-09-29b). Default ON; off, it reads a plain line. Authored
+    reasons and a look (which reads the prose itself) never call the model."""
+    return os.environ.get("DAYDREAM_GLIMPSE_LLM", "1").strip().lower() not in (
+        "0", "false", "no", "off",
+    )
+
+
 def ensure_dirs() -> None:
     worlds_dir().mkdir(parents=True, exist_ok=True)

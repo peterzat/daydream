@@ -51,8 +51,9 @@ APP_VERSION = "1.0.0"
 # end with their step, a greeting that doesn't repeat an arrival. 1.10:
 # what the page offers, playtest 2026-09-29 -- open topics and invitation
 # beats, the mentions that make a subject known, the thread that names the
-# littlest armchair.)
-WORLD_VERSION = "1.10"
+# littlest armchair. 1.11: glimpses, playtest 2026-09-29b -- the highest
+# shelf says why its jar is out of reach, in every state of the arc.)
+WORLD_VERSION = "1.11"
 
 
 @lru_cache(maxsize=1)

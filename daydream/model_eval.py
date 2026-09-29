@@ -74,12 +74,16 @@ WORLD = CANONICAL
 JSON_PROMPTS = PROJECT_ROOT / "tests" / "drift" / "prompts"
 
 SUITES = ("parser", "dialogue", "canon", "growth", "journal", "retell", "examine",
-          "drift", "json", "burst")
+          "glimpse", "drift", "json", "burst")
 
 # The canon suite (SPEC 2026-09-26 criterion 10): questions whose answers are
 # fixed by authored facts, scored mechanically for contradiction. See the
 # corpus file's comment for the facts and the scoring rule.
 CANON = json.loads((PROJECT_ROOT / "tests" / "model_eval" / "canon.json").read_text())
+
+# The glimpse suite (playtest 2026-09-29b): room sentences that name a thing
+# that is not an object, and what a player tried with it.
+GLIMPSE = json.loads((PROJECT_ROOT / "tests" / "model_eval" / "glimpse.json").read_text())
 
 # ---- parser corpus -------------------------------------------------------
 #
@@ -760,6 +764,21 @@ async def suite_examine(tmp: Path) -> dict:
             "runs": out}
 
 
+async def suite_glimpse(tmp: Path) -> dict:
+    """Why a thing the prose names can't be handled: the production prompt
+    and validator (daydream/glimpse.py), no cache."""
+    from daydream import glimpse
+
+    _current_purpose.set("glimpse")
+    out = []
+    for case in GLIMPSE["cases"]:
+        line, raw = await glimpse.compose(case["sentence"], case["verb"], case["noun"])
+        out.append({"case": f"{case['verb']} {case['noun']}", "sentence": case["sentence"],
+                    "line": line, "raw": raw})
+    good = [r for r in out if r["line"]]
+    return {"score": len(good) / len(out), "ok": len(good), "n": len(out), "runs": out}
+
+
 async def suite_drift(tmp: Path) -> dict:
     from daydream import drift
 
@@ -939,7 +958,7 @@ def _summary_row(r: dict) -> dict:
         "dlg_opener": g("dialogue", "opener_max"),
         "canon_x": g("canon", "contradicting_replies"),
         "growth": g("growth"), "journal": g("journal"), "retell": g("retell"),
-        "examine": g("examine"), "drift": g("drift"), "json": g("json"),
+        "examine": g("examine"), "glimpse": g("glimpse"), "drift": g("drift"), "json": g("json"),
         "burst1": g("burst", "single_s"), "burst3": g("burst", "burst3_s"),
     }
 
@@ -956,7 +975,7 @@ def _report(runs: list[dict]) -> str:
     lines = ["# Model eval", ""]
     cols = ["label", "parser", "dialogue", "dlg_brief", "dlg_hint", "dlg_pov",
             "dlg_opener", "canon_x", "growth",
-            "journal", "retell", "examine", "drift", "json", "burst1", "burst3"]
+            "journal", "retell", "examine", "glimpse", "drift", "json", "burst1", "burst3"]
     lines.append("| " + " | ".join(cols) + " |")
     lines.append("|" + "---|" * len(cols))
     for r in runs:
@@ -1028,6 +1047,8 @@ def _prose_items(r: dict) -> dict[str, str]:
         items[f"retell | {i:02d} | {x['original']}"] = x["retold"] or "[FALLBACK]"
     for x in s.get("examine", {}).get("runs", []):
         items[f"examine | {x['object']}"] = x["text"] or "[NONE]"
+    for x in s.get("glimpse", {}).get("runs", []):
+        items[f"glimpse | {x['case']}"] = x["line"] or "[INVALID]"
     for x in s.get("drift", {}).get("runs", []):
         items[f"drift | {x['npc']} | {x['mood']}"] = x["text"] or "[NONE]"
     return items

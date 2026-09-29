@@ -1,0 +1,71 @@
+{
+  "comment": "The glimpse suite (daydream/glimpse.py; playtest 2026-09-29b): a sentence a room's description says, a thing it names that is not an object, and a verb a player tried. Scored by glimpse.valid_line; the lines go to the blind prose sheet.",
+  "cases": [
+    {
+      "room": "r-cellar",
+      "noun": "lantern",
+      "verb": "take",
+      "sentence": "The lantern by the stair burns low and steady."
+    },
+    {
+      "room": "r-cellar",
+      "noun": "brick walls",
+      "verb": "take",
+      "sentence": "Shelves run along the brick walls, and on them sit rows of small glass jars, each holding a folded slip of paper: an hour somebody saved and never spent."
+    },
+    {
+      "room": "r-square",
+      "noun": "cobbles",
+      "verb": "take",
+      "sentence": "Paper lanterns hang from crooked poles all around the little square, each in its own warm pool of light, and moths turn slow above the cobbles."
+    },
+    {
+      "room": "r-orchard",
+      "noun": "trees",
+      "verb": "take",
+      "sentence": "Crooked old trees stand in a loose ring, and their round fruit glow softly, each one a small lamplit evening."
+    },
+    {
+      "room": "r-river",
+      "noun": "reeds",
+      "verb": "take",
+      "sentence": "Reeds whisper along the bank, and the river goes by as slowly as a long afternoon."
+    },
+    {
+      "room": "r-bridge",
+      "noun": "river",
+      "verb": "take",
+      "sentence": "The old stone bridge arches over a slow dark river, hung end to end with lanterns whose reflections sway on the water like golden fish."
+    },
+    {
+      "room": "r-post",
+      "noun": "pigeonholes",
+      "verb": "open",
+      "sentence": "Wooden pigeonholes climb every wall, and every pigeonhole holds letters: written, sealed, and never sent."
+    },
+    {
+      "room": "r-well",
+      "noun": "well",
+      "verb": "take",
+      "sentence": "The old stone well stands cool and green with moss, ferns nodding at its foot."
+    },
+    {
+      "room": "r-hill",
+      "noun": "bench",
+      "verb": "take",
+      "sentence": "One weathered bench faces east, toward a pale edge of sky that never quite decides to become morning while anyone is watching."
+    },
+    {
+      "room": "r-lane",
+      "noun": "lanterns",
+      "verb": "take",
+      "sentence": "Lanterns hang on brackets all along the narrow lane, and the leaning houses have blue doors and window boxes full of moss."
+    },
+    {
+      "room": "r-loft",
+      "noun": "round window",
+      "verb": "open",
+      "sentence": "A round window looks out over the village roofs."
+    }
+  ]
+}

@@ -13672,7 +13672,65 @@
         "high shelf",
         "top shelf",
         "shadowed shelf"
-      ]
+      ],
+      "properties": {
+        "glimpsed": [
+          {
+            "names": [
+              "jar",
+              "single jar",
+              "glinting jar",
+              "high jar",
+              "dusty jar",
+              "wend's jar",
+              "labeled jar"
+            ],
+            "if": [
+              {
+                "ending": "tace-hour/within-reach"
+              }
+            ],
+            "text": "Nothing glints up there now: only a clean circle in the dust where the jar stood apart, and Wend's ladder still leaning on the shelf."
+          },
+          {
+            "names": [
+              "jar",
+              "single jar",
+              "glinting jar",
+              "high jar",
+              "dusty jar",
+              "wend's jar",
+              "labeled jar"
+            ],
+            "if": [
+              {
+                "prop": "state",
+                "of": "o-tace-hour-ladder",
+                "eq": "standing"
+              }
+            ],
+            "text": "Wend's ladder reaches the highest shelf again, just, but the climb isn't yours to make. The jar glints on up there, set apart from the rest.",
+            "verbs": {
+              "examine": "From the foot of the ladder you can make out a glint of glass and the pale edge of a label, still too far up to read."
+            }
+          },
+          {
+            "names": [
+              "jar",
+              "single jar",
+              "glinting jar",
+              "high jar",
+              "dusty jar",
+              "wend's jar",
+              "labeled jar"
+            ],
+            "text": "The jar glints far above the lantern's reach, set apart from all the rest, and no ladder in the cellar is tall enough to bring it down.",
+            "verbs": {
+              "examine": "Up in the shadow you can make out only a glint of glass and the pale edge of a label, much too far away to read."
+            }
+          }
+        ]
+      }
     },
     {
       "id": "o-paper-lantern",

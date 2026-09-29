@@ -88,6 +88,29 @@ appends the guest hours whose arcs are open and those whose arcs have
 closed. The Ledger of Returned Hours carries the keepers; the board of room
 keys carries the guests.
 
+Glimpses (`properties.glimpsed` on a room or a thing; engine
+`daydream/glimpse.py`, playtest 2026-09-29b). When prose names something that
+is not an object a player can handle (a jar glinting on a shelf out of
+reach), say why in the host's `glimpsed` list, or a player who types "get the
+jar" meets the engine's answer instead:
+
+```json
+"glimpsed": [{"names": ["jar", "glinting jar"], "if": [conditions]?,
+              "text": "why it can't be handled (any verb)",
+              "verbs": {"examine": "what a look shows"}?}]
+```
+
+Among the entries whose `if` holds (`@self` is the host), the longest
+matching name wins, so write one entry per story state with the same names
+(the highest shelf has three: the jar at rest, the ladder standing, the clean
+circle after within-reach). `examine` covers look and read unless they have
+their own line. Choose names no object here answers to (a stray minute
+answers "glint"). Without an entry, a look reads the sentence that names the
+thing, and any other verb gets one short local-model line drawn from that
+sentence (tagged local, listed in the dream digest), so author the things the
+prose makes inviting: what glints, is sealed, hung high, someone's own.
+The loader validates the list; walkthroughs can assert the lines.
+
 A free line to a resident that names a topic gets the topic's authored
 answer only when the line is short (nine words or fewer); a longer line is
 the player's own question, answered by the model with the topic's authored

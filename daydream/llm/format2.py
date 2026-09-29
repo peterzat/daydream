@@ -40,7 +40,7 @@ import logging
 import re
 from pathlib import Path
 
-from daydream import config, db, rules, version, worldstate, worldverbs
+from daydream import config, db, glimpse, rules, version, worldstate, worldverbs
 from daydream.llm import story_format
 from daydream.verbs import VERBS
 
@@ -334,6 +334,10 @@ def validate_envelope2(env: dict) -> list[str]:
             ))
         if "properties" in r and not isinstance(r["properties"], dict):
             errors.append(f"{where}.properties must be an object")
+        elif "glimpsed" in r.get("properties", {}):
+            errors.extend(glimpse.validate_glimpsed(
+                r["properties"]["glimpsed"], f"{where}.properties.glimpsed",
+                known_flags=known_flags, known_ids=all_ids, known_story=ks))
     # One-way exits are legal in format 2 (a one-way slide or chimney):
     # reciprocity is a LINT, not an error.
     for src, dst in sorted(edges):
@@ -403,6 +407,10 @@ def validate_envelope2(env: dict) -> list[str]:
             ))
         if "properties" in th and not isinstance(th["properties"], dict):
             errors.append(f"{where}.properties must be an object")
+        elif "glimpsed" in th.get("properties", {}):
+            errors.extend(glimpse.validate_glimpsed(
+                th["properties"]["glimpsed"], f"{where}.properties.glimpsed",
+                known_flags=known_flags, known_ids=all_ids, known_story=ks))
         if "verbs" in th and not (
             isinstance(th["verbs"], list)
             and all(isinstance(v, str) for v in th["verbs"])

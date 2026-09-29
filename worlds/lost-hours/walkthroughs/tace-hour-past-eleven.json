@@ -372,6 +372,12 @@
           }
         },
         {
+          "cmd": "take the jar",
+          "expect": {
+            "narrate_contains": "the climb isn't yours to make"
+          }
+        },
+        {
           "cmd": "up",
           "expect": {
             "room": "r-clocktower"

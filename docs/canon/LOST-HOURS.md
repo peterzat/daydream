@@ -343,6 +343,12 @@ Tace's asking the next morning.
 - No ladder in the cellar is tall enough for the highest shelf; the only one
   that ever reached was Wend's, which Mott kept folded behind the shavings
   (the Tace-hour chain, section 7).
+- A dreamer who reaches for the jar (`get the jar`) hears why in the
+  highest shelf's own words (its `glimpsed` lines, 2026-09-29b): far above
+  the lantern's reach with no ladder tall enough; with Wend's ladder
+  standing, "the climb isn't yours to make"; after `within-reach`, only the
+  clean circle in the dust. A look sees a glint of glass and the pale edge of
+  a label, too far up to read: the label's words stay reserved.
 - The keepers' arrival stories (the Unsent Letters) show Wend welcoming
   newcomers: Wend handed Bell the lamplighter's pole and Tace a loupe, and
   knew every hour by name in the cellar Umber came to. Mott's oldest minute,

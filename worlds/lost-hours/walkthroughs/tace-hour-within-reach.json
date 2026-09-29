@@ -223,6 +223,19 @@
           }
         },
         {
+          "cmd": "get the jar",
+          "expect": {
+            "narrate_contains": "no ladder in the cellar is tall enough to bring it down",
+            "narrate_lacks": "You don't see"
+          }
+        },
+        {
+          "cmd": "examine the jar",
+          "expect": {
+            "narrate_contains": "much too far away to read"
+          }
+        },
+        {
           "cmd": "up"
         },
         {
@@ -370,6 +383,18 @@
           }
         },
         {
+          "cmd": "take the jar",
+          "expect": {
+            "narrate_contains": "the climb isn't yours to make"
+          }
+        },
+        {
+          "cmd": "examine the glinting jar",
+          "expect": {
+            "narrate_contains": "From the foot of the ladder"
+          }
+        },
+        {
           "cmd": "use tall ladder on jars",
           "expect": {
             "narrate_contains": "It already stands"
@@ -471,6 +496,12 @@
           "cmd": "examine highest shelf",
           "expect": {
             "narrate_contains": "a clean circle in the dust"
+          }
+        },
+        {
+          "cmd": "take the high jar",
+          "expect": {
+            "narrate_contains": "a clean circle in the dust where the jar stood apart"
           }
         },
         {
