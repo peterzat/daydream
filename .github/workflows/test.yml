@@ -26,10 +26,13 @@ jobs:
           python-version: ${{ matrix.python-version }}
           cache: pip
       - name: Install (mirrors the dev venv bin/game expects)
+        # Pinned to the prod lock, so CI tests the versions prod runs: an
+        # unpinned install drifted past the lock (the lock-drift test failed)
+        # and a newer FastAPI hid included routers from the gate's route walk.
         run: |
           python -m venv .venv
           .venv/bin/pip install --upgrade pip
-          .venv/bin/pip install -e '.[dev]'
+          .venv/bin/pip install -c ops/requirements-prod.lock -e '.[dev]'
       - name: Lint
         run: .venv/bin/ruff check .
       - name: Test (medium tier)
