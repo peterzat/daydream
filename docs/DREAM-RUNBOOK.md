@@ -91,7 +91,10 @@ grown room with a card in a keeper's hand naming the planter and their wish
 in their own words; give a thing the note names (a chalk W on a pole) a
 line of its own, or leave it out of the note; and when a player told a
 keeper something about themself, one gentle second-person topic for that
-player alone (`{"actor": id}`) is the callback they remember longest.
+player alone (`{"actor": id}`) is the callback they remember longest. A
+topic line must never promise a mechanic no rule backs: Bell's "ask, and
+I'll light you one" left a player asking for a lantern the village could
+not give.
 
 Rules: additive only (the engine refuses anything else); namespace new ids
 with the dream id (`o-<id>-...`, `t-...`, facts `<id>-...`); never reveal

@@ -85,8 +85,19 @@ signed the rooms), and she wants to come back, with two conditions the
 session then fixed (a nagging "letter waiting" line, a letter too long
 vanishing without a word) and one it cannot (the Ledger's day-one lines
 still credit her with the mending, written before the credit rule changed;
-a fresh prod village will never carry them). The gamer's return is in
-[gamer.md](gamer.md), "Day two".
+a fresh prod village will never carry them). The gamer's verdict on day
+two was a clear yes: things had happened to his rooms while he was away
+(Tace's card in the skate bowl, Bell's sooty chalk on his treehouse slate),
+a letter about the brass hand he left for a friend was waiting, and he
+delivered the first stray letter of the letters arc; boredom did not set
+in. His two walls were a typed "ring bell" that found no bell (fixed: a
+typed target now rides along as a clicked one did) and Bell's offer of a
+lantern for the treehouse, which the dream's line promised and nothing
+backed (a runbook lesson now: a topic line never promises a mechanic no
+rule provides). Both returning players saw the "while you were away"
+lines: who was here, the room that grew and whose seed, the letter
+waiting; the gamer's arrival read "Wren, Halloran and Peek were here
+while you rested."
 
 ## What was built this session
 
@@ -191,8 +202,8 @@ eleven topics, one note; about forty minutes including rehearsal).
 | gamer, day one | 4 | 3 | 3 | 3 |
 | critic, day one | 4 | 4 | 3 | 4 |
 | veteran, day one | 4 | 3 | 2 | 3 |
-| critic, day two | see critic.md | | | yes |
-| gamer, day two | see gamer.md | | | |
+| critic, day two | (no scores asked) | | | yes, with conditions since fixed |
+| gamer, day two | (no scores asked) | | | a clear yes |
 
 Being remembered was the lowest score again on day one, as on 2026-09-26,
 and the one the day-two sessions moved most.
