@@ -98,3 +98,10 @@ async def test_him_her_them_mean_the_last_person_addressed(dreamer):
     parser.remember_referents(dreamer, "o-workbench")  # a click on a thing
     lp, _ = await _run(dreamer, "examine it")
     assert [c.dobj_id for c in lp.commands] == ["o-workbench"]
+
+
+async def test_x_chains_like_any_command(dreamer):
+    objects.move(dreamer, "r-workshop")
+    lp, said = await _run(dreamer, "x tin. south")
+    assert [c.verb for c in lp.commands] == ["examine", "go"]
+    assert objects.get(dreamer).location_id == "r-square"

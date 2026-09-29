@@ -101,7 +101,8 @@ jar" meets the engine's answer instead:
 ```
 
 Among the entries whose `if` holds (`@self` is the host), the longest
-matching name wins, so write one entry per story state with the same names
+matching name wins, and on a tie the first entry in the list: write one entry
+per story state with the same names, the unconditional one last
 (the highest shelf has three: the jar at rest, the ladder standing, the clean
 circle after within-reach). `examine` covers look and read unless they have
 their own line. Choose names no object here answers to (a stray minute

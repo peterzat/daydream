@@ -457,9 +457,13 @@ def validate_story(env: dict, *, known: dict, ks: dict, room_ids: set[str],
                                   for r in rooms_of if r not in room_ids)
                 body = {k: v for k, v in entry.items() if k != "rooms"} \
                     if isinstance(entry, dict) else entry
+                from daydream.verbs import VERBS
+
+                verb_names = set(VERBS) | set(env.get("verbs") or {}) | {"look"}
                 errors.extend(glimpse.validate_glimpsed(
                     [body], where, known_flags=set(known.get("known_flags") or ()),
-                    known_ids=set(known.get("known_ids") or ()), known_story=ks))
+                    known_ids=set(known.get("known_ids") or ()), known_story=ks,
+                    known_verbs=verb_names))
     gest = cfg.get("gestures")
     if gest is not None:
         from daydream import gestures

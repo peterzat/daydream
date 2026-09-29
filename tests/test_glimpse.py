@@ -279,3 +279,23 @@ def test_authored_glimpses_fail_loud(mutate, needle):
     mutate(shelf["properties"]["glimpsed"])
     with pytest.raises(format2.Format2ValidationError, match=needle):
         format2.validate_envelope2(env)
+
+
+def test_an_unknown_per_verb_key_fails_the_loader():
+    env = copy.deepcopy(ENV)
+    shelf = next(t for t in env["things"] if t["id"] == "o-high-shelf")
+    shelf["properties"]["glimpsed"][0]["verbs"] = {"exmaine": "a typo never answers"}
+    with pytest.raises(format2.Format2ValidationError, match="unknown verb"):
+        format2.validate_envelope2(env)
+
+
+async def test_a_function_word_is_not_a_noun(cellar, llm):
+    said = await _said(cellar, "examine and")
+    assert [e.payload["text"] for e in said] == ["You don't see the and here."]
+    assert llm.await_count == 0
+
+
+async def test_carrying_wends_ladder_has_its_own_jar_line(cellar, llm):
+    objects.move("o-tace-hour-ladder", cellar)
+    said = await _said(cellar, "take the jar")
+    assert "You have Wend's ladder with you" in said[0].payload["text"]

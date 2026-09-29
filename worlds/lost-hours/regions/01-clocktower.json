@@ -662,6 +662,26 @@
               "wend's jar",
               "labeled jar"
             ],
+            "if": [
+              {
+                "carried": "o-tace-hour-ladder"
+              }
+            ],
+            "text": "You have Wend's ladder with you, folded far smaller than it should be. It would have to stand against the highest shelf before anyone could reach the jar.",
+            "verbs": {
+              "examine": "Up in the shadow you can make out only a glint of glass and the pale edge of a label, much too far away to read."
+            }
+          },
+          {
+            "names": [
+              "jar",
+              "single jar",
+              "glinting jar",
+              "high jar",
+              "dusty jar",
+              "wend's jar",
+              "labeled jar"
+            ],
             "text": "The jars along the shelves are Umber's to keep, and the one that glints on the highest shelf, set apart from the rest, is far above the lantern's reach: no ladder in the cellar is tall enough to bring it down.",
             "verbs": {
               "examine": "Up in the shadow you can make out only a glint of glass and the pale edge of a label, much too far away to read."

@@ -40,7 +40,10 @@ LOOK_VERBS = frozenset({"examine", "look", "read"})
 _ARTICLE = re.compile(r"^(?:the|a|an|that|this|those|these|some|one|your|my)\s+")
 _SENTENCE = re.compile(r"[^.!?]+[.!?]?")
 _STOPWORDS = frozenset({"it", "them", "that", "this", "one", "thing", "things", "up", "there",
-                        "here", "all", "some"})
+                        "here", "all", "some", "and", "or", "but", "the", "of", "to", "in",
+                        "on", "at", "for", "with", "from", "by", "as", "is", "are", "was",
+                        "be", "not", "no", "so", "if", "then", "its", "his", "her", "their",
+                        "you", "your", "me", "my", "we", "our", "out", "off", "down", "over"})
 
 
 def _norm(text: str) -> str:
@@ -406,7 +409,8 @@ async def answer(actor: objects.Object, room_id: str, name: str, verb: str) -> d
 
 
 def validate_glimpsed(entries, where: str, *, known_flags: set[str], known_ids: set[str],
-                      known_story: dict | None = None) -> list[str]:
+                      known_story: dict | None = None,
+                      known_verbs: set[str] | None = None) -> list[str]:
     """Named errors for an authored `properties.glimpsed` list (the loader)."""
     if not isinstance(entries, list):
         return [f"{where} must be a list"]
@@ -434,6 +438,9 @@ def validate_glimpsed(entries, where: str, *, known_flags: set[str], known_ids: 
                 and all(isinstance(k, str) and isinstance(v, str) and v.strip()
                         for k, v in verbs.items())):
             errors.append(f"{ew}.verbs must map verb names to lines")
+        elif isinstance(verbs, dict) and known_verbs is not None:
+            errors.extend(f"{ew}.verbs.{k}: unknown verb (it would never answer)"
+                          for k in verbs if k not in known_verbs)
         if "if" in entry:
             errors.extend(rules.validate_condition_list(
                 entry["if"], f"{ew}.if", known_flags=known_flags, known_ids=known_ids,

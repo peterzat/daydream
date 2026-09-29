@@ -350,7 +350,8 @@ def validate_envelope2(env: dict) -> list[str]:
         elif "glimpsed" in r.get("properties", {}):
             errors.extend(glimpse.validate_glimpsed(
                 r["properties"]["glimpsed"], f"{where}.properties.glimpsed",
-                known_flags=known_flags, known_ids=all_ids, known_story=ks))
+                known_flags=known_flags, known_ids=all_ids, known_story=ks,
+                known_verbs=known_verbs | {"look"}))
     # One-way exits are legal in format 2 (a one-way slide or chimney):
     # reciprocity is a LINT, not an error.
     for src, dst in sorted(edges):
@@ -423,7 +424,8 @@ def validate_envelope2(env: dict) -> list[str]:
         elif "glimpsed" in th.get("properties", {}):
             errors.extend(glimpse.validate_glimpsed(
                 th["properties"]["glimpsed"], f"{where}.properties.glimpsed",
-                known_flags=known_flags, known_ids=all_ids, known_story=ks))
+                known_flags=known_flags, known_ids=all_ids, known_story=ks,
+                known_verbs=known_verbs | {"look"}))
         if "verbs" in th and not (
             isinstance(th["verbs"], list)
             and all(isinstance(v, str) for v in th["verbs"])
