@@ -230,7 +230,9 @@
         "Fen takes the {item} in both hands, weighs it the way she weighs a parcel, and ties a paper label to it in her tidy hand: TO {to}. 'Filed,' she says, and sets it in the pigeonhole. 'It'll keep till they come by.'",
         "Fen turns the {item} over once, finds nothing to object to, and writes {to} on a label with the pencil from behind her ear. 'Post is post, whatever shape it comes in. They'll have it the moment they think to ask.'"
       ],
-      "parcel_others": "{actor} hands Fen the {item}; she ties a label to it and files it in a pigeonhole marked {to}."
+      "parcel_others": "{actor} hands Fen the {item}; she ties a label to it and files it in a pigeonhole marked {to}.",
+      "too_many_text": "Fen taps the pigeonhole with {to}'s name on it, which is full to the lip. 'That's a stack already, and post is read one letter at a time. Let them come by for these first; then I'll take more.'",
+      "belongs_text": "Fen slides the {item} back across the counter without a label. 'That's the village's, friend, not yours to post. It goes home when you rest, wherever you've carried it. Leave them something that's yours.'"
     }
   },
   "verbs": {

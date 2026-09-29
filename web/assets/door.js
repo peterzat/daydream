@@ -80,7 +80,8 @@
       // Plainly, and warmly (SPEC 2026-09-27 criterion 8; reworded after the
       // operator's first evening read the old line as a little creepy).
       note.textContent = `${Place} remembers what you say and do here, so its people `
-        + `can come to know you. From time to time, ${who} reads over a summary `
+        + `can come to know you, and the other dreamers can see when you were last `
+        + `here and where. From time to time, ${who} reads over a summary `
         + "of its days and writes what happens next.";
       note.hidden = false;
     }

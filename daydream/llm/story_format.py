@@ -420,6 +420,9 @@ def validate_story(env: dict, *, known: dict, ks: dict, room_ids: set[str],
         else:
             if the_post["room"] not in room_ids:
                 errors.append(f"config.post.room: unknown room {the_post['room']!r}")
+            keeper = the_post.get("keeper")
+            if keeper is not None and keeper not in toon_ids:
+                errors.append(f"config.post.keeper: unknown toon {keeper!r}")
             for k, v in the_post.items():
                 ok = isinstance(v, str) or (isinstance(v, list) and v
                                             and all(isinstance(x, str) for x in v))

@@ -173,6 +173,12 @@ Proposals from docs/playtests/2026-09-28-beta-rehearsal/SUMMARY.md not built in 
 - **Revisit criteria:** A player reads dusk at breakfast again.
 - **Origin:** beta rehearsal 2026-09-28 (the critic's day two, defect 6).
 
+### dozing-handover-of-village-things
+- **One-line description:** `give X to <dreamer>` when that dreamer is dozing tucks the thing into their satchel; a village thing (one with a `home`) then waits on a rest that a closed page may never make. Refuse village things on the dozing branch (keepsakes only), once walkthrough players count as awake (today every walkthrough hand-over runs through the dozing branch, and `prologue-together` hands the gear that way).
+- **Why deferred:** The refusal broke the arc contract in the review's fix cycle (CODEREVIEW.md 2026-09-29); `world rest-toon` and `account delete` send such a thing home meanwhile.
+- **Revisit criteria:** A village thing goes missing into a dozing friend's satchel in play, or the walkthrough runner gains live sessions.
+- **Origin:** codereview 2026-09-29 (the beta rehearsal's review).
+
 ## Quality and tooling (GPU/ML follow-ups)
 
 Captured from the comprehensive GPU/ML doc pass; full rationale per item lives in `docs/gpu-and-models.md` "Things we have not tried yet".

@@ -113,6 +113,18 @@ would go). It deletes:
 It keeps the shared event history (what others saw happen in the village)
 and each dreamer's portrait in the art keep, retired with its provenance
 (which names the dreamer and the appearance text, never the account).
+Post is a private thing of the one it is for: letters and parcels waiting
+for the deleted dreamer go with them; letters they wrote that others
+already took are those others' keepsakes and stay. A parcel is never a
+village thing (one with a home), so a delete never destroys an authored
+object.
+
+What other dreamers see of a dreamer (beta rehearsal 2026-09-28): their
+name and look, what the Ledger says they did, when they were last in the
+village and where (from the input log's timestamps and rooms, never its
+text), whether they are awake, dozing or resting, and, at dusk, that they
+came through today. The door's note says so. What they typed stays private
+to them and to the dream digest.
 Backups made before the delete still hold the old records until they age
 out (14 days local, 60 offsite).
 
