@@ -78,6 +78,17 @@ is (section 6).
   unkind. When post arrives for a dreamer who is awake elsewhere, the counter
   bell rings twice down Lamplight Lane. (Beta rehearsal 2026-09-28; the
   words live in `config.post`, `worlds/lost-hours/world.json`.)
+- **The village remembers dreamers, not only deeds.** Asked about another
+  dreamer by name (`ask bell about Wren`), a keeper tells the record and
+  never guesses: when and where that dreamer was last seen, whether they are
+  here, awake elsewhere, dozing or resting, and the deeds this keeper has
+  heard of theirs. The Ledger of Returned Hours ends with the keepers who
+  have dreamed here, signed in their own hands, newest first; the board of
+  room keys in the Waiting House shows in Linden's chalk which guest hours
+  are waiting and which have gone home or been kept. Fen, asked for one's
+  post ("anything for me?"), says what waits and from whom, or that nothing
+  has come yet. (Beta rehearsal 2026-09-28: keepers invented where absent
+  friends were, and a friend arriving after friends found no signed trace.)
 - **No one else lives here.** The residents are exactly the people listed in
   section 3, plus whatever guests are staying. There is no baker, miller,
   smith, innkeeper, mayor, farmer, fisher, doctor, teacher, or beekeeper, and

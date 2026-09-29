@@ -562,6 +562,25 @@ def _stems(text: str) -> list[str]:
             for w in normalize_topic(text).split()]
 
 
+def topic_text(npc: objects.Object, topic: dict) -> str | None:
+    """The authored words behind a matched topic or beat: its text, or its
+    first variant (grounding for the model when a longer line only
+    mentions the topic)."""
+    spec: dict | None = None
+    if topic.get("kind") == "beat":
+        spec = beat_def(npc.world_id, topic["arc"], topic["beat"])
+    else:
+        topics = npc.properties.get("topics") or []
+        idx = topic.get("index")
+        spec = topics[idx] if isinstance(idx, int) and idx < len(topics) else None
+    if not isinstance(spec, dict):
+        return None
+    if isinstance(spec.get("text"), str) and spec["text"].strip():
+        return spec["text"].strip()
+    vs = [v for v in spec.get("variants") or [] if isinstance(v, str) and v.strip()]
+    return vs[0].strip() if vs else None
+
+
 def match_in_talk(npc: objects.Object, actor_id: str, text: str) -> dict | None:
     """Select, don't write (docs/REFLEXES.md): a free-form line to an NPC
     that names one of its available topics or open beats, as whole words,

@@ -137,7 +137,12 @@
       "properties": {
         "text_source": "chronicle",
         "chronicle_header": "THE LEDGER OF RETURNED HOURS. Every hour sent home or kept, and who helped.",
-        "chronicle_empty": "The pages are clean and waiting. No hour has been returned yet."
+        "chronicle_empty": "The pages are clean and waiting. No hour has been returned yet.",
+        "roster": {
+          "kind": "keepers",
+          "text": "On the last page, in different hands, the keepers who have dreamed here have signed: {names}.",
+          "empty": "The last page waits for the first keeper's name."
+        }
       }
     },
     {

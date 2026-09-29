@@ -58,6 +58,9 @@ _DEFAULTS = {
     "letter_name": "letter from {from}",
     "letter_seed": "a letter folded twice, addressed to {to} in {from}'s hand",
     "read_text": "From {from}, to {to}:\n\n{text}",
+    "inbox_text": "There is post for you, {name}: {count}, from {senders}. It waits here.",
+    "inbox_empty_text": "Nothing has come for you, {name}. Not yet.",
+    "dozing_hint": "",
 }
 
 _NO_POST = "There's nowhere to post a letter in this dream."
@@ -77,12 +80,71 @@ def config_for(world_id: str) -> dict | None:
 
 
 def _line(post: dict, key: str, **fields: str) -> str:
+    """An authored telling (a string, or a list of variants picked by the
+    world's no-verbatim-repeat rule), with {fields} filled."""
     text = post.get(key)
+    if isinstance(text, list):
+        options = [t for t in text if isinstance(t, str) and t.strip()]
+        if options:
+            from daydream import variants
+
+            text = variants.pick(_world_id_for(post), f"post:{key}", options, post.get("room"))
+        else:
+            text = None
     if not isinstance(text, str) or not text.strip():
         text = _DEFAULTS[key]
     for k, v in fields.items():
         text = text.replace("{" + k + "}", v)
     return text
+
+
+def _world_id_for(post: dict) -> str:
+    room = objects.get(str(post.get("room") or ""))
+    return room.world_id if room is not None else toons.live_world_id()
+
+
+_INBOX_RE = re.compile(
+    r"\b(post|letters?|mail|anything|something|a note)\b[^.?!]*\bfor me\b"
+    r"|\bmy (post|letters?|mail|pigeonhole)\b|\bpost for\b|\banything (in|come in) for\b", re.I)
+
+
+def is_inbox_ask(text: str) -> bool:
+    """"post for me", "my letters", "anything for me": an inbox question."""
+    return bool(_INBOX_RE.search(text or ""))
+
+
+def inbox(actor: objects.Object, npc: objects.Object, room_id: str) -> bool:
+    """The post keeper, asked for the player's post: what waits, by sender,
+    or that nothing does (beta rehearsal 2026-09-28: no way to ask). Private
+    to the asker; authored `inbox_text` / `inbox_empty_text`."""
+    post = config_for(actor.world_id)
+    if post is None or post.get("keeper") != npc.id:
+        return False
+    waiting = letters_waiting(actor.id)
+    if waiting:
+        senders = []
+        for o in waiting:
+            letter = o.properties.get("letter") or {}
+            name = letter.get("from_name") or "someone"
+            if name not in senders:
+                senders.append(name)
+        text = _line(post, "inbox_text", name=actor.name, senders=_join(senders),
+                     count=_count_word(len(waiting)))
+    else:
+        text = _line(post, "inbox_empty_text", name=actor.name)
+    _narrate(room_id, text, to=actor.id)
+    return True
+
+
+def _join(names: list[str]) -> str:
+    if len(names) <= 1:
+        return "".join(names)
+    return ", ".join(names[:-1]) + " and " + names[-1]
+
+
+def _count_word(n: int) -> str:
+    words = ["none", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"]
+    return words[n] if n < len(words) else str(n)
 
 
 def _players(world_id: str) -> list[objects.Object]:

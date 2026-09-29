@@ -79,14 +79,32 @@ leaves the dream leaves world objects there. Spawned quest items carry
 keepsake out. Keepsakes and stray minutes have no home and stay with the
 player.
 
+Rosters (`properties.roster` on a readable or fixture; engine
+`daydream/trace.py`): `{"kind": "keepers", "text": "...{names}...", "empty":
+"..."}` appends, to a read or an examine, every dreamer of the world with how
+they are (here now, awake now, dozing, last here earlier today), newest
+first; `{"kind": "guests", "text": "...{waiting}...{home}...", "empty": "..."}`
+appends the guest hours whose arcs are open and those whose arcs have
+closed. The Ledger of Returned Hours carries the keepers; the board of room
+keys carries the guests.
+
+A free line to a resident that names a topic gets the topic's authored
+answer only when the line is short (nine words or fewer); a longer line is
+the player's own question, answered by the model with the topic's authored
+words as grounding. `ask <resident> about <dreamer's name>` with no authored
+topic of that name reads the record of that dreamer (daydream/trace.py).
+
 Letters between dreamers (`config.post`, engine `daydream/post.py`). The
 world names the room where letters are written and wait (`room`) and every
 telling a player reads: `write_text` / `write_others` (the writer's line and
 the room's, `{to}` and `{actor}`), `elsewhere_text`, `unknown_text`,
 `self_text`, `resident_text`, `off_tone_text`, `waiting_text` (the
 recipient's thread and arrival note), `rings_text` (the recipient, awake
-elsewhere, at once), and the letter itself: `letter_name`, `letter_seed`,
-`read_text` (`{from}`, `{to}`, `{text}`). The letter is a keepsake
+elsewhere, at once), `inbox_text` / `inbox_empty_text` (the keeper named
+by `keeper`, asked "anything for me?": `{name}`, `{count}`, `{senders}`),
+`dozing_hint` (added when speech meets a dozing dreamer), and the letter
+itself: `letter_name`, `letter_seed`, `read_text` (`{from}`, `{to}`,
+`{text}`). Any telling may be a list of variants. The letter is a keepsake
 (`home: null`) that only its recipient sees. A world without `config.post`
 has no post. Keep these in the keeper's voice; the engine's own fallbacks
 name nothing.

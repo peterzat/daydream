@@ -207,7 +207,11 @@
     "post": {
       "room": "r-post",
       "keeper": "t-fen",
-      "write_text": "Fen slides a sheet of good paper and a soft pencil across the counter, and turns to her sorting while you write. You fold it twice and hand it over; she reads the front, nods once, and files it without a glance inside. 'It'll be here when {to} next comes by. Everything arrives eventually.'",
+      "write_text": [
+        "Fen slides a sheet of good paper and a soft pencil across the counter, and turns to her sorting while you write. You fold it twice and hand it over; she reads the front, nods once, and files it without a glance inside. 'It'll be here when {to} next comes by. Everything arrives eventually.'",
+        "Fen finds you paper without being asked and goes back to her addresses while you write. When you slide it across she squares it against the counter, reads the front only, and tucks it into a pigeonhole. 'For {to}. Filed. They'll have it the moment they think to ask.'",
+        "You write at the end of the counter while Fen pretends not to watch. She takes the folded letter with two fingers, reads the name on the front aloud under her breath, and slots it away. 'That's {to}'s now, not yours. Post is like that.'"
+      ],
       "write_others": "{actor} writes something out at Fen's counter, folds it twice, and hands it across. Fen files it without a glance inside.",
       "elsewhere_text": "You've nothing to write on. Fen keeps good paper and soft pencils at the Little Post Office, north off Lamplight Lane; letters between dreamers go through her.",
       "unknown_text": "Fen taps the pencil against the counter and shakes her head. 'No dreamer here goes by {to}. Check the name; I can't file what I can't address.'",
@@ -218,7 +222,10 @@
       "rings_text": "Down Lamplight Lane, the brass bell on the post office counter rings twice, bright and small: there is post for you.",
       "letter_name": "letter from {from}",
       "letter_seed": "a letter folded twice, addressed to {to} in {from}'s hand, filed by Fen the moment it was written",
-      "read_text": "To {to}, from {from}:\n\n{text}"
+      "read_text": "To {to}, from {from}:\n\n{text}",
+      "inbox_text": "Fen runs a finger along the pigeonholes and stops. 'Post for you, {name}: {count}, from {senders}.' She lifts it out and sets it on the counter where you can reach.",
+      "inbox_empty_text": "Fen checks the pigeonhole with your name on it, then checks it again, kindly. 'Nothing for you yet, {name}. Everything arrives eventually; some of it just takes the scenic route.'",
+      "dozing_hint": "Fen at the Little Post Office would take a letter for them."
     }
   },
   "verbs": {
@@ -13331,7 +13338,12 @@
       "properties": {
         "text_source": "chronicle",
         "chronicle_header": "THE LEDGER OF RETURNED HOURS. Every hour sent home or kept, and who helped.",
-        "chronicle_empty": "The pages are clean and waiting. No hour has been returned yet."
+        "chronicle_empty": "The pages are clean and waiting. No hour has been returned yet.",
+        "roster": {
+          "kind": "keepers",
+          "text": "On the last page, in different hands, the keepers who have dreamed here have signed: {names}.",
+          "empty": "The last page waits for the first keeper's name."
+        }
       }
     },
     {
@@ -13802,8 +13814,19 @@
       "aliases": [
         "keys",
         "room keys",
-        "key board"
-      ]
+        "key board",
+        "board",
+        "chalk",
+        "chalk names",
+        "hooks"
+      ],
+      "properties": {
+        "roster": {
+          "kind": "guests",
+          "text": "Chalked on the hooks, in Linden's round hand: {waiting}. Wiped clean, the hours gone home or kept: {home}.",
+          "empty": "Every hook is chalked clean; no hour is waiting just now."
+        }
+      }
     },
     {
       "id": "o-catchers-net",

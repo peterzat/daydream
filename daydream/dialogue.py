@@ -137,9 +137,13 @@ def _note_opener(world_id: str, npc_id: str, line: str) -> None:
 
 
 def build_prompt(actor: objects.Object, npc: objects.Object, text: str,
-                 room_id: str, beats: list[tuple[str, str, dict]]) -> tuple[str, str, list[str]]:
-    """(system, user, advance ids). Pure over the current world state."""
-    from daydream import village
+                 room_id: str, beats: list[tuple[str, str, dict]],
+                 grounding: list[str] | None = None) -> tuple[str, str, list[str]]:
+    """(system, user, advance ids). Pure over the current world state.
+    `grounding`: authored lines on what the player mentioned (a topic named
+    inside a longer question), for the model to weave in rather than
+    recite (beta rehearsal 2026-09-28: a passing noun stole the question)."""
+    from daydream import trace, village
 
     world_id = npc.world_id
     voice = npc.properties.get("voice") if isinstance(npc.properties.get("voice"), dict) else {}
@@ -171,7 +175,10 @@ def build_prompt(actor: objects.Object, npc: objects.Object, text: str,
         f"{npc.name} speaks of themself as I, never by name. Do not echo "
         "your own recent lines: new words, a new opening, and a pet name for the "
         "player only once in a while. Cozy and warm, soft stakes allowed, no urgency, "
-        "no modern things."
+        "no modern things. Other dreamers are visiting players, not residents: say of "
+        "them only what OTHER DREAMERS below records; asked where one is when nothing "
+        "is recorded, say you have not seen them lately, and never guess a place. "
+        "Answer what the player actually asked before anything else."
     )
     room = rooms.get_room(room_id)
     here = [t for t in objects.contents(room_id, kind="toon") if t.id != npc.id]
@@ -207,6 +214,15 @@ def build_prompt(actor: objects.Object, npc: objects.Object, text: str,
                         + "\n".join(f"- {f['text']}" for f in facts))
     else:
         sections.append(f"WHAT {npc.name.upper()} KNOWS: nothing beyond the above.")
+    others = trace.for_prompt(world_id, text, actor.id)
+    if others:
+        sections.append("OTHER DREAMERS (visiting players the player named; the record of "
+                        "them, the only thing to say about their whereabouts):\n"
+                        + "\n".join(f"- {line}" for line in others))
+    if grounding:
+        sections.append(f"WHAT {npc.name.upper()} WOULD SAY ABOUT WHAT WAS MENTIONED (authored; "
+                        "weave a little of it in only where it answers the question):\n"
+                        + "\n".join(f"- {g}" for g in grounding if isinstance(g, str) and g.strip()))
     rel = story.relationship_label(world_id, npc.id, actor.id)
     lines = [f"{npc.name} and {actor.name}: {rel}."]
     for ex in story.recent_exchanges(world_id, npc.id, actor.id)[-3:]:
@@ -402,7 +418,8 @@ def _dampen_pet_names(npc: objects.Object, say: str, recent: list[str]) -> str:
 # ---- the talk turn -----------------------------------------------------------
 
 
-async def talk(actor: objects.Object, npc: objects.Object, text: str, room_id: str) -> bool:
+async def talk(actor: objects.Object, npc: objects.Object, text: str, room_id: str,
+               grounding: list[str] | None = None) -> bool:
     world_id = npc.world_id
     text = (text or "").strip() or "Hello."
     # Failure lines are the talker's, like the replies (private for a player).
@@ -412,7 +429,7 @@ async def talk(actor: objects.Object, npc: objects.Object, text: str, room_id: s
                       room_id=room_id, recipient_id=to_actor)
         return False
     beats = story.open_beats_for(world_id, npc.id, actor.id)
-    system, user, ids = build_prompt(actor, npc, text, room_id, beats)
+    system, user, ids = build_prompt(actor, npc, text, room_id, beats, grounding)
     voice = npc.properties.get("voice") if isinstance(npc.properties.get("voice"), dict) else {}
     pkey = _pronoun_key(voice)
     openers = recent_openers(world_id, npc.id)

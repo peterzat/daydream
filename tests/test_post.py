@@ -185,3 +185,48 @@ async def test_a_typed_letter_is_the_writers_words_whole(monkeypatch):
     assert p.verb == "write"
     assert p.args == "to Ivo: I found the gear. Meet me at dusk. Bring the cog!"
     spy.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_the_keeper_of_the_post_answers_an_inbox_ask():
+    """"post for me", asked of the post keeper (a topic or a free line), is
+    what waits, by sender, or that nothing does; asked of anyone else it is
+    an ordinary question."""
+    ivo = _ivo()
+    worldstate.set("w-bunny", "config", {"post": {**POST, "keeper": "t-rook",
+                                                  "inbox_text": "Rook: {count} for {name}, from {senders}.",
+                                                  "inbox_empty_text": "Rook: nothing for {name}."}})
+    _go("r-forge")
+    before = events.max_seq()
+    await verbs.execute_command("t-wren", "ask", dobj_id="t-rook", args="post for me")
+    assert _narrates(before)[-1].payload["text"] == "Rook: nothing for Wren."
+    # Ivo writes to Wren; Wren asks in her own words.
+    objects.move(ivo.id, "r-forge")
+    await verbs.execute_command(ivo.id, "write", args="to Wren: hello")
+    await verbs.execute_command(ivo.id, "write", args="to Wren: and again")
+    before = events.max_seq()
+    await verbs.execute_command("t-wren", "talk", dobj_id="t-rook",
+                                args="Has anything come in for me today, Rook?")
+    lines = [e for e in _narrates(before) if e.recipient_id == "t-wren"]
+    assert [e.payload["text"] for e in lines] == ["Rook: two for Wren, from Ivo."]
+
+
+def test_inbox_asks_are_recognised():
+    yes = ["post for me", "my letters", "anything for me?", "Has anything come in for me today?",
+           "is there any mail for me", "my post", "a letter for me"]
+    no = ["the letters", "post", "for me the lanterns are best", "what do you keep here"]
+    assert all(post.is_inbox_ask(t) for t in yes), [t for t in yes if not post.is_inbox_ask(t)]
+    assert not any(post.is_inbox_ask(t) for t in no), [t for t in no if post.is_inbox_ask(t)]
+
+
+@pytest.mark.asyncio
+async def test_letter_tellings_vary():
+    _ivo()
+    worldstate.set("w-bunny", "config", {"post": {**POST, "write_text": ["One {to}.", "Two {to}."]}})
+    _go("r-forge")
+    seen = set()
+    for i in range(3):
+        before = events.max_seq()
+        await verbs.execute_command("t-wren", "write", args=f"to Ivo: letter {i}")
+        seen.add([e for e in _narrates(before) if e.recipient_id == "t-wren"][0].payload["text"])
+    assert seen == {"One Ivo.", "Two Ivo."}

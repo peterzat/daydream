@@ -680,9 +680,10 @@ async def _handle_examine(actor, room_id, dobj, iobj, args, spec) -> None:
         return
     if dobj.seed and dobj.seed.strip():
         detail = detail_with_state(dobj)
+        roster = _roster_tail(dobj, actor).replace("\n", " ")
         _dispatch(actor, room_id, [{"kind": "narrate", "to": "@actor",
-            "text": _examine_line(dobj, detail) + _container_glance(dobj),
-            "card": _card("examine", dobj, _terminate(detail) + _container_glance(dobj))}], spec)
+            "text": _examine_line(dobj, detail) + _container_glance(dobj) + roster,
+            "card": _card("examine", dobj, _terminate(detail) + _container_glance(dobj) + roster)}], spec)
         return
     if objects.is_container(dobj):
         # A seedless authored container still answers with its contents
@@ -1104,6 +1105,16 @@ async def _handle_put(actor, room_id, dobj, iobj, args, spec) -> None:
     _dispatch(actor, room_id, effs, spec)
 
 
+def _roster_tail(dobj, actor) -> str:
+    """The roster an authored readable or fixture shows (`properties.roster`:
+    the keepers who have dreamed here, the guest hours waiting or gone home;
+    daydream/trace.py), on a new line after its own text."""
+    from daydream import trace
+
+    line = trace.roster_text(dobj, actor.id)
+    return f"\n{line}" if line else ""
+
+
 async def _handle_read(actor, room_id, dobj, iobj, args, spec) -> None:
     """Narrate a readable's authored `text` (the words on the page), distinct
     from `examine`'s physical description. Degrades gently when there is no
@@ -1113,13 +1124,14 @@ async def _handle_read(actor, room_id, dobj, iobj, args, spec) -> None:
         # world's closed arcs and who helped, composed at read time.
         from daydream import story
 
-        text = story.chronicle_text(actor.world_id, dobj)
+        text = story.chronicle_text(actor.world_id, dobj) + _roster_tail(dobj, actor)
         _dispatch(actor, room_id, [{"kind": "narrate", "to": "@actor", "text": text,
                                     "card": _card("read", dobj, text)}], spec)
         return
     text = dobj.properties.get("text")
     if isinstance(text, str) and text.strip():
-        _dispatch(actor, room_id, [{"kind": "narrate", "text": text.strip(), "to": "@actor",
+        text = text.strip() + _roster_tail(dobj, actor)
+        _dispatch(actor, room_id, [{"kind": "narrate", "text": text, "to": "@actor",
                                     "card": _card("read", dobj, text)}], spec)
         return
     _dispatch(actor, room_id, [{"kind": "narrate", "to": "@actor",
@@ -1476,8 +1488,24 @@ async def _handle_ask(actor, room_id, dobj, iobj, args, spec) -> None:
         _dispatch(actor, room_id, [{"kind": "narrate", "text": text,
                                     "to": "@actor"}], spec)
         return False
+    from daydream import post, trace
+
+    if post.is_inbox_ask(topic_text) and post.inbox(actor, dobj, room_id):
+        return None
     topic = story.match_topic(dobj, actor.id, topic_text)
     if topic is None:
+        # Asked about another dreamer by name, with no authored word on
+        # them: the record (last seen, and the deeds this resident knows),
+        # never a guess (beta rehearsal 2026-09-28: residents invented
+        # where absent friends were).
+        who = trace.find_player(actor.world_id, topic_text)
+        if who is not None and who.id != actor.id:
+            events.append("toon", actor.id, "echo",
+                          {"text": f"You ask {dobj.name} about {who.name}."},
+                          room_id=room_id, recipient_id=actor.id)
+            story.note_conversation(actor.world_id, dobj.id, actor.id)
+            trace.report(dobj, actor, who, room_id)
+            return None
         return await _handle_talk(actor, room_id, dobj, f"About {topic_text}?",
                                   VERBS["talk"])
     # What you asked, where you can read it back (playtest 2026-09-28b).
@@ -1526,6 +1554,11 @@ def _bound_dialogue_skill(dobj: objects.Object) -> str | None:
     return None
 
 
+# A free line this short that names a topic gets the topic's authored answer
+# (select, don't write); a longer one is its own question, grounded instead.
+TALK_SELECT_MAX_WORDS = 9
+
+
 async def _handle_talk(actor, room_id, dobj, args, spec) -> None:
     """Run the NPC's bound dialogue (the existing safety + LLM + memory + effect
     pipeline), constrained to `talk`'s effect allowlist. Falls back to a gentle
@@ -1549,9 +1582,14 @@ async def _handle_talk(actor, room_id, dobj, args, spec) -> None:
 
         if ws_mod.is_dozing(dobj):
             # No one is at their page: say so, rather than let a hello meet
-            # silence (playtest 2026-09-28b).
+            # silence (playtest 2026-09-28b), and where a letter would keep.
+            from daydream import post
+
+            cfg = post.config_for(actor.world_id) or {}
+            hint = cfg.get("dozing_hint") if isinstance(cfg.get("dozing_hint"), str) else ""
             _narrate(room_id, f"{dobj.name} is dozing, far off in a dream of their own, "
-                     "and doesn't stir.", recipient_id=actor.id)
+                     f"and doesn't stir.{(' ' + hint.strip()) if hint.strip() else ''}",
+                     recipient_id=actor.id)
         return None
     if (args or "").strip():
         # What you said, where you can read it back (playtest 2026-09-28b:
@@ -1560,6 +1598,11 @@ async def _handle_talk(actor, room_id, dobj, args, spec) -> None:
         events.append("toon", actor.id, "say",
                       {"text": args.strip(), "name": actor.name, "to": dobj.name},
                       room_id=room_id, recipient_id=actor.id)
+        from daydream import post
+
+        # "anything for me?" to whoever keeps the post: the inbox, not a chat.
+        if post.is_inbox_ask(args) and post.inbox(actor, dobj, room_id):
+            return None
     if isinstance(dobj.properties.get("voice"), dict):
         # A voice-sheet NPC (SPEC 2026-09-26 criteria 6, 10): a line naming
         # one of its topics or open beats gets the authored answer (select,
@@ -1568,12 +1611,19 @@ async def _handle_talk(actor, room_id, dobj, args, spec) -> None:
         from daydream import dialogue, story
 
         topic = story.match_in_talk(dobj, actor.id, args or "")
-        if topic is not None:
+        if topic is not None and len((args or "").split()) <= TALK_SELECT_MAX_WORDS:
             story.ask(actor, dobj, topic, room_id)
             story.remember_exchange(actor.world_id, dobj.id, actor.id, args or "",
                                     f"(answered about {topic['label']})")
             return None
-        return await dialogue.talk(actor, dobj, args, room_id)
+        # A longer line that merely mentions a topic is a question of its
+        # own (beta rehearsal 2026-09-28: "the great clock" inside a question
+        # about two friends drew the clock's canned line, five times over an
+        # evening): the model answers it, with the topic's authored words to
+        # weave in where they fit.
+        grounding = story.topic_text(dobj, topic) if topic is not None else None
+        return await dialogue.talk(actor, dobj, args, room_id,
+                                   grounding=[grounding] if grounding else None)
     skill_name = _bound_dialogue_skill(dobj)
     pair = data_skills.find(skill_name) if skill_name else None
     if pair is None:

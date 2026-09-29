@@ -394,8 +394,19 @@
       "aliases": [
         "keys",
         "room keys",
-        "key board"
-      ]
+        "key board",
+        "board",
+        "chalk",
+        "chalk names",
+        "hooks"
+      ],
+      "properties": {
+        "roster": {
+          "kind": "guests",
+          "text": "Chalked on the hooks, in Linden's round hand: {waiting}. Wiped clean, the hours gone home or kept: {home}.",
+          "empty": "Every hook is chalked clean; no hour is waiting just now."
+        }
+      }
     },
     {
       "id": "o-catchers-net",

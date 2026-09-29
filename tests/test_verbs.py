@@ -665,3 +665,37 @@ def test_examine_lines_never_double_the_name():
     hush = o.Object(id="z", world_id="w", kind="thing", name="hush", aliases=[],
                     location_id=None, prototype_id=None, properties={})
     assert _examine_line(hush, "a hush: a small grey quiet") == "You examine the hush: a small grey quiet."
+
+
+@pytest.mark.asyncio
+async def test_a_short_line_naming_a_topic_selects_and_a_long_one_is_its_own_question(monkeypatch):
+    """Select, don't write, for a short line; a longer question that merely
+    mentions a topic goes to the model, with the topic's authored words as
+    grounding (beta rehearsal 2026-09-28: a passing noun stole the
+    question five times in an evening)."""
+    from unittest.mock import AsyncMock
+
+    from daydream import dialogue
+
+    objects.set_property("t-rook", "voice", {"pronouns": "he/him", "sheet": "Rook, the smith."})
+    objects.set_property("t-rook", "topics", [
+        {"label": "the anvil", "aliases": ["anvil"], "text": "Rook pats the anvil. 'Old friend.'"}])
+    objects.move("t-wren", "r-forge")
+    spy = AsyncMock(return_value={"gesture": "Rook nods.", "say": "They came by, both of them.",
+                                  "advance": "none"})
+    monkeypatch.setattr("daydream.llm.client.acompletion_json", spy)
+    calls = []
+    real = dialogue.talk
+
+    async def spy_talk(actor, npc, text, room_id, grounding=None):
+        calls.append(grounding)
+        return await real(actor, npc, text, room_id, grounding)
+
+    monkeypatch.setattr(dialogue, "talk", spy_talk)
+    await verbs.execute_command("t-wren", "talk", dobj_id="t-rook", args="tell me about the anvil")
+    assert calls == [] and _last_narrate() == "Rook pats the anvil. 'Old friend.'"
+    await verbs.execute_command(
+        "t-wren", "talk", dobj_id="t-rook",
+        args="Two friends of mine were here earlier and one of them said your anvil sang. What were they like?")
+    assert calls == [["Rook pats the anvil. 'Old friend.'"]]
+    assert "They came by, both of them." in _last_narrate()

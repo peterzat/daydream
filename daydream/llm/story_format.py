@@ -421,8 +421,10 @@ def validate_story(env: dict, *, known: dict, ks: dict, room_ids: set[str],
             if the_post["room"] not in room_ids:
                 errors.append(f"config.post.room: unknown room {the_post['room']!r}")
             for k, v in the_post.items():
-                if k != "room" and not isinstance(v, str):
-                    errors.append(f"config.post.{k} must be a string")
+                ok = isinstance(v, str) or (isinstance(v, list) and v
+                                            and all(isinstance(x, str) for x in v))
+                if k != "room" and not ok:
+                    errors.append(f"config.post.{k} must be a string or a list of strings")
     tiers = cfg.get("relationship_tiers")
     if tiers is not None and not (isinstance(tiers, list) and all(
             isinstance(x, dict) and isinstance(x.get("min"), int)
