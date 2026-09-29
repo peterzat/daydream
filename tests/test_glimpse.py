@@ -12,7 +12,18 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from daydream import db, events, glimpse, heard, objects, parser, toons, verbs, walkthrough, worldclock
+from daydream import (
+    db,
+    events,
+    glimpse,
+    heard,
+    objects,
+    parser,
+    toons,
+    verbs,
+    walkthrough,
+    worldclock,
+)
 from daydream.llm import client, format2
 
 pytestmark = pytest.mark.tier_short

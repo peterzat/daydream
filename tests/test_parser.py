@@ -184,7 +184,7 @@ async def test_an_alias_still_grounds_what_you_carry(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_a_one_letter_word_without_a_target_verb_stays_a_sentence(monkeypatch):
-    spy = _mock_llm(monkeypatch, {"verb": "say", "args": "I keep bees back home"})
+    _mock_llm(monkeypatch, {"verb": "say", "args": "I keep bees back home"})
     p = await parser.parse("t-wren", "I keep bees back home")
     assert p.verb != "inventory"
 
