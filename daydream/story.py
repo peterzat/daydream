@@ -229,6 +229,9 @@ def _tell(world_id: str, key: str, spec: dict, room_id: str | None,
     if not options:
         return None
     line = variants.pick(world_id, key, options, room_id)
+    from daydream import trace
+
+    line = trace.expand_placeholders(line, world_id)
     if recipient is None and spec.get("to") != "everyone":
         recipient = effects.second_person_recipient(line, actor_id)
     ev = events.append("system", None, "narrate", {"text": line},
@@ -563,16 +566,16 @@ def _stems(text: str) -> list[str]:
 
 
 def topic_text(npc: objects.Object, topic: dict) -> str | None:
-    """The authored words behind a matched topic or beat: its text, or its
-    first variant (grounding for the model when a longer line only
-    mentions the topic)."""
-    spec: dict | None = None
+    """The authored words behind a matched topic: its text, or its first
+    variant (grounding for the model when a longer line only mentions the
+    topic). None for a beat: its text is the payoff, told only when the
+    beat advances, and a line naming an open beat always selects it
+    (codereview 2026-09-29)."""
     if topic.get("kind") == "beat":
-        spec = beat_def(npc.world_id, topic["arc"], topic["beat"])
-    else:
-        topics = npc.properties.get("topics") or []
-        idx = topic.get("index")
-        spec = topics[idx] if isinstance(idx, int) and idx < len(topics) else None
+        return None
+    topics = npc.properties.get("topics") or []
+    idx = topic.get("index")
+    spec = topics[idx] if isinstance(idx, int) and idx < len(topics) else None
     if not isinstance(spec, dict):
         return None
     if isinstance(spec.get("text"), str) and spec["text"].strip():

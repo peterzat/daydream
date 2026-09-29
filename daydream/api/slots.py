@@ -305,8 +305,11 @@ def _departed(t: toons.Toon) -> None:
                       room_id=t.current_room_id)
         # The margins follow: a rested dreamer leaves "here with you" and
         # "also dreaming" at once (a mutation kind, so viewers re-snapshot).
-        events.append("system", None, "presence_changed", {"toon_id": t.id},
-                      room_id=t.current_room_id)
+        # World-scoped, like game_won: "also dreaming" is a world-wide list
+        # (codereview 2026-09-29). Never the leaver's own still-open page,
+        # whose re-snapshot would read the "while you were away" stamp.
+        events.append("system", None, "presence_changed",
+                      {"toon_id": t.id, "except": t.id})
     asyncio.create_task(journal.write_entry(t.id))
 
 

@@ -306,6 +306,22 @@ async def test_use_on_a_toon_is_handing_it_over():
 
 
 @pytest.mark.asyncio
+async def test_open_with_the_key_in_hand_is_one_turn():
+    """"open case" with its key in hand uses the key first, inside the same
+    command: the case opens and one turn passes, not two (codereview
+    2026-09-29: the platform contract is one turn per command)."""
+    from daydream import worldstate
+
+    box = _spawn_lockbox("locked")
+    _spawn_carried_key()
+    objects.set_property(box, "verbs", ["open", "use"])
+    turn = worldstate.turn("w-bunny")
+    await verbs.execute_command("t-wren", "open", dobj_id=box)
+    assert objects.get(box).properties.get("state") == "open"
+    assert worldstate.turn("w-bunny") == turn + 1
+
+
+@pytest.mark.asyncio
 async def test_refusal_articles_for_things_and_toons():
     # A thing without the verb: 'the' before the thing's name.
     await verbs.execute_command("t-wren", "open", dobj_id="i-lantern")

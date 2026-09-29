@@ -148,7 +148,7 @@ async def test_refusals_are_the_writers_alone_and_write_nothing():
     for room, args, expect in cases:
         _go(room)
         before = events.max_seq()
-        ok = await verbs.execute_command("t-wren", "write", args=args)
+        await verbs.execute_command("t-wren", "write", args=args)
         lines = _narrates(before)
         assert len(lines) == 1 and lines[0].recipient_id == "t-wren", (args, lines)
         assert expect in lines[0].payload["text"], (args, lines[0].payload["text"])
@@ -290,3 +290,43 @@ async def test_a_thing_left_with_the_keeper_for_someone_waits_for_them_alone():
     before = events.max_seq()
     await verbs.execute_command("t-wren", "give", dobj_id="i-lantern", iobj_id="t-rook", args="for Ivo")
     assert "leaves it with you" in _narrates(before)[-1].payload["text"]
+
+
+@pytest.mark.asyncio
+async def test_a_thing_that_goes_home_cannot_be_left_for_anyone():
+    """A world thing (one with a home) goes back where it lives when its
+    carrier rests; filed for one dreamer it would hide from everyone for
+    good (codereview 2026-09-29). The keeper refuses, in authored words."""
+    ivo = _ivo()
+    worldstate.set("w-bunny", "config", {"post": {**POST, "keeper": "t-rook",
+                                                  "belongs_text": "Rook: the {item} lives here."}})
+    objects.set_property("i-lantern", "home", "r-meadow")
+    await verbs.execute_command("t-wren", "take", dobj_id="i-lantern")
+    _go("r-forge")
+    before = events.max_seq()
+    await verbs.execute_command("t-wren", "give", dobj_id="i-lantern", iobj_id="t-rook", args="for Ivo")
+    lines = _narrates(before)
+    assert len(lines) == 1 and lines[0].recipient_id == "t-wren"
+    assert lines[0].payload["text"] == "Rook: the lantern lives here."
+    lantern = objects.get("i-lantern")
+    assert lantern.location_id == "t-wren" and not lantern.properties.get("private_to")
+    assert post.letters_waiting(ivo.id) == []
+
+
+@pytest.mark.asyncio
+async def test_post_waiting_from_one_hand_is_capped():
+    """Codereview 2026-09-29: letters waited without limit. Past the cap
+    from one hand, the next is refused in authored words, and nothing is
+    filed."""
+    ivo = _ivo()
+    worldstate.set("w-bunny", "config", {"post": {**POST, "too_many_text": "Rook: {to} has enough waiting."}})
+    _go("r-forge")
+    for i in range(post.MAX_WAITING_FROM_ONE):
+        await verbs.execute_command("t-wren", "write", args=f"to Ivo: letter {i}")
+    assert len(post.letters_waiting(ivo.id)) == post.MAX_WAITING_FROM_ONE
+    before = events.max_seq()
+    await verbs.execute_command("t-wren", "write", args="to Ivo: one more")
+    lines = _narrates(before)
+    assert [(e.payload["text"], e.recipient_id) for e in lines] == [("Rook: Ivo has enough waiting.", "t-wren")]
+    assert len(post.letters_waiting(ivo.id)) == post.MAX_WAITING_FROM_ONE
+    assert post.MAX_WAITING_FOR_ONE >= post.MAX_WAITING_FROM_ONE

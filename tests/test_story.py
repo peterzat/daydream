@@ -569,6 +569,25 @@ async def test_talk_that_names_a_topic_gets_the_authored_answer(monkeypatch):
     assert spy.await_count >= 1
 
 
+async def test_a_long_line_naming_an_open_beat_still_selects_it():
+    """Codereview 2026-09-29: the word cap that sends a long line to the
+    model applies to plain topics only. A line of any length naming an open
+    beat advances it deterministically (its text is the payoff, never
+    grounding for an improvised hand-over); the fixture's spy fails on any
+    LLM call."""
+    ada = player(1, "Ada", "r-green")
+    await _moth_open(ada)
+    objects.move(ada, "r-lane")
+    before = events.max_seq()
+    await talk(ada, "t-hob", "Hob, could I please ask you about that little moth "
+                             "I saw out on the lane just now, if you have a moment?")
+    assert "wants a lamp" in " ".join(narrations(before))
+    assert story.beat_done(WORLD, "moth", "hob-notices")
+    hob = objects.get("t-hob")
+    assert story.topic_text(hob, {"kind": "beat", "arc": "moth", "beat": "hob-notices"}) is None
+    assert story.topic_text(hob, {"kind": "topic", "index": 0}) == "'Twelve lamps, all mine.'"
+
+
 def test_beats_and_endings_may_carry_others_and_to():
     env = copy.deepcopy(FIXTURE)
     env["arcs"]["moth"]["beats"]["hob-notices"]["others"] = "{actor} and Hob talk about the moth."

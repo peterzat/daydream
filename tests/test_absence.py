@@ -9,7 +9,18 @@ from pathlib import Path
 
 import pytest
 
-from daydream import absence, config, db, events, inputs, objects, story, toons, worldclock, worldstate
+from daydream import (
+    absence,
+    config,
+    db,
+    events,
+    inputs,
+    objects,
+    story,
+    toons,
+    worldclock,
+    worldstate,
+)
 
 pytestmark = pytest.mark.tier_short
 

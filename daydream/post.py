@@ -26,7 +26,9 @@ world. A world with no `config.post` has no post: `write` says so.
       "rings_text": "...",              # the recipient, awake elsewhere, at once
       "letter_name": "letter from {from}",
       "letter_seed": "...{from}...{to}...",
-      "read_text": "...{from}...{to}...{text}..."
+      "read_text": "...{from}...{to}...{text}...",
+      "too_many_text": "...{to}...",     # the cap on post waiting for one dreamer
+      "belongs_text": "...{item}..."     # a parcel of a thing that goes home
     }
 """
 
@@ -42,6 +44,11 @@ from daydream.llm import safety
 logger = logging.getLogger(__name__)
 
 MAX_LETTER_CHARS = 500
+# Post waits until it is taken: a household's shelf, not a mailbox for a
+# script (codereview 2026-09-29: letters waited without limit, and every
+# player's every command read all of them).
+MAX_WAITING_FROM_ONE = 5
+MAX_WAITING_FOR_ONE = 20
 
 _DEFAULTS = {
     "write_text": "You write it out, fold it twice, and leave it to be found. "
@@ -63,6 +70,9 @@ _DEFAULTS = {
     "inbox_text": "There is post for you, {name}: {count}, from {senders}. It waits here.",
     "inbox_empty_text": "Nothing has come for you, {name}. Not yet.",
     "dozing_hint": "",
+    "too_many_text": "There is already more post waiting for {to} than can be kept; "
+                     "let them read it first.",
+    "belongs_text": "The {item} isn't yours to leave for anyone; it goes back where it belongs.",
 }
 
 _NO_POST = "There's nowhere to post a letter in this dream."
@@ -221,6 +231,11 @@ def write_letter(actor: objects.Object, room_id: str, args: str, allowed) -> boo
         else:
             _narrate(room_id, _line(post, "unknown_text", to=name), to=actor.id)
         return False
+    waiting = letters_waiting(to.id)
+    from_me = sum(1 for o in waiting if (o.properties.get("letter") or {}).get("from") == actor.id)
+    if from_me >= MAX_WAITING_FROM_ONE or len(waiting) >= MAX_WAITING_FOR_ONE:
+        _narrate(room_id, _line(post, "too_many_text", to=to.name), to=actor.id)
+        return False
     if safety.first_banned(text) is not None:
         _narrate(room_id, _line(post, "off_tone_text"), to=actor.id)
         return False
@@ -286,6 +301,12 @@ def file_parcel(actor: objects.Object, keeper: objects.Object, thing: objects.Ob
         _narrate(room_id, f"The {thing.name} is yours alone; it won't pass to other hands.",
                  to=actor.id)
         return True
+    if toons.home_of(thing) is not None:
+        # A world thing goes home when its carrier rests; filed for one
+        # dreamer it would hide from everyone, for good (codereview
+        # 2026-09-29). Keepsakes may be left; things with a home may not.
+        _narrate(room_id, _line(post, "belongs_text", item=thing.name), to=actor.id)
+        return True
     at = worldclock.iso()
     effects.dispatch_effects([
         {"kind": "move_object", "object_id": thing.id, "dest_id": post["room"]},
@@ -296,8 +317,7 @@ def file_parcel(actor: objects.Object, keeper: objects.Object, thing: objects.Ob
         {"kind": "narrate", "to": "@actor",
          "text": _line(post, "parcel_text", item=thing.name, to=to.name),
          "others": _line(post, "parcel_others", item=thing.name, to=to.name)},
-    ], actor_id=actor.id, room_id=room_id, world_id=actor.world_id,
-        allowed=allowed | frozenset({"set_property", "move_object"}))
+    ], actor_id=actor.id, room_id=room_id, world_id=actor.world_id, allowed=allowed)
     logger.info("post: %s left %s for %s", actor.name, thing.name, to.name)
     _ring_for(to, post)
     return True
@@ -327,19 +347,18 @@ def _ring_for(to: objects.Object, post: dict) -> None:
 
 
 def letters_waiting(toon_id: str) -> list[objects.Object]:
-    """Letters filed for this dreamer that they have not yet taken."""
+    """Letters and parcels filed for this dreamer that they have not yet
+    taken. Only theirs are read (`letter.to`, a nested path through the
+    objects surface): threads run after every command, so this must not
+    cost every letter waiting for anyone (codereview 2026-09-29)."""
     toon = objects.get(toon_id)
     if toon is None:
         return []
     post = config_for(toon.world_id)
     if post is None:
         return []
-    out = []
-    for o in objects.contents_for(post["room"], toon_id, kind="thing"):
-        letter = o.properties.get("letter")
-        if isinstance(letter, dict) and letter.get("to") == toon_id:
-            out.append(o)
-    return out
+    mine = objects.things_where_property(toon.world_id, "letter.to", toon_id)
+    return sorted((o for o in mine if o.location_id == post["room"]), key=lambda o: o.name)
 
 
 def arrival_notes(toon_id: str) -> list[str]:

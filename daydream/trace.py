@@ -182,6 +182,17 @@ def dreamers_today_clause(world_id: str) -> str:
     return f"{_join(names)} came through today"
 
 
+def expand_placeholders(text, world_id: str):
+    """Fill an authored line's {dreamers_today}. Every path that tells an
+    authored line calls this (effects._apply_narrate, effects.tell_others,
+    story._tell): a topic, beat or storylet used to reach the player with
+    the literal placeholder (codereview 2026-09-29). Anything but a string
+    passes through untouched."""
+    if isinstance(text, str) and "{dreamers_today}" in text:
+        return text.replace("{dreamers_today}", dreamers_today_clause(world_id))
+    return text
+
+
 # ---- what a resident tells about a dreamer ------------------------------------------
 
 

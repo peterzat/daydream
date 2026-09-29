@@ -98,13 +98,15 @@ def _chronicle_since(world_id: str, since: str) -> list[str]:
 def take_note(toon_id: str) -> dict | None:
     """The note for a player's first connection after a rest, once (the
     rest's stamp is read and cleared), or None when nothing changed."""
+    toon = objects.get(toon_id)
+    if toon is None or not toon.is_human_controlled:
+        # A rested dreamer's own still-open page re-snapshots after the
+        # leave (codereview 2026-09-29): the stamp keeps for their return.
+        return None
     since = objects.get_property(toon_id, "away_since")
     if not isinstance(since, str) or not since:
         return None
     objects.set_property(toon_id, "away_since", None)
-    toon = objects.get(toon_id)
-    if toon is None:
-        return None
     world_id = toon.world_id
     try:
         lines: list[str] = []

@@ -12,7 +12,18 @@ from pathlib import Path
 
 import pytest
 
-from daydream import config, db, events, inputs, knowledge, objects, story, trace, verbs, worldclock, worldstate
+from daydream import (
+    config,
+    db,
+    events,
+    inputs,
+    knowledge,
+    objects,
+    trace,
+    verbs,
+    worldclock,
+    worldstate,
+)
 from daydream.api import ws as ws_mod
 
 pytestmark = pytest.mark.tier_short
@@ -194,3 +205,18 @@ def test_who_came_through_today_by_the_villages_calendar():
                              actor_id="t-wren", room_id="r-meadow", world_id=W)
     texts = [e.payload["text"] for e in events.fetch_since(before) if e.kind == "narrate"]
     assert texts == ["Bell counts: Wren and Ivo came through today."]
+
+
+@pytest.mark.asyncio
+async def test_an_authored_topic_fills_who_came_through_today():
+    """The placeholder on every authored path, not only a narrate effect
+    (codereview 2026-09-29: a topic's answer reached the player with the
+    literal braces)."""
+    inputs.record("t-wren", "text", text="look")
+    objects.set_property("t-rook", "topics", [
+        {"label": "who came through today", "text": "Rook counts: {dreamers_today}."}])
+    objects.move("t-wren", "r-forge")
+    before = events.max_seq()
+    await verbs.execute_command("t-wren", "ask", dobj_id="t-rook", args="who came through today")
+    mine = [e.payload["text"] for e in _narrates(before) if e.recipient_id == "t-wren"]
+    assert mine == ["Rook counts: one dreamer, Wren, came through today."]

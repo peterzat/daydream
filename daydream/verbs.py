@@ -134,7 +134,11 @@ VERBS: dict[str, VerbSpec] = {
         description="Give a thing you're carrying to someone. Target: the thing, then the toon.",
         needs_dobj=True, needs_iobj=True,
         valid_dobj_kinds=frozenset({"thing"}), valid_iobj_kinds=frozenset({"toon"}),
-        allowed_effects=frozenset({"move_object", "set_mood", "spawn_object", "narrate"}),
+        # set_property: the post keeper files a parcel (post.file_parcel) by
+        # marking the thing private to the one it is for; declared here, the
+        # way open/use do, never widened at a call site.
+        allowed_effects=frozenset({"move_object", "set_mood", "set_property", "spawn_object",
+                                   "narrate"}),
         preps=("to",),
     ),
     "use": VerbSpec(
@@ -975,7 +979,9 @@ async def _handle_open(actor, room_id, dobj, iobj, args, spec) -> None:
         # its rules and beats run as if the player had typed it.
         key = _carried_key_for(actor, dobj)
         if key is not None:
-            await execute_command(actor.id, "use", dobj_id=key.id, iobj_id=dobj.id)
+            # Inside this command, not a second execute_command: one typed
+            # `open` is one turn, one tick, one catch-up (codereview 2026-09-29).
+            await _execute_resolved(actor, room_id, VERBS["use"], key.id, dobj.id, "", None)
             fresh = objects.get(dobj.id)
             if fresh is not None and fresh.properties.get("state") != "locked":
                 return await _handle_open(actor, room_id, fresh, iobj, args, spec)
@@ -1626,7 +1632,11 @@ async def _handle_talk(actor, room_id, dobj, args, spec) -> None:
         from daydream import dialogue, story
 
         topic = story.match_in_talk(dobj, actor.id, args or "")
-        if topic is not None and len((args or "").split()) <= TALK_SELECT_MAX_WORDS:
+        # The word cap applies to plain topics only: a line of any length
+        # naming an open beat selects it (codereview 2026-09-29: a beat's
+        # text is its payoff, never grounding for an improvised hand-over).
+        if topic is not None and (topic["kind"] != "topic"
+                                  or len((args or "").split()) <= TALK_SELECT_MAX_WORDS):
             story.ask(actor, dobj, topic, room_id)
             story.remember_exchange(actor.world_id, dobj.id, actor.id, args or "",
                                     f"(answered about {topic['label']})")

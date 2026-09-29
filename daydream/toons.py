@@ -116,8 +116,9 @@ def announce_wake(t: "Toon") -> None:
     events.append("system", None, "narrate",
                   {"text": f"{t.name} drifts back into the dream.", "except": t.id},
                   room_id=t.current_room_id)
-    events.append("system", None, "presence_changed", {"toon_id": t.id},
-                  room_id=t.current_room_id)
+    # World-scoped (no room): "also dreaming" is a world-wide list, so a
+    # viewer elsewhere refreshes too (codereview 2026-09-29).
+    events.append("system", None, "presence_changed", {"toon_id": t.id})
 
 
 def get_npcs() -> list[Toon]:

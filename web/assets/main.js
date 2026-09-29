@@ -356,6 +356,7 @@ function renderSnapshot(snap) {
   const shownSeq = lastSeq;
   const answerSeq = answerFrom && answerFrom.isConnected ? answerFrom.dataset.seq : null;
   clearPending();
+  clearThinking(); // the log is rebuilt below; drop the transient line and its timer too
   chat.innerHTML = "";
   lastSeq = 0; // allow snapshot replays to render
   replaying = true; // one settle after the whole log, not a scroll per line
@@ -1288,6 +1289,7 @@ let thinkingTimer = null;
 
 function showThinking(data) {
   clearThinking();
+  clearPending(); // the server's line replaces the client's "the dream stirs..." guess
   const chat = document.getElementById("chat");
   const div = document.createElement("div");
   div.className = "evt evt-thinking";

@@ -127,6 +127,10 @@ def test_the_margin_names_who_else_is_awake_and_where():
                 client.cookies.set(config.cookie_name(), ivo)
                 assert client.post("/api/session/leave").status_code == 200
                 client.cookies.clear()
+                # Mira is in another room, and the list refreshes there at
+                # once (presence_changed is world-scoped; codereview 2026-09-29).
+                gone = _until(ws, lambda m: m["kind"] == "state_snapshot" and m["dreaming"] == [])
+                assert gone["room"]["title"] != snap["room"]["title"]
                 ws.send_json({"kind": "input", "text": "go south"})
                 back = _until(ws, lambda m: m["kind"] == "state_snapshot"
                               and m["room"]["title"] == snap["room"]["title"])
@@ -145,3 +149,46 @@ def test_the_margin_names_who_else_is_awake_and_where():
                 again = _until(ws, lambda m: m["kind"] == "state_snapshot"
                                and any(d["name"] == "Ivo" for d in m["dreaming"]))
                 assert any(t["name"] == "Ivo" for t in again["toons"])
+
+
+def test_the_away_note_survives_the_leavers_own_open_page():
+    """Codereview 2026-09-29: the browser posts leave before closing its
+    socket, and that socket's re-snapshot read and cleared the "while you
+    were away" stamp for a dreamer no longer in the dream. The note keeps
+    for their return."""
+    from daydream import toons, worldclock
+
+    with TestClient(app) as client:
+        ivo = _login(client, "ivo-player")
+        ivo_me = client.post("/api/dreamer/create",
+                             json={"name": "Ivo", "appearance_seed": "a small man"}).json()
+        ivo_slot = toons.get_toon(ivo_me["id"]).slot
+        mira = _login(client, "mira-player")
+        client.post("/api/dreamer/create", json={"name": "Mira", "appearance_seed": "a tall woman"})
+        client.cookies.clear()
+        hdr = lambda c: {"cookie": f"{config.cookie_name()}={c}"}  # noqa: E731
+        try:
+            worldclock.set_fake_now("2026-10-01T18:00:00+00:00")
+            with client.websocket_connect("/ws", headers=hdr(mira)) as ws, \
+                    client.websocket_connect("/ws", headers=hdr(ivo)) as ws2:
+                _until(ws, lambda m: m["kind"] == "state_snapshot")
+                _until(ws2, lambda m: m["kind"] == "state_snapshot")
+                # Ivo leaves while their page's socket is still open.
+                client.cookies.set(config.cookie_name(), ivo)
+                assert client.post("/api/session/leave").status_code == 200
+                client.cookies.clear()
+                # Mira dreams on, an hour later; her words reach Ivo's old
+                # socket, so it has processed everything the leave emitted.
+                worldclock.advance(hours=1)
+                ws.send_json({"kind": "command", "verb": "say", "args": "hello"})
+                _until(ws2, lambda m: m["kind"] == "event" and m["event"]["kind"] == "say")
+            # Ivo comes back: the note is still there to be told, once.
+            client.cookies.set(config.cookie_name(), ivo)
+            assert client.post(f"/api/slots/{ivo_slot}/claim").status_code == 200
+            client.cookies.clear()
+            with client.websocket_connect("/ws", headers=hdr(ivo)) as ws3:
+                back = _until(ws3, lambda m: m["kind"] == "state_snapshot")
+                note = back["while_you_slept"]
+                assert note and "Mira was here while you rested." in note["text"]
+        finally:
+            worldclock.set_fake_now(None)

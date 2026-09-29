@@ -11,7 +11,7 @@ sent; a failed send is ignored. Never an event, never persisted.
 from __future__ import annotations
 
 import logging
-from typing import Awaitable, Callable
+from collections.abc import Awaitable, Callable
 
 logger = logging.getLogger(__name__)
 
