@@ -1,6 +1,6 @@
 """Letters between dreamers (beta rehearsal 2026-09-28).
 
-A family playing on different schedules had no way to leave each other
+A household playing on different schedules had no way to leave each other
 anything: speech is live and room-scoped, a dropped thing carries no words,
 and a grown room never names its planter. This module is the engine half of
 a world's post: at the room the world's `config.post` names, `write to

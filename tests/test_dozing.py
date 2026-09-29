@@ -96,7 +96,7 @@ def test_a_command_that_changes_your_threads_sends_them_at_once():
 
 
 def test_the_margin_names_who_else_is_awake_and_where():
-    """Beta rehearsal 2026-09-28: a family on different schedules wants to
+    """Beta rehearsal 2026-09-28: a household on different schedules wants to
     know who is in the village before going to find them. The snapshot
     lists the other players awake at their pages, with their room; never
     yourself, never a dozing or resting dreamer; and a dreamer who leaves

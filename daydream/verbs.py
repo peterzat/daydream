@@ -875,7 +875,7 @@ async def _handle_give(actor, room_id, dobj, iobj, args, spec) -> None:
 
 def _hand_to_player(actor, room_id, dobj, iobj, spec) -> bool:
     """Hand a carried thing to another dreamer standing here (beta rehearsal
-    2026-09-28: a family playing together had no way to pass anything but
+    2026-09-28: friends playing together had no way to pass anything but
     drop-and-take, and the giver was told the other "leaves it with you").
     A thing that exists for one player alone (a stray minute) stays; a
     dreamer who is resting or dozing is not here to take it. Deterministic:

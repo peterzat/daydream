@@ -917,7 +917,7 @@ def _slept_note(toon_id: str) -> dict | None:
 
 def dreaming_elsewhere(viewer_id: str) -> list[dict]:
     """The other players awake in the village right now, and where: a
-    family on different schedules wants to know who is in the dream before
+    household on different schedules wants to know who is in the dream before
     going to find them (beta rehearsal 2026-09-28). Dozing and resting
     players are left out; never the viewer."""
     out: list[dict] = []

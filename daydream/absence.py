@@ -2,7 +2,7 @@
 
 Nothing told a returning player what had changed since they last rested
 unless the operator had run a dream: who else dreamed here, an hour sent
-home, a place that grew, a guest that came. A family on different
+home, a place that grew, a guest that came. A household on different
 schedules lives on exactly that. This composes it deterministically from
 what the world already records (the raw input log, the chronicle, arc
 state, grown rooms, the post), once, on the first connection after a rest,

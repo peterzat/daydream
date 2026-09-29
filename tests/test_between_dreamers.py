@@ -1,6 +1,6 @@
 """What passes between dreamers (beta rehearsal 2026-09-28).
 
-A family playing on different schedules had no way to hand anything to
+A household playing on different schedules had no way to hand anything to
 each other but drop-and-take, and the giver was told the other "leaves it
 with you". Now a carried thing goes to a dreamer standing here, awake; a
 thing that exists for one player alone stays; a resting or dozing dreamer
