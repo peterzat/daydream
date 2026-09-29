@@ -58,7 +58,13 @@ const ASLEEP_RETRY = 30000; // a sleeping village is checked gently
 // An UNPLANNED outage (the Worker's `unplanned`: a deploy restart, a tunnel
 // blip) reads as a brief drop for this long before the asleep note shows.
 const UNPLANNED_GRACE = 60000;
+// A dropped socket that is back within this long never shows the overlay:
+// the reconnect replays what was missed, so a blip is invisible (seen live
+// 2026-09-29: a flash of "the dream is sleeping" five seconds into a first
+// entry, healed in under two). Acting in the gap shows it at once.
+const DROP_GRACE = 2500;
 let outageSince = 0;
+let dropTimer = null;
 let dreamingElsewhere = false; // another window of this account has the toon
 let pingTimer = null;
 
@@ -91,19 +97,41 @@ function asleepText(why) {
 }
 
 function showDreamOverlay(text) {
+  clearTimeout(dropTimer);
+  dropTimer = null;
   const o = document.getElementById("dream-overlay");
   o.textContent = text;
   o.classList.remove("hidden");
 }
 
 function hideDreamOverlay() {
+  clearTimeout(dropTimer);
+  dropTimer = null;
   document.getElementById("dream-overlay").classList.add("hidden");
+}
+
+function showDropSoon() {
+  // "the dream is sleeping..." once the drop has lasted DROP_GRACE (counted
+  // from the outage's start, so the retries' closes do not push it back).
+  if (dropTimer) return;
+  const o = document.getElementById("dream-overlay");
+  if (!o.classList.contains("hidden")) return; // something already says so
+  const wait = Math.max(0, outageSince + DROP_GRACE - Date.now());
+  dropTimer = setTimeout(() => showDreamOverlay("the dream is sleeping..."), wait);
+}
+
+function connectionDown() {
+  // The player acted while the socket was down: say so now, not after the
+  // grace (the line they typed stays in the box).
+  if (dropTimer) showDreamOverlay("the dream is sleeping...");
 }
 
 function showElsewhere() {
   // Another window or device took your dreamer; one touch brings it back
   // here (playtest 2026-09-28b: the note said "window" for a phone, and
   // offered no way back but a reload).
+  clearTimeout(dropTimer);
+  dropTimer = null;
   const o = document.getElementById("dream-overlay");
   o.textContent = "";
   const p = document.createElement("p");
@@ -169,6 +197,10 @@ function connect(isReconnect) {
       enterPicker();
       return;
     }
+    // The overlay waits out a blip (DROP_GRACE); armed before asking why, so
+    // a slow answer cannot hold it back.
+    if (!outageSince) outageSince = Date.now();
+    showDropSoon();
     // Why did it close? A refused handshake reads as 1006 in the browser, so
     // ask: a lapsed session goes to the front door; a sleeping village (the
     // edge answers 503 while the box is down) shows its note and waits.
@@ -182,11 +214,11 @@ function connect(isReconnect) {
     // back, so a tab left open across a restart recovers with no manual reload.
     // A planned sleep shows its note at once; an unplanned one (a deploy's
     // restart) gets UNPLANNED_GRACE of quick retries first.
-    if (!outageSince) outageSince = Date.now();
     const brief = why && why.asleep && why.unplanned
       && Date.now() - outageSince < UNPLANNED_GRACE;
     const sleeping = why && why.asleep && !brief;
-    showDreamOverlay(sleeping ? asleepText(why) : "the dream is sleeping...");
+    if (sleeping) showDreamOverlay(asleepText(why));
+    else showDropSoon();
     reconnectDelay = sleeping ? ASLEEP_RETRY : Math.min(
       reconnectDelay ? reconnectDelay * 2 : RECONNECT_MIN,
       RECONNECT_MAX
@@ -1331,10 +1363,15 @@ function youActed() {
   answerFrom = null;
 }
 
+// Returns whether it sent, so the box keeps a line the socket could not take.
 function sendInput(text) {
   youActed();
-  if (!ws || ws.readyState !== WebSocket.OPEN) return;
+  if (!ws || ws.readyState !== WebSocket.OPEN) {
+    connectionDown();
+    return false;
+  }
   ws.send(JSON.stringify({ kind: "input", text: text }));
+  return true;
 }
 
 function sendCommand(verb, dobjId, args, iobjId) {
@@ -1344,7 +1381,10 @@ function sendCommand(verb, dobjId, args, iobjId) {
   // two-object verb (give/use) carries iobj_id; single-object verbs omit it.
   // Returns whether it sent, so a caller shows "the dream stirs..." only for
   // a command that went.
-  if (!ws || ws.readyState !== WebSocket.OPEN) return false;
+  if (!ws || ws.readyState !== WebSocket.OPEN) {
+    connectionDown();
+    return false;
+  }
   // Some browsers fire a click handler twice on a single tap, and a touch
   // that seems slow to answer gets a second one, either of which would echo
   // the line twice (e.g. a doubled "You ask someone about ..."). Drop an
@@ -1791,7 +1831,7 @@ document.getElementById("input-form").addEventListener("submit", (ev) => {
     openHelp();
     return;
   }
-  sendInput(text);
+  if (!sendInput(text)) return; // not sent: the words stay in the box
   showPending();
   if (inputHistory[inputHistory.length - 1] !== text) inputHistory.push(text);
   if (inputHistory.length > 50) inputHistory.shift();
@@ -2454,6 +2494,7 @@ document.getElementById("help-panel").addEventListener("click", (e) => {
 // wake on the page between dreams (rather than the old no-op logout POST).
 function enterPicker() {
   awaitingPick = true;
+  hideDreamOverlay(); // and any drop note still waiting to show
   clearSceneAndLog();
   showAwake();
   maybeShowFirstVisitHelp();

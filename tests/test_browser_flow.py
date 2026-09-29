@@ -556,3 +556,61 @@ def test_your_own_words_told_back_keep_the_waiting_line(tab, engines):
     expect(page.locator("#chat .evt-pending")).to_have_count(0)
     assert page.evaluate(last_two) == ["evt evt-say", "evt evt-narrate"]
     _assert_quiet(tab, engines)
+
+
+_WATCH_OVERLAY = """() => {
+  window.__overlaySeen = false;
+  const o = document.getElementById("dream-overlay");
+  new MutationObserver(() => {
+    if (!o.classList.contains("hidden")) window.__overlaySeen = true;
+  }).observe(o, { attributes: true, attributeFilter: ["class"] });
+}"""
+
+# Every new socket dials a path the server refuses, so each retry fails as in
+# an outage. Same origin: the CSP blocks another port, and a blocked socket
+# never fires its close.
+_DEAD_SOCKETS = """() => {
+  window.__RealWebSocket = window.__RealWebSocket || WebSocket;
+  window.WebSocket = class extends window.__RealWebSocket {
+    constructor() { super("ws://" + location.host + "/nowhere"); }
+  };
+}"""
+
+
+def test_a_dropped_socket_that_comes_straight_back_shows_nothing(tab, engines):
+    """Seen live 2026-09-29: a flash of "the dream is sleeping" five seconds
+    into a first entry, healed in under two. A blip replays what was missed
+    and shows no overlay."""
+    page = _signed_in_with_a_dreamer(tab)
+    page.evaluate(_WATCH_OVERLAY)
+    page.evaluate("() => { window.__old = ws; ws.close(); }")
+    page.wait_for_function("() => ws && ws !== window.__old && ws.readyState === 1")
+    page.wait_for_timeout(3000)  # past the grace: nothing waiting to show
+    assert page.evaluate("() => window.__overlaySeen") is False
+    expect(page.locator("#dream-overlay")).to_be_hidden()
+    _assert_quiet(tab, engines)
+
+
+def test_a_drop_that_lasts_says_so_and_acting_in_it_keeps_your_words(tab, engines):
+    page = _signed_in_with_a_dreamer(tab)
+    page.evaluate(_DEAD_SOCKETS)
+    page.evaluate("() => ws.close()")
+    page.wait_for_timeout(1000)
+    expect(page.locator("#dream-overlay")).to_be_hidden()  # still in the grace
+    page.locator("#input-text").fill("look at the clock")
+    page.locator("#input-text").press("Enter")
+    # Acting in the gap shows the note at once, and the words stay to resend.
+    expect(page.locator("#dream-overlay")).to_have_text("the dream is sleeping...", timeout=500)
+    expect(page.locator("#input-text")).to_have_value("look at the clock")
+    page.evaluate("() => { window.WebSocket = window.__RealWebSocket; }")
+    expect(page.locator("#dream-overlay")).to_be_hidden(timeout=15_000)
+    _in_the_start_room(page, "Marlo")
+    _assert_quiet(tab, engines)
+
+
+def test_a_drop_nobody_acts_in_shows_the_note_after_the_grace(tab, engines):
+    page = _signed_in_with_a_dreamer(tab)
+    page.evaluate(_DEAD_SOCKETS)
+    page.evaluate("() => ws.close()")
+    expect(page.locator("#dream-overlay")).to_have_text("the dream is sleeping...", timeout=4000)
+    _assert_quiet(tab, engines)
