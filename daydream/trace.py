@@ -34,29 +34,47 @@ def last_seen(toon_id: str) -> tuple[str | None, str | None]:
     return (row["created_at"], row["room_id"]) if row else (None, None)
 
 
-def when_phrase(iso: str | None) -> str:
+def when_phrase(iso: str | None, tz=None) -> str:
     """How long ago, in a village's words: "a moment ago", "an hour ago",
-    "earlier today", "yesterday", "some days ago"."""
+    "earlier today", "yesterday", "some days ago". Days are the village's
+    calendar days (`tz`), so last evening is "yesterday" at breakfast."""
     if not iso:
         return "some time ago"
     try:
         then = worldclock.parse(iso)
     except (ValueError, TypeError):
         return "some time ago"
-    delta = worldclock.now() - then
+    now = worldclock.now()
+    delta = now - then
     if delta < timedelta(minutes=5):
         return "a moment ago"
     if delta < timedelta(minutes=50):
         return "not long ago"
     if delta < timedelta(hours=2):
         return "an hour or so ago"
-    if delta < timedelta(hours=20):
+    days = (now.astimezone(tz).date() - then.astimezone(tz).date()).days if tz else None
+    if days is None:
+        days = 0 if delta < timedelta(hours=20) else 1 if delta < timedelta(hours=44) else 2
+    if days <= 0:
         return "earlier today"
-    if delta < timedelta(hours=44):
+    if days == 1:
         return "yesterday"
-    if delta < timedelta(days=7):
+    if days < 7:
         return "some days ago"
     return "a long while ago"
+
+
+def _tz(world_id: str):
+    """The village's zone, for calendar days."""
+    try:
+        from zoneinfo import ZoneInfo
+
+        from daydream import village
+
+        name = (village.time_def(world_id) or {}).get("tz")
+        return ZoneInfo(name) if isinstance(name, str) and name else None
+    except Exception:
+        return None
 
 
 def state_of(toon: objects.Object) -> str:
@@ -120,7 +138,7 @@ def dreamer_line(target: objects.Object, viewer_id: str | None = None) -> str:
         now = "dozing now"
     else:
         now = "resting now, away from the dream"
-    return f"{target.name} was last seen {when_phrase(at)}{where}, and is {now}."
+    return f"{target.name} was last seen {when_phrase(at, _tz(target.world_id))}{where}, and is {now}."
 
 
 def for_prompt(world_id: str, text: str, actor_id: str) -> list[str]:
@@ -179,7 +197,8 @@ def roster_text(holder: objects.Object, viewer_id: str | None) -> str | None:
             here = (viewer_id and objects.get(viewer_id) is not None
                     and objects.get(viewer_id).location_id == p.location_id and state == "awake")
             how = ("here now" if here else "awake now" if state == "awake"
-                   else "dozing" if state == "dozing" else f"last here {when_phrase(at)}")
+                   else "dozing" if state == "dozing"
+                   else f"last here {when_phrase(at, _tz(world_id))}")
             entries.append((at or "", f"{p.name} ({how})"))
         if not entries:
             return spec.get("empty") if isinstance(spec.get("empty"), str) else None

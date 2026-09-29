@@ -386,6 +386,14 @@ def _fast_path(actor_id: str, text: str, room: rooms.Room | None):
             spec, verb = put, put.name
 
     if not spec.needs_dobj:
+        # "ring bell": a verb that needs no target still carries the one
+        # thing here it names, so the thing's own rules can answer (beta
+        # rehearsal 2026-09-28: the typed form found no bell while the click
+        # rang it).
+        named = [o for o in _ground(actor_id, _strip_article(rest))
+                 if o.kind == "thing"] if rest else []
+        if len(named) == 1:
+            return [Parse(verb, dobj_id=named[0].id, args=rest)]
         return [Parse(verb, args=rest)]
 
     # ---- needs a direct object ----

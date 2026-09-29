@@ -406,3 +406,17 @@ async def test_a_quantified_and_list_takes_each_named_thing(monkeypatch, text):
     assert lp.message is None
     assert [(c.verb, c.dobj_id) for c in lp.commands] == [("take", letter.id), ("take", key.id)]
     assert spy.await_count == 0
+
+
+@pytest.mark.asyncio
+async def test_a_no_target_verb_carries_the_thing_it_names(monkeypatch):
+    """"look at the lantern" style: a verb that needs no target still carries
+    the one thing here it names, so the thing's own rules can answer (beta
+    rehearsal 2026-09-28: typed "ring bell" found no bell; the click rang it)."""
+    spy = _mock_llm(monkeypatch, {"verb": "none"})
+    objects.move("t-wren", "r-meadow")  # where the lantern lies
+    p = await parser.parse("t-wren", "inventory lantern")
+    assert p.verb == "inventory" and p.dobj_id == "i-lantern"
+    p = await parser.parse("t-wren", "inventory")
+    assert p.verb == "inventory" and p.dobj_id is None
+    spy.assert_not_called()

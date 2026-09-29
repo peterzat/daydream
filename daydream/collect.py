@@ -232,8 +232,17 @@ def _daily_rooms(toon: objects.Object, rooms: list[str], n: int, rng) -> list[st
     player's finds landed in rooms they never visited); the rest anywhere."""
     first_pool = _near(toon.location_id, rooms, 1) or _near(toon.location_id, rooms, 2) or rooms
     first = rng.choice(first_pool)
-    rest = [r for r in rooms if r != first]
-    return [first] + rng.sample(rest, n - 1)
+    picks = [first]
+    if n > 1:
+        # The second within two exits when it can be (beta rehearsal
+        # 2026-09-28: a player walked seven rooms and met no glint); the
+        # rest anywhere, so wandering still pays.
+        near2 = [r for r in _near(toon.location_id, rooms, 2) + _near(toon.location_id, rooms, 1)
+                 if r not in picks]
+        picks.append(rng.choice(sorted(set(near2))) if near2
+                     else rng.choice([r for r in rooms if r not in picks]))
+    rest = [r for r in rooms if r not in picks]
+    return picks + rng.sample(rest, max(0, n - len(picks)))
 
 
 def ensure_daily(toon_id: str) -> list[str]:

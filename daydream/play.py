@@ -80,7 +80,9 @@ def _scene(snap: dict) -> str:
         out.append("Here with you:")
         for o in others:
             line = f"  - {o['name']}"
-            if o.get("mood"):
+            if o.get("away"):
+                line += " (dozing)"  # a player with no one at their page
+            elif o.get("mood"):
                 line += f" ({o['mood']})"
             if o.get("topics"):
                 line += "  | ask about: " + "; ".join(o["topics"])

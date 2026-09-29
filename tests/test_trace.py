@@ -66,6 +66,14 @@ def test_when_phrases():
     assert trace.when_phrase("2026-10-01T08:00:00+00:00") == "earlier today"
     assert trace.when_phrase("2026-09-30T12:00:00+00:00") == "yesterday"
     assert trace.when_phrase("2026-09-26T12:00:00+00:00") == "some days ago"
+    # By the village's calendar: the previous evening is "yesterday" at
+    # breakfast, however few hours ago it was.
+    from zoneinfo import ZoneInfo
+
+    la = ZoneInfo("America/Los_Angeles")
+    worldclock.set_fake_now("2026-10-01T16:30:00+00:00")  # 09:30 in the village
+    assert trace.when_phrase("2026-10-01T02:00:00+00:00", la) == "yesterday"  # 19:00 the evening before
+    assert trace.when_phrase("2026-10-01T13:00:00+00:00", la) == "earlier today"
 
 
 @pytest.mark.asyncio
