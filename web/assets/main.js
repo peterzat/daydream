@@ -2022,17 +2022,12 @@ document.getElementById("slept-panel").addEventListener("click", (e) => {
 });
 
 function setThreads(threads) {
-  // The satchel's line says there is a thread to follow inside, so it is
-  // worth opening (playtest 2026-09-28b), in words rather than a count
-  // (playtest 2026-09-29: "open the satchel \u00b7 1 thread" read as a
-  // riddle); a new thread glints it a moment. An open satchel keeps its
-  // list live.
+  // A new thread glints the satchel a moment, so it is worth opening
+  // (playtest 2026-09-28b; no count on it: 2026-09-29). An open satchel
+  // keeps its list live.
   const grew = threadsSeen && threads.length > lastThreads.length;
   threadsSeen = true; // a page's first threads are not new (as with inventorySeen)
   lastThreads = threads;
-  document.getElementById("satchel-note").textContent = threads.length === 1
-    ? "a thread to follow"
-    : threads.length ? `${threads.length} threads to follow` : "keepsakes and your journal";
   if (grew) {
     const satchel = document.getElementById("backpack-toggle");
     satchel.classList.remove("glint");
@@ -2045,12 +2040,9 @@ function setThreads(threads) {
 }
 
 function setBookCaption(book) {
-  // The book beside the satchel says what it is for: the minutes found so
-  // far, or, before the first, that a few glint about each day.
+  // The book beside the satchel goes by its own title.
   document.getElementById("book-name").textContent =
     (book.title || "your book").replace(/^the\s+/i, "");
-  document.getElementById("book-note").textContent = book.found === 1
-    ? "one found so far" : book.found ? `${book.found} found so far` : "a few glint about each day";
 }
 
 function renderThreads(threads) {

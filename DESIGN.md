@@ -138,11 +138,10 @@ of room narration takes a **drop cap** in `--amber`.
   painted portrait into the card; a touch opens it whole (`#portrait-panel`).
 - **Marginalia groups:** `you` / `here with you` / `around you` / `you carry`.
   Chips stay clickable. `you carry` lists what is in your hands only when
-  something is (no "your hands are empty"), then two margin sketches, each a
-  hand-lettered name over a line saying what it holds: **your satchel** ("a
-  thread to follow", or "keepsakes and your journal"; it glints when a new
-  thread arrives) and the **Book of Stray Minutes** ("3 found so far", or "a
-  few glint about each day"). No bare counts (playtest 2026-09-29). Each resident carries **ask-about topic chips**
+  something is (no "your hands are empty"), then two margin sketches, each
+  with a hand-lettered name and nothing more: **your satchel** (it glints
+  when a new thread arrives) and the **Book of Stray Minutes** (playtests
+  2026-09-29 and 2026-09-29b: no counts, no hint lines). Each resident carries **ask-about topic chips**
   (`#topics`): authored answers are the default path, and the text box is for
   the unanticipated. An asked topic reads quieter (dashed) in its place; one
   that just opened glows a while. With a verb staged, a chip that names a

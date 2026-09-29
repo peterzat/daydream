@@ -341,8 +341,8 @@ body::before {
 .satchel-link:hover { color: var(--sage-deep); }
 .satchel-link.hidden { display: none; }
 /* The satchel and the book under "you carry": a margin sketch and a
- * hand-lettered name, with a line saying what each holds (playtest
- * 2026-09-29). Nothing in your hands shows nothing, not "empty". */
+ * hand-lettered name (playtest 2026-09-29). Nothing in your hands shows
+ * nothing, not "empty". */
 #inventory:empty { display: none; }
 .carry-item {
   display: flex; align-items: center; gap: 10px; width: 100%;
@@ -357,7 +357,6 @@ body::before {
   align-self: flex-start; font-family: var(--hand); font-size: 1.15rem; color: var(--sage);
   border-bottom: 1px dotted var(--sage);
 }
-.carry-note { font-family: var(--serif); font-style: italic; font-size: .8rem; color: var(--sage); opacity: .82; }
 .carry-item:hover .carry-name, .carry-item:hover .carry-sketch { color: var(--sage-deep); }
 .carry-item.glint { animation: carry-glint 1.6s ease-out 2; }
 

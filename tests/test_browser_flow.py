@@ -626,11 +626,10 @@ def test_you_carry_names_the_satchel_and_the_book_and_not_empty_hands(tab, engin
     expect(page.locator("#inventory")).to_be_hidden()  # nothing in your hands: nothing said
     expect(page.locator("#backpack-toggle .carry-name")).to_have_text("your satchel")
     expect(page.locator("#backpack-toggle .carry-sketch")).to_be_visible()
-    expect(page.locator("#satchel-note")).to_have_text("a thread to follow")
     # A page's first threads are not new: no glint on arrival (review 2026-09-29).
     expect(page.locator("#backpack-toggle")).not_to_have_class(re.compile("glint"))
     expect(page.locator("#book-name")).to_have_text("Book of Stray Minutes")
-    expect(page.locator("#book-note")).to_have_text("a few glint about each day")
+    expect(page.locator(".carry-note")).to_have_count(0)  # names alone (playtest 2026-09-29b)
     page.locator("#backpack-toggle").click()
     expect(page.locator("#backpack-panel")).to_be_visible()
     expect(page.locator("#threads li")).to_have_count(1)
