@@ -29,7 +29,13 @@ import shlex
 import sys
 
 CREDENTIAL_PATHS = (".ssh/", ".ssh", ".config/gh", ".config/daydream", "/srv/daydream/etc",
-                    "/etc/cloudflared")
+                    "/etc/cloudflared", ".claude/.credentials", ".config/rclone")
+# A search rooted here reads every credential file beneath it (security WARN
+# 2026-09-29: `grep -rn <token name> ~` printed the Cloudflare token's line).
+SEARCHERS = {"grep", "egrep", "fgrep", "rg", "ag", "ack", "find"}
+BROAD_ROOTS = {"~", "~/", "$HOME", "$HOME/", "${HOME}", "${HOME}/", "/", "/root", "/home",
+               "/etc", "/srv", "/srv/daydream", os.path.expanduser("~"),
+               os.path.expanduser("~") + "/"}
 WRAPPERS = {"timeout", "time", "nice", "nohup", "stdbuf", "command", "builtin", "env",
             "exec", "xargs", "sudo", "setsid", "ionice", "flock", "watch"}
 SHELLS = {"bash", "sh", "zsh", "dash"}
@@ -39,8 +45,9 @@ SHELL_KEYWORDS = {"if", "then", "else", "elif", "do", "while", "until", "{", "}"
 # credential helper for github.com is gh).
 TOKEN_PRINTERS = re.compile(
     r"\bgh\s+auth\s+token\b|\bgh\s+auth\s+status\b[^\n;|&]*(-t\b|--show-token)"
-    r"|\bgh\s+auth\s+git-credential\b|\bgit\s+credential\s+(fill|get)\b"
-    r"|\bgit\s+credential-\w+\s+get\b")
+    r"|\bgh\s+auth\s+git-credential\b|\bgh\s+config\s+get\b[^\n;|&]*\boauth_token\b"
+    r"|\bgit\s+(?:(?:-[cC]|--git-dir|--work-tree)\s*=?\s*\S+\s+|--\S+\s+)*"
+    r"credential(?:-\w+)?\s+(?:fill|get)\b")
 
 # (subcommand, verb[, ...]) prefixes of `bin/game prod|edge` that always ask.
 ASK_PROD = [
@@ -231,8 +238,21 @@ def decide(payload: dict) -> tuple[str, str] | None:
     p = _names_credentials(re.findall(r"\S+", command))
     if p:
         return "deny", f"{p} holds this box's credentials; the agent does not open it"
-    if TOKEN_PRINTERS.search(command):
+    if TOKEN_PRINTERS.search(re.sub(r"['\"\\]", "", command)):  # quoting hides nothing
         return "deny", "the GitHub token stays where it is"
+    # Gated verbs on the raw text too: inside a quoted `$(...)` the parser
+    # sees one word (`out="$(bin/game prod invite create ...)"`; security
+    # WARN 2026-09-29).
+    for segment in re.split(r"[;&|\n]+", command):
+        words = [w for w in re.split(r"[\s()`$\"'=]+", segment) if w]
+        cut = next((k for k, w in enumerate(words) if "<" in w or ">" in w), len(words))
+        words = words[:cut]  # a redirection ends a verb's arguments
+        for i, w in enumerate(words):
+            if os.path.normpath(w).endswith("bin/game"):
+                why = _gated(words[i:])
+                if why:
+                    return "ask", f"{why}: this mints access, reaches players, removes " \
+                                  "something or changes the edge or root; the operator confirms it"
     hit = _protected_write(command)
     if hit:
         return "ask", f"{hit} guards this session's permissions; the operator confirms a change"
@@ -244,6 +264,8 @@ def decide(payload: dict) -> tuple[str, str] | None:
         if base == "gh" and (argv[1:3] == ["auth", "token"] or
                              ("auth" in argv[1:2] and ("-t" in argv or "--show-token" in argv))):
             return "deny", "the GitHub token stays where it is"
+        if base in SEARCHERS and any(a in BROAD_ROOTS for a in argv[1:]):
+            return "ask", f"a {base} over your home or a system directory can print credentials"
         if base == "gh" and argv[1:2] in (["gist"], ["ssh-key"], ["secret"]):
             return "ask", f"gh {argv[1]} can publish or grant access; the operator decides"
         why = _gated(argv)

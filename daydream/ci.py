@@ -17,12 +17,14 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import subprocess
 import sys
 import time
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
+_CONTROL = re.compile(r"[\x00-\x1f\x7f-\x9f]")
 
 
 def _gh(*args: str, timeout: float = 30.0) -> str | None:
@@ -39,7 +41,12 @@ def runs(branch: str = "main", limit: int = 5, sha: str | None = None) -> list[d
     first, or None when GitHub cannot be asked. Through the REST API (`gh
     api`), which any `gh` version speaks: older `gh run list` has no branch
     or commit filter."""
-    query = f"branch={branch}&per_page={limit}" + (f"&head_sha={sha}" if sha else "")
+    # Pushes only: a pull request from any fork's `main` is also listed under
+    # branch=main, which would put a stranger's title in this output and let a
+    # newer fork run hide a red main (security WARN 2026-09-29).
+    # (Filtered here, not with the API's `event=` parameter, which is served
+    # from a lagging index and returned hours-old runs as the newest.)
+    query = f"branch={branch}&per_page={limit * 4}" + (f"&head_sha={sha}" if sha else "")
     out = _gh("api", f"repos/{{owner}}/{{repo}}/actions/runs?{query}")
     if out is None:
         return None
@@ -49,15 +56,30 @@ def runs(branch: str = "main", limit: int = 5, sha: str | None = None) -> list[d
         return None
     if isinstance(got, list):  # already in our shape (the tests' fakes)
         return got
-    shaped = [_shape(r) for r in (got.get("workflow_runs") or []) if isinstance(r, dict)]
-    return sorted(shaped, key=lambda r: r["createdAt"], reverse=True)  # newest first, always
+    shaped = [_shape(r) for r in (got.get("workflow_runs") or [])
+              if isinstance(r, dict) and r.get("event", "push") == "push" and _ours(r)]
+    return sorted(shaped, key=lambda r: r["createdAt"], reverse=True)[:limit]  # newest first
+
+
+def _ours(r: dict) -> bool:
+    """A run of this repository's own commits (never a fork's)."""
+    head, base = r.get("head_repository") or {}, r.get("repository") or {}
+    return not head or not base or head.get("full_name") == base.get("full_name")
+
+
+def _subject(sha: str) -> str:
+    """The commit's subject from local git: the title printed is ours,
+    never text GitHub relays."""
+    r = subprocess.run(["git", "-C", str(REPO), "log", "-1", "--format=%s", sha],
+                       capture_output=True, text=True)
+    return r.stdout.strip() if r.returncode == 0 else "(a commit not in this checkout)"
 
 
 def _shape(r: dict) -> dict:
-    title = r.get("display_title") or ((r.get("head_commit") or {}).get("message") or "")
+    sha = str(r.get("head_sha", ""))
     return {"databaseId": r.get("id"), "status": r.get("status"),
-            "conclusion": r.get("conclusion"), "headSha": r.get("head_sha", ""),
-            "displayTitle": title.splitlines()[0] if title else "",
+            "conclusion": r.get("conclusion"), "headSha": sha,
+            "displayTitle": _CONTROL.sub("", _subject(sha)) if sha else "",
             "createdAt": r.get("created_at", ""), "url": r.get("html_url", "")}
 
 

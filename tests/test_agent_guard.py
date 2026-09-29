@@ -139,6 +139,28 @@ def test_the_shapes_the_rewrite_had_let_through(cmd, want):
     assert (got[0] if got else None) == want, (cmd, got)
 
 
+TOKEN = "oauth" + "_token"  # built from parts, like HOME_SSH
+
+
+@pytest.mark.parametrize("cmd,want", [
+    # Security WARNs 2026-09-29 (second scan).
+    ('out="$(bin/game prod invite create --for "Robin" --json)"', "ask"),
+    ("gh config get -h github.com " + TOKEN, "deny"),
+    ("git -C /tmp credential fill", "deny"),
+    ("git -c credential.helper= credential fill", "deny"),
+    ("gh auth 'git-credential' get", "deny"),
+    ("cat ~/.claude/." + "credentials.json", "deny"),
+    ("grep -rn CLOUDFLARE_API_TOKEN ~", "ask"),
+    ("rg -n token $HOME", "ask"),
+    ("find / -name '*.env'", "ask"),
+    ("grep -rn foo docs/", None),
+    ("grep -n 'def main' daydream/ci.py", None),
+])
+def test_the_second_scans_shapes(cmd, want):
+    got = _bash(cmd)
+    assert (got[0] if got else None) == want, (cmd, got)
+
+
 @pytest.mark.parametrize("tool,inp,want", [
     ("Edit", {"file_path": "/repo/tools/agent_guard.py"}, "ask"),
     ("Write", {"file_path": "/repo/.claude/settings.local.json"}, "ask"),
