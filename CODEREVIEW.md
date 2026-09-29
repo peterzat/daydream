@@ -1,25 +1,31 @@
-## Review — 2026-09-29e (commit: 3009a51)
+## Review — 2026-09-29f (commit: d2f7538)
 
-**Summary:** Refresh review of seven commits over `5da5d66`: the repo made instance-neutral (no live-instance domain or hosting company outside `edge/wrangler.toml`, `ops/prod.env.example`, SPEC.md's contract and one unit-file comment; test fixtures on example.com), the README's open-weight line, lowercase title and admin paragraph, BACKLOG's credential guidance, CI installing against the prod lock (the two CI-only failures since 2026-09-28), `bin/game ci` with CI on main in `status`, `prod plan`, `prod check` and every publish, and two rounds of agent-guard fixes. Focus set read in full; `/security` ran twice (the fix cycles and guard at `e6c5f99`: 0 BLOCK / 2 WARN / 4 NOTE; the CI tooling and guard at `c50460e`: 0 BLOCK / 3 WARN / 3 NOTE carried), and every WARN was fixed and re-tested (`3009a51`). Tests: short 1493, medium 2172, Worker 38, `ruff check .` clean; a clean venv installed with `-c ops/requirements-prod.lock` passes the two tests that failed in CI.
+**Summary:** Refresh review of `e63f319` (the quiet watch skips time spent handling a command) and `d2f7538` (the satchel glints only for a new thread, words for a chosen verb wait out a drop, quiet chips after "+N more", a two-object verb's chosen thing is not a chip target, a close speaks only for the current socket). These fix the findings of a fresh-agent review of `56c985d`, `3ccf3df` and `f0dc83a`, which reached origin without this gate: the push ran as `timeout 120 git push`, and the gate reads `git` as a command only first or after a shell operator (0 BLOCK / 2 WARN / 4 NOTE, all fixed here). `/security` on the paths changed since `c50460e`: 0 BLOCK / 1 WARN (the guard, open for the operator) / 5 NOTE. Tests: medium 2182 before and after the fix.
 
 **External reviewers:**
 None configured.
 
 ### Findings
 
-No open BLOCK or WARN.
+[WARN, fixed] tests/test_browser_flow.py:701 — the Talk drop test races `ws.close()` against Enter.
+  Evidence: `page.evaluate("() => ws.close()")` returns with the socket CLOSING; the drop timer is armed only in `onclose` (main.js `showDropSoon`), and `connectionDown()` reveals the overlay only when that timer exists. If Enter lands before the close event, the overlay waits the full DROP_GRACE (2.5 s) and `to_have_text(..., timeout=500)` at :704 fails. The test runs in `prod deploy`'s gate, so a flake aborts a deploy.
+  Suggested fix: after the close, `page.wait_for_function("() => ws.readyState === WebSocket.CLOSED")` before filling the input (readyState turns CLOSED in the same task that dispatches the close event, so the handler has armed the timer by then).
 
-[NOTE] tools/agent_guard.py — residual spellings stay unread (variables and `$'...'` in a verb, globs, interpreter one-liners, `find -exec`, `script -c`); the guard is a pattern check, and the structural fix is BACKLOG `agent-sessions-without-root`. Its raw-text checks deny a line that merely quotes a token-printing command or credential path (commit messages go through a file).
+### Open WARN (needs the operator; not for /codefix)
 
-[NOTE] daydream/ci.py — reads through `gh api`, which prompts nothing and needs `gh` signed in; without it, status/plan/check say so and pass. The first push after this commit is the first CI run on the lock-pinned install.
+[WARN] (security) tools/agent_guard.py:36-38, :47, :264-267 — a recursive search one folder below home (for example under `~/.config` or `~/.claude`, by grep, rg or find with -exec) gets no opinion and prints the Cloudflare or GitHub token; a combined short-flag spelling of gh's show-token option on `auth status` does the same (gh 2.4.0 splits a flag group).
+  Suggested fix: ask when a search starts at any parent of a credential path; treat a short-flag group holding the token flag after `gh auth status` as the long option; deny any command naming the hosts file's token key.
+  Why open: the guard asks the operator before any change to itself (`PROTECTED`, tools/agent_guard.py:199-202), deliberately, since this session carries player text. The fix waits for a session with the operator present. Not accepted; not downgraded. SECURITY.md has the detail.
 
+[NOTE] (security) tools/agent_guard.py:246-255 — the gated-verb check stops at the first redirection, does not read a Python list-form subprocess call, and asks before the credential checks deny.
+[NOTE] (security) daydream/ci.py:49-61 — about twenty pushes to a fork PR fill the one page of runs, so a red main reads "unknown" in `prod check` and `prod plan` (`ci watch` filters by commit and is unaffected).
+[NOTE] The zat.env push gate misses a push behind a wrapper command (`timeout`, `nice`, `env`): for a zat.env session.
 [NOTE] (security, carried) placeholders over letter bodies and appearances; `play` prints a grown place's description unmarked and the server keeps control characters in typed lines; the delete-during-talk gap.
 
 ### Fixes Applied
 
-- CI: `pip install -c ops/requirements-prod.lock -e '.[dev]'` (e73fd5b).
-- Security scan 1 (e6c5f99), guard: credential paths checked on the raw line (redirection targets), token printers denied on the raw line, a release's edge verbs ask, commands after shell keywords read, the test fixture's tailnet address replaced (c50460e).
-- Security scan 2 (c50460e): `bin/game ci` counts only this repository's pushes and prints local git's titles; the guard matches gated verbs on the raw text, denies the old gh's config read, `git -C/-c ... credential fill` and quoted forms, reads of Claude Code's and rclone's credential files, and asks before recursive searches rooted at home or a system directory (3009a51).
+- [WARN] tests/test_browser_flow.py:701 — the Talk drop test waits for `ws.readyState === WebSocket.CLOSED` after the close, before typing (/codefix; re-reviewed: the page stays on the closed socket at least a second before a retry replaces it, so the wait cannot miss).
+- From the fresh-agent review of the ungated push: the quiet watch skips time spent handling a command (`e63f319`); the satchel glints only for a new thread and once; words for a chosen verb wait out a drop; quiet chips survive "+N more"; a two-object verb's chosen thing is not a chip target; a close speaks only for the current socket (`d2f7538`).
 
 ### Accepted Risks
 
@@ -35,6 +41,6 @@ Carried forward (the standing register lives in SECURITY.md):
 - (security, carried) daydream/accounts_cli.py:129 — an account deleted while its player waits on a resident's reply leaves that reply and its `talk:`/`rel:` records behind.
 
 ---
-*Prior review (2026-09-29d, light, `dc9a532`): the README rewrite, a current screenshot and six BACKLOG entries; no issues, 1 NOTE.*
+*Prior review (2026-09-29e, refresh, `3009a51`): the instance-neutral repo, CI on the prod lock and in every publish, and two rounds of agent-guard fixes; 0 BLOCK / 0 WARN / 3 NOTE after fixes.*
 
-<!-- REVIEW_META: {"date":"2026-09-29","commit":"3009a51","reviewed_up_to":"3009a517083d8973f00379896a40655ed033955f","base":"origin/main","tier":"refresh","block":0,"warn":0,"note":3} -->
+<!-- REVIEW_META: {"date":"2026-09-29","commit":"d2f7538","reviewed_up_to":"d2f753829bad66be183720fd6d989df33e8c533a","base":"origin/main","tier":"refresh","block":0,"warn":1,"note":4} -->
