@@ -60,6 +60,9 @@ _SELF_WORDS = frozenset({"me", "myself", "self", "yourself"})
 _SATCHEL_WORDS = frozenset({"satchel", "bag", "inventory", "pockets"})
 _ROOM_WORDS = frozenset({"room", "here", "around", "surroundings", "view", "place"})
 
+# "and" / ", and" / "and then" between two commands.
+_AND_JOIN = re.compile(r"(?i)\s*,?\s+and(?:\s+then)?\s+")
+
 # Verbs that move you through a way named in prose, and the words before it.
 _MOVE_VERBS = frozenset({"go", "climb", "take", "use"})
 _THROUGH = re.compile(r"(?i)^(?:through|into|in|to|toward|towards|onto|up|down|out of|out)\s+")
@@ -97,6 +100,9 @@ class Parse:
     # in-scope id ("take the moon"). Carried so the executor can say "you don't
     # see the <name> here", distinct from the no-target "Take what?".
     dobj_name: str | None = None
+    # A target the parser filled itself (the only one that fits): named in
+    # parentheses before the command runs (spec 2026-09-29 criterion 12).
+    guess: str | None = None
 
 
 @dataclass(frozen=True)
@@ -242,7 +248,10 @@ def _starts_like_a_command(actor_id: str, segment: str, room) -> bool:
     first = words[0].lower().strip(",;:!?")
     two = " ".join(w.lower() for w in words[:2])
     if len(first) == 1 and len(words) > 1 and first not in verbs.DIRECTION_WORDS:
-        return False
+        # A one-letter word opens a command only when its verb takes a target
+        # ("x tin. north" chains; "I keep bees. I'm home." does not).
+        one = _verb_by_word(world_id, first)
+        return one is not None and one.needs_dobj
     return (first in verbs.DIRECTION_WORDS
             or (room is not None and first in room.exits)
             or first in ("again", "g")
@@ -258,6 +267,17 @@ def _segments(actor_id: str, text: str, room) -> list[str]:
     lost its second sentence, and a talk's tail was parsed as a command)."""
     pieces = [p for p in _THEN_SPLIT.split(text) if p and p.strip()]
     if len(pieces) <= 1:
+        # "take the lantern and go up": AND joins two commands when every
+        # piece starts like one; "the lantern and the key" stays a list
+        # (spec 2026-09-29 criterion 5).
+        joined = [p for p in _AND_JOIN.split(text) if p and p.strip()]
+        if len(joined) > 1 and all(_starts_like_a_command(actor_id, p, room) for p in joined):
+            first = joined[0].strip().split()
+            world_id = objects.get(actor_id).world_id if objects.get(actor_id) else None
+            head = _verb_by_word(world_id, " ".join(w.lower() for w in first[:2])) \
+                or _verb_by_word(world_id, first[0].lower())
+            if head is None or not (head.free_text or head.name == "ask"):
+                return joined
         return pieces
     world_id = objects.get(actor_id).world_id if objects.get(actor_id) else None
     first = pieces[0].strip().split()
@@ -502,7 +522,7 @@ def _fast_path(actor_id: str, text: str, room: rooms.Room | None):
     if not rest:
         filled = _gwim_fill(actor_id, spec.dobj_default, exclude=None)
         if filled is not None:
-            parses = [Parse(verb, dobj_id=filled.id)]
+            parses = [Parse(verb, dobj_id=filled.id, guess=verbs._the(filled))]
             return _fill_iobj_default(actor_id, spec, parses)
         return [Parse(verb)]  # executor narrates "Verb what?"
 
@@ -739,7 +759,7 @@ def _ask_fast_path(actor_id: str, rest: str):
                   if o.kind == "toon" and o.id != actor_id]
         if len(others) != 1:
             return [Parse("ask")] if not topic else None
-        return [Parse("ask", dobj_id=others[0].id, args=topic.strip())]
+        return [Parse("ask", dobj_id=others[0].id, args=topic.strip(), guess=others[0].name)]
     matches = [o for o in _ground(actor_id, who) if o.kind == "toon"]
     if len(matches) == 1:
         return [Parse("ask", dobj_id=matches[0].id, args=topic.strip())]
@@ -841,7 +861,8 @@ def _fill_iobj_default(actor_id, spec, parses: list[Parse]) -> list[Parse]:
     if filled is None:
         return parses
     p = parses[0]
-    return [Parse(p.verb, dobj_id=p.dobj_id, iobj_id=filled.id, args=p.args)] \
+    guess = ", ".join(g for g in (p.guess, verbs._the(filled)) if g)
+    return [Parse(p.verb, dobj_id=p.dobj_id, iobj_id=filled.id, args=p.args, guess=guess)] \
         + parses[1:]
 
 

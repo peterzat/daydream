@@ -794,11 +794,23 @@ async def _handle_input(text: str, toon_id: str, conn: dict) -> dict | None:
         )
         return None
     executed = False
-    for p in lp.commands:
-        if p.verb == "none":
-            continue
+    todo = [p for p in lp.commands if p.verb != "none"]
+    for i, p in enumerate(todo):
         executed = True
-        await _dispatch_parsed(p, toon_id)
+        if p.guess:
+            # The parser filled a target itself: say which (spec 2026-09-29
+            # criterion 12), so a wrong guess costs nothing.
+            events.append("system", None, "narrate", {"text": f"({p.guess})"},
+                          room_id=_current_room_id(toon_id), recipient_id=toon_id)
+        ok = await _dispatch_parsed(p, toon_id)
+        if ok is False and i < len(todo) - 1:
+            # A chain stops at its first refusal (criterion 5), and says so.
+            left = len(todo) - 1 - i
+            events.append("system", None, "narrate", {
+                "text": "(So you leave the rest for now.)" if left > 1
+                else "(So you leave the next part for now.)"},
+                room_id=_current_room_id(toon_id), recipient_id=toon_id)
+            break
     if lp.clarify is not None:
         conn["clarify"] = lp.clarify
         # The question lands in the chat log (private), and a clarify frame
@@ -884,17 +896,16 @@ def _world_of(toon_id: str) -> str | None:
     return t.world_id if t is not None else None
 
 
-async def _dispatch_parsed(p: "parser.Parse", toon_id: str) -> None:
+async def _dispatch_parsed(p: "parser.Parse", toon_id: str) -> bool | None:
     """One parsed command → the executor (closed/world verb) or the
     data-skill pipeline; unresolvable verbs narrate the gentle fallback."""
     room_id = _current_room_id(toon_id)
     actor = objects.get(toon_id)
     world_id = actor.world_id if actor is not None else None
     if verbs.resolve(world_id, p.verb) is not None:
-        await verbs.execute_command(
+        return await verbs.execute_command(
             toon_id, p.verb, p.dobj_id, p.iobj_id, p.args, dobj_name=p.dobj_name
         )
-        return
     # A room-affordance data skill (e.g. forge) selected as a verb: run the
     # existing safety + LLM + effects pipeline.
     spec = registry.find(p.verb)

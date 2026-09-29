@@ -427,8 +427,9 @@ async def execute_command(
     iobj_id: str | None = None,
     args: str = "",
     dobj_name: str | None = None,
-) -> None:
+) -> bool:
     """Validate scope + verb applicability, then dispatch (MOO priority).
+    Returns False when the command was refused (a chain stops there).
 
     The single execution path for both UI commands and parsed free text. Emits
     events (narration / effects) as side effects; mutates only through the
@@ -441,7 +442,7 @@ async def execute_command(
     "Take what?". The click path never sets it (clicks always carry an id)."""
     actor = objects.get(actor_id)
     if actor is None:
-        return
+        return False
     # The living day (SPEC 2026-09-26 criteria 4, 12): with no background
     # loop running (tests, walkthroughs, admin tools), every command first
     # processes any wall-clock boundary crossed since the last one, and a
@@ -459,9 +460,9 @@ async def execute_command(
         # An unrecognized verb is a parse-level miss: no turn passes
         # (matching the original's "I don't know that word" behavior).
         _narrate(room_id, _DONT_UNDERSTAND, recipient_id=actor_id)
-        return
+        return False
     try:
-        await _execute_resolved(
+        return await _execute_resolved(
             actor, room_id, spec, dobj_id, iobj_id, args, dobj_name
         )
     finally:
@@ -482,7 +483,9 @@ async def _execute_resolved(
     iobj_id: str | None,
     args: str,
     dobj_name: str | None,
-) -> None:
+) -> bool:
+    """Run a resolved command; False when it was refused (spec 2026-09-29
+    criterion 5: a chain stops at its first refusal)."""
     actor_id = actor.id
 
     dobj = None
@@ -498,7 +501,7 @@ async def _execute_resolved(
                 who = absent.elsewhere(actor, dobj_name)
                 if who is not None:
                     _narrate(room_id, absent.line(who), recipient_id=actor_id)
-                    return
+                    return False
                 # Named in the scene's prose but not a thing to handle (a jar
                 # on a shelf out of reach): say why, authored first (the
                 # glimpse module; playtest 2026-09-29b). Only a name the
@@ -510,22 +513,22 @@ async def _execute_resolved(
 
                     pronouns.remember_it_name(actor_id, dobj_name)  # "look at it" next
                     _dispatch(actor, room_id, [seen], spec)
-                    return
+                    return False
                 _narrate(room_id, f"You don't see the {dobj_name} here.",
                          recipient_id=actor_id)
             else:
                 _narrate(room_id, f"{spec.ui_hint} what?", recipient_id=actor_id)
-            return
+            return False
         dobj = _resolve_in_scope(actor_id, dobj_id)
         if dobj is None:
             _narrate(room_id, "You don't see that here.", recipient_id=actor_id)
-            return
+            return False
         if spec.name not in objects.verbs_for(dobj) and not (
                 spec.universal and (not spec.valid_dobj_kinds
                                     or dobj.kind in spec.valid_dobj_kinds)):
             _narrate(room_id, f"You can't {spec.name} {_the(dobj)}.",
                      recipient_id=actor_id)
-            return
+            return False
     elif dobj_id:
         # A verb that needs no target may still be given one ("ring the
         # bell"): the thing rides along so its own authored rules can answer
@@ -544,7 +547,7 @@ async def _execute_resolved(
             whom = "whom" if prep == "to" else "what"
             _narrate(room_id, f"{spec.ui_hint} it {prep} {whom}?",
                      recipient_id=actor_id)
-            return
+            return False
         dn = _the(dobj) if dobj is not None else "that"
         if spec.name == "use" and iobj.kind == "toon" and dobj is not None:
             # "use the hush on the nap" is handing it over (beta rehearsal
@@ -553,7 +556,7 @@ async def _execute_resolved(
         if spec.valid_iobj_kinds and iobj.kind not in spec.valid_iobj_kinds:
             _narrate(room_id, f"You can't {spec.name} {dn} {prep} {_the(iobj)}.",
                      recipient_id=actor_id)
-            return
+            return False
 
     # MOO dispatch priority (SPEC 2026-07-02 criterion 3): authored
     # declarative rules run FIRST, scanned dobj -> iobj -> room -> world,
@@ -562,14 +565,14 @@ async def _execute_resolved(
     # fires — rules SHADOW legacy verb Python, so a world that authors no
     # rules behaves byte-identically to before.
     if await rules.dispatch(actor, spec.name, dobj, iobj, room_id=room_id):
-        return
+        return True
 
     if spec.name == "talk" and dobj is not None:
         ok = await _handle_talk(actor, room_id, dobj, args, spec)
         if ok is not False:
             await rules.dispatch(actor, spec.name, dobj, iobj, room_id=room_id,
                                  phase="after")
-        return
+        return ok is not False
 
     handler = _ENGINE_HANDLERS.get(spec.name)
     if handler is None:
@@ -580,9 +583,9 @@ async def _execute_resolved(
         if spec.world:
             _narrate(room_id, _world_fail(actor, room_id, spec, dobj),
                      recipient_id=actor_id)
-        else:
-            _narrate(room_id, _DONT_UNDERSTAND, recipient_id=actor_id)
-        return
+            return True  # answered in the world's voice, not refused
+        _narrate(room_id, _DONT_UNDERSTAND, recipient_id=actor_id)
+        return False
     ok = await handler(actor, room_id, dobj, iobj, args, spec)
     # After-hooks (SPEC 2026-09-26 criterion 9): authored `after: true` rules
     # follow a verb whose normal handling succeeded (a handler returns False
@@ -590,6 +593,7 @@ async def _execute_resolved(
     if ok is not False:
         await rules.dispatch(actor, spec.name, dobj, iobj,
                              room_id=actor.location_id or room_id, phase="after")
+    return ok is not False
 
 
 def _resolve_in_scope(actor_id: str, object_id: str | None) -> objects.Object | None:
