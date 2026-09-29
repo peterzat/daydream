@@ -1,6 +1,6 @@
 ## Review — 2026-09-29 (commit: ab44e90)
 
-**Summary:** Refresh review of nineteen unpushed commits over `origin/main` (`5db3142`): the beta rehearsal's household layer (letters and parcels through the post keeper, handing things over, "also dreaming", "while you were away", the record of dreamers, rosters, the thinking frame, Quill's seed, honest ledger credit, signed growth, the second dream) plus the playtest records. Every changed file read at full depth (57 files; the focus set is the whole diff); an independent adversarial pass by a fresh reviewer agent with runtime probes; `ruff check .`; `/security` over the 47 code and data files (0 BLOCK / 1 WARN / 4 NOTE). 3 BLOCK / 6 WARN / 8 NOTE; every BLOCK and five WARNs fixed in one /codefix cycle with seven new tests; one WARN's second half declined (below). Tests stable: short 1370 before, 1375 after; medium 2030 before, 2036 after; `ruff check .` clean; `node --check web/assets/main.js` ok.
+**Summary:** (META block count is what remains: 3 BLOCK were found and all fixed.) Refresh review of nineteen unpushed commits over `origin/main` (`5db3142`): the beta rehearsal's household layer (letters and parcels through the post keeper, handing things over, "also dreaming", "while you were away", the record of dreamers, rosters, the thinking frame, Quill's seed, honest ledger credit, signed growth, the second dream) plus the playtest records. Every changed file read at full depth (57 files; the focus set is the whole diff); an independent adversarial pass by a fresh reviewer agent with runtime probes; `ruff check .`; `/security` over the 47 code and data files (0 BLOCK / 1 WARN / 4 NOTE). 3 BLOCK / 6 WARN / 8 NOTE; every BLOCK and five WARNs fixed in one /codefix cycle with seven new tests; one WARN's second half declined (below). Tests stable: short 1370 before, 1375 after; medium 2030 before, 2036 after; `ruff check .` clean; `node --check web/assets/main.js` ok.
 
 **External reviewers:**
 None configured (`review-external.sh` produced no findings and no cost log).
@@ -79,4 +79,4 @@ Carried forward (the standing register lives in SECURITY.md):
 ---
 *Prior review (2026-09-28i, refresh, `32a32c1`): the second playtest's fixes (four commits); 0 BLOCK / 1 WARN / 2 NOTE, the WARN (a Safari-incompatible regex lookbehind) fixed in one /codefix cycle.*
 
-<!-- REVIEW_META: {"date":"2026-09-29","commit":"ab44e90","reviewed_up_to":"ab44e90575fbf6850d21112412b700993fb6696c","base":"origin/main","tier":"refresh","block":3,"warn":6,"note":8} -->
+<!-- REVIEW_META: {"date":"2026-09-29","commit":"ab44e90","reviewed_up_to":"ab44e90575fbf6850d21112412b700993fb6696c","base":"origin/main","tier":"refresh","block":0,"warn":6,"note":8} -->
