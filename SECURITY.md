@@ -2,95 +2,156 @@
 
 ## Security Review — 2026-09-29 (scope: paths)
 
-**Summary:** Path-scoped review of the 22 files named by the caller, read as
-their change from the last scan (`43fba6b`) to HEAD `69760f7`: the codereview
-fix pass over the beta rehearsal's household layer (the post's caps and its
-narrower query, a parcel refused for a village thing, `set_property` declared
-on `give`, one turn per `open`, the placeholder filled on every telling path,
-the away note kept for the leaver's return, world-scoped presence), the
-onboarding words, and the door's disclosure. No exploitable vulnerability. The
-prior WARN (uncapped letters read on every command) is fixed and re-measured,
-and both prior data NOTEs are addressed. Two new NOTEs: the placeholder
-expander now runs over a player's letter body, and a leave-and-claim loop
-re-snapshots every connected player from two unthrottled endpoints. The two
-carried NOTEs stand (0 BLOCK / 0 WARN / 4 NOTE).
+**Summary:** Path-scoped review of the 50 files named by the caller, read as
+their change from the last scan (`69760f7`) to HEAD `6129d7a`: the fixes from
+the day's red-team review (the Worker's https redirect and encoded-slash
+refusal; socket, session, presence and journal limits; unique dreamer names;
+private things inside containers; the session cap; the Access header strip;
+the venv seal; the prod side-door refusals; ComfyUI without API nodes), the
+agent-side defenses (the player-text scan, the PreToolUse guard and its
+settings template, `play`'s marking), and "what the page offers"
+(`heard.py`, place-aware card verbs, world content at WORLD_VERSION 1.10). No
+exploitable vulnerability in the app or the edge. One WARN: the new agent
+guard misses a gated verb or a credential read on a later line of a command,
+or after a `#` inside a word. Three new NOTEs. Of the prior NOTEs, the
+presence fan-out is resolved and the placeholder one is half resolved; the
+two carried NOTEs stand (0 BLOCK / 1 WARN / 6 NOTE).
 
 ### Scope and method
 
-- Each scoped file's diff from `43fba6b` to HEAD was read in full; `post.py`,
-  `absence.py`, `trace.py`, `live.py` and `door.js` were re-read whole.
-- The code each change calls was read wherever the change could widen a trust
-  boundary: `objects.things_where_property` (the new letter query),
-  `verbs._execute_resolved` (the executor `open` now re-enters),
-  `_handle_give`, `_hand_to_player` and `file_parcel` (everything dispatched
-  under `give`'s widened allowlist), `_handle_read` and
-  `effects._apply_narrate` / `tell_others` (what text reaches the new
-  `expand_placeholders`), the WS event filter and re-snapshot trigger
-  (`ws.py:1240-1290`), `_auto_enter` and `claim_slot` (when `announce_wake`
-  fires), `server.py`'s `{{place}}` fill, and the dreamer-name rule
-  (`slots.py:131`).
-- Three scratch scripts against throwaway DBs under the scratchpad (nothing
-  under `~/data/daydream`): the cost of `letters_waiting` / `threads_for` with
-  1,000 and 5,000 letters waiting for someone else, an end-to-end letter
-  carrying `{dreamers_today}` read by its recipient, and the cost of one
-  `_state_snapshot`.
-- `tools/assemble_world.py --check` passes; the six scoped test files pass
-  (126 tests).
+- Each scoped file's diff from `69760f7` to HEAD was read in full;
+  `heard.py`, `textscan.py`, `tools/agent_guard.py` and `edge/src/worker.js`
+  were read whole.
+- The code each change calls was read wherever it could widen a trust
+  boundary: `objects.in_scope`, `visible_to` and the snapshot's entity
+  sidecar (private things); `events.fetch_since` and the events table's
+  timestamp default (the replay window); `_auto_enter`, `announce_wake`,
+  `toons.kick_slot` and every `presence_changed` emitter (the presence
+  budget); the post and trace name lookups (unique names);
+  `prodctl.passthrough`, `needs_stop`, `build_release` and bin/game's
+  `world patch` parsing (side doors, the seal); the prod unit's sandbox
+  directives.
+- Probes, all in the scratchpad and touching no live data: the guard's
+  `decide()` over multi-line, `#`, `bash -lc` and path spellings (with a
+  sentinel in place of the real credential paths; the guard is wired in this
+  session and refused a probe that named one); the per-session rate bucket
+  across a reconnect; a read-only look at how the venv seal treats an existing venv.
+- The eleven scoped test files pass (205 tests), the Worker's 33 unit tests
+  pass, and `tools/assemble_world.py --check` matches.
 
 ### Findings
 
-[NOTE] daydream/skills/effects.py:347 (and :309), daydream/trace.py:185-193,
-daydream/post.py:94-112 and :257, daydream/verbs.py:1152-1156 — The
-placeholder expander now runs over every narrated text, a player's own words
-included.
-  Attack vector: Not an exploit today; a template applied to untrusted text.
-A letter's stored `text` is the authored `read_text` with the writer's body
-substituted in (post.py:257); `read` narrates it (verbs.py:1152-1156)
-through `_apply_narrate`, which since this fix pass calls
-`trace.expand_placeholders` on every text (effects.py:347). So a writer who
-types `{dreamers_today}` has it replaced, in the recipient's reading, with the
-names of the dreamers who typed today. A dreamer may also be named
-`{dreamers_today}` (16 printable characters; slots.py:131 allows any printable
-name up to 24), which would expand in every line that names them. The only
-placeholder is that one, and what it reveals is what Bell's tally and the dusk
-line already tell every player, so there is no confidentiality impact; the
-class matters if a later placeholder ever carries something a player should
-not read.
-  Evidence: Scratch repro: `write to Ivo: today {dreamers_today}; also
-{actor} {to} {text}` stored the body verbatim; Ivo's `read` narrated "today
-one dreamer, Wren, came through today; also {actor} {to} {text}" (only the
-new placeholder expands; `{actor}` is replaced only in `others` lines).
-  Remediation: Expand placeholders on authored strings only: substitute
-player-supplied fields after expansion, or have `post._line` neutralise `{`
-in the letter body and in dreamer names (`{text}`, `{from}`, `{to}`), and
-refuse a dreamer name containing braces at slots.py:131.
+[WARN] tools/agent_guard.py:52-71 (with :74-94, :110, :133) — The guard's
+command splitter does not split on newlines and treats a `#` inside a word
+as a comment, so a gated verb or a credential read on a later line, or after
+`x#;`, gets no opinion.
+  Attack vector: Player text reaches this session (the text-scan,
+`bin/game play`, the digest, letters), and the guard is the deterministic
+layer meant to catch a steered agent's command however it is spelled. shlex
+keeps the newline in `whitespace`, which it checks before
+`punctuation_chars`, so a multi-line command (the usual shape of an agent's
+Bash call) becomes one argv whose first word is line one's command. shlex's
+default `commenters = "#"` drops the rest of the line at a mid-word `#`,
+which bash reads as a literal character. Combined with a spelling the
+template's prefix rules do not match (an absolute path to `bin/game`),
+nothing deterministic stands between an obeyed injection and
+`prod account role <x> admin` or `prod invite create`. For a Bash `cat` of
+the Cloudflare token or a second-line `gh auth token`, the guard is the
+layer meant to deny it. The permission mode (auto mode's classifier) is
+then the last check.
+  Evidence: `decide()` returns ask for `bin/game prod invite create --for M`,
+for its absolute-path form and for a `;` chain, but None for
+`echo ok\nbin/game prod invite create --for M` (`\n` a newline),
+`cd <repo>\n<repo>/bin/game prod account role m admin`,
+`echo a#; bin/game prod invite create --for M` and `true\ngh auth token`.
+With a sentinel standing in for a credential path, `cat SENTINEL/x` is
+denied but `echo x#; cat SENTINEL/x` is not. `_split_commands` returns one
+argv starting `echo` for the newline case and `[['echo', 'a']]` for the `#`
+case; bash runs both second commands. Also unread: `bash -lc '...'` (only a
+bare `-c` is unwrapped), `bin//game`, a heredoc into `bash`, globs or
+variables in the path or the verb. An Edit or Write of the guard itself or
+of `.claude/settings.local.json` gets no opinion. tests/test_agent_guard.py
+has no newline or `#` case.
+  Remediation: Drop the newline from `lex.whitespace` (or turn newlines into
+` ; ` before lexing) and set `lex.commenters = ""`; unwrap any shell option
+cluster containing `c`; `os.path.normpath` the executable; ask on what it
+cannot read (`eval`, `source`, a shell reading stdin or a heredoc, `$` or
+glob characters in the executable or verb position, `git credential`); ask
+on an Edit or Write of `tools/agent_guard.py` and `.claude/settings*.json`;
+add newline and `#` cases to the tests. Keep describing the guard as a speed
+bump behind the policy and the ask rules, not a boundary.
 
-[NOTE] daydream/api/slots.py:311-312 and :317-337 (leave), daydream/toons.py:121
-with daydream/api/slots.py:235-272 (claim), daydream/api/ws.py:93 and
-:1272-1285 — A world-scoped `presence_changed` re-snapshots every connected
-player, and the two endpoints that emit it are not throttled.
-  Attack vector: A signed-in friend, or a misbehaving `bin/game play` script
-(the gate and the CSRF check keep strangers and other origins out), loops
-`POST /api/session/leave` then `POST /api/slots/<own slot>/claim`. Each leave
-emits a world-scoped `presence_changed` (slots.py:311, `room_id=None` since
-this fix pass), and each claim after a rest calls `announce_wake`, which emits
-another (toons.py:121). The kind is in `_EFFECT_MUTATION_KINDS` (ws.py:93) and
-the event has no room, so every connection's loop builds and sends a fresh
-`_state_snapshot` (ws.py:1272-1285): two full snapshots per connected player
-per cycle, and a journal task per leave. Neither endpoint has a per-session
-rate (the only throttle in slots.py is `DREAMERS_PER_DAY` on create, :164),
-and the WS token bucket does not cover HTTP. Before this pass the fan-out
-reached only the leaver's room. Transient, and `account disable` ends it, so
-a rate-limiting note rather than a WARN.
-  Evidence: One `_state_snapshot` measured 0.74 ms in a two-toon room of the
-seed world (a fuller village room costs more); with twelve connected players
-a cycle is roughly 20 ms of event-loop time plus the leave's own work, so a
-loop at ten cycles a second takes a fifth or more of the single loop for
-everyone.
-  Remediation: A small per-session throttle on leave and claim (a few a
-minute is generous for a person), or deliver the world-scoped presence event
-to viewers in other rooms as a light `dreaming` refresh rather than a full
-re-snapshot.
+[NOTE] daydream/play.py:118-119 and :304, daydream/textscan.py:79-123,
+daydream/api/ws.py:742-748, daydream/api/slots.py:190 — The player-text
+defenses cover other dreamers' `say` lines and typed input; other channels
+of player words reach the agent unmarked, and control characters pass
+through.
+  Attack vector: A friend writes a letter to an agent's dreamer, or sets an
+appearance (300 characters, narrated to anyone who examines them,
+verbs.py:709-719), holding instructions. When the operator's agent later
+plays (`bin/game prod play`, approved per call, or dev `play` after
+`prod pull`) and reads the letter or examines the dreamer, the words print as
+plain narration: `play` marks only other dreamers' `say` lines, and prints
+its banner (whose own text says "a letter you read is too") only when a
+marked line is present. The text-scan gathers typed lines, command words,
+dreamer names, grown places and usernames, but not appearance seeds. Typed
+lines and appearance seeds keep control characters (only names are
+`isprintable`-checked, slots.py:171), and `play` prints narration raw, so a
+human running `play` in a terminal receives any escape sequences they carry
+(the `say` path and the scan's output are JSON-escaped). The agent's policy
+is the barrier; this is its labeling.
+  Evidence: play.py:118-119 returns `p["text"]` unmarked for every narrate;
+:126-134 mark `say` from others; :304 gates the banner on a marked line. The
+post's `read_text` is `To {to}, from {from}:\n\n{text}`, so a letter's body
+is bare. `textscan.gather` has no appearance source. ws.py:742 only strips a
+typed line; slots.py:190 only strips an appearance.
+  Remediation: Tag the narrations that carry player words (a letter read, a
+dreamer examined, a grown place) with a payload marker and have `play` mark
+them; print the banner whenever one appears; pass every printed line through
+a control-character filter; refuse non-printable characters in typed lines
+and appearance seeds at the server, as names already are; add players'
+appearance seeds to the scan.
+
+[NOTE] daydream/api/ws.py:937-955 — A session's shared rate budget is
+dropped with its last socket, so closing and reopening refills the burst.
+  Attack vector: A signed-in friend's script (the gate, the Origin check and
+the three-socket cap keep others out and concurrency bounded) closes its
+socket and reopens it to get twelve fresh frames each time, instead of three
+a second; each cheap frame (a take, a drop) re-snapshots everyone in the
+room. Before this change the budget was per socket, so this is an
+unfinished edge of the fix, not a regression.
+  Evidence: Scratch probe of the module: twelve frames taken and the
+thirteenth refused; `_unregister_socket` then `_register_socket` for the
+same session; `_bucket_for` returns a new bucket and twelve more frames pass
+at once.
+  Remediation: Keep a session's bucket past its last socket and prune
+entries idle longer than a full refill (RATE_BURST / RATE_PER_SECOND, four
+seconds), or key the bucket by account.
+
+[NOTE] daydream/prodctl.py:459-472 with :450 — The venv seal checks
+ownership only, so a change made to a venv while it was still
+group-writable would survive the first sealed deploy.
+  Attack vector: Needs code running as `daydream` outside the systemd
+sandbox (inside it `/srv` is read-only: ProtectSystem=strict,
+ReadWritePaths=/srv/daydream/data; the operator's own pass-throughs are the
+only such processes today). Such a process can rewrite an operator-owned,
+group-writable file in the venv, for example its
+`distutils-precedence.pth`. The seal's `chmod -R go-w` succeeds on it, the
+ownership walk passes it, and `build_release` then runs the venv's python as
+the operator without `-S` (:450), so `site` executes the `.pth`: the
+escalation the seal was written to stop.
+  Evidence: `_seal_venv` compares `st_uid` only, and a venv built before
+the seal landed was group-writable by `daydream` from the day it was built
+(the setgid parent and a 0002 umask), `.pth` files included, with every
+entry owned by the operator.
+  Remediation: Rebuild the venv once (move it aside; the next deploy builds
+and seals a fresh one), and run the operator-side compile without `site`
+(`python -I -S -m compileall`), so no venv `.pth` ever runs as the operator.
+
+[NOTE] daydream/skills/effects.py:347, daydream/post.py:257 (outside these
+paths; carried, half resolved) — The placeholder expander still runs over a
+letter's body. A new dreamer's name may no longer hold braces
+(slots.py:177). BACKLOG `placeholders-over-player-text`.
 
 [NOTE] daydream/accounts_cli.py:129-136 (outside these paths; carried
 unchanged) — `account delete --yes` during a resident's reply leaves that
@@ -105,79 +166,77 @@ the file is touched.
 
 ### Resolved since the last review
 
-- **WARN, uncapped letters read on every command.** Fixed: `write_letter`
-  refuses past five waiting from one hand or twenty for one dreamer
-  (post.py:50-51, :233-238) in authored words (`too_many_text`), and
-  `letters_waiting` reads only the viewer's own letters by `letter.to`
-  (post.py:349-361, through `objects.things_where_property`: a parameterised
-  `json_extract` whose key is a code constant). Re-measured in the same
-  scratch shape as last time: with 5,000 letters waiting for someone else,
-  `letters_waiting` for another player takes 0.62 ms (was 31 ms) and
-  `threads_for` 0.63 ms; with 1,000, 0.14 ms (was 6 ms). The scans that still
-  grow with the post room's contents (`in_scope` there, and the recipient's
-  own `letters_waiting`, about 6 ms per 1,000) are now bounded by the caps.
-  Parcels are uncapped, but each needs a carried keepsake with no home, a
-  supply the world's content bounds.
-- **NOTE, a parcel of an authored thing destroyed by `account delete`.**
-  Fixed: `file_parcel` refuses a thing whose `toons.home_of` is set
-  (post.py:305-310, authored `belongs_text`), so a village thing is never
-  made private to one dreamer, and DATA-LIFECYCLE.md now says what a delete
-  keeps of the post. A gift to a dozing dreamer is the accepted risk below.
-- **NOTE, the input log's second audience.** The redeem card now says other
-  dreamers can see when you were last here and where (door.js:82-85), and
-  DATA-LIFECYCLE.md describes what other dreamers see of a dreamer and that
-  typed text stays private.
+- **NOTE, world-scoped presence re-snapshots from unthrottled endpoints.**
+  Fixed: leave, claim and kick share a per-account budget of ten a minute
+  (slots.py:91-104, a 429 past it). Every path that rests or wakes a dreamer
+  passes one of them: a rest needs leave, kick or the shell, and auto-enter
+  wakes a resting dreamer only for a session that has not left, which a
+  fresh sign-in reaches only after a leave. A recap runs one at a time per
+  dreamer and takes the arbiter's background slot.
+- **NOTE, placeholders over player text (half).** Dreamer names refuse
+  braces; letter bodies remain (the carried NOTE above).
 
 ### Traced and cleared this run (not findings)
 
-- **`give` declares `set_property`.** Everything dispatched under it is
-  engine-composed: `_handle_give` (a move, the authored `gives_mood` and
-  `gives` reward, a narrate), `_hand_to_player` (a move, a narrate) and
-  `file_parcel` (a move, `private_to`, `letter`, a narrate). Authored `give`
-  rules run under `effects.RULE_KINDS`, not the verb's set, and no model
-  output reaches `dispatch_effects` with `give`'s allowlist. The call-site
-  widening is gone.
-- **`open` with the key in hand.** `_execute_resolved(VERBS["use"], key,
-  target)` re-resolves both objects in scope, requires `use` among the key's
-  verbs and a thing as the target, and runs the authored `use` rule as if
-  typed; the recursion is bounded (the second `_handle_open` sees a state
-  other than `locked`, or falls through to the locked line).
-- **World-scoped `presence_changed` with `except`.** The WS filter checks
-  `except` before the room filter (ws.py:1244), so the leaver's own open page
-  skips it and cannot consume the away note; `take_note` also refuses to
-  clear the stamp for a toon no longer human-controlled. The payload is a
-  toon id the page never renders.
-- **Beats select at any length.** A long line naming an open beat now
-  advances it deterministically, and `topic_text` returns None for beats, so
-  a beat's payoff is never grounding for the model: less model exposure, not
-  more.
-- **The index page's new `{{place}}` uses.** Filled by `server.py:236-240`
-  with `html.escape(..., quote=True)` from `instance.json`, the operator's
-  own file.
-- **`config.post.keeper`** is validated against the world's toon ids at load;
-  the assembled world byte-matches its sources; the two new authored strings
-  carry no markup or URL.
-- **Page.** `showThinking` and `renderSnapshot` only clear transient lines;
-  door.js's new sentence is `textContent`; `.dreamer-note` is style only.
-- **Tests and logs.** The six scoped test files use fictional names; `post`
-  logs names and a length, never the text.
+- **heard.py.** Keys come only from the world's vocabulary (topics, beats,
+  mentions), so `pq:<toon>:met` cannot grow with player text. A chip is a
+  subset of the available topics, which typing reaches anyway, so it
+  discloses nothing new. The audience mirrors the socket filter (the
+  recipient, or the room less `except`); a dark room names nothing; private
+  things are skipped. Writes are single autocommit statements, and a failure
+  in the hook is logged, never raised into `events.append`.
+- **Private things in containers.** `visible_contents(o, viewer)`,
+  `_container_glance` and `look` now filter by viewer; `in_scope` and the
+  entity sidecar already did; toon cards carry no inventory.
+- **Unique names.** The fold (NFKC, casefold, whitespace) is looser than the
+  post and trace lookups (`.lower()` equality), so two dreamers cannot
+  collide there. Legacy duplicates are not renamed (prod has none since this
+  morning's clean start).
+- **The replay window.** `within_s` compares `datetime('now', ...)` with the
+  events table's `CURRENT_TIMESTAMP` default, the same format.
+- **Sockets.** A command frame's words and verb are capped; past three
+  sockets the oldest is told `elsewhere`; a rested page closes on its next
+  frame or event; `close_session_sockets` acts on the caller's own session.
+- **Sessions and headers.** `create_session` keeps the newest ten. The Access
+  middleware strips `cf-access-client-id` and `cf-access-client-secret`
+  before the mode check, for HTTP and WebSocket scopes.
+- **The Worker.** The https redirect precedes everything else. `%2f|%5c` is
+  refused on the parsed path (backslashes are already normalised to `/`, and
+  `%252f` decodes once at the origin into no route). The probes use
+  `redirect: "manual"`.
+- **prodctl.** `_refuse_side_doors` matches bin/game's own rule (any
+  `--check` makes `world patch` check-only), so the refusal and the guard
+  agree; `text-scan` is not in `STOP_FOR`. `edge tail` prints errors only;
+  its pretty form still shows an errored request's URL, so an errored
+  `/invite/<slug>` view would show that slug, a far smaller surface than
+  before.
+- **The text-scan's output** is ASCII-escaped JSON under a banner, cut at 300
+  characters with the flags taken over the whole text; it writes nothing.
+- **ComfyUI** in this checkout supports `--disable-api-nodes`
+  (comfy/cli_args.py:183).
+- **Page.** The new notes are set with `textContent`; a selector built from
+  an object id can at worst throw.
+
+### Player-text scan (CLAUDE.md "Player text is data")
+
+- Run per the policy; the verdict and high-water mark live in the local
+  instance notes, never here (players' text stays off GitHub).
 
 ### Secrets, PII and the instance
 
-- Every added line from `43fba6b` to HEAD was compared, without printing,
-  against the values in `~/.config/daydream/cloudflare.env`, the box's
-  addresses (`hostname -I`, `tailscale ip`) and its hostname: no credential
-  value and no address. The hostname matched only SECURITY.md's own carried
-  accepted-risk text (it is the operator's Unix account name, already in 110
-  committed files), as the prior version did.
-- Added lines were scanned for email addresses, IPv4 and CGNAT addresses and
-  the operator's names: the only hits are SECURITY.md's prior text.
-- The last three commits of `slots.py`, `post.py`, `trace.py`, `absence.py`
-  and `door.js` hold no token-shaped string (the only keyword hits are
-  door.js's "set password" button label).
-- `instance/` is still ignored; the working tree was clean at the start of
-  the review; players see the operator only as the Night Warden in every
-  scoped file.
+- The 2,249 added lines from `69760f7` to HEAD were scanned without printing
+  values. The email-shaped hits are pytest decorators; the one IPv4 is
+  `100.64.0.1` (the CGNAT base); no address of this box appears (compared
+  with `hostname -I` and `tailscale ip`); the hostname, a short common word,
+  matches only inside ordinary words; the token-shaped runs are a commit SHA, a base64
+  test fixture, and test and backlog names.
+- The last three commits of each credential-handling file in scope
+  (`edge.py`, `prodctl.py`, `accounts.py`, `access.py`, `textscan.py`,
+  `bin/game`, the settings template, `worker.js`, `agent_guard.py`) hold no
+  secret-shaped string.
+- The scoped tests use fictional names and loopback addresses. `instance/`
+  is still ignored; the working tree was clean at the start; players see the
+  operator only as the Night Warden.
 
 ### Accepted Risks
 
@@ -245,24 +304,28 @@ Carried register (from prior reviews; still open, not re-flagged):
   cannot be scoped to one Worker.
 - Toon names are not unique, and lookalikes are not folded. Moderation
   refuses an ambiguous key, and `/status/who` shows the id and the owner.
+  (Since 2026-09-29 a new dreamer's name must be unique under case, spacing
+  and compatibility folding; confusable alphabets are still not folded, and
+  legacy duplicates stay.)
 - A shell rest does not reach an open socket; `account disable` is the
-  stop.
+  stop. (Since 2026-09-29 the socket closes on its next frame or event, but
+  the page's reconnect wakes the dreamer again, since a shell rest does not
+  mark the session as left.)
 - Supply chain: the prod lock pins versions but not hashes, and CI actions
   use tags.
 - The standing prod grant's `ask` rules are text patterns, so a quoted word
-  may slip past one. A PreToolUse hook would be firmer.
+  may slip past one. A PreToolUse hook would be firmer. (Since 2026-09-29
+  `tools/agent_guard.py` backs them; its gaps are this review's WARN.)
 - Player text reaches the agent's context through `bin/game play`: names,
   speech and move lines. The verbs an injected instruction would want stay
   behind ask rules.
 
 ---
-*Prior review (2026-09-29, paths, commit `43fba6b`): 48 files, the beta
-rehearsal's household layer (letters and parcels, hand-overs, who else is
-awake, traces and rosters, the away note, thinking frames, the typed plant)
-and the dream `dream-2026-09-28`, at WORLD_VERSION 1.9. It found 0 BLOCK /
-1 WARN / 4 NOTE: the WARN (uncapped letters read on every command) and two
-NOTEs (a parcel of an authored thing under `account delete`; the input log's
-second audience undisclosed) are resolved above, and the other two NOTEs are
-carried. Full entry at `git show 69760f7:SECURITY.md`.*
+*Prior review (2026-09-29, paths, commit `69760f7`): 22 files, the
+codereview fix pass over the beta rehearsal's household layer, the
+onboarding words and the door's disclosure. It found 0 BLOCK / 0 WARN / 4
+NOTE: the placeholder expander over player text (half resolved above), the
+unthrottled world-scoped presence re-snapshot (resolved above), and the two
+carried NOTEs. Full entry at `git show 8b606df:SECURITY.md`.*
 
-<!-- SECURITY_META: {"date":"2026-09-29","commit":"69760f7baca60dce17002d0d843efd0b572f610a","scope":"paths","scanned_files":["daydream/absence.py","daydream/api/slots.py","daydream/live.py","daydream/llm/story_format.py","daydream/post.py","daydream/skills/effects.py","daydream/story.py","daydream/toons.py","daydream/trace.py","daydream/verbs.py","tests/test_absence.py","tests/test_dozing.py","tests/test_post.py","tests/test_story.py","tests/test_trace.py","tests/test_verbs.py","web/assets/door.js","web/assets/main.js","web/assets/style.css","web/index.html","worlds/lost-hours.json","worlds/lost-hours/world.json"],"block":0,"warn":0,"note":4} -->
+<!-- SECURITY_META: {"date":"2026-09-29","commit":"6129d7a0ff50d0f9438ef21d50283e6503591e0e","scope":"paths","scanned_files":["bin/game","daydream/accounts.py","daydream/api/access.py","daydream/api/slots.py","daydream/api/ws.py","daydream/edge.py","daydream/events.py","daydream/heard.py","daydream/journal.py","daydream/llm/story_format.py","daydream/objects.py","daydream/play.py","daydream/prodctl.py","daydream/story.py","daydream/textscan.py","daydream/verbs.py","daydream/version.py","daydream/walkthrough.py","docs/claude-settings.local.example.json","edge/src/worker.js","edge/test/worker.test.js","tests/conftest.py","tests/test_abuse_limits.py","tests/test_access_middleware.py","tests/test_agent_guard.py","tests/test_dozing.py","tests/test_heard.py","tests/test_logs.py","tests/test_prodctl.py","tests/test_slots.py","tests/test_textscan.py","tests/test_ws.py","tests/test_ws_grow.py","tools/agent_guard.py","web/assets/main.js","web/assets/style.css","worlds/lost-hours.json","worlds/lost-hours/arcs/01-pim.json","worlds/lost-hours/arcs/02-extra-hour.json","worlds/lost-hours/arcs/03-rain-wait.json","worlds/lost-hours/arcs/04-summer.json","worlds/lost-hours/arcs/05-margin.json","worlds/lost-hours/arcs/06-nell-evening.json","worlds/lost-hours/arcs/07-letters.json","worlds/lost-hours/arcs/08-tace-hour.json","worlds/lost-hours/arcs/09-bell-dawn.json","worlds/lost-hours/arcs/10-mott-minute.json","worlds/lost-hours/cast/bell-mott.json","worlds/lost-hours/cast/others.json","worlds/lost-hours/cast/tace.json"],"block":0,"warn":1,"note":6} -->
