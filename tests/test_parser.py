@@ -542,3 +542,91 @@ async def test_give_to_someone_for_someone_keeps_the_someone(monkeypatch):
     p = await parser.parse("t-wren", "give the lantern to rook")
     assert p.verb == "give" and p.iobj_id == "t-rook" and p.args == ""
     spy.assert_not_called()
+
+
+# ---- triage in the parser's one call (spec 2026-09-29 criterion 3) ----------
+
+
+@pytest.mark.asyncio
+async def test_a_question_about_the_game_becomes_a_state_answer(monkeypatch):
+    spy = _mock_llm(monkeypatch, {"verb": "none", "kind": "time"})
+    lp = await parser.parse_line("t-wren", "how late does the day run here")
+    assert [(c.verb, c.args) for c in lp.commands] == [("meta", "time")]
+    assert spy.await_count == 1
+
+
+@pytest.mark.asyncio
+async def test_a_target_not_in_scope_passes_through_by_name(monkeypatch):
+    _mock_llm(monkeypatch, {"verb": "take", "dobj_id": None, "kind": "act",
+                            "target": "the glinting jar"})
+    lp = await parser.parse_line("t-wren", "please could I have that glinting jar")
+    assert [(c.verb, c.dobj_id, c.dobj_name) for c in lp.commands] == [
+        ("take", None, "glinting jar")]
+
+
+@pytest.mark.asyncio
+async def test_further_commands_come_back_in_order(monkeypatch):
+    objects.move("t-wren", "r-meadow")
+    _mock_llm(monkeypatch, {"verb": "take", "dobj_id": "i-lantern", "kind": "act",
+                            "then": [{"verb": "look"}, {"verb": "juggle"}]})
+    lp = await parser.parse_line("t-wren", "grab the lamp and then have a look round")
+    assert [(c.verb, c.dobj_id) for c in lp.commands] == [("take", "i-lantern"), ("look", None)]
+
+
+@pytest.mark.asyncio
+async def test_triage_switched_off_is_the_old_single_command(monkeypatch):
+    monkeypatch.setenv("DAYDREAM_PARSER_TRIAGE", "0")
+    _mock_llm(monkeypatch, {"verb": "none", "kind": "time"})
+    lp = await parser.parse_line("t-wren", "how late does the day run here")
+    assert [c.verb for c in lp.commands] == ["none"]
+    assert '"kind"' not in parser.system_prompt()
+
+
+@pytest.mark.parametrize("line,name", [
+    ("reach for the lamp on the far shelf", "lamp"),
+    ("climb up onto the rafters", "rafters"),
+    ("pick up the glinting jar", "glinting jar"),
+    ("take the tweezers off the workbench", "tweezers"),
+    ("take it", ""),
+    ("examine the very long winding name", ""),
+])
+def test_the_typed_name_is_the_words_after_the_verb(line, name):
+    assert parser._typed_target(line) == name
+
+
+@pytest.mark.asyncio
+async def test_a_verb_without_its_object_carries_the_typed_name(monkeypatch):
+    """The model chose a verb and named nothing: the line's own words name
+    the thing, so glimpses and "not here" answer it, never "Take what?"."""
+    _mock_llm(monkeypatch, {"verb": "take", "dobj_id": None, "kind": "act"})
+    lp = await parser.parse_line("t-wren", "fetch the moonstone from the high shelf")
+    assert [(c.verb, c.dobj_id, c.dobj_name) for c in lp.commands] == [
+        ("take", None, "moonstone")]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("reply", [
+    {"verb": "take", "dobj_id": None, "kind": "act"},
+    {"verb": "take", "dobj_id": None, "kind": "act", "target": "lantern"},
+])
+async def test_a_typed_name_that_is_here_grounds(monkeypatch, reply):
+    objects.move("t-wren", "r-meadow")
+    _mock_llm(monkeypatch, reply)
+    lp = await parser.parse_line("t-wren", "fetch the lantern")
+    assert [(c.verb, c.dobj_id, c.dobj_name) for c in lp.commands] == [
+        ("take", "i-lantern", None)]
+
+
+@pytest.mark.asyncio
+async def test_a_gesture_the_model_reads_goes_to_gestures(monkeypatch):
+    _mock_llm(monkeypatch, {"verb": "talk", "dobj_id": "t-rook", "kind": "gesture"})
+    lp = await parser.parse_line("t-wren", "give rook a big warm hug")
+    assert [(c.verb, c.dobj_id, c.args) for c in lp.commands] == [("gesture", "t-rook", "hug")]
+
+
+@pytest.mark.asyncio
+async def test_triage_off_keeps_the_verb_without_a_name(monkeypatch):
+    monkeypatch.setenv("DAYDREAM_PARSER_TRIAGE", "0")
+    _mock_llm(monkeypatch, {"verb": "take", "dobj_id": None, "kind": "act"})
+    lp = await parser.parse_line("t-wren", "fetch the moonstone from the high shelf")
+    assert lp.commands == () and lp.clarify is not None  # "What do you want to take?"

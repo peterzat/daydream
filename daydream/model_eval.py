@@ -73,7 +73,7 @@ CANONICAL = PROJECT_ROOT / "worlds" / "lost-hours.json"
 WORLD = CANONICAL
 JSON_PROMPTS = PROJECT_ROOT / "tests" / "drift" / "prompts"
 
-SUITES = ("parser", "dialogue", "canon", "growth", "journal", "retell", "examine",
+SUITES = ("parser", "triage", "dialogue", "canon", "growth", "journal", "retell", "examine",
           "glimpse", "drift", "json", "burst")
 
 # The canon suite (SPEC 2026-09-26 criterion 10): questions whose answers are
@@ -388,6 +388,23 @@ def parser_schema(vocab: list[dict], scope: list[dict]) -> dict:
 PARSER_SCHEMA = False
 
 
+def _scope_ground(scope: list[dict]):
+    """A stand-in for the parser's in-scope grounding over a synthetic
+    scope: the ids whose name or alias is the typed name."""
+    def ground(name: str) -> list[str]:
+        low = name.strip().lower()
+        return [e["id"] for e in scope
+                if low == str(e.get("name", "")).lower()
+                or low in [str(a).lower() for a in e.get("aliases") or []]]
+    return ground
+
+
+# A question the game answers from state is scored by what it shows
+# (daydream/api/ws.py answer_meta): "where" shows the room as look does,
+# "who" the dreamer and what they carry.
+_META_SHOWS = {"where": {"look"}, "who": {"inventory", "examine"}}
+
+
 async def suite_parser(tmp: Path) -> dict:
     from daydream import parser, verbs
     from daydream.llm import client
@@ -411,27 +428,21 @@ async def suite_parser(tmp: Path) -> dict:
             _response_format.set(parser_schema(vocab, scope))
         try:
             result = await client.acompletion_json(
-                system=parser.SYSTEM,
+                system=parser.system_prompt(),
                 user=parser._user_prompt(text, vocab, scope),
                 purpose="parser",
             )
         except client.LLMUnavailable as e:
             cases.append({"input": text, "pass": False, "error": str(e)[:200]})
             continue
-        # Mirror parser._llm_parse's post-processing exactly: unknown verb or
-        # an out-of-scope id collapses to none (the fail-safe).
-        verb = str(result.get("verb", "none")).strip().lower() if isinstance(result, dict) else "none"
-        ids = {e["id"] for e in scope}
-        dobj = result.get("dobj_id") if isinstance(result, dict) else None
-        iobj = result.get("iobj_id") if isinstance(result, dict) else None
-        if verb not in {v["name"] for v in vocab}:
-            verb = "none"
-        if (isinstance(dobj, str) and dobj and dobj not in ids) or (
-            isinstance(iobj, str) and iobj and iobj not in ids
-        ):
-            verb, dobj, iobj = "none", None, None
-        dobj = dobj if isinstance(dobj, str) and dobj else None
-        iobj = iobj if isinstance(iobj, str) and iobj else None
+        # The parser's own reading of the reply (parser.interpret), so the
+        # score is what the game would do with it.
+        cmd = parser.interpret(result, text, {v["name"] for v in vocab},
+                               {e["id"] for e in scope}, "", ground=_scope_ground(scope))[0]
+        verb, dobj, iobj = cmd.verb, cmd.dobj_id, cmd.iobj_id
+        if verb == "meta":
+            shows = _META_SHOWS.get(cmd.args, set())
+            verb = next((v for v in want_verb.split("|") if v in shows), f"meta:{cmd.args}")
         if want_verb == "SAFE":
             ok = verb == "none" or (dobj is None and iobj is None)
         else:
@@ -443,6 +454,75 @@ async def suite_parser(tmp: Path) -> dict:
     passed = sum(c["pass"] for c in cases)
     return {"score": passed / len(cases), "passed": passed, "n": len(cases),
             "schema": PARSER_SCHEMA, "cases": cases}
+
+
+async def suite_triage(tmp: Path) -> dict:
+    """What the parser's one call says a line is (spec 2026-09-29 criterion
+    3): its kind, the question about the game, and the target as typed when
+    the thing is not in scope. The production prompt, no second call."""
+    from daydream import parser, verbs
+    from daydream.llm import client
+
+    _current_purpose.set("parser")
+    data = json.loads((PROJECT_ROOT / "tests" / "model_eval" / "triage.json").read_text())
+    scope = SCOPES[data["scope"]]
+    env = json.loads(CANONICAL.read_text())
+    off = set((env.get("config") or {}).get("engine_verbs_off") or ())
+    vocab = [{"name": v.name, "description": v.description}
+             for v in verbs.VERBS.values() if v.name not in off]
+    vocab += [{"name": n, "description": d.get("description", "")}
+              for n, d in (env.get("verbs") or {}).items()]
+    _fresh_db(tmp, "triage", CANONICAL)
+    from daydream import db
+
+    world_id = db.get_conn().execute("SELECT id FROM worlds").fetchone()[0]
+    names, ids, ground = {v["name"] for v in vocab}, {e["id"] for e in scope}, _scope_ground(scope)
+    async def score(rows: list) -> dict:
+        cases = []
+        for text, want_kind, want_target in rows:
+            try:
+                r = await client.acompletion_json(
+                    system=parser.system_prompt(),
+                    user=parser._user_prompt(text, vocab, scope), purpose="parser")
+            except client.LLMUnavailable as e:
+                cases.append({"input": text, "pass": False, "error": str(e)[:200]})
+                continue
+            # Scored by where the line goes (parser.interpret, the runtime's
+            # own reading), not by the label alone.
+            cmd = parser.interpret(r, text, names, ids, world_id, ground=ground)[0]
+            does = _triage_does(cmd)
+            name = (cmd.dobj_name or "").lower()
+            ok = does in want_kind.split("|") and (want_target is None or want_target in name)
+            cases.append({"input": text, "pass": ok,
+                          "got": [does, cmd.verb, cmd.dobj_id, cmd.dobj_name,
+                                  r.get("kind") if isinstance(r, dict) else None],
+                          "want": [want_kind, want_target]})
+        passed = sum(c["pass"] for c in cases)
+        return {"score": passed / len(cases), "passed": passed, "n": len(cases), "cases": cases}
+
+    out = await score(data["cases"])
+    if data.get("held_out"):
+        out["held_out"] = await score(data["held_out"])
+    return out
+
+
+_SENSE_VERBS = frozenset({"smell", "touch", "listen", "taste", "feel", "sniff"})
+_SAY_VERBS = frozenset({"talk", "say", "ask", "tell", "write"})
+
+
+def _triage_does(cmd) -> str:
+    """What the game does with a command, in the triage case set's words."""
+    from daydream import parser
+
+    if cmd.verb == "meta":
+        return {v: k for k, v in parser.QUESTIONS.items()}.get(cmd.args, "other")
+    if cmd.verb == "gesture":
+        return "gesture"
+    if cmd.verb in _SENSE_VERBS:
+        return "sense"
+    if cmd.verb in _SAY_VERBS:
+        return "say"
+    return "other" if cmd.verb == "none" else "act"
 
 
 async def suite_dialogue(tmp: Path) -> dict:
@@ -953,7 +1033,7 @@ def _summary_row(r: dict) -> dict:
     g = lambda k, f="score": s.get(k, {}).get(f)  # noqa: E731
     return {
         "label": r["label"],
-        "parser": g("parser"), "dialogue": g("dialogue"),
+        "parser": g("parser"), "triage": g("triage"), "dialogue": g("dialogue"),
         "dlg_brief": g("dialogue", "brief_rate"), "dlg_hint": g("dialogue", "hint_hits"),
         "dlg_pov": g("dialogue", "pov_slips"),
         "dlg_opener": g("dialogue", "opener_max"),
@@ -974,7 +1054,7 @@ def _fmt(v) -> str:
 
 def _report(runs: list[dict]) -> str:
     lines = ["# Model eval", ""]
-    cols = ["label", "parser", "dialogue", "dlg_brief", "dlg_hint", "dlg_pov",
+    cols = ["label", "parser", "triage", "dialogue", "dlg_brief", "dlg_hint", "dlg_pov",
             "dlg_opener", "canon_x", "growth",
             "journal", "retell", "examine", "glimpse", "drift", "json", "burst1", "burst3"]
     lines.append("| " + " | ".join(cols) + " |")

@@ -324,6 +324,15 @@ def journal_enabled() -> bool:
     )
 
 
+def parser_triage_enabled() -> bool:
+    """Whether the parser's one model call also says what kind of line it is,
+    the target as typed and further commands (spec 2026-09-29 criterion 3).
+    Default ON; off, the call is the older single-command prompt."""
+    return os.environ.get("DAYDREAM_PARSER_TRIAGE", "1").strip().lower() not in (
+        "0", "false", "no", "off",
+    )
+
+
 def glimpse_llm_enabled() -> bool:
     """Whether a thing the scene's prose names, with no authored reason, gets
     a local-model line saying why it can't be handled (daydream/glimpse.py;

@@ -63,6 +63,16 @@ def match(text: str) -> tuple[str, str | None] | None:
     return None
 
 
+_ANY = re.compile(rf"(?i)\b(?P<g>{_WORD_RE})\b")
+
+
+def find(text: str) -> str | None:
+    """The gesture a line names anywhere in it ("give the keeper a big
+    hug" -> "hug"), for a line the model read as a gesture."""
+    m = _ANY.search(text or "")
+    return WORDS[m.group("g").lower()] if m else None
+
+
 def _say(room_id: str, text: str, *, to: str | None = None,
          leave_out: list[str] | None = None) -> None:
     payload: dict = {"text": text}

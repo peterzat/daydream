@@ -759,18 +759,11 @@ async def _handle_input(text: str, toon_id: str, conn: dict) -> dict | None:
     if _WHAT_NOW_RE.match(text):
         # What you're in the middle of, from the authored threads (playtest
         # 2026-09-28b: "what should I do now?" got a chatter line).
-        held = story.threads_for(toon_id)
-        lines = ([WHAT_NOW_LEAD] + held) if held else [WHAT_NOW_NONE]
-        for line in lines:
-            events.append("system", None, "narrate", {"text": line},
-                          room_id=room_id, recipient_id=toon_id)
-        return None
+        return await answer_meta("what_now", toon_id, conn)
     if _HELP_RE.match(text):
         # The guide, not a chatter line (playtest 2026-09-28b). The page opens
         # its own guide; this answers any other client.
-        events.append("system", None, "narrate", {"text": HELP_TEXT},
-                      room_id=room_id, recipient_id=toon_id)
-        return None
+        return await answer_meta("help", toon_id, conn)
     asked = meta.kind(text)
     if asked is not None:
         return await answer_meta(asked, toon_id, conn)
@@ -878,6 +871,16 @@ async def answer_meta(asked: str, toon_id: str, conn: dict) -> dict | None:
     """A question about the game (daydream/meta.py; spec 2026-09-29 criterion
     4), answered from state with no model call."""
     room_id = _current_room_id(toon_id)
+    if asked in ("help", "what_now"):
+        if asked == "help":
+            lines = [HELP_TEXT]
+        else:
+            held = story.threads_for(toon_id)
+            lines = ([WHAT_NOW_LEAD] + held) if held else [WHAT_NOW_NONE]
+        for line in lines:
+            events.append("system", None, "narrate", {"text": line},
+                          room_id=room_id, recipient_id=toon_id)
+        return None
     if asked == "where":
         await verbs.execute_command(toon_id, "look")
         return None
@@ -902,6 +905,11 @@ async def _dispatch_parsed(p: "parser.Parse", toon_id: str) -> bool | None:
     room_id = _current_room_id(toon_id)
     actor = objects.get(toon_id)
     world_id = actor.world_id if actor is not None else None
+    if p.verb == "meta":
+        # A question about the game, as the parser's triage read it
+        # (spec 2026-09-29 criterion 3): answered from state.
+        await answer_meta(p.args, toon_id, {})
+        return True
     if verbs.resolve(world_id, p.verb) is not None:
         return await verbs.execute_command(
             toon_id, p.verb, p.dobj_id, p.iobj_id, p.args, dobj_name=p.dobj_name

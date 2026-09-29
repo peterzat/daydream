@@ -76,3 +76,18 @@ async def test_help_me_and_im_stuck_have_their_answers(village):
     assert help_line == [ws_module.HELP_TEXT]
     stuck = await _said(village, "I'm stuck")
     assert stuck and stuck[0] == ws_module.WHAT_NOW_LEAD
+
+
+@pytest.mark.parametrize("kind,expect", [
+    ("ways", "From here you can go"), ("next", None), ("help", None)])
+async def test_a_paraphrase_the_parser_triages_gets_the_same_answer(village, monkeypatch, kind,
+                                                                     expect):
+    """A question the fixed phrasings miss reaches the model once, and its
+    triage routes it to the same state answer (spec 2026-09-29 criterion 3)."""
+    spy = AsyncMock(return_value={"verb": "none", "dobj_id": None, "iobj_id": None,
+                                  "args": "", "kind": kind})
+    monkeypatch.setattr("daydream.llm.client.acompletion_json", spy)
+    said = await _said(village, "so, er, what now for someone like me")
+    assert spy.await_count == 1
+    want = {"ways": expect, "next": ws_module.WHAT_NOW_LEAD, "help": ws_module.HELP_TEXT}[kind]
+    assert said and (said[0].startswith(want) or said[0] in (ws_module.WHAT_NOW_NONE, want))

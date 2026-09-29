@@ -1,0 +1,259 @@
+{
+  "comment": "The triage case set (spec 2026-09-29 criterion 3): what the parser's one call says a line is. Each case: [input, expected kind ('a|b' accepts either), a word the target must contain when the thing is not in scope, else null]. Scope: corpus.json's loft scope; vocabulary: the village's own verbs (engine verbs it offers and its world verbs).",
+  "scope": "loft",
+  "cases": [
+    [
+      "what time is it now",
+      "time",
+      null
+    ],
+    [
+      "is it evening yet",
+      "time",
+      null
+    ],
+    [
+      "how long have I been here",
+      "time",
+      null
+    ],
+    [
+      "where am I exactly",
+      "where",
+      null
+    ],
+    [
+      "what is this room",
+      "where",
+      null
+    ],
+    [
+      "who am I in this dream",
+      "who",
+      null
+    ],
+    [
+      "what do I look like",
+      "who",
+      null
+    ],
+    [
+      "which way can I go from here",
+      "ways",
+      null
+    ],
+    [
+      "how do I get out of this room",
+      "ways",
+      null
+    ],
+    [
+      "how does this game work",
+      "help",
+      null
+    ],
+    [
+      "what am I supposed to type",
+      "help",
+      null
+    ],
+    [
+      "what should I do next",
+      "next",
+      null
+    ],
+    [
+      "I'm stuck, any ideas?",
+      "next",
+      null
+    ],
+    [
+      "what was I in the middle of",
+      "next",
+      null
+    ],
+    [
+      "give the clockmaker a big hug",
+      "gesture",
+      null
+    ],
+    [
+      "wave hello to Tace",
+      "gesture",
+      null
+    ],
+    [
+      "bow politely to Tace",
+      "gesture",
+      null
+    ],
+    [
+      "thank the clockmaker kindly",
+      "gesture",
+      null
+    ],
+    [
+      "sniff the paper lantern",
+      "sense",
+      null
+    ],
+    [
+      "run my fingers over the clock case",
+      "sense|act",
+      null
+    ],
+    [
+      "listen closely to the room",
+      "sense",
+      null
+    ],
+    [
+      "tell Tace the gear rolled south",
+      "say",
+      null
+    ],
+    [
+      "ask the clockmaker how the frost began",
+      "say",
+      null
+    ],
+    [
+      "say that I love this loft",
+      "say",
+      null
+    ],
+    [
+      "pick up the glinting jar",
+      "act",
+      "jar"
+    ],
+    [
+      "reach for the lamp on the far shelf",
+      "act",
+      "lamp"
+    ],
+    [
+      "open the window by the bench",
+      "act",
+      "window"
+    ],
+    [
+      "take the tweezers off the workbench",
+      "act",
+      "tweezers"
+    ],
+    [
+      "climb up onto the rafters",
+      "act",
+      "rafters"
+    ],
+    [
+      "examine the frost on the glass",
+      "act",
+      "frost"
+    ],
+    [
+      "pick up the gear",
+      "act",
+      null
+    ],
+    [
+      "read the repair ledger",
+      "act",
+      null
+    ],
+    [
+      "unlock the case with the small key",
+      "act",
+      null
+    ],
+    [
+      "put the gear in the case",
+      "act",
+      null
+    ]
+  ],
+  "comment_held_out": "Held out (written 2026-09-29 after the prompt's examples were fixed, never used to tune them): fresh phrasings that show whether the examples taught the categories or the case set. Reported separately as held_out; a drop against the main score is the sign of a prompt fitted to its own cases.",
+  "held_out": [
+    [
+      "what hour is it in the village",
+      "time",
+      null
+    ],
+    [
+      "is the sun still up",
+      "time",
+      null
+    ],
+    [
+      "remind me where I'm standing",
+      "where",
+      null
+    ],
+    [
+      "what's my name again",
+      "who",
+      null
+    ],
+    [
+      "what have I got on me",
+      "who",
+      null
+    ],
+    [
+      "where do the paths from here go",
+      "ways",
+      null
+    ],
+    [
+      "how do I talk to people here",
+      "help",
+      null
+    ],
+    [
+      "I forget what I was doing",
+      "next",
+      null
+    ],
+    [
+      "give Tace a friendly wave",
+      "gesture",
+      null
+    ],
+    [
+      "nod at the clockmaker",
+      "gesture",
+      null
+    ],
+    [
+      "sniff the air",
+      "sense",
+      null
+    ],
+    [
+      "put my ear to the clock case",
+      "sense|act",
+      null
+    ],
+    [
+      "tell Tace I'm sorry about the clock",
+      "say",
+      null
+    ],
+    [
+      "take the silver spoon from the drawer",
+      "act",
+      "spoon"
+    ],
+    [
+      "open the trapdoor",
+      "act",
+      "trapdoor"
+    ],
+    [
+      "lift the dreamseed",
+      "act",
+      null
+    ]
+  ]
+}

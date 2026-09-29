@@ -36,7 +36,7 @@ import logging
 import re
 from dataclasses import dataclass
 
-from daydream import absent, glimpse, objects, pronouns, rooms, verbs, worldverbs
+from daydream import absent, config, glimpse, objects, pronouns, rooms, verbs, worldverbs
 from daydream.llm import client
 from daydream.skills import registry
 
@@ -162,6 +162,44 @@ SYSTEM = (
     "when the verb takes no target. Use the verb \"none\" when nothing fits or "
     "the input is idle chatter. Output JSON only, no prose."
 )
+
+# Triage in the same call (spec 2026-09-29 criterion 3): what kind of line it
+# is, the target as typed, and further commands, with no second call.
+TRIAGE = (
+    '\nAlso include "kind", what the line is: "act", "say", "gesture", "sense", '
+    '"time", "where", "who", "ways", "help", "next" or "other". "say" is speaking '
+    "to someone, including asking a character anything. \"time\", \"where\", "
+    '"who", "ways", "help" and "next" are for when the player asks the GAME, not a '
+    "character, about the time, where they are, who they are or what they carry, "
+    "the ways out, how to play, or what to do next or what they were doing.\n"
+    'Use an id only for the thing the player names. When they name something '
+    'that is not in the Scope list, even if something similar is, keep dobj_id '
+    'null and include "target": its name as they typed it. When the input asks '
+    'for several actions in order, also include "then": up to two more commands '
+    'of the same shape.\n'
+    "Examples:\n"
+    '"is it already night" -> {"verb": "none", "dobj_id": null, "iobj_id": null, '
+    '"args": "", "kind": "time"}\n'
+    '"where does this room lead" -> {"verb": "none", "dobj_id": null, "iobj_id": null, '
+    '"args": "", "kind": "ways"}\n'
+    '"no idea what to do now" -> {"verb": "none", "dobj_id": null, "iobj_id": null, '
+    '"args": "", "kind": "next"}\n'
+    '"ask the gardener why the leaves fell" -> {"verb": "talk", "dobj_id": "<the '
+    'gardener\'s id>", "iobj_id": null, "args": "why did the leaves fall?", "kind": "say"}\n'
+    '"pick up the moon" (no moon in Scope) -> {"verb": "take", "dobj_id": null, '
+    '"iobj_id": null, "args": "", "kind": "act", "target": "moon"}\n'
+    '"sit on the cushion by the hearth" (a stool in Scope, no cushion) -> {"verb": '
+    '"sit", "dobj_id": null, "iobj_id": null, "args": "", "kind": "act", "target": '
+    '"cushion"}\n'
+    '"pry the crate open with the crowbar" -> {"verb": "use", "dobj_id": "<the '
+    'crowbar\'s id>", "iobj_id": "<the crate\'s id>", "args": "", "kind": "act"}\n'
+    '"grab the teapot then go north" -> {"verb": "take", "dobj_id": "<the teapot\'s '
+    'id>", "iobj_id": null, "args": "", "kind": "act", "then": [{"verb": "go", '
+    '"dobj_id": null, "iobj_id": null, "args": "north"}]}'
+)
+# kind -> the question about the game it names (daydream/meta.py kinds).
+QUESTIONS = {"time": "time", "where": "where", "who": "who", "ways": "ways", "help": "help",
+             "next": "what_now"}
 
 
 # ---- public entry points -------------------------------------------------
@@ -358,9 +396,9 @@ async def _parse_segment(
     if fp is not None:
         return fp
     llm = await _llm_parse(actor_id, text, room)
-    if llm.error:
-        return LineParse(error=llm.error)
-    return [llm]
+    if isinstance(llm, Parse):
+        return LineParse(error=llm.error) if llm.error else [llm]
+    return llm
 
 
 def _fast_path(actor_id: str, text: str, room: rooms.Room | None):
@@ -994,38 +1032,138 @@ def _all_candidates(
 # ---- the LLM fallback --------------------------------------------------------
 
 
-async def _llm_parse(actor_id: str, text: str, room: rooms.Room | None) -> Parse:
+def system_prompt() -> str:
+    """The parser call's instructions, with triage unless it is switched off."""
+    return SYSTEM + (TRIAGE if config.parser_triage_enabled() else "")
+
+
+def _one(result: dict, vocab_names: set[str], scope_ids: set[str], world_id: str,
+         target: str = "") -> Parse:
+    """One command from the model's JSON, validated against the vocabulary
+    and the scope. A target named but not in scope passes through by the
+    name the player typed, so glimpses and "not here" answer it (never a
+    wrong action on a wrong object)."""
+    verb = str(result.get("verb", "none")).strip().lower()
+    if verb == "none" or verb not in vocab_names:
+        return NONE
+    args = result.get("args", "")
+    args = args.strip() if isinstance(args, str) else ""
+    raw_dobj = result.get("dobj_id")
+    raw_iobj = result.get("iobj_id")
+    dobj_id = raw_dobj if isinstance(raw_dobj, str) and raw_dobj in scope_ids else None
+    iobj_id = raw_iobj if isinstance(raw_iobj, str) and raw_iobj in scope_ids else None
+    if isinstance(raw_iobj, str) and raw_iobj and iobj_id is None:
+        return NONE
+    spec = verbs.resolve(world_id, verb)
+    if dobj_id is None and target and spec is not None and spec.needs_dobj:
+        return Parse(verb, iobj_id=iobj_id, args=args, dobj_name=target)
+    # Fail safe: the model named a target that isn't in scope (hallucinated or
+    # ambiguous) -> no command, a gentle "don't understand" (not a wrong action).
+    if isinstance(raw_dobj, str) and raw_dobj and dobj_id is None:
+        return NONE
+    return Parse(verb, dobj_id=dobj_id, iobj_id=iobj_id, args=args)
+
+
+# The words after a verb that belong to it ("reach for", "climb up onto",
+# "look behind"): skipped before the name it acts on.
+_PARTICLES = frozenset({"up", "down", "for", "at", "on", "onto", "into", "in", "to", "over",
+                        "behind", "under", "through", "off", "out", "around", "toward",
+                        "towards", "inside", "across"})
+_NAME_ENDS = re.compile(r"(?i)\s+(?:off|from|out of)\s+.*$")
+_NOT_NAMES = frozenset({"it", "them", "him", "her", "this", "that", "these", "those", "me",
+                        "myself", "everything", "all", "something", "anything"})
+
+
+def _typed_target(text: str) -> str:
+    """The name a line gives its object, for a verb the model chose without
+    one: the words after the verb and its particles, without an article, cut
+    where a preposition begins ("reach for the lamp on the far shelf" ->
+    "lamp"). Empty for a pronoun or a name of four words or more."""
+    words = text.strip().rstrip(".!?").split()[1:]
+    while words and words[0].lower() in _PARTICLES:
+        words = words[1:]
+    name = _strip_article(" ".join(words))
+    name = _NAME_ENDS.sub("", _TRAILING_PHRASE.sub("", name)).strip()
+    if not name or name.lower() in _NOT_NAMES or len(name.split()) >= 4:
+        return ""
+    return name
+
+
+def interpret(result, text: str, vocab_names: set[str], scope_ids: set[str], world_id: str,
+              ground=None) -> list[Parse]:
+    """The commands one model reply means (its triage honoured when on).
+    `ground(name)` lists the in-scope ids a typed name matches; the runtime
+    passes the scope's own grounding, model-eval a stand-in over its scope,
+    so the eval scores exactly what the game would do."""
+    if not isinstance(result, dict):
+        return [NONE]
+    triage = config.parser_triage_enabled()
+    if triage and result.get("kind") in QUESTIONS:
+        return [Parse("meta", args=QUESTIONS[result["kind"]])]
+    target = result.get("target") if triage else ""
+    target = _strip_article(target.strip()) if isinstance(target, str) else ""
+    if len(target.split()) >= 4 or target.lower() in _NOT_NAMES:
+        target = ""
+    first = _one(result, vocab_names, scope_ids, world_id, target)
+    if triage:
+        first = _settle_target(first, result, text, world_id, ground)
+        if result.get("kind") == "gesture" and first.verb != "gesture" \
+                and "gesture" in vocab_names:
+            from daydream import gestures
+
+            word = gestures.find(text)
+            if word is not None:
+                who = first.dobj_id if first.verb not in ("none", "meta") else None
+                first = Parse("gesture", dobj_id=who, args=word)
+    out = [first]
+    more = result.get("then") if triage else None
+    if isinstance(more, list) and first is not NONE:
+        for extra in more[:2]:
+            if isinstance(extra, dict):
+                cmd = _one(extra, vocab_names, scope_ids, world_id)
+                if cmd is not NONE:
+                    out.append(cmd)
+    return out
+
+
+def _settle_target(cmd: Parse, result: dict, text: str, world_id: str, ground) -> Parse:
+    """A verb that needs an object but came back without an id: the name as
+    typed (the model's `target`, else the line's own words), grounded when
+    it names exactly one thing here, else carried as the typed name so
+    glimpses and "not here" answer it. A reply that named an id out of
+    scope stays refused (the fail-safe)."""
+    if cmd.verb in ("none", "meta") or cmd.dobj_id is not None:
+        return cmd
+    spec = verbs.resolve(world_id, cmd.verb)
+    if spec is None or not spec.needs_dobj:
+        return cmd
+    name = cmd.dobj_name or ("" if result.get("dobj_id") else _typed_target(text))
+    if not name:
+        return cmd
+    ids = ground(name) if ground is not None else []
+    if len(ids) == 1:
+        return Parse(cmd.verb, dobj_id=ids[0], iobj_id=cmd.iobj_id, args=cmd.args)
+    if ids:
+        return cmd  # several here by that name: the executor asks which
+    return Parse(cmd.verb, iobj_id=cmd.iobj_id, args=cmd.args, dobj_name=name)
+
+
+async def _llm_parse(actor_id: str, text: str, room: rooms.Room | None) -> list[Parse] | Parse:
+    """The model's reading of one segment: its commands (up to three), a
+    question about the game as a `meta` command, or an error Parse."""
     actor = objects.get(actor_id)
     world_id = actor.world_id if actor is not None else ""
     vocab = _verb_vocabulary(actor_id, room.id if room else "", world_id)
     scope = _scope_entries(actor_id)
     try:
         result = await client.acompletion_json(
-            system=SYSTEM, user=_user_prompt(text, vocab, scope),
+            system=system_prompt(), user=_user_prompt(text, vocab, scope),
             purpose="parser",
         )
     except client.LLMUnavailable as e:
         return Parse("none", error=str(e))
-
-    if not isinstance(result, dict):
-        return NONE
-    verb = str(result.get("verb", "none")).strip().lower()
-    if verb == "none" or verb not in {v["name"] for v in vocab}:
-        return NONE
-    args = result.get("args", "")
-    args = args.strip() if isinstance(args, str) else ""
-    scope_ids = {e["id"] for e in scope}
-    raw_dobj = result.get("dobj_id")
-    raw_iobj = result.get("iobj_id")
-    dobj_id = raw_dobj if isinstance(raw_dobj, str) and raw_dobj in scope_ids else None
-    iobj_id = raw_iobj if isinstance(raw_iobj, str) and raw_iobj in scope_ids else None
-    # Fail safe: the model named a target that isn't in scope (hallucinated or
-    # ambiguous) -> no command, a gentle "don't understand" (not a wrong action).
-    if isinstance(raw_dobj, str) and raw_dobj and dobj_id is None:
-        return NONE
-    if isinstance(raw_iobj, str) and raw_iobj and iobj_id is None:
-        return NONE
-    return Parse(verb, dobj_id=dobj_id, iobj_id=iobj_id, args=args)
+    return interpret(result, text, {v["name"] for v in vocab}, {e["id"] for e in scope},
+                     world_id, ground=lambda n: [o.id for o in _ground(actor_id, n)])
 
 
 # ---- vocabulary + scope for the LLM call -------------------------------
@@ -1093,5 +1231,8 @@ def _user_prompt(text: str, vocab: list[dict], scope: list[dict]) -> str:
         f"Verbs:\n{verb_lines}\n\n"
         f"Scope (objects you can refer to):\n{scope_lines}\n\n"
         f"Player input: {text}\n\n"
-        'Respond with JSON: {"verb": "...", "dobj_id": ..., "iobj_id": ..., "args": "..."}'
+        + ('Respond with JSON: {"verb": "...", "dobj_id": ..., "iobj_id": ..., "args": "...", '
+           '"kind": "..."}'
+           if config.parser_triage_enabled() else
+           'Respond with JSON: {"verb": "...", "dobj_id": ..., "iobj_id": ..., "args": "..."}')
     )

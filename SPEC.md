@@ -29,7 +29,7 @@ decisions (Context).
     reads gently rather than failing;
   - speech rules carry over: a dozing dreamer doesn't stir, and a resting
     one isn't here.
-- [ ] **3. Triage inside the parser's one call.** For a line the fast path
+- [x] **3. Triage inside the parser's one call.** For a line the fast path
   can't read, the parser's existing model call also returns its kind (world
   action, speech, a question about the game, a gesture, a sensory probe) and
   the target phrase as typed. The number of model calls per line does not
@@ -167,6 +167,15 @@ decisions (Context).
   two failed fixes, stop and rethink.
 - Run `ruff check .` before pushing (the pre-commit hook runs tests only).
 - Push bare, never behind a wrapper, and let the gate run `/codereview`.
+
+**Measured (criterion 3, 2026-09-29, Qwen3.5 9B AWQ on dev):** the parser
+corpus has grown to 50 cases since "47 of 48" was written; with triage off it
+scores 45/50 on the shipped model today, and with triage on 45/50. The
+triage set scores 32/34 (0.94) and a held-out set of 16 fresh phrasings,
+never used for tuning, 14/16. The parser call's p50 goes from about 1060 ms
+to about 1310 ms (the `kind` field is output tokens; the prompt's examples
+are input tokens, nearly free). Both suites score through
+`parser.interpret`, the runtime's own reading of the reply.
 
 **Sources:** the playtest note (the ten classes, the Infocom techniques and
 citations, the proposals), `daydream/glimpse.py` (the authored-then-prose-
