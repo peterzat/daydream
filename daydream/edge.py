@@ -359,7 +359,12 @@ def kv_create() -> int:
 
 def tail() -> int:
     _ensure_node_modules()
-    return subprocess.run(["npx", "--no-install", "wrangler", "tail", "daydream-edge"], cwd=EDGE,
+    # Errors only, in the short form: the JSON form (wrangler's default off a
+    # terminal, which is how an agent runs it) prints whole request URLs and
+    # headers, invite links among them, into whatever reads the output
+    # (security review 2026-09-29).
+    return subprocess.run(["npx", "--no-install", "wrangler", "tail", "daydream-edge",
+                           "--format", "pretty", "--status", "error"], cwd=EDGE,
                           env=_wrangler_env()).returncode
 
 

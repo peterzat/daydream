@@ -63,7 +63,8 @@ export async function watch(env, now = new Date()) {
   } else {
     let up = false;
     try {
-      const r = await timedFetch(env.ORIGIN + "/healthz", { headers: accessHeaders(env) }, 8000);
+      const r = await timedFetch(env.ORIGIN + "/healthz",
+        { headers: accessHeaders(env), redirect: "manual" }, 8000);
       up = r.ok;
     } catch (e) {
       up = false;
@@ -88,6 +89,14 @@ export async function handle(request, env) {
   const base = env.BASE || "/daydream/";
   const prefix = base.replace(/\/$/, "");
 
+  // Plain http never reaches the village: a password or an invite typed on
+  // an http page would cross the network in the clear (security review
+  // 2026-09-29). Path-scoped, so the rest of the host is untouched.
+  if (url.protocol === "http:") {
+    url.protocol = "https:";
+    if (env.PUBLIC_HOST) url.hostname = env.PUBLIC_HOST;
+    return Response.redirect(url.toString(), 301);
+  }
   if (env.PUBLIC_HOST && url.hostname !== env.PUBLIC_HOST) {
     url.hostname = env.PUBLIC_HOST;
     return Response.redirect(url.toString(), 301);
@@ -101,6 +110,13 @@ export async function handle(request, env) {
     return fetch(request);
   }
   const rest = url.pathname.slice(prefix.length); // "/..." as the origin sees it
+  // An encoded slash or backslash is refused: the origin decodes it, so
+  // "/api%2flogin" would reach login past the edge's sign-in rate rule, which
+  // matches the path as written (security review 2026-09-29). Nothing the
+  // app serves has one.
+  if (/%2f|%5c/i.test(rest)) {
+    return new Response("Bad request", { status: 400, headers: { "cache-control": "no-store" } });
+  }
 
   if (rest === "/_edge/portrait") {
     return portrait(request, env);
@@ -160,7 +176,9 @@ function unplanned(state) {
 async function statusBody(env, state) {
   if (state.state === "asleep") return publicState(env, state);
   try {
-    const r = await timedFetch(env.ORIGIN + "/healthz", { headers: accessHeaders(env) }, 4000);
+    // Never follow a redirect with the service token attached.
+    const r = await timedFetch(env.ORIGIN + "/healthz",
+      { headers: accessHeaders(env), redirect: "manual" }, 4000);
     if (r.ok) return publicState(env, state);
   } catch (e) {
     // fall through

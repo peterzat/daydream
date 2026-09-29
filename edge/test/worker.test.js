@@ -346,3 +346,25 @@ test("the watch leaves a planned sleep alone", async () => {
   assert.deepEqual(puts, []);
   assert.equal(calls.length, 0);
 });
+
+test("plain http is sent to https before anything else (security review 2026-09-29)", async () => {
+  const r = await handle(new Request("http://www.eidolon.com/daydream/login?x=1"), env());
+  assert.equal(r.status, 301);
+  assert.equal(r.headers.get("location"), "https://www.eidolon.com/daydream/login?x=1");
+  assert.equal(calls.length, 0);
+});
+
+test("an encoded slash never reaches the origin (the rate rule reads the path as written)", async () => {
+  for (const p of ["/daydream/api%2flogin", "/daydream/api%2Finvite%2Fredeem", "/daydream/assets%5cx"]) {
+    const r = await handle(req(p, { method: "POST" }), env());
+    assert.equal(r.status, 400, p);
+  }
+  assert.equal(calls.length, 0);
+});
+
+test("the status probe never follows a redirect with the token attached", async () => {
+  await handle(req("/daydream/edge/status"), env());
+  const probe = calls.find((c) => c.url.endsWith("/healthz"));
+  assert.ok(probe);
+  assert.equal(probe.init.redirect, "manual");
+});

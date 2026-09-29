@@ -8,7 +8,7 @@ Access service token lives only as the Worker's secrets.
 bin/game edge status     # the flag in KV, and the public answer
 bin/game edge test       # the Worker's unit tests (node)
 bin/game edge deploy     # tests, then wrangler deploy of edge/
-bin/game edge tail       # live Worker logs (needs the token's Workers Tail read)
+bin/game edge tail       # live Worker errors, short form (needs the token's Workers Tail read)
 bin/game edge sleep "<note>" | wake    # the flag only
 bin/game edge secrets    # set ACCESS_CLIENT_ID / ACCESS_CLIENT_SECRET (typed or piped)
 ```
