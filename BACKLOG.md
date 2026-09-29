@@ -470,3 +470,11 @@ kept with that deployment, not here.
 - **Why deferred:** Account and box settings, outside the repo; the guard hook, the player-text policy and the scan cover the near term.
 - **Revisit criteria:** Now, for any live instance; and whenever a new credential is placed on the box.
 - **Origin:** security review 2026-09-29 (H1).
+
+## Carried from specs
+
+### launch-demonstrations
+- **One-line description:** Demonstrate the nine going-live criteria that were built but not yet shown end to end: prod sandboxed as its own user (9), pinned and reversible releases including a rollback drill (10), dev and prod coexisting (11), each content path reaching prod (12), a backup restored into dev (13), the village sleeping visibly (15), keepsakes while asleep (16), the launch with a first friend's full flow from a phone (17), and an offsite backup restored (22). Full text: SPEC.md at d121a16.
+- **Why deferred:** The 2026-09-29 spec turned to play quality; these are operational drills, most of whose machinery already runs in prod.
+- **Revisit criteria:** Before inviting the second wave of friends, or at the next maintenance window, or when an incident exercises one of these paths.
+- **Origin:** spec 2026-09-27 (Going live), closed 14/23 on 2026-09-29.
