@@ -1329,6 +1329,8 @@ async def _receive_loop(ws: WebSocket, toon_id: str, token: str | None = None,
                         f"that's a lot to say at once; keep it under {MAX_INPUT_CHARS} characters")})
                     continue
                 conn["clarify"] = None
+                # A click keeps IT and the person current, as typing does.
+                parser.remember_referents(toon_id, msg.get("dobj_id"), msg.get("iobj_id"))
                 with _busy(heard):
                     await _handle_command(msg, toon_id)
                     await _send_threads_if_changed(ws, toon_id, conn)

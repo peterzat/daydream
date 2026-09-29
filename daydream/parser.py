@@ -111,9 +111,14 @@ class Clarify:
     args: str = ""
     dobj_id: str | None = None  # already-grounded other slot
     iobj_id: str | None = None
+    # An orphan ("Take what?"): no options, and the next line that isn't a
+    # command of its own completes the verb (spec 2026-09-29 criterion 11).
+    question: str = ""
 
     @property
     def prompt(self) -> str:
+        if not self.options:
+            return self.question or f"{self.verb.capitalize()} what?"
         names = ", ".join(n for _, n in self.options[:-1])
         last = self.options[-1][1]
         return f"Which {self.name} do you mean: {names} or {last}?"
@@ -181,6 +186,13 @@ async def parse_line(
     if actor is None:
         return LineParse()
 
+    room = rooms.get_room(actor.location_id) if actor.location_id else None
+    if pending is not None and not pending.options:
+        # "Take what?" -> "the lantern": the fragment completes the verb,
+        # unless it is a command of its own.
+        if not _starts_like_a_command(actor_id, text, room):
+            text = f"{pending.verb} {text}"
+        pending = None
     # A pending clarify: does this line answer it?
     if pending is not None:
         answered = _resolve_clarify(actor_id, pending, text)
@@ -198,7 +210,6 @@ async def parse_line(
     else:
         pronouns.remember_input(actor_id, text)
 
-    room = rooms.get_room(actor.location_id) if actor.location_id else None
     commands: list[Parse] = []
     segments = _segments(actor_id, text, room)
     for segment in segments:
@@ -213,6 +224,13 @@ async def parse_line(
             return LineParse(commands=tuple(commands), message=seg.message)
         commands.extend(seg)
     _remember(actor_id, commands)
+    if len(commands) == 1:
+        only = commands[0]
+        spec = verbs.resolve(actor.world_id, only.verb)
+        if (spec is not None and spec.needs_dobj and not only.dobj_id
+                and not only.dobj_name and not only.args.strip()):
+            return LineParse(clarify=Clarify(only.verb, "dobj", "", (),
+                                             question=f"{spec.ui_hint} what?"))
     return LineParse(commands=tuple(commands))
 
 
@@ -253,11 +271,25 @@ def _segments(actor_id: str, text: str, room) -> list[str]:
 
 
 def _remember(actor_id: str, commands: list[Parse]) -> None:
-    """IT tracks the last grounded direct object of the line."""
+    """IT tracks the last grounded thing of the line; HIM / HER / THEM the
+    last person it addressed."""
     for cmd in reversed(commands):
-        if cmd.dobj_id:
-            pronouns.remember_it(actor_id, cmd.dobj_id)
+        remember_referents(actor_id, cmd.dobj_id, cmd.iobj_id)
+        if cmd.dobj_id or cmd.iobj_id:
             break
+
+
+def remember_referents(actor_id: str, *ids: str | None) -> None:
+    """Keep IT and the person current from what a command touched (typed or
+    clicked): a thing becomes IT, a person the one HIM / HER / THEM mean."""
+    for oid in ids:
+        obj = objects.get(oid) if oid else None
+        if obj is None or obj.id == actor_id:
+            continue
+        if obj.kind == "toon":
+            pronouns.remember_person(actor_id, obj.id)
+        elif obj.kind == "thing":
+            pronouns.remember_it(actor_id, obj.id)
 
 
 # ---- clarify resolution ------------------------------------------------------
@@ -379,6 +411,8 @@ def _fast_path(actor_id: str, text: str, room: rooms.Room | None):
             return [Parse("examine", dobj_id=matches[0].id)]
         if len(matches) > 1:
             return _clarify("examine", "dobj", target, matches)
+        if target.lower() in ("it", "them") and pronouns.it_name(actor_id):
+            target = pronouns.it_name(actor_id)  # a glimpsed thing, by its name
         if target and len(target.split()) < 4:
             # "look at me", "look at the room", "look in my satchel", "look at
             # the keeper's hands": the dreamer, the place, what they carry, the one
@@ -524,6 +558,8 @@ def _fast_path(actor_id: str, text: str, room: rooms.Room | None):
         # to the LLM instead.
         if iobj_part is not None or len(name.split()) >= 4:
             return None
+        if name.lower() in ("it", "them") and pronouns.it_name(actor_id):
+            name = pronouns.it_name(actor_id)  # a glimpsed thing, by its name
         if said != verb and verb in ("take", "examine") and (
                 _ALIAS_IDIOM.search(dobj_part)
                 or _strip_article(dobj_part).lower() in _SELF_WORDS | _SATCHEL_WORDS):
@@ -692,6 +728,12 @@ def _ask_fast_path(actor_id: str, rest: str):
         idx = low.find(" about ")
         who, topic = (rest[:idx], rest[idx + 7:]) if idx >= 0 else (rest, "")
     who = _strip_article(who)
+    if topic.strip().lower() in ("it", "that", "this", "them"):
+        # "ask <someone> about it": the thing IT means, by its name (spec
+        # 2026-09-29 criterion 11).
+        ref = pronouns.it_referent(actor_id)
+        thing = objects.get(ref) if ref else None
+        topic = thing.name if thing is not None else (pronouns.it_name(actor_id) or topic)
     if not who:
         others = [o for o in objects.in_scope(actor_id)
                   if o.kind == "toon" and o.id != actor_id]
@@ -732,7 +774,16 @@ def _ground(actor_id: str, name: str) -> list[objects.Object]:
     needle = _strip_article(name).strip()
     if not needle:
         return []
-    if needle.lower() == "it":
+    low = needle.lower()
+    if low in ("him", "her", "them"):
+        ref = pronouns.person_referent(actor_id)
+        for o in objects.in_scope(actor_id) if ref else []:
+            if o.id == ref:
+                return [o]
+        if low != "them":
+            return []
+        low = "it"  # THEM for things is IT
+    if low == "it":
         ref = pronouns.it_referent(actor_id)
         if ref:
             for o in objects.in_scope(actor_id):

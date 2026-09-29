@@ -288,10 +288,12 @@ async def test_use_x_on_or_with_y_is_fast_path(monkeypatch, prep):
 
 @pytest.mark.asyncio
 async def test_bare_give_prompts_deterministically(monkeypatch):
-    # "give" alone -> a bare Parse so execute_command narrates "Give what?"; no LLM.
+    # "give" alone asks "Give what?" deterministically, as an orphan the next
+    # line can complete (spec 2026-09-29 criterion 11); no LLM.
     spy = _mock_llm(monkeypatch, {"verb": "none"})
-    p = await parser.parse("t-wren", "give")
-    assert p.verb == "give" and p.dobj_id is None and p.iobj_id is None
+    lp = await parser.parse_line("t-wren", "give")
+    assert not lp.commands and lp.clarify is not None
+    assert lp.clarify.verb == "give" and lp.clarify.prompt == "Give what?"
     spy.assert_not_called()
 
 
@@ -313,11 +315,13 @@ async def test_two_target_miss_defers_to_llm(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_bare_plant_is_fast_path(monkeypatch):
-    # Bare "plant" -> Parse("plant") deterministically; execute_command then
-    # narrates "Plant what?". Zero LLM calls (SPEC 2026-07-02 criterion 5).
+    # Bare "plant" asks "Plant what?" deterministically, as an orphan the next
+    # line can complete. Zero LLM calls (SPEC 2026-07-02 criterion 5;
+    # spec 2026-09-29 criterion 11).
     spy = _mock_llm(monkeypatch, {"verb": "none"})
-    p = await parser.parse("t-wren", "plant")
-    assert p.verb == "plant" and p.dobj_id is None and p.args == ""
+    lp = await parser.parse_line("t-wren", "plant")
+    assert not lp.commands and lp.clarify is not None
+    assert lp.clarify.verb == "plant" and lp.clarify.prompt == "Plant what?"
     spy.assert_not_called()
 
 
@@ -444,8 +448,8 @@ async def test_take_from_a_container_naming_nothing_asks_what(monkeypatch):
     """"take from the anvil" names nothing to take (it once read back "you
     don't see the from the anvi here")."""
     spy = _mock_llm(monkeypatch, {"verb": "none"})
-    p = await parser.parse("t-wren", "take from the anvil")
-    assert (p.verb, p.dobj_id, p.dobj_name) == ("take", None, None)
+    lp = await parser.parse_line("t-wren", "take from the anvil")
+    assert not lp.commands and lp.clarify is not None and lp.clarify.prompt == "Take what?"
     spy.assert_not_called()
 
 

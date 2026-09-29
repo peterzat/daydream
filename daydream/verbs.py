@@ -506,6 +506,9 @@ async def _execute_resolved(
 
                 seen = await glimpse.answer(actor, room_id, dobj_name, spec.name)
                 if seen is not None:
+                    from daydream import pronouns
+
+                    pronouns.remember_it_name(actor_id, dobj_name)  # "look at it" next
                     _dispatch(actor, room_id, [seen], spec)
                     return
                 _narrate(room_id, f"You don't see the {dobj_name} here.",
