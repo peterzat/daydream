@@ -149,6 +149,17 @@ def _reset_accounts():
 
 
 @pytest.fixture(autouse=True)
+def _reset_presence_throttle():
+    """Leave/claim/kick share a per-account budget in module state; clear it
+    so one test's comings and goings never throttle the next."""
+    from daydream.api import slots
+
+    slots.reset_presence_throttle()
+    yield
+    slots.reset_presence_throttle()
+
+
+@pytest.fixture(autouse=True)
 def _reset_in_flight():
     """The WS layer dedups in-flight image gen via a module-level set;
     reset between tests so prior state never bleeds through."""

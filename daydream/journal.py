@@ -100,13 +100,26 @@ def append_authored(toon_id: str, text: str) -> None:
     _append(toon_id, {"text": line, "at": _now(), "authored": True})
 
 
+# Dreamers whose recap is being written now. One at a time per dreamer: a
+# leave-and-rejoin loop queued a model call per leave, all over the same
+# events, ahead of every player's words (security review 2026-09-29).
+_writing: set[str] = set()
+
+
 async def write_entry(toon_id: str) -> None:
     """Recap the toon's recent events into one journal entry. Fire-and-forget
-    safe: every failure path logs and returns; nothing raises out of here."""
+    safe: every failure path logs and returns; nothing raises out of here. A
+    second call while one is running for the same dreamer does nothing (the
+    running one covers the same events)."""
+    if toon_id in _writing:
+        return
+    _writing.add(toon_id)
     try:
         await _write_entry_inner(toon_id)
     except Exception:  # broad by contract: this runs as a background task
         logger.exception("journal: unexpected error for %s (entry skipped)", toon_id)
+    finally:
+        _writing.discard(toon_id)
 
 
 async def _write_entry_inner(toon_id: str) -> None:
@@ -135,6 +148,9 @@ async def _write_entry_inner(toon_id: str) -> None:
             max_tokens=220,
             timeout=20.0,
             purpose="journal",
+            # Nobody waits on a recap: it takes the background slot, which
+            # never delays a player's words or a painting.
+            gate="background",
         )
     except client.LLMUnavailable as e:
         logger.info("journal: LLM unavailable for %s (entry skipped): %s", toon_id,

@@ -31,6 +31,8 @@ from __future__ import annotations
 import asyncio
 import logging
 import re
+import time
+from collections import deque
 
 from fastapi import APIRouter, HTTPException, Request
 
@@ -79,6 +81,29 @@ def _require_authed(request: Request) -> accounts.Principal:
 
 def _session_id(request: Request) -> str:
     return _require_authed(request).session_id
+
+
+# A person leaves and comes back a few times a minute at most. A loop of
+# leave-and-claim re-snapshotted every connected player twice a cycle and
+# queued a journal each time (security review 2026-09-29), so these three
+# share a small per-account budget.
+PRESENCE_RATE = (10, 60.0)  # actions, seconds
+_presence_hits: dict[str, deque] = {}
+
+
+def _presence_throttle(who: accounts.Principal) -> None:
+    n, window = PRESENCE_RATE
+    now = time.monotonic()
+    q = _presence_hits.setdefault(who.account_id, deque())
+    while q and now - q[0] > window:
+        q.popleft()
+    if len(q) >= n:
+        raise HTTPException(status_code=429, detail="slow down a moment")
+    q.append(now)
+
+
+def reset_presence_throttle() -> None:
+    _presence_hits.clear()
 
 
 def _validate_slot(slot: int) -> None:
@@ -240,6 +265,7 @@ async def claim_slot(slot: int, request: Request) -> dict:
     have a dreamer."""
     who = _require_authed(request)
     _validate_slot(slot)
+    _presence_throttle(who)
     t = toons.get_toon_in_slot(slot)
     if t is None:
         raise HTTPException(status_code=404, detail="that dreamer isn't here any more")
@@ -277,6 +303,7 @@ async def kick_slot(slot: int, request: Request) -> dict:
     someone else's."""
     who = _require_authed(request)
     _validate_slot(slot)
+    _presence_throttle(who)
     t = toons.get_toon_in_slot(slot)
     if t is None:
         raise HTTPException(status_code=404, detail="that dreamer isn't here any more")
@@ -290,6 +317,9 @@ async def kick_slot(slot: int, request: Request) -> dict:
         # next connect's auto-enter wakes it at once, in the start room.
         accounts.set_left(who.session_id, True)
         _departed(toon)
+        from daydream.api import ws as ws_mod
+
+        await ws_mod.close_session_sockets(who.session_id)
     logger.info("dreamer rested: %s by %s", toon.name, who.username)
     return _toon_to_dict(toon, who.session_id)
 
@@ -325,6 +355,7 @@ async def leave_session(request: Request) -> dict:
     succeeds regardless of LLM state and never waits on the write. The WS
     disconnect is deliberately NOT a trigger: the reconnect overlay rides
     out transient drops all the time and would double-write."""
+    _presence_throttle(_require_authed(request))
     sid = _session_id(request)
     released = toons.release_session_toon(sid)
     accounts.set_left(sid, True)
@@ -333,6 +364,9 @@ async def leave_session(request: Request) -> dict:
         logger.info("left the dream: %s (%s)", released.name,
                     who.username if who else "unknown account")
         _departed(released)
+        from daydream.api import ws as ws_mod
+
+        await ws_mod.close_session_sockets(sid)  # a page kept open stops listening
     return {"ok": True, "released": released.id if released else None}
 
 

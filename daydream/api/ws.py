@@ -166,6 +166,13 @@ def _still_mine(toon_id: str, session_id: str) -> bool:
 ELSEWHERE = 4409  # close code: this toon is being dreamed in another window
 
 
+def _still_dreaming(toon_id: str, session_id: str) -> bool:
+    """This session still holds the toon, awake (not rested). A missing toon
+    keeps its own handling (a swap, a delete)."""
+    t = toons.get_toon(toon_id)
+    return t is None or (t.controller_session == session_id and bool(t.is_human_controlled))
+
+
 def _current_room_id(toon_id: str) -> str:
     """Authoritative 'where is the controlled toon right now' for the
     given toon. Reads from DB on each call; the room flips as the
@@ -277,6 +284,9 @@ def _state_snapshot(
         recent = events.fetch_since(
             max(resume_since, last_seq - RESUME_DEPTH), room_id=room_id,
             recipient_for=toon_id,
+            # No older than an arrival shows: a crafted `since` read a quiet
+            # room's hours-old speech (security review 2026-09-29).
+            within_s=ARRIVAL_REPLAY_S,
         )
     # The first snapshot of a room (a move's arrival, a fresh load's empty log,
     # a reconnect's replay) sets the cut for the rest of the visit: a later
@@ -611,8 +621,11 @@ async def _generate_and_emit(
 
 
 def reset_in_flight() -> None:
-    """Test helper: clear the in-flight generation set."""
+    """Test helper: clear the in-flight generation set (and the per-session
+    socket registry and rate budgets)."""
     _generating.clear()
+    _session_sockets.clear()
+    _session_buckets.clear()
 
 
 def enqueue_room_regen(room_id: str, prompt_override: str | None = None) -> str:
@@ -900,6 +913,65 @@ def is_session_live(session_id: str | None) -> bool:
     return bool(session_id) and _live_session_counts.get(session_id, 0) > 0
 
 
+# A session's dreaming sockets, oldest first, and the one rate budget they
+# share. A page needs one, a reconnect briefly two; twenty on one session
+# multiplied the per-frame budget and every snapshot fan-out (security review
+# 2026-09-29), so past the cap the oldest is told it is dreaming elsewhere.
+MAX_SOCKETS_PER_SESSION = 3
+_session_sockets: dict[str, list[WebSocket]] = {}
+_session_buckets: dict[str, "_Bucket"] = {}
+
+
+def _register_socket(session_id: str | None, ws: WebSocket) -> list[WebSocket]:
+    """Add a socket; return the ones the cap pushes out (oldest first)."""
+    if not session_id:
+        return []
+    socks = _session_sockets.setdefault(session_id, [])
+    socks.append(ws)
+    evicted = socks[:-MAX_SOCKETS_PER_SESSION] if len(socks) > MAX_SOCKETS_PER_SESSION else []
+    del socks[:len(evicted)]
+    return evicted
+
+
+def _unregister_socket(session_id: str | None, ws: WebSocket) -> None:
+    socks = _session_sockets.get(session_id or "")
+    if socks is None:
+        return
+    if ws in socks:
+        socks.remove(ws)
+    if not socks:
+        _session_sockets.pop(session_id, None)
+        _session_buckets.pop(session_id, None)
+
+
+def _bucket_for(session_id: str | None) -> "_Bucket":
+    if not session_id:
+        return _Bucket()
+    b = _session_buckets.get(session_id)
+    if b is None:
+        b = _session_buckets[session_id] = _Bucket()
+    return b
+
+
+async def _tell_elsewhere(ws: WebSocket) -> None:
+    try:
+        await ws.send_json({"kind": "elsewhere"})
+        await ws.close(code=ELSEWHERE)
+    except Exception:
+        pass  # already gone
+
+
+async def close_session_sockets(session_id: str | None) -> None:
+    """End a session's sockets (it left the dream, or rested its dreamer):
+    a page that stayed open must not go on hearing the room unlisted
+    (security review 2026-09-29). The stock page has closed its own."""
+    for ws in list(_session_sockets.get(session_id or "", [])):
+        try:
+            await ws.close(code=status.WS_1000_NORMAL_CLOSURE)
+        except Exception:
+            pass
+
+
 # How long a player's page may be closed before they read as dozing: a phone
 # switching to its messages for a moment drops the socket and picks it back
 # up with the room's missed lines, so a hello in that minute still lands
@@ -1021,6 +1093,8 @@ async def ws_endpoint(ws: WebSocket):
                 _current_room_id(toon_id), " (reconnect)" if reconnect else "")
     try:
         _mark_session_live(session_id)
+        for old in _register_socket(session_id, ws):
+            asyncio.create_task(_tell_elsewhere(old))
         last_seq = events.max_seq()
         first = _state_snapshot(last_seq, toon_id, view, resume_since)
         await ws.send_json(first)
@@ -1066,6 +1140,7 @@ async def ws_endpoint(ws: WebSocket):
                              exc_info=t.exception())
     finally:
         _unmark_session_live(session_id)
+        _unregister_socket(session_id, ws)
         events.unsubscribe(queue)
         logger.info("ws: %s closed after %ds", who.username, int(time.monotonic() - opened))
 
@@ -1101,6 +1176,7 @@ async def _handle_command(msg: dict, toon_id: str) -> None:
 # a script does not). Over either limit a frame is refused with no effect.
 MAX_INPUT_CHARS = 500
 MAX_FRAME_CHARS = 2000   # a whole frame, any kind (a command's args included)
+MAX_VERB_CHARS = 32      # the longest verb name is a word
 RATE_BURST = 12          # frames available at once
 RATE_PER_SECOND = 3.0    # refill
 SESSION_RECHECK_S = 30.0  # an idle socket's session is re-read this often
@@ -1129,7 +1205,7 @@ async def _receive_loop(ws: WebSocket, toon_id: str, token: str | None = None,
     # `threads` are the ones the first snapshot carried (sent again only
     # when they change).
     conn: dict = {"clarify": None, "threads": threads}
-    bucket = _Bucket()
+    bucket = _bucket_for(session_id)  # shared by the session's sockets
     # Transient frames for this page (a reply on its way): daydream/live.py.
     from daydream import live
 
@@ -1161,6 +1237,11 @@ async def _receive_loop(ws: WebSocket, toon_id: str, token: str | None = None,
                 await ws.send_json({"kind": "elsewhere"})
                 await ws.close(code=ELSEWHERE)
                 return
+            if session_id is not None and not _still_dreaming(toon_id, session_id):
+                # Rested (left the dream, or rested from the shell): a page
+                # that stayed open does not go on acting unlisted.
+                await ws.close(code=status.WS_1000_NORMAL_CLOSURE)
+                return
             if not bucket.take():
                 now = time.monotonic()
                 if now - bucket.warned_at > 5:
@@ -1182,6 +1263,12 @@ async def _receive_loop(ws: WebSocket, toon_id: str, token: str | None = None,
                     await ws.send_json(frame)
                 await _send_threads_if_changed(ws, toon_id, conn)
             elif kind == "command":
+                if len(str(msg.get("args", ""))) > MAX_INPUT_CHARS \
+                        or len(str(msg.get("verb", ""))) > MAX_VERB_CHARS:
+                    # A command's words are as much a player's as a typed line.
+                    await ws.send_json({"kind": "notice", "text": (
+                        f"that's a lot to say at once; keep it under {MAX_INPUT_CHARS} characters")})
+                    continue
                 conn["clarify"] = None
                 await _handle_command(msg, toon_id)
                 await _send_threads_if_changed(ws, toon_id, conn)
@@ -1243,6 +1330,11 @@ async def _broadcast_loop(
             if session_id is not None and not _still_mine(toon_id, session_id):
                 await ws.send_json({"kind": "elsewhere"})
                 await ws.close(code=ELSEWHERE)
+                return
+            # Rested: nor does it go on hearing the room unlisted (security
+            # review 2026-09-29: a page kept open after "leave" did).
+            if session_id is not None and not _still_dreaming(toon_id, session_id):
+                await ws.close(code=status.WS_1000_NORMAL_CLOSURE)
                 return
             # Private events (migration 014): addressed to this toon, always
             # delivered — even across a room change (a death respawn's message

@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
+from starlette.websockets import WebSocketDisconnect
 
 from daydream import config, db, events
 from daydream.server import app
@@ -177,11 +178,15 @@ def test_the_away_note_survives_the_leavers_own_open_page():
                 client.cookies.set(config.cookie_name(), ivo)
                 assert client.post("/api/session/leave").status_code == 200
                 client.cookies.clear()
-                # Mira dreams on, an hour later; her words reach Ivo's old
-                # socket, so it has processed everything the leave emitted.
+                # Ivo's old page stops hearing the room at once (security
+                # review 2026-09-29: it went on listening, unlisted), so it
+                # can never read the stamp.
+                with pytest.raises(WebSocketDisconnect):
+                    _until(ws2, lambda m: False)
+                # Mira dreams on, an hour later.
                 worldclock.advance(hours=1)
                 ws.send_json({"kind": "command", "verb": "say", "args": "hello"})
-                _until(ws2, lambda m: m["kind"] == "event" and m["event"]["kind"] == "say")
+                _until(ws, lambda m: m["kind"] == "event" and m["event"]["kind"] == "say")
             # Ivo comes back: the note is still there to be told, once.
             client.cookies.set(config.cookie_name(), ivo)
             assert client.post(f"/api/slots/{ivo_slot}/claim").status_code == 200
