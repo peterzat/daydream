@@ -121,6 +121,24 @@ def test_the_shapes_a_command_hides_in(cmd, want):
     assert (got[0] if got else None) == want, (cmd, got)
 
 
+@pytest.mark.parametrize("cmd,want", [
+    # Security WARN 2026-09-29: the parser had dropped these.
+    ("cat < " + HOME_SSH, "deny"),  # a credential as a redirection target
+    ("echo key >> ~/." + "ssh/authorized_keys", "deny"),
+    ("# it's up\ngh auth token", "deny"),  # a comment with an apostrophe
+    ("git credential fill", "deny"),
+    ("printf 'host=github.com\\n' | gh auth git-credential get", "deny"),
+    ("/srv/daydream/current/bin/game edge secrets", "ask"),  # edge verbs from a release
+    ("for x in 1; do bin/game prod account role m admin; done", "ask"),  # after keywords
+    ("if true; then bin/game prod pull; fi", "ask"),
+    ("f() { bin/game prod sleep; }; f", "ask"),
+    ("while true; do gh auth token; done", "deny"),
+])
+def test_the_shapes_the_rewrite_had_let_through(cmd, want):
+    got = _bash(cmd)
+    assert (got[0] if got else None) == want, (cmd, got)
+
+
 @pytest.mark.parametrize("tool,inp,want", [
     ("Edit", {"file_path": "/repo/tools/agent_guard.py"}, "ask"),
     ("Write", {"file_path": "/repo/.claude/settings.local.json"}, "ask"),

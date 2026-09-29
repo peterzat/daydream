@@ -58,7 +58,7 @@ def test_a_complete_prod_config_boots(monkeypatch):
     ({"DAYDREAM_PUBLIC_ORIGIN": "http://www.example.com"}, "https"),
     ({"DAYDREAM_PUBLIC_BASE": ""}, "PUBLIC_BASE"),
     ({"DAYDREAM_BIND_HOST": "0.0.0.0"}, "loopback"),
-    ({"DAYDREAM_BIND_HOST": "100.70.19.124"}, "loopback"),
+    ({"DAYDREAM_BIND_HOST": "100.64.0.1"}, "loopback"),  # a tailnet address
 ])
 def test_prod_refuses_each_missing_guard(monkeypatch, override, needle):
     env = dict(PROD_OK)

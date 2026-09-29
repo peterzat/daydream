@@ -33,6 +33,14 @@ CREDENTIAL_PATHS = (".ssh/", ".ssh", ".config/gh", ".config/daydream", "/srv/day
 WRAPPERS = {"timeout", "time", "nice", "nohup", "stdbuf", "command", "builtin", "env",
             "exec", "xargs", "sudo", "setsid", "ionice", "flock", "watch"}
 SHELLS = {"bash", "sh", "zsh", "dash"}
+SHELL_KEYWORDS = {"if", "then", "else", "elif", "do", "while", "until", "{", "}", "!",
+                  "function"}
+# Commands that print a credential without naming its file (this box's git
+# credential helper for github.com is gh).
+TOKEN_PRINTERS = re.compile(
+    r"\bgh\s+auth\s+token\b|\bgh\s+auth\s+status\b[^\n;|&]*(-t\b|--show-token)"
+    r"|\bgh\s+auth\s+git-credential\b|\bgit\s+credential\s+(fill|get)\b"
+    r"|\bgit\s+credential-\w+\s+get\b")
 
 # (subcommand, verb[, ...]) prefixes of `bin/game prod|edge` that always ask.
 ASK_PROD = [
@@ -113,7 +121,9 @@ def _unwrap(argv: list[str]) -> list[list[str]]:
     i = 0
     while i < len(argv):
         w = argv[i]
-        if re.match(r"^[A-Za-z_][A-Za-z0-9_]*=", w):
+        if re.match(r"^[A-Za-z_][A-Za-z0-9_]*=", w) or w in SHELL_KEYWORDS:
+            # `do bin/game ...`, `then gh ...`, `{ cmd; }`: the command follows
+            # (security WARN 2026-09-29).
             i += 1
             continue
         base = os.path.basename(w)
@@ -158,7 +168,7 @@ def _gated(argv: list[str]) -> str | None:
     exe = os.path.normpath(argv[0])
     if exe.endswith("bin/game") or exe == "game":
         args = argv[1:]
-        if exe.startswith("/srv/daydream/") and args[:1] != ["prod"]:
+        if exe.startswith("/srv/daydream/") and args[:1] not in (["prod"], ["edge"]):
             # A release's own bin/game run directly: its verbs are prod's.
             args = ["prod", *args]
         if not args or args[0] not in ("prod", "edge"):
@@ -214,6 +224,15 @@ def decide(payload: dict) -> tuple[str, str] | None:
     if tool != "Bash":
         return None
     command = str(inp.get("command") or "")
+    # Over the raw line, before any parsing: a credential path anywhere,
+    # redirection targets included (`cat < file`), and the commands that
+    # print a token without naming a file (security WARN 2026-09-29: the
+    # parsed argv left redirection targets and comment-broken lines out).
+    p = _names_credentials(re.findall(r"\S+", command))
+    if p:
+        return "deny", f"{p} holds this box's credentials; the agent does not open it"
+    if TOKEN_PRINTERS.search(command):
+        return "deny", "the GitHub token stays where it is"
     hit = _protected_write(command)
     if hit:
         return "ask", f"{hit} guards this session's permissions; the operator confirms a change"
