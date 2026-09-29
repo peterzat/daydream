@@ -192,12 +192,14 @@ def test_propagated_seed_grows_twice_over_ws():
                 assert "dreamseed" in by_name, "the propagated child is here"
                 assert "spent dreamseed" in by_name  # the parent's husk
                 child_id = by_name["dreamseed"]["id"]
-                assert "plant" in by_name["dreamseed"]["verbs"]
+                # Planted from the hand: on the ground it offers take.
+                assert "take" in by_name["dreamseed"]["verbs"]
                 # Take the child and plant it again, in place.
                 sock.send_json({"kind": "command", "verb": "take",
                                 "dobj_id": child_id})
                 snap = _next_snapshot(sock)
-                assert any(o["name"] == "dreamseed" for o in snap["inventory"])
+                seed_card = next(o for o in snap["inventory"] if o["name"] == "dreamseed")
+                assert "plant" in seed_card["verbs"]  # in hand, it can be planted
                 sock.send_json({"kind": "command", "verb": "plant",
                                 "dobj_id": child_id,
                                 "args": "a hollow of soft ferns"})

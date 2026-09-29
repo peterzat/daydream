@@ -237,6 +237,7 @@
         "bell-rain": {
           "npc": "t-bell",
           "topic": "the rain on one cobble",
+          "topic_open": true,
           "topic_aliases": [
             "the little rain",
             "the rain",
@@ -259,6 +260,7 @@
         "hear-beginning": {
           "npc": "t-rain-wait",
           "topic": "the story",
+          "topic_open": true,
           "per_player": true,
           "topic_aliases": [
             "story",
@@ -277,6 +279,7 @@
         "fen-letter": {
           "npc": "t-fen",
           "topic": "the end of a story",
+          "topic_mentions": ["write me the end"],
           "topic_aliases": [
             "the end of the story",
             "the ending",

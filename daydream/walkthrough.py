@@ -51,6 +51,7 @@ from daydream import (
     collect,
     db,
     events,
+    heard,
     knowledge,
     objects,
     parser,
@@ -174,6 +175,10 @@ async def run_step(run: Run, step: dict, *, honor_at: bool = True) -> None:
         await verbs.execute_command(actor, c["verb"], c.get("dobj_id"), c.get("iobj_id"),
                                     c.get("args", ""))
     run.steps += 1
+    # The snapshot a real page receives after each step: what stands in front
+    # of each player becomes known (daydream.heard), as it does in play.
+    for a in run.actors.values():
+        heard.known_keys(world_id, a)
     said = [e.payload.get("text", "") for e in events.fetch_since(before)
             if e.kind == "narrate" and (e.recipient_id in (None, actor))
             and e.payload.get("except") != actor]

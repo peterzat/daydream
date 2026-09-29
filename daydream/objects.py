@@ -184,6 +184,16 @@ def things_where_property(world_id: str, key: str, value) -> list[Object]:
     return [Object.from_row(r) for r in rows]
 
 
+def all_of_kind(world_id: str, kind: str) -> list[Object]:
+    """Every object of one kind in a world, by id (the residents, for the
+    vocabulary of what can be asked about)."""
+    rows = db.get_conn().execute(
+        "SELECT * FROM objects WHERE world_id = ? AND kind = ? ORDER BY id",
+        (world_id, kind),
+    ).fetchall()
+    return [Object.from_row(r) for r in rows]
+
+
 def by_slug(world_id: str, slug: str, kind: str = "room") -> Object | None:
     """Find an object by its `properties.slug` within a world. Rooms carry a
     slug; this is the slug→room resolver the view layer needs."""

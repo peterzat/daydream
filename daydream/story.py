@@ -518,6 +518,7 @@ def available_topics(npc: objects.Object, actor_id: str) -> list[dict]:
             out.append({"label": beat["topic"].strip(),
                         "aliases": [a for a in beat.get("topic_aliases") or []
                                     if isinstance(a, str)],
+                        "open": beat.get("topic_open") is True,
                         "kind": "beat", "arc": arc_id, "beat": beat_id})
     topics = npc.properties.get("topics")
     ctx = _ctx(world_id, actor_id, None, npc, f"topics:{npc.id}")
@@ -530,8 +531,20 @@ def available_topics(npc: objects.Object, actor_id: str) -> list[dict]:
             continue
         out.append({"label": t["label"].strip(),
                     "aliases": [a for a in t.get("aliases") or [] if isinstance(a, str)],
+                    "open": t.get("open") is True,
                     "kind": "topic", "index": idx})
     return out
+
+
+def offered_topics(npc: objects.Object, actor_id: str) -> list[dict]:
+    """The ask-about chips: the available topics whose subject this player
+    has come across (`daydream.heard`), or that are authored `open`. Typing
+    reaches every available topic; only the chips wait for the fiction to
+    name them (playtest 2026-09-29)."""
+    from daydream import heard
+
+    known = heard.known_keys(npc.world_id, actor_id)
+    return [t for t in available_topics(npc, actor_id) if heard.knows(t, known)]
 
 
 def match_topic(npc: objects.Object, actor_id: str, text: str) -> dict | None:
@@ -656,6 +669,10 @@ def mark_asked(world_id: str, npc_id: str, toon_id: str, label: str) -> None:
     key = normalize_topic(label)
     if key and key not in got:
         pset(world_id, toon_id, f"asked:{npc_id}", (got + [key])[-200:])
+    # Asked once, known from then on, of anyone (a typed guess included).
+    from daydream import heard
+
+    heard.add(world_id, toon_id, [heard.key_of(label)])
 
 
 def ask(actor: objects.Object, npc: objects.Object, topic: dict, room_id: str) -> None:

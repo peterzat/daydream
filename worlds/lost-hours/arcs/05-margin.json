@@ -145,6 +145,7 @@
         "bell-startles": {
           "npc": "t-bell",
           "topic": "the Margin Afternoon",
+          "topic_open": true,
           "topic_aliases": [
             "the afternoon",
             "afternoon",
@@ -167,6 +168,7 @@
         "see-drawing": {
           "npc": "t-margin",
           "topic": "the drawing",
+          "topic_open": true,
           "topic_aliases": [
             "drawing",
             "its drawing",
@@ -190,6 +192,9 @@
         "fen-pencil": {
           "npc": "t-fen",
           "topic": "a pencil",
+          "topic_mentions": [
+            "an empty middle"
+          ],
           "per_player": true,
           "topic_aliases": [
             "pencil",

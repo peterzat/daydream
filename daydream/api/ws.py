@@ -38,6 +38,7 @@ from daydream import (
     config,
     dream,
     events,
+    heard,
     inputs,
     journal,
     lighting,
@@ -250,6 +251,10 @@ def _state_snapshot(
     # distinctly and separate it from WHO ELSE IS HERE. It is also in `toons`
     # (all co-located toons) for back-compat; the client filters it out there.
     self_toon = next((t for t in toons_in if t.id == toon_id), None) or toons.get_toon(toon_id)
+    # What stands in front of the player is known from now on: the ask-about
+    # chips wait for the fiction to name a subject (daydream.heard).
+    if room is not None and lit:
+        heard.known_keys(room.world_id, toon_id)
     if resume_since is _REPLAY_RECENT:
         # Move / effect re-snapshots: the room's recent history. Private
         # events addressed to other toons are filtered out (migration 014).
@@ -332,7 +337,7 @@ def _state_snapshot(
         # WHO YOU ARE: the controlled toon, named explicitly so the SPA never
         # has to guess which co-located toon is the player.
         "self": _toon_card(self_toon) if self_toon is not None else None,
-        "inventory": [_object_card(o) for o in inventory_in],
+        "inventory": [_object_card(o, carried=True) for o in inventory_in],
         "skills": [{"name": s.name, "ui_hint": s.ui_hint, "kind": s.kind} for s in available],
         # The verb bar — verb-then-object. Two-object verbs (give/use) carry
         # `needs_iobj` + `valid_iobj_kinds` so the client can drive the second
@@ -350,6 +355,9 @@ def _state_snapshot(
                 "needs_text": v.needs_text,
                 "text_prompt": v.text_prompt,
                 "preps": list(v.preps),
+                # Where its direct object must be ("carried" / "here" /
+                # "any"), so the page can say why nothing lights.
+                "where": verbs.dobj_where(v.name),
             }
             for v in verbs.bar_verbs(room.world_id if room else None, toon_id)
         ],
@@ -412,7 +420,7 @@ def _room_at(room_id: str) -> str:
     return at if at in ("in", "on", "at") else "in"
 
 
-def _object_card(o: "objects.Object", depth: int = 0) -> dict:
+def _object_card(o: "objects.Object", depth: int = 0, carried: bool = False) -> dict:
     """A scene object as the SPA needs it: id + kind + name + verb affordances
     (and aliases, for client-side narration linking). A see-through container
     nests its contents as child cards (criterion 4) — a closed opaque one
@@ -431,7 +439,9 @@ def _object_card(o: "objects.Object", depth: int = 0) -> dict:
         "name": o.name,
         "kind": o.kind,
         "aliases": o.aliases,
-        "verbs": objects.verbs_for(o),
+        # Only the verbs its place allows (take on what is here, drop on what
+        # you hold): the page lights and explains by these.
+        "verbs": verbs.card_verbs(o, carried),
         "detail": detail if isinstance(detail, str) else "",
         # A village thing goes home when you rest; only what stays is a
         # keepsake (playtest 2026-09-28b: the satchel called a quest thing a
@@ -454,7 +464,8 @@ def _toon_card(t: "toons.Toon", viewer_id: str | None = None) -> dict:
     asked: list[str] = []
     if viewer_id and obj is not None and obj.id != viewer_id \
             and not obj.is_human_controlled:
-        topics = [tp["label"] for tp in story.available_topics(obj, viewer_id)]
+        # Only what this viewer has come across (daydream.heard).
+        topics = [tp["label"] for tp in story.offered_topics(obj, viewer_id)]
         heard = set(story.asked_topics(obj.world_id, obj.id, viewer_id))
         asked = [label for label in topics if story.normalize_topic(label) in heard]
     return {

@@ -182,7 +182,7 @@
            "Tace's face softens. 'The blue book by the clock case. Every hour that goes home is written in it, and every one that's kept, and who helped. Nothing kind goes unwritten here.'",
            "'Read it sometime, friend,' Tace says. 'It's the only book in the village that gets happier the longer it goes.'"
          ]},
-        {"label": "clockmaking", "aliases": ["your work", "work", "the workbench", "workbench", "mending", "mending clocks", "your tools", "tools"],
+        {"label": "clockmaking", "open": true, "aliases": ["your work", "work", "the workbench", "workbench", "mending", "mending clocks", "your tools", "tools"],
          "variants": [
            "Tace holds up a wheel no bigger than a lentil. 'Mostly it's this: small things, set right, one at a time. Patience does the rest.'",
            "Tace turns the tweezers in the lamplight. 'Wend taught me to listen first and mend second. Most of clockmaking is the listening.'",

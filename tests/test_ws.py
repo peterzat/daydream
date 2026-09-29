@@ -655,7 +655,9 @@ def test_ws_snapshot_carries_scene_objects_verb_bar_and_entities():
     # The lantern (previously sent but unrendered) carries its verbs + kind.
     lantern = next(i for i in snap["items"] if i["name"] == "lantern")
     assert lantern["kind"] == "thing"
-    assert lantern["verbs"] == ["examine", "take", "drop", "put"]
+    # Only what its place allows: on the ground it can be taken, not dropped
+    # or put anywhere until it is in hand (playtest 2026-09-29).
+    assert lantern["verbs"] == ["examine", "take"]
     # The verb bar is scene-aware (playtest 2026-07-02): the stable core
     # first, then only what the present objects grant. This room holds one
     # lantern and no one else: give needs a recipient, put a container,

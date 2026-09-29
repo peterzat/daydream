@@ -172,10 +172,38 @@ of room narration takes a **drop cap** in `--amber`.
   than replacing the page or opening a modal.
 - **Two-step give/use.** A two-object verb stages the verb, then the direct object
   (which stays lit), then a kind-valid indirect object; both ids go in one command.
-- **Dim, don't hide.** Non-applicable targets dim and go inert; they do not vanish,
-  so the scene stays stable.
+- **Dim, don't hide.** Non-applicable targets dim; they do not vanish, so the scene
+  stays stable, and a touch on one says why under the ribbon ("You aren't carrying
+  the lamp."). A verb with nothing here to act on reads quiet in place, and a touch
+  says so instead of staging a dead end (playtest 2026-09-29).
 - **Ids are never shown.** No object/toon id appears in any player-visible text,
   ever. Names only.
+
+## What the page offers
+
+The page is the player's memory, not the world's index (playtest 2026-09-29; the
+precedents are Infocom's *Arthur*, whose hint topics appeared only once you had
+"seen or heard about" a thing, Legend's menus of "all the things that you see",
+and the topic lists of Ultima VII, Morrowind and TADS). Three tiers:
+
+1. **In front of you: always shown.** The room, the people and things here, what
+   you carry, the ways out. Generic verbs appear when something here takes them
+   (Wind by a windable clock is a fair nudge). Room-rule verbs (magic words) and
+   secret exits stay hidden until they work.
+2. **Heard of: shown once the fiction names it.** An ask-about chip appears only
+   when its subject has reached this player: named in a line told to them, a card,
+   a thread in the satchel, the room they stood in, a thing they saw, or asked
+   about once (daydream/heard.py). Authors mark a topic `open` when it is fair at
+   first meeting (a clockmaker's trade), and a talk beat `topic_open` when it is
+   the story reaching out (a newcomer's own tale, a resident's news or
+   confidence). A chip that just appeared glows; unasked chips come first.
+3. **Guessed: never shown, always answered.** The parser accepts anything the world
+   can answer. A typed question about a subject nobody named is answered, and from
+   then on it is a chip (a friend who tells you to ask Tace about Wend has given you
+   something real).
+
+A contextual button may give a free hint ("I could try winding this"), never a
+solution. A puzzle step waits for the fiction to point at it.
 
 ## Banned patterns
 

@@ -168,6 +168,8 @@ recent local lines for exactly this.
   "npc": "t-bell",                      // a TALK beat: this NPC can advance it
   "topic": "the yawning stranger",      // REQUIRED for talk beats: `ask bell about <topic>`
   "topic_aliases": ["the stranger", "stranger"],
+  "topic_open": true,                   // an invitation: a chip from the start (below)
+  "topic_mentions": ["something small"],  // other ways the fiction names the topic
   "hint": "the player asks Bell about the stranger",   // what the local model sees
   "after": ["other-beat"],              // prerequisites (same arc, or "arc/beat")
   "if": [conditions],                   // checked for the asking player at commit
@@ -188,6 +190,19 @@ A talk beat's `text` is spoken instead of the model's line: write it as a
 complete moment (a gesture and a spoken line, third person, naming the
 NPC). Non-talk beats are advanced by an `advance_beat` effect in a rule.
 Every beat needs a producer a player can reach (the analyzer checks).
+
+**What the page offers** (DESIGN.md; playtest 2026-09-29). A talk beat's
+chip appears only once the fiction has named its topic to that player, so
+the step before it must point at it: Bell's "Mott keeps a hush in his tin"
+is what makes "a hush" a chip at Mott's. Mark `"topic_open": true` only for
+an invitation, the story reaching out: a newcomer's own tale, the resident
+who announces a newcomer, a confidence a friendship opens. When the pointing
+line paraphrases ("something of Linden's, hot and strong" for night tea),
+list the paraphrase in `topic_mentions`. `tests/test_heard.py` fails on a
+beat that is neither open nor named anywhere a player can read. Plain topics
+work the same way (`"open": true`, `"mentions": [...]`): a resident's own
+trade is open; the people and places they know wait until someone names
+them. Typing still reaches every available topic.
 
 ### Endings
 

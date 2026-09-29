@@ -285,6 +285,31 @@ def resolve(world_id: str | None, name: str) -> VerbSpec | None:
 # memory holds. Everything else earns its button contextually (below).
 CORE_BAR: tuple[str, ...] = ("examine", "take", "drop")
 
+# Where a verb's direct object must be, mirroring the handlers' own refusals
+# ("You aren't carrying the ...", "You're already carrying the ..."): the
+# page offers a verb only on the things it can act on (playtest 2026-09-29:
+# staging Take lit the things in your hands and nothing said why the room's
+# fixtures stayed dark).
+CARRIED_ONLY: frozenset[str] = frozenset({"drop", "give", "put", "plant"})
+NOT_CARRIED: frozenset[str] = frozenset({"take"})
+
+
+def dobj_where(name: str) -> str:
+    """"carried", "here" (in the room, not in your hands) or "any"."""
+    if name in CARRIED_ONLY:
+        return "carried"
+    if name in NOT_CARRIED:
+        return "here"
+    return "any"
+
+
+def card_verbs(obj: objects.Object, carried: bool) -> list[str]:
+    """The verbs the page offers on one scene object: its verb set less the
+    ones its place rules out (take on what you hold, drop on what you don't).
+    Typed commands still reach the handlers, which refuse in their words."""
+    return [v for v in objects.verbs_for(obj)
+            if not (v in CARRIED_ONLY and not carried) and not (v in NOT_CARRIED and carried)]
+
 
 def bar_verbs(
     world_id: str | None = None, actor_id: str | None = None
@@ -317,7 +342,9 @@ def bar_verbs(
     for o in scope:
         if o.id == actor_id or o.kind in ("room", "prototype"):
             continue
-        granted.update(objects.verbs_for(o))
+        # Place-aware, like the scene's own cards: Give earns its button from
+        # something in your hands, not from the room's things.
+        granted.update(card_verbs(o, carried=o.location_id == actor_id))
 
     def iobj_available(spec: VerbSpec) -> bool:
         for o in scope:

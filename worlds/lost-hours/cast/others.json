@@ -121,6 +121,7 @@
         },
         {
           "label": "sorting",
+          "open": true,
           "aliases": [
             "the sorting",
             "sorting letters",
@@ -631,6 +632,7 @@
         },
         {
           "label": "the weather",
+          "open": true,
           "aliases": [
             "weather",
             "the sky",
@@ -1218,6 +1220,7 @@
         },
         {
           "label": "a seed of your own",
+          "open": true,
           "aliases": [
             "a seed",
             "seeds",
@@ -1275,6 +1278,7 @@
         },
         {
           "label": "a seed of your own",
+          "open": true,
           "aliases": [
             "a seed",
             "seeds",
@@ -1299,6 +1303,7 @@
         },
         {
           "label": "a seed of your own",
+          "open": true,
           "aliases": [
             "a seed",
             "seeds",

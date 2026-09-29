@@ -110,6 +110,7 @@
         "bell-notices": {
           "npc": "t-bell",
           "topic": "the yawning stranger",
+          "topic_open": true,
           "topic_aliases": [
             "the stranger",
             "stranger",
@@ -130,6 +131,7 @@
         "hear-pim": {
           "npc": "t-pims-nap",
           "topic": "Pim",
+          "topic_open": true,
           "per_player": true,
           "topic_aliases": [
             "pim",
@@ -218,6 +220,9 @@
         "linden-bed": {
           "npc": "t-linden",
           "topic": "keeping the nap here",
+          "topic_mentions": [
+            "the littlest armchair"
+          ],
           "topic_aliases": [
             "a bed for the nap",
             "the littlest bed",
@@ -735,6 +740,26 @@
         },
         {
           "beat": "pim/tace-lullaby",
+          "not": true
+        }
+      ]
+    },
+    {
+      "id": "pim-stay",
+      "text": "Pim's Nap has its hush now. A lullaby clock could sing it home, or it might rather stay: Linden keeps the littlest armchair at the Waiting House.",
+      "if": [
+        {
+          "arc": "pim"
+        },
+        {
+          "beat": "pim/hushed"
+        },
+        {
+          "beat": "pim/linden-bed",
+          "not": true
+        },
+        {
+          "beat": "pim/pendulum-given",
           "not": true
         }
       ]

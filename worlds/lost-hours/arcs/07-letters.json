@@ -1546,6 +1546,7 @@
         "fen-strays": {
           "npc": "t-fen",
           "topic": "the stray letters",
+          "topic_open": true,
           "topic_aliases": [
             "stray letters",
             "stray letter",

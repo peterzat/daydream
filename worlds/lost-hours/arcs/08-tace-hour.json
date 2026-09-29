@@ -173,6 +173,7 @@
         "tace-frost": {
           "npc": "t-tace",
           "topic": "the frost",
+          "topic_open": true,
           "topic_aliases": ["frost", "the new frost", "the window", "the frosted window", "frosted window",
                             "the round window", "round window", "the frost on the window"],
           "if": [{"rel": "t-tace", "gte": 2}],

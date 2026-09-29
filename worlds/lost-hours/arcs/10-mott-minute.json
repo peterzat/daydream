@@ -79,6 +79,7 @@
         "mott-confides": {
           "npc": "t-mott",
           "topic": "the oldest minute",
+          "topic_open": true,
           "topic_aliases": ["oldest minute", "your own minute", "the folded thing", "folded thing",
                             "the small folded thing", "the folded minute", "folded minute",
                             "the tin", "your tin", "mott's tin"],
@@ -92,6 +93,7 @@
         "umber-remembers": {
           "npc": "t-umber",
           "topic": "when Mott came",
+          "topic_mentions": ["the one I arrived in"],
           "topic_aliases": ["mott", "mott's arrival", "the day mott came", "when mott arrived",
                             "mott arriving", "mott's first day"],
           "after": ["mott-confides"],
@@ -117,6 +119,7 @@
         "fen-envelope": {
           "npc": "t-fen",
           "topic": "an envelope for later",
+          "topic_mentions": ["keep better sealed"],
           "topic_aliases": ["envelope", "an envelope", "the envelope", "to me, later", "to me later",
                             "an envelope for mott", "something to keep sealed",
                             "mott's minute", "mott's tin", "sealing", "sealing it"],

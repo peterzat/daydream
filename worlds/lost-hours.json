@@ -4228,6 +4228,26 @@
       ]
     },
     {
+      "id": "pim-stay",
+      "text": "Pim's Nap has its hush now. A lullaby clock could sing it home, or it might rather stay: Linden keeps the littlest armchair at the Waiting House.",
+      "if": [
+        {
+          "arc": "pim"
+        },
+        {
+          "beat": "pim/hushed"
+        },
+        {
+          "beat": "pim/linden-bed",
+          "not": true
+        },
+        {
+          "beat": "pim/pendulum-given",
+          "not": true
+        }
+      ]
+    },
+    {
       "id": "extra-hour",
       "text": "The Extra Hour would like, just once, to be spent on purpose.",
       "if": [
@@ -4730,6 +4750,7 @@
         "bell-notices": {
           "npc": "t-bell",
           "topic": "the yawning stranger",
+          "topic_open": true,
           "topic_aliases": [
             "the stranger",
             "stranger",
@@ -4750,6 +4771,7 @@
         "hear-pim": {
           "npc": "t-pims-nap",
           "topic": "Pim",
+          "topic_open": true,
           "per_player": true,
           "topic_aliases": [
             "pim",
@@ -4838,6 +4860,9 @@
         "linden-bed": {
           "npc": "t-linden",
           "topic": "keeping the nap here",
+          "topic_mentions": [
+            "the littlest armchair"
+          ],
           "topic_aliases": [
             "a bed for the nap",
             "the littlest bed",
@@ -5008,6 +5033,7 @@
         "bell-shadows": {
           "npc": "t-bell",
           "topic": "the hour with two shadows",
+          "topic_open": true,
           "topic_aliases": [
             "two shadows",
             "the two shadows",
@@ -5030,6 +5056,7 @@
         "hear-autumn": {
           "npc": "t-extra-hour",
           "topic": "the night the clocks went back",
+          "topic_open": true,
           "per_player": true,
           "topic_aliases": [
             "the night",
@@ -5256,6 +5283,7 @@
         "bell-rain": {
           "npc": "t-bell",
           "topic": "the rain on one cobble",
+          "topic_open": true,
           "topic_aliases": [
             "the little rain",
             "the rain",
@@ -5278,6 +5306,7 @@
         "hear-beginning": {
           "npc": "t-rain-wait",
           "topic": "the story",
+          "topic_open": true,
           "per_player": true,
           "topic_aliases": [
             "story",
@@ -5296,6 +5325,9 @@
         "fen-letter": {
           "npc": "t-fen",
           "topic": "the end of a story",
+          "topic_mentions": [
+            "write me the end"
+          ],
           "topic_aliases": [
             "the end of the story",
             "the ending",
@@ -5544,6 +5576,7 @@
         "bell-salt": {
           "npc": "t-bell",
           "topic": "Marram",
+          "topic_open": true,
           "topic_aliases": [
             "marram",
             "the summer",
@@ -5565,6 +5598,7 @@
         "hear-marram": {
           "npc": "t-marram",
           "topic": "the summer",
+          "topic_open": true,
           "per_player": true,
           "topic_aliases": [
             "summer",
@@ -5633,6 +5667,9 @@
         "umber-label": {
           "npc": "t-umber",
           "topic": "a label for Marram",
+          "topic_mentions": [
+            "keeps more names"
+          ],
           "topic_aliases": [
             "label",
             "labels",
@@ -5796,6 +5833,7 @@
         "bell-startles": {
           "npc": "t-bell",
           "topic": "the Margin Afternoon",
+          "topic_open": true,
           "topic_aliases": [
             "the afternoon",
             "afternoon",
@@ -5818,6 +5856,7 @@
         "see-drawing": {
           "npc": "t-margin",
           "topic": "the drawing",
+          "topic_open": true,
           "topic_aliases": [
             "drawing",
             "its drawing",
@@ -5841,6 +5880,9 @@
         "fen-pencil": {
           "npc": "t-fen",
           "topic": "a pencil",
+          "topic_mentions": [
+            "an empty middle"
+          ],
           "per_player": true,
           "topic_aliases": [
             "pencil",
@@ -6054,6 +6096,7 @@
         "bell-notices": {
           "npc": "t-bell",
           "topic": "the sleepy evening",
+          "topic_open": true,
           "topic_aliases": [
             "sleepy evening",
             "the evening",
@@ -6076,6 +6119,7 @@
         "hear-nell": {
           "npc": "t-nells-evening",
           "topic": "Nell",
+          "topic_open": true,
           "topic_aliases": [
             "nell",
             "the party",
@@ -6187,6 +6231,9 @@
         "quill-windfall": {
           "npc": "t-quill",
           "topic": "a windfall",
+          "topic_mentions": [
+            "the Orchard of Evenings"
+          ],
           "topic_aliases": [
             "windfall",
             "windfalls",
@@ -6373,6 +6420,7 @@
         "fen-strays": {
           "npc": "t-fen",
           "topic": "the stray letters",
+          "topic_open": true,
           "topic_aliases": [
             "stray letters",
             "stray letter",
@@ -6472,6 +6520,7 @@
         "tace-frost": {
           "npc": "t-tace",
           "topic": "the frost",
+          "topic_open": true,
           "topic_aliases": [
             "frost",
             "the new frost",
@@ -6826,6 +6875,7 @@
         "bell-confides": {
           "npc": "t-bell",
           "topic": "staying up",
+          "topic_open": true,
           "topic_aliases": [
             "staying up all night",
             "stay up",
@@ -6852,6 +6902,9 @@
         "linden-flask": {
           "npc": "t-linden",
           "topic": "night tea",
+          "topic_mentions": [
+            "something of Linden's"
+          ],
           "topic_aliases": [
             "a flask of night tea",
             "flask of night tea",
@@ -6944,6 +6997,10 @@
         "tace-sunburst": {
           "npc": "t-tace",
           "topic": "a sunrise lantern",
+          "topic_mentions": [
+            "a sunrise they could light",
+            "a sunrise I could just light"
+          ],
           "topic_aliases": [
             "sunrise lantern",
             "the sunrise lantern",
@@ -7075,6 +7132,7 @@
         "mott-confides": {
           "npc": "t-mott",
           "topic": "the oldest minute",
+          "topic_open": true,
           "topic_aliases": [
             "oldest minute",
             "your own minute",
@@ -7107,6 +7165,9 @@
         "umber-remembers": {
           "npc": "t-umber",
           "topic": "when Mott came",
+          "topic_mentions": [
+            "the one I arrived in"
+          ],
           "topic_aliases": [
             "mott",
             "mott's arrival",
@@ -7164,6 +7225,9 @@
         "fen-envelope": {
           "npc": "t-fen",
           "topic": "an envelope for later",
+          "topic_mentions": [
+            "keep better sealed"
+          ],
           "topic_aliases": [
             "envelope",
             "an envelope",
@@ -9819,6 +9883,7 @@
           },
           {
             "label": "clockmaking",
+            "open": true,
             "aliases": [
               "your work",
               "work",
@@ -10513,6 +10578,7 @@
           },
           {
             "label": "who came through today",
+            "open": true,
             "aliases": [
               "who came today",
               "who was here today",
@@ -10916,6 +10982,7 @@
           },
           {
             "label": "sweeping",
+            "open": true,
             "aliases": [
               "broom",
               "the broom",
@@ -11221,6 +11288,7 @@
           },
           {
             "label": "sorting",
+            "open": true,
             "aliases": [
               "the sorting",
               "sorting letters",
@@ -11769,6 +11837,7 @@
           },
           {
             "label": "the weather",
+            "open": true,
             "aliases": [
               "weather",
               "the sky",
@@ -12392,6 +12461,7 @@
           },
           {
             "label": "a seed of your own",
+            "open": true,
             "aliases": [
               "a seed",
               "seeds",
@@ -12449,6 +12519,7 @@
           },
           {
             "label": "a seed of your own",
+            "open": true,
             "aliases": [
               "a seed",
               "seeds",
@@ -12473,6 +12544,7 @@
           },
           {
             "label": "a seed of your own",
+            "open": true,
             "aliases": [
               "a seed",
               "seeds",

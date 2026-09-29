@@ -231,12 +231,19 @@ def validate_story(env: dict, *, known: dict, ks: dict, room_ids: set[str],
             for k, typ in (("per_player", bool), ("hint", str), ("rel", int)):
                 if k in b and not isinstance(b[k], typ):
                     errors.append(f"{bw}.{k} has the wrong type")
-            if "topic_aliases" in b and not (isinstance(b["topic_aliases"], list) and all(
-                    isinstance(x, str) for x in b["topic_aliases"])):
-                errors.append(f"{bw}.topic_aliases must be a list of strings")
-            extra = set(b) - {"npc", "topic", "topic_aliases", "hint", "if", "after",
-                              "text", "variants", "do", "per_player", "rel", "credit",
-                              "others", "to"}
+            for k in ("topic_aliases", "topic_mentions"):
+                if k in b and not (isinstance(b[k], list) and all(
+                        isinstance(x, str) for x in b[k])):
+                    errors.append(f"{bw}.{k} must be a list of strings")
+            # An invitation (the story reaching out: a newcomer's own tale, a
+            # resident's news or confidence) is a chip from the start; any
+            # other beat waits until the fiction has named its topic
+            # (daydream.heard; docs/canon/AUTHORING.md "What the page offers").
+            if "topic_open" in b and not isinstance(b["topic_open"], bool):
+                errors.append(f"{bw}.topic_open must be true or false")
+            extra = set(b) - {"npc", "topic", "topic_aliases", "topic_mentions", "topic_open",
+                              "hint", "if", "after", "text", "variants", "do", "per_player",
+                              "rel", "credit", "others", "to"}
             errors.extend(_telling_errors(b, bw))
             if extra:
                 errors.append(f"{bw}: unknown field(s) {sorted(extra)}")
@@ -489,6 +496,14 @@ def validate_toon_story(t: dict, where: str, *, known: dict, ks: dict,
                     errors.append(f"{tw}: needs a 'label'")
                     continue
                 _text_or_variants(tp, tw, errors, required=True)
+                # `open`: fair to ask at first meeting (a clockmaker's trade);
+                # `mentions`: other ways the fiction names the subject, which
+                # also make it known (daydream.heard).
+                if "open" in tp and not isinstance(tp["open"], bool):
+                    errors.append(f"{tw}.open must be true or false")
+                if "mentions" in tp and not (isinstance(tp["mentions"], list) and all(
+                        isinstance(x, str) and x.strip() for x in tp["mentions"])):
+                    errors.append(f"{tw}.mentions must be a list of strings")
                 errors.extend(rules.validate_condition_list(
                     tp.get("if"), f"{tw}.if", known_flags=known["known_flags"],
                     known_ids=known["known_ids"], known_story=ks))

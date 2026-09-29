@@ -552,6 +552,7 @@
         },
         {
           "label": "who came through today",
+          "open": true,
           "aliases": [
             "who came today",
             "who was here today",
@@ -937,6 +938,7 @@
         },
         {
           "label": "sweeping",
+          "open": true,
           "aliases": [
             "broom",
             "the broom",

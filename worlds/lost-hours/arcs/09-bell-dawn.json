@@ -75,6 +75,7 @@
         "bell-confides": {
           "npc": "t-bell",
           "topic": "staying up",
+          "topic_open": true,
           "topic_aliases": ["staying up all night", "stay up", "staying awake", "stay awake",
                             "a whole night", "the whole night", "seeing a dawn"],
           "if": [{"rel": "t-bell", "gte": 2}, {"contains": "t-bell", "of": "r-lamphouse", "not": true}],
@@ -84,6 +85,7 @@
         "linden-flask": {
           "npc": "t-linden",
           "topic": "night tea",
+          "topic_mentions": ["something of Linden's"],
           "topic_aliases": ["a flask of night tea", "flask of night tea", "the night tea", "tea for bell",
                             "a flask for bell", "strong tea", "tea for staying up"],
           "after": ["bell-confides"],
@@ -121,6 +123,7 @@
         "tace-sunburst": {
           "npc": "t-tace",
           "topic": "a sunrise lantern",
+          "topic_mentions": ["a sunrise they could light", "a sunrise I could just light"],
           "topic_aliases": ["sunrise lantern", "the sunrise lantern", "a lantern like a sunrise",
                             "a lantern shaped like a sunrise", "a sunrise for bell", "a brass sunrise"],
           "after": ["bell-confides"],

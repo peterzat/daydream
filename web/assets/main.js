@@ -37,6 +37,7 @@ let pendingTimer = null; // its safety timeout
 let loadedBuild = null; // server build SHA this page's JS loaded against (redeploy detection)
 let loadedWorldVersion = null;
 let lastCmd = null; // {key, t} -- debounce an accidental double-fire of one command
+const CMD_REPEAT_MS = 1200;
 let toonCards = {}; // id -> this room's toon cards (portraits for a look-closer card)
 let lastInventory = []; // the latest snapshot's carried things, for the keepsakes backpack foldout
 let inventorySeen = false; // a first snapshot's things are not "new" (nothing to compare)
@@ -429,8 +430,14 @@ function renderSnapshot(snap) {
     btn.textContent = v.ui_hint;
     btn.dataset.verb = v.name;
     btn.onclick = () => toggleStagedVerb(v.name, btn);
+    if (stagedVerb === v.name) btn.classList.add("verb-staged");
     verbBar.appendChild(btn);
   }
+  // A verb with nothing here to act on reads quiet, and a touch says why
+  // instead of staging a dead end (playtest 2026-09-29).
+  markVerbReadiness();
+  if (stagedVerb && !verbReady(stagedVerb)) clearStagedVerb();
+  else if (stagedVerb) applyVerbGating();
   // Affordance buttons: room-anchored DATA skills only (e.g. forge). Core
   // verbs (look/say/examine/take/drop/talk/go) are NOT rendered as buttons —
   // the verb bar, clickable objects, text input, and exits cover them.
@@ -520,10 +527,14 @@ function renderTopics(others) {
     // A long list collapses to its first few (a resident with a dozen
     // topics read as a wall of chips); "more" opens the rest for this visit.
     const open = topicsOpen.has(t.id) || t.topics.length <= TOPIC_SHOW + 1;
-    const shown = open ? t.topics : t.topics.slice(0, TOPIC_SHOW);
     // Asked topics read as asked, and one that just opened glows a while
-    // (playtest 2026-09-28b: a long list gave no sign of either).
+    // (playtest 2026-09-28b: a long list gave no sign of either). What you
+    // have not asked yet comes first, so the row reads as leads, not a
+    // catalogue (playtest 2026-09-29).
     const asked = new Set(t.asked_topics || []);
+    const ordered = [...t.topics.filter((l) => !asked.has(l)),
+      ...t.topics.filter((l) => asked.has(l))];
+    const shown = open ? ordered : ordered.slice(0, TOPIC_SHOW);
     const known = topicsKnown.get(t.id);
     const now = Date.now();
     if (known) {
@@ -643,10 +654,83 @@ function objectChip(o, label) {
   return span;
 }
 
+function verbReady(verb) {
+  // Something in the scene this verb can act on (the server sends each
+  // thing's verbs already fitted to where it is), and for a two-object verb
+  // something to act on it with.
+  const spec = verbSpecs[verb] || {};
+  const chips = [...document.querySelectorAll("#scene .obj")];
+  if (!chips.some((el) => (el.dataset.verbs || "").split(",").includes(verb))) return false;
+  const kinds = spec.valid_iobj_kinds || [];
+  return !spec.needs_iobj || !kinds.length ||
+    chips.some((el) => kinds.includes(el.dataset.kind));
+}
+
+function markVerbReadiness() {
+  document.querySelectorAll("#verb-bar button").forEach((b) => {
+    b.classList.toggle("verb-idle", !verbReady(b.dataset.verb));
+  });
+}
+
+function theName(objectId) {
+  // "the lamp", a resident by name, "the Book of Days": a name for a note.
+  const chip = document.querySelector(`#scene .obj[data-object-id="${objectId}"]`);
+  const name = nameForObject(objectId);
+  if ((chip && chip.dataset.kind === "toon") || /^(the|a|an) /i.test(name)) return name;
+  return "the " + name;
+}
+
+function capitalize(s) {
+  return s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+}
+
+let noteTimer = null;
+
+function flashNote(text) {
+  // A quiet line under the ribbon, gone in a few seconds: why a verb or a
+  // touch did nothing (playtest 2026-09-29: staged Take, touched the room's
+  // fixtures, and nothing said they could not be taken).
+  const hint = document.getElementById("verb-hint");
+  hint.textContent = text;
+  hint.classList.add("ribbon-note");
+  showHint();
+  clearTimeout(noteTimer);
+  noteTimer = setTimeout(() => {
+    noteTimer = null;
+    hint.classList.remove("ribbon-note");
+    if (textTarget) return; // a waiting prompt owns the line now
+    if (stagedVerb && stagedDobjId) showStagedHint(stagedVerb, nameForObject(stagedDobjId));
+    else hideStagedHint();
+  }, 3600);
+}
+
+function idleNote(verb) {
+  const spec = verbSpecs[verb] || {};
+  const word = (spec.ui_hint || verb).toLowerCase();
+  return spec.where === "carried" ? `You aren't carrying anything to ${word}.`
+    : `There's nothing here to ${word}.`;
+}
+
+function gateNote(verb, objectId) {
+  // The handlers' own words for a thing in the wrong place; otherwise the
+  // button's name, which reads for every verb ("Talk doesn't work on ...").
+  const spec = verbSpecs[verb] || {};
+  const carried = !!document.querySelector(`#inventory .obj[data-object-id="${objectId}"]`);
+  const who = theName(objectId);
+  if (spec.where === "here" && carried) return `You're already carrying ${who}.`;
+  if (spec.where === "carried" && !carried) return `You aren't carrying ${who}.`;
+  return `${spec.ui_hint || capitalize(verb)} doesn't work on ${who}.`;
+}
+
 function toggleStagedVerb(verb, btn) {
   cancelText(); // choosing a verb lets any unsent words go
   if (stagedVerb === verb) {
     clearStagedVerb();
+    return;
+  }
+  if (!verbReady(verb)) {
+    clearStagedVerb();
+    flashNote(idleNote(verb));
     return;
   }
   clearStagedVerb();
@@ -682,6 +766,7 @@ function showStagedHint(verb, dobjName) {
   const word = (spec.preps && spec.preps[0]) ||
     (kinds.indexOf("toon") !== -1 ? "to" : "on");
   const hint = document.getElementById("verb-hint");
+  hint.classList.remove("ribbon-note");
   const whom = kinds.indexOf("toon") !== -1 ? "someone" : "something";
   hint.textContent = `${verb} ${dobjName} ${word}... (touch ${whom}, or ${verb} again to change your mind)`;
   showHint();
@@ -696,6 +781,9 @@ function showHint() {
 
 function hideStagedHint() {
   const hint = document.getElementById("verb-hint");
+  clearTimeout(noteTimer);
+  noteTimer = null;
+  hint.classList.remove("ribbon-note");
   hint.textContent = "";
   hint.classList.add("hidden");
   document.querySelector(".ribbon-wrap").classList.remove("hinting");
@@ -773,7 +861,10 @@ function onObjectClick(objectId, objectVerbs, objectKind) {
     // is the indirect object -> send both ids. Gate ONLY when kind/verbs known
     // (entity-link clicks pass neither; let the server validate those).
     if (!stagedDobjId) {
-      if (objectVerbs && !objectVerbs.includes(stagedVerb)) return;
+      if (objectVerbs && !objectVerbs.includes(stagedVerb)) {
+        flashNote(gateNote(stagedVerb, objectId));
+        return;
+      }
       stagedDobjId = objectId;
       showStagedHint(stagedVerb, nameForObject(objectId));
       applyVerbGating();
@@ -781,7 +872,10 @@ function onObjectClick(objectId, objectVerbs, objectKind) {
     }
     if (objectId === stagedDobjId) return; // can't target the dobj at itself
     const validKinds = spec.valid_iobj_kinds || [];
-    if (objectKind && validKinds.length && !validKinds.includes(objectKind)) return;
+    if (objectKind && validKinds.length && !validKinds.includes(objectKind)) {
+      flashNote(`${spec.ui_hint || capitalize(stagedVerb)} doesn't work that way on ${theName(objectId)}.`);
+      return;
+    }
     sendCommand(stagedVerb, stagedDobjId, "", objectId);
     clearStagedVerb();
     return;
@@ -790,7 +884,10 @@ function onObjectClick(objectId, objectVerbs, objectKind) {
   // (valid for every toon + thing). A staged verb the object doesn't support is
   // a no-op, so we never prompt for talk text on a non-toon.
   const verb = stagedVerb || "examine";
-  if (stagedVerb && objectVerbs && !objectVerbs.includes(stagedVerb)) return;
+  if (stagedVerb && objectVerbs && !objectVerbs.includes(stagedVerb)) {
+    flashNote(gateNote(stagedVerb, objectId)); // the verb stays staged
+    return;
+  }
   const stagedSpec = verbSpecs[verb] || {};
   if (stagedSpec.needs_text) {
     // Free-text prompting is verb DATA (criterion 12): the server's verb_bar
@@ -815,6 +912,7 @@ function askForText(verb, objectId, spec) {
   // answer with its own authored question); Esc lets it go.
   textTarget = { verb, objectId };
   const hint = document.getElementById("verb-hint");
+  hint.classList.remove("ribbon-note");
   hint.innerHTML = "";
   const what = document.createElement("b");
   what.textContent = (spec.ui_hint || verb) + " \u00b7 " + nameForObject(objectId);
@@ -990,11 +1088,14 @@ function renderDetailInset(e, detail) {
   // Examining the same thing again with the same result should not stack a
   // duplicate card: resurface the existing one at the bottom and glow it
   // ("don't repeat, glow the answer").
+  // Any earlier card for this thing with this text, not only the first card
+  // for it: after a read, a later examine (a different card for the same
+  // thing) stacked a copy every time (playtest 2026-09-29).
   if (detail.objectId) {
-    const prior = chat.querySelector(
+    const prior = [...chat.querySelectorAll(
       `.detail-inset[data-object-id="${detail.objectId}"]`
-    );
-    if (prior && prior.dataset.text === text) {
+    )].find((c) => c.dataset.text === text);
+    if (prior) {
       clearPending();
       chat.appendChild(prior); // move to the end, no duplicate
       glowElement(prior);
@@ -1228,12 +1329,15 @@ function sendCommand(verb, dobjId, args, iobjId) {
   // deterministic verb makes no LLM call (the server's verb handler may). A
   // two-object verb (give/use) carries iobj_id; single-object verbs omit it.
   if (!ws || ws.readyState !== WebSocket.OPEN) return;
-  // Some browsers fire a click handler twice on a single tap, which would echo
-  // the resulting line twice (e.g. a doubled "You examine ..."). Drop an
-  // identical command (verb+dobj+iobj+args) repeated within 400ms.
+  // Some browsers fire a click handler twice on a single tap, and a touch
+  // that seems slow to answer gets a second one, either of which would echo
+  // the line twice (e.g. a doubled "You ask someone about ..."). Drop an
+  // identical command (verb+dobj+iobj+args) repeated within 1.2 s: nobody
+  // means the same ask or look twice that fast (playtest 2026-09-29; 400 ms
+  // let an iPad's second touch through).
   const key = verb + "|" + (dobjId || "") + "|" + (iobjId || "") + "|" + (args || "");
   const now = Date.now();
-  if (lastCmd && lastCmd.key === key && now - lastCmd.t < 400) return;
+  if (lastCmd && lastCmd.key === key && now - lastCmd.t < CMD_REPEAT_MS) return;
   lastCmd = { key, t: now };
   ws.send(
     JSON.stringify({

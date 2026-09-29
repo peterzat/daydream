@@ -119,8 +119,20 @@ def append(
         (seq,),
     ).fetchone()
     event = Event.from_row(row)
+    _hear(event)
     _broadcast(event)
     return event
+
+
+def _hear(event: Event) -> None:
+    """Players learn the names a told line carries (daydream.heard). Never
+    lets a failure there stop the line itself."""
+    try:
+        from daydream import heard
+
+        heard.on_event(event)
+    except Exception:
+        logger.exception("heard: could not note event %s", event.seq)
 
 
 def fetch_since(

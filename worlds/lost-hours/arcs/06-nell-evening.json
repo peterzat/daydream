@@ -67,6 +67,7 @@
         "bell-notices": {
           "npc": "t-bell",
           "topic": "the sleepy evening",
+          "topic_open": true,
           "topic_aliases": [
             "sleepy evening",
             "the evening",
@@ -89,6 +90,7 @@
         "hear-nell": {
           "npc": "t-nells-evening",
           "topic": "Nell",
+          "topic_open": true,
           "topic_aliases": [
             "nell",
             "the party",
@@ -200,6 +202,7 @@
         "quill-windfall": {
           "npc": "t-quill",
           "topic": "a windfall",
+          "topic_mentions": ["the Orchard of Evenings"],
           "topic_aliases": [
             "windfall",
             "windfalls",

@@ -48,8 +48,11 @@ APP_VERSION = "1.0.0"
 # friend's fixes, playtest 2026-09-28b -- room prepositions, a small clock
 # that stays wound, time-neutral lines, authored threads. 1.7: the second
 # playtest's lines -- a gear that reads right in the hand, clue threads that
-# end with their step, a greeting that doesn't repeat an arrival.)
-WORLD_VERSION = "1.9"
+# end with their step, a greeting that doesn't repeat an arrival. 1.10:
+# what the page offers, playtest 2026-09-29 -- open topics and invitation
+# beats, the mentions that make a subject known, the thread that names the
+# littlest armchair.)
+WORLD_VERSION = "1.10"
 
 
 @lru_cache(maxsize=1)

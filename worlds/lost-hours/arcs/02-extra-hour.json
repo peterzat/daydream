@@ -303,6 +303,7 @@
         "bell-shadows": {
           "npc": "t-bell",
           "topic": "the hour with two shadows",
+          "topic_open": true,
           "topic_aliases": [
             "two shadows",
             "the two shadows",
@@ -325,6 +326,7 @@
         "hear-autumn": {
           "npc": "t-extra-hour",
           "topic": "the night the clocks went back",
+          "topic_open": true,
           "per_player": true,
           "topic_aliases": [
             "the night",

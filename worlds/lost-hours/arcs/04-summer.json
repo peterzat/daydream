@@ -137,6 +137,7 @@
         "bell-salt": {
           "npc": "t-bell",
           "topic": "Marram",
+          "topic_open": true,
           "topic_aliases": [
             "marram",
             "the summer",
@@ -158,6 +159,7 @@
         "hear-marram": {
           "npc": "t-marram",
           "topic": "the summer",
+          "topic_open": true,
           "per_player": true,
           "topic_aliases": [
             "summer",
@@ -226,6 +228,7 @@
         "umber-label": {
           "npc": "t-umber",
           "topic": "a label for Marram",
+          "topic_mentions": ["keeps more names"],
           "topic_aliases": [
             "label",
             "labels",
