@@ -610,7 +610,7 @@ async def _handle_look(actor, room_id, dobj, iobj, args, spec) -> None:
     # Visible container contents compose into the look (criterion 4): an
     # open sack on the floor reads out what it holds; a closed one doesn't.
     for t in things:
-        inner = objects.visible_contents(t)
+        inner = objects.visible_contents(t, actor.id)
         if inner:
             text += f" The {t.name} holds: " + ", ".join(o.name for o in inner) + "."
     _dispatch(actor, room_id, [{"kind": "narrate", "text": text, "to": "@actor"}], spec)
@@ -661,14 +661,16 @@ def _card(verb: str, dobj: objects.Object, body: str) -> dict:
             "body": body[:1].upper() + body[1:]}
 
 
-def _container_glance(dobj: objects.Object) -> str:
+def _container_glance(dobj: objects.Object, viewer_id: str | None = None) -> str:
     """Examine's container suffix: what a see-through container holds, that
-    it's empty, or that it's closed. Empty string for non-containers."""
+    it's empty, or that it's closed. Empty string for non-containers. Things
+    private to someone other than the viewer are not among what it holds."""
     if not objects.is_container(dobj):
         return ""
     if not objects.contents_visible(dobj):
         return f" The {dobj.name} is closed."
-    inner = objects.contents(dobj.id, kind="thing")
+    inner = [o for o in objects.contents(dobj.id, kind="thing")
+             if objects.visible_to(o, viewer_id)]
     if not inner:
         return f" The {dobj.name} is empty."
     return f" The {dobj.name} holds: " + ", ".join(o.name for o in inner) + "."
@@ -698,8 +700,8 @@ async def _handle_examine(actor, room_id, dobj, iobj, args, spec) -> None:
     cache."""
     cached = dobj.properties.get("examined_text")
     if isinstance(cached, str) and cached.strip():
-        eff = {"kind": "narrate", "text": _examine_line(dobj, cached) + _container_glance(dobj),
-               "to": "@actor", "card": _card("examine", dobj, _terminate(cached) + _container_glance(dobj))}
+        eff = {"kind": "narrate", "text": _examine_line(dobj, cached) + _container_glance(dobj, actor.id),
+               "to": "@actor", "card": _card("examine", dobj, _terminate(cached) + _container_glance(dobj, actor.id))}
         if dobj.properties.get("examined_src") == "local":
             eff["src"] = "local"  # the lazy LLM path below wrote this cache
         _dispatch(actor, room_id, [eff], spec)
@@ -720,14 +722,14 @@ async def _handle_examine(actor, room_id, dobj, iobj, args, spec) -> None:
         detail = detail_with_state(dobj)
         roster = _roster_tail(dobj, actor).replace("\n", " ")
         _dispatch(actor, room_id, [{"kind": "narrate", "to": "@actor",
-            "text": _examine_line(dobj, detail) + _container_glance(dobj) + roster,
-            "card": _card("examine", dobj, _terminate(detail) + _container_glance(dobj) + roster)}], spec)
+            "text": _examine_line(dobj, detail) + _container_glance(dobj, actor.id) + roster,
+            "card": _card("examine", dobj, _terminate(detail) + _container_glance(dobj, actor.id) + roster)}], spec)
         return
     if objects.is_container(dobj):
         # A seedless authored container still answers with its contents
         # instead of burning an LLM call on emptiness.
         _dispatch(actor, room_id, [{"kind": "narrate",
-            "text": _examine_line(dobj, "") + _container_glance(dobj), "to": "@actor"}], spec)
+            "text": _examine_line(dobj, "") + _container_glance(dobj, actor.id), "to": "@actor"}], spec)
         return
     # Lazy-cache generation (one LLM call, then cached).
     detail = await _generate_examine(dobj)

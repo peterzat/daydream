@@ -172,3 +172,23 @@ async def test_missing_client_in_tailscale_mode_rejects(monkeypatch):
     assert not rec.app_called
     starts = [m for m in rec.sent if m.get("type") == "http.response.start"]
     assert starts and starts[0]["status"] == 403
+
+
+async def test_the_access_service_token_goes_no_further_than_the_door():
+    """Security review 2026-09-29: Access may forward the Worker's service
+    token headers; the app below the middleware never sees them."""
+    from daydream.api.access import AccessMiddleware
+
+    seen = {}
+
+    async def app(scope, receive, send):
+        seen["headers"] = scope["headers"]
+
+    mw = AccessMiddleware(app)
+    scope = {"type": "http", "client": ("127.0.0.1", 5), "path": "/healthz",
+             "headers": [(b"host", b"x"), (b"cf-access-client-id", b"id.access"),
+                         (b"CF-Access-Client-Secret", b"s3cret")]}
+    await mw(scope, None, None)
+    names = {k.lower() for k, _ in seen["headers"]}
+    assert b"host" in names
+    assert not names & {b"cf-access-client-id", b"cf-access-client-secret"}

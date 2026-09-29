@@ -48,6 +48,9 @@ def _is_loopback(host: str) -> bool:
     return ip in LOCALHOST_V4 or ip in LOCALHOST_V6
 
 
+_ACCESS_TOKEN_HEADERS = frozenset({b"cf-access-client-id", b"cf-access-client-secret"})
+
+
 class AccessMiddleware:
     """The network rule, layered under account sign-in: 'tailscale' admits
     tailnet + loopback peers, 'edge' admits loopback peers only (cloudflared),
@@ -66,6 +69,13 @@ class AccessMiddleware:
         if scope.get("type") not in ("http", "websocket"):
             await self.app(scope, receive, send)
             return
+        # Cloudflare Access may pass the Worker's service-token headers on to
+        # the origin: the secret goes no further into the app (security
+        # review 2026-09-29; nothing here reads them).
+        hdrs = scope.get("headers") or []
+        if any(k.lower() in _ACCESS_TOKEN_HEADERS for k, _ in hdrs):
+            scope = {**scope, "headers": [(k, v) for k, v in hdrs
+                                          if k.lower() not in _ACCESS_TOKEN_HEADERS]}
 
         mode = config.access_mode()
         if mode == "public":

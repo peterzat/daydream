@@ -342,12 +342,12 @@ def _state_snapshot(
         # them as distinct, clickable elements (id + kind + verbs). `items`
         # (room things) were previously sent but never rendered; `inventory`
         # is the actor's carried things.
-        "items": [_object_card(o) for o in things_in],
+        "items": [_object_card(o, viewer_id=toon_id) for o in things_in],
         "toons": [_toon_card(t, viewer_id=toon_id) for t in toons_in],
         # WHO YOU ARE: the controlled toon, named explicitly so the SPA never
         # has to guess which co-located toon is the player.
         "self": _toon_card(self_toon) if self_toon is not None else None,
-        "inventory": [_object_card(o, carried=True) for o in inventory_in],
+        "inventory": [_object_card(o, carried=True, viewer_id=toon_id) for o in inventory_in],
         "skills": [{"name": s.name, "ui_hint": s.ui_hint, "kind": s.kind} for s in available],
         # The verb bar — verb-then-object. Two-object verbs (give/use) carry
         # `needs_iobj` + `valid_iobj_kinds` so the client can drive the second
@@ -430,7 +430,8 @@ def _room_at(room_id: str) -> str:
     return at if at in ("in", "on", "at") else "in"
 
 
-def _object_card(o: "objects.Object", depth: int = 0, carried: bool = False) -> dict:
+def _object_card(o: "objects.Object", depth: int = 0, carried: bool = False,
+                 viewer_id: str | None = None) -> dict:
     """A scene object as the SPA needs it: id + kind + name + verb affordances
     (and aliases, for client-side narration linking). A see-through container
     nests its contents as child cards (criterion 4) — a closed opaque one
@@ -459,9 +460,9 @@ def _object_card(o: "objects.Object", depth: int = 0, carried: bool = False) -> 
         "keeps": home is None,
     }
     if depth < 3 and o.kind == "thing":
-        inner = objects.visible_contents(o)
+        inner = objects.visible_contents(o, viewer_id)
         if inner:
-            card["contents"] = [_object_card(c, depth + 1) for c in inner]
+            card["contents"] = [_object_card(c, depth + 1, viewer_id=viewer_id) for c in inner]
     return card
 
 

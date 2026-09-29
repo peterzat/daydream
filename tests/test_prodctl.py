@@ -625,3 +625,20 @@ def test_plan_lists_what_goes_out_and_what_else_it_needs(srv, fake_repo, capsys)
     prodctl.point("current", prodctl.build_release(prodctl.resolve_ref("HEAD")))
     prodctl.plan("HEAD")
     assert "nothing to ship" in capsys.readouterr().out
+
+
+def test_a_venv_is_sealed_read_only_and_refused_if_not_the_operators(tmp_path, monkeypatch):
+    """Security review 2026-09-29: the prod venv was group-writable by the
+    service's group, and the operator runs its python on every deploy."""
+    venv = tmp_path / "venvs" / "abc"
+    (venv / "lib").mkdir(parents=True)
+    pth = venv / "lib" / "x.pth"
+    pth.write_text("")
+    os.chmod(pth, 0o664)
+    os.chmod(venv / "lib", 0o2775)
+    prodctl._seal_venv(venv)
+    assert not os.stat(pth).st_mode & 0o022
+    assert not os.stat(venv / "lib").st_mode & 0o022
+    monkeypatch.setattr(prodctl.os, "getuid", lambda: os.stat(pth).st_uid + 1)
+    with pytest.raises(prodctl.ProdError, match="not yours"):
+        prodctl._seal_venv(venv)

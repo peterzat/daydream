@@ -559,7 +559,10 @@ cmd_comfyui_up() {
     fi
     local logf; logf="$(_log_file "comfyui")"
     cd "$COMFY_DIR"
-    nohup "$COMFY_PY" main.py --listen "$COMFY_HOST" --port "$COMFY_PORT" \
+    # --disable-api-nodes: no partner nodes, so the engine (unauthenticated on
+    # loopback, running as the operator) offers no way out to the internet
+    # (security review 2026-09-29). The painting workflows are all local.
+    nohup "$COMFY_PY" main.py --listen "$COMFY_HOST" --port "$COMFY_PORT" --disable-api-nodes \
         > "$logf" 2>&1 < /dev/null &
     echo $! > "$(_pid_file comfyui)"
     echo "comfyui: started (pid $!, $COMFY_HOST:$COMFY_PORT, log $logf)"

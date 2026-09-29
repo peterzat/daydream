@@ -90,8 +90,9 @@ def test_a_player_holds_one_dreamer_per_world_an_admin_several():
         assert client.post("/api/slots/5/create", json=IVO).status_code == 409
     with TestClient(app) as admin:
         _login(admin, "keeper", role="admin")
-        assert admin.post("/api/dreamer/create", json=MIRA).status_code == 200
-        assert admin.post("/api/dreamer/create", json=IVO).status_code == 200
+        # (names of their own: a dreamer's name is unique in the world)
+        assert admin.post("/api/dreamer/create", json={**MIRA, "name": "Juniper"}).status_code == 200
+        assert admin.post("/api/dreamer/create", json={**IVO, "name": "Oona"}).status_code == 200
 
 
 def test_twelve_friends_each_hold_a_toon():
@@ -250,7 +251,11 @@ def test_moderating_an_ambiguous_name_refuses_and_an_id_picks_one():
         _login(a, "ivo-one")
         _login(b, "ivo-two")
         a.post("/api/slots/3/create", json=IVO)
-        b.post("/api/slots/4/create", json=IVO)
+        b.post("/api/slots/4/create", json={**IVO, "name": "Ivo Two"})
+        # Two dreamers sharing a name predate the unique-name rule (security
+        # review 2026-09-29): made so in the DB, as a legacy world holds them.
+        from daydream import objects
+        objects.rename(toons.get_toon_in_slot(4).id, "Ivo")
         first, second = toons.get_toon_in_slot(3), toons.get_toon_in_slot(4)
         assert first.name == second.name
         assert admin_cli.cmd_toon_moderate("Ivo", "delete") == 2
@@ -275,7 +280,7 @@ def test_a_toon_named_after_another_toons_id_is_ambiguous(legacy):
         _login(b, "copycat")
         a.post("/api/slots/3/create", json=IVO)
         friend = toons.get_toon_in_slot(3)
-        b.post("/api/slots/4/create", json=IVO)
+        b.post("/api/slots/4/create", json={**IVO, "name": "Copy"})
         objects.rename(toons.get_toon_in_slot(4).id, legacy.format(id=friend.id))
         assert toons.get_toon_in_slot(4).name == legacy.format(id=friend.id)
         assert admin_cli.cmd_toon_moderate(friend.id, "delete") == 2
@@ -470,3 +475,17 @@ def test_toon_creation_follows_the_live_world(tmp_path):
     slots = toons.get_human_slots("sess-x")
     assert [s["toon"]["name"] for s in slots] == ["Visitor"]
     ddb.close_db()
+
+
+@pytest.mark.parametrize("taken", ["Ivo", "ivo", "  IVO ", "Ｉｖｏ"])
+def test_a_name_already_in_use_is_refused(taken):
+    """Security review 2026-09-29: letters, parcels and "ask about" find a
+    dreamer by name, so a copy of a friend's name could receive their post.
+    Case, spacing and compatibility forms fold; a resident's name counts."""
+    with TestClient(app) as a, TestClient(app) as b:
+        _login(a, "ivo-one")
+        assert a.post("/api/slots/3/create", json=IVO).status_code == 200
+        _login(b, "copycat")
+        r = b.post("/api/dreamer/create", json={**IVO, "name": taken})
+        assert r.status_code == 400 and "already goes by" in r.json()["detail"]
+        assert b.post("/api/dreamer/create", json={**IVO, "name": "Wren"}).status_code == 400

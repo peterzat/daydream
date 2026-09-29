@@ -359,12 +359,15 @@ def contents_visible(obj: Object) -> bool:
     return container_open(obj) or bool(obj.properties.get("transparent"))
 
 
-def visible_contents(obj: Object) -> list[Object]:
+def visible_contents(obj: Object, viewer_id: str | None = None) -> list[Object]:
     """Direct contents when see-through, else [] — the snapshot-nesting and
-    look-composition helper."""
+    look-composition helper. With a viewer, less things private to someone
+    else (security review 2026-09-29: another player's find, put in an open
+    container, showed its name to everyone)."""
     if not contents_visible(obj):
         return []
-    return contents(obj.id, kind="thing")
+    inner = contents(obj.id, kind="thing")
+    return inner if viewer_id is None else [c for c in inner if visible_to(c, viewer_id)]
 
 
 def size_of(obj: Object) -> int:

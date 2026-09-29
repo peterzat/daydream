@@ -32,6 +32,7 @@ import asyncio
 import logging
 import re
 import time
+import unicodedata
 from collections import deque
 
 from fastapi import APIRouter, HTTPException, Request
@@ -139,6 +140,20 @@ def _require_actionable(t: toons.Toon, who: accounts.Principal, *, for_delete: b
         raise HTTPException(status_code=403, detail="someone is dreaming as them just now")
 
 
+def _fold(name: str) -> str:
+    return " ".join(unicodedata.normalize("NFKC", name).casefold().split())
+
+
+def _name_taken(name: str) -> bool:
+    """Another dreamer or a resident of this world has this name (case,
+    spacing and compatibility forms folded)."""
+    from daydream import objects
+
+    want = _fold(name)
+    return any(_fold(t.name) == want
+               for t in objects.all_of_kind(toons.live_world_id(), "toon"))
+
+
 async def _toon_request(request: Request) -> tuple[str, str]:
     """Validate a create body; returns (name, appearance_seed)."""
     try:
@@ -159,9 +174,17 @@ async def _toon_request(request: Request) -> tuple[str, str]:
     if safety.first_banned(name) is not None:
         raise HTTPException(status_code=400, detail=(
             f"that name doesn't suit {instance.place()}; try another"))
-    if _mimics_a_toon_id(name):
+    if _mimics_a_toon_id(name) or "{" in name or "}" in name:
+        # Braces too: a name is narrated through the placeholder expander
+        # (SECURITY NOTE 2026-09-29).
         raise HTTPException(status_code=400, detail=(
             f"that name reads like one of {instance.place()}'s own labels; try another"))
+    if _name_taken(name):
+        # Letters, parcels and "ask about" find a dreamer by name, so a copy
+        # of someone's name could receive what was meant for them (security
+        # review 2026-09-29).
+        raise HTTPException(status_code=400, detail=(
+            f"someone in {instance.place()} already goes by that name; try another"))
     if not isinstance(appearance, str) or not appearance.strip():
         raise HTTPException(status_code=400, detail="a few words about how you look, please")
     appearance = appearance.strip()

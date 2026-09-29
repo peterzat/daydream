@@ -57,7 +57,7 @@ def test_an_evening_reads_in_the_log_without_secrets(caplog):
                         json={"slug": slug, "username": "robin", "password": PASSWORD})
         assert r.status_code == 200, r.text
         r = client.post("/api/dreamer/create",
-                        json={"name": "Wren", "appearance_seed": "a small wren in a green scarf"})
+                        json={"name": "Robin", "appearance_seed": "a small robin in a green scarf"})
         assert r.status_code == 200, r.text
         with client.websocket_connect("/ws") as ws:
             ws.receive_json()
@@ -70,9 +70,9 @@ def test_an_evening_reads_in_the_log_without_secrets(caplog):
     lines = [rec.getMessage() for rec in caplog.records if rec.name.startswith("daydream")]
     text = "\n".join(lines)
     for expected in ("invite: an unknown, used or expired link was opened",
-                     "redeemed (join) by robin", "dreamer made: Wren by robin",
-                     "ws: robin dreaming as Wren", "ws: robin closed after",
-                     "left the dream: Wren (robin)", "sign-out: robin", "sign-in: refused"):
+                     "redeemed (join) by robin", "dreamer made: Robin by robin",
+                     "ws: robin dreaming as Robin", "ws: robin closed after",
+                     "left the dream: Robin (robin)", "sign-out: robin", "sign-in: refused"):
         assert expected in text, (expected, lines)
     for secret in (slug, PASSWORD, "not-it-at-all", "marmalade", config.cookie_name()):
         assert secret not in text, secret

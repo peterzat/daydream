@@ -41,6 +41,7 @@ MIGRATIONS_DIR = config.PROJECT_ROOT / "migrations_accounts"
 WORDS_DIR = Path(__file__).resolve().parent / "invite_words"
 
 SESSION_DAYS = 30          # sliding: unused this long, a session ends
+MAX_SESSIONS_PER_ACCOUNT = 10
 SESSION_MAX_DAYS = 180     # absolute: however much it is used
 INVITE_DAYS = 14
 MIN_PASSWORD = 10
@@ -394,6 +395,15 @@ def create_session(account_id: str, user_agent: str = "") -> tuple[str, str]:
          _iso(now + timedelta(days=SESSION_DAYS)), (user_agent or "")[:200]),
     )
     conn.execute("UPDATE accounts SET last_login_at = ? WHERE id = ?", (_iso(now), account_id))
+    # An account keeps its newest few sessions: each sign-in made another,
+    # unthrottled, and every live one is published to the edge's keepsakes
+    # (security review 2026-09-29). A person has a phone, a laptop, a tablet.
+    conn.execute(
+        "DELETE FROM sessions WHERE account_id = ? AND id NOT IN ("
+        " SELECT id FROM sessions WHERE account_id = ?"
+        " ORDER BY created_at DESC, rowid DESC LIMIT ?)",
+        (account_id, account_id, MAX_SESSIONS_PER_ACCOUNT),
+    )
     return token, session_id
 
 
