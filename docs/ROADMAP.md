@@ -24,11 +24,17 @@ surfaces (drift variation, director ranking) unless play misses them
 - **Being remembered** (BACKLOG `npc-memory-of-player-disclosures`): the
   lowest rubric score on the first day; residents should keep what a player
   told them about themself.
-- **Small experience fixes from the first playtest**: a quiet "considers..."
-  while a reply is coming (`thinking-indicator`), scenery nouns that answer
+- **Small experience fixes from the first playtest**: scenery nouns that answer
   (`scenery-nouns`), more threads for latecomers on a busy day
   (`shared-thread-contention`), a real-dusk beat after the early first dusk
-  (`dusk-after-an-early-first-dusk`).
+  (`dusk-after-an-early-first-dusk`). The thinking indicator shipped in the
+  beta rehearsal (2026-09-28), with the household layer: letters through
+  Fen, handing things over, "also dreaming", "while you were away", the
+  record of dreamers, signed grown rooms
+  (docs/playtests/2026-09-28-beta-rehearsal/SUMMARY.md).
+- **The household's next asks** (BACKLOG, "The household"): Bell naming who
+  walked through today, leaving a thing for someone by name, a per-dreamer
+  beat for a closed guest, room prose by phase.
 - **Zero the marginal reflexes** if play does not miss them:
   `DAYDREAM_DRIFT_VARY_PROB=0`, `DAYDREAM_DIRECTOR_LLM=0`.
 
