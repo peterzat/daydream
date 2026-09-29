@@ -152,8 +152,13 @@
 
     {"id": "o-tace-hour-jar", "name": "dusty jar", "location": "offstage",
      "seed": "a small jar set apart from all the others, its glass furred with dust except where Tace's thumbs have been, resting on the lowest shelf where the lantern reaches; a folded paper hour sits inside, and its label, in an old looping hand, is turned to face the wall; Tace set it down that way. The lid is still sealed",
-     "aliases": ["jar", "wend's jar", "labeled jar"],
+     "aliases": ["jar", "wend's jar", "labeled jar", "lid", "jar lid"],
      "verbs": ["open"],
+     "properties": {"glimpsed": [
+       {"names": ["label", "jar's label", "jar label"],
+        "text": "The label is turned to the wall, the way Tace set it down, and you leave it that way."},
+       {"names": ["paper hour", "folded hour", "folded paper hour", "hour inside"],
+        "text": "The folded paper hour sits inside the sealed jar. Some jars wait for one pair of hands."}]},
      "rules": [
        {"on": "take",
         "do": [{"kind": "narrate", "to": "@actor",

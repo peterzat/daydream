@@ -281,7 +281,81 @@
         "oddment tin",
         "tin of oddments",
         "battered tin"
-      ]
+      ],
+      "properties": {
+        "glimpsed": [
+          {
+            "names": [
+              "something folded",
+              "folded thing",
+              "folded paper",
+              "folded minute"
+            ],
+            "if": [
+              {
+                "ending": "mott-minute/looked-together"
+              }
+            ],
+            "text": "The minute lies unfolded in Mott's tin now, catalogued in his slow, square hand. It's his, and it stays with him."
+          },
+          {
+            "names": [
+              "something folded",
+              "folded thing",
+              "folded paper",
+              "folded minute"
+            ],
+            "if": [
+              {
+                "beat": "mott-minute/sealed"
+              }
+            ],
+            "text": "There's only a small empty corner in the tin where the folded thing used to be."
+          },
+          {
+            "names": [
+              "something folded",
+              "folded thing",
+              "folded paper",
+              "folded minute"
+            ],
+            "text": "Mott keeps his thumb over the folded thing, gently, and you don't ask him to move it."
+          },
+          {
+            "names": [
+              "button",
+              "brown button",
+              "coat button"
+            ],
+            "if": [
+              {
+                "carried": "o-letters-button"
+              }
+            ],
+            "text": "It matches the button stitched to the letter you carry, thread and all. The tin is Mott's, though, and so is the button."
+          },
+          {
+            "names": [
+              "button",
+              "brown button",
+              "coat button"
+            ],
+            "text": "The brown button is Mott's, kept in his tin with his other small found things. He lets you look, and that is all."
+          },
+          {
+            "names": [
+              "bent key",
+              "key",
+              "thimble",
+              "chalk",
+              "blue chalk",
+              "stub of chalk",
+              "stub of blue chalk"
+            ],
+            "text": "These are Mott's small found things, kept in his tin. He lets you look, and that is all."
+          }
+        ]
+      }
     },
     {
       "id": "o-broom",
@@ -293,7 +367,38 @@
       "seed": "Mott's soft broom, worn to a comfortable angle, its bristles holding a few bright specks that might be dust or might be minutes",
       "aliases": [
         "soft broom"
-      ]
+      ],
+      "properties": {
+        "glimpsed": [
+          {
+            "names": [
+              "specks",
+              "bright specks",
+              "speck",
+              "dust",
+              "sweepings",
+              "bristles"
+            ],
+            "if": [
+              {
+                "flag": "CLOCK-STARTED"
+              }
+            ],
+            "text": "The bright specks cling to the bristles of Mott's broom. Whatever they are, they're his sweeping; your own stray minutes glint on their own, somewhere about the village."
+          },
+          {
+            "names": [
+              "specks",
+              "bright specks",
+              "speck",
+              "dust",
+              "sweepings",
+              "bristles"
+            ],
+            "text": "The bright specks cling to the bristles of Mott's broom. Whatever they are, they're his sweeping, and they stay with the broom."
+          }
+        ]
+      }
     },
     {
       "id": "o-escapement-gear",

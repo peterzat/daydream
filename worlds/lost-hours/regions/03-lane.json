@@ -153,7 +153,63 @@
             }
           ]
         }
-      ]
+      ],
+      "properties": {
+        "glimpsed": [
+          {
+            "names": [
+              "lantern-skins",
+              "lantern skins",
+              "lantern-skin",
+              "lantern skin",
+              "skin",
+              "skins",
+              "paper skin",
+              "stacks",
+              "stack of skins"
+            ],
+            "if": [
+              {
+                "contains": "o-bell-dawn-skin",
+                "of": "r-lamphouse",
+                "not": true
+              },
+              {
+                "arc": "bell-dawn"
+              },
+              {
+                "beat": "bell-dawn/sunrise-made",
+                "not": true
+              }
+            ],
+            "text": "The folded skins in the stacks are Bell's, each waiting for its own lantern. A spare sometimes turns up by dusk, when one is truly needed."
+          },
+          {
+            "names": [
+              "lantern-skins",
+              "lantern skins",
+              "lantern-skin",
+              "lantern skin",
+              "skin",
+              "skins",
+              "paper skin",
+              "stacks",
+              "stack of skins"
+            ],
+            "text": "The folded skins in the stacks are Bell's, each waiting for its own lantern, and you leave the stacks as they lean."
+          },
+          {
+            "names": [
+              "wick",
+              "wicks",
+              "spare wicks",
+              "bundles",
+              "bundle of wicks"
+            ],
+            "text": "The wicks are Bell's spares, hung in bundles from the rafters against the lanterns' long nights, and they stay where Bell can reach them."
+          }
+        ]
+      }
     },
     {
       "id": "r-bridge",
@@ -267,7 +323,59 @@
         }
       ],
       "properties": {
-        "at": "on"
+        "at": "on",
+        "glimpsed": [
+          {
+            "names": [
+              "lights",
+              "light",
+              "small lights",
+              "drifting lights",
+              "hours",
+              "hour",
+              "snow"
+            ],
+            "if": [
+              {
+                "phase": "dusk"
+              },
+              {
+                "pflag": "WAITED-DUSK",
+                "not": true
+              }
+            ],
+            "text": "The small lights drift down past your fingers like slow snow and settle where they will. They come, Sorrel says, to anyone who stands still."
+          },
+          {
+            "names": [
+              "lights",
+              "light",
+              "small lights",
+              "drifting lights",
+              "hours",
+              "hour",
+              "snow"
+            ],
+            "if": [
+              {
+                "phase": "dusk"
+              }
+            ],
+            "text": "The small lights drift past your fingers like slow snow, on their way to wherever hours go to rest."
+          },
+          {
+            "names": [
+              "lights",
+              "light",
+              "small lights",
+              "drifting lights",
+              "hours",
+              "hour",
+              "snow"
+            ],
+            "text": "There are no lights just now. They drift down at dusk, the villagers say, like slow snow."
+          }
+        ]
       }
     },
     {

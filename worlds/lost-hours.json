@@ -8745,7 +8745,80 @@
             }
           ]
         }
-      ]
+      ],
+      "properties": {
+        "glimpsed": [
+          {
+            "names": [
+              "clock",
+              "great clock",
+              "big clock",
+              "tower clock",
+              "clock face",
+              "brass face",
+              "clock's face",
+              "great clock's face",
+              "clock hands",
+              "hands of the clock",
+              "great clock's hands"
+            ],
+            "if": [
+              {
+                "flag": "CLOCK-STARTED"
+              }
+            ],
+            "text": "The great clock keeps the village's day on its own now, high in the tower and far above your reach.",
+            "verbs": {
+              "examine": "High in the tower the great clock's brass face looks down, patient as a moon, and its hands are moving again, so slowly you only ever catch them having moved.",
+              "wind": "It keeps its own time now, high in the tower, and wants no winding from below."
+            }
+          },
+          {
+            "names": [
+              "clock",
+              "great clock",
+              "big clock",
+              "tower clock",
+              "clock face",
+              "brass face",
+              "clock's face",
+              "great clock's face",
+              "clock hands",
+              "hands of the clock",
+              "great clock's hands"
+            ],
+            "if": [
+              {
+                "beat": "prologue/read-ledger",
+                "not": true
+              }
+            ],
+            "text": "The great clock's face is far up in the tower, and its hands haven't moved since you came. The repair ledger open on the lectern might say why.",
+            "verbs": {
+              "examine": "High in the tower the great clock's brass face looks down, patient as a moon. Its hands stand still."
+            }
+          },
+          {
+            "names": [
+              "clock",
+              "great clock",
+              "big clock",
+              "tower clock",
+              "clock face",
+              "brass face",
+              "clock's face",
+              "great clock's face",
+              "clock hands",
+              "hands of the clock",
+              "great clock's hands"
+            ],
+            "text": "The great clock hangs far up in the tower, still. Winding won't help from down here: the repair ledger says what it's missing, its escapement gear.",
+            "verbs": {
+              "examine": "High in the tower the great clock's brass face looks down, patient as a moon. Its hands stand still."
+            }
+          }
+        ]
+      }
     },
     {
       "id": "r-loft",
@@ -8796,6 +8869,65 @@
       "description": "Shelves run along the brick walls, and on them sit rows of small glass jars, each holding a folded slip of paper: an hour somebody saved and never spent. The lantern by the stair burns low and steady. The highest shelf is lost in shadow. It is quiet here, the way the inside of a pocket is quiet. Stairs lead up into the tower.",
       "exits": {
         "up": "r-clocktower"
+      },
+      "properties": {
+        "glimpsed": [
+          {
+            "names": [
+              "lantern",
+              "cellar lantern",
+              "lantern by the stair",
+              "light",
+              "cellar light"
+            ],
+            "if": [
+              {
+                "ending": "tace-hour/within-reach"
+              }
+            ],
+            "text": "Umber's lantern burns low by the stair, turned a little toward the lowest shelf. It stays where she sets it."
+          },
+          {
+            "names": [
+              "lantern",
+              "cellar lantern",
+              "lantern by the stair",
+              "light",
+              "cellar light"
+            ],
+            "text": "Umber's lantern burns low and steady by the stair. It's the cellar's only light, and it stays where she keeps it."
+          },
+          {
+            "names": [
+              "small jar",
+              "little jar",
+              "nap's jar",
+              "pim's jar",
+              "nap jar",
+              "jar on the low shelf"
+            ],
+            "if": [
+              {
+                "ending": "pim/jar"
+              }
+            ],
+            "text": "The nap sleeps on in its little jar. DO NOT WAKE, says Umber's label, so you don't."
+          },
+          {
+            "names": [
+              "everyone's jar",
+              "help yourself jar",
+              "extra hour's jar",
+              "jar on the lowest shelf"
+            ],
+            "if": [
+              {
+                "ending": "extra-hour/everyones"
+              }
+            ],
+            "text": "The Extra Hour dozes in its jar on the lowest shelf, curled in its autumn coat. HELP YOURSELF, says the label, and you find that sitting near it a moment is help enough."
+          }
+        ]
       }
     },
     {
@@ -9112,7 +9244,63 @@
             }
           ]
         }
-      ]
+      ],
+      "properties": {
+        "glimpsed": [
+          {
+            "names": [
+              "lantern-skins",
+              "lantern skins",
+              "lantern-skin",
+              "lantern skin",
+              "skin",
+              "skins",
+              "paper skin",
+              "stacks",
+              "stack of skins"
+            ],
+            "if": [
+              {
+                "contains": "o-bell-dawn-skin",
+                "of": "r-lamphouse",
+                "not": true
+              },
+              {
+                "arc": "bell-dawn"
+              },
+              {
+                "beat": "bell-dawn/sunrise-made",
+                "not": true
+              }
+            ],
+            "text": "The folded skins in the stacks are Bell's, each waiting for its own lantern. A spare sometimes turns up by dusk, when one is truly needed."
+          },
+          {
+            "names": [
+              "lantern-skins",
+              "lantern skins",
+              "lantern-skin",
+              "lantern skin",
+              "skin",
+              "skins",
+              "paper skin",
+              "stacks",
+              "stack of skins"
+            ],
+            "text": "The folded skins in the stacks are Bell's, each waiting for its own lantern, and you leave the stacks as they lean."
+          },
+          {
+            "names": [
+              "wick",
+              "wicks",
+              "spare wicks",
+              "bundles",
+              "bundle of wicks"
+            ],
+            "text": "The wicks are Bell's spares, hung in bundles from the rafters against the lanterns' long nights, and they stay where Bell can reach them."
+          }
+        ]
+      }
     },
     {
       "id": "r-bridge",
@@ -9226,7 +9414,59 @@
         }
       ],
       "properties": {
-        "at": "on"
+        "at": "on",
+        "glimpsed": [
+          {
+            "names": [
+              "lights",
+              "light",
+              "small lights",
+              "drifting lights",
+              "hours",
+              "hour",
+              "snow"
+            ],
+            "if": [
+              {
+                "phase": "dusk"
+              },
+              {
+                "pflag": "WAITED-DUSK",
+                "not": true
+              }
+            ],
+            "text": "The small lights drift down past your fingers like slow snow and settle where they will. They come, Sorrel says, to anyone who stands still."
+          },
+          {
+            "names": [
+              "lights",
+              "light",
+              "small lights",
+              "drifting lights",
+              "hours",
+              "hour",
+              "snow"
+            ],
+            "if": [
+              {
+                "phase": "dusk"
+              }
+            ],
+            "text": "The small lights drift past your fingers like slow snow, on their way to wherever hours go to rest."
+          },
+          {
+            "names": [
+              "lights",
+              "light",
+              "small lights",
+              "drifting lights",
+              "hours",
+              "hour",
+              "snow"
+            ],
+            "text": "There are no lights just now. They drift down at dusk, the villagers say, like slow snow."
+          }
+        ]
       }
     },
     {
@@ -13478,7 +13718,14 @@
         "case",
         "glass case",
         "clock-case",
-        "oak case"
+        "oak case",
+        "door",
+        "little door",
+        "brass door",
+        "little brass door",
+        "case door",
+        "lock",
+        "brass lock"
       ],
       "properties": {
         "state": "locked",
@@ -13503,6 +13750,39 @@
               "cog",
               "brass cog"
             ]
+          }
+        ],
+        "glimpsed": [
+          {
+            "names": [
+              "pendulum",
+              "clock pendulum",
+              "great clock's pendulum"
+            ],
+            "if": [
+              {
+                "beat": "pim/tace-lullaby"
+              },
+              {
+                "beat": "pim/pendulum-given",
+                "not": true
+              }
+            ],
+            "text": "This pendulum belongs to the great clock and keeps its time. A spare might be easier to come by: something brass turns slowly by the loft window.",
+            "verbs": {
+              "examine": "The pendulum hangs behind the glass of the clock case, keeping the great clock company."
+            }
+          },
+          {
+            "names": [
+              "pendulum",
+              "clock pendulum",
+              "great clock's pendulum"
+            ],
+            "text": "The pendulum hangs behind the clock case's glass, part of the great clock; it isn't a thing to carry off.",
+            "verbs": {
+              "examine": "The pendulum hangs behind the glass of the clock case, keeping the great clock company."
+            }
           }
         ]
       }
@@ -13630,7 +13910,58 @@
       "aliases": [
         "bench",
         "tools"
-      ]
+      ],
+      "properties": {
+        "glimpsed": [
+          {
+            "names": [
+              "loupe",
+              "loupes",
+              "eyeglass",
+              "eyeglasses"
+            ],
+            "if": [
+              {
+                "arc": "mott-minute"
+              },
+              {
+                "beat": "mott-minute/tace-loupe",
+                "not": true
+              }
+            ],
+            "text": "The loupes on the bench are Tace's working ones, each where Tace's fingers expect it. For a loan, you'd ask Tace.",
+            "verbs": {
+              "examine": "Little brass eyeglasses lie among the tools, each where Tace's fingers expect it."
+            }
+          },
+          {
+            "names": [
+              "loupe",
+              "loupes",
+              "eyeglass",
+              "eyeglasses"
+            ],
+            "text": "The loupes on the bench are Tace's working ones, each where Tace's fingers expect it, and you leave them be.",
+            "verbs": {
+              "examine": "Little brass eyeglasses lie among the tools, each where Tace's fingers expect it."
+            }
+          },
+          {
+            "names": [
+              "tweezers",
+              "screwdriver",
+              "screwdrivers",
+              "tiny screwdrivers",
+              "brass wheels",
+              "wheels",
+              "brass wheel",
+              "tray",
+              "tray of wheels"
+            ],
+            "text": "Tace's tools lie scattered just so across the bench, too fine for ordinary fingers, and you leave them where they are."
+          }
+        ]
+      }
     },
     {
       "id": "o-telescope",
@@ -13724,7 +14055,7 @@
               "wend's jar",
               "labeled jar"
             ],
-            "text": "The jar glints far above the lantern's reach, set apart from all the rest, and no ladder in the cellar is tall enough to bring it down.",
+            "text": "The jars along the shelves are Umber's to keep, and the one that glints on the highest shelf, set apart from the rest, is far above the lantern's reach: no ladder in the cellar is tall enough to bring it down.",
             "verbs": {
               "examine": "Up in the shadow you can make out only a glint of glass and the pale edge of a label, much too far away to read."
             }
@@ -13848,7 +14179,81 @@
         "oddment tin",
         "tin of oddments",
         "battered tin"
-      ]
+      ],
+      "properties": {
+        "glimpsed": [
+          {
+            "names": [
+              "something folded",
+              "folded thing",
+              "folded paper",
+              "folded minute"
+            ],
+            "if": [
+              {
+                "ending": "mott-minute/looked-together"
+              }
+            ],
+            "text": "The minute lies unfolded in Mott's tin now, catalogued in his slow, square hand. It's his, and it stays with him."
+          },
+          {
+            "names": [
+              "something folded",
+              "folded thing",
+              "folded paper",
+              "folded minute"
+            ],
+            "if": [
+              {
+                "beat": "mott-minute/sealed"
+              }
+            ],
+            "text": "There's only a small empty corner in the tin where the folded thing used to be."
+          },
+          {
+            "names": [
+              "something folded",
+              "folded thing",
+              "folded paper",
+              "folded minute"
+            ],
+            "text": "Mott keeps his thumb over the folded thing, gently, and you don't ask him to move it."
+          },
+          {
+            "names": [
+              "button",
+              "brown button",
+              "coat button"
+            ],
+            "if": [
+              {
+                "carried": "o-letters-button"
+              }
+            ],
+            "text": "It matches the button stitched to the letter you carry, thread and all. The tin is Mott's, though, and so is the button."
+          },
+          {
+            "names": [
+              "button",
+              "brown button",
+              "coat button"
+            ],
+            "text": "The brown button is Mott's, kept in his tin with his other small found things. He lets you look, and that is all."
+          },
+          {
+            "names": [
+              "bent key",
+              "key",
+              "thimble",
+              "chalk",
+              "blue chalk",
+              "stub of chalk",
+              "stub of blue chalk"
+            ],
+            "text": "These are Mott's small found things, kept in his tin. He lets you look, and that is all."
+          }
+        ]
+      }
     },
     {
       "id": "o-broom",
@@ -13860,7 +14265,38 @@
       "seed": "Mott's soft broom, worn to a comfortable angle, its bristles holding a few bright specks that might be dust or might be minutes",
       "aliases": [
         "soft broom"
-      ]
+      ],
+      "properties": {
+        "glimpsed": [
+          {
+            "names": [
+              "specks",
+              "bright specks",
+              "speck",
+              "dust",
+              "sweepings",
+              "bristles"
+            ],
+            "if": [
+              {
+                "flag": "CLOCK-STARTED"
+              }
+            ],
+            "text": "The bright specks cling to the bristles of Mott's broom. Whatever they are, they're his sweeping; your own stray minutes glint on their own, somewhere about the village."
+          },
+          {
+            "names": [
+              "specks",
+              "bright specks",
+              "speck",
+              "dust",
+              "sweepings",
+              "bristles"
+            ],
+            "text": "The bright specks cling to the bristles of Mott's broom. Whatever they are, they're his sweeping, and they stay with the broom."
+          }
+        ]
+      }
     },
     {
       "id": "o-escapement-gear",
@@ -16640,11 +17076,34 @@
       "aliases": [
         "jar",
         "wend's jar",
-        "labeled jar"
+        "labeled jar",
+        "lid",
+        "jar lid"
       ],
       "verbs": [
         "open"
       ],
+      "properties": {
+        "glimpsed": [
+          {
+            "names": [
+              "label",
+              "jar's label",
+              "jar label"
+            ],
+            "text": "The label is turned to the wall, the way Tace set it down, and you leave it that way."
+          },
+          {
+            "names": [
+              "paper hour",
+              "folded hour",
+              "folded paper hour",
+              "hour inside"
+            ],
+            "text": "The folded paper hour sits inside the sealed jar. Some jars wait for one pair of hands."
+          }
+        ]
+      },
       "rules": [
         {
           "on": "take",

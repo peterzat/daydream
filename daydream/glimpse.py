@@ -66,11 +66,37 @@ def _phrase_pattern(phrase: str) -> re.Pattern:
     return re.compile(r"\b" + r"\s+".join(head + [last]) + r"\b", re.IGNORECASE)
 
 
+def _typed_forms(typed: str) -> list[str]:
+    """The typed name, and it without a trailing phrase the way the parser
+    drops one ("jar on the top shelf" -> "jar")."""
+    from daydream.parser import _TRAILING_PHRASE
+
+    head = _norm(_TRAILING_PHRASE.sub("", typed))
+    return [typed] + ([head] if head and head != typed else [])
+
+
+def _same(a: str, b: str) -> bool:
+    """Equal, the last word plural-tolerant."""
+    aw, bw = a.split(), b.split()
+    return len(aw) == len(bw) and aw[:-1] == bw[:-1] and _singular(aw[-1]) == _singular(bw[-1])
+
+
 def _name_matches(typed: str, name: str) -> bool:
+    """A typed name is the authored one (articles aside, a plural tolerated),
+    or ends with a name of two words or more ("dusty glinting jar" for
+    "glinting jar"). One word must match whole: "little brass clock" is not
+    the great clock's "clock"."""
     name = _norm(name)
     if not name or not typed:
         return False
-    return bool(_phrase_pattern(name).search(typed))
+    for form in _typed_forms(typed):
+        if _same(form, name):
+            return True
+        words = form.split()
+        n = len(name.split())
+        if n >= 2 and len(words) > n and _same(" ".join(words[-n:]), name):
+            return True
+    return False
 
 
 def _hosts(actor: objects.Object, room_id: str) -> list[objects.Object]:
@@ -83,7 +109,7 @@ def authored(actor: objects.Object, room_id: str, name: str, verb: str) -> str |
     """The authored reason for `verb` on `name`, from a glimpse whose
     conditions hold for this actor; the longest matching name wins."""
     typed = _norm(name)
-    best: tuple[int, str] | None = None
+    best: tuple[int, str] | None = None  # (length of the matching name, line)
     for host in _hosts(actor, room_id):
         entries = host.properties.get("glimpsed")
         if not isinstance(entries, list):
@@ -127,20 +153,20 @@ def seen_in(actor: objects.Object, room_id: str, name: str) -> tuple[str, str] |
     a plural outranks a possessive ("the lantern's reach" names the lantern
     less than "the lantern by the stair"), and at the same rank a thing's
     look outranks the room's description."""
-    noun = _norm(name)
-    if len(noun) < 3 or noun in _STOPWORDS:
-        return None
-    pattern = _phrase_pattern(noun)
-    found: list[tuple[int, str]] = []
-    for host in sorted(_hosts(actor, room_id), key=lambda h: h.kind == "room"):
-        for sentence in _SENTENCE.findall(_prose(host)):
-            ranks = [_match_rank(m, noun) for m in pattern.finditer(sentence)]
-            if ranks:
-                found.append((min(ranks), sentence.strip()))
-    if not found:
-        return None
-    found.sort(key=lambda f: f[0])  # stable: things before the room at a rank
-    return noun, found[0][1]
+    for noun in _typed_forms(_norm(name)):
+        if len(noun) < 3 or noun in _STOPWORDS:
+            continue
+        pattern = _phrase_pattern(noun)
+        found: list[tuple[int, str]] = []
+        for host in sorted(_hosts(actor, room_id), key=lambda h: h.kind == "room"):
+            for sentence in _SENTENCE.findall(_prose(host)):
+                ranks = [_match_rank(m, noun) for m in pattern.finditer(sentence)]
+                if ranks:
+                    found.append((min(ranks), sentence.strip()))
+        if found:
+            found.sort(key=lambda f: f[0])  # stable: things before the room at a rank
+            return noun, found[0][1]
+    return None
 
 
 def _match_rank(m: re.Match, noun: str) -> int:
