@@ -464,3 +464,9 @@ kept with that deployment, not here.
 - **Why deferred:** No shipped content needs it yet (DESIGN.md "What the page offers" records the rule).
 - **Revisit criteria:** The first puzzle whose answer is a verb on a thing in view.
 - **Origin:** playtest 2026-09-29.
+
+### credentials-an-agent-session-holds
+- **One-line description:** An operator's Claude Code session that reads player text (dream digests, `play` output, letters, dreamer names) should hold only credentials that are worth little if they leak. Give it a fine-grained token limited to the repos it pushes, with no gist or key-admin scope and an expiry; an SSH key with a passphrase held in an agent, or per-repo deploy keys; and an IP-restricted Cloudflare token (CLOUDFLARE-SETUP.md already asks for one). Keep interpreters and `gh`/`git` out of any global allow list that runs them without review, and remember that repos holding shared agent tooling (skills, hooks) are the most valuable push target of all, since a change there runs inside every future session.
+- **Why deferred:** Account and box settings, outside the repo; the guard hook, the player-text policy and the scan cover the near term.
+- **Revisit criteria:** Now, for any live instance; and whenever a new credential is placed on the box.
+- **Origin:** security review 2026-09-29 (H1).

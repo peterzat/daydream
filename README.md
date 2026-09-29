@@ -14,7 +14,7 @@ Every hour that goes missing ends up somewhere: the afternoon you daydreamed thr
 
 The village is the game that comes with daydream out of the box: a small, shared, persistent world for a handful of invited players, where you type or click your way through watercolor rooms and the story responds to what people actually do. A visit might have you arrive at the Clocktower, wind a small clock of your own by the old custom, meet the lamplighter and the clockmaker, help a lost hour find its way home, and pick up the stray minutes that turn up around the village for you alone, leaving something changed for the next dreamer to find.
 
-Everything the running game generates happens on the box's own GPU, a 20 GB RTX 4000 SFF Ada. Qwen3.5 9B (served by vLLM) understands what you type and answers in a resident's voice when you wander somewhere no author went, and SDXL with a watercolor LoRA (served by ComfyUI) paints your portrait and any room a player grows. No cloud model is called while anyone plays.
+Everything the running game generates happens on the box's own GPU, a 20 GB RTX 4000 SFF Ada, with state-of-the-art open-weight models sharing the one card. Qwen3.5 9B (served by vLLM) understands what you type and answers in a resident's voice when you wander somewhere no author went, and SDXL with a watercolor LoRA (served by ComfyUI) paints your portrait and any room a player grows. No cloud model is called while anyone plays.
 
 ## What we're building
 
@@ -84,7 +84,7 @@ The first version of daydream was a platform players could expand with a little 
 - **A shared room reads right.** Your own actions narrate to you in the second person and to everyone else in the third, conversations are private with a one-line note for bystanders, and letters and hand-overs pass between dreamers.
 - **One GPU, two engines, one gate.** vLLM (Qwen3.5 9B AWQ) and ComfyUI (SDXL with a watercolor LoRA) stay resident on the card behind a GPU arbiter, in-process plus a lock file shared by dev and prod. Text calls share slots, a render runs alone, a waiting player's text goes first, and background work such as the director's ranking or a journal never delays anyone.
 
-[`CLAUDE.md`](CLAUDE.md) is the full operating manual.
+Administration happens in a Claude Code session in this checkout, and there's deliberately no admin panel on the web. You say what you want in plain words, and project skills cover the everyday verbs: `/invite <name>` mints a player's single-use link and drafts the message to send, `/village status|sleep|wake` checks on the live instance or rests it to free the GPU, and `/publish` ships a change through review, deploy and verification. For everything else the agent follows the playbooks in [`docs/runbooks/`](docs/runbooks/), and every step underneath is a plain `bin/game` command you can run yourself. [`CLAUDE.md`](CLAUDE.md) is the full operating manual the agent works from.
 
 ## Running it
 
