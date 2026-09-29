@@ -94,6 +94,9 @@ VERBS: dict[str, VerbSpec] = {
         description="Look closely at a toon or thing. Target: the object.",
         needs_dobj=True, valid_dobj_kinds=frozenset({"toon", "thing"}),
         allowed_effects=frozenset({"narrate", "set_property"}), on_bar=True,
+        # The ways a player says it (playtest 2026-09-29b; Infocom's EXAMINE
+        # also answered DESCRIBE and WHAT): each stays on the zero-LLM path.
+        aliases=("x", "inspect", "study", "describe", "check", "check out"),
     ),
     "take": VerbSpec(
         name="take", ui_hint="Take",
@@ -102,7 +105,7 @@ VERBS: dict[str, VerbSpec] = {
         # adjust_score is rule-only in general; take declares it explicitly
         # for the authored first-take treasure award (score_take property).
         allowed_effects=frozenset({"move_object", "narrate", "adjust_score"}),
-        on_bar=True, aliases=("get",),
+        on_bar=True, aliases=("get", "grab", "pick up", "lift", "carry", "reach for"),
     ),
     "drop": VerbSpec(
         name="drop", ui_hint="Drop",

@@ -129,6 +129,29 @@ async def test_look_at_npc_grounds_to_examine(monkeypatch):
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("line,verb", [
+    ("pick up the moon", "take"), ("grab the moon", "take"), ("lift the moon", "take"),
+    ("carry the moon", "take"), ("reach for the moon", "take"),
+    ("x moon", "examine"), ("inspect the moon", "examine"), ("study the moon", "examine"),
+    ("describe the moon", "examine"), ("check out the moon", "examine"),
+])
+async def test_the_ways_players_say_take_and_examine_stay_deterministic(monkeypatch, line, verb):
+    # Playtest 2026-09-29b: "pick up the jar" went to the model, which grounds
+    # only in-scope ids, so a thing the prose named came back "not understood".
+    spy = _mock_llm(monkeypatch, {"verb": "none"})
+    p = await parser.parse("t-wren", line)
+    assert p.verb == verb and p.dobj_name == "moon"
+    spy.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_a_one_letter_word_without_a_target_verb_stays_a_sentence(monkeypatch):
+    spy = _mock_llm(monkeypatch, {"verb": "say", "args": "I keep bees back home"})
+    p = await parser.parse("t-wren", "I keep bees back home")
+    assert p.verb != "inventory"
+
+
+@pytest.mark.asyncio
 async def test_look_at_an_absent_name_passes_it_through_like_examine(monkeypatch):
     # Playtest 2026-09-29b: "look at the lantern" for a lantern the room's prose
     # names (no object) fell to the LLM and read "nothing takes that up".

@@ -318,11 +318,17 @@ def _fast_path(actor_id: str, text: str, room: rooms.Room | None):
         if spec is not None:
             rest = " ".join(words[2:]).strip()
     if spec is None and not (len(words[0]) == 1 and len(words) > 1):
-        # A one-letter alias (i, l, x) is a command only on its own: "I keep
+        # A one-letter alias (i, l) is a command only on its own: "I keep
         # bees back home" is a sentence, not an inventory (playtest 2026-09-26).
         spec = _verb_by_word(world_id, words[0].lower())
         if spec is not None:
             rest = " ".join(words[1:]).strip()
+    elif spec is None:
+        # ...unless its verb takes a target: "x jar" is the old examine idiom,
+        # and no sentence opens with x.
+        one = _verb_by_word(world_id, words[0].lower())
+        if one is not None and one.needs_dobj:
+            spec, rest = one, " ".join(words[1:]).strip()
 
     # "look at <name>" -> examine the named in-scope object. A bare `look`
     # describes the room and ignores any target, so the targeted form is routed
