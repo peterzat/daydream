@@ -147,6 +147,41 @@ def for_prompt(world_id: str, text: str, actor_id: str) -> list[str]:
     return [dreamer_line(p, actor_id) for p in named_players(world_id, text, exclude=actor_id)]
 
 
+# ---- who walked through today ------------------------------------------------------------
+
+
+def dreamers_today(world_id: str) -> list[str]:
+    """The dreamers who typed anything today, by the village's calendar,
+    newest last."""
+    from datetime import datetime, time, timezone
+
+    tz = _tz(world_id)
+    now_local = worldclock.now().astimezone(tz) if tz else worldclock.now()
+    start = datetime.combine(now_local.date(), time.min, tzinfo=tz or timezone.utc)
+    rows = db.get_conn().execute(
+        "SELECT toon_id, MIN(created_at) AS first FROM inputs WHERE world_id = ? "
+        "AND created_at >= ? GROUP BY toon_id ORDER BY first",
+        (world_id, worldclock.iso(start))).fetchall()
+    out: list[str] = []
+    for r in rows:
+        t = objects.get(r["toon_id"])
+        if t is not None and t.is_player and t.name not in out:
+            out.append(t.name)
+    return out
+
+
+def dreamers_today_clause(world_id: str) -> str:
+    """A clause for an authored line's {dreamers_today}: "Wren and Vex came
+    through today", "one dreamer, Halloran, came through today", "no
+    dreamer came through today"."""
+    names = dreamers_today(world_id)
+    if not names:
+        return "no dreamer came through today"
+    if len(names) == 1:
+        return f"one dreamer, {names[0]}, came through today"
+    return f"{_join(names)} came through today"
+
+
 # ---- what a resident tells about a dreamer ------------------------------------------
 
 

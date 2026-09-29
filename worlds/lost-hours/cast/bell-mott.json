@@ -336,6 +336,25 @@
             "lamps",
             "lantern"
           ],
+          "if": [
+            {
+              "contains": "o-paper-lantern",
+              "of": "r-square",
+              "not": true
+            }
+          ],
+          "variants": [
+            "Bell glances at the empty hook where Pollen hangs and doesn't quite sigh. 'Forty lanterns in the square and the lane tonight. Forty-one, when Pollen's home. Someone's borrowed her, and she'll want carrying back before she sulks.'",
+            "'Old Blue burns steady, that one hiccups, and Pollen,' Bell says, and stops at the bare hook. 'Pollen's out visiting. If you see a lantern where a lantern shouldn't be, that's her. Bring her home and I'll owe you.'"
+          ]
+        },
+        {
+          "label": "the lanterns",
+          "aliases": [
+            "lanterns",
+            "lamps",
+            "lantern"
+          ],
           "variants": [
             "Bell beams. 'Forty-one lanterns in the square and the lane. I know every one. That's Pollen, that's Old Blue, that's the one that hiccups.'",
             "'A lantern likes to be lit gently,' Bell says, tilting a wick. 'Rush it and it sulks all night.'",
@@ -529,6 +548,21 @@
           "variants": [
             "'Tock!' Bell says, delighted. 'Sits in the middle of the square by day, then isn't there. I've never once seen Tock arrive. Only be.'",
             "Bell lowers their voice. 'Tock only exists between the ticks, so I walk softly round the square, in case I step on one.'"
+          ]
+        },
+        {
+          "label": "who came through today",
+          "aliases": [
+            "who came today",
+            "who was here today",
+            "who's been through",
+            "today's dreamers",
+            "the dreamers today",
+            "anyone come by today"
+          ],
+          "variants": [
+            "Bell counts on sooty fingers, the way they do at the last pole every dusk. 'Let me see: {dreamers_today}. The lanterns keep better count than I do, but that's near enough.'",
+            "Bell tips the hooked pole back against a shoulder and thinks. '{dreamers_today}. I tell Pollen at dusk so somebody remembers besides me.'"
           ]
         }
       ],

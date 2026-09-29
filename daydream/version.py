@@ -49,7 +49,7 @@ APP_VERSION = "1.0.0"
 # that stays wound, time-neutral lines, authored threads. 1.7: the second
 # playtest's lines -- a gear that reads right in the hand, clue threads that
 # end with their step, a greeting that doesn't repeat an arrival.)
-WORLD_VERSION = "1.8"
+WORLD_VERSION = "1.9"
 
 
 @lru_cache(maxsize=1)

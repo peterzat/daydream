@@ -336,6 +336,13 @@ def _apply_narrate(
         text = variants.pick(world_id, key, vs, target_room)
     if not isinstance(text, str) or not text.strip():
         return None
+    if "{dreamers_today}" in text:
+        # Who walked through the village today (beta rehearsal 2026-09-28:
+        # the evening player's honest substitute for a friends list), from
+        # the input log, in the world's own names.
+        from daydream import trace
+
+        text = text.replace("{dreamers_today}", trace.dreamers_today_clause(world_id))
     to = eff.get("to")
     recipient: str | None = None
     if isinstance(to, str) and to.strip():

@@ -171,3 +171,26 @@ async def test_reading_and_examining_show_the_roster():
     before = events.max_seq()
     await verbs.execute_command("t-wren", "examine", dobj_id=book.id)
     assert _narrates(before)[-1].payload["text"].endswith("Signed: Wren (here now).")
+
+
+def test_who_came_through_today_by_the_villages_calendar():
+    """{dreamers_today} in any authored narration: the dreamers who typed
+    anything today by the village's calendar, as a clause."""
+    from daydream.skills import effects
+
+    ivo = _ivo(resting=True)
+    worldstate.set(W, "def:time", {"tz": "America/Los_Angeles", "phases": {}})
+    worldclock.set_fake_now("2026-10-01T02:00:00+00:00")  # 19:00 the evening before, in the village
+    inputs.record(ivo.id, "text", text="look")
+    worldclock.set_fake_now("2026-10-01T16:30:00+00:00")  # 09:30 today
+    assert trace.dreamers_today_clause(W) == "no dreamer came through today"
+    inputs.record("t-wren", "text", text="look")
+    assert trace.dreamers_today_clause(W) == "one dreamer, Wren, came through today"
+    worldclock.advance(minutes=1)
+    inputs.record(ivo.id, "text", text="look")
+    assert trace.dreamers_today_clause(W) == "Wren and Ivo came through today"
+    before = events.max_seq()
+    effects.dispatch_effects([{"kind": "narrate", "text": "Bell counts: {dreamers_today}."}],
+                             actor_id="t-wren", room_id="r-meadow", world_id=W)
+    texts = [e.payload["text"] for e in events.fetch_since(before) if e.kind == "narrate"]
+    assert texts == ["Bell counts: Wren and Ivo came through today."]

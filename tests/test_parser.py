@@ -420,3 +420,18 @@ async def test_a_no_target_verb_carries_the_thing_it_names(monkeypatch):
     p = await parser.parse("t-wren", "inventory")
     assert p.verb == "inventory" and p.dobj_id is None
     spy.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_give_to_someone_for_someone_keeps_the_someone(monkeypatch):
+    """"give the lantern to Rook for Ivo": the someone it is for rides along
+    as args, so the post keeper can file it (beta rehearsal 2026-09-28)."""
+    spy = _mock_llm(monkeypatch, {"verb": "none"})
+    objects.move("i-lantern", "t-wren")
+    objects.set_property("i-lantern", "verbs", ["give"])  # the canonical loader's things can be given
+    p = await parser.parse("t-wren", "give the lantern to rook for Ivo")
+    assert p.verb == "give" and p.dobj_id == "i-lantern" and p.iobj_id == "t-rook"
+    assert p.args == "for Ivo"
+    p = await parser.parse("t-wren", "give the lantern to rook")
+    assert p.verb == "give" and p.iobj_id == "t-rook" and p.args == ""
+    spy.assert_not_called()

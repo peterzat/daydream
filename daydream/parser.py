@@ -407,9 +407,20 @@ def _fast_path(actor_id: str, text: str, room: rooms.Room | None):
     # Preposition split ("put X in Y", "turn X with Y") — authored per verb.
     dobj_part, iobj_part = _split_prep(spec, rest)
     iobj_id: str | None = None
+    for_whom = ""
     if iobj_part is not None:
         iobj_name = _strip_article(iobj_part)
         iobj_matches = _ground(actor_id, iobj_name)
+        if len(iobj_matches) == 0 and verb == "give":
+            # "give the hand to the clerk for Ada": the someone it is for
+            # rides along as args (the post keeper files it; beta rehearsal
+            # 2026-09-28).
+            m = re.search(r"(?i)^(.*?)\s+for\s+(\S.*)$", iobj_name)
+            if m:
+                head_matches = [o for o in _ground(actor_id, m.group(1).strip())
+                                if o.kind == "toon"]
+                if len(head_matches) == 1:
+                    iobj_matches, for_whom = head_matches, m.group(2).strip().rstrip(".!?")
         if len(iobj_matches) == 0:
             return None  # let the LLM try a fuzzier grounding
         if len(iobj_matches) > 1:
@@ -449,7 +460,8 @@ def _fast_path(actor_id: str, text: str, room: rooms.Room | None):
         # Let world/room/world rules still see it? No rule can apply if the
         # verb doesn't offer on the object; refuse like the executor would.
         return [Parse(verb, dobj_id=dobj.id)]
-    parses = [Parse(verb, dobj_id=dobj.id, iobj_id=iobj_id)]
+    parses = [Parse(verb, dobj_id=dobj.id, iobj_id=iobj_id,
+                    args=f"for {for_whom}" if for_whom else "")]
     if iobj_id is None:
         return _fill_iobj_default(actor_id, spec, parses)
     return parses

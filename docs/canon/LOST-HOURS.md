@@ -76,8 +76,14 @@ is (section 6).
   keepsake). Fen will not carry a letter to a keeper ("the keepers get their
   post by hand") or take one addressed to its writer, and turns back anything
   unkind. When post arrives for a dreamer who is awake elsewhere, the counter
-  bell rings twice down Lamplight Lane. (Beta rehearsal 2026-09-28; the
-  words live in `config.post`, `worlds/lost-hours/world.json`.)
+  bell rings twice down Lamplight Lane. A thing may go the same way: handed
+  to Fen "for Wren", she ties a label to it and files it, and it waits for
+  Wren alone. (Beta rehearsal 2026-09-28; the words live in `config.post`,
+  `worlds/lost-hours/world.json`.)
+- **Bell counts the day at the last pole.** Every dusk, lighting the last
+  lantern, Bell counts on sooty fingers who came through the village that
+  day and tells the lantern, so somebody remembers besides Bell; asked "who
+  came through today", Bell says.
 - **The village remembers dreamers, not only deeds.** Asked about another
   dreamer by name (`ask bell about Wren`), a keeper tells the record and
   never guesses: when and where that dreamer was last seen, whether they are

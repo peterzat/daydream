@@ -153,8 +153,9 @@ async def _session(st: dict, frame: dict | None, quiet: float = 1.2,
                                   max_size=2**23) as ws:
         first = json.loads(await asyncio.wait_for(ws.recv(), timeout=20))
         if first.get("kind") == "needs_toon":
-            raise SystemExit("this session controls no toon (left or kicked); "
-                             "run `bin/game play start` again")
+            raise SystemExit("your dreamer is resting (you left the dream); wake them with "
+                             "`bin/game play start <name>` (no --look): everything they "
+                             "carried is still theirs")
         snap = first
         me = (first.get("self") or {}).get("id")
         for e in first.get("events") or []:

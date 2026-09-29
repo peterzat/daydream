@@ -218,14 +218,19 @@
       "self_text": "Fen raises an eyebrow over her reading glasses. 'A letter to yourself? That's what TO ME, LATER is for, and it's full. Write to somebody else.'",
       "resident_text": "Fen slides the paper back. 'The keepers get their post by hand, friend. {to} is a short walk from here; go and say it.'",
       "off_tone_text": "Fen reads the front, then the first line, and slides the paper back across the counter. 'Not in this office,' she says, kindly and finally. 'Try again with the kind part.'",
-      "waiting_text": "A letter is waiting for you at the Little Post Office, north off Lamplight Lane.",
+      "waiting_text": "There is post for you at the Little Post Office, north off Lamplight Lane.",
       "rings_text": "Down Lamplight Lane, the brass bell on the post office counter rings twice, bright and small: there is post for you.",
       "letter_name": "letter from {from}",
       "letter_seed": "a letter folded twice, addressed to {to} in {from}'s hand, filed by Fen the moment it was written",
       "read_text": "To {to}, from {from}:\n\n{text}",
       "inbox_text": "Fen runs a finger along the pigeonholes and stops. 'Post for you, {name}: {count}, from {senders}.' She lifts it out and sets it on the counter where you can reach.",
       "inbox_empty_text": "Fen checks the pigeonhole with your name on it, then checks it again, kindly. 'Nothing for you yet, {name}. Everything arrives eventually; some of it just takes the scenic route.'",
-      "dozing_hint": "Fen at the Little Post Office would take a letter for them."
+      "dozing_hint": "Fen at the Little Post Office would take a letter for them.",
+      "parcel_text": [
+        "Fen takes the {item} in both hands, weighs it the way she weighs a parcel, and ties a paper label to it in her tidy hand: TO {to}. 'Filed,' she says, and sets it in the pigeonhole. 'It'll keep till they come by.'",
+        "Fen turns the {item} over once, finds nothing to object to, and writes {to} on a label with the pencil from behind her ear. 'Post is post, whatever shape it comes in. They'll have it the moment they think to ask.'"
+      ],
+      "parcel_others": "{actor} hands Fen the {item}; she ties a label to it and files it in a pigeonhole marked {to}."
     }
   },
   "verbs": {
@@ -1980,7 +1985,8 @@
       "variants": [
         "Dusk comes down over the village. One by one the square's paper lanterns come alight, each in its own warm pool, as Bell works along the poles with the hooked wick.",
         "The light goes gold, then blue. Bell climbs the little ladder and the lanterns bloom awake one after another, until the whole square glows like the inside of a teacup.",
-        "Dusk. Somewhere a door closes softly. Bell hums a note to each lantern before lighting it, and each lantern seems to hum back."
+        "Dusk. Somewhere a door closes softly. Bell hums a note to each lantern before lighting it, and each lantern seems to hum back.",
+        "Dusk, and the lanterns come on one by one under Bell's hooked wick. At the last pole Bell stops to count on sooty fingers, the way they do every evening: {dreamers_today}. Bell tells the lantern so, and lights it."
       ]
     },
     {
@@ -10289,6 +10295,25 @@
               "lamps",
               "lantern"
             ],
+            "if": [
+              {
+                "contains": "o-paper-lantern",
+                "of": "r-square",
+                "not": true
+              }
+            ],
+            "variants": [
+              "Bell glances at the empty hook where Pollen hangs and doesn't quite sigh. 'Forty lanterns in the square and the lane tonight. Forty-one, when Pollen's home. Someone's borrowed her, and she'll want carrying back before she sulks.'",
+              "'Old Blue burns steady, that one hiccups, and Pollen,' Bell says, and stops at the bare hook. 'Pollen's out visiting. If you see a lantern where a lantern shouldn't be, that's her. Bring her home and I'll owe you.'"
+            ]
+          },
+          {
+            "label": "the lanterns",
+            "aliases": [
+              "lanterns",
+              "lamps",
+              "lantern"
+            ],
             "variants": [
               "Bell beams. 'Forty-one lanterns in the square and the lane. I know every one. That's Pollen, that's Old Blue, that's the one that hiccups.'",
               "'A lantern likes to be lit gently,' Bell says, tilting a wick. 'Rush it and it sulks all night.'",
@@ -10482,6 +10507,21 @@
             "variants": [
               "'Tock!' Bell says, delighted. 'Sits in the middle of the square by day, then isn't there. I've never once seen Tock arrive. Only be.'",
               "Bell lowers their voice. 'Tock only exists between the ticks, so I walk softly round the square, in case I step on one.'"
+            ]
+          },
+          {
+            "label": "who came through today",
+            "aliases": [
+              "who came today",
+              "who was here today",
+              "who's been through",
+              "today's dreamers",
+              "the dreamers today",
+              "anyone come by today"
+            ],
+            "variants": [
+              "Bell counts on sooty fingers, the way they do at the last pole every dusk. 'Let me see: {dreamers_today}. The lanterns keep better count than I do, but that's near enough.'",
+              "Bell tips the hooked pole back against a shoulder and thinks. '{dreamers_today}. I tell Pollen at dusk so somebody remembers besides me.'"
             ]
           }
         ],

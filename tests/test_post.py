@@ -42,6 +42,7 @@ def fresh_db(tmp_path: Path):
         "WHERE id = 't-wren'")
     ws_mod._mark_session_live("s-wren")
     worldstate.set("w-bunny", "config", {"post": dict(POST)})
+    objects.set_property("i-lantern", "verbs", ["give"])  # the canonical loader's things can be given
     yield
     ws_mod._unmark_session_live("s-wren")
     ws_mod._unmark_session_live("s-ivo")
@@ -242,3 +243,50 @@ async def test_a_waiting_letter_is_told_once_on_arrival_and_listed_until_taken()
     assert story.threads_for(ivo.id) == ["A letter waits for you at the forge."]
     await verbs.execute_command("t-wren", "write", args="to Ivo: and another")
     assert post.arrival_notes(ivo.id) == ["A letter waits for you at the forge."]  # the new one
+
+
+@pytest.mark.asyncio
+async def test_a_thing_left_with_the_keeper_for_someone_waits_for_them_alone():
+    """`give X to <keeper> for <dreamer>`: filed like a letter, private to
+    the one it is for, in their threads and inbox; taking it makes it an
+    ordinary thing again. To yourself or to no one: refused in the keeper's
+    words; to a resident who keeps no post: an ordinary gift (declined)."""
+    ivo = _ivo()
+    worldstate.set("w-bunny", "config", {"post": {**POST, "keeper": "t-rook",
+                                                  "parcel_text": "Rook labels the {item} for {to}.",
+                                                  "parcel_others": "{actor} leaves the {item} with Rook for {to}.",
+                                                  "inbox_text": "Rook: {count} for {name}, from {senders}."}})
+    await verbs.execute_command("t-wren", "take", dobj_id="i-lantern")
+    _go("r-forge")
+    before = events.max_seq()
+    await verbs.execute_command("t-wren", "give", dobj_id="i-lantern", iobj_id="t-rook", args="for Ivo")
+    lines = _narrates(before)
+    assert [e.payload["text"] for e in lines if e.recipient_id == "t-wren"] == ["Rook labels the lantern for Ivo."]
+    assert [e.payload["text"] for e in lines if e.recipient_id is None] == ["Wren leaves the lantern with Rook for Ivo."]
+    lantern = objects.get("i-lantern")
+    assert lantern.location_id == "r-forge"
+    assert objects.visible_to(lantern, ivo.id) and not objects.visible_to(lantern, "t-wren")
+    assert post.letters_waiting(ivo.id) == [lantern]
+    assert story.threads_for(ivo.id) == ["A letter waits for you at the forge."]
+    objects.move(ivo.id, "r-forge")
+    before = events.max_seq()
+    await verbs.execute_command(ivo.id, "ask", dobj_id="t-rook", args="post for me")
+    assert _narrates(before)[-1].payload["text"] == "Rook: one for Ivo, from Wren."
+    await verbs.execute_command(ivo.id, "take", dobj_id="i-lantern")
+    lantern = objects.get("i-lantern")
+    assert lantern.location_id == ivo.id
+    assert not lantern.properties.get("private_to") and not lantern.properties.get("letter")
+    assert post.letters_waiting(ivo.id) == []
+    # Refusals, in the keeper's words, and nothing filed.
+    objects.move("i-lantern", "t-wren")
+    for args, expect in (("for Wren", "letter to yourself"), ("for Nobody", "no dreamer called Nobody")):
+        before = events.max_seq()
+        await verbs.execute_command("t-wren", "give", dobj_id="i-lantern", iobj_id="t-rook", args=args)
+        last = _narrates(before)[-1]
+        assert last.recipient_id == "t-wren" and expect in last.payload["text"]
+        assert objects.get("i-lantern").location_id == "t-wren"
+    # A "for" to a resident who keeps no post is an ordinary gift.
+    worldstate.set("w-bunny", "config", {"post": dict(POST)})  # Rook keeps no post
+    before = events.max_seq()
+    await verbs.execute_command("t-wren", "give", dobj_id="i-lantern", iobj_id="t-rook", args="for Ivo")
+    assert "leaves it with you" in _narrates(before)[-1].payload["text"]

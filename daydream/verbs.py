@@ -793,6 +793,9 @@ async def _handle_take(actor, room_id, dobj, iobj, args, spec) -> None:
         effs.append({"kind": "adjust_score", "delta": score_take,
                      "once": f"take:{dobj.id}"})
     _dispatch(actor, room_id, effs, spec)
+    from daydream import post
+
+    post.on_taken(dobj)  # a parcel taken by the one it was for is theirs again
 
 
 async def _handle_drop(actor, room_id, dobj, iobj, args, spec) -> None:
@@ -822,6 +825,11 @@ async def _handle_give(actor, room_id, dobj, iobj, args, spec) -> None:
         return False
     if iobj.is_player:
         return _hand_to_player(actor, room_id, dobj, iobj, spec)
+    from daydream import post
+
+    whom = post.for_whom(args or "")
+    if whom and post.file_parcel(actor, iobj, dobj, whom, room_id, spec.allowed_effects):
+        return None
     if not _matches_name(dobj, iobj.properties.get("wants")):
         # The refusal is the giver's (it hands the thing back to "you"), in the
         # NPC's own authored words when it has them: a string or a list of

@@ -102,9 +102,18 @@ the room's, `{to}` and `{actor}`), `elsewhere_text`, `unknown_text`,
 recipient's thread and arrival note), `rings_text` (the recipient, awake
 elsewhere, at once), `inbox_text` / `inbox_empty_text` (the keeper named
 by `keeper`, asked "anything for me?": `{name}`, `{count}`, `{senders}`),
-`dozing_hint` (added when speech meets a dozing dreamer), and the letter
-itself: `letter_name`, `letter_seed`, `read_text` (`{from}`, `{to}`,
-`{text}`). Any telling may be a list of variants. The letter is a keepsake
+`dozing_hint` (added when speech meets a dozing dreamer), `parcel_text` /
+`parcel_others` (`give <thing> to <keeper> for <dreamer>` files a thing
+the way a letter is filed: `{item}`, `{to}`, `{actor}`; taking it makes it
+an ordinary thing again), and the letter itself: `letter_name`,
+`letter_seed`, `read_text` (`{from}`, `{to}`, `{text}`). Any telling may
+be a list of variants.
+
+Any authored narration (a ritual, a topic) may say `{dreamers_today}`: the
+engine fills it with a clause naming the dreamers who came through today by
+the village's calendar ("Wren and Vex came through today"; "no dreamer came
+through today"). Bell's last-pole tally at dusk and the topic "who came
+through today" use it. The letter is a keepsake
 (`home: null`) that only its recipient sees. A world without `config.post`
 has no post. Keep these in the keeper's voice; the engine's own fallbacks
 name nothing.

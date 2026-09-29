@@ -58,6 +58,8 @@ _DEFAULTS = {
     "letter_name": "letter from {from}",
     "letter_seed": "a letter folded twice, addressed to {to} in {from}'s hand",
     "read_text": "From {from}, to {to}:\n\n{text}",
+    "parcel_text": "You leave the {item} to be kept for {to}. It will be there when they next come by.",
+    "parcel_others": "{actor} leaves the {item} to be kept for {to}.",
     "inbox_text": "There is post for you, {name}: {count}, from {senders}. It waits here.",
     "inbox_empty_text": "Nothing has come for you, {name}. Not yet.",
     "dozing_hint": "",
@@ -249,6 +251,65 @@ def write_letter(actor: objects.Object, room_id: str, args: str, allowed) -> boo
     logger.info("post: %s wrote to %s (%d chars)", actor.name, to.name, len(text))
     _ring_for(to, post)
     return True
+
+
+_FOR_RE = re.compile(r"(?i)^\s*for\s+(\S.*?)\s*$")
+
+
+def for_whom(args: str) -> str | None:
+    """The someone in a give's "for <name>" (the parser's args), or None."""
+    m = _FOR_RE.match(args or "")
+    return m.group(1) if m else None
+
+
+def file_parcel(actor: objects.Object, keeper: objects.Object, thing: objects.Object,
+                to_name: str, room_id: str, allowed) -> bool:
+    """`give <thing> to <post keeper> for <dreamer>`: the keeper files a
+    thing the way a letter is filed, private to the one it is for, told on
+    their arrival and listed in their threads (beta rehearsal 2026-09-28: a
+    friend left a brass hand and a bookmark in the dead-letter drawer, and
+    the world kept them but not who they were for). Returns False, and files
+    nothing, on every refusal (told in the keeper's words)."""
+    from daydream.skills import effects
+
+    post = config_for(actor.world_id)
+    if post is None or post.get("keeper") != keeper.id:
+        return False
+    if to_name.lower() == actor.name.lower() or to_name.lower() in ("me", "myself"):
+        _narrate(room_id, _line(post, "self_text"), to=actor.id)
+        return True
+    to = next((p for p in _players(actor.world_id) if p.name.lower() == to_name.lower()), None)
+    if to is None:
+        _narrate(room_id, _line(post, "unknown_text", to=to_name), to=actor.id)
+        return True
+    if thing.properties.get("private_to"):
+        _narrate(room_id, f"The {thing.name} is yours alone; it won't pass to other hands.",
+                 to=actor.id)
+        return True
+    at = worldclock.iso()
+    effects.dispatch_effects([
+        {"kind": "move_object", "object_id": thing.id, "dest_id": post["room"]},
+        {"kind": "set_property", "target_id": thing.id, "key": "private_to", "value": to.id},
+        {"kind": "set_property", "target_id": thing.id, "key": "letter",
+         "value": {"from": actor.id, "from_name": actor.name, "to": to.id, "at": at,
+                   "parcel": True}},
+        {"kind": "narrate", "to": "@actor",
+         "text": _line(post, "parcel_text", item=thing.name, to=to.name),
+         "others": _line(post, "parcel_others", item=thing.name, to=to.name)},
+    ], actor_id=actor.id, room_id=room_id, world_id=actor.world_id,
+        allowed=allowed | frozenset({"set_property", "move_object"}))
+    logger.info("post: %s left %s for %s", actor.name, thing.name, to.name)
+    _ring_for(to, post)
+    return True
+
+
+def on_taken(thing: objects.Object) -> None:
+    """A parcel taken by the one it was for is theirs to do with as they
+    like again: no longer private, no longer post. Letters stay private."""
+    letter = thing.properties.get("letter")
+    if isinstance(letter, dict) and letter.get("parcel"):
+        objects.set_property(thing.id, "private_to", None)
+        objects.set_property(thing.id, "letter", None)
 
 
 def _ring_for(to: objects.Object, post: dict) -> None:
