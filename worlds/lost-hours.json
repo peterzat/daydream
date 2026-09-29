@@ -9902,6 +9902,9 @@
           },
           {
             "label": "the Winding Balcony",
+            "mentions": [
+              "the balcony"
+            ],
             "aliases": [
               "balcony",
               "winding balcony",

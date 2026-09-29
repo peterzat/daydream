@@ -275,7 +275,7 @@ function renderSnapshot(snap) {
   entities = (snap.entities || []).slice().sort(
     (a, b) => (b.alias || "").length - (a.alias || "").length
   );
-  clearStagedVerb();
+  clearStagedVerb({ keepNote: true }); // a note just shown outlives a snapshot
   if (snap.room && snap.room.id !== lastArrivalRoomId) cancelText(); // a new room: words unsent
   toonCards = {};
   for (const t of snap.toons || []) toonCards[t.id] = t;
@@ -430,14 +430,11 @@ function renderSnapshot(snap) {
     btn.textContent = v.ui_hint;
     btn.dataset.verb = v.name;
     btn.onclick = () => toggleStagedVerb(v.name, btn);
-    if (stagedVerb === v.name) btn.classList.add("verb-staged");
     verbBar.appendChild(btn);
   }
   // A verb with nothing here to act on reads quiet, and a touch says why
   // instead of staging a dead end (playtest 2026-09-29).
   markVerbReadiness();
-  if (stagedVerb && !verbReady(stagedVerb)) clearStagedVerb();
-  else if (stagedVerb) applyVerbGating();
   // Affordance buttons: room-anchored DATA skills only (e.g. forge). Core
   // verbs (look/say/examine/take/drop/talk/go) are NOT rendered as buttons —
   // the verb bar, clickable objects, text input, and exits cover them.
@@ -743,10 +740,12 @@ function toggleStagedVerb(verb, btn) {
   // direct object is picked).
 }
 
-function clearStagedVerb() {
+function clearStagedVerb(opts = {}) {
   stagedVerb = null;
   stagedDobjId = null;
-  if (!textTarget) hideStagedHint(); // a waiting prompt keeps its hint; cancelText lets it go
+  // A waiting prompt keeps its hint (cancelText lets it go), and a snapshot
+  // leaves a note that is still showing (its own timer lets it go).
+  if (!textTarget && !(opts.keepNote && noteTimer)) hideStagedHint();
   document
     .querySelectorAll("#verb-bar button.verb-staged")
     .forEach((b) => b.classList.remove("verb-staged"));

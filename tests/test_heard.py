@@ -66,7 +66,8 @@ async def test_first_meeting_offers_only_what_you_have_come_across(village):
     chips = _labels("t-tace", me)
     assert "clockmaking" in chips  # authored open: the clockmaker's own trade
     assert "the loft" in chips  # the room you stand in names it
-    for unheard in ("Wend", "Mott", "Umber", "the Winding Balcony"):
+    assert "the Winding Balcony" in chips  # "Stairs go ... up to the balcony" (a mention)
+    for unheard in ("Wend", "Mott", "Umber", "the highest shelf"):
         assert unheard not in chips, chips
 
 

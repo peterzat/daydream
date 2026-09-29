@@ -188,7 +188,7 @@
            "Tace turns the tweezers in the lamplight. 'Wend taught me to listen first and mend second. Most of clockmaking is the listening.'",
            "'A clock is honest,' Tace says, oiling a pivot. 'It tells you exactly where it hurts, if you're quiet long enough.'"
          ]},
-        {"label": "the Winding Balcony", "aliases": ["balcony", "winding balcony", "the telescope", "telescope", "upstairs"],
+        {"label": "the Winding Balcony", "mentions": ["the balcony"], "aliases": ["balcony", "winding balcony", "the telescope", "telescope", "upstairs"],
          "variants": [
            "Tace nods up the stairs. 'The Winding Balcony. It faces east, toward where a dawn would come. The telescope points that way, and I've never had the heart to turn it.'",
            "'Go up, if you like,' Tace says. 'Tock sits up there at dawn, and doesn't mind company, mostly.'",
