@@ -22,6 +22,7 @@ is no default-toon fallback: an unresolved session never silently controls an
 arbitrary toon."""
 
 import asyncio
+import contextlib
 import json
 import logging
 import random
@@ -1291,10 +1292,11 @@ async def _receive_loop(ws: WebSocket, toon_id: str, token: str | None = None,
                     await ws.send_json({"kind": "notice", "text": (
                         f"that's a lot to say at once; keep it under {MAX_INPUT_CHARS} characters")})
                     continue
-                frame = await _handle_input(text, toon_id, conn)
-                if frame is not None:
-                    await ws.send_json(frame)
-                await _send_threads_if_changed(ws, toon_id, conn)
+                with _busy(heard):
+                    frame = await _handle_input(text, toon_id, conn)
+                    if frame is not None:
+                        await ws.send_json(frame)
+                    await _send_threads_if_changed(ws, toon_id, conn)
             elif kind == "command":
                 if len(str(msg.get("args", ""))) > MAX_INPUT_CHARS \
                         or len(str(msg.get("verb", ""))) > MAX_VERB_CHARS:
@@ -1303,14 +1305,31 @@ async def _receive_loop(ws: WebSocket, toon_id: str, token: str | None = None,
                         f"that's a lot to say at once; keep it under {MAX_INPUT_CHARS} characters")})
                     continue
                 conn["clarify"] = None
-                await _handle_command(msg, toon_id)
-                await _send_threads_if_changed(ws, toon_id, conn)
+                with _busy(heard):
+                    await _handle_command(msg, toon_id)
+                    await _send_threads_if_changed(ws, toon_id, conn)
     except WebSocketDisconnect:
         pass
     except KeyError:
         pass  # a binary frame: this socket speaks JSON text only
     finally:
         live.unregister(toon_id, _send_live)
+
+
+@contextlib.contextmanager
+def _busy(heard: dict | None):
+    """While a command is handled the page's pings wait unread, so the quiet
+    watch must not count that time (a plant under GPU contention can pass
+    IDLE_CLOSE_S); the clock restarts when the handler finishes."""
+    if heard is None:
+        yield
+        return
+    heard["busy"] = heard.get("busy", 0) + 1
+    try:
+        yield
+    finally:
+        heard["busy"] -= 1
+        heard["at"] = time.monotonic()
 
 
 async def _send_threads_if_changed(ws: WebSocket, toon_id: str, conn: dict) -> None:
@@ -1338,7 +1357,8 @@ async def _session_watch(ws: WebSocket, token: str | None,
             except Exception:
                 pass
             return "revoked"
-        if heard is not None and time.monotonic() - heard["at"] > IDLE_CLOSE_S:
+        if heard is not None and not heard.get("busy") \
+                and time.monotonic() - heard["at"] > IDLE_CLOSE_S:
             try:
                 await ws.close(code=QUIET)
             except Exception:

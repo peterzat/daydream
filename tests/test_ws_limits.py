@@ -161,6 +161,30 @@ def test_a_page_that_pings_stays_open_past_the_quiet_limit(monkeypatch):
             assert str(ws_module.MAX_INPUT_CHARS) in _next_notice(ws)["text"]
 
 
+def test_a_command_slower_than_the_quiet_limit_keeps_its_socket(monkeypatch):
+    """Review WARN 2026-09-29: while a handler runs the page's pings wait
+    unread, so a plant under GPU contention could be cut off as quiet."""
+    import asyncio
+    handled = []
+
+    async def slow_command(msg, toon_id):
+        await asyncio.sleep(0.9)  # over two quiet limits
+        handled.append(msg["verb"])
+
+    monkeypatch.setattr(ws_module, "_handle_command", slow_command)
+    monkeypatch.setattr(ws_module, "SESSION_RECHECK_S", 0.1)
+    monkeypatch.setattr(ws_module, "IDLE_CLOSE_S", 0.4)
+    with TestClient(app) as client:
+        _enter(client)
+        with client.websocket_connect("/ws") as ws:
+            ws.receive_json()
+            ws.send_json({"kind": "command", "verb": "plant", "args": "a lamp"})
+            ws.send_json({"kind": "input", "text": "a" * (ws_module.MAX_INPUT_CHARS + 1)})
+            # Answered after the slow command, on the same socket.
+            assert str(ws_module.MAX_INPUT_CHARS) in _next_notice(ws)["text"]
+    assert handled == ["plant"]
+
+
 def test_the_spa_sends_a_keepalive_ping():
     js = (Path(__file__).resolve().parent.parent / "web" / "assets" / "main.js").read_text()
     assert 'JSON.stringify({ kind: "ping" })' in js and "clearInterval(pingTimer)" in js
