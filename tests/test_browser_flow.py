@@ -699,6 +699,9 @@ def test_words_for_a_chosen_verb_wait_out_a_drop(tab, engines):
     expect(page.locator("#verb-hint")).to_contain_text("Tace")
     page.evaluate(_DEAD_SOCKETS)
     page.evaluate("() => ws.close()")
+    # onclose arms the drop timer; readyState turns CLOSED in the task that
+    # fires it, so Enter after this finds the timer (review 2026-09-29f).
+    page.wait_for_function("() => ws.readyState === WebSocket.CLOSED")
     page.locator("#input-text").fill("what is that little clock?")
     page.locator("#input-text").press("Enter")
     expect(page.locator("#dream-overlay")).to_have_text("the dream is sleeping...", timeout=500)
