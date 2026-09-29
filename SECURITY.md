@@ -2,166 +2,175 @@
 
 ## Security Review — 2026-09-29 (scope: paths)
 
-**Summary:** Path-scoped review of the eleven files named by the caller, read
-as their change from the last scan (`c50460e`) to HEAD `d2f7538`: the fixes
-for that scan's three WARNs (`daydream/ci.py` and `tools/agent_guard.py`, with
-their tests), the server closing a socket whose page has sent nothing for
-150 s, and the page riding out a brief socket drop and naming the satchel and
-the book under "you carry". There is no exploitable vulnerability in the app
-or the edge, and the CI reader no longer relays a stranger's text. One WARN:
-the guard's new search check misses the directories the credential files sit
-in. `grep -rn CLOUDFLARE ~/.config` still prints the Cloudflare token's line
-with no opinion, and `gh auth status -th github.com` prints the GitHub token
-(0 BLOCK / 1 WARN / 5 NOTE; three of the NOTEs are carried unchanged from
-outside these paths).
+**Summary:** Path-scoped review of the twenty-one files named by the caller,
+read as their change from the last scan (`d2f7538`) to HEAD `de5e11b`. The
+changes are glimpses, the parser's deterministic routes, the margin notes
+and the village's glimpse data:
+- Glimpses: a name that the scene's prose shows but the hands can't reach
+  is answered from an authored line, from the prose itself, or from one
+  validated local-model line.
+- The parser now handles "look at", "x" and the new take and examine
+  aliases without the model.
+- The margin drops its two notes.
+- The Village of Lost Hours gains authored glimpse data.
+
+These paths add no new finding. The new model surface reads only the
+scene's own prose and stays inside the actor's scope; probes of another
+dreamer's private thing, a closed container and another dreamer's satchel
+never reached it. Its line is validated and told only to the actor. The
+open register carries forward: the agent guard's WARN and five NOTEs, all
+in files these commits did not touch. One NOTE is amended for a second
+route (0 BLOCK / 1 WARN / 5 NOTE).
 
 ### Scope and method
 
-- Each scoped file's diff from `c50460e` to HEAD was read in full.
-  `daydream/ci.py`, `tools/agent_guard.py` and `tests/test_agent_guard.py`
-  were read whole. So were `ws_endpoint`, `_receive_loop`, `_busy` and
-  `_session_watch` in `daydream/api/ws.py`, `prodcheck.check_ci`, every
-  `innerHTML` sink in `web/assets/main.js` with its escaping helpers, and
-  `server._page`, which fills `web/index.html`'s placeholders.
-- Probes ran in the scratchpad and touched no live data. The guard's
-  `decide()` was run over about forty command shapes, beside the guard from
-  `c50460e`. Credential paths were built from parts, so no command this
-  review ran named a credential path or a gated verb. `ci.main_status()` and
-  `check_ci` were run with `gh` faked to serve one page of fork runs over a
-  red push run. The installed `gh` (2.4.0) was given `auth status -th` in a
-  clean environment, against a fabricated config for a fake host.
-- The scoped tests pass. That is 175 in `test_agent_guard`, `test_ci`,
-  `test_ws_limits` and `test_frontend`, and 19 in headless Chromium
-  (`test_browser_flow`).
+- Each scoped file's diff from `d2f7538` to HEAD was read in full, and the
+  new `daydream/glimpse.py` was read whole. The code it leans on was read
+  too:
+  - `objects.in_scope` and `visible_to`
+  - `verbs.detail_with_state`, and `verbs._execute_resolved` up to the
+    dobj gate
+  - `effects._apply_narrate`, and `spawn_object`'s properties passthrough
+  - `rules._build_ctx` and the condition evaluator
+  - the letter and parcel paths in `daydream/post.py`
+  - growth's writes of seeds and descriptions
+  - `play._line` and `play._scene`
+- A scratchpad probe built the canonical world in a throwaway DB with a
+  mocked model. The first dreamer asked for four things that are not
+  theirs to see: a second dreamer's `private_to` note in the room, a closed
+  iron box's contents, a thing in the second dreamer's satchel, and the
+  second dreamer's looks. Each was asked through `glimpse.answer` directly
+  and through `parse_line` and `execute_command` (look at, x, take, grab,
+  check out). Every answer was `None` or "You don't see ... here", and the
+  model was never called. The owner got their own note's sentence.
+- Nine adversarial 500-character names ran through `authored`, `seen_in`
+  and `parse_line`, each in under 2 ms. They covered runs of articles,
+  repeated words, trailing phrases and whitespace, and regex
+  metacharacters.
+- The scoped tests pass. That is 122 in `test_glimpse`, `test_parser` and
+  `test_walkthroughs`, and 19 in headless Chromium (`test_browser_flow`).
 
 ### Findings
 
-[WARN] tools/agent_guard.py:36-38, :267 (with :47, :163-169, :264-266) — The
-second scan's fix asks before a recursive search rooted at home, but not
-before one rooted at the directories the credential files sit in. A
-clustered short flag also still prints the GitHub token. None of these gets
-an opinion:
-- `grep -rn CLOUDFLARE ~/.config`, which prints the `CLOUDFLARE_API_TOKEN=`
-  line of `~/.config/daydream/cloudflare.env`.
-- `grep -rn oauth_token ~/.config`, which prints the GitHub token from
-  `~/.config/gh/hosts.yml`.
-- The same search with `rg`, with `$HOME/.config`, or with a trailing slash.
-- `find ~/.config -name '*.env' -exec cat {} +`.
-- A search under `~/.claude`, which reaches Claude Code's sign-in file.
-- `gh auth status -th github.com`.
-  Attack vector: This is the last WARN's own path, and it needs no
-injection. Searching for a config value one directory below `~` is as
-ordinary as searching `~` itself. It prints a live credential into the
-session's context and its saved transcript. A steered command (player text,
-per CLAUDE.md) gets the same result. CLAUDE.md says the hook denies any
-command that names the credential paths or prints the GitHub token. For a
-Bash read, the hook is the deterministic layer.
-  Evidence: `BROAD_ROOTS` (:36-38) holds `~`, `$HOME`, `/`, `/root`, `/home`,
-`/etc`, `/srv`, `/srv/daydream` and the home path, and :267 asks only when an
-argument equals one of them exactly. `_names_credentials` (:163-169) matches
-a credential directory as a substring, so a parent directory never matches.
-`gh` 2.4.0 lists `-t, --show-token` and `-h, --hostname`. Given
-`-th example.invalid`, it checked that host alone with no flag error, while
-`-tz` failed on the `z`. So `-th github.com` is `-t -h github.com`, which the
-guard denies. But the token pattern needs `-t\b` (:47), and the argv check
-needs a literal `-t` (:264-266). Every command above was probed and got no
-opinion. So did `tar c ~/.config | tar xO`, which the last entry named.
+These paths add no new finding. The findings below are carried forward;
+their files are unchanged since `d2f7538`.
+
+[WARN] tools/agent_guard.py:36-38, :267 (with :47, :163-169, :264-266) —
+Carried unchanged. It stays open for a session with the operator, because
+the guard asks before any change to itself. These get no opinion:
+- A recursive search rooted one directory below home. Examples:
+  `grep -rn ... ~/.config`, the same search with `rg`, with
+  `$HOME/.config` or with a trailing slash, `find ~/.config ... -exec cat
+  {} +`, and a search under `~/.claude`. These print the Cloudflare or
+  GitHub token.
+- `gh auth status -th github.com`, which prints the GitHub token.
+  Attack vector: An ordinary or steered search one folder below `~` prints
+a live credential into the session and its transcript. For a Bash read,
+the hook is the deterministic layer that CLAUDE.md relies on.
+  Evidence: `BROAD_ROOTS` matches only exact home-level roots.
+`_names_credentials` matches a credential directory as a substring, so a
+parent directory never matches. The token pattern needs a literal `-t`.
+The full evidence is in the prior entry (`git show 40f18d2:SECURITY.md`).
   Remediation:
-- Expand `~`, `$HOME` and `${HOME}` in each argument of a searcher (and of
-  `tar`, `zip -r`, `cp -r` and `rsync`), and normalize it. Ask when the
-  result is an ancestor of a credential directory (compare with
-  `os.path.commonpath`).
-- After `gh auth status`, treat any short-flag cluster that holds `t` as
+- Expand and normalize each argument of a searcher (and of `tar`,
+  `zip -r`, `cp -r` and `rsync`). Ask when one is an ancestor of a
+  credential directory.
+- After `gh auth status`, treat a short-flag cluster holding `t` as
   `--show-token`.
-- Deny any command that contains `oauth_token`, as the last remediation
-  proposed.
-- Add a test for each shape above.
+- Deny any command containing `oauth_token`.
+- Test each shape.
 
-[NOTE] tools/agent_guard.py:246-255 (with :256-274) — The raw gated-verb pass
-(the fix for the last scan's second WARN) leaves three gaps.
-- It cuts each segment at its first redirection. So
-  `out="$(bin/game prod 2>/dev/null invite create --for Robin --json)"`, or
-  one with `2>&1` before `prod`, again gets no opinion.
-- List-form `subprocess.run(['bin/game','prod',...])` is still not read,
-  because commas and brackets are not split.
-- The pass returns `ask` before the parsed pass's credential denials run. A
-  quote-broken credential read (`~/.con''fig/...`) next to any gated verb now
-  asks in either order. The guard at `c50460e` denied it when the read came
-  first.
-All three need a crafted spelling. That is the class the operator accepted as
-"a pattern check, not a boundary", and the prompt shows the whole command.
-Remediation: drop a redirection word and its target instead of cutting there.
-Add `,[]` to the split. Run every check and let a deny win over an ask.
+[NOTE] tools/agent_guard.py:246-255 (carried unchanged) — The raw
+gated-verb pass has three gaps. It cuts at the first redirection. It does
+not read a list-form `subprocess.run([...])`. And it returns its ask before
+the parsed pass's credential denials run. Remediation: drop a redirection
+word and its target instead of cutting there. Add `,[]` to the split. Let
+a deny win over an ask.
 
-[NOTE] daydream/ci.py:49-61 (with daydream/prodcheck.py:200-207) — The
-fork-run filter works on one page of `limit * 4` runs. Each push to a fork
-pull request from a branch named `main` lists a run awaiting approval under
-`branch=main`. So a stranger who pushes to one about twenty times fills that
-page. Then `main_status()` reads `unknown`, "no runs on main". `prod check`
-passes that as a note, and `prod plan` prints no RED line while main is red.
-This was probed with a faked `gh`. No stranger's text reaches the output now.
-`ci watch`, which a publish runs for its own push, filters by the commit and
-is unaffected. Remediation: read main's head sha
-(`gh api repos/{owner}/{repo}/branches/main`) and that commit's runs, as
-`watch` does. Or page until `limit` push runs are found. Either way, say so
-when a full page held none.
+[NOTE] daydream/ci.py:49-61 (with daydream/prodcheck.py:200-207; carried
+unchanged) — About twenty pushes to a fork pull request from a branch
+named `main` fill the one page of runs. A red main then reads "unknown" in
+`prod check` and `prod plan`. `ci watch` filters by commit and is
+unaffected. Remediation: read main's head sha and that commit's runs, or
+page until `limit` push runs are found. Say so when a full page held none.
 
-[NOTE] daydream/play.py:84-85 (outside these paths; carried unchanged) — A
-grown place's description prints unmarked in `play`, and the server accepts
-control characters in typed lines and appearance seeds. Carry a grown marker
-in the snapshot and print that description marked. Refuse non-printable
-characters at the server, as names already are.
+[NOTE] daydream/play.py:84-85 (with daydream/glimpse.py:296-297; carried,
+amended) — A grown place's description prints unmarked in `play`. The
+server also accepts control characters in typed lines and appearance
+seeds. This run adds a second route. A look at a name the prose shows
+(`look at`, `x`, `examine`) now echoes the scene's sentence as a narrate
+line, with no `src` and no player mark. So a sentence of a grown room's
+model-written description, or of a grown thing's seed, reaches `play` this
+way too. That text already prints on arrival or on examine, so nothing new
+is exposed, but the proposed snapshot marker would not cover this route.
+Remediation:
+- Carry a grown marker in the snapshot and print that description marked.
+- Carry the same marker on the narrate lines that echo grown text: a
+  grown thing's examine, and `glimpse.answer` when its host was grown
+  (`generated_by` starting `plant:`).
+- Refuse non-printable characters at the server, as names already are.
 
-[NOTE] daydream/skills/effects.py:347 (outside these paths; carried
-unchanged) — The placeholder expander still runs over a letter's body and a
-dreamer's looks. It fills only `{dreamers_today}`, and the `from_player` flag
-is a ready skip condition. BACKLOG `placeholders-over-player-text`.
+[NOTE] daydream/skills/effects.py:347 (carried unchanged) — The
+placeholder expander still runs over a letter's body and a dreamer's
+looks. It fills only `{dreamers_today}`. The `from_player` flag is a ready
+skip condition. BACKLOG `placeholders-over-player-text`. (New dreamer
+names now refuse braces, `api/slots.py:184`, so a glimpse's echo of a
+sentence naming a dreamer adds nothing here.)
 
-[NOTE] daydream/accounts_cli.py:129-136 (outside these paths; carried
-unchanged) — `account delete --yes` during a resident's reply leaves that
-reply and its `talk:`/`rel:` records behind. `account delete` is not in
-`prodctl.STOP_FOR`, and `dialogue.talk` does not re-check the dreamer after
-the model call.
-
-(The three carried files are unchanged since `c50460e` and were not re-read.)
-
-### Resolved since the last review
-
-- **WARN, the CI reader.** `runs()` keeps only this repository's push runs
-  (it checks `event`, and compares `head_repository` with `repository`).
-  Titles come from local git with control characters stripped. A fork run
-  no longer answers for main. This is tested with a fork run newer than a
-  red push run. The page-size residual is the second NOTE.
-- **WARN, a gated verb in a quoted substitution.** The invite capture asks,
-  and a test covers it. The shapes that remain are the first NOTE.
-- **WARN, token printers and credential reads.** These now deny or ask, each
-  tested: `gh config get ... oauth_token`, `git -C|-c ... credential fill`, a
-  quoted `gh auth 'git-credential'`, the two further credential files, and
-  searches rooted at `~`, `$HOME`, `/`, `/etc` and `/srv`. What remains is
-  the WARN above.
+[NOTE] daydream/accounts_cli.py:129-136 (carried unchanged) — Running
+`account delete --yes` during a resident's reply leaves that reply and its
+`talk:`/`rel:` records behind. `account delete` is not in
+`prodctl.STOP_FOR`, and `dialogue.talk` does not re-check the dreamer
+after the model call.
 
 ### Traced and cleared this run (not findings)
 
-- **The quiet close** (`ws.py:1141`, `:1249-1250`, `:1319-1366`). Its state
-  is per connection, and any frame refreshes it. A busy handler defers only
-  the quiet close, never the session re-read, so a revoked account's socket
-  still closes within 30 s even mid-command. The close runs the same
-  `finally` (unmark, unregister, unsubscribe). It ends a ghost the edge kept
-  open, which had gone on hearing its room. The new log line carries only
-  the username and a number of seconds. Pings still ride the per-frame
-  session check and the shared rate bucket.
-- **The page.** New text goes through `textContent`. `chipTarget`
-  (`main.js:906-916`) builds its selector with `CSS.escape`, and the command
-  it sends carries a snapshot object id that the server re-checks for scope
-  and verb. Every `innerHTML` sink escapes `& < > "` first (`main.js:1857`)
-  and quotes its one attribute with `"`. `server._page` HTML-escapes
-  `web/index.html`'s placeholders (`server.py:240`), and the new markup is
-  static SVG. `style.css` loads only a self-hosted font and data URIs.
-- **The CI reader's git call.** `ci._subject` runs git with an argv (no
-  shell) on a sha from one of this repository's push runs. Only a forged API
-  response could turn that sha into an option (hardening:
-  `--end-of-options`). The list-shaped shortcut in `runs()` serves only the
-  tests' fakes, since the endpoint returns an object.
+- **Scope.** `glimpse._hosts` (`glimpse.py:102-105`) is `objects.in_scope`
+  without toons. It drops things `private_to` someone else (`visible_to`).
+  It skips a closed opaque container's contents and other dreamers'
+  satchels. It holds no toon, so no one's looks are read. The probe above
+  confirmed each.
+- **What prose it reads.** `_prose` (`:139-146`) reads a room's description
+  and a thing's `seed` with its `state_text`. It never reads
+  `examined_text` (where a husk keeps its planter's words), a letter's body
+  (`properties.text`), or a dreamer's looks. In the live world, those
+  fields have three writers. The loader and dreams write authored text. A
+  letter's seed template adds only dreamer names. Growth writes
+  model-composed text from a vision phrase, and validates it. So raw player
+  words never reach the glimpse model.
+- **The model call** (`:257-283`).
+  - It runs on the local client under the arbiter, with no key.
+  - Its input is that prose, a noun that must be a whole-word phrase of the
+    prose (each typed word `re.escape`d), and a closed verb.
+  - The line is validated, told only to the actor (`to: "@actor"`), and
+    tagged `src: "local"`.
+  - The cache is keyed by room and by a hash of noun, verb and sentence.
+    Players share it, but it is built only from shared prose, so it
+    carries nothing from one dreamer to another.
+  - A failed line is not cached, so a player can repeat the call. Calls
+    run one at a time per socket, under the 3/s frame bucket, the same
+    cost class as `talk`.
+  - Every backend failure raises `LLMUnavailable`, and the player reads
+    the plain line.
+- **The log line** (`:269`) prints only that noun, with `%r`.
+- **Authored glimpses.** The loader validates `glimpsed` and fails loudly
+  (`format2.py:337-340`, `:410-413`). It checks keys, names, text and verb
+  lines, and runs `if` through `validate_condition_list`.
+  `conditions_hold` only reads. In the live world only authored paths
+  write `glimpsed`. A model can reach `spawn_object`'s properties
+  passthrough only on the data-skill paths, which are not live (carried
+  register).
+- **The parser.** `look at <absent name>` of under four words
+  (`parser.py:353`) now takes the deterministic examine instead of the
+  model. `x <name>` routes only to a verb that takes a target (`:330`).
+  The new take and examine aliases pass through the same executor gates as
+  before.
+- **The page.** The change only removes the satchel and book notes. What
+  remains writes through `textContent`, and the change to `index.html` is
+  static markup.
+- **Tooling.** The glimpse suite in `model_eval` reads a committed corpus
+  and calls the production prompt and validator. `DAYDREAM_GLIMPSE_LLM` is
+  a kill switch, on by default, and uses only the local model.
 
 ### Player-text scan (CLAUDE.md "Player text is data")
 
@@ -171,12 +180,11 @@ the model call.
 
 ### Secrets, PII and the instance
 
-- The scoped files, and the last three commits of `tools/agent_guard.py`,
-  `daydream/ci.py`, `daydream/api/ws.py` and their tests, hold no key, token
-  or password shape. They name no instance domain, hosting company, operator
-  name or email. The only addresses are the browser test's loopback bind.
-- `instance/` and `.claude/settings.local.json` are still ignored, and the
-  guard is wired in the local settings.
+- The scoped diffs, and the last three commits of `daydream/config.py`,
+  hold no key, token or password shape. The world data names only canon
+  residents, and the tests use the project's long-standing test dreamer.
+  No instance domain, hosting company, operator name or email appears.
+- `instance/` and `.claude/settings.local.json` are still ignored.
 
 ### Accepted Risks
 
@@ -260,15 +268,14 @@ Carried register (from prior reviews; still open, not re-flagged):
   The verbs an injected instruction would want stay behind ask rules.
 
 ---
-*Prior review (2026-09-29, paths, commit `c50460e`): ten files, covering
-`bin/game ci` and the CI line in `status`, `prod plan` and `prod check`, CI
-installing against the prod lock, and the guard's fixes for the review
-before. It found 0 BLOCK / 3 WARN / 3 NOTE. The three WARNs were these. A
-stranger's fork pull request from a branch named `main` put its title into
-the agent's status output and hid a red main. The guard missed a gated verb
-inside a double-quoted substitution. And the guard missed commands that
-print the GitHub token, as well as recursive reads of home. All three were
-fixed in `3009a51`; what remains is this entry's WARN and its first two
-NOTEs. The full entry is at `git show 560a837:SECURITY.md`.*
+*Prior review (2026-09-29, paths, commit `d2f7538`): eleven files. They
+covered the fixes for the scan before it (the CI reader and the agent
+guard), the server closing a socket whose page has been quiet for 150 s,
+and the margin naming the satchel and the book. It found 0 BLOCK / 1 WARN
+/ 5 NOTE. Its WARN was that the guard misses recursive searches rooted at
+the credential files' parent directories, and a clustered `-th` on
+`gh auth status`. That WARN and its guard and CI NOTEs are carried above,
+along with the three NOTEs it carried itself. The full entry is at
+`git show 40f18d2:SECURITY.md`.*
 
-<!-- SECURITY_META: {"date":"2026-09-29","commit":"d2f753829bad66be183720fd6d989df33e8c533a","scope":"paths","scanned_files":["daydream/api/ws.py","daydream/ci.py","tests/test_agent_guard.py","tests/test_browser_flow.py","tests/test_ci.py","tests/test_frontend.py","tests/test_ws_limits.py","tools/agent_guard.py","web/assets/main.js","web/assets/style.css","web/index.html"],"block":0,"warn":1,"note":5} -->
+<!-- SECURITY_META: {"date":"2026-09-29","commit":"de5e11b68642316a08bd23f006966943b0b351ff","scope":"paths","scanned_files":["daydream/config.py","daydream/glimpse.py","daydream/llm/format2.py","daydream/model_eval.py","daydream/parser.py","daydream/verbs.py","daydream/version.py","tests/model_eval/glimpse.json","tests/test_browser_flow.py","tests/test_glimpse.py","tests/test_parser.py","web/assets/main.js","web/assets/style.css","web/index.html","worlds/lost-hours.json","worlds/lost-hours/arcs/08-tace-hour.json","worlds/lost-hours/regions/01-clocktower.json","worlds/lost-hours/regions/02-square.json","worlds/lost-hours/regions/03-lane.json","worlds/lost-hours/walkthroughs/tace-hour-past-eleven.json","worlds/lost-hours/walkthroughs/tace-hour-within-reach.json"],"block":0,"warn":1,"note":5} -->
