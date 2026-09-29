@@ -1,0 +1,228 @@
+{
+  "patch": "dream-2026-09-28",
+  "sha": "47458cf36e97fbba",
+  "at": "2026-09-29T00:28:19+00:00",
+  "steps": [
+    {
+      "step": "snapshot",
+      "ok": true,
+      "detail": "/home/peter/data/daydream/dreams/dream-2026-09-28/pre-dream.db"
+    },
+    {
+      "step": "check (side copy)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "step": "apply (side copy)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "step": "live walkthrough second-dream-callbacks",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "step": "fresh twin validates",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "step": "fresh walkthrough bell-dawn-dusk-enough",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "step": "fresh walkthrough bell-dawn-first-dawn",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "step": "fresh walkthrough bell-dawn-second-flask",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "step": "fresh walkthrough bell-dawn-spare-skin",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "step": "fresh walkthrough everyday",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "step": "fresh walkthrough extra-hour-everyones",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "step": "fresh walkthrough extra-hour-hilltop",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "step": "fresh walkthrough extra-hour-sat-down",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "step": "fresh walkthrough keeper-welcome",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "step": "fresh walkthrough latecomer",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "step": "fresh walkthrough letters-dead-letter",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "step": "fresh walkthrough letters-found-letters",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "step": "fresh walkthrough margin-doodling",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "step": "fresh walkthrough margin-finished",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "step": "fresh walkthrough margin-pigeonhole-late",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "step": "fresh walkthrough margin-pigeonhole",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "step": "fresh walkthrough mott-minute-kept-for-later-mat",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "step": "fresh walkthrough mott-minute-kept-for-later",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "step": "fresh walkthrough mott-minute-looked-together",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "step": "fresh walkthrough nell-evening-armchair",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "step": "fresh walkthrough nell-evening-home",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "step": "fresh walkthrough nell-evening-orchard",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "step": "fresh walkthrough pim-home",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "step": "fresh walkthrough pim-jar",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "step": "fresh walkthrough pim-stays",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "step": "fresh walkthrough prologue-together",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "step": "fresh walkthrough prologue",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "step": "fresh walkthrough quill-seed",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "step": "fresh walkthrough rain-wait-river",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "step": "fresh walkthrough rain-wait-stays",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "step": "fresh walkthrough rain-wait-the-end",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "step": "fresh walkthrough summer-downstream",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "step": "fresh walkthrough summer-home",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "step": "fresh walkthrough summer-meadow-late",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "step": "fresh walkthrough summer-meadow",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "step": "fresh walkthrough tace-hour-another-season",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "step": "fresh walkthrough tace-hour-past-eleven",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "step": "fresh walkthrough tace-hour-within-reach",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "step": "zero LLM calls",
+      "ok": true,
+      "detail": ""
+    }
+  ],
+  "ok": true
+}

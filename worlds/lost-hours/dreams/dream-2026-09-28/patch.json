@@ -1,0 +1,322 @@
+{
+  "format": "dream-patch",
+  "id": "dream-2026-09-28",
+  "title": "The Night the Lamps Learned Three Names",
+  "world": "w-lost-hours",
+  "while_you_slept": "While you slept, the village turned over once. Vex carried the gear home and sang Pim's nap home the same evening, and Tace has left the loft door open at dusk ever since, in case another quick pair of hands comes up the stair. Wren brought Pollen home to her pole after a certain treehouse borrowed her, and Bell has chalked a small W on the pole so the lantern knows who to thank. Halloran wrote the first two letters ever posted between dreamers, and Fen has started a pigeonhole for every keeper. Four new places grew in one evening, and the village has been busy in each.",
+  "add": {},
+  "live": {
+    "facts": {
+      "dream-2026-09-28-vex-evening": {
+        "text": "On the first evening Vex carried the escapement gear home from the well-court, opened the clock case, and sang Pim's nap home with a lullaby clock before the lanterns were half lit; Tace has left the loft door open at dusk ever since, in case another quick pair of hands comes up the stair.",
+        "known_by": "all"
+      },
+      "dream-2026-09-28-wren-pollen": {
+        "text": "Wren carried Pollen home to her pole after Vex hid her up in the Waiting Bell Loft; Bell chalked a small W on the pole so the lantern knows who to thank.",
+        "known_by": ["t-bell", "t-sorrel", "t-linden", "t-tace", "t-quill"]
+      },
+      "dream-2026-09-28-halloran-post": {
+        "text": "Halloran wrote the first two letters ever posted between dreamers, one to Wren and one to Vex, and left a brass hand and a linen bookmark in the dead-letter drawer for them; Fen has started a pigeonhole for every keeper since.",
+        "known_by": ["t-fen", "t-linden", "t-bell", "t-umber"]
+      },
+      "dream-2026-09-28-wren-reads": {
+        "text": "Wren read both ledgers before touching anything, asked Tace what they miss, and grew the Warmth of Unsent Words north of the cellar, a lamplit room where unsent letters are kept warm until their writers come back for them.",
+        "known_by": ["t-tace", "t-umber", "t-fen"]
+      },
+      "dream-2026-09-28-halloran-shelf": {
+        "text": "Halloran grew the Quiet Bookmark Shelf east of the cellar: three armchairs in a circle, one for each of the housemates who dream here, with a book open in each.",
+        "known_by": ["t-umber", "t-quill", "t-linden"]
+      },
+      "dream-2026-09-28-tock-bowl": {
+        "text": "Tock has taken to the Bowl of Turned Time north of the tower, the sunken place Vex grew: between one tick and the next it skids down the great minute hand and lands, every time, exactly on the hour.",
+        "known_by": ["t-tace", "t-bell", "t-quill", "t-mott"]
+      }
+    },
+    "cast_add": {
+      "t-tace": {
+        "topics": [
+          {
+            "label": "Vex",
+            "aliases": ["the one who mended the clock", "who mended the clock", "the quick one"],
+            "if": [{"actor": "t-slot2-26c64b4f", "not": true}],
+            "variants": [
+              "Tace turns a small wheel between two fingers and smiles at it. 'Vex. Up the stair with the gear before I'd finished hoping, and the nap sung home before the lanterns were half lit. I leave the loft door open at dusk now. Habit.'",
+              "'Quick hands,' Tace says, and it is plainly a compliment. 'Vex had the case open and the lullaby clock wound the same evening. Wend would have liked that. Wend liked anyone who didn't dawdle.'"
+            ]
+          },
+          {
+            "label": "Vex",
+            "aliases": ["the one who mended the clock", "who mended the clock", "me"],
+            "if": [{"actor": "t-slot2-26c64b4f"}],
+            "text": "Tace sets the loupe down and looks at you properly. 'You. Up the stair with the gear before I'd finished hoping, and the nap sung home the same evening. I leave the loft door open at dusk now, friend, in case you come up the stair like that again.'"
+          },
+          {
+            "label": "the notebook",
+            "aliases": ["my notebook", "forgetting", "my grandmother", "what I told you"],
+            "if": [{"actor": "t-slot1-527e2e49"}],
+            "text": "Tace puts the loupe down, all the way down, and folds their hands. 'You told me why you keep the notebook, friend, the night the clock started again. I've thought about it since. A clock is only a notebook that ticks; it keeps what you give it, and it doesn't mind being read twice.' They nod at the little clock that is yours. 'Yours will keep her hour, if you'd like it to.'"
+          }
+        ]
+      },
+      "t-bell": {
+        "topics": [
+          {
+            "label": "Wren",
+            "aliases": ["the one who brought pollen back", "who brought pollen home"],
+            "if": [{"actor": "t-slot1-527e2e49", "not": true}],
+            "text": "Bell taps the pole with the hooked pole, where a small chalk W has appeared. 'Wren carried Pollen all the way home from a treehouse, both hands, like a kitten come in from the rain. I chalked that so Pollen knows who to thank. Lanterns forget, otherwise.'"
+          },
+          {
+            "label": "Wren",
+            "aliases": ["the one who brought pollen back", "who brought pollen home", "me", "pollen's rescue"],
+            "if": [{"actor": "t-slot1-527e2e49"}],
+            "text": "Bell points the hooked pole at a small chalk W on Pollen's pole, and grins under the soot. 'That's you. So she knows who carried her home. She's burned a shade brighter since, and I'm not saying that's you, but I'm not saying it isn't.'"
+          },
+          {
+            "label": "Vex",
+            "aliases": ["the one who borrowed pollen", "who borrowed pollen", "the treehouse"],
+            "if": [{"actor": "t-slot2-26c64b4f", "not": true}],
+            "text": "Bell laughs, not unkindly, and glances south toward the well-court. 'Vex borrowed Pollen for a treehouse. A treehouse! I'd have lent her, if asked. Then Vex went and sang a nap home, so I've forgiven the lantern business entirely. Mostly.'"
+          },
+          {
+            "label": "Vex",
+            "aliases": ["the one who borrowed pollen", "who borrowed pollen", "me", "the treehouse"],
+            "if": [{"actor": "t-slot2-26c64b4f"}],
+            "text": "Bell folds their arms round the hooked pole and gives you a long, sooty look. 'Pollen. Up a rope ladder. I've forgiven you, because of the nap, and because Wren brought her back. But if you want a lantern for that treehouse, ask, and I'll light you one that's yours.'"
+          }
+        ]
+      },
+      "t-fen": {
+        "topics": [
+          {
+            "label": "Halloran",
+            "aliases": ["the tall one", "who wrote the first letters", "the first letters"],
+            "if": [{"actor": "t-slot3-68d070b4", "not": true}],
+            "text": "Fen squares a stack against the counter, pleased as a new stamp. 'Halloran wrote the first two letters ever posted between dreamers in this office, one for Wren and one for Vex, and left a brass hand and a bookmark in the drawer for them besides. I've started a pigeonhole for every keeper since. Precedent, you see.'"
+          },
+          {
+            "label": "Halloran",
+            "aliases": ["the tall one", "who wrote the first letters", "the first letters", "me", "my letters"],
+            "if": [{"actor": "t-slot3-68d070b4"}],
+            "text": "Fen taps the two pigeonholes with new labels, WREN and VEX, and then a third, HALLORAN. 'Yours were the first letters ever posted between dreamers in this office. I've started a pigeonhole for every keeper since, and I'll tell you the moment either of them comes by for theirs. First-class precedent, that is.'"
+          }
+        ]
+      },
+      "t-mott": {
+        "topics": [
+          {
+            "label": "Vex",
+            "aliases": ["the one who took the hush", "who took the hush"],
+            "if": [{"actor": "t-slot2-26c64b4f", "not": true}],
+            "text": "Mott taps the tin's lid, where there's a small gap now. 'Vex came for the hush, plain as that: asked, took it, went. Nap was asleep before I'd got the dust off the step. Some folk don't need telling twice.'"
+          },
+          {
+            "label": "Vex",
+            "aliases": ["the one who took the hush", "who took the hush", "me", "the hush I took"],
+            "if": [{"actor": "t-slot2-26c64b4f"}],
+            "text": "Mott looks at you, then at the gap in the tin where the hush was, and nods once. 'You didn't need telling twice. I like that in a keeper. There's a corner of the tin empty now; something'll turn up to fill it.'"
+          }
+        ]
+      },
+      "t-umber": {
+        "topics": [
+          {
+            "label": "the first evening",
+            "aliases": ["the new keepers", "the three keepers", "who came first"],
+            "variants": [
+              "Umber writes a fresh label in her small square hand and pins it up between two jars: THREE KEEPERS. ONE EVENING. WREN, VEX, HALLORAN. 'And one who only looked in,' she adds, and does not write that down. 'Filed under welcome.'",
+              "Umber turns the lantern a little toward a new label on the shelf: THREE KEEPERS. ONE EVENING. 'Vex quick, Wren careful, Halloran writing to them both before the night was out. A good first evening. Drink your tea.'"
+            ]
+          }
+        ]
+      },
+      "t-quill": {
+        "topics": [
+          {
+            "label": "the bowl",
+            "aliases": ["the bowl of turned time", "the sunken bowl", "the skate bowl", "tock's bowl"],
+            "text": "Quill straightens a trellis and nods north, toward the tower. 'Vex grew a sunken bowl up there, north of the tower, all curves. Tock's taken to it: skids down the great minute hand between one tick and the next and lands on the hour every time. I went to watch. Twice.'"
+          }
+        ]
+      },
+      "t-sorrel": {
+        "topics": [
+          {
+            "label": "Halloran",
+            "aliases": ["the tall one", "the one who sat on the hill", "who waited on the hill"],
+            "if": [{"actor": "t-slot3-68d070b4", "not": true}],
+            "text": "Sorrel tips the hat brim toward the hill. 'Halloran. Tall, grey at the temples, sat on the bench up there at dusk and waited the way you're meant to. Then walked all the way back to the post office to write to two friends who weren't here yet. There's a lot of patience in that one.'"
+          },
+          {
+            "label": "Halloran",
+            "aliases": ["the tall one", "the one who sat on the hill", "who waited on the hill", "me"],
+            "if": [{"actor": "t-slot3-68d070b4"}],
+            "text": "Sorrel looks at you the way they look at weather that's turned out kinder than forecast. 'You sat on the bench up there at dusk and waited properly. Then went and wrote to two friends who weren't here yet. The lights notice that sort of thing. So do I.'"
+          }
+        ]
+      }
+    },
+    "furnish": [
+      {
+        "room": "r-the-bowl-of-turned-time",
+        "description": "A sunken bowl of pale stone, and the curves of its sides are the great clock's hands laid down on their backs: an hour hand you could sleep in the crook of, a minute hand that swoops from the lip almost to your feet. The stone is warm, and lantern-amber where the dusk pools. Something small has worn a bright groove down the whole length of the minute hand. The Clocktower is south.",
+        "things": [
+          {
+            "id": "o-dream-2026-09-28-bowl-card",
+            "name": "card in Tace's hand",
+            "location": {"room": "r-the-bowl-of-turned-time"},
+            "fixture": true,
+            "verbs": ["read"],
+            "aliases": ["card", "tace's card", "the card", "note"],
+            "seed": "a stiff cream card tucked into a crack at the lip of the bowl, weighted with a small brass bob, written in a careful, fading script",
+            "text": "THE BOWL OF TURNED TIME. Grown by Vex, on the first evening, from a wish for a skate bowl where the ramps are giant clock hands. I measured the hands. They keep good time lying down. Tock has claimed the minute hand; please do not wax it. T."
+          },
+          {
+            "id": "o-dream-2026-09-28-bowl-groove",
+            "name": "bright groove",
+            "location": {"room": "r-the-bowl-of-turned-time"},
+            "fixture": true,
+            "aliases": ["groove", "the groove", "minute hand", "the minute hand", "worn groove"],
+            "seed": "a groove worn bright and smooth down the whole length of the great minute hand, exactly one cat wide; at the bottom, where it ends on the hour, four tiny claw marks, and a single grey hair"
+          }
+        ]
+      },
+      {
+        "room": "r-the-waiting-bell-loft",
+        "description": "A treehouse platform of old grey boards, moss in every seam, wrapped round a trunk the well-court's ivy has been climbing for years. A thick rope ladder hangs down to the moss below. On a low oak table a small brass bell waits, and above it, on a slate hung from a nail, someone has chalked the password. The Mossy Well-Court is down the ladder.",
+        "things": [
+          {
+            "id": "o-dream-2026-09-28-treehouse-bell",
+            "name": "bell",
+            "location": {"room": "r-the-waiting-bell-loft"},
+            "fixture": true,
+            "verbs": ["ring"],
+            "aliases": ["the bell", "treehouse bell", "brass bell", "small bell", "bell on the table"],
+            "seed": "the small brass bell on the low oak table, its handle worn to the shape of one particular hand, hung with a scrap of butter-yellow ribbon that was not there before",
+            "rules": [
+              {
+                "on": "ring",
+                "do": [
+                  {"kind": "narrate", "to": "@actor",
+                   "variants": [
+                     "You ring the bell, once. It carries further than a bell this size has any right to: down the ladder, across the well-court, and somewhere in the square a lantern flares as if it heard its name.",
+                     "One bright ring, and the treehouse holds its breath with you. Down in the well-court the moss seems to listen. Nobody comes up the ladder yet, but the bell doesn't mind waiting; that's what it was grown for."
+                   ],
+                   "others": "{actor} rings the treehouse bell, once, bright and small."},
+                  {"kind": "narrate", "room": "r-square", "to": "everyone",
+                   "text": "Faint and far, from somewhere south of the square, a small bell rings once, and Pollen flares a shade brighter, as if she knew the hand."}
+                ]
+              }
+            ]
+          },
+          {
+            "id": "o-dream-2026-09-28-treehouse-slate",
+            "name": "slate",
+            "location": {"room": "r-the-waiting-bell-loft"},
+            "fixture": true,
+            "verbs": ["read"],
+            "aliases": ["the slate", "password", "the password", "chalked slate"],
+            "seed": "a small school slate hung from a nail above the bell, chalked in two hands: one quick, one sooty",
+            "text": "In quick chalk, at the top: PASSWORD IS SECRET. Under it, in sooty capitals with a lantern drawn beside: THE WORD IS POLLEN, AND SHE'D LIKE HER LANTERN BACK NEXT TIME. LOVE, B."
+          }
+        ]
+      },
+      {
+        "room": "r-the-warmth-of-unsent-words",
+        "description": "A low lamplit room north of the cellar, warm as the inside of a coat. Letters lie open on every table, their pages weighted with river stones, kept warm until their writers come back for them; a small iron stove ticks in the corner like a slow clock. Fen has been down: the tables are sorted now, by how long each letter has waited. The Hour Cellar is south.",
+        "things": [
+          {
+            "id": "o-dream-2026-09-28-warmth-card",
+            "name": "card in Fen's hand",
+            "location": {"room": "r-the-warmth-of-unsent-words"},
+            "fixture": true,
+            "verbs": ["read"],
+            "aliases": ["card", "fen's card", "the card", "label"],
+            "seed": "a postal card propped against the stove, addressed in Fen's tidy hand, a lantern stamp stuck on straight for once",
+            "text": "THE WARMTH OF UNSENT WORDS. Grown by Wren, on the first evening, who asked for a lamplit room where unsent letters are kept warm until their writers come back for them. Sorted by how long they've waited, oldest nearest the stove. Nothing in this room is dead. F."
+          },
+          {
+            "id": "o-dream-2026-09-28-warmth-letter",
+            "name": "letter nearest the stove",
+            "location": {"room": "r-the-warmth-of-unsent-words"},
+            "fixture": true,
+            "verbs": ["read"],
+            "aliases": ["oldest letter", "the oldest letter", "letter by the stove", "open letter", "letter"],
+            "seed": "the letter that has waited longest, open on the table nearest the stove, its paper gone soft and brown at the folds, weighted with a smooth grey river stone",
+            "text": "Only the top of the first page is turned toward the lamp, and the rest is the writer's own. It begins: 'Dear Gran, I am writing this down so that one of us remembers it.' The river stone on it is warm right through."
+          }
+        ]
+      },
+      {
+        "room": "r-the-quiet-bookmark-shelf",
+        "description": "A reading nook east of the cellar, hardly bigger than the three armchairs that fill it, drawn up in a circle round a low table. A book lies open in each chair, and in each book a bookmark waits at a page someone meant to come back to. The lamp is turned low, the way it is when readers are expected. The Hour Cellar is west.",
+        "things": [
+          {
+            "id": "o-dream-2026-09-28-shelf-books",
+            "name": "three open books",
+            "location": {"room": "r-the-quiet-bookmark-shelf"},
+            "fixture": true,
+            "verbs": ["read"],
+            "aliases": ["books", "the books", "open books", "book", "bookmarks", "the bookmarks"],
+            "seed": "three books open in three armchairs, each with a bookmark laid across the page: one of oak, one of linen, and one that is only a folded corner of newspaper",
+            "text": "The oak bookmark's book is a field guide to clouds, open at cumulus; someone has written VEX in the margin in quick pencil, and drawn a skateboard among the clouds. The linen bookmark's book is a book of letters, open at one that begins 'Dear Gran'; WREN is written small and careful at the top of the page. The third book is a book of maps of places that do not exist, and its bookmark is a folded corner of newspaper with HALLORAN on it in an older hand. Under all three, on the table, a fourth book waits closed, its bookmark blank."
+          },
+          {
+            "id": "o-dream-2026-09-28-shelf-card",
+            "name": "card in Umber's hand",
+            "location": {"room": "r-the-quiet-bookmark-shelf"},
+            "fixture": true,
+            "verbs": ["read"],
+            "aliases": ["card", "umber's card", "the card", "label"],
+            "seed": "a label in Umber's small square hand, tied to the lamp with string",
+            "text": "THE QUIET BOOKMARK SHELF. Grown by Halloran, first evening, for three housemates who leave bookmarks in each other's books. Chairs: three. Books: three, plus one spare. Do not lose anyone's place."
+          }
+        ]
+      }
+    ]
+  },
+  "walkthroughs": {
+    "fresh": [],
+    "live": [
+      {
+        "name": "second-dream-callbacks",
+        "players": [{"as": "A", "name": "Rehearsal"}],
+        "segments": [
+          {
+            "name": "the four grown places and the keepers",
+            "commands": [
+              {"cmd": "north", "expect": {"room": "r-the-bowl-of-turned-time"}},
+              {"cmd": "read card", "expect": {"narrate_contains": "Grown by Vex"}},
+              {"cmd": "south", "expect": {"room": "r-clocktower"}},
+              {"cmd": "up", "expect": {"room": "r-loft"}},
+              {"cmd": "ask tace about vex", "expect": {"narrate_contains": "Vex"}},
+              {"cmd": "down"},
+              {"cmd": "east", "expect": {"room": "r-square"}},
+              {"cmd": "ask bell about wren", "expect": {"narrate_contains": "chalk W"}},
+              {"cmd": "south", "expect": {"room": "r-well"}},
+              {"cmd": "up", "expect": {"room": "r-the-waiting-bell-loft"}},
+              {"cmd": "read slate", "expect": {"narrate_contains": "POLLEN"}},
+              {"cmd": "ring bell", "expect": {"narrate_contains": "ring"}},
+              {"cmd": "down"},
+              {"cmd": "north"},
+              {"cmd": "west", "expect": {"room": "r-clocktower"}},
+              {"cmd": "down", "expect": {"room": "r-cellar"}},
+              {"cmd": "ask umber about the first evening", "expect": {"narrate_contains": "THREE KEEPERS"}},
+              {"cmd": "north", "expect": {"room": "r-the-warmth-of-unsent-words"}},
+              {"cmd": "read card in fen's hand", "expect": {"narrate_contains": "Grown by Wren"}},
+              {"cmd": "south"},
+              {"cmd": "east", "expect": {"room": "r-the-quiet-bookmark-shelf"}},
+              {"cmd": "read three open books", "expect": {"narrate_contains": "HALLORAN"}},
+              {"cmd": "west"},
+              {"cmd": "up"},
+              {"cmd": "east"},
+              {"cmd": "east", "expect": {"room": "r-lane"}},
+              {"cmd": "north", "expect": {"room": "r-post"}},
+              {"cmd": "ask fen about halloran", "expect": {"narrate_contains": "first two letters"}}
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}
