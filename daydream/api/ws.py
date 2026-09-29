@@ -43,6 +43,7 @@ from daydream import (
     inputs,
     journal,
     lighting,
+    meta,
     objects,
     parser,
     post,
@@ -770,6 +771,9 @@ async def _handle_input(text: str, toon_id: str, conn: dict) -> dict | None:
         events.append("system", None, "narrate", {"text": HELP_TEXT},
                       room_id=room_id, recipient_id=toon_id)
         return None
+    asked = meta.kind(text)
+    if asked is not None:
+        return await answer_meta(asked, toon_id, conn)
     pending = conn.get("clarify")
     conn["clarify"] = None
     lp = await parser.parse_line(toon_id, text, pending=pending)
@@ -837,12 +841,15 @@ async def _handle_input(text: str, toon_id: str, conn: dict) -> dict | None:
 
 _WHAT_NOW_RE = re.compile(
     r"(?i)^(what now|what next|now what|hints?|threads|what am i doing|"
+    r"(any|a|give me a) hints?|i'?m stuck|i am stuck|what'?s next|"
     r"what (should|do|can) i do( now| next| here)?|where (should|do) i go( now| next)?)[?.!]*$")
 WHAT_NOW_LEAD = "You turn over what you're in the middle of:"
 WHAT_NOW_NONE = ("Nothing is tugging at your sleeve just now. Wander, look closely at "
                  "things, and ask the people you meet about what you see.")
 
-_HELP_RE = re.compile(r"(?i)^(help|\?|how (do i|to) play\??|instructions)$")
+_HELP_RE = re.compile(
+    r"(?i)^(help( me)?( please)?|i need help|\?|how (do i|to) play|how does this work|"
+    r"what do i type|instructions|commands)[?.!]*$")
 HELP_TEXT = ("The small ? at the foot of the page opens How to Dream. In short: say what "
              "you'd like to do, touch a person's topics to ask about them, touch a way "
              "from here to wander, and pick up the stray minutes that glint about.")
@@ -853,6 +860,23 @@ _CHATTER_LINES = [
     "\"{text}\" floats up and away. (Try looking around, or asking someone here about something.)",
     "Nothing in the dream takes up \"{text}\" just now, though it seems to listen.",
 ]
+
+
+async def answer_meta(asked: str, toon_id: str, conn: dict) -> dict | None:
+    """A question about the game (daydream/meta.py; spec 2026-09-29 criterion
+    4), answered from state with no model call."""
+    room_id = _current_room_id(toon_id)
+    if asked == "where":
+        await verbs.execute_command(toon_id, "look")
+        return None
+    if asked == "who":
+        await verbs.execute_command(toon_id, "examine", dobj_id=toon_id)
+        await verbs.execute_command(toon_id, "inventory")
+        return None
+    text = meta.time_line(_world_of(toon_id) or "") if asked == "time" else meta.ways_line(toon_id)
+    events.append("system", None, "narrate", {"text": text},
+                  room_id=room_id, recipient_id=toon_id)
+    return None
 
 
 def _world_of(toon_id: str) -> str | None:

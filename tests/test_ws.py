@@ -538,7 +538,9 @@ def test_ws_llm_unavailable_produces_foggy_narration():
             _login(client)
             with client.websocket_connect("/ws") as ws:
                 ws.receive_json()
-                ws.send_json({"kind": "input", "text": "what time is it"})
+                # A line only the model can read ("what time is it" is answered
+                # from state since spec 2026-09-29 criterion 4).
+                ws.send_json({"kind": "input", "text": "tell me a story about the moon"})
                 evt = ws.receive_json()
     assert evt["event"]["kind"] == "narrate"
     assert "foggy" in evt["event"]["payload"]["text"].lower()

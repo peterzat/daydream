@@ -1878,7 +1878,7 @@ document.getElementById("input-form").addEventListener("submit", (ev) => {
     return;
   }
   if (!text) return;
-  if (/^(help|\?|how (do i|to) play\??|instructions)$/i.test(text)) {
+  if (/^(help( me)?( please)?|i need help|\?|how (do i|to) play|how does this work|what do i type|instructions|commands)[?.!]*$/i.test(text)) {
     // The guide, not a chatter line (playtest 2026-09-28b).
     inp.value = "";
     openHelp();
