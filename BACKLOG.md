@@ -478,3 +478,21 @@ kept with that deployment, not here.
 - **Why deferred:** The 2026-09-29 spec turned to play quality; these are operational drills, most of whose machinery already runs in prod.
 - **Revisit criteria:** Before inviting the second wave of friends, or at the next maintenance window, or when an incident exercises one of these paths.
 - **Origin:** spec 2026-09-27 (Going live), closed 14/23 on 2026-09-29.
+
+### prompt-economy-remaining-surfaces
+- **One-line description:** Apply "Prompting the reflexes" (docs/REFLEXES.md) to the surfaces the 2026-09-30 audit found: `model_eval.suite_growth` hand-copies the growth call (no `GROWTH_TEMPERATURE`, no second try, no never-word check), so it scores a path the game never runs, and `room_seed` largely repeats `description` (up to ~75 of 450 written tokens, about 2 s); the dialogue system prompt carries the NPC and player names, so no prefix is shared across calls, and `advance` is written even with no story moments; the drift suite scores `_llm_narrate`, which the village (authored pools) never runs; the director could pick among short numbered labels instead of ids.
+- **Why deferred:** Out of scope for "Reflexes and few dead ends"; each change re-ratifies a surface's eval or drift golden and wants its own measurement.
+- **Revisit criteria:** The next model swap or bake-off, a growth or dialogue latency complaint, or the next change that touches `growth.py` or the dialogue prompt.
+- **Origin:** spec 2026-09-29, the prompt audit after criterion 3.
+
+### promise-guard-deflection-cost
+- **One-line description:** The promise guard (`dialogue.py`) gives the authored deflection when every draft fails: about half the adversarial probes, 3 of 34 canon questions ("which way is the old well"), and "help Tace" in the battery, where a deflection reads oddly. Options: when all drafts fail, answer from an authored topic the line names; count deflections in the dream digest so a dream can author the missing answer; a third draft only when the arbiter is idle.
+- **Why deferred:** The measured cost was accepted for honesty (the operator's decision); a repair draft costs a second dialogue call (about 2.5 s).
+- **Revisit criteria:** Play logs or the digest show deflections answering plain questions, or friends say a resident "won't answer".
+- **Origin:** spec 2026-09-29 criterion 8 measurements.
+
+### battery-leftovers-2026-09-30
+- **One-line description:** Three lines from the replayed creative-break battery (docs/playtests/2026-09-29-creative-break.md, "The battery, replayed"): `reach up` in the cellar reads as no command (the first run's model examined the highest shelf); `count the jars` reads "You can't take the jars" (the model chose take); `look at the hands` in the cellar reads the labels "in many hands".
+- **Why deferred:** None is one of the playtest's ten classes; each is a single parser or glimpse wording fix best made with the next battery run.
+- **Revisit criteria:** The next battery replay, or a player hitting one of them.
+- **Origin:** spec 2026-09-29 criterion 14.

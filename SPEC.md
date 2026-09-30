@@ -10,14 +10,14 @@ decisions (Context).
 
 ### Acceptance Criteria
 
-- [ ] **1. The absent answer as absent.** An ask, talk or gesture that names a
+- [x] **1. The absent answer as absent.** An ask, talk or gesture that names a
   resident who is not in the room answers that they are not here and where
   they usually are at this time of day (from their schedule), with zero model
   calls. It never lets a present resident answer in their place. Test: with
   Tace present and Bell in the square, `ask Bell about the lanterns` gets no
   reply from Tace. A named dreamer who is not here reads the same way, from
   the record.
-- [ ] **2. Gestures are social.** Hug, wave, thank, bow, nod, smile and their
+- [x] **2. Gestures are social.** Hug, wave, thank, bow, nod, smile and their
   common phrasings ("wave to", "give X a hug"), aimed at someone present:
   - the actor reads it in the second person ("You hug Tace."), everyone else
     in the room in the third ("Wren hugs Tace."), and a dreamer who is the
@@ -38,7 +38,7 @@ decisions (Context).
   that phrase. On the shipped model the parser's grounding score holds (47 of
   48 or better), and a committed triage case set of at least 30 lines scores
   90% or better.
-- [ ] **4. Questions about the game answer from state.** "what time is it",
+- [x] **4. Questions about the game answer from state.** "what time is it",
   "where am I", "who am I", "help me", "what should I do", and "where can I
   go" or "go somewhere else" answer, respectively, with:
   - the village's time and phase ("time stands still here" before the clock);
@@ -49,19 +49,19 @@ decisions (Context).
   - the ways out.
   The common phrasings need zero model calls; paraphrases arrive through
   criterion 3.
-- [ ] **5. One line, several actions.** "take the lantern and go up" runs
+- [x] **5. One line, several actions.** "take the lantern and go up" runs
   both, in order. A refusal stops the rest and says what was skipped. A noun
   list ("take the lantern and the key", "drop the gear and the cog") is still
   a list: the Zork list tests pass unchanged. Lines the fast path can't split
   may come back from the parser's call as up to three commands.
-- [ ] **6. Every verb has a default, in the world's voice.** These answer
+- [x] **6. Every verb has a default, in the world's voice.** These answer
   with the thing's name, varied so no reply repeats among the recent
   tellings, with zero model calls: smell, touch, knock on, taste, look
   behind, look under, climb, push, pull, light, dance, run, jump, and "look
   in" a non-container. The lines are authored per world, and an object or a
   room may override them. Looking in an open or see-through container still
   shows its contents.
-- [ ] **7. A world's verbs are its own.** The village opts out of the engine
+- [x] **7. A world's verbs are its own.** The village opts out of the engine
   verbs it doesn't use (at least diagnose, board, disembark, attack). They
   never parse there, never appear on the verb bar, and `who am I` or `climb
   the shelf` get the village's own answers. Zork's files are untouched, and
@@ -81,7 +81,7 @@ decisions (Context).
     you give me the key", and at least 10 more) run on the shipped model
     shows no promise in any shown reply, with median added latency of 0.8 s
     or less (the operator accepted about 0.5 s).
-- [ ] **9. Scenery once, and exits by their names.** A world can define a
+- [x] **9. Scenery once, and exits by their names.** A world can define a
   piece of scenery once (names, a reason, per-verb lines) and list the rooms
   that show it. An exit can carry names:
   - moving by an exit's name goes that way ("climb the stairs" goes up);
@@ -90,13 +90,13 @@ decisions (Context).
   - the village names its up and down exits and authors scenery for its
     common nouns (sky, cobbles, walls and floor, the lanterns of the square,
     the lane and the bridge).
-- [ ] **10. The scenery lint is a ratchet.** A tier_short test lists every
+- [x] **10. The scenery lint is a ratchet.** A tier_short test lists every
   noun phrase that room prose or a thing's look names and that is not an
   object, alias, glimpse, scenery or exit name. It fails, naming the phrase
   and where it appears, whenever that list gains an entry that is not in a
   committed baseline. Today's list is the starting baseline, and changing the
   baseline is a reviewed edit, like a golden.
-- [ ] **11. Fragments and pronouns.**
+- [x] **11. Fragments and pronouns.**
   - After a question for a missing target ("Take what?"), a next line that
     doesn't start with a verb or a direction completes the command, with
     zero model calls.
@@ -104,7 +104,7 @@ decisions (Context).
     shown in a card or a glimpse; "him", "her" and "them" mean the last
     resident spoken to.
   - "ask Tace about it" asks about that thing by name.
-- [ ] **12. Defaults respect canon, and guesses are announced.**
+- [x] **12. Defaults respect canon, and guesses are announced.**
   - A world verb's default can be overridden per room, and in Umber's cellar
     `drink` finds her tea.
   - When the engine fills a missing target itself (the only person here, the
@@ -113,7 +113,7 @@ decisions (Context).
     aren't nouns, "x tin. north" chains, an unknown per-verb key fails the
     loader, entry order is documented, and a carried ladder in the cellar
     has its jar line.
-- [ ] **13. Measured, switchable, and listed.**
+- [x] **13. Measured, switchable, and listed.**
   - Every new model surface (triage, the promise judge, any gesture
     fallback) is tagged in the usage log, has a model-eval suite or case
     set, and has a kill switch that falls back to deterministic behaviour.
@@ -121,7 +121,7 @@ decisions (Context).
     listed in the dream digest.
   - Walkthroughs still make zero model calls, and short and medium stay
     green.
-- [ ] **14. The battery, replayed.** The 78-line creative-break battery is
+- [x] **14. The battery, replayed.** The 78-line creative-break battery is
   committed as a corpus. Replayed against dev with the shipped model, every
   example named in the playtest's ten classes gets an answer that is not a
   dead end ("isn't sure what you mean", "floats away", "nothing takes that
@@ -211,4 +211,4 @@ launch demonstrations of things built (criteria 9-13, 15-17, 22), carried to
 BACKLOG `launch-demonstrations`, with their full text in SPEC.md at
 d121a16.*
 
-<!-- SPEC_META: {"date":"2026-09-29","title":"Reflexes and few dead ends","criteria_total":14,"criteria_met":0} -->
+<!-- SPEC_META: {"date":"2026-09-29","title":"Reflexes and few dead ends","criteria_total":14,"criteria_met":14} -->

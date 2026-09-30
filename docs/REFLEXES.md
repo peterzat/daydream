@@ -116,9 +116,41 @@ The stance held, and the decisions followed from it:
 The marginal surfaces each have a switch, for when play shows they are not
 missed: `DAYDREAM_DRIFT_VARY_PROB` (default 0.3), `DAYDREAM_DIRECTOR_LLM`
 (default on), `DAYDREAM_JOURNAL_ENABLED` (default on), `DAYDREAM_GLIMPSE_LLM`
-(default on; off reads a plain "out of reach" line), and
-`DAYDREAM_RETELL_ENABLED` (Zork only).
+(default on; off reads a plain "out of reach" line), `DAYDREAM_PARSER_TRIAGE`
+(default on; off, the parser's call returns one command and no kind),
+`DAYDREAM_PROMISE_GUARD` (default on; off shows the best draft unjudged),
+and `DAYDREAM_RETELL_ENABLED` (Zork only).
 
 One caveat on pictures: "only what players create is painted live" holds
 with the repaint tool off. `DAYDREAM_REGEN_UI` defaults on for the operator;
 set it to 0 before friends play so the graded art stays as graded.
+
+## Prompting the reflexes (2026-09-30)
+
+What the parser triage and the promise judge taught about asking a 9B model
+for a reflex, and what every local surface should follow:
+
+- **Examples are input; answers are latency.** Prompt tokens are prefilled
+  in bulk and cost little; every token the model writes costs about 25 ms on
+  this card. So teach with a few examples instead of long rules, and ask for
+  the shortest answer that carries the decision. The parser writes only the
+  fields that have a value (about 24 tokens instead of 40) and its call got
+  faster while doing more; the judge answers one short verdict per draft
+  from a trimmed view of the drafting prompt (p50 0.4 s).
+- **Examples come from another story.** An example must share no words with
+  the eval's cases and name nothing in the world. The first triage examples
+  echoed the case set (a moon, a teapot, a resident's alias) and scored 0.94
+  on it; clean ones scored 0.82 until each confused category had an example
+  of its own, and then 0.94 again. A **held-out set**, written after the
+  prompt and never used to tune it, is how to tell the two apart: the
+  triage prompt scores 16/16 on its held-out lines.
+- **Score what the game does.** An eval reads the model's reply through the
+  runtime's own function (`parser.interpret`, the real talk path), never a
+  hand-copied mirror of it, so the score is the player's experience.
+- **Deterministic first, the model last, even inside a guard.** The promise
+  guard reads a name nothing gave and a first-person commitment shape before
+  the judge sees a draft; the judge catches the rest. A 9B judge alone let
+  invented places and some promises through.
+- **Give the model the closed lists.** Drafts and judge both see the
+  village's people, places and the ways between them; canon contradictions
+  in the canon suite went from 2 to 0.
