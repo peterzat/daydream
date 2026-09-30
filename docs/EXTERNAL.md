@@ -95,9 +95,10 @@ judge, which takes about as long.
   topic names with the first words of each authored answer.
 
 TypeSafe does not state its retention; zero retention is for its
-enterprise customers. **The operator accepted this on 2026-09-30.** Friends'
-typed lines to residents reach TypeSafe while Jev is on; the door does not
-say so.
+enterprise customers. **The operator accepted this on 2026-09-30**, the
+exact list above included (other dreamers' names, whereabouts and deeds,
+confirmed after the review that listed them). Friends' typed lines to
+residents reach TypeSafe while Jev is on; the door does not say so.
 
 ### On, off, and the key
 

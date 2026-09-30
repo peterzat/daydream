@@ -79,7 +79,7 @@ advance:**
    little purple. Each is tagged local, so the digest turns the ones players
    meet into authored reasons.
 
-## The honest risk
+## Limitations
 
 Item 4 is the largest runtime surface and the weakest in quality. An
 improvised 9B reply next to Opus lines reads as a drop in register. The
