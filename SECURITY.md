@@ -2,116 +2,184 @@
 
 ## Security Review — 2026-09-30 (scope: paths)
 
-**Summary:** Path-scoped review of the 15 files the caller named, read as
-their change from the last scan (`a7cdb15`) to HEAD `d98b73f`. That covers
-the review fixes in `4aeb1e9` and the agent-guard rework in `d98b73f`. Every
-open item in these files is resolved: the tea-cup WARN, the agent-guard
-WARN, and two NOTEs. There is one new WARN: the parser's chain splits
-backtrack super-linearly, so one invited player's typed lines can keep the
-server's event loop busy. There is one new NOTE: the guard fails open when
-it raises. The register is now 0 BLOCK / 1 WARN / 5 NOTE.
+**Summary:** Path-scoped review of the 22 files the caller named, read as
+their change from the last scan (`d98b73f`) to HEAD `6981ba7`. That covers
+the parser's whitespace fix (`922c122`), the agent-guard rework
+(`aef3abd`), and the playtest turn on parts, the heard gate and reply
+ranking (`c95f2a1` to `6981ba7`). The parser WARN is resolved. There are
+three new WARNs. The guard's raw pass now deletes a quoted command
+substitution inside a redirection target, so a gated verb there gets no
+decision; six spellings that asked before `aef3abd` no longer do. A chain of
+about 500 `eval`s makes the guard raise, and it still fails open (the
+carried NOTE, now reachable with a short command). A click frame's ids reach
+the dream digest as sent, and the player-text scan never reads them. The
+register was 0 BLOCK / 3 WARN / 4 NOTE; /codereview fixed all three WARNs
+in `bc0fb71` (see "Fixed after this scan" below), so it now reads 0 BLOCK /
+0 WARN / 5 NOTE (the guard's nested-brace timeout added as a NOTE).
 
 ### Scope and method
 
-- Each scoped file's diff from `a7cdb15` to `d98b73f` was read in full.
-  `tools/agent_guard.py` was read whole. So was the code the changes lean
-  on:
-  - `verbs._resolve_in_scope` and `objects.in_scope`
-  - the WS receive loop and `_handle_input`
-  - `parser.parse_line` and `_segments`
-  - the dreamer-create throttle in `api/slots.py`
-- `tests/test_agent_guard.py` and `tests/test_fragments_pronouns.py` pass
-  (128 tests). `tools/assemble_world.py --check` confirms that the
-  committed artifact matches its sources.
-- The chain-split patterns were timed on lines of up to 500 characters (the
-  socket's cap). They were timed before and after 4aeb1e9, and again with
-  whitespace collapsed.
+- Each scoped file's diff from `d98b73f` to HEAD was read in full, and
+  `tools/agent_guard.py` whole. So was the code the changes lean on:
+  - `verbs._execute_resolved` and `_resolve_in_scope`, `objects.in_scope`
+    and `visible_to`
+  - the WS receive loop and `_handle_command`
+  - `glimpse._best`, `answer` and `_local_line`; `heard.on_event`;
+    `effects._apply_narrate`
+  - `textscan.gather`, `dream.digest` and `render_digest`,
+    `inputs.export_walkthrough`
+- The six scoped test files pass (255 tests). `tools/assemble_world.py
+  --check` confirms that the committed artifact matches its sources.
+- A throwaway world (the canonical envelope, the suite's environment, a
+  model client that raises) took crafted click frames and 500-character
+  typed lines.
+- The guard at `d98b73f` and at HEAD judged the same command payloads (as
+  data, never run), and the real hook process ran under its 5 s timeout.
+  Bash itself confirmed which substitutions run.
 
 ### Findings
 
-[WARN] daydream/parser.py:156 (`_THEN_SPLIT`, changed in 4aeb1e9), with
-:64 (`_AND_JOIN`, present since 5c61c88) — Both chain-split patterns
-backtrack super-linearly on a line that holds a long run of whitespace.
-`_segments` (:319-324) runs them on every typed line, synchronously, on the
-server's one event loop. Nothing collapses whitespace first: the receive
-loop only caps the length (`daydream/api/ws.py:1345-1351`), and
-`parse_line` only strips the ends (:233).
-  Attack vector: Any invited player sends typed lines of up to 500
-characters (`ws.MAX_INPUT_CHARS`) that are mostly whitespace. Each line
-costs about 0.38 s of event-loop CPU before any model call. The socket
-admits a burst of 12 lines, then 3 a second (`ws.py:1258-1259`). That is
-enough for one player to keep the loop saturated. While it lasts, every
-other player's frames, broadcasts and HTTP requests wait.
-  Evidence (best of three runs on this box):
-- `_THEN_SPLIT.split` took 4.3 ms at 125 characters, 34 ms at 250 and
-  265 ms at 500, which is cubic growth. The pattern before 4aeb1e9 took
-  0.9 ms at 500.
-- `_AND_JOIN.split` took 112 ms at 500. The previous scan timed lines
-  without long whitespace runs and missed it.
-- With whitespace runs collapsed to single spaces, both took under 0.01 ms.
+[WARN] tools/agent_guard.py:110-112 (`_RAW_REDIRECTION`, applied at :366),
+with :130-133 — Since `aef3abd`, the raw pass deletes each redirection and
+its whole target before it looks for gated verbs. A target's double-quoted
+part is deleted whole, `$( )` and backticks included. Bash runs a command
+substitution inside a redirection target or a here-string, even when the
+redirection then fails. The parsed pass keeps a double-quoted target as one
+token and never reads inside it, and it takes the `;` that stands for an
+unquoted backtick as the target. So a gated `bin/game prod` verb inside a
+substitution in a target gets no decision from either pass. The raw pass
+exists to catch a gated verb inside a quoted `$( )` (security WARN
+2026-09-29); the docstring's "not modeled" line is about paths computed at
+run time, not this.
+  Attack vector: Player text that reaches the session (the dream digest,
+`bin/game play`, letters) carries an instruction, and the agent runs a
+command such as `echo x > "$(bin/game prod invite create --for Eve)"`. Bash
+mints the invite while it works out the file name. The guard says nothing,
+so only the harness's own rules stand, and they match command text by
+prefix.
+  Evidence (28 probes; G is a gated verb):
+- HEAD gives no decision on 17 of them: `> "$(G)"`, `>"$(G)"`, `2>"$(G)"`,
+  `&>"$(G)"`, `>> "$(G)"`, `exec 3>"$(G)"`, `cat < "$(G)"`,
+  `cat <<< "$(G)"`, ``> "`G`"``, ``> `G` ``, ``echo '>"' "`G`"``, and six
+  that asked at `d98b73f`: `> y"$(G)"`, `>| "$(G)"`, `> "a b $(G) c"`,
+  `> "${HOME}$(G)"`, `> "$(echo; G)"` and `>"$(cd /tmp && G)"`.
+- A bash run in the scratchpad created a marker file from inside a `>`, a
+  `2>`, a `>|` and a `<<<` target.
   Remediation:
-- Collapse whitespace runs to one space at the top of `parse_line`, after
-  `strip()`, or in `_handle_input` after the length cap. `inputs.record`
-  keeps the raw line either way.
-- Alternatively, rewrite both patterns so that no two adjacent quantifiers
-  can match the same whitespace.
-- Add a tier_short test: a 500-character line with a long whitespace run
-  parses in a few milliseconds.
+- End a raw-pass target at a substitution, and keep a variable in it: a
+  backtick or `$(` ends the double-quoted alternative, and a backtick joins
+  the unquoted class's exclusions. The pattern's second line becomes:
 
-[NOTE] tools/agent_guard.py:394-405 — `main()` catches only a malformed
-payload. If `decide()` raises, the hook exits 1, which Claude Code treats as
-a non-blocking error: the tool call proceeds with no opinion from the
-guard. Since d98b73f, `decide` holds the raw pass's ask until the end
-(:338-348, :391), so that a later deny can win. As a result, an exception in
-the parsed pass now also discards an ask already found. Before d98b73f, that
-ask was returned at once.
-  Attack vector: Defense in depth only. A command would have to make the
-guard raise, and the ask rules in settings still apply. The guard is a
-pattern check, not a boundary (Accepted Risks).
-  Remediation: In `main`, wrap `decide` in `try/except Exception` and print
-an `ask` that names the guard's failure, so that the guard fails closed.
-Add a test where `decide` raises and the hook still asks.
+  ```python
+  r"(?:-(?=[\s;&|()<>]|$)|\s*(?:\\.|\"(?:[^\"\\$`]|\\.|\$(?!\())*\"|'[^']*'|[^\s;&|()<>'\"\\`])+)?")
+  ```
+
+  A scratch copy with that line asked on all 28 probes, including a quoted
+  `"/tmp/$x"` target inside a quoted substitution, and left all 116
+  committed `cmd,want` cases in `tests/test_agent_guard.py` unchanged.
+  Ending at every `$` instead missed three of the probes.
+- In `_split_commands`, never take a separator as a redirection's target.
+- Add the probes to `test_a_redirection_and_its_target_are_read_whole`.
+- This is a guard edit, so it costs the operator one approval. Batch it
+  with the next WARN and the guard NOTEs open in CODEREVIEW.md.
+
+[WARN] tools/agent_guard.py:434-445 (`main`), with :182-183 (`eval` in
+`_unwrap`) — The guard still fails open when `decide()` raises (the NOTE
+carried from the last entry), and a short command now makes it raise.
+`_unwrap` reads each `eval` by recursing, so a chain of about 500
+(`eval eval ... cmd`, about 2.5 KB) passes Python's recursion limit. The
+hook exits 1, which Claude Code treats as a non-blocking error: the command
+runs with no decision from the guard. That drops any ask the raw pass
+already found, and every deny that only the parsed pass makes: a credential
+path spelled with a glob, a brace group, `..` or a backslash, or reached
+through `cd`. Bash runs such a chain to its end.
+  Attack vector: An instruction in player text leads the agent to put a long
+`eval` chain before a gated verb or a glob-spelled credential read. The
+guard crashes, and the harness's own rules decide.
+  Evidence (the real hook process):
+- `cat` of the SSH key's path spelled with a glob (`.s?h`) is denied. After
+  1,000 `eval`s the hook exits 1 with a RecursionError and no decision. The
+  shortest failing chain was about 497 `eval`s (2,485 characters).
+- `bash -c` ran the inner command of a 1,000-`eval` chain.
+- A second way to get no decision: `TOKEN_PRINTERS`' lazy run is still
+  quadratic over one long line. `echo git` repeated 9,000 times (81 KB) took
+  4.7 s of the hook's 5 s, so a longer line times out.
+  Remediation:
+- In `main`, wrap `decide` in `try/except Exception` (RecursionError
+  included) and print an `ask` that names the failure.
+- Ask when `eval` or shell nesting passes a small depth (16, say).
+- Ask, before any regex runs, for a command above a set size (16 KB, say).
+- Tests: a 1,000-`eval` chain asks or denies, and a 100 KB line decides
+  within the timeout.
+
+[WARN] daydream/api/ws.py:1241-1253 (`_handle_command`) — A click frame's
+`dobj_id` and `iobj_id` are recorded in the input log as sent: any string up
+to the 2,000-character frame. The dream digest prints them
+(`dream.py:520`, `:596`; JSON-quoted, cut to 300 characters). The
+player-text scan reads only a command row's verb and args
+(`textscan.py:92-93`). So words a player puts in a click id reach the
+session at dream time without passing the scan that CLAUDE.md requires
+before every push. The new `dobj_name` is recorded too, in `resolved` only.
+Nothing prints that field today (not the digest, the export or the scan),
+so it is a gap in the scan but not yet a path to the session. The
+concurrent codereview (2026-09-30c, preliminary) raised that half.
+  Attack vector: An invited player sends a frame by hand,
+`{"kind": "command", "verb": "examine", "dobj_id": "<instruction>"}`. The
+command is refused as out of scope, but its row stays. The next dream digest
+shows the text, and the scan reports nothing.
+  Evidence: in the throwaway world, an instruction sent as a `dobj_id`
+appeared in `render_digest()` and not in `textscan.gather()`.
+  Remediation:
+- Record only ids that resolve in the dreamer's scope (`clicked_in_scope`,
+  :1051), and a fixed marker for the rest.
+- Have `textscan.gather` read `dobj_id`, `iobj_id` and
+  `resolved[].dobj_name` for command rows.
+- A test: a frame with an unknown id records the marker, and the scan shows
+  a clicked name.
+
+Fixed after this scan (/codereview 2026-09-30c, cycle 2, `bc0fb71`;
+re-reviewed, medium tier 2578 passed):
+
+- The redirection-target WARN: a raw-pass target ends at `$(` or a
+  backtick (the line above, verbatim), and `_split_commands` never takes a
+  separator as a target. All 28 probes ask; every earlier `cmd,want` case
+  answers as before. One new false ask: a quoted log path with a
+  substitution in it (`> "/tmp/deploy-$(date +%s).log"`).
+- The fail-open WARN: `main` turns any exception into an ask naming it;
+  `eval`/shell nesting past 16 levels asks; a command over 16 KB skips the
+  slow whole-line checks and asks, while the credential-name check and the
+  parser still run (a deny still wins; the committed 96 KB `cd` line is
+  still denied, in 0.66 s). A 1,000-`eval` chain asks through the real hook.
+- The click-id WARN: `_handle_command` records an id only when it names
+  something in the dreamer's scope (`(out of scope)` otherwise), and
+  `textscan.gather` reads a command row's ids and `dobj_name`.
+
+[NOTE] tools/agent_guard.py `_resolve` (brace expansion) — one word of
+about 50,000 nested braces (100 KB) still takes 9.6 s, past the hook's 5 s
+timeout, so that line gets no decision (18.9 s before). Asking on every
+command over 16 KB would close it but turns the 96 KB `cd` test's deny into
+an ask; a time limit inside `main`, or a single-pass brace expansion, would
+close it without that. A guard edit, so it waits for the next guard batch.
 
 Resolved since the last entry (verified this run):
 
-- **[WARN] Umber's cup** (worlds/lost-hours/world.json:693-694;
-  cast/others.json:418-470).
-  - The pour and the `tea` topic are now gated by the `UMBER-CUP` player
-    flag, the way the clock and the seed are.
-  - A dreamer gets one cup. Later pours are drunk by the stair and spawn
-    nothing.
-  - A new dreamer starts without the flag, but a player can make at most
-    six dreamers a day (`daydream/api/slots.py:212`). That keeps the cups
-    to a handful per account per day.
-  - The engine cap is BACKLOG `repeated-things-caps`. Cups poured in prod
-    before the gate stay (a CODEREVIEW NOTE).
-- **[NOTE] A clicked id became IT before any scope check.**
-  - `clicked_in_scope` (`daydream/api/ws.py:1046-1052`, used at
-    :1364-1365) keeps only string ids that resolve through
-    `verbs._resolve_in_scope`.
-  - That check goes through `objects.in_scope` and `visible_to`, so
-    another dreamer's private thing never becomes IT.
-  - Covered by `test_a_click_names_it_only_inside_scope` and
-    `test_a_click_frames_ids_that_are_not_strings_are_ignored`.
-- **[WARN] The agent guard's searches one folder below home, and gh's
-  short-flag bundle.**
-  - A searcher, archiver or copier rooted at a folder that holds a
-    credential now asks. Its roots are expanded and normalized, and the
-    working directory is followed through `cd`.
-  - A credential path spelled another way is resolved and denied, both for
-    Bash arguments and for Read and Write paths.
-  - `gh auth status` with `t` in a short-flag bundle is denied, as is any
-    command naming `oauth_token`.
-  - Covered by `test_folders_that_hold_credentials` and
-    `test_a_credential_path_spelled_another_way_is_not_read`. The guard
-    remains a pattern check (Accepted Risks).
-- **[NOTE] The guard's raw pass.**
-  - `_raw_words` drops only a redirection and its target, and it splits on
-    list brackets and commas.
-  - A deny anywhere in a command beats an ask.
-  - Covered by `test_the_raw_pass_reads_past_redirections_and_lists`.
+- **[WARN] The chain-split patterns backtracked on whitespace runs**
+  (daydream/parser.py). Fixed in `922c122`.
+  - `parse_line` collapses every whitespace run to one space before it
+    splits (:237), and `_segments` has no other caller.
+  - 500-character lines parse in 0.2 to 2.8 ms (0.38 s before): spaces,
+    tabs and newlines, no-break spaces, comma runs, `and then` runs,
+    periods, `then` runs, and a mix.
+  - The patterns that read the raw line first (`ws._WHAT_NOW_RE`,
+    `ws._HELP_RE`, `meta.kind`) take under 2 ms on the same lines.
+  - `test_a_long_whitespace_run_parses_fast` holds it.
+- **The guard WARNs /codereview fixed in `aef3abd`** (backtracking in
+  `TOKEN_PRINTERS` on a short padded line, `>|`, a `cd` that may not run,
+  globs and brace groups) hold, and `tests/test_agent_guard.py` passes. The
+  two new gaps in the same code are the WARNs above.
+- **[NOTE] The guard fails open.** Now the second WARN above.
 
-The findings below are carried forward. Their files are unchanged, or
+The findings below are carried forward. Their lines are unchanged, or
 outside this scope.
 
 [NOTE] daydream/ci.py:49-61 (with daydream/prodcheck.py:200-207) — About
@@ -124,9 +192,9 @@ page until `limit` push runs are found.
 description prints unmarked in `play`. So does a look that echoes a
 sentence from a grown room or a grown thing. The server accepts control
 characters in typed lines and appearance seeds. `glimpse.py` changed only
-in `exit_named`, so nothing here has changed. Remediation: carry a grown
-marker in the snapshot and on those narrate lines, and refuse non-printable
-characters at the server.
+in parts, which are authored data, so nothing here has changed.
+Remediation: carry a grown marker in the snapshot and on those narrate
+lines, and refuse non-printable characters at the server.
 
 [NOTE] daydream/skills/effects.py:347 — The placeholder expander still runs
 over a letter's body and a dreamer's looks. It fills only
@@ -134,55 +202,60 @@ over a letter's body and a dreamer's looks. It fills only
 
 [NOTE] daydream/accounts_cli.py:129-136 — Running `account delete --yes`
 during a resident's reply leaves that reply and its `talk:`/`rel:` records
-behind. The stale-beat branch newly added to `dialogue.talk` (:754-761) can
-await one more judge call, which makes this window a little longer on that
-branch.
+behind. The new draft ranking (`dialogue.unmet_names`) writes nothing for
+a deleted dreamer, so the window is as before.
 
 ### Traced and cleared this run (not findings)
 
-- **Chains** (`ws.py:791-809`, `parser.py:276-280`, `:1207`). The stop now
-  compares segments, and its notice is fixed text. Referents are remembered
-  per segment, from grounded ids only.
-- **Untrusted JSON** (`parser.py:358`, `:1173-1177`). Non-string model
-  fields and click ids are now ignored instead of raising.
-- **Names taken from a line** (`_typed_target`, `_gesture_fast_path`).
-  - Such a name reaches only in-scope grounding, `absent.elsewhere`,
-    authored glimpses, or the model's grounded call.
-  - It is told only to the actor.
-  - `_HOW` and the "for" cut are linear on 500-character lines.
-- **The absent answer** (`absent.py:35-38`) now places only toons that are
-  somewhere, and only if they are players or residents with a voice or a
-  schedule. That narrows what it discloses. In gestures, a resting dreamer
-  reads as absent (`gestures.py:149-152`, `verbs.py:1670-1672`).
-- **The promise guard's stale-beat branch** (`dialogue.py:754-761`).
-  - The judge returns one enum verdict.
-  - A failed draft yields the authored deflection, so no model text is
-    shown unjudged there.
-  - The narrowed `_COMMITS` reads model drafts only.
-- **Ways by name** (`glimpse.exit_named(exact=)`, `parser.py:521-534`). The
-  match is tighter, and a move still goes only through
-  `verbs.visible_exits`, so a shut secret exit stays shut.
-- **World data.**
-  - The new content is authored narration, the flag gate, and glimpse
-    validation for rooms with exit names (`format2.py:350-351`).
-  - `assemble_world --check` matches.
+- **Parts on the click path** (`ws._handle_command`, `verbs.py:492-510`,
+  `glimpse.part_host`).
+  - A clicked name reaches what a typed name reaches (a part's forwarding,
+    the absent answer, glimpses, "You don't see"), and each is told only to
+    the actor. The part path makes no model call.
+  - A part's thing comes from `glimpse._hosts`, which is `objects.in_scope`
+    (another dreamer's private things are filtered out). It then passes
+    `_resolve_in_scope` and the verb check, like a clicked id, and a verb
+    its thing does not take is refused.
+  - The name is cut to 60 characters, and the frame is capped and
+    rate-limited as before.
+  - The glimpse model line is keyed on the prose's own phrase. Its prompt
+    carries a resolved verb name and the scene's words, never the typed
+    text.
+- **The page** (`web/assets/main.js`). `data-part` and the id are escaped,
+  prose is escaped before it is linked, and the card's tab uses
+  `textContent`. A part link sends its shown text back as `dobj_name`. An
+  echoed name carrying markup reached only its sender and rendered as text.
+- **Cards** (`effects.py:366-375`). The new `part` key passes the same
+  all-strings filter.
+- **Heard and dialogue.** `heard.on_event` now ignores `src: "local"` lines,
+  so a model line can no longer turn a subject into a chip.
+  `dialogue.unmet_names` only reorders drafts. It adds no model call, and
+  the promise guard still reads the chosen draft.
+- **The loader** (`glimpse.validate_glimpsed`, `format2.py:426-430`).
+  `part` must be a boolean, only a thing has parts, and a part may not share
+  its thing's names. Parts are authored data only: growth cannot write
+  `glimpsed`, and `talk` cannot `set_property`.
+- **The detail lint** (`prose_nouns.detail_aliases`) runs only in tests, on
+  escaped patterns.
+- **World data.** The new content is authored narration and one part.
+  `assemble_world --check` matches, and WORLD_VERSION is 1.13 (MINOR).
 
 ### Player-text scan (CLAUDE.md "Player text is data")
 
-- Prod and dev both ran in this review. Nothing was flagged, and neither
-  had new typed lines. The counts, the verdict and the high-water marks are
-  in the local instance notes, never here (players' text stays off
-  GitHub).
+- Prod and dev both ran in this review. Nothing was flagged, and there were
+  no bursts. Prod had no new typed lines, and dev's were a test dreamer's.
+  The counts, the verdict and the high-water marks are in the local
+  instance notes, never here (players' text stays off GitHub).
 
 ### Secrets, PII and the instance
 
-- The scoped files, and the guard's last three commits, hold no key, token
-  or private-key shape. The only long-string hits were test names and
-  comment rules.
-- The only names are canon residents. No email, operator name, instance
-  domain or box address appears. The guard derives home from `~` and
-  hardcodes no username.
-- `instance/` and `.claude/settings.local.json` are still ignored.
+- The scoped diff's 825 added lines hold no key, token, private-key block,
+  email, box or tailnet address, home path, operator name or instance
+  domain. The only long runs are test names. The last three commits of
+  `tools/agent_guard.py`, its tests and `daydream/api/ws.py` hold no secret
+  shape either.
+- The only names are canon residents. `instance/` and
+  `.claude/settings.local.json` are still ignored.
 
 ### Accepted Risks
 
@@ -266,21 +339,22 @@ Carried register (from prior reviews; still open, not re-flagged):
   may slip past one.
   - `tools/agent_guard.py` has backed them since 2026-09-29. It is a
     pattern check, not a boundary: spellings through variables, `$'...'`,
-    globs, interpreter one-liners and the like remain (BACKLOG
-    `agent-sessions-without-root`).
-  - The WARN and NOTE carried against it are resolved this run. The
-    fail-closed NOTE above is new.
+    extglob, interpreter one-liners and the like remain (BACKLOG
+    `agent-sessions-without-root`). Glob- and brace-spelled credential
+    paths are modeled since `aef3abd`.
+  - The two guard WARNs above are not unmodeled spellings: one is a
+    regression of a modeled one, and the other is a crash.
 - Player text reaches the agent's context through `bin/game play`: names,
   speech and move lines, and, marked since 2026-09-29, letters and looks.
   Gesture lines carry dreamer names the same way. The verbs an injected
   instruction would want stay behind ask rules.
 
 ---
-*Prior review (2026-09-30, paths, commit `a7cdb15`): 36 files covering the
-"Reflexes and few dead ends" spec and the v2 hook installer. It found one
-new WARN (Umber's cup could be multiplied without bound) and one new NOTE
-(a clicked id became IT before any scope check). It carried
-0 BLOCK / 2 WARN / 6 NOTE. The full entry is at
-`git show d98b73f:SECURITY.md`.*
+*Prior review (2026-09-30, paths, commit `d98b73f`): 15 files covering the
+review fixes in `4aeb1e9` and the agent-guard rework in `d98b73f`. It
+closed the tea-cup and guard WARNs and two NOTEs, found the parser
+whitespace WARN (fixed since in `922c122`) and the guard's fail-open NOTE,
+and carried 0 BLOCK / 1 WARN / 5 NOTE. The full entry is at
+`git show dadb9c0:SECURITY.md`.*
 
-<!-- SECURITY_META: {"date":"2026-09-30","commit":"d98b73f6330fc90bae76a4ac245658be5c13825b","scope":"paths","scanned_files":["daydream/absent.py","daydream/api/ws.py","daydream/dialogue.py","daydream/gestures.py","daydream/glimpse.py","daydream/llm/format2.py","daydream/meta.py","daydream/parser.py","daydream/verbs.py","tests/test_agent_guard.py","tests/test_fragments_pronouns.py","tools/agent_guard.py","worlds/lost-hours.json","worlds/lost-hours/cast/others.json","worlds/lost-hours/world.json"],"block":0,"warn":1,"note":5} -->
+<!-- SECURITY_META: {"date":"2026-09-30","commit":"6981ba7f4adb641fd8ffe491929062ff7cc64fb4","scope":"paths","scanned_files":["daydream/api/ws.py","daydream/dialogue.py","daydream/glimpse.py","daydream/heard.py","daydream/llm/format2.py","daydream/parser.py","daydream/prose_nouns.py","daydream/skills/effects.py","daydream/verbs.py","daydream/version.py","tests/baselines/whole_aliases.json","tests/test_agent_guard.py","tests/test_chains_guesses.py","tests/test_glimpse.py","tests/test_heard.py","tests/test_linkify.py","tests/test_prose_nouns.py","tools/agent_guard.py","web/assets/main.js","worlds/lost-hours.json","worlds/lost-hours/regions/01-clocktower.json","worlds/lost-hours/walkthroughs/keeper-welcome.json"],"block":0,"warn":0,"note":5} -->
