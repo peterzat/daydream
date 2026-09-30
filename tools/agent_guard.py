@@ -512,6 +512,12 @@ def _protected_write(run: str, cred: str) -> str | None:
             ops = [a for a in argv[1:] if not a.startswith("-")]
             if base in _TO_LAST and ops and PROTECTED.search(ops[-1]):
                 return ops[-1]
+            if INTERPRETERS.match(base) and "-c" not in argv and "-e" not in argv:
+                # A script given a protected path may write it: it asks, as
+                # before (its own code is not read).
+                for a in ops:
+                    if PROTECTED.search(a):
+                        return a
             if base in _TO_ALL or (base in _IN_PLACE and any(
                     a.startswith("-i") or a.startswith("-pi") for a in argv[1:])):
                 for a in ops:

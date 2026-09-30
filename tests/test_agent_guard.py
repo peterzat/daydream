@@ -461,6 +461,7 @@ LIVE = guard.GUARD_HOME + "/agent_guard.py"
     ("Bash", {"command": "bin/game guard install"}, "ask"),
     ("Bash", {"command": "python3 - <<'EOF'\nfrom pathlib import Path\n"
                          "Path('.claude/settings.local.json').write_text('{}')\nEOF"}, "ask"),
+    ("Bash", {"command": "python3 tools/rewrite.py .claude/settings.local.json"}, "ask"),
     ("Bash", {"command": "cat .claude/settings.json"}, None),
     # Reading, testing and committing never ask (2026-09-30: `2>&1` or
     # `2>/dev/null` on a line that named one used to).
