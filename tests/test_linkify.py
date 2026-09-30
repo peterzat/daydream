@@ -85,3 +85,55 @@ def test_browser_js_has_no_regex_lookbehind():
         src = js.read_text()
         for token in ("(?<=", "(?<!"):
             assert token not in src, f"{js.name} uses a regex lookbehind ({token})"
+
+
+_CARD_HARNESS = r"""
+const fs = require("fs");
+const src = fs.readFileSync(process.argv[2], "utf8");
+function grab(name){
+  const m = src.match(new RegExp("function " + name + "\\b[\\s\\S]*?\\n}"));
+  if (!m) throw new Error("function not found in main.js: " + name);
+  return m[0];
+}
+const ctx = grab("escape") + "\n" + grab("escapeRegex") + "\n" + grab("linkifyEntities") + "\n" + grab("cardEntities");
+const run = (expr) => eval("(function(){" + ctx + "\nreturn " + expr + ";})()");
+const ents = [
+  {alias: "resting clocks", object_id: "o-clocks", kind: "thing"},
+  {alias: "workbench", object_id: "o-bench", kind: "thing"},
+  {alias: "forget-me-nots", object_id: "o-clocks", kind: "thing", part: "o-clocks#0"},
+];
+const text = "Shelves of resting clocks by the workbench, one painted with forget-me-nots.";
+const fail = [];
+const links = (html) => [...html.matchAll(/data-object-id="([^"]+)"( data-part="([^"]+)")?>([^<]+)</g)]
+  .map((m) => m[4] + (m[3] ? "@" + m[3] : ""));
+// A thing's card: never itself; its part and its neighbours link.
+const own = links(run("linkifyEntities(" + JSON.stringify(text) + ", cardEntities(" +
+  JSON.stringify(ents) + ", {objectId: 'o-clocks', part: ''}))"));
+if (JSON.stringify(own) !== JSON.stringify(["workbench", "forget-me-nots@o-clocks#0"]))
+  fail.push("thing card links: " + JSON.stringify(own));
+// A part's card: never the part; its thing links.
+const part = links(run("linkifyEntities(" + JSON.stringify(text) + ", cardEntities(" +
+  JSON.stringify(ents) + ", {objectId: 'o-clocks', part: 'o-clocks#0'}))"));
+if (JSON.stringify(part) !== JSON.stringify(["resting clocks", "workbench"]))
+  fail.push("part card links: " + JSON.stringify(part));
+// Plain prose links all three.
+const all = links(run("linkifyEntities(" + JSON.stringify(text) + ", " + JSON.stringify(ents) + ")"));
+if (all.length !== 3) fail.push("prose links: " + JSON.stringify(all));
+if (fail.length) { console.error("FAIL: " + fail.join("; ")); process.exit(1); }
+console.log("OK");
+"""
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="node not available")
+def test_a_card_never_links_itself_and_parts_link_to_their_own_look(tmp_path):
+    """Playtest 2026-09-30: "forget-me-nots" was underlined in the resting
+    clocks' card and opened the same card. A card links neither its own
+    thing nor its own part; a thing's parts link, and a part's card links
+    its thing."""
+    script = tmp_path / "card_check.js"
+    script.write_text(_CARD_HARNESS)
+    r = subprocess.run(["node", str(script), str(MAIN_JS)], capture_output=True, text=True,
+                       timeout=20)
+    assert r.returncode == 0, f"card links:\nstdout={r.stdout}\nstderr={r.stderr}"
+    assert "OK" in r.stdout
+

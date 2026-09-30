@@ -39,6 +39,7 @@ from daydream import (
     config,
     dream,
     events,
+    glimpse,
     heard,
     inputs,
     journal,
@@ -528,6 +529,10 @@ def _entity_sidecar(actor_id: str) -> list[dict]:
                 continue
             seen.add(key)
             out.append({"alias": alias, "object_id": o.id, "kind": o.kind})
+        # A thing's parts link where prose names them, to their own look
+        # (a click sends the name; glimpse.py, playtest 2026-09-30).
+        for name, key in glimpse.parts_of(o):
+            out.append({"alias": name, "object_id": o.id, "kind": "thing", "part": key})
     return out
 
 
@@ -1225,9 +1230,11 @@ async def ws_endpoint(ws: WebSocket):
 
 async def _handle_command(msg: dict, toon_id: str) -> None:
     """Execute a structured UI command frame `{kind:"command", verb, dobj_id?,
-    iobj_id?, args?}`. This is the click path: it bypasses the parser entirely,
-    so it makes NO LLM call (the verb's own handler may, e.g. `talk`). The same
-    `execute_command` serves the parsed-free-text path."""
+    iobj_id?, args?, dobj_name?}`. This is the click path: it bypasses the
+    parser entirely, so it makes NO LLM call (the verb's own handler may, e.g.
+    `talk`). The same `execute_command` serves the parsed-free-text path.
+    `dobj_name` is a part's name clicked in prose (no id of its own): the
+    executor reads it as a typed name, only when there is no dobj_id."""
     verb = str(msg.get("verb", "")).strip()
     if not verb:
         return
@@ -1235,15 +1242,18 @@ async def _handle_command(msg: dict, toon_id: str) -> None:
     iobj_id = msg.get("iobj_id")
     dobj_id = dobj_id if isinstance(dobj_id, str) else None
     iobj_id = iobj_id if isinstance(iobj_id, str) else None
+    name = msg.get("dobj_name")
+    dobj_name = name.strip()[:MAX_NAME_CHARS] if isinstance(name, str) and not dobj_id else None
     args = str(msg.get("args", ""))
     inputs.record(
         toon_id, "command", verb=verb, dobj_id=dobj_id, iobj_id=iobj_id,
         args=args or None,
         resolved=[{"verb": verb, "dobj_id": dobj_id, "iobj_id": iobj_id,
-                   "args": args}],
+                   "args": args, **({"dobj_name": dobj_name} if dobj_name else {})}],
     )
     await verbs.execute_command(
         toon_id, verb, dobj_id=dobj_id, iobj_id=iobj_id, args=args,
+        dobj_name=dobj_name or None,
     )
 
 
@@ -1255,6 +1265,7 @@ async def _handle_command(msg: dict, toon_id: str) -> None:
 MAX_INPUT_CHARS = 500
 MAX_FRAME_CHARS = 2000   # a whole frame, any kind (a command's args included)
 MAX_VERB_CHARS = 32      # the longest verb name is a word
+MAX_NAME_CHARS = 60      # a clicked part's name: a few words
 RATE_BURST = 12          # frames available at once
 RATE_PER_SECOND = 3.0    # refill
 SESSION_RECHECK_S = 30.0  # an idle socket's session is re-read this often

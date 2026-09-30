@@ -214,6 +214,12 @@ and the topic lists of Ultima VII, Morrowind and TADS). Three tiers:
 A contextual button may give a free hint ("I could try winding this"), never a
 solution. A puzzle step waits for the fiction to point at it.
 
+A link is a promise of something new. Names in prose link to what they name;
+a card never links the thing it is the card of (the link would open the card
+being read), and a part of a thing (a detail its look names, like the one
+clock painted with forget-me-nots) links to its own look, never back to its
+thing's (playtest 2026-09-30).
+
 ## Banned patterns
 
 Echoes WHIMSY's bans, for the interface:

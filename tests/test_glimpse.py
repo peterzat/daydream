@@ -407,3 +407,29 @@ def test_only_a_thing_has_parts():
         {"names": ["mortar"], "text": "Old and soft.", "part": True})
     with pytest.raises(format2.Format2ValidationError, match="only a thing has parts"):
         format2.validate_envelope2(env)
+
+
+async def test_a_part_links_on_the_page_and_a_click_opens_its_card(loft, llm):
+    """The page links a part where prose names it; a click sends its name,
+    and its look comes back as a card of its own, keyed to the part."""
+    from daydream.api import ws
+
+    side = ws._entity_sidecar(loft)
+    parts = [e for e in side if e.get("part")]
+    assert {e["alias"] for e in parts} >= {"forget-me-nots", "painted clock"}
+    assert {e["object_id"] for e in parts} == {"o-resting-clocks"}
+    assert len({e["part"] for e in parts}) == 1
+    before = events.max_seq()
+    await ws._handle_command({"kind": "command", "verb": "examine",
+                              "dobj_name": "forget-me-nots"}, loft)
+    said = [e for e in events.fetch_since(before) if e.kind == "narrate"]
+    card = said[0].payload["card"]
+    assert card["part"] == parts[0]["part"] and card["object_id"] == "o-resting-clocks"
+    assert card["body"].startswith(FMN_LOOK) and card["name"] == "the forget-me-nots"
+    # Beside an id, a clicked name is ignored: the id is the target.
+    before = events.max_seq()
+    await ws._handle_command({"kind": "command", "verb": "examine", "dobj_id": "o-workbench",
+                              "dobj_name": "forget-me-nots"}, loft)
+    said = [e for e in events.fetch_since(before) if e.kind == "narrate"]
+    assert said[0].payload["card"]["object_id"] == "o-workbench"
+    assert llm.await_count == 0

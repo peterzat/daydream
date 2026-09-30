@@ -525,9 +525,7 @@ function placeArrival(chat) {
   // Clockmaker's Loft" is not the clockmaker).
   div.innerHTML = escape(arrival.lead) +
     (arrival.seen ? " " + linkifyEntities(arrival.seen, entities) : "");
-  div.querySelectorAll(".entity-link").forEach((span) => {
-    span.onclick = () => onObjectClick(span.dataset.objectId);
-  });
+  wireLinks(div);
   let next = null;
   for (const el of chat.children) {
     if (!el.dataset.seq) continue;
@@ -998,6 +996,20 @@ function onObjectClick(objectId, objectVerbs, objectKind) {
   clearStagedVerb();
 }
 
+function onPartClick(name, hostId) {
+  // A part named in prose: its own look, or the staged verb, by its name (the
+  // server answers from the part, or hands the verb to its thing). A verb that
+  // wants a second thing or words works on the thing itself.
+  const spec = stagedVerb ? verbSpecs[stagedVerb] : null;
+  if (spec && (spec.needs_iobj || spec.needs_text)) {
+    onObjectClick(hostId);
+    return;
+  }
+  cancelText();
+  sendCommand(stagedVerb || "examine", null, "", null, name);
+  clearStagedVerb();
+}
+
 function askForText(verb, objectId, spec) {
   // The input line asks for the words: its placeholder is the verb's
   // question, and the hint under the ribbon names who or what it is for,
@@ -1084,7 +1096,8 @@ function renderEvent(e) {
   // 2026-09-28b: typed ones were plain prose, with other labels).
   if (e.kind === "narrate" && e.payload && e.payload.card) {
     const c = e.payload.card;
-    renderDetailInset(e, { verb: c.verb, objectId: c.object_id, name: c.name, body: c.body });
+    renderDetailInset(e, { verb: c.verb, objectId: c.object_id, name: c.name, body: c.body,
+                           part: c.part || "" });
     return;
   }
 
@@ -1123,9 +1136,7 @@ function renderEvent(e) {
     // A line quoting your own words back (the dream not catching them) links
     // nothing: your words are not the world's (playtest 2026-09-28b).
     div.innerHTML = e.payload.plain ? escape(text) : linkifyEntities(text, entities);
-    div.querySelectorAll(".entity-link").forEach((span) => {
-      span.onclick = () => onObjectClick(span.dataset.objectId);
-    });
+    wireLinks(div);
   } else if (e.kind === "move" || e.kind === "arrive") {
     // Comings and goings (toons.announce_move). Your own move is told once,
     // as the first line of the room you reach (renderSnapshot's arrival
@@ -1219,10 +1230,11 @@ function renderDetailInset(e, detail) {
   // whole (playtest 2026-09-28b: portraits were only ever a small circle).
   if (person && person.image_url) aside.appendChild(portraitInset(person));
   const p = document.createElement("p");
-  p.innerHTML = linkifyEntities(detail.body || text, entities);
-  p.querySelectorAll(".entity-link").forEach((span) => {
-    span.onclick = () => onObjectClick(span.dataset.objectId);
-  });
+  // A card never links what it is the card of: the link would open the
+  // card being read (playtest 2026-09-30: "forget-me-nots" in the resting
+  // clocks' card opened the resting clocks' card again).
+  p.innerHTML = linkifyEntities(detail.body || text, cardEntities(entities, detail));
+  wireLinks(p);
   aside.appendChild(p);
   const dogear = document.createElement("span");
   dogear.className = "dogear";
@@ -1428,7 +1440,7 @@ function sendInput(text) {
   return true;
 }
 
-function sendCommand(verb, dobjId, args, iobjId) {
+function sendCommand(verb, dobjId, args, iobjId, dobjName) {
   youActed();
   // The structured command frame: the click path. Bypasses the parser, so a
   // deterministic verb makes no LLM call (the server's verb handler may). A
@@ -1445,7 +1457,7 @@ function sendCommand(verb, dobjId, args, iobjId) {
   // identical command (verb+dobj+iobj+args) repeated within 1.2 s: nobody
   // means the same ask or look twice that fast (playtest 2026-09-29; 400 ms
   // let an iPad's second touch through).
-  const key = verb + "|" + (dobjId || "") + "|" + (iobjId || "") + "|" + (args || "");
+  const key = verb + "|" + (dobjId || dobjName || "") + "|" + (iobjId || "") + "|" + (args || "");
   const now = Date.now();
   if (lastCmd && lastCmd.key === key && now - lastCmd.t < CMD_REPEAT_MS) return false;
   lastCmd = { key, t: now };
@@ -1456,6 +1468,7 @@ function sendCommand(verb, dobjId, args, iobjId) {
       dobj_id: dobjId || null,
       iobj_id: iobjId || null,
       args: args || "",
+      ...(dobjName && !dobjId ? { dobj_name: dobjName } : {}),
     })
   );
   return true;
@@ -1463,6 +1476,23 @@ function sendCommand(verb, dobjId, args, iobjId) {
 
 function escapeRegex(s) {
   return String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function cardEntities(ents, detail) {
+  // What a card may link: everything in scope but the thing (or the part)
+  // it is the card of. A part's card still links its thing, and a thing's
+  // card its parts: each opens something new.
+  return (ents || []).filter((e) => detail.part
+    ? e.part !== detail.part
+    : e.part || e.object_id !== detail.objectId);
+}
+
+function wireLinks(root) {
+  root.querySelectorAll(".entity-link").forEach((span) => {
+    span.onclick = span.dataset.part
+      ? () => onPartClick(span.textContent, span.dataset.objectId)
+      : () => onObjectClick(span.dataset.objectId);
+  });
 }
 
 function linkifyEntities(text, ents) {
@@ -1480,7 +1510,7 @@ function linkifyEntities(text, ents) {
   for (const e of valid) {
     const a = escape(e.alias);
     const k = a.toLowerCase();
-    if (!byAlias.has(k)) byAlias.set(k, { alias: a, id: e.object_id, person: e.kind === "toon" });
+    if (!byAlias.has(k)) byAlias.set(k, { alias: a, id: e.object_id, person: e.kind === "toon", part: e.part || "" });
   }
   const aliases = [...byAlias.values()].sort((a, b) => b.alias.length - a.alias.length);
   const pattern = aliases.map((a) => escapeRegex(a.alias)).join("|");
@@ -1495,7 +1525,10 @@ function linkifyEntities(text, ents) {
     // hour waits" is not a resident whose name holds the word (playtest
     // 2026-09-28b).
     if (!hit || (hit.person && !/^[A-Z]/.test(word))) return m;
-    return pre + '<span class="entity-link" data-object-id="' + escape(hit.id) + '">' + word + "</span>";
+    // A part (a detail a thing's look names) links to its own look: the
+    // click sends its name (glimpse.py parts; playtest 2026-09-30).
+    const part = hit.part ? ' data-part="' + escape(hit.part) + '"' : "";
+    return pre + '<span class="entity-link" data-object-id="' + escape(hit.id) + '"' + part + ">" + word + "</span>";
   });
 }
 

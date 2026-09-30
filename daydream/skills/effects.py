@@ -369,7 +369,10 @@ def _apply_narrate(
         # storybook card whether it was clicked or typed (playtest
         # 2026-09-28b). {verb, name, object_id, body}; the text stays whole
         # for every other reader.
-        payload["card"] = {k: card[k] for k in ("verb", "name", "object_id", "body") if k in card}
+        # `part`: the card is of a part of the thing (glimpse.py), keyed so
+        # the page never links the part to itself.
+        payload["card"] = {k: card[k] for k in ("verb", "name", "object_id", "body", "part")
+                           if k in card}
     ev = events.append(
         "system", None, "narrate", payload,
         room_id=target_room, recipient_id=recipient,

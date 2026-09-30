@@ -244,11 +244,23 @@ def part_host(actor: objects.Object, room_id: str, name: str,
     return got[0] if got and got[2] is None else None
 
 
-def names_parts(obj: objects.Object) -> list[str]:
-    """The names of a thing's parts, for the page to link where prose shows
-    them (every entry, whatever its conditions: a part is always there)."""
+def part_key(host: objects.Object, entry: dict) -> str | None:
+    """A part's key on the page: its thing and its place in the list, the
+    same for every name it answers to."""
+    entries = host.properties.get("glimpsed")
+    for i, e in enumerate(entries if isinstance(entries, list) else []):
+        if e is entry:
+            return f"{host.id}#{i}"
+    return None
+
+
+def parts_of(obj: objects.Object) -> list[tuple[str, str]]:
+    """(name, part key) for each name of a thing's parts, for the page to
+    link where prose shows them (every entry, whatever its conditions: a
+    part is always there)."""
     entries = obj.properties.get("glimpsed") if obj.kind == "thing" else None
-    return [n for e in entries if isinstance(e, dict) and e.get("part")
+    return [(n, f"{obj.id}#{i}") for i, e in enumerate(entries)
+            if isinstance(e, dict) and e.get("part")
             for n in e.get("names") or [] if isinstance(n, str) and n.strip()] \
         if isinstance(entries, list) else []
 
@@ -438,9 +450,17 @@ async def _local_line(world_id: str, room_id: str, noun: str, verb: str,
 async def answer(actor: objects.Object, room_id: str, name: str, verb: str) -> dict | None:
     """A private narrate effect for `verb` on `name`, or None when the scene
     never named it (the caller says it isn't here)."""
-    text = authored(actor, room_id, name, verb)
-    if text:
-        return {"kind": "narrate", "text": text, "to": "@actor"}
+    got = _best(actor, room_id, name, verb)
+    if got is not None and got[2] is not None:
+        host, entry, text = got
+        eff = {"kind": "narrate", "text": text, "to": "@actor"}
+        if entry.get("part") and verb in LOOK_VERBS:
+            # A part's look is a card like its thing's, keyed so the page
+            # never links the part to itself inside it.
+            eff["card"] = {"verb": "read" if verb == "read" else "examine",
+                           "name": f"the {_norm(name)}", "object_id": host.id,
+                           "part": part_key(host, entry), "body": text}
+        return eff
     seen = seen_in(actor, room_id, name)
     way_out = exit_named(actor, name)
     if way_out is not None and (seen is None or verb not in LOOK_VERBS):
