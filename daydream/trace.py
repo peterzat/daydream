@@ -170,12 +170,6 @@ def _dreamers_today(world_id: str) -> list[tuple[str, str]]:
     return out
 
 
-def dreamers_today(world_id: str) -> list[str]:
-    """The dreamers who typed anything today, by the village's calendar,
-    newest last."""
-    return [name for _, name in _dreamers_today(world_id)]
-
-
 def dreamers_today_clause(world_id: str, listener: str | None = None) -> str:
     """A clause for an authored line's {dreamers_today}: "Wren and Vex came
     through today", "one dreamer, Halloran, came through today", "no

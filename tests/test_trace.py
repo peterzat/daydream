@@ -253,3 +253,20 @@ async def test_who_came_through_today_says_you_to_the_asker():
                    (None, "Wren and Ivo came through today, Rook tells the lamp.")]
     # Someone who has not typed today is counted, not addressed.
     assert trace.dreamers_today_clause(W, listener="t-rook") == "Wren and Ivo came through today"
+
+
+def test_a_you_line_told_to_the_actor_alone_says_you():
+    """A beat with no `to` and no `per_player` whose line opens "You ..."
+    reaches the acting player alone, so its count speaks to them too
+    (codereview 2026-09-30f: story._tell filled the clause before routing
+    the line, and named the player to themself)."""
+    from daydream import story
+
+    inputs.record("t-wren", "text", text="look")
+    worldstate.set(W, "def:arcs", {"lamps": {"beats": {
+        "count": {"text": "You count the lamps: {dreamers_today}."}}}})
+    worldstate.set(W, "arc:lamps", {"status": "open", "beats": {}, "helpers": []})
+    before = events.max_seq()
+    story.advance_beat(W, "lamps", "count", "t-wren", "r-meadow")
+    got = [(e.recipient_id, e.payload["text"]) for e in _narrates(before)]
+    assert got == [("t-wren", "You count the lamps: just you so far today.")]

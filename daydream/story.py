@@ -231,11 +231,12 @@ def _tell(world_id: str, key: str, spec: dict, room_id: str | None,
     line = variants.pick(world_id, key, options, room_id)
     from daydream import trace
 
-    # A line told to the acting player alone speaks to them ("just you").
-    line = trace.expand_placeholders(
-        line, world_id, listener=actor_id if recipient is not None and recipient == actor_id else None)
     if recipient is None and spec.get("to") != "everyone":
         recipient = effects.second_person_recipient(line, actor_id)
+    # Filled after routing (as effects._apply_narrate): a line told to the
+    # acting player alone speaks to them ("just you").
+    line = trace.expand_placeholders(
+        line, world_id, listener=actor_id if recipient is not None and recipient == actor_id else None)
     ev = events.append("system", None, "narrate", {"text": line},
                        room_id=room_id, recipient_id=recipient)
     if recipient is not None and recipient == actor_id:
