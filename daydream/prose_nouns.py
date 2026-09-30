@@ -129,6 +129,61 @@ def uncovered(env: dict) -> list[str]:
     return sorted(found)
 
 
+_PREPS = frozenset("""
+of in on at to from with by for over under into onto through above below behind beside near
+toward towards across around along painted
+""".split())
+
+
+def _stems(word: str) -> set[str]:
+    w = re.sub(r"['\u2019]s$", "", word)
+    out = {w}
+    if len(w) > 3 and w.endswith("es") and w[-3] in "sxz":
+        out.add(w[:-2])
+    elif len(w) > 3 and w.endswith("s") and not w.endswith("ss"):
+        out.add(w[:-1])
+    return out
+
+
+def _head(alias: str) -> set[str]:
+    """An alias's head noun (its last word before a preposition), with its
+    plural and hyphen halves: "bell on the counter" is a bell."""
+    words = []
+    for w in re.findall(r"[a-z][a-z'-]*", alias.lower()):
+        if w in _PREPS:
+            break
+        words.append(w)
+    if not words:
+        return set()
+    return {s for part in [words[-1], *words[-1].split("-")] for s in _stems(part)}
+
+
+def detail_aliases(env: dict) -> list[str]:
+    """The detail lint (playtest 2026-09-30): sorted "<thing id>: <alias>"
+    for every alias that its own thing's look names and whose head noun is
+    not the thing's. Such an alias usually names a piece of the thing (one
+    clock painted with forget-me-nots on a shelf of resting clocks), and as
+    an alias it answers a look with the thing's whole look, the sentence the
+    player just read, and a refusal with the thing's name. Make it a part
+    (`glimpsed` with `"part": true`), or, when it truly names the whole thing
+    (the case's door is how you open the case), list it as reviewed in
+    tests/baselines/whole_aliases.json with why."""
+    found = []
+    for th in env.get("things", []):
+        props = th.get("properties") or {}
+        look = " ".join([th.get("seed") or ""] + [v for v in (props.get("state_text") or {}).values()
+                                                   if isinstance(v, str)]).lower()
+        name = {s for w in re.findall(r"[a-z][a-z'-]*", (th.get("name") or "").lower())
+                for part in [w, *w.split("-")] for s in _stems(part)}
+        for alias in th.get("aliases") or []:
+            if not isinstance(alias, str) or not alias.strip():
+                continue
+            said = r"\b" + r"\s+".join(re.escape(w) for w in alias.lower().split()) + r"(?:s|es)?\b"
+            if re.search(said, look) and not (_head(alias) & name):
+                found.append(f"{th['id']}: {alias}")
+    return sorted(found)
+
+
 def main(argv: list[str]) -> int:
     if len(argv) != 2 or argv[0] != "--write":
         print("usage: python -m daydream.prose_nouns --write <envelope.json>", file=sys.stderr)
