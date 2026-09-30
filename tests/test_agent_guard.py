@@ -87,6 +87,9 @@ def test_it_speaks_claude_codes_hook_protocol():
     ("bin/game prod account list", None),
     ("bin/game prod account sessions robin", None),
     ("bin/game prod account sessions robin --revoke", "ask"),
+    ("bin/game prod root egress show", None),
+    ("printf k | bin/game prod root egress set DAYDREAM_JEV_API_KEY", "ask"),
+    ("bin/game prod root egress unset DAYDREAM_JEV_API_KEY", "ask"),
 ])
 def test_reading_accounts_is_quiet_changing_them_asks(cmd, want):
     got = _bash(cmd)

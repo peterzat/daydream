@@ -116,6 +116,9 @@ ASK_PROD = [
     # part of the preview loop, it does not ask (2026-09-30).
     ("play",), ("offsite-restore",), ("instance",), ("rollback",), ("sleep",),
     ("root", "units"), ("root", "env"),
+    # The egress gateway's keys (docs/EXTERNAL.md); `egress show` says only
+    # which are set.
+    ("root", "egress", "set"), ("root", "egress", "unset"),
 ]
 ASK_EDGE = [("secrets",), ("kv-create",), ("sleep",)]
 

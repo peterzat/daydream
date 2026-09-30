@@ -103,6 +103,6 @@ def test_the_permission_template_asks_before_every_dangerous_verb():
     for verb in ("invite reset", "account role", "account create", "account cli-cookie",
                  "account delete", "world reset", "world delete", "world restore",
                  "world snapshot-restore", "world restore-backup", "world load",
-                 "root units --apply", "root env set"):
+                 "root units --apply", "root env set", "root egress set", "root egress unset"):
         assert any(r.startswith(f"Bash(bin/game prod {verb}") for r in ask), verb
     assert not any("--instance" in r for r in allow + ask)

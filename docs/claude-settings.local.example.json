@@ -82,6 +82,8 @@
       "Bash(bin/game prod world load *)",
       "Bash(bin/game prod root units --apply*)",
       "Bash(bin/game prod root env set *)",
+      "Bash(bin/game prod root egress set *)",
+      "Bash(bin/game prod root egress unset *)",
       "Bash(bin/game prod offsite-restore *)",
       "Bash(bin/game edge secrets*)",
       "Bash(bin/game edge kv-create*)"
