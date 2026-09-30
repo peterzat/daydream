@@ -21,13 +21,31 @@ command the way the shell will, and:
   remove a person, replace the world, reach players, or change root or the
   edge's secrets, however the command is spelled;
 - ASKS when it cannot read a command whole: one over 16 KB, one nested
-  past sixteen levels of `eval` or a shell, or one it fails on.
+  past sixteen levels of `eval` or a shell, or one it fails on;
+- ASKS before a change to the live guard (the installed copy) or to the
+  permission settings, and before `bin/game guard install`.
 
-A deny anywhere in a command wins over an ask. Everything else gets no
-opinion (the normal rules apply). It reads the hook payload on stdin and
-prints Claude Code's hookSpecificOutput JSON. Wired in
-`.claude/settings.local.json` (template: docs/claude-settings.local.example.json);
-tests: tests/test_agent_guard.py. Standard library only.
+A deny anywhere in a command wins over an ask. A subagent is never asked:
+what would ask the operator is denied to a subagent, which reports it and
+lets the main session decide. Everything else gets no opinion (the normal
+rules apply).
+
+It reads a command as the shell will, and no further (playtest of the
+guard, 2026-09-30: 176 prompts over 152 sessions, two thirds of them
+false): a heredoc fed to a shell is commands; one fed to an interpreter
+(python, perl, node) is code, read for credential paths and for lines
+that run a program; one fed to anything else (`cat > file`,
+`git commit -F -`) is text. A line that also runs a script file reads
+every heredoc as commands. A file written with the Write tool is not read
+either: the guard judges what runs, not what is written.
+
+The hook runs the INSTALLED copy (~/.local/share/daydream/guard/), so this
+file is ordinary code: edited and tested freely, live only once the
+operator runs `! bin/game guard install` (a `!` command runs outside the
+hook). It reads the hook payload on stdin and prints Claude Code's
+hookSpecificOutput JSON. Wired in `.claude/settings.local.json`
+(template: docs/claude-settings.local.example.json); tests:
+tests/test_agent_guard.py. Standard library only.
 """
 from __future__ import annotations
 
@@ -94,7 +112,9 @@ ASK_PROD = [
     ("world", "restore-backup"), ("world", "load"), ("world", "delete-toon"),
     ("world", "rest-toon"), ("world", "skill"), ("world", "patch"), ("world", "swap"),
     ("dream", "apply"),
-    ("play",), ("offsite-restore",), ("pull",), ("instance",), ("rollback",), ("sleep",),
+    # `pull` copies prod into dev on this box and changes nothing in prod:
+    # part of the preview loop, it does not ask (2026-09-30).
+    ("play",), ("offsite-restore",), ("instance",), ("rollback",), ("sleep",),
     ("root", "units"), ("root", "env"),
 ]
 ASK_EDGE = [("secrets",), ("kv-create",), ("sleep",)]
@@ -121,6 +141,126 @@ REDIRECT = re.compile(r"^\d*(>\||>>?|<<?<?|&>>?|>&|<&)-?$")  # shlex keeps `>|` 
 _RAW_REDIRECTION = re.compile(
     r"\d*(?:>\||>&|&>>?|>>?|<&|<<?<?)"
     r"(?:-(?=[\s;&|()<>]|$)|\s*(?:\\.|\"(?:[^\"\\$`]|\\.|\$(?!\())*\"|'[^']*'|[^\s;&|()<>'\"\\`])+)?")
+
+
+_HEREDOC = re.compile(r"<<-?\s*(['\"]?)([A-Za-z_][A-Za-z0-9_]*)\1")
+# Programs a heredoc runs as commands, and interpreters that run it as code.
+EXECUTORS = SHELLS | {"eval", "source", ".", "ssh"}
+INTERPRETERS = re.compile(r"^(python[0-9.]*|perl|node|ruby|php|lua|Rscript|deno|bun)$")
+# A line of interpreter code that runs a program: the only lines of a code
+# heredoc the gated-verb passes read (`subprocess.run(["bin/game", ...])`).
+_RUNS = re.compile(
+    r"\bsubprocess\.\w+\s*\(|\bos\.(?:system|popen|exec\w*|spawn\w*|posix_spawn\w*)\s*\(|"
+    r"\bPopen\s*\(|\bpty\.spawn\s*\(|\bsystem\s*\(|\bqx\s*[({/]|"
+    r"\bexec(?:Sync|File\w*)?\s*\(|\bspawn(?:Sync)?\s*\(|[\"']bin/game[\"']\s*,")
+# A line that runs a script file somewhere: every heredoc on it is commands
+# (`cat > x.sh <<EOF ... EOF; bash x.sh`).
+_RUNS_SCRIPT = re.compile(r"(^|[;&|(\s])(bash|sh|zsh|dash|source|\.)\s+[^-\s;&|<>]|"
+                          r"(^|[;&|(\s])\./[^\s;&|]")
+
+
+def _heredoc_kind(line: str, at: int, runs_script: bool) -> str:
+    """How a heredoc opened at `at` in `line` is read: "shell", "code" or
+    "text". Its program is the command it belongs to, unless its output is
+    piped into another (`cat <<EOF | bash`)."""
+    if runs_script:
+        return "shell"
+    progs = []
+    before = re.split(r"[;&]|\|\|?", line[:at])[-1].split()
+    after = line[at:].split("|")[1:]
+    for words in [before] + [a.split() for a in after]:
+        words = [w for w in words if not re.match(r"^[A-Za-z_][A-Za-z0-9_]*=", w)]
+        while words and (os.path.basename(words[0]) in WRAPPERS or words[0].startswith("-")):
+            words = words[1:]
+        if words:
+            progs.append(os.path.basename(words[0].strip("'\"")))
+    if any(p in EXECUTORS for p in progs):
+        return "shell"
+    if any(INTERPRETERS.match(p) for p in progs):
+        return "code"
+    return "text"
+
+
+_DASH_C = re.compile(r"\b(?:python[0-9.]*|perl|node|ruby|php)\s+(?:-\w+\s+)*-[ce]\s+"
+                     r"(\"(?:[^\"\\]|\\.)*\"|'[^']*')")
+
+
+def _code_bodies(command: str) -> list[str]:
+    """The interpreter code a line carries: its heredocs fed to an
+    interpreter, and its `-c` / `-e` strings."""
+    out = [m.group(1)[1:-1] for m in _DASH_C.finditer(command)]
+    if "<<" in command:
+        lines = command.split("\n")
+        i = 0
+        while i < len(lines):
+            line = lines[i]
+            i += 1
+            for m in _HEREDOC.finditer(line):
+                if line[max(0, m.start() - 1):m.start() + 3] == "<<<":
+                    continue
+                kind = _heredoc_kind(line, m.start(), False)
+                body = []
+                while i < len(lines) and lines[i].strip() != m.group(2):
+                    body.append(lines[i])
+                    i += 1
+                if kind == "code":
+                    out.append("\n".join(body))
+                i += 1
+    return out
+
+
+def _skeleton(command: str) -> str:
+    """The line without its heredoc bodies: the words the shell itself reads
+    (a body's prose, "the source of truth", is never a script run)."""
+    lines, out, i = command.split("\n"), [], 0
+    while i < len(lines):
+        line = lines[i]
+        out.append(line)
+        i += 1
+        for m in _HEREDOC.finditer(line):
+            if line[max(0, m.start() - 1):m.start() + 3] == "<<<":
+                continue
+            while i < len(lines) and lines[i].strip() != m.group(2):
+                i += 1
+            i += 1
+    return "\n".join(out)
+
+
+def _read_heredocs(command: str) -> tuple[str, str]:
+    """(the line for the gated-verb, protected-file and directory passes;
+    the line for the credential pass). A shell's heredoc is kept in both, an
+    interpreter's whole for credentials and only its lines that run a
+    program for the rest, and text is dropped from both."""
+    if "<<" not in command:
+        return command, command
+    runs_script = bool(_RUNS_SCRIPT.search(_skeleton(command)))
+    lines = command.split("\n")
+    run, cred = [], []
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        run.append(line)
+        cred.append(line)
+        i += 1
+        for m in _HEREDOC.finditer(line):
+            if line[max(0, m.start() - 1):m.start() + 3] == "<<<":
+                continue  # a here-string: its word is on this line
+            kind = _heredoc_kind(line, m.start(), runs_script)
+            body = []
+            while i < len(lines) and lines[i].strip() != m.group(2):
+                body.append(lines[i])
+                i += 1
+            if kind == "shell":
+                run += body
+                cred += body
+            elif kind == "code":
+                run += [b for b in body if _RUNS.search(b)]
+                cred += body
+            if i < len(lines):  # the closing delimiter
+                run.append(lines[i])
+                cred.append(lines[i])
+                i += 1
+    return "\n".join(run), "\n".join(cred)
 
 
 def _split_commands(command: str) -> list[list[str]]:
@@ -297,6 +437,8 @@ def _gated(argv: list[str]) -> str | None:
     exe = os.path.normpath(argv[0])
     if exe.endswith("bin/game") or exe == "game":
         args = argv[1:]
+        if args[:2] == ["guard", "install"]:
+            return "bin/game guard install (the live guard)"
         if exe.startswith("/srv/daydream/") and args[:1] not in (["prod"], ["edge"]):
             # A release's own bin/game run directly: its verbs are prod's.
             args = ["prod", *args]
@@ -327,25 +469,69 @@ def _raw_words(segment: str) -> list[str]:
     return [w for w in re.split(r"[\s()`$\"'=,\[\]]+", segment) if w]
 
 
-# The guard and the permission settings: changing them asks the operator
-# (codereview 2026-09-29c: an injected instruction's first move would be to
-# loosen them).
-PROTECTED = re.compile(r"(^|/)tools/agent_guard\.py$|(^|/)\.claude/settings[^/]*\.json$")
-WRITERS = {"sed", "tee", "cp", "mv", "rm", "truncate", "python", "python3", "perl", "dd",
-           "install", "ln", "chmod", "git"}
+# The live guard (its installed copy) and the permission settings: changing
+# them asks the operator (codereview 2026-09-29c: an injected instruction's
+# first move would be to loosen them). The repo's tools/agent_guard.py is
+# ordinary code; it goes live only through `bin/game guard install`.
+GUARD_HOME = os.path.join(_HOME, ".local", "share", "daydream", "guard")
+PROTECTED = re.compile(r"(^|/)\.claude/settings[^/]*\.json$|"
+                       r"(^|/)\.local/share/daydream/guard(/|$)|" + re.escape(GUARD_HOME))
+_PROTECTED_WORD = r"[^\s;&|<>'\"]*(?:\.claude/settings[^/\s;&|<>'\"]*\.json|" \
+                  r"\.local/share/daydream/guard[^\s;&|<>'\"]*)"
+# A protected path as a whole string literal in code (`p = '.claude/settings.json'`).
+_PROTECTED_LITERAL = re.compile(r"['\"]((?:[^'\"\s]*/)?(?:\.claude/settings[^'\"/\s]*\.json|"
+                                r"\.local/share/daydream/guard[^'\"\s]*))['\"]")
+# A redirection whose target is a protected file.
+_WRITES_TO = re.compile(r"(?:>\||>>?|&>>?)\s*['\"]?" + _PROTECTED_WORD)
+# Interpreter code that writes, moves or removes a file.
+_CODE_WRITES = re.compile(r"\.write\(|write_text|write_bytes|open\([^)]*['\"][wax]b?\+?['\"]|"
+                          r"shutil\.(copy|move)|os\.(replace|rename|remove|unlink)|\.unlink\(|"
+                          r"\.rename\(|\.replace\(")
+# Writers: where each writes (the last operand, every operand, or -i files).
+_TO_LAST = {"cp", "mv", "install", "ln", "rsync", "scp"}
+_TO_ALL = {"tee", "rm", "truncate", "chmod", "chown", "unlink", "shred", "touch"}
+_IN_PLACE = {"sed", "perl"}
 
 
-def _protected_write(command: str) -> str | None:
-    words = re.findall(r"[^\s'\";|&<>()]+", command)
+def _protected_write(run: str, cred: str) -> str | None:
+    """The protected file a command writes, moves or removes, if any:
+    reading, testing or committing one never asks (2026-09-30: any `>` on a
+    line that named one, `2>&1` included, used to ask)."""
+    words = re.findall(r"[^\s'\";|&<>()]+", cred)
     hits = [w for w in words if PROTECTED.search(w)]
     if not hits:
         return None
-    writes = bool(re.search(r"(^|[^<])>|\btee\b|\bsed\b[^|;&]*-i", command)) or any(
-        os.path.basename(argv[0]) in WRITERS
-        for part in _split_commands(command) for argv in _unwrap(part) if argv
-        and any(PROTECTED.search(a) for a in argv) and os.path.basename(argv[0]) != "git"
-    ) or bool(re.search(r"\bgit\s+(checkout|restore|rm|mv|apply)\b", command))
-    return hits[0] if writes else None
+    m = _WRITES_TO.search(run)
+    if m:
+        return m.group(0).lstrip(">|&").strip(" '\"")
+    for part in _split_commands(run):
+        for argv in _unwrap(part):
+            if not argv or argv is _TOO_DEEP:
+                continue
+            base = os.path.basename(argv[0])
+            ops = [a for a in argv[1:] if not a.startswith("-")]
+            if base in _TO_LAST and ops and PROTECTED.search(ops[-1]):
+                return ops[-1]
+            if base in _TO_ALL or (base in _IN_PLACE and any(
+                    a.startswith("-i") or a.startswith("-pi") for a in argv[1:])):
+                for a in ops:
+                    if PROTECTED.search(a):
+                        return a
+            if base == "dd":
+                for a in argv[1:]:
+                    if a.startswith("of=") and PROTECTED.search(a):
+                        return a[3:]
+            if base == "git" and argv[1:2] and argv[1] in ("checkout", "restore", "rm", "mv",
+                                                           "apply", "stash"):
+                for a in argv[2:]:
+                    if PROTECTED.search(a):
+                        return a
+    for code in _code_bodies(cred):
+        if _CODE_WRITES.search(code):
+            m = _PROTECTED_LITERAL.search(code)
+            if m:
+                return m.group(1)
+    return None
 
 
 _DENY_CREDENTIALS = "{} holds this box's credentials; the agent does not open it"
@@ -355,6 +541,23 @@ _ASK_GATED = "{}: this mints access, reaches players, removes something or chang
 
 
 def decide(payload: dict) -> tuple[str, str] | None:
+    """The guard's decision, with a subagent's ask made a deny: a subagent
+    never stops for the operator; it reports what it could not do."""
+    got = _decide(payload)
+    if got and got[0] == "ask" and (payload.get("agent_id") or payload.get("agent_type")):
+        return "deny", f"{got[1]}. A subagent does not run this: say so in your report, and " \
+                       "the main session decides"
+    return got
+
+
+# A find that only lists names prints no file's contents; these print or act
+# on each file it finds.
+_FIND_ACTS = {"-exec", "-execdir", "-ok", "-okdir", "-delete", "-fprint", "-fprint0",
+              "-fprintf", "-fls"}
+_FIND_PIPED = re.compile(r"\bfind\b[^;&\n|]*\|\s*(?:\S*/)?(?:xargs|while\s+read|parallel)\b")
+
+
+def _decide(payload: dict) -> tuple[str, str] | None:
     tool = payload.get("tool_name")
     inp = payload.get("tool_input") or {}
     if tool in ("Read", "Edit", "Write", "NotebookEdit"):
@@ -370,11 +573,14 @@ def decide(payload: dict) -> tuple[str, str] | None:
     if tool != "Bash":
         return None
     command = str(inp.get("command") or "")
+    # What the shell runs, and what may read a file (_read_heredocs): the
+    # credential passes read `cred`, the rest `run`.
+    run, cred = _read_heredocs(command)
     # Over the raw line, before any parsing: a credential path anywhere,
     # redirection targets included (`cat < file`), and the commands that
     # print a token without naming a file (security WARN 2026-09-29: the
     # parsed argv left redirection targets and comment-broken lines out).
-    p = _names_credentials(re.findall(r"\S+", command))
+    p = _names_credentials(re.findall(r"\S+", cred))
     if p:
         return "deny", _DENY_CREDENTIALS.format(p)
     # A deny found later still wins over an ask found here (security NOTE
@@ -383,12 +589,12 @@ def decide(payload: dict) -> tuple[str, str] | None:
     # The raw patterns below outlast the hook's timeout on a long enough line
     # (security WARN 2026-09-30): a line over the limit skips them and asks,
     # and the parsed pass still reads it for a deny.
-    raw = command
+    raw = run
     if len(command) > MAX_COMMAND_CHARS:
         raw = ""
         ask = f"a command over {MAX_COMMAND_CHARS // 1024} KB is more than the guard reads " \
               "in its time; the operator confirms it"
-    if TOKEN_PRINTERS.search(re.sub(r"['\"\\]", "", raw)):  # quoting hides nothing
+    if TOKEN_PRINTERS.search(re.sub(r"['\"\\]", "", cred if raw else "")):  # quoting hides nothing
         return "deny", _DENY_TOKEN
     # Gated verbs on the raw text too: inside a quoted `$(...)` the parser
     # sees one word (`out="$(bin/game prod invite create ...)"`; security
@@ -400,7 +606,7 @@ def decide(payload: dict) -> tuple[str, str] | None:
                 why = _gated(words[i:])
                 if why and ask is None:
                     ask = _ASK_GATED.format(why)
-    hit = _protected_write(raw)
+    hit = _protected_write(raw, cred if raw else "")
     if hit and ask is None:
         ask = f"{hit} guards this session's permissions; the operator confirms a change"
     # Every directory a command may run in: a cd that never takes effect (a
@@ -408,7 +614,7 @@ def decide(payload: dict) -> tuple[str, str] | None:
     # is a candidate and relative words are judged from all of them
     # (codereview 2026-09-30b).
     cwds = [payload.get("cwd") or os.getcwd()]
-    for argv in (c for part in _split_commands(command) for c in _unwrap(part)):
+    for argv in (c for part in _split_commands(run) for c in _unwrap(part)):
         if argv is _TOO_DEEP:  # unread; a deny in another part still wins
             ask = ask or f"a command nested past {MAX_NESTING} levels of eval or a shell is " \
                          "more than the guard reads; the operator confirms it"
@@ -450,9 +656,11 @@ def decide(payload: dict) -> tuple[str, str] | None:
             return "deny", _DENY_TOKEN
         if ask is not None:
             continue  # keep reading for a deny
-        if base in SEARCHERS and any(a in BROAD_ROOTS for a in argv[1:]):
+        lists_only = base == "find" and not _FIND_ACTS & set(argv) \
+            and not _FIND_PIPED.search(run)
+        if base in SEARCHERS and not lists_only and any(a in BROAD_ROOTS for a in argv[1:]):
             ask = f"a {base} over your home or a system directory can print credentials"
-        elif base in TREE_READERS and any(  # a root above a credential, or a bare one in it
+        elif base in TREE_READERS and not lists_only and any(  # above a credential, or in it
                 _credential_relation(_resolve(w, c)) for w in _tree_roots(argv) for c in cwds):
             ask = f"a {base} over a folder that holds this box's credentials can print or " \
                   "copy them; the operator confirms it"

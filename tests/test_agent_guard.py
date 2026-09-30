@@ -73,7 +73,7 @@ def test_ordinary_work_gets_no_opinion(cmd):
 def test_it_speaks_claude_codes_hook_protocol():
     r = subprocess.run([sys.executable, str(ROOT / "tools/agent_guard.py")],
                        input=json.dumps({"tool_name": "Bash",
-                                         "tool_input": {"command": "bin/game prod pull"}}),
+                                         "tool_input": {"command": "bin/game prod sleep"}}),
                        capture_output=True, text=True, check=True)
     out = json.loads(r.stdout)["hookSpecificOutput"]
     assert out["hookEventName"] == "PreToolUse" and out["permissionDecision"] == "ask"
@@ -106,7 +106,7 @@ HOME_SSH = "~/." + "ssh/id_ed25519"  # built from parts: the guard reads this fi
     ("bash bin/game prod world reset --yes", "ask"),
     ("eval 'bin/game prod account delete robin --yes'", "ask"),
     ("sudo -u daydream /srv/daydream/current/bin/game world reset --yes", "ask"),
-    ("nice -n 5 bin/game prod pull", "ask"),
+    ("nice -n 5 bin/game prod sleep", "ask"),
     ("flock /tmp/l bin/game prod rollback", "ask"),
     ("timeout 30 bin/game prod sleep", "ask"),
     ("bin//game prod invite create --for M", "ask"),
@@ -132,7 +132,7 @@ def test_the_shapes_a_command_hides_in(cmd, want):
     ("printf 'host=github.com\\n' | gh auth git-credential get", "deny"),
     ("/srv/daydream/current/bin/game edge secrets", "ask"),  # edge verbs from a release
     ("for x in 1; do bin/game prod account role m admin; done", "ask"),  # after keywords
-    ("if true; then bin/game prod pull; fi", "ask"),
+    ("if true; then bin/game prod sleep; fi", "ask"),
     ("f() { bin/game prod sleep; }; f", "ask"),
     ("while true; do gh auth token; done", "deny"),
 ])
@@ -154,7 +154,7 @@ TOKEN = "oauth" + "_token"  # built from parts, like HOME_SSH
     ("cat ~/.claude/." + "credentials.json", "deny"),
     ("grep -rn CLOUDFLARE_API_TOKEN ~", "ask"),
     ("rg -n token $HOME", "ask"),
-    ("find / -name '*.env'", "ask"),
+    ("find / -name '*.env' -exec cat {} +", "ask"),
     ("grep -rn foo docs/", None),
     ("grep -n 'def main' daydream/ci.py", None),
 ])
@@ -445,22 +445,111 @@ def test_a_credential_path_spelled_another_way_is_not_read():
     assert got and got[0] == "deny"
 
 
+LIVE = guard.GUARD_HOME + "/agent_guard.py"
+
+
 @pytest.mark.parametrize("tool,inp,want", [
-    ("Edit", {"file_path": "/repo/tools/agent_guard.py"}, "ask"),
+    ("Edit", {"file_path": LIVE}, "ask"),
     ("Write", {"file_path": "/repo/.claude/settings.local.json"}, "ask"),
     ("Edit", {"file_path": "/repo/.claude/settings.json"}, "ask"),
-    ("Read", {"file_path": "/repo/tools/agent_guard.py"}, None),
+    ("Read", {"file_path": LIVE}, None),
     ("Edit", {"file_path": "/repo/tests/test_agent_guard.py"}, None),
     ("Bash", {"command": "sed -i s/ask/allow/ .claude/settings.local.json"}, "ask"),
     ("Bash", {"command": "echo '{}' > .claude/settings.local.json"}, "ask"),
-    ("Bash", {"command": "cp /tmp/x tools/agent_guard.py"}, "ask"),
-    ("Bash", {"command": "git checkout -- tools/agent_guard.py"}, "ask"),
+    ("Bash", {"command": "cp /tmp/x ~/.local/share/daydream/guard/agent_guard.py"}, "ask"),
+    ("Bash", {"command": "rm -rf ~/.local/share/daydream/guard"}, "ask"),
+    ("Bash", {"command": "bin/game guard install"}, "ask"),
+    ("Bash", {"command": "python3 - <<'EOF'\nfrom pathlib import Path\n"
+                         "Path('.claude/settings.local.json').write_text('{}')\nEOF"}, "ask"),
     ("Bash", {"command": "cat .claude/settings.json"}, None),
-    ("Bash", {"command": "git diff tools/agent_guard.py"}, None),
-    ("Bash", {"command": "git add tools/agent_guard.py tests/test_agent_guard.py"}, None),
+    # Reading, testing and committing never ask (2026-09-30: `2>&1` or
+    # `2>/dev/null` on a line that named one used to).
+    ("Bash", {"command": "cat .claude/settings.local.json 2>/dev/null | head -80"}, None),
+    ("Bash", {"command": "cp .claude/settings.local.json /tmp/settings.bak"}, None),
+    ("Bash", {"command": "timeout 120 .venv/bin/python -m pytest tests/test_agent_guard.py -q "
+                         "2>&1 | tail -3; .venv/bin/ruff check tools/agent_guard.py"}, None),
+    ("Bash", {"command": "python3 -c \"import json; print(json.load(open("
+                         "'.claude/settings.local.json'))['permissions'])\""}, None),
+    # The repo's copy is ordinary code: live only once installed.
+    ("Edit", {"file_path": "/repo/tools/agent_guard.py"}, None),
+    ("Bash", {"command": "git checkout -- tools/agent_guard.py"}, None),
+    ("Bash", {"command": "git add tools/agent_guard.py tests/test_agent_guard.py && "
+                         "git commit -q -m 'guard' 2>&1 | tail -1"}, None),
 ])
-def test_the_guard_and_the_settings_ask_before_they_change(tool, inp, want):
+def test_the_live_guard_and_the_settings_ask_before_they_change(tool, inp, want):
     """Codereview 2026-09-29c: loosening the guard or the permission settings
-    would be an injected instruction's first move."""
+    would be an injected instruction's first move. The live guard is the
+    installed copy; a change to it or to the settings asks, and nothing
+    else about them does."""
     got = guard.decide({"tool_name": tool, "tool_input": inp})
     assert (got[0] if got else None) == want, (tool, inp, got)
+
+
+# ---- heredocs, subagents, the preview loop (2026-09-30) ----------------------
+# A replay of every tool call in this repo's sessions found 176 prompts, two
+# thirds of them text a heredoc wrote, a protected file read, or a find that
+# only listed names.
+
+KEY = "/home/me/." + "ssh/id_ed25519"
+
+
+@pytest.mark.parametrize("cmd,want", [
+    # Text: a file or a commit message that mentions a gated verb or a folder.
+    ("cat >> docs/runbooks/x.md <<'EOF'\nRun `bin/game prod sleep --note x`.\nEOF", None),
+    ("git commit -q -F - <<'EOF'\nprod: bin/game prod invite create is gated\nEOF", None),
+    ("cd /tmp && cat > notes.txt <<'EOF'\ncd a\ncd b\ncd c\ncd d\ncd e\ncd f\ncd g\ncd h\n"
+     "cd i\ncd j\ncd k\ncd l\ncd m\ncd n\ncd o\ncd p\ncd q\nEOF", None),
+    # Code: text in its strings is data; a line that runs a program is read.
+    ("python3 - <<'EOF'\np='docs/runbooks/x.md'\ns=open(p).read().replace("
+     "'bin/game prod world reset', 'bin/game prod world reset --yes')\nopen(p,'w').write(s)\nEOF",
+     None),
+    ("python3 - <<'EOF'\nimport subprocess\nsubprocess.run(['bin/game', 'prod', 'invite', "
+     "'create', '--for', 'x'])\nEOF", "ask"),
+    ("python3 - <<'EOF'\nimport os\nos.system('bin/game prod world reset --yes')\nEOF", "ask"),
+    ("python3 - <<'EOF'\nprint(open('" + KEY + "').read())\nEOF", "deny"),
+    # Commands: a heredoc a shell runs, piped or directly, or one a script
+    # file on the same line carries.
+    ("bash <<'EOF'\nbin/game prod invite create --for x\nEOF", "ask"),
+    ("cat <<'EOF' | sh\nbin/game prod world reset --yes\nEOF", "ask"),
+    ("cat > /tmp/x.sh <<'EOF'\nbin/game prod account delete x --yes\nEOF\nbash /tmp/x.sh", "ask"),
+    ("ssh host <<'EOF'\nbin/game prod sleep\nEOF", "ask"),
+])
+def test_a_heredoc_is_read_as_what_it_feeds(cmd, want):
+    got = _bash(cmd)
+    assert (got[0] if got else None) == want, (cmd, got)
+
+
+@pytest.mark.parametrize("cmd,want", [
+    ("find / -xdev -name 'litellm*.pth' 2>/dev/null | head", None),
+    ("find ~/.cache/ms-playwright -maxdepth 2 -name chrome", None),
+    ("find ~ -name '*.env' | xargs cat", "ask"),
+    ("find ~ -name '*.env' -exec cat {} +", "ask"),
+    ("grep -rn token ~", "ask"),
+])
+def test_a_find_that_only_lists_names_does_not_ask(cmd, want):
+    got = _bash(cmd)
+    assert (got[0] if got else None) == want, (cmd, got)
+
+
+def test_the_preview_loop_pulls_prod_without_asking():
+    """`prod pull` copies prod into dev on this box and changes nothing in
+    prod: part of the everyday loop (docs/runbooks/publish.md)."""
+    assert _bash("bin/game down 2>&1 | tail -1; bin/game prod pull 2>&1 | tail -4") is None
+
+
+@pytest.mark.parametrize("cmd,want", [
+    ("bin/game prod invite create --for x", "deny"),
+    ("bin/game guard install", "deny"),
+    ("echo x > .claude/settings.local.json", "deny"),
+    ("cat " + KEY, "deny"),
+    ("bin/game test short", None),
+])
+def test_a_subagent_is_denied_what_would_ask(cmd, want):
+    """A subagent never stops for the operator: what would ask is denied,
+    with a reason that says to report it."""
+    got = guard.decide({"tool_name": "Bash", "tool_input": {"command": cmd},
+                        "agent_id": "a1", "agent_type": "general-purpose"})
+    assert (got[0] if got else None) == want, (cmd, got)
+    if want == "deny" and "invite" in cmd:
+        assert "subagent" in got[1]
+

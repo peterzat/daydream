@@ -451,6 +451,50 @@ cmd_deploy() {
     cmd_up "$@"
 }
 
+# The agent guard (tools/agent_guard.py) runs from an installed copy, so the
+# repo's copy is ordinary code until the operator promotes it: typed as
+# `! bin/game guard install`, it runs outside the hook (2026-09-30).
+GUARD_HOME="${DAYDREAM_GUARD_HOME:-${HOME}/.local/share/daydream/guard}"  # override: tests only
+GUARD_LIVE="$GUARD_HOME/agent_guard.py"
+
+_guard_status_line() {
+    if [[ ! -f "$GUARD_LIVE" ]]; then
+        echo "guard: not installed (the hook asks before everything): ! bin/game guard install"
+    elif cmp -s "$PROJECT_ROOT/tools/agent_guard.py" "$GUARD_LIVE"; then
+        echo "guard: installed, matches tools/agent_guard.py"
+    else
+        echo "guard: tools/agent_guard.py differs from the installed guard" \
+             "($(date -r "$GUARD_LIVE" +%Y-%m-%d)): ! bin/game guard install"
+    fi
+}
+
+cmd_guard() {
+    local sub="${1:-status}"
+    case "$sub" in
+        status) _guard_status_line ;;
+        install)
+            _require_venv
+            if [[ "${DAYDREAM_GUARD_SKIP_TESTS:-0}" != "1" ]]; then
+                echo "==> the guard's tests"
+                local out
+                if ! out="$("$VENV_PY" -m pytest -q "$PROJECT_ROOT/tests/test_agent_guard.py" \
+                        -p no:cacheprovider 2>&1)"; then
+                    printf '%s\n' "$out" | tail -8
+                    echo "guard: tests failed; nothing installed" >&2
+                    return 1
+                fi
+                printf '%s\n' "$out" | tail -1
+            fi
+            mkdir -p "$GUARD_HOME"
+            local tmp="$GUARD_HOME/.agent_guard.py.$$"
+            cp "$PROJECT_ROOT/tools/agent_guard.py" "$tmp" && chmod 644 "$tmp" \
+                && mv -f "$tmp" "$GUARD_LIVE"
+            echo "guard: installed $(sha256sum "$GUARD_LIVE" | cut -c1-12) -> $GUARD_LIVE"
+            ;;
+        *) echo "usage: bin/game guard {status|install}" >&2; return 2 ;;
+    esac
+}
+
 cmd_status() {
     if _is_running "fastapi"; then
         local pid; pid="$(cat "$(_pid_file fastapi)")"
@@ -527,6 +571,7 @@ cmd_status() {
     # CI on main, so a red run on GitHub is never silent (2026-09-29).
     if [[ -x "$VENV_PY" ]]; then
         timeout 20 "$VENV_PY" -m daydream.ci --line 2>/dev/null || true
+        _guard_status_line
     fi
 }
 
@@ -960,6 +1005,7 @@ case "${1:-}" in
     model-eval)    shift; cmd_model_eval "$@" ;;
     text-scan)     shift; _require_venv; exec "$VENV_PY" -m daydream.textscan "$@" ;;
     ci)            shift; _require_venv; exec "$VENV_PY" -m daydream.ci "$@" ;;
-    "")            echo "usage: bin/game {up|up-all|deploy|down|status|logs|image-test|comfyui-up|comfyui-down|vllm-up|vllm-down|world|dream|play|prebake|account|invite|prod|edge|test|voice-samples|drift-samples|review|model-eval|text-scan|ci}" >&2; exit 2 ;;
-    *)             echo "usage: bin/game {up|up-all|deploy|down|status|logs|image-test|comfyui-up|comfyui-down|vllm-up|vllm-down|world|dream|play|prebake|account|invite|prod|edge|test|voice-samples|drift-samples|review|model-eval|text-scan|ci} (got: $1)" >&2; exit 2 ;;
+    guard)         shift; cmd_guard "$@" ;;
+    "")            echo "usage: bin/game {up|up-all|deploy|down|status|logs|image-test|comfyui-up|comfyui-down|vllm-up|vllm-down|world|dream|play|prebake|account|invite|prod|edge|test|voice-samples|drift-samples|review|model-eval|text-scan|ci|guard}" >&2; exit 2 ;;
+    *)             echo "usage: bin/game {up|up-all|deploy|down|status|logs|image-test|comfyui-up|comfyui-down|vllm-up|vllm-down|world|dream|play|prebake|account|invite|prod|edge|test|voice-samples|drift-samples|review|model-eval|text-scan|ci|guard} (got: $1)" >&2; exit 2 ;;
 esac
