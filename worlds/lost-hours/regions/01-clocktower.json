@@ -98,6 +98,14 @@
             "verbs": {
               "examine": "High in the tower the great clock's brass face looks down, patient as a moon. Its hands stand still."
             }
+          },
+          {
+            "names": [
+              "lectern",
+              "reading stand",
+              "old lectern"
+            ],
+            "text": "The lectern is plain old oak, set there long ago so the repair ledger could lie open for anyone to read. It stays where it stands."
           }
         ],
         "exit_names": {
