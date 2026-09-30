@@ -161,6 +161,71 @@ def test_the_second_scans_shapes(cmd, want):
     assert (got[0] if got else None) == want, (cmd, got)
 
 
+CONFIG = "~/." + "config"  # the folder that holds gh's and daydream's credentials
+REPO = guard._HOME + "/src/daydream"
+
+
+def _bash_in(cmd, cwd=REPO):
+    return guard.decide({"tool_name": "Bash", "tool_input": {"command": cmd}, "cwd": cwd})
+
+
+@pytest.mark.parametrize("cmd,want", [
+    # Security WARN 2026-09-29, closed 2026-09-30: a search, archive or copy
+    # rooted one folder below home, however the folder is spelled.
+    ("grep -rn CLOUDFLARE_API_TOKEN " + CONFIG, "ask"),
+    ("grep -rn TOKEN " + CONFIG + "/", "ask"),
+    ("rg -n token $HOME/." + "config", "ask"),
+    ("rg -n token ${HOME}/." + "config/", "ask"),
+    ("find " + CONFIG + " -type f -exec cat {} +", "ask"),
+    ("grep -r token ~/." + "claude", "ask"),
+    ("cd ~ && grep -r token .", "ask"),
+    ("cd " + CONFIG + " && rg token", "ask"),
+    ("grep -rn token ../..", "ask"),  # from the repo: home
+    ("tar czf /tmp/c.tgz " + CONFIG, "ask"),
+    ("cp -r " + CONFIG + " /tmp/c", "ask"),
+    ("rsync -a " + CONFIG + "/ /tmp/c/", "ask"),
+    # ...and a credential folder spelled so no name matches: denied.
+    ("cat " + CONFIG + "/./" + "gh/hosts.yml", "deny"),
+    ("cd " + CONFIG + " && cat gh/hosts.yml", "deny"),
+    ("cd " + CONFIG + "; cd gh; cat hosts.yml", "deny"),
+    ("gh auth status -th github.com", "deny"),  # -t inside a short-flag bundle
+    ("gh auth status -ht github.com", "deny"),
+    ("grep " + TOKEN + " notes.txt", "deny"),  # the token's field name, anywhere
+    # ordinary work stays quiet
+    ("gh auth status", None),
+    ("gh auth status -h github.com", None),
+    ("grep -rn foo ~/data/daydream", None),
+    ("rg -n foo ~/." + "claude/projects", None),
+    ("cp -r worlds /tmp/w", None),
+    ("tar czf /tmp/a.tgz ~/data/daydream/backups", None),
+    ("grep -rn foo docs/ daydream/", None),
+    ("cd /tmp && rg foo", None),
+])
+def test_folders_that_hold_credentials(cmd, want):
+    got = _bash_in(cmd)
+    assert (got[0] if got else None) == want, (cmd, got)
+
+
+@pytest.mark.parametrize("cmd,want", [
+    # Security NOTE 2026-09-29, closed 2026-09-30: the raw gated-verb pass.
+    ("bin/game prod >/dev/null invite create --for M", "ask"),  # a redirection ends nothing
+    ("bin/game prod > /tmp/x.log invite create --for M", "ask"),
+    ('python3 -c \'import subprocess; subprocess.run(["bin/game", "prod", "invite", '
+     '"create"])\'', "ask"),  # list form
+    ("bin/game prod pull; cat " + CONFIG + "/./" + "gh/hosts.yml", "deny"),  # a deny wins
+    ("bin/game prod deploy > /tmp/deploy.log", None),
+])
+def test_the_raw_pass_reads_past_redirections_and_lists(cmd, want):
+    got = _bash_in(cmd)
+    assert (got[0] if got else None) == want, (cmd, got)
+
+
+def test_a_credential_path_spelled_another_way_is_not_read():
+    path = guard._HOME + "/." + "config/./" + "gh/hosts.yml"
+    got = guard.decide({"tool_name": "Read", "tool_input": {"file_path": path}})
+    assert got and got[0] == "deny"
+
+
 @pytest.mark.parametrize("tool,inp,want", [
     ("Edit", {"file_path": "/repo/tools/agent_guard.py"}, "ask"),
     ("Write", {"file_path": "/repo/.claude/settings.local.json"}, "ask"),

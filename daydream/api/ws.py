@@ -1043,6 +1043,15 @@ async def close_session_sockets(session_id: str | None) -> None:
 DOZE_GRACE_S = 90.0
 
 
+def clicked_in_scope(toon_id: str, *ids) -> list[str]:
+    """The ids of a click frame that name something the dreamer could act on:
+    only those become IT. An id from outside their scope could later be named
+    through "ask <someone> about it" (security NOTE 2026-09-30), and a frame's
+    ids are untrusted (a list is no id)."""
+    return [i for i in ids
+            if isinstance(i, str) and i and verbs._resolve_in_scope(toon_id, i) is not None]
+
+
 def is_dozing(obj: "objects.Object | None") -> bool:
     """A player's dreamer with no one at the page: controlled by a session
     that has had no live connection for DOZE_GRACE_S. Characters never
@@ -1352,7 +1361,8 @@ async def _receive_loop(ws: WebSocket, toon_id: str, token: str | None = None,
                     continue
                 conn["clarify"] = None
                 # A click keeps IT and the person current, as typing does.
-                parser.remember_referents(toon_id, msg.get("dobj_id"), msg.get("iobj_id"))
+                parser.remember_referents(
+                    toon_id, *clicked_in_scope(toon_id, msg.get("dobj_id"), msg.get("iobj_id")))
                 with _busy(heard):
                     await _handle_command(msg, toon_id)
                     await _send_threads_if_changed(ws, toon_id, conn)

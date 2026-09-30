@@ -117,6 +117,19 @@ async def test_it_later_in_a_line_means_that_lines_thing(dreamer):
         ("take", "o-brass-pendulum"), ("examine", "o-brass-pendulum")]
 
 
+def test_a_click_names_it_only_inside_scope(dreamer):
+    """A clicked id from outside the dreamer's scope never becomes IT, so
+    "ask <someone> about it" can't name it (security NOTE 2026-09-30)."""
+    from daydream.api import ws
+
+    room = objects.get(dreamer).location_id
+    here = objects.contents(room, kind="thing")[0].id
+    elsewhere = next(o.id for o in objects.all_of_kind(objects.get(dreamer).world_id, "thing")
+                     if o.location_id not in (room, dreamer, None)
+                     and objects.get(o.location_id).kind == "room")
+    assert ws.clicked_in_scope(dreamer, here, elsewhere, ["x"], None, "") == [here]
+
+
 def test_a_click_frames_ids_that_are_not_strings_are_ignored(dreamer):
     """A click frame's ids are untrusted: a list or an object names nothing
     (codereview 2026-09-30: sqlite raised on the sender's socket)."""
