@@ -199,7 +199,7 @@ def test_prune_keeps_current_previous_and_the_newest(srv, monkeypatch):
 
 def test_passthrough_names():
     assert set(prodctl.PASSTHROUGH) == {"world", "dream", "account", "invite", "prebake", "play",
-                                        "text-scan"}
+                                        "text-scan", "jev"}
 
 
 def test_the_lock_pins_what_the_dev_venv_tests_against():

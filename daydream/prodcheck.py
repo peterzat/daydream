@@ -207,6 +207,42 @@ def check_ci(verdict: str, words: str) -> Check:
     return Check("ci on main", True, words, warn_only=True)
 
 
+def check_jev(routes: dict | None, service_awake: bool, probe) -> Check:
+    """Jev through the egress gateway (docs/EXTERNAL.md). Optional: off (no
+    gateway, or no key at it) passes with a note; a key that cannot answer
+    (the account empty, the gateway unable to reach the API) fails, so a
+    publish sees it. `probe()` is a paid one-question call (about $0.00002)
+    through the gateway: (state, detail)."""
+    if routes is None:
+        return Check("jev", True, "off: the egress gateway is not running"
+                     + (" (the village runs its local paths)" if service_awake else ""),
+                     warn_only=True)
+    if not routes.get("jev"):
+        return Check("jev", True, "off: the egress gateway has no Jev key")
+    state, detail = probe()
+    return Check("jev", state == "funded", f"on, {state} ({detail})")
+
+
+def _probe_jev_through_gateway() -> tuple[str, str]:
+    import asyncio
+    import os
+
+    from daydream import config
+    from daydream.jev import client, settings
+
+    saved = os.environ.get("DAYDREAM_EGRESS_URL")
+    os.environ["DAYDREAM_EGRESS_URL"] = config.EGRESS_URL
+    settings.forget()
+    try:
+        return asyncio.run(client.funded())
+    finally:
+        if saved is None:
+            os.environ.pop("DAYDREAM_EGRESS_URL", None)
+        else:
+            os.environ["DAYDREAM_EGRESS_URL"] = saved
+        settings.forget()
+
+
 def check_release(release: str | None, head: str, behind: str) -> Check:
     if release is None:
         return Check("release", False, "none deployed")
@@ -373,4 +409,6 @@ def main() -> int:
     from daydream import ci
 
     checks.append(_probe("ci on main", lambda: check_ci(*ci.main_status())))
+    checks.append(_probe("jev", lambda: check_jev(prodctl.egress_routes(), awake,
+                                                  _probe_jev_through_gateway)))
     return report(checks)

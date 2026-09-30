@@ -65,7 +65,11 @@ SRV = Path(os.environ.get("DAYDREAM_PROD_ROOT", "/srv/daydream"))
 UNIT = "daydream-prod.service"
 TUNNEL = "cloudflared-daydream.service"
 KEEP_RELEASES = 5
-PASSTHROUGH = ("world", "dream", "account", "invite", "prebake", "play", "text-scan")
+PASSTHROUGH = ("world", "dream", "account", "invite", "prebake", "play", "text-scan", "jev")
+# The egress gateway (daydream/egress.py, docs/EXTERNAL.md): prod's one way out
+# to the hosted services the project declares. Optional: without it, or
+# without a key, the village runs its local paths.
+EGRESS = "daydream-egress.service"
 ROOT_HELPER = Path("/usr/local/sbin/daydream-root")
 
 
@@ -320,6 +324,41 @@ def systemctl(action: str, unit: str) -> None:
     r = subprocess.run(["sudo", "-n", "/usr/bin/systemctl", action, unit])
     if r.returncode != 0:
         raise ProdError(f"sudo systemctl {action} {unit} failed (is ops/install-prod.sh installed?)")
+
+
+def egress(action: str) -> bool:
+    """Start or stop the egress gateway through the root helper (whose
+    vocabulary has it); False, said, when that fails (never fatal)."""
+    if not ROOT_HELPER.exists():
+        say("egress: the root helper is not installed; the gateway stays as it is")
+        return False
+    r = subprocess.run(["sudo", "-n", str(ROOT_HELPER), action, EGRESS], capture_output=True,
+                       text=True)
+    if r.returncode != 0:
+        say(f"egress: {action} failed ({(r.stderr or r.stdout).strip()[:160] or r.returncode}); "
+            "the village runs its local paths")
+        return False
+    return True
+
+
+def egress_routes() -> dict | None:
+    """Which of the gateway's routes have a key, or None when it is down."""
+    from daydream import config
+
+    body = http_ok(f"{config.EGRESS_URL}/routes", timeout=1.0)
+    try:
+        return (json.loads(body) or {}).get("routes") if body else None
+    except ValueError:
+        return None
+
+
+def egress_line() -> str:
+    routes = egress_routes()
+    if routes is None:
+        return f"egress: {'up but not answering' if unit_active(EGRESS) else 'down'} ({EGRESS})"
+    keyed = [n for n, on in routes.items() if on]
+    return (f"egress: up ({EGRESS}); routes with a key: {', '.join(keyed) or 'none'}"
+            f"{'' if 'jev' in keyed else ' (jev off)'}")
 
 
 def port() -> int:
@@ -651,6 +690,8 @@ def wake() -> int:
         if not all(reach.values()):
             raise ProdError(f"engines did not come up: {reach}")
     say("engines: up")
+    if egress("start"):
+        say("egress: up")
     systemctl("start", TUNNEL)
     systemctl("start", UNIT)
     if not wait_healthy():
@@ -687,6 +728,8 @@ def sleep_(note: str, grace: int, keep_engines: bool) -> int:
     systemctl("stop", TUNNEL)
     systemctl("stop", UNIT)
     say("service + tunnel: stopped")
+    if unit_active(EGRESS) and egress("stop"):
+        say("egress: stopped")
     # Rest everyone and write their journals while the engines are still up
     # (the release's own code, against prod data, with the server stopped).
     r = run_release_python(rel, ["-m", "daydream.admin", "rest-all", "--journal"], check=False,
@@ -832,6 +875,7 @@ def status() -> int:
             "others: bin/game prod instance list")
     say(f"service: {'awake' if unit_active(UNIT) else 'asleep'} ({UNIT})")
     say(f"tunnel:  {'up' if unit_active(TUNNEL) else 'down'} ({TUNNEL})")
+    say(egress_line())
     for name, up in engines_reachable().items():
         say(f"{name}: {'reachable' if up else 'down'}")
     if unit_active(UNIT) and rel is not None:
@@ -949,6 +993,13 @@ def plan(ref: str) -> int:
 
     verdict, words = ci.main_status()
     say(f"ci on main: {words}")
+    # Jev (daydream/jev), the optional hosted decision model: zero or not
+    # zero, from a paid probe with this checkout's key. Prod itself runs Jev
+    # off: prod.env holds no key, and the service may reach loopback only.
+    from daydream.jev import cli as jev_cli
+
+    say(jev_cli.status_line(probe=True) + " [this checkout's .env]")
+    say(egress_line() + " [prod]")
     if verdict == "failed":
         say("  CI is RED on main: fix it before publishing (`bin/game ci`, then "
             "`gh run view <id> --log-failed`)")

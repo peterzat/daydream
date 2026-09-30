@@ -197,3 +197,19 @@ def test_the_instance_check_catches_a_wrong_answer_and_a_stale_flag_cookie():
     asleep = check_instance("zork", None, "dd_session_prod_zork", "dd_session_prod_zork",
                             awake=False)
     assert [c.name for c in asleep] == ["flag cookie"]
+
+
+@pytest.mark.parametrize("routes,probe,ok,words", [
+    (None, None, True, "off: the egress gateway is not running"),
+    ({"jev": False}, None, True, "off: the egress gateway has no Jev key"),
+    ({"jev": True}, ("funded", "a probe answered in 300 ms"), True, "on, funded"),
+    ({"jev": True}, ("empty", "HTTP 402"), False, "on, empty"),
+    ({"jev": True}, ("unreachable", "ConnectError"), False, "on, unreachable"),
+])
+def test_jev_is_optional_but_a_key_that_cannot_answer_fails(routes, probe, ok, words):
+    """docs/EXTERNAL.md: Jev off passes; a key at the gateway whose account is
+    empty, or that cannot reach the API, fails the check a publish reads."""
+    from daydream import prodcheck
+
+    c = prodcheck.check_jev(routes, True, lambda: probe)
+    assert c.ok is ok and words in c.detail

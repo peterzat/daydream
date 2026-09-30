@@ -139,10 +139,18 @@ rm -f "$tmp"
 install -o root -g root -m 0755 "$OPS/root/daydream-root" /usr/local/sbin/daydream-root
 /usr/local/sbin/daydream-root version
 
+# ---- the egress gateway ------------------------------------------------------------
+# Prod's one way out to the hosted services docs/EXTERNAL.md declares: its code
+# lives beside the helper, so it changes only with this script; its keys live in
+# /etc/daydream/egress.env (root 0600), set with `bin/game prod root egress set`.
+say "the egress gateway: /usr/local/lib/daydream/egress.py"
+install -d -o root -g root -m 0755 /usr/local/lib/daydream
+install -o root -g root -m 0644 "$REPO/daydream/egress.py" /usr/local/lib/daydream/egress.py
+
 # ---- units + sudoers ----------------------------------------------------------
 say "systemd units"
 for u in daydream-prod.service cloudflared-daydream.service daydream-backup.service \
-         daydream-backup.timer daydream-keepsakes.timer; do
+         daydream-egress.service daydream-backup.timer daydream-keepsakes.timer; do
     install -o root -g root -m 0644 "$OPS/systemd/$u" "/etc/systemd/system/$u"
 done
 install -o root -g root -m 0644 "$OPS/systemd/daydream-offsite.timer" /etc/systemd/system/

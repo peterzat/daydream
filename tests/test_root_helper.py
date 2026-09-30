@@ -40,6 +40,7 @@ root = _load()
 PROD, BACKUP = "daydream-prod.service", "daydream-backup.service"
 TUNNEL, KEEP = "cloudflared-daydream.service", "daydream-keepsakes.service"
 BACKUP_TIMER = "daydream-backup.timer"
+EGRESS = "daydream-egress.service"
 
 
 def rendered(name: str) -> str:
@@ -191,6 +192,29 @@ HOSTILE = [
     ("a line systemd reads another way", PROD, lambda t: add(t, ".include /etc/evil.conf"),
      ["not a KEY=VALUE line"]),
     ("a key before any section", PROD, lambda t: "User=root\n" + t, ["before any [Section]"]),
+    # The egress gateway (docs/EXTERNAL.md): a throwaway user, the village
+    # hidden, the public internet only, its own code only.
+    ("the gateway as the service user", EGRESS, swap("DynamicUser=yes", "User=daydream"),
+     ["User= is not allowed", "DynamicUser= is missing"]),
+    ("the gateway in the service group", EGRESS, lambda t: add(t, "SupplementaryGroups=daydream"),
+     ["SupplementaryGroups"]),
+    ("the gateway running release code", EGRESS,
+     swap("-I /usr/local/lib/daydream/egress.py", "-I /srv/daydream/current/daydream/egress.py"),
+     ["ExecStart="]),
+    ("the gateway listening beyond loopback", EGRESS, swap("--host 127.0.0.1", "--host 0.0.0.0"),
+     ["ExecStart="]),
+    ("the gateway reaching the tailnet", EGRESS, swap(" 100.64.0.0/10", ""),
+     ["IPAddressDeny", "100.64.0.0/10"]),
+    ("the gateway allowed anything", EGRESS, lambda t: add(t, "IPAddressAllow=any"),
+     ["IPAddressAllow= is not allowed"]),
+    ("the gateway seeing the village", EGRESS, swap("InaccessiblePaths=/srv/daydream ",
+                                                    "InaccessiblePaths="),
+     ["InaccessiblePaths", "/srv/daydream"]),
+    ("the gateway writing somewhere", EGRESS, lambda t: add(t, "ReadWritePaths=/srv/daydream/data"),
+     ["ReadWritePaths= is not allowed"]),
+    ("the gateway given prod.env", EGRESS,
+     swap("EnvironmentFile=-/etc/daydream/egress.env", "EnvironmentFile=/srv/daydream/etc/prod.env"),
+     ["EnvironmentFile="]),
 ]
 
 
@@ -268,6 +292,13 @@ def box(tmp_path, monkeypatch):
     for f in UNITS_DIR.iterdir():
         shutil.copyfile(f, release_units / f.name)
     (srv / "current").symlink_to(Path("releases") / RELEASE)
+    (srv / "releases" / RELEASE / "daydream").mkdir()
+    shutil.copyfile(REPO / "daydream" / "egress.py", srv / "releases" / RELEASE / "daydream" / "egress.py")
+    local_lib = base / "usr" / "local" / "lib" / "daydream"
+    local_lib.mkdir(parents=True)
+    shutil.copyfile(REPO / "daydream" / "egress.py", local_lib / "egress.py")
+    monkeypatch.setattr(root, "EGRESS_CODE", str(local_lib / "egress.py"))
+    monkeypatch.setattr(root, "EGRESS_ENV", str(conf_dir / "egress.env"))
     shutil.copyfile(REPO / "ops" / "prod.env.example", srv / "etc" / "prod.env")
     for d in (conf_dir, systemd, sudoers_d):
         os.chmod(d, 0o755)
@@ -296,7 +327,9 @@ def box(tmp_path, monkeypatch):
     return types.SimpleNamespace(srv=srv, systemd=systemd, conf=conf_dir / "root.conf",
                                  sudoers=sudoers_d / "daydream", release_units=release_units,
                                  prod_env=srv / "etc" / "prod.env", calls=calls, kwargs=kwargs,
-                                 chowns=chowns, results=results)
+                                 chowns=chowns, results=results,
+                                 egress_env=conf_dir / "egress.env",
+                                 egress_code=local_lib / "egress.py")
 
 
 def _logged(box) -> list[str]:
@@ -314,7 +347,7 @@ def test_units_shows_the_difference_and_changes_nothing(box, capsys):
     assert root.main(["units"]) == 0
     out = capsys.readouterr().out
     assert f"release {RELEASE}" in out and "(not installed)" in out
-    assert "+User=daydream" in out and "8 unit(s) differ" in out
+    assert "+User=daydream" in out and "9 unit(s) differ" in out
     assert list(box.systemd.iterdir()) == [] and box.calls == []
 
 
@@ -657,3 +690,71 @@ def test_every_command_the_helper_runs_is_a_system_tool_or_the_service_user(box)
         assert kw["env"] == root.CLEAN_ENV and kw["cwd"] == "/"
         if any("/srv/daydream" in a or str(box.srv) in a or REPO_PATH in a for a in cmd):
             assert cmd[:5] == [root.RUNUSER, "-u", "daydream", "--", "/usr/bin/env"], cmd
+
+
+# ---- the egress gateway's keys (docs/EXTERNAL.md) ------------------------------------------
+
+
+class _Stdin:
+    def __init__(self, text, tty=False):
+        self._text, self._tty = text, tty
+
+    def readline(self):
+        return self._text
+
+    def isatty(self):
+        return self._tty
+
+
+def _set_key(box, monkeypatch, value, key="DAYDREAM_JEV_API_KEY", tty=False):
+    monkeypatch.setattr(root.sys, "stdin", _Stdin(value + "\n", tty))
+    return root.main(["egress", "set", key])
+
+
+def test_egress_set_writes_the_key_root_only_and_never_logs_it(box, monkeypatch, capsys):
+    assert _set_key(box, monkeypatch, "fake-key-0123456789abcdef-not-real") == 0
+    text = box.egress_env.read_text()
+    assert text == "DAYDREAM_JEV_API_KEY=fake-key-0123456789abcdef-not-real\n"
+    assert oct(box.egress_env.stat().st_mode & 0o777) == "0o600"
+    assert ["try-restart", EGRESS] in _systemctl(box)
+    logged = " ".join(_logged(box)) + capsys.readouterr().out
+    assert "0123456789abcdef" not in logged and "the value is not logged" in logged
+    assert root.main(["egress", "show"]) == 0
+    out = capsys.readouterr().out
+    assert "DAYDREAM_JEV_API_KEY: set" in out and "0123456789" not in out
+
+
+def test_egress_unset_removes_the_key(box, monkeypatch, capsys):
+    _set_key(box, monkeypatch, "fake-key-0123456789abcdef-not-real")
+    assert root.main(["egress", "unset", "DAYDREAM_JEV_API_KEY"]) == 0
+    assert box.egress_env.read_text() == ""
+    root.main(["egress", "show"])
+    assert "DAYDREAM_JEV_API_KEY: not set" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("key,value,tty,rc", [
+    ("DAYDREAM_EVIL_KEY", "apikey_0123456789abcdef", False, 1),   # not a key it reads
+    ("DAYDREAM_JEV_API_KEY", "short", False, 1),                  # not a key's shape
+    ("DAYDREAM_JEV_API_KEY", "two words here", False, 1),
+    ("DAYDREAM_JEV_API_KEY", "apikey_$(reboot)", False, 1),
+    ("DAYDREAM_JEV_API_KEY", "apikey_0123456789abcdef", True, 2),  # never typed at a terminal
+])
+def test_egress_set_refuses_what_it_should(box, monkeypatch, capsys, key, value, tty, rc):
+    assert _set_key(box, monkeypatch, value, key=key, tty=tty) == rc
+    assert not box.egress_env.exists()
+    assert value not in capsys.readouterr().err or tty
+
+
+def test_egress_refuses_a_key_file_others_can_read(box, monkeypatch, capsys):
+    box.egress_env.write_text("DAYDREAM_JEV_API_KEY=x\n")
+    box.egress_env.chmod(0o644)
+    assert root.main(["egress", "show"]) == 1
+    assert "0600" in capsys.readouterr().err
+
+
+def test_doctor_says_when_the_gateways_code_is_not_the_releases(box, capsys):
+    assert root.main(["units", "--apply"]) == 0
+    box.egress_code.write_text(box.egress_code.read_text() + "\n# changed\n")
+    assert root.main(["doctor"]) == 1
+    assert "differs from release" in capsys.readouterr().out
+

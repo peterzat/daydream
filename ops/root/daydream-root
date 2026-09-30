@@ -38,7 +38,7 @@ import stat
 import subprocess
 import sys
 
-VERSION = "1"
+VERSION = "2"
 
 # ---- fixed places ------------------------------------------------------------------
 # Module constants, never arguments or environment (the tests point them at a
@@ -58,12 +58,25 @@ ENV_BIN = "/usr/bin/env"
 CLEAN_ENV = {"PATH": "/usr/sbin:/usr/bin:/sbin:/bin", "LANG": "C.UTF-8"}
 
 SERVICES = ("daydream-prod.service", "cloudflared-daydream.service", "daydream-backup.service",
-            "daydream-keepsakes.service", "daydream-offsite.service")
+            "daydream-keepsakes.service", "daydream-offsite.service", "daydream-egress.service")
 TIMERS = ("daydream-backup.timer", "daydream-keepsakes.timer", "daydream-offsite.timer")
 UNITS = SERVICES + TIMERS
 OPERATOR_UNITS = {"daydream-keepsakes.service": "keepsakes", "daydream-offsite.service": "offsite"}
 
 PROD_ENV = "/srv/daydream/etc/prod.env"
+# The egress gateway (docs/EXTERNAL.md): prod's one way out to the hosted
+# services the project declares. Its code is installed beside this helper by
+# the installer; its keys live in EGRESS_ENV (root 0600), which systemd reads
+# before the service starts, and which `egress set|unset|show` manages.
+EGRESS_UNIT = "daydream-egress.service"
+EGRESS_ENV_FILE = "/etc/daydream/egress.env"  # as the unit names it
+EGRESS_ENV = EGRESS_ENV_FILE                   # where this helper reads and writes it
+EGRESS_CODE = "/usr/local/lib/daydream/egress.py"
+EGRESS_EXEC = ("/usr/bin/python3", "-I", EGRESS_CODE, "--host", "127.0.0.1", "--port", "54323")
+# What the gateway may never reach, and what it may never see.
+EGRESS_DENY = ("10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "100.64.0.0/10",
+               "169.254.0.0/16", "fc00::/7", "fe80::/10")
+EGRESS_HIDDEN = ("/srv/daydream", "/etc/daydream", "/etc/cloudflared")
 RELEASE_ENV = "/srv/daydream/current/.release.env"
 TUNNEL_ENV = "/etc/cloudflared/daydream.env"
 CURRENT = "/srv/daydream/current"
@@ -439,6 +452,14 @@ def _plain_path_under(path: str, prefix: str) -> bool:
     return path.startswith(prefix) and len(path) > len(prefix) and _plain_abs_path(path)
 
 
+def _tokens_include(*needed: str):
+    """Every one of `needed` among the value's tokens (more is fine)."""
+    def check(v: str) -> str | None:
+        missing = [t for t in needed if t not in v.split()]
+        return None if not missing else "must include " + " ".join(missing)
+    return check
+
+
 def _exec_under(prefix: str):
     def check(v: str) -> str | None:
         words = v.split()
@@ -529,6 +550,43 @@ def unit_rules(name: str, operator: str, repo: str) -> dict:
             (S, "IPAddressDeny"): Rule(_is("any"), required=True),
             (S, "IPAddressAllow"): Rule(_tokens_within("localhost", "127.0.0.1", "::1"),
                                         required=True),
+            (S, "MemoryMax"): Rule(_size),
+            (S, "TasksMax"): Rule(_count),
+            (I, "WantedBy"): Rule(_is("multi-user.target")),
+        })
+        return rules
+    if name == EGRESS_UNIT:
+        # A throwaway user, no writes, the village hidden, the public internet
+        # only; no IPAddressAllow (it would win over the denies).
+        rules = _hardening(required=True)
+        rules.update({
+            (U, "Description"): Rule(_text),
+            (U, "After"): Rule(_is("network-online.target")),
+            (U, "Wants"): Rule(_is("network-online.target")),
+            (S, "Type"): Rule(_is("simple")),
+            (S, "DynamicUser"): Rule(_yes, required=True),
+            (S, "EnvironmentFile"): Rule(_is("-" + EGRESS_ENV_FILE)),
+            (S, "ExecStart"): Rule(_exec_exact(*EGRESS_EXEC), required=True),
+            (S, "Restart"): Rule(_restart),
+            (S, "RestartSec"): Rule(_duration),
+            (S, "TimeoutStopSec"): Rule(_duration),
+            (S, "NoNewPrivileges"): Rule(_yes, required=True),
+            (S, "CapabilityBoundingSet"): Rule(_empty, required=True),
+            (S, "ProtectSystem"): Rule(_is("strict"), required=True),
+            (S, "ProtectHome"): Rule(_yes, required=True),
+            (S, "PrivateTmp"): Rule(_yes, required=True),
+            (S, "PrivateDevices"): Rule(_yes, required=True),
+            (S, "ProtectClock"): Rule(_yes, required=True),
+            (S, "ProtectHostname"): Rule(_yes, required=True),
+            (S, "ProtectProc"): Rule(_is("invisible", "noaccess"), required=True),
+            (S, "RestrictRealtime"): Rule(_yes, required=True),
+            (S, "SystemCallArchitectures"): Rule(_is("native"), required=True),
+            (S, "SystemCallFilter"): Rule(_is("@system-service"), required=True),
+            (S, "SystemCallErrorNumber"): Rule(_is("EPERM")),
+            (S, "InaccessiblePaths"): Rule(_tokens_include(*EGRESS_HIDDEN), required=True),
+            (S, "RestrictAddressFamilies"): Rule(_tokens_within("AF_INET", "AF_INET6", "AF_UNIX"),
+                                                 required=True),
+            (S, "IPAddressDeny"): Rule(_tokens_include(*EGRESS_DENY), required=True),
             (S, "MemoryMax"): Rule(_size),
             (S, "TasksMax"): Rule(_count),
             (I, "WantedBy"): Rule(_is("multi-user.target")),
@@ -860,6 +918,9 @@ def cmd_doctor() -> int:
                     state = ("not installed" if installed.get(u) is None
                              else f"differs from release {release}")
                 say(f"units: {u}: {state}")
+    for line, good in _egress_doctor():
+        ok = ok and good
+        say(f"egress: {line}")
     try:
         fd = _open_dir(SYSTEMD_DIR)
     except HelperError as e:
@@ -879,6 +940,48 @@ def cmd_doctor() -> int:
             os.close(fd)
     say("doctor: all well" if ok else "doctor: something above needs attention")
     return 0 if ok else 1
+
+
+def _file_sha(path: str) -> str | None:
+    d, name = os.path.split(path)
+    try:
+        dfd = _open_dir(d)
+    except HelperError:
+        return None
+    try:
+        text, _ = _read_at(dfd, name, path, missing_ok=True)
+    except HelperError:
+        return None
+    finally:
+        os.close(dfd)
+    return None if text is None else _sha(text)
+
+
+def _egress_doctor() -> list[tuple[str, bool]]:
+    """(line, fine) about the egress gateway: its installed code against the
+    deployed release's copy, and which keys its env file sets (never a value)."""
+    out = []
+    installed = _file_sha(EGRESS_CODE)
+    try:
+        release = current_release()
+        shipped = _file_sha(f"{SRV}/releases/{release}/daydream/egress.py")
+    except HelperError:
+        release, shipped = None, None
+    if installed is None:
+        out.append((f"{EGRESS_CODE} is not installed: the operator runs sudo ops/install-prod.sh",
+                    False))
+    elif shipped is not None and installed != shipped:
+        out.append((f"{EGRESS_CODE} differs from release {release}'s daydream/egress.py: the "
+                    "operator runs sudo ops/install-prod.sh", False))
+    else:
+        out.append((f"{EGRESS_CODE} matches release {release}", True))
+    try:
+        pairs = parse_env(read_egress_env())
+    except HelperError as e:
+        return out + [(str(e), False)]
+    for key in EGRESS_KEYS:
+        out.append((f"{key}: {'set' if pairs.get(key) else 'not set'}", True))
+    return out
 
 
 def cmd_unit(action: str, unit: str) -> int:
@@ -1030,6 +1133,92 @@ def cmd_env_set(key: str, value: str) -> int:
     return 0
 
 
+# ---- the egress gateway's keys --------------------------------------------------------------
+
+
+def _secret(v: str) -> str | None:
+    if not 8 <= len(v) <= 512 or not v.isprintable() or any(c.isspace() for c in v):
+        return "must be one word of 8 to 512 printable characters"
+    if any(c in v for c in "\"'\\$`#"):
+        return "must not contain quotes, backslashes, $, backticks or #"
+    return None
+
+
+# The keys the gateway's routes read (daydream/egress.py ROUTES): a new
+# hosted service is a new route there, a new key here, and a reinstall.
+EGRESS_KEYS = {"DAYDREAM_JEV_API_KEY": _secret}
+
+
+def read_egress_env() -> str:
+    """The gateway's env file, root-owned 0600; "" when there is none yet."""
+    d, name = os.path.split(EGRESS_ENV)
+    dfd = _open_dir(d)
+    try:
+        _owned_safely(os.fstat(dfd), d)
+        text, st = _read_at(dfd, name, EGRESS_ENV, missing_ok=True)
+        if text is not None:
+            _owned_safely(st, EGRESS_ENV)
+            if stat.S_IMODE(st.st_mode) & 0o077:
+                raise HelperError(f"{EGRESS_ENV} must be readable by root alone (0600)")
+    finally:
+        os.close(dfd)
+    return text or ""
+
+
+def _write_egress_env(text: str) -> None:
+    _write_atomic(os.path.dirname(EGRESS_ENV), os.path.basename(EGRESS_ENV), text, 0o600, 0, 0)
+    r = _run([SYSTEMCTL, "try-restart", EGRESS_UNIT])
+    _log(f"egress: try-restart {EGRESS_UNIT}: exit {r.returncode}")
+
+
+def _egress_key(key: str) -> None:
+    if key not in EGRESS_KEYS:
+        raise HelperError(f"{key} is not a key the egress gateway reads; it reads "
+                          f"{', '.join(EGRESS_KEYS)}")
+
+
+def cmd_egress_show() -> int:
+    pairs = parse_env(read_egress_env())
+    for key in EGRESS_KEYS:
+        say(f"{key}: {'set' if pairs.get(key) else 'not set'}")
+    return 0
+
+
+def cmd_egress_set(key: str) -> int:
+    """The value comes on stdin, never the command line (ps, the journal)."""
+    _egress_key(key)
+    if sys.stdin is None or sys.stdin.isatty():
+        raise Usage(f"pipe the value on stdin: ... | daydream-root egress set {key}")
+    value = sys.stdin.readline().strip()
+    err = EGRESS_KEYS[key](value)
+    if err:
+        raise HelperError(f"{key}: {err} (the value is not shown)")
+    text = read_egress_env()
+    new = rewrite_env(text, key, value)
+    if new == text:
+        say(f"{key} is already that value; nothing written")
+        return 0
+    _write_egress_env(new)
+    _log(f"egress set {key} (the value is not logged)")
+    say(f"{key} set in {EGRESS_ENV}; the gateway restarted if it was running")
+    return 0
+
+
+def cmd_egress_unset(key: str) -> int:
+    _egress_key(key)
+    text = read_egress_env()
+    kept = [line for line in text.splitlines(keepends=True)
+            if not ((m := _ENV_LINE.match(line)) and m.group(1) == key)]
+    new = "".join(kept)
+    if new == text:
+        say(f"{key} is not set; nothing written")
+        return 0
+    _write_egress_env(new)
+    _log(f"egress unset {key}")
+    say(f"{key} removed from {EGRESS_ENV}; the gateway restarted if it was running")
+    return 0
+
+
 # ---- main ----------------------------------------------------------------------------------
 
 USAGE = f"""usage: daydream-root <verb>
@@ -1039,7 +1228,10 @@ USAGE = f"""usage: daydream-root <verb>
   start|stop|restart UNIT  {', '.join(SERVICES)}
   status UNIT              those, and {', '.join(TIMERS)}
   env show                 print {PROD_ENV}
-  env set KEY VALUE        {', '.join(ENV_KEYS)}"""
+  env set KEY VALUE        {', '.join(ENV_KEYS)}
+  egress show              which keys the egress gateway has (never a value)
+  egress set KEY           the value on stdin: {', '.join(EGRESS_KEYS)}
+  egress unset KEY"""
 
 
 def dispatch(args: list[str]) -> int:
@@ -1056,6 +1248,12 @@ def dispatch(args: list[str]) -> int:
         return cmd_env_show()
     if verb == "env" and len(rest) == 3 and rest[0] == "set":
         return cmd_env_set(rest[1], rest[2])
+    if verb == "egress" and rest == ["show"]:
+        return cmd_egress_show()
+    if verb == "egress" and len(rest) == 2 and rest[0] == "set":
+        return cmd_egress_set(rest[1])
+    if verb == "egress" and len(rest) == 2 and rest[0] == "unset":
+        return cmd_egress_unset(rest[1])
     raise Usage("not a verb this helper knows, or the wrong arguments for it")
 
 

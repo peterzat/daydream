@@ -1,0 +1,55 @@
+# daydream egress gateway: prod's one way out to the hosted services that
+# docs/EXTERNAL.md declares (daydream/egress.py, installed by
+# ops/install-prod.sh at /usr/local/lib/daydream/egress.py, so its code
+# changes only with the operator's password). The game service reaches
+# loopback only; this reaches the public internet only, holds the keys
+# (/etc/daydream/egress.env, root 0600, read by systemd before the service
+# starts; `bin/game prod root egress set`), and runs as a throwaway user that
+# sees none of /srv/daydream. Not enabled at boot: `bin/game prod wake` starts
+# it with the village. Validated by the root helper's rules for this unit.
+[Unit]
+Description=daydream egress gateway (declared hosted services, docs/EXTERNAL.md)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+DynamicUser=yes
+EnvironmentFile=-/etc/daydream/egress.env
+ExecStart=/usr/bin/python3 -I /usr/local/lib/daydream/egress.py --host 127.0.0.1 --port 54323
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=10
+
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectProc=invisible
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+# Nothing of the village: not its data, its release, its env, or the tunnel's.
+InaccessiblePaths=/srv/daydream /etc/daydream /etc/cloudflared
+# The public internet only: not the tailnet (100.64.0.0/10, and its IPv6 in
+# fc00::/7), the LAN, or link-local (where cloud metadata lives). Loopback
+# stays open: the game reaches this service there, and DNS is 127.0.0.53.
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+IPAddressDeny=10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 100.64.0.0/10 169.254.0.0/16 fc00::/7 fe80::/10
+MemoryMax=256M
+TasksMax=64
+
+[Install]
+WantedBy=multi-user.target
