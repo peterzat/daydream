@@ -53,7 +53,7 @@ APP_VERSION = "1.0.0"
 # beats, the mentions that make a subject known, the thread that names the
 # littlest armchair. 1.11: glimpses, playtest 2026-09-29b -- the highest
 # shelf says why its jar is out of reach, in every state of the arc.)
-WORLD_VERSION = "1.11"
+WORLD_VERSION = "1.12"
 
 
 @lru_cache(maxsize=1)
