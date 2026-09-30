@@ -199,6 +199,21 @@ authored answers and checks the 9B's improvisation.
   same adjudication the spike did. The dream digest's local-line list is
   unchanged: a topic Jev picked is an authored answer, not a local line.
 
+### Jev's first prod decision
+
+From the agent's read of the logs after the operator's first prod
+playthrough with Jev on (2026-09-30), kept verbatim ("your" is the
+operator):
+
+- There was exactly one call: your typed Talk line to Tace about fixing the clock. It took 278 ms and cost about
+  $0.00006.
+- The word match picked "the great clock". Jev answered "no topic fits", but only at 0.65 confidence. That's below
+  the 0.8 floor, so the word match's pick was used.
+- That was the right result, because Tace's clock answer names the missing escapement gear. The confidence floor did
+  its job.
+- No promise-judge calls happened, because nothing needed an improvised reply. So the judge side hasn't been tested
+  in prod yet.
+
 Next experiments, in the spike's order: beat advance (a wrong `advance`
 moves the story, and a calibrated reader could gate it), and asking the
 player which they meant when the two readers disagree on a command.
