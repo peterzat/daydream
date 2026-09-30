@@ -532,7 +532,16 @@ def judge_view(user: str) -> str:
     return "\n\n".join(keep + parts[-1:])
 
 
-async def judge(context: str, drafts: list[str]) -> list[bool] | None:
+async def judge(context: str, drafts: list[str], toon: str | None = None) -> list[bool] | None:
+    """Which drafts keep only the promises the engine keeps: the local
+    judge, with Jev beside it when a key is reachable (daydream/jev,
+    docs/EXTERNAL.md). `toon`: the player the drafts answer."""
+    from daydream.jev import runtime as jev
+
+    return await jev.judge(context, drafts, lambda: judge_local(context, drafts), toon=toon)
+
+
+async def judge_local(context: str, drafts: list[str]) -> list[bool] | None:
     """Which drafts keep only the promises the engine keeps, in one call
     over all of them. `context` is what the drafts were written from (the
     dialogue prompt's sections, the player's words last). None when the
@@ -749,7 +758,8 @@ async def talk(actor: objects.Object, npc: objects.Object, text: str, room_id: s
         known = known_words(npc, user)
         named = [c for c in candidates
                  if not unknown_names(c[0], known) and not commits(c[0])]
-        verdict = await judge(judge_view(user), [c[0] for c in named]) if named else []
+        verdict = await judge(judge_view(user), [c[0] for c in named],
+                              toon=actor.id) if named else []
         kept = named if verdict is None else [
             c for c, ok in zip(named, verdict, strict=True) if ok]
         if len(kept) < len(candidates):
@@ -781,7 +791,7 @@ async def talk(actor: objects.Object, npc: objects.Object, text: str, room_id: s
             # The beat went stale in flight, so the draft the guard skipped is
             # what the player reads: judged now, deflected if it fails.
             ok = not unknown_names(line, known_words(npc, user)) and not commits(line)
-            verdict = await judge(judge_view(user), [line]) if ok else [False]
+            verdict = await judge(judge_view(user), [line], toon=actor.id) if ok else [False]
             if verdict is not None and not verdict[0]:
                 _deflect(actor, npc, text, room_id)
                 return True

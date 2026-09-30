@@ -20,7 +20,10 @@ run without a prompt. One line per step as you go.
    operator the commits going out and the follow-ups it lists. If it names a
    MAJOR `WORLD_VERSION`, root-installed files, `root units --apply`, or a
    prod.env key, stop and ask before going on: publish does not cover those.
-   If it says nothing to ship, say so and stop.
+   If it says nothing to ship, say so and stop. `plan` also prints Jev's
+   funds line (`jev: funded | empty | not configured`, from a paid probe;
+   daydream/jev, the optional hosted decision model): carry it into the
+   report. Empty or unreachable never blocks a publish.
 3. **Push.** Do the separation check (CLAUDE.md "Before any push"): read the
    outgoing diff for anything that belongs to the instance, and confirm
    `instance/` is still ignored. Then the player-text scan: `bin/game prod
@@ -46,8 +49,8 @@ run without a prompt. One line per step as you go.
 7. **Record.** One line in `instance/NOTES.md` history (UTC time, the release,
    what went out in a phrase; no invite slugs, no friends' names).
 8. **Report.** The release that is live, the changes a player would notice
-   (one line each), what to try first, anything left for the operator, and
-   that the separation check was done.
+   (one line each), what to try first, anything left for the operator, the
+   Jev funds line, and that the separation check was done.
 
 ## Never
 

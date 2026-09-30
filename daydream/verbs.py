@@ -1808,8 +1808,18 @@ async def _handle_talk(actor, room_id, dobj, args, spec) -> None:
         # The word cap applies to plain topics only: a line of any length
         # naming an open beat selects it (codereview 2026-09-29: a beat's
         # text is its payoff, never grounding for an improvised hand-over).
-        if topic is not None and (topic["kind"] != "topic"
-                                  or len((args or "").split()) <= TALK_SELECT_MAX_WORDS):
+        short = len((args or "").split()) <= TALK_SELECT_MAX_WORDS
+        grounded = topic  # the word match: words for an improvised reply
+        if (args or "").strip() and (topic is None or topic["kind"] == "topic"):
+            # Which plain topic answers the line, by meaning: the word match,
+            # or Jev beside it (daydream/jev; off unless configured).
+            from daydream.jev import runtime as jev
+
+            local_pick = topic if short else None
+            chosen = await jev.topic(actor, dobj, args, local_pick)
+            if chosen is not local_pick:
+                topic, short = chosen, True
+        if topic is not None and (topic["kind"] != "topic" or short):
             story.ask(actor, dobj, topic, room_id)
             story.remember_exchange(actor.world_id, dobj.id, actor.id, args or "",
                                     f"(answered about {topic['label']})")
@@ -1819,7 +1829,9 @@ async def _handle_talk(actor, room_id, dobj, args, spec) -> None:
         # about two friends drew the clock's canned line, five times over an
         # evening): the model answers it, with the topic's authored words to
         # weave in where they fit.
-        grounding = story.topic_text(dobj, topic) if topic is not None else None
+        # A topic Jev ruled out (a request that names one) still gives the
+        # improvised reply its words; only its canned answer is not used.
+        grounding = story.topic_text(dobj, grounded) if grounded is not None else None
         return await dialogue.talk(actor, dobj, args, room_id,
                                    grounding=[grounding] if grounding else None)
     skill_name = _bound_dialogue_skill(dobj)

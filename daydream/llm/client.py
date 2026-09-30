@@ -16,9 +16,13 @@ import asyncio
 import contextvars
 import json
 import logging
+import os
 import time
 
-import litellm
+# litellm loads a .env it finds above its own install unless it runs in
+# production mode; the environment is the caller's to set (bin/game, prod.env).
+os.environ.setdefault("LITELLM_MODE", "PRODUCTION")
+import litellm  # noqa: E402
 
 from daydream import config
 from daydream.gpu import arbiter

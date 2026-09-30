@@ -1,8 +1,10 @@
-"""No cloud LLM key exists anywhere (SPEC 2026-09-26 criterion 21; the
-CLAUDE.md generation policy): no tracked file carries a key-shaped secret or
-assigns a value to a cloud-LLM key variable, and the runtime config never
-reads one. The runtime calls only the local engines; design-time authoring
-is the agent in a Claude Code session."""
+"""No hosted-service key is in the repo (SPEC 2026-09-26 criterion 21; the
+CLAUDE.md generation policy and its controlled exceptions, docs/EXTERNAL.md):
+no tracked file carries a key-shaped secret or assigns a value to a key
+variable, and the runtime's language model is the local engine. A declared
+exception's key lives in the gitignored .env (dev) or the egress gateway's
+root-only file (prod); design-time authoring is the agent in a Claude Code
+session."""
 
 import re
 import subprocess
@@ -14,8 +16,11 @@ pytestmark = pytest.mark.tier_short
 
 ROOT = Path(__file__).resolve().parent.parent
 KEY_SHAPES = re.compile(r"sk-ant-[A-Za-z0-9_-]{8,}|sk-proj-[A-Za-z0-9_-]{8,}|"
-                        r"sk-[A-Za-z0-9]{32,}")
-ASSIGN = re.compile(r"^\s*(export\s+)?(ANTHROPIC|OPENAI)_API_KEY\s*=\s*\S+", re.M)
+                        r"sk-[A-Za-z0-9]{32,}|"
+                        # a TypeSafe (Jev) key: it lives in the gitignored .env
+                        r"apikey_[0-9a-f]{16,}_[0-9a-f]{16,}")
+ASSIGN = re.compile(r"^\s*(export\s+)?(ANTHROPIC|OPENAI|DAYDREAM_JEV|TYPESAFE)_API_KEY"
+                    r"\s*=\s*\S+", re.M)
 
 
 def _tracked() -> list[Path]:

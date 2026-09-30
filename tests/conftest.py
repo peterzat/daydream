@@ -73,6 +73,17 @@ os.environ["DAYDREAM_JOURNAL_ENABLED"] = "0"
 # mocked dialogue counts calls, so it is off here and its tests opt in via
 # monkeypatch.setenv("DAYDREAM_PROMISE_GUARD", "1").
 os.environ["DAYDREAM_PROMISE_GUARD"] = "0"
+# Jev (the optional hosted decision model, daydream/jev; docs/EXTERNAL.md) is
+# on exactly when a key is reachable, so the suite runs keyless and without a
+# gateway: Jev is off and no test reaches the network. Tests of the Jev
+# surfaces set a fake key and a mock transport (daydream.jev.client.transport).
+# litellm reads the project's .env when imported unless told it runs in
+# production (daydream/llm/client.py sets the same default), which put the
+# key back after this loop took it out.
+os.environ["LITELLM_MODE"] = "PRODUCTION"
+for _k in [k for k in os.environ if k.startswith("DAYDREAM_JEV") or k in (
+        "TYPESAFE_API_KEY", "DAYDREAM_EGRESS_URL")]:
+    del os.environ[_k]
 os.environ["DAYDREAM_VILLAGE_ENABLED"] = "0"
 os.environ["DAYDREAM_DIRECTOR_LLM"] = "0"
 
@@ -127,6 +138,32 @@ def _no_real_llm(request, monkeypatch):
     if request.node.get_closest_marker("requires_vllm"):
         return
     monkeypatch.setenv("DAYDREAM_LLM_BASE_URL", "http://127.0.0.1:9/v1")
+
+
+@pytest.fixture(autouse=True)
+def _no_jev(monkeypatch):
+    """Jev is off unless a test turns it on, and nothing reaches its network:
+    the key and gateway settings are cleared for every test (whatever put
+    them back), and the client's transport is one that records and fails the
+    test at teardown. Tests of the Jev surfaces set their own transport."""
+    from daydream.jev import client, settings
+
+    for k in [k for k in os.environ if k.startswith("DAYDREAM_JEV") or k in (
+            "TYPESAFE_API_KEY", "DAYDREAM_EGRESS_URL")]:
+        monkeypatch.delenv(k)
+    reached = []
+
+    def refuse(request):
+        reached.append(str(request.url))
+        return httpx.Response(503, json={"error": "the suite never reaches Jev"})
+
+    monkeypatch.setattr(client, "transport", httpx.MockTransport(refuse))
+    settings.forget()
+    client.reset()
+    yield
+    settings.forget()
+    client.reset()
+    assert not reached, f"a test reached Jev's network: {reached}"
 
 
 @pytest.fixture(autouse=True)

@@ -14,6 +14,7 @@
 # hook file exists without the marker, this script refuses to overwrite
 # it; remove the file manually first if you want daydream's version.
 #
+# v3 (2026-09-30, the Jev spike): pre-push prints Jev's funds line first.
 # v2 (2026-09-30): pre-commit runs ruff first, as CI does, after a lint
 # failure reached CI through a commit whose tests had passed.
 
@@ -21,7 +22,7 @@ set -euo pipefail
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 HOOKS_DIR="$PROJECT_ROOT/.git/hooks"
-MARKER="# DAYDREAM-INSTALLED-HOOK v2"
+MARKER="# DAYDREAM-INSTALLED-HOOK v3"
 MARKER_ANY="# DAYDREAM-INSTALLED-HOOK v"
 
 if [[ ! -d "$PROJECT_ROOT/.git" ]]; then
@@ -94,7 +95,7 @@ write_pre_commit() {
     should_write "$p" || return 0
     cat > "$p" <<'EOF'
 #!/usr/bin/env bash
-# DAYDREAM-INSTALLED-HOOK v2
+# DAYDREAM-INSTALLED-HOOK v3
 # Runs `ruff check .` (as CI does first) and then `bin/game test short`
 # before each commit. Bypass with --no-verify if you must. Manage via
 # bin/install-hooks [--uninstall].
@@ -114,17 +115,20 @@ write_pre_push() {
     should_write "$p" || return 0
     cat > "$p" <<'EOF'
 #!/usr/bin/env bash
-# DAYDREAM-INSTALLED-HOOK v2
+# DAYDREAM-INSTALLED-HOOK v3
 # Runs `bin/game test medium` before each push. Bypass with --no-verify if
 # you must. Manage via bin/install-hooks [--uninstall].
 # Reads stdin (git supplies <local-ref local-sha remote-ref remote-sha>
 # lines) but does not consume it; the test suite is target-agnostic.
 set -e
 cd "$(git rev-parse --show-toplevel)"
+# Jev (daydream/jev, optional): funded, empty or not configured, from a
+# paid probe; never blocks the push.
+timeout 20 bin/game jev status 2>/dev/null || true
 exec bin/game test medium
 EOF
     chmod +x "$p"
-    echo "    pre-push: installed -> bin/game test medium"
+    echo "    pre-push: installed -> bin/game jev status; bin/game test medium"
 }
 
 remove_hook() {

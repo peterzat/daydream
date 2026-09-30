@@ -14,6 +14,13 @@ def env() -> str:
     return os.environ.get("DAYDREAM_ENV", "dev")
 
 
+# The egress gateway (daydream/egress.py): prod's one way out to the hosted
+# services docs/EXTERNAL.md declares, on a fixed loopback port. The game's
+# sandbox reaches loopback only; the gateway holds the keys.
+EGRESS_PORT = 54323
+EGRESS_URL = f"http://127.0.0.1:{EGRESS_PORT}"
+
+
 def target() -> str:
     """Operational test target for the current run. One of:
 

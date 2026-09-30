@@ -106,8 +106,8 @@ def cmd_account(args) -> int:
 def _delete_account(key: str, *, confirmed: bool) -> int:
     """Remove a person for good: their dreamers in the live world (carried
     things left in the room, as `world delete-toon` does), everything those
-    dreamers typed (the private input log) and the lines addressed only to
-    them, then the account, its sessions, invites and throttle counters. What
+    dreamers typed (the private input log), the lines addressed only to
+    them and the Jev decisions about their words, then the account, its sessions, invites and throttle counters. What
     stays: the shared event history, and each dreamer's portrait in the art
     keep with its provenance (retired, not erased: docs/DATA-LIFECYCLE.md).
     Without --yes it only says what would go."""
@@ -126,13 +126,17 @@ def _delete_account(key: str, *, confirmed: bool) -> int:
     if not confirmed:
         print("nothing deleted; re-run with --yes to delete it for good", file=sys.stderr)
         return 2
+    from daydream.jev import ledger as jev_ledger
+
     for t in dreamers:
         typed = inputs.forget_toon(t.id)
         toons.delete_slot(t.slot)
         private = events.forget_private(t.id)
         forgot = _forget_dreamer_state(t.world_id, t.id)
+        # What Jev decided about their words (daydream/jev/ledger.py).
+        judged = jev_ledger.purge_toons([t.id])
         print(f"deleted dreamer {t.name} ({t.id}), {typed} input line(s), {private} private "
-              f"line(s) and {forgot} story record(s)")
+              f"line(s), {forgot} story record(s) and {judged} Jev decision(s)")
     accounts.delete_account(row["id"])
     print(f"deleted account {row['username']} ({row['id']})")
     return 0

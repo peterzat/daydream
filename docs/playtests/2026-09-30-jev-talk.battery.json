@@ -1,0 +1,153 @@
+{
+  "comment": "A talk battery for the Jev spike (docs/JEV-SPIKE.md): the promise probes (tests/model_eval/promises.json) to Tace, Umber and Bell, and the held-out topic lines (tests/model_eval/topics_heldout.json) to each resident, spoken through the real talk path, so the shadow ledger pairs the judge and topic decisions on live traffic.",
+  "groups": [
+    {
+      "name": "tace",
+      "moves": [
+        "up"
+      ],
+      "lines": [
+        "talk to Tace: is the big tower clock ever going to run again?",
+        "talk to Tace: whose ladder did you learn your trade under? who trained you?",
+        "talk to Tace: what's the little stopped clock you keep apart from the others?",
+        "talk to Tace: what happened on the night of the big freeze?",
+        "talk to Tace: do you know the old fellow with the broom?",
+        "talk to Tace: which way to the top of the tower?",
+        "talk to Tace: please oil my squeaky pocket watch",
+        "talk to Tace: I love how quiet it is up here",
+        "talk to Tace: may I hold one of the resting clocks for a moment?",
+        "talk to Tace: fix my watch",
+        "talk to Tace: follow me",
+        "talk to Tace: come with me",
+        "talk to Tace: can you give me the key",
+        "talk to Tace: will you walk me down to the well?",
+        "talk to Tace: could you mend my broken compass for me",
+        "talk to Tace: meet me at the bridge tonight",
+        "talk to Tace: wait right here until I come back",
+        "talk to Tace: please carry this letter to my sister",
+        "talk to Tace: show me the way up the hill",
+        "talk to Tace: lend me your ladder for a bit",
+        "talk to Tace: will you teach me to wind the clock tomorrow?",
+        "talk to Tace: can you keep this pebble safe for me?",
+        "talk to Tace: let's go to the garden together",
+        "talk to Tace: who took the gear out of the clock?",
+        "talk to Tace: what happened to the old baker?",
+        "talk to Tace: where does the slow river end?",
+        "talk to Tace: what's on the other side of the hill?"
+      ]
+    },
+    {
+      "name": "umber",
+      "moves": [
+        "down"
+      ],
+      "lines": [
+        "talk to Umber: why keep all these paper hours in glass?",
+        "talk to Umber: is there tea going?",
+        "talk to Umber: who dreamed this whole village up?",
+        "talk to Umber: what do the tags on the jars say?",
+        "talk to Umber: what's that jar sitting all alone at the very top?",
+        "talk to Umber: how do hours end up lost in the first place?",
+        "talk to Umber: could you unlock that cabinet for me?",
+        "talk to Umber: it smells of old paper down here",
+        "talk to Umber: fix my watch",
+        "talk to Umber: follow me",
+        "talk to Umber: come with me",
+        "talk to Umber: can you give me the key",
+        "talk to Umber: will you walk me down to the well?",
+        "talk to Umber: could you mend my broken compass for me",
+        "talk to Umber: meet me at the bridge tonight",
+        "talk to Umber: wait right here until I come back",
+        "talk to Umber: please carry this letter to my sister",
+        "talk to Umber: show me the way up the hill",
+        "talk to Umber: lend me your ladder for a bit",
+        "talk to Umber: will you teach me to wind the clock tomorrow?",
+        "talk to Umber: can you keep this pebble safe for me?",
+        "talk to Umber: let's go to the garden together",
+        "talk to Umber: who took the gear out of the clock?",
+        "talk to Umber: what happened to the old baker?",
+        "talk to Umber: where does the slow river end?",
+        "talk to Umber: what's on the other side of the hill?"
+      ]
+    },
+    {
+      "name": "bell",
+      "moves": [
+        "east"
+      ],
+      "lines": [
+        "talk to Bell: do you ever get up early enough to see the morning?",
+        "talk to Bell: do all the lamps have names?",
+        "talk to Bell: who looks after the guest hours at the Waiting House?",
+        "talk to Bell: what are the little fluttering things around the lights?",
+        "talk to Bell: tell me about the clockmaker up in the loft",
+        "talk to Bell: hand me your pole, I want to try",
+        "talk to Bell: good night, Bell",
+        "talk to Bell: fix my watch",
+        "talk to Bell: follow me",
+        "talk to Bell: come with me",
+        "talk to Bell: can you give me the key",
+        "talk to Bell: will you walk me down to the well?",
+        "talk to Bell: could you mend my broken compass for me",
+        "talk to Bell: meet me at the bridge tonight",
+        "talk to Bell: wait right here until I come back",
+        "talk to Bell: please carry this letter to my sister",
+        "talk to Bell: show me the way up the hill",
+        "talk to Bell: lend me your ladder for a bit",
+        "talk to Bell: will you teach me to wind the clock tomorrow?",
+        "talk to Bell: can you keep this pebble safe for me?",
+        "talk to Bell: let's go to the garden together",
+        "talk to Bell: who took the gear out of the clock?",
+        "talk to Bell: what happened to the old baker?",
+        "talk to Bell: where does the slow river end?",
+        "talk to Bell: what's on the other side of the hill?"
+      ]
+    },
+    {
+      "name": "mott",
+      "moves": [
+        "east",
+        "north"
+      ],
+      "lines": [
+        "talk to Mott: do you keep anything special in that tin of yours?",
+        "talk to Mott: what's this dusty old room with all the shavings?",
+        "talk to Mott: did the missing clock part ever turn up?",
+        "talk to Mott: sweep that corner for me, would you?",
+        "talk to Mott: you don't talk much, do you"
+      ]
+    },
+    {
+      "name": "fen",
+      "moves": [
+        "east",
+        "east",
+        "north"
+      ],
+      "lines": [
+        "talk to Fen: what are all the unsent notes waiting for?",
+        "talk to Fen: what are the little wooden cubbies for?",
+        "talk to Fen: does the keeper of the hour cellar ever come by?",
+        "talk to Fen: can you find me a stamp?",
+        "talk to Fen: what a cozy little office"
+      ]
+    },
+    {
+      "name": "sorrel",
+      "moves": [
+        "east",
+        "east",
+        "south",
+        "south"
+      ],
+      "lines": [
+        "talk to Sorrel: will it rain tonight, do you think?",
+        "talk to Sorrel: what falls into your net at dusk?",
+        "talk to Sorrel: what's across the bridge over the river?",
+        "talk to Sorrel: did you know the one who built the great clock?",
+        "talk to Sorrel: teach me to swing the net",
+        "talk to Sorrel: the grass is so soft out here"
+      ]
+    }
+  ]
+}

@@ -572,6 +572,9 @@ cmd_status() {
     if [[ -x "$VENV_PY" ]]; then
         timeout 20 "$VENV_PY" -m daydream.ci --line 2>/dev/null || true
         _guard_status_line
+        # Jev (daydream/jev), the optional hosted decision model: the last
+        # known funds state, with no call (docs/EXTERNAL.md).
+        timeout 10 "$VENV_PY" -m daydream.jev.cli status --no-probe 2>/dev/null || true
     fi
 }
 
@@ -1006,6 +1009,7 @@ case "${1:-}" in
     text-scan)     shift; _require_venv; exec "$VENV_PY" -m daydream.textscan "$@" ;;
     ci)            shift; _require_venv; exec "$VENV_PY" -m daydream.ci "$@" ;;
     guard)         shift; cmd_guard "$@" ;;
-    "")            echo "usage: bin/game {up|up-all|deploy|down|status|logs|image-test|comfyui-up|comfyui-down|vllm-up|vllm-down|world|dream|play|prebake|account|invite|prod|edge|test|voice-samples|drift-samples|review|model-eval|text-scan|ci|guard}" >&2; exit 2 ;;
-    *)             echo "usage: bin/game {up|up-all|deploy|down|status|logs|image-test|comfyui-up|comfyui-down|vllm-up|vllm-down|world|dream|play|prebake|account|invite|prod|edge|test|voice-samples|drift-samples|review|model-eval|text-scan|ci|guard} (got: $1)" >&2; exit 2 ;;
+    jev)           shift; _require_venv; exec "$VENV_PY" -m daydream.jev.cli "$@" ;;
+    "")            echo "usage: bin/game {up|up-all|deploy|down|status|logs|image-test|comfyui-up|comfyui-down|vllm-up|vllm-down|world|dream|play|prebake|account|invite|prod|edge|test|voice-samples|drift-samples|review|model-eval|text-scan|ci|guard|jev}" >&2; exit 2 ;;
+    *)             echo "usage: bin/game {up|up-all|deploy|down|status|logs|image-test|comfyui-up|comfyui-down|vllm-up|vllm-down|world|dream|play|prebake|account|invite|prod|edge|test|voice-samples|drift-samples|review|model-eval|text-scan|ci|guard|jev} (got: $1)" >&2; exit 2 ;;
 esac
