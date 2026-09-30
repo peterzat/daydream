@@ -426,7 +426,8 @@ def validate_envelope2(env: dict) -> list[str]:
             errors.extend(glimpse.validate_glimpsed(
                 th["properties"]["glimpsed"], f"{where}.properties.glimpsed",
                 known_flags=known_flags, known_ids=all_ids, known_story=ks,
-                known_verbs=known_verbs | {"look"}))
+                known_verbs=known_verbs | {"look"},
+                host_names=[th.get("name"), *(th.get("aliases") or [])]))
         if "verbs" in th and not (
             isinstance(th["verbs"], list)
             and all(isinstance(v, str) for v in th["verbs"])

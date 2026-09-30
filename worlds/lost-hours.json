@@ -14920,16 +14920,29 @@
         "shelf of clocks",
         "small clocks",
         "resting clock",
-        "painted clock",
-        "forget-me-not clock",
-        "clock painted with forget-me-nots",
-        "forget-me-nots",
         "clocks on the shelves",
         "clocks on the shelf",
         "shelves of clocks"
       ],
       "properties": {
-        "windable": true
+        "windable": true,
+        "glimpsed": [
+          {
+            "names": [
+              "forget-me-nots",
+              "forget-me-not clock",
+              "painted clock",
+              "flowers",
+              "painted flowers",
+              "blue flowers"
+            ],
+            "part": true,
+            "text": "One of the resting clocks is no bigger than a teacup, with forget-me-nots painted all the way round its face, their blue worn soft where many thumbs have turned it. It keeps the quietest tick on the shelf.",
+            "verbs": {
+              "take": "You lift the forget-me-not clock an inch, and its tick skips, the way a sleeper stirs. You set it back among the others to rest."
+            }
+          }
+        ]
       },
       "rules": [
         {

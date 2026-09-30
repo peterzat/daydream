@@ -98,7 +98,8 @@ class Parse:
     error: str | None = None
     # The name the player typed for a target that could not be grounded to an
     # in-scope id ("take the moon"). Carried so the executor can say "you don't
-    # see the <name> here", distinct from the no-target "Take what?".
+    # see the <name> here", distinct from the no-target "Take what?". Beside a
+    # dobj_id, the name that grounded it, for a refusal to say back.
     dobj_name: str | None = None
     # A target the parser filled itself (the only one that fits): named in
     # parentheses before the command runs (spec 2026-09-29 criterion 12).
@@ -661,8 +662,9 @@ def _fast_path(actor_id: str, text: str, room: rooms.Room | None):
         if iobj_part is not None:
             return None
         # Let world/room/world rules still see it? No rule can apply if the
-        # verb doesn't offer on the object; refuse like the executor would.
-        return [Parse(verb, dobj_id=dobj.id)]
+        # verb doesn't offer on the object; refuse like the executor would,
+        # by the name the player used ("take the letters" at the pigeonholes).
+        return [Parse(verb, dobj_id=dobj.id, dobj_name=name)]
     parses = [Parse(verb, dobj_id=dobj.id, iobj_id=iobj_id,
                     args=f"for {for_whom}" if for_whom else "")]
     if iobj_id is None:

@@ -20,6 +20,16 @@ player had just seen it. The answer now comes in the reflexes-not-voice order
    authored rewrite. A model outage or a line that fails validation reads a
    plain line instead.
 3. Named nowhere here: None, and the caller says "You don't see the X here."
+
+A glimpse on a thing may be a **part** of it (`"part": true`; playtest
+2026-09-30): a detail its look names, like the one clock painted with
+forget-me-nots on a shelf of resting clocks. A part answers a look with its
+own words (`text`, or `verbs.examine`), and any verb it names in `verbs`;
+every other verb is done to the thing itself, as if the player had named it,
+so winding the painted clock keeps the shelf's custom. A detail folded into
+its thing as an alias answered with the thing's own look, the sentence the
+player had just read, and a refusal naming the thing instead of the detail:
+a name that resolves is not yet a name that answers.
 """
 
 from __future__ import annotations
@@ -52,6 +62,11 @@ def _norm(text: str) -> str:
     while prev != s:
         prev, s = s, _ARTICLE.sub("", s)
     return s
+
+
+def bare_name(text: str) -> str:
+    """A typed name without its article or edge punctuation: "the forget-me-nots"."""
+    return _norm(text)
 
 
 def _singular(word: str) -> str:
@@ -167,12 +182,28 @@ def _way_line(actor: objects.Object, noun: str, direction: str) -> str:
     return f"The {noun} {be} the way {direction}{place}."
 
 
-def authored(actor: objects.Object, room_id: str, name: str, verb: str) -> str | None:
-    """The authored reason for `verb` on `name`, from a glimpse whose
-    conditions hold for this actor, or the world's scenery here; the longest
-    matching name wins."""
+def _entry_line(entry: dict, verb: str) -> str | None:
+    """An entry's line for `verb`: its own, a look's for any look, else its
+    `text`. A part answers only a look and the verbs it names; its thing
+    answers the rest (None)."""
+    per_verb = entry.get("verbs") if isinstance(entry.get("verbs"), dict) else {}
+    text = per_verb.get(verb)
+    if not isinstance(text, str) and verb in LOOK_VERBS:
+        text = next((per_verb[v] for v in ("examine", "look", "read")
+                     if isinstance(per_verb.get(v), str)), None)
+    if not isinstance(text, str) and (verb in LOOK_VERBS or not entry.get("part")):
+        text = entry.get("text")
+    return text.strip() if isinstance(text, str) and text.strip() else None
+
+
+def _best(actor: objects.Object, room_id: str, name: str,
+          verb: str) -> tuple[objects.Object, dict, str | None] | None:
+    """(host, entry, its line for `verb`) for the glimpse or scenery that
+    names `name` here, the longest matching name winning among the entries
+    whose conditions hold for this actor and that answer this verb, a part
+    answering by handing the verb to its thing (line None)."""
     typed = _norm(name)
-    best: tuple[int, str] | None = None  # (length of the matching name, line)
+    best: tuple[int, objects.Object, dict, str | None] | None = None
     room = objects.get(room_id)
     sources = [(host, host.properties.get("glimpsed")) for host in _hosts(actor, room_id)]
     sources.append((room, _scenery(actor, room_id)))
@@ -189,16 +220,37 @@ def authored(actor: objects.Object, room_id: str, name: str, verb: str) -> str |
             ctx = rules._build_ctx(actor, None, None, room_id, host, f"glimpse:{host.id}")
             if not rules.conditions_hold(entry.get("if"), ctx):
                 continue
-            per_verb = entry.get("verbs") if isinstance(entry.get("verbs"), dict) else {}
-            text = per_verb.get(verb)
-            if not isinstance(text, str) and verb in LOOK_VERBS:
-                text = next((per_verb[v] for v in ("examine", "look", "read")
-                             if isinstance(per_verb.get(v), str)), None)
-            if not isinstance(text, str):
-                text = entry.get("text")
-            if isinstance(text, str) and text.strip():
-                best = (hit, text.strip())
-    return best[1] if best else None
+            line = _entry_line(entry, verb)
+            if line is not None or (entry.get("part") and host.kind == "thing"):
+                best = (hit, host, entry, line)
+    return best[1:] if best else None
+
+
+def authored(actor: objects.Object, room_id: str, name: str, verb: str) -> str | None:
+    """The authored reason for `verb` on `name`, from a glimpse whose
+    conditions hold for this actor, or the world's scenery here; the longest
+    matching name wins. None for a part's verb that its thing answers
+    (`part_host`)."""
+    got = _best(actor, room_id, name, verb)
+    return got[2] if got else None
+
+
+def part_host(actor: objects.Object, room_id: str, name: str,
+              verb: str) -> objects.Object | None:
+    """The thing here that does `verb` when the player names one of its
+    parts: a part answers a look and the verbs it names, and its thing
+    answers the rest, as if the player had named it."""
+    got = _best(actor, room_id, name, verb)
+    return got[0] if got and got[2] is None else None
+
+
+def names_parts(obj: objects.Object) -> list[str]:
+    """The names of a thing's parts, for the page to link where prose shows
+    them (every entry, whatever its conditions: a part is always there)."""
+    entries = obj.properties.get("glimpsed") if obj.kind == "thing" else None
+    return [n for e in entries if isinstance(e, dict) and e.get("part")
+            for n in e.get("names") or [] if isinstance(n, str) and n.strip()] \
+        if isinstance(entries, list) else []
 
 
 def _prose(host: objects.Object) -> str:
@@ -413,8 +465,12 @@ async def answer(actor: objects.Object, room_id: str, name: str, verb: str) -> d
 
 def validate_glimpsed(entries, where: str, *, known_flags: set[str], known_ids: set[str],
                       known_story: dict | None = None,
-                      known_verbs: set[str] | None = None) -> list[str]:
-    """Named errors for an authored `properties.glimpsed` list (the loader)."""
+                      known_verbs: set[str] | None = None,
+                      host_names: list | None = None) -> list[str]:
+    """Named errors for an authored `properties.glimpsed` list (the loader).
+    `host_names`: the name and aliases of the thing that holds the list (a
+    part belongs to a thing, and a glimpse named like its own thing never
+    answers: the thing is grounded first). None for a room or the scenery."""
     if not isinstance(entries, list):
         return [f"{where} must be a list"]
     errors: list[str] = []
@@ -423,7 +479,7 @@ def validate_glimpsed(entries, where: str, *, known_flags: set[str], known_ids: 
         if not isinstance(entry, dict):
             errors.append(f"{ew} must be an object")
             continue
-        unknown = set(entry) - {"names", "text", "verbs", "if"}
+        unknown = set(entry) - {"names", "text", "verbs", "if", "part"}
         if unknown:
             errors.append(f"{ew}: unknown key(s) {sorted(unknown)}")
         names = entry.get("names")
@@ -444,6 +500,15 @@ def validate_glimpsed(entries, where: str, *, known_flags: set[str], known_ids: 
         elif isinstance(verbs, dict) and known_verbs is not None:
             errors.extend(f"{ew}.verbs.{k}: unknown verb (it would never answer)"
                           for k in verbs if k not in known_verbs)
+        if "part" in entry and not isinstance(entry["part"], bool):
+            errors.append(f"{ew}.part must be true or false")
+        elif entry.get("part") and host_names is None:
+            errors.append(f"{ew}.part: only a thing has parts")
+        if host_names is not None and isinstance(names, list):
+            own = {_norm(h) for h in host_names if isinstance(h, str)}
+            errors.extend(f"{ew}.names: {n!r} is also its thing's name or alias, so the "
+                          f"thing answers it first; drop one"
+                          for n in names if isinstance(n, str) and _norm(n) in own)
         if "if" in entry:
             errors.extend(rules.validate_condition_list(
                 entry["if"], f"{ew}.if", known_flags=known_flags, known_ids=known_ids,

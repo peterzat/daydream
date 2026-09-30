@@ -114,6 +114,23 @@ sentence (tagged local, listed in the dream digest), so author the things the
 prose makes inviting: what glints, is sealed, hung high, someone's own.
 The loader validates the list; walkthroughs can assert the lines.
 
+A **part** is a glimpse on a thing that names a piece of it, marked
+`"part": true`: the one clock painted with forget-me-nots on a shelf of
+resting clocks, the letters in a pigeonhole. Its `text` is what a look at it
+shows, in words of its own (never the thing's look again); `verbs` answers
+the verbs that treat it apart from its thing ("take": why it stays); every
+other verb is done to the thing, as if the player had named the thing
+("wind the painted clock" winds a resting clock, old custom and all). Never
+fold a detail into its thing as an alias: then a look at it reads the
+thing's whole look, the sentence the player just read, and a refusal names
+the thing instead of what they asked for (playtest 2026-09-30). The detail
+lint (`tests/test_prose_nouns.py`) fails on an alias that its thing's own
+look names under another head noun, until it is a part or is reviewed in
+`tests/baselines/whole_aliases.json` as a name for the whole thing (the
+clock case's door, which is how the case opens). A part's names may not
+repeat its thing's name or aliases (the loader refuses: the thing would
+answer first).
+
 A free line to a resident that names a topic gets the topic's authored
 answer only when the line is short (nine words or fewer); a longer line is
 the player's own question, answered by the model with the topic's authored

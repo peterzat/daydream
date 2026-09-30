@@ -439,7 +439,8 @@ async def execute_command(
     `dobj_name` is the name the player typed for a target the parser could NOT
     ground to an in-scope id ("take the moon"); it lets a missing-but-named
     target read "you don't see the moon here", distinct from the no-target
-    "Take what?". The click path never sets it (clicks always carry an id)."""
+    "Take what?". Beside a `dobj_id` it is the name that grounded it, which a
+    refusal says back. The click path never sets it (clicks carry an id)."""
     actor = objects.get(actor_id)
     if actor is None:
         return False
@@ -488,6 +489,23 @@ async def _execute_resolved(
     criterion 5: a chain stops at its first refusal)."""
     actor_id = actor.id
 
+    if spec.needs_dobj and not dobj_id and dobj_name:
+        # A part of a thing here ("wind the painted clock" on a shelf of
+        # clocks), for a verb the part leaves to its thing: the thing does it,
+        # as if named; a verb the thing doesn't take is refused by the name
+        # the player used (glimpse.py; playtest 2026-09-30).
+        from daydream import glimpse
+
+        host = glimpse.part_host(actor, room_id, dobj_name, spec.name)
+        if host is not None:
+            if spec.name not in objects.verbs_for(host) and not (
+                    spec.universal and (not spec.valid_dobj_kinds
+                                        or host.kind in spec.valid_dobj_kinds)):
+                _narrate(room_id, f"You can't {spec.name} the {glimpse.bare_name(dobj_name)}.",
+                         recipient_id=actor_id)
+                return False
+            dobj_id = host.id
+
     dobj = None
     if spec.needs_dobj:
         # Validation refusals are actor-private (migration 014): your typo
@@ -528,8 +546,13 @@ async def _execute_resolved(
         if spec.name not in objects.verbs_for(dobj) and not (
                 spec.universal and (not spec.valid_dobj_kinds
                                     or dobj.kind in spec.valid_dobj_kinds)):
-            _narrate(room_id, f"You can't {spec.name} {_the(dobj)}.",
-                     recipient_id=actor_id)
+            # By the name the player used: "take the letters" at the
+            # pigeonholes is refused as the letters (playtest 2026-09-30).
+            from daydream import glimpse
+
+            said = glimpse.bare_name(dobj_name or "")
+            named = f"the {said}" if said and dobj.kind == "thing" else _the(dobj)
+            _narrate(room_id, f"You can't {spec.name} {named}.", recipient_id=actor_id)
             return False
     elif dobj_id:
         # A verb that needs no target may still be given one ("ring the

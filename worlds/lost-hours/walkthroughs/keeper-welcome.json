@@ -257,7 +257,8 @@
           "as": "B",
           "cmd": "examine forget-me-not clock",
           "expect": {
-            "narrate_contains": "forget-me-nots"
+            "narrate_contains": "no bigger than a teacup, with forget-me-nots",
+            "narrate_lacks": "Shelves of small resting clocks"
           }
         }
       ]

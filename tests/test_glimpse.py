@@ -328,3 +328,82 @@ def test_a_rooms_glimpses_are_read_beside_its_exit_names():
     cellar["properties"]["glimpsed"][0]["verbs"] = {"exmaine": "a typo never answers"}
     with pytest.raises(format2.Format2ValidationError, match="unknown verb"):
         format2.validate_envelope2(env)
+
+
+# ---- parts: a detail a thing's look names (playtest 2026-09-30) -------------
+
+FMN_LOOK = ("One of the resting clocks is no bigger than a teacup, with forget-me-nots painted "
+            "all the way round its face")
+
+
+@pytest.fixture()
+def loft(village):
+    objects.move(village, "r-loft")
+    return village
+
+
+async def test_a_part_answers_a_look_with_its_own_words(loft, llm):
+    """"look at forget-me-nots" read the whole shelf's look, the sentence the
+    player had just read; the part has words of its own."""
+    for line in ("look at forget-me-nots", "examine the painted clock", "x forget-me-not clock",
+                 "look at the flowers"):
+        said = await _said(loft, line)
+        assert [e.payload["text"][:len(FMN_LOOK)] for e in said] == [FMN_LOOK], line
+        assert "Shelves of small resting clocks" not in said[0].payload["text"]
+    assert llm.await_count == 0
+
+
+async def test_a_part_answers_the_verbs_it_names(loft, llm):
+    said = await _said(loft, "take the forget-me-nots")
+    assert [e.payload["text"] for e in said] == [
+        "You lift the forget-me-not clock an inch, and its tick skips, the way a sleeper "
+        "stirs. You set it back among the others to rest."]
+    assert llm.await_count == 0
+
+
+async def test_every_other_verb_is_done_to_its_thing(loft, llm):
+    """Winding the painted clock is winding a resting clock: the shelf's own
+    rules answer, the old custom included."""
+    said = await _said(loft, "wind the forget-me-not clock")
+    assert said and said[0].payload["text"].startswith(("You wind", "You turn the key")), said
+    from daydream import worldstate
+
+    worldstate.set_flag("w-lost-hours", "CLOCK-STARTED", True)
+    said = await _said(loft, "wind the painted clock")
+    assert "By old custom a new keeper winds a clock of their own" in said[0].payload["text"]
+    assert llm.await_count == 0
+
+
+async def test_a_verb_its_thing_does_not_take_is_refused_by_the_parts_name(loft, llm):
+    said = await _said(loft, "open the painted clock")
+    assert [e.payload["text"] for e in said] == ["You can't open the painted clock."]
+
+
+async def test_a_refusal_says_back_the_name_the_player_used(loft, llm):
+    """"take forget-me-nots" was refused as "You can't take the resting
+    clocks": the answer named a thing the player hadn't asked for."""
+    said = await _said(loft, "take the clocks")
+    assert [e.payload["text"] for e in said] == ["You can't take the clocks."]
+    said = await _said(loft, "take tace")
+    assert [e.payload["text"] for e in said] == ["You can't take Tace."]
+
+
+@pytest.mark.parametrize("mutate,needle", [
+    (lambda th: th["properties"]["glimpsed"][0].update(part="yes"), "part must be true or false"),
+    (lambda th: th["properties"]["glimpsed"][0]["names"].append("small clocks"),
+     "also its thing's name or alias"),
+])
+def test_parts_fail_loud(mutate, needle):
+    env = copy.deepcopy(ENV)
+    mutate(next(t for t in env["things"] if t["id"] == "o-resting-clocks"))
+    with pytest.raises(format2.Format2ValidationError, match=needle):
+        format2.validate_envelope2(env)
+
+
+def test_only_a_thing_has_parts():
+    env = copy.deepcopy(ENV)
+    room = next(r for r in env["rooms"] if r["id"] == "r-cellar")
+    room.setdefault("properties", {}).setdefault("glimpsed", []).append(
+        {"names": ["mortar"], "text": "Old and soft.", "part": True})
+    with pytest.raises(format2.Format2ValidationError, match="only a thing has parts"):
+        format2.validate_envelope2(env)

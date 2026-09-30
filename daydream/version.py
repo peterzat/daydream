@@ -52,8 +52,10 @@ APP_VERSION = "1.0.0"
 # what the page offers, playtest 2026-09-29 -- open topics and invitation
 # beats, the mentions that make a subject known, the thread that names the
 # littlest armchair. 1.11: glimpses, playtest 2026-09-29b -- the highest
-# shelf says why its jar is out of reach, in every state of the arc.)
-WORLD_VERSION = "1.12"
+# shelf says why its jar is out of reach, in every state of the arc. 1.13:
+# parts, playtest 2026-09-30 -- the forget-me-not clock is a part of the
+# resting clocks, with its own look and take.)
+WORLD_VERSION = "1.13"
 
 
 @lru_cache(maxsize=1)
