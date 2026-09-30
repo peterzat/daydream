@@ -299,3 +299,12 @@ async def test_carrying_wends_ladder_has_its_own_jar_line(cellar, llm):
     objects.move("o-tace-hour-ladder", cellar)
     said = await _said(cellar, "take the jar")
     assert "You have Wend's ladder with you" in said[0].payload["text"]
+
+
+async def test_using_a_thing_the_scene_shows_answers_with_its_glimpse(cellar, llm):
+    """ "use the lantern on the jar": the lantern is only the cellar's prose,
+    so its glimpse answers, not a refusal about the jars (playtest
+    2026-09-29b class 10)."""
+    said = await _said(cellar, "use the lantern on the jar")
+    assert "It's the cellar's only light" in said[0].payload["text"]
+    assert llm.await_count == 0

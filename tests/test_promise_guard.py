@@ -205,6 +205,9 @@ async def test_every_draft_inventing_deflects_with_no_judge_call(monkeypatch):
     ("Hob nods. 'Have a sip before we wander toward the green.'", True),
     ("Hob hums. 'Do you want me to light the lamp for you?'", True),
     ("Hob smiles. 'Would you like a cup of tea?'", False),
+    ("Hob squints. 'I will mend this little wheel before dusk.'", False),
+    ("Hob nods. 'I can mend it for you, friend.'", True),
+    ("Hob beams. 'I'll keep your pebble safe.'", True),
     ("Hob nods. 'The lane waits for you, and so do the lamps.'", False),
 ])
 def test_commitments_the_engine_wont_keep(line, hit):

@@ -571,6 +571,15 @@ def _fast_path(actor_id: str, text: str, room: rooms.Room | None):
     iobj_id: str | None = None
     for_whom = ""
     if iobj_part is not None:
+        first = _strip_article(dobj_part)
+        if first and len(first.split()) < 4 and not _ground(actor_id, first):
+            # "use the lantern on the jar" where the lantern is only the
+            # scene's prose: its glimpse answers, whatever the second thing
+            # is (playtest 2026-09-29b class 10).
+            actor = objects.get(actor_id)
+            if actor is not None and actor.location_id and glimpse.authored(
+                    actor, actor.location_id, first, verb):
+                return [Parse(verb, dobj_name=first)]
         iobj_name = _strip_article(iobj_part)
         iobj_matches = _ground(actor_id, iobj_name)
         if len(iobj_matches) == 0 and verb == "give":

@@ -575,10 +575,13 @@ _NAME_WORD = re.compile(r"\b[A-Z][a-z]+(?:['\u2019][a-z]+)?\b")
 # the judge's rules (a) and (b) as words, a backstop for what the small judge
 # lets through ("I will listen to your spring", "before we step out").
 _COMMITS = re.compile(
-    r"(?i)\b(?:i will|i'll|i shall|let me|i can)\s+(?:\w+\s+){0,2}?"
-    r"(?:fix|mend|repair|keep|hold|look after|watch over|guard|bring|fetch|carry|take|"
-    r"show you|walk|come|go with|meet|follow|wait for|lend|give|lead|save|"
-    r"listen to your|look at your|see to)\b"
+    r"(?i)\b(?:i will|i'll|i shall|let me|i can)\s+(?:\w+\s+){0,2}?(?:"
+    # going along, which needs no object
+    r"come with|come along|go with|walk with|walk you|meet (?:you|me)|follow|wait for|lead\b"
+    # handling the player's things: a resident mending its own clocks is not this
+    r"|(?:fix|mend|repair|keep|hold|look after|watch over|guard|bring|fetch|carry|take|show|"
+    r"lend|give|save|see to)\s+(?:\w+\s+)?(?:you|your|yours|it|them)\b"
+    r"|listen to your|look at your)"
     r"|\b(?:follow me|come with me|come along|let's go|lead the way|"
     r"we (?:step out|go|leave|walk|set off)|together we)\b"
     r"|\bi(?:'ve| have) (?:saved|kept|set aside|put by)\b[^.!?]*\bfor you\b"

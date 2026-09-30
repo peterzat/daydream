@@ -453,7 +453,7 @@
       ],
       "fail_text": "Touch what?",
       "fail_variants": [
-        "{The_thing} feels just as it looks, and the dream seems pleased you checked.",
+        "You touch {the_thing}: exactly as real as you'd hoped, and the dream seems pleased you checked.",
         "You lay a hand on {the_thing} for a moment. Nothing changes, which is its own small comfort.",
         "You touch {the_thing}. It is exactly as real as it looks, which in a dream is a kindness."
       ]
@@ -473,7 +473,7 @@
       "fail_variants": [
         "A faint smell of dust and time comes off {the_thing}, like most things in the village.",
         "You breathe in close to {the_thing}: a whisper of something like old paper and evening air.",
-        "Up close, {the_thing} keeps its smell to itself."
+        "Up close, there's no smell to {the_thing} at all, or none the dream will share."
       ]
     },
     "knock": {
@@ -492,7 +492,7 @@
       "fail_text": "Knock on what?",
       "fail_variants": [
         "You knock on {the_thing}, politely. Nothing knocks back.",
-        "Knock, knock. {The_thing} keeps its own counsel.",
+        "Knock, knock. No answer from {the_thing}, which is an answer of sorts.",
         "You rap on {the_thing}. The sound goes a little way into the quiet and settles there."
       ]
     },
