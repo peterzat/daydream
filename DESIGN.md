@@ -198,9 +198,11 @@ and the topic lists of Ultima VII, Morrowind and TADS). Three tiers:
    (Wind by a windable clock is a fair nudge). Room-rule verbs (magic words) and
    secret exits stay hidden until they work.
 2. **Heard of: shown once the fiction names it.** An ask-about chip appears only
-   when its subject has reached this player: named in a line told to them, a card,
-   a thread in the satchel, the room they stood in, a thing they saw, or asked
-   about once (daydream/heard.py). Authors mark a topic `open` when it is fair at
+   when its subject has reached this player: named in an authored line told to
+   them, a card, a thread in the satchel, the room they stood in, a thing they
+   saw, or asked about once (daydream/heard.py). A line the local model wrote
+   introduces nothing: the story, not a reflex, decides who the player has
+   heard of (playtest 2026-09-30). Authors mark a topic `open` when it is fair at
    first meeting (a clockmaker's trade), and a talk beat `topic_open` when it is
    the story reaching out (a newcomer's own tale, a resident's news or
    confidence). A chip that just appeared glows; unasked chips come first.

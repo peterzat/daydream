@@ -7,7 +7,12 @@ resident's topic becomes a chip only once its subject has reached this
 player in the fiction:
 
 - its name appeared in something told to them (a line, an answer, a card,
-  the room they stood in, a thing or person they saw there);
+  the room they stood in, a thing or person they saw there) that an author
+  wrote: a line the local model wrote (`src: "local"`) introduces nothing,
+  because the model reads whole voice sheets and drops their names in
+  passing (playtest 2026-09-30: an improvised greeting named the
+  clockmaker's late teacher, and the teacher became a chip that no authored
+  line had introduced);
 - they asked about it (a typed guess counts: it is answered, and from then
   on it is a chip);
 - or the topic is authored `open`: fair to ask at first meeting, like a
@@ -204,8 +209,12 @@ def _event_text(payload: dict) -> str:
 
 def on_event(event) -> None:
     """The events.append hook: a line told to players is heard by them (the
-    one it is for, or the players standing in its room, less `except`)."""
+    one it is for, or the players standing in its room, less `except`).
+    Only authored and engine lines: what the local model wrote introduces
+    no subject."""
     if event.kind not in TEXT_KINDS or not isinstance(event.payload, dict):
+        return
+    if event.payload.get("src") == "local":
         return
     text = _event_text(event.payload)
     if not text:

@@ -95,6 +95,24 @@ async def test_a_line_you_hear_names_its_subjects(village):
     assert "Mott" not in _labels("t-tace", me)
 
 
+async def test_a_line_the_model_wrote_introduces_nothing(village):
+    """Playtest 2026-09-30: an improvised greeting ("the dusk is turning amber
+    just as Wend liked to see it") made Wend a chip before any authored line
+    had named Wend. Only what an author wrote introduces a subject."""
+    me = _player()
+    objects.move(me, "r-loft")
+    events.append("system", None, "narrate",
+                  {"text": "Tace smiles. 'Just as Wend liked to see it.'", "src": "local"},
+                  room_id="r-loft", recipient_id=me)
+    assert "Wend" not in _labels("t-tace", me)
+    events.append("system", None, "narrate", {"text": "Mott mentions Wend.", "src": "local"},
+                  room_id="r-loft")
+    assert "Wend" not in _labels("t-tace", me)
+    events.append("system", None, "narrate", {"text": "Somebody mentions Wend."},
+                  room_id="r-loft", recipient_id=me)
+    assert "Wend" in _labels("t-tace", me)
+
+
 async def test_typing_reaches_an_unmet_topic_and_then_it_is_a_chip(village):
     me = _player()
     objects.move(me, "r-loft")
