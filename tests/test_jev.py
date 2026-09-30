@@ -216,6 +216,15 @@ def test_on_with_a_rule_serves_the_rule(jev):
 # ---- the ledger's lifecycle --------------------------------------------------
 
 
+def test_the_reports_p95_is_never_below_its_p50(jev):
+    """Nearest rank (prod 2026-09-30: two calls read p50 302 ms, p95 278)."""
+    from daydream.jev import cli
+
+    for ms in (325, 278):
+        ledger.record_call({"purpose": "topics", "outcome": "ok", "ms": ms})
+    assert "p50 302 ms, p95 325 ms" in cli.report()
+
+
 def test_rows_older_than_the_retention_are_pruned(jev):
     worldclock.set_fake_now("2026-09-01T10:00:00+00:00")
     try:

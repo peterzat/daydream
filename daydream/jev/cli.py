@@ -12,6 +12,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import math
 import statistics
 import sys
 from collections import Counter, defaultdict
@@ -89,7 +90,7 @@ def report(since: str | None = None, surface: str | None = None,
     out.append(f"\ncalls: {dict(outcomes)}")
     if ms:
         out.append(f"latency (ok calls, network included): p50 {statistics.median(ms):.0f} ms, "
-                   f"p95 {ms[int(0.95 * (len(ms) - 1))]:.0f} ms")
+                   f"p95 {ms[math.ceil(0.95 * len(ms)) - 1]:.0f} ms")  # nearest rank
     out.append(f"spend: {_money(sum(float(c.get('cost_usd') or 0) for c in calls))} "
                f"({sum(int(c.get('input_tokens') or 0) for c in calls)} input tokens)")
     if disagreements:
