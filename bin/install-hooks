@@ -1,23 +1,28 @@
 #!/usr/bin/env bash
 # bin/install-hooks — install or remove daydream's local git hooks.
 #
-# Default (no args): write .git/hooks/pre-commit (runs `bin/game test
-# short`, ~3 s) and .git/hooks/pre-push (runs `bin/game test medium`,
-# ~5 s). Idempotent — running twice is safe.
+# Default (no args): write .git/hooks/pre-commit (runs `ruff check .`, then
+# `bin/game test short`, ~15 s) and .git/hooks/pre-push (runs `bin/game
+# test medium`). Idempotent — running twice is safe.
 #
 # --uninstall: remove the daydream-installed hooks. Leaves any
 # hand-written hooks alone (recognized by the marker comment).
 #
-# The marker comment "DAYDREAM-INSTALLED-HOOK v1" lets re-runs detect
-# previously-installed hooks vs. hooks the operator wrote by hand. If a
+# The marker comment "DAYDREAM-INSTALLED-HOOK v<n>" lets re-runs detect
+# previously-installed hooks vs. hooks the operator wrote by hand; an
+# installed hook of an older version is replaced by the current one. If a
 # hook file exists without the marker, this script refuses to overwrite
 # it; remove the file manually first if you want daydream's version.
+#
+# v2 (2026-09-30): pre-commit runs ruff first, as CI does, after a lint
+# failure reached CI through a commit whose tests had passed.
 
 set -euo pipefail
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 HOOKS_DIR="$PROJECT_ROOT/.git/hooks"
-MARKER="# DAYDREAM-INSTALLED-HOOK v1"
+MARKER="# DAYDREAM-INSTALLED-HOOK v2"
+MARKER_ANY="# DAYDREAM-INSTALLED-HOOK v"
 
 if [[ ! -d "$PROJECT_ROOT/.git" ]]; then
     echo "Not a git repo (no .git/ at $PROJECT_ROOT); nothing to install." >&2
@@ -32,12 +37,13 @@ case "${1:-}" in
         cat <<'EOF'
 Usage: bin/install-hooks [--uninstall]
 
-  (no args)    Install pre-commit (`bin/game test short`, ~3 s) and
-               pre-push (`bin/game test medium`, ~5 s). Idempotent.
+  (no args)    Install pre-commit (`ruff check .`, then `bin/game test
+               short`) and pre-push (`bin/game test medium`). Idempotent;
+               replaces an older daydream-installed hook.
   --uninstall  Remove the daydream-installed hooks. Leaves any
                hand-written hooks alone.
 
-Hooks are recognized by the "DAYDREAM-INSTALLED-HOOK v1" marker line.
+Hooks are recognized by the "DAYDREAM-INSTALLED-HOOK v<n>" marker line.
 A non-marked hook is never overwritten or removed by this script;
 delete it manually first if you want daydream's version.
 EOF
@@ -53,51 +59,64 @@ mkdir -p "$HOOKS_DIR"
 
 is_ours() {
     local p="$1"
-    [[ -f "$p" ]] && head -5 "$p" | grep -qF "$MARKER"
+    [[ -f "$p" ]] && head -5 "$p" | grep -qF "$MARKER_ANY"
+}
+
+is_current() {
+    local p="$1"
+    [[ -f "$p" ]] && head -5 "$p" | grep -qxF "$MARKER"
+}
+
+# Whether to write hook $1 (a path): yes when absent or an older version of
+# ours; no when current; refuse (exit) when it is someone else's.
+should_write() {
+    local p="$1" name
+    name="$(basename "$p")"
+    if [[ ! -f "$p" ]]; then
+        return 0
+    fi
+    if is_current "$p"; then
+        echo "    $name: already installed (skipped)"
+        return 1
+    fi
+    if is_ours "$p"; then
+        echo "    $name: replacing an older daydream-installed version"
+        return 0
+    fi
+    echo "    $name: EXISTS and is not daydream-installed." >&2
+    echo "    Refusing to overwrite $p." >&2
+    echo "    Remove it manually first if you want daydream's hook." >&2
+    exit 1
 }
 
 write_pre_commit() {
     local p="$HOOKS_DIR/pre-commit"
-    if [[ -f "$p" ]]; then
-        if is_ours "$p"; then
-            echo "    pre-commit: already installed (skipped)"
-            return 0
-        fi
-        echo "    pre-commit: EXISTS and is not daydream-installed." >&2
-        echo "    Refusing to overwrite $p." >&2
-        echo "    Remove it manually first if you want daydream's hook." >&2
-        exit 1
-    fi
+    should_write "$p" || return 0
     cat > "$p" <<'EOF'
 #!/usr/bin/env bash
-# DAYDREAM-INSTALLED-HOOK v1
-# Runs `bin/game test short` (~3 s) before each commit. Bypass with
-# --no-verify if you must. Manage via bin/install-hooks [--uninstall].
+# DAYDREAM-INSTALLED-HOOK v2
+# Runs `ruff check .` (as CI does first) and then `bin/game test short`
+# before each commit. Bypass with --no-verify if you must. Manage via
+# bin/install-hooks [--uninstall].
 set -e
 cd "$(git rev-parse --show-toplevel)"
+if [[ -x .venv/bin/ruff ]]; then
+    .venv/bin/ruff check .
+fi
 exec bin/game test short
 EOF
     chmod +x "$p"
-    echo "    pre-commit: installed -> bin/game test short"
+    echo "    pre-commit: installed -> ruff check . && bin/game test short"
 }
 
 write_pre_push() {
     local p="$HOOKS_DIR/pre-push"
-    if [[ -f "$p" ]]; then
-        if is_ours "$p"; then
-            echo "    pre-push: already installed (skipped)"
-            return 0
-        fi
-        echo "    pre-push: EXISTS and is not daydream-installed." >&2
-        echo "    Refusing to overwrite $p." >&2
-        echo "    Remove it manually first if you want daydream's hook." >&2
-        exit 1
-    fi
+    should_write "$p" || return 0
     cat > "$p" <<'EOF'
 #!/usr/bin/env bash
-# DAYDREAM-INSTALLED-HOOK v1
-# Runs `bin/game test medium` (~5 s) before each push. Bypass with
-# --no-verify if you must. Manage via bin/install-hooks [--uninstall].
+# DAYDREAM-INSTALLED-HOOK v2
+# Runs `bin/game test medium` before each push. Bypass with --no-verify if
+# you must. Manage via bin/install-hooks [--uninstall].
 # Reads stdin (git supplies <local-ref local-sha remote-ref remote-sha>
 # lines) but does not consume it; the test suite is target-agnostic.
 set -e
@@ -130,8 +149,8 @@ install)
     write_pre_commit
     write_pre_push
     echo
-    echo "Hooks installed. Each commit runs tier_short (~3 s); each push"
-    echo "runs tier_medium (~5 s). Bypass via 'git commit --no-verify' or"
+    echo "Hooks installed. Each commit runs ruff and tier_short; each push"
+    echo "runs tier_medium. Bypass via 'git commit --no-verify' or"
     echo "'git push --no-verify' when needed. Uninstall any time via"
     echo "'bin/install-hooks --uninstall'."
     ;;

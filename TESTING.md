@@ -3,7 +3,7 @@
 ## Test Strategy Review — 2026-04-23 (tier counts refreshed 2026-07-07 for v1.0.0; facts refreshed 2026-09-26, pre-pivot)
 
 **Refresh 2026-09-26 (the `pre-pivot` tag).** The strategy below still holds; what changed around it:
-- The gates are enforced now, not intent. `bin/install-hooks` installs pre-commit (`bin/game test short`) and pre-push (`bin/game test medium`), and GitHub Actions (`.github/workflows/test.yml`) runs `ruff check .` then the medium tier on Python 3.12 for every push.
+- The gates are enforced now, not intent. `bin/install-hooks` installs pre-commit (`ruff check .`, then `bin/game test short`; v2, 2026-09-30) and pre-push (`bin/game test medium`), and GitHub Actions (`.github/workflows/test.yml`) runs `ruff check .` then the medium tier on Python 3.12 for every push.
 - **Run `ruff check .` locally before pushing.** CI lints before it tests; the model-eval push went red on a single unused-loop-variable warning, which also meant the medium tier never ran on 3.12 for that commit.
 - Model choice has its own harness, `bin/game model-eval` (see the `human` section); the tier_long probes stay the drift gate and are re-ratified when the model changes.
 
