@@ -82,3 +82,17 @@ async def test_and_then_joins_two_actions(dreamer, line):
     await _said(dreamer, line)
     assert objects.get(dreamer).location_id == "r-clocktower"
     assert any(o.name == "paper lantern" for o in objects.contents(dreamer, kind="thing"))
+
+
+@pytest.mark.parametrize("filler", [" " * 490, "\t" * 490, " \n" * 245])
+async def test_a_long_whitespace_run_parses_fast(dreamer, filler):
+    """The chain-splitting patterns backtracked on a whitespace run: a
+    500-character line cost 0.38 s of the event loop (security WARN
+    2026-09-30). Whitespace collapses first."""
+    import time
+
+    from daydream import parser
+
+    t = time.perf_counter()
+    await parser.parse_line(dreamer, "look" + filler + "x")
+    assert time.perf_counter() - t < 0.1  # 0.38 s before

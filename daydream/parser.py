@@ -230,7 +230,10 @@ async def parse_line(
     chaining, multi-object expansion, clarify resolution (`pending` is a
     prior Clarify this line may be answering), and the LLM fallback per
     segment. Deterministic segments make zero LLM calls."""
-    text = text.strip()
+    # One space between words: the chain-splitting patterns backtrack on a
+    # long whitespace run (a 500-character line cost 0.38 s of the event
+    # loop; security WARN 2026-09-30).
+    text = re.sub(r"\s+", " ", text).strip()
     if not text:
         return LineParse()
     actor = objects.get(actor_id)
