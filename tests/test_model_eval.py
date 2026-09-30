@@ -204,16 +204,22 @@ def test_canon_scorer_judges_the_model_not_the_authored_gesture():
 def test_a_run_measures_the_local_path_with_jev_off(monkeypatch, tmp_path):
     """Codereview 2026-09-30d: `bin/game` loads `.env`, so a dev key turned
     Jev on under model-eval and a local-model comparison was partly Jev's."""
+    import os
+
     from daydream.jev import settings
 
     monkeypatch.setenv("DAYDREAM_JEV_API_KEY", "test-key")
+    # Codereview 2026-09-30f: litellm's first import re-reads `.env` unless
+    # LITELLM_MODE says production (conftest sets it; a real run does not).
+    monkeypatch.delenv("LITELLM_MODE", raising=False)
     assert settings.enabled()
     seen = {}
 
     async def run(args):
         seen["jev"] = settings.enabled()
+        seen["litellm_mode"] = os.environ.get("LITELLM_MODE")
         return 0
 
     monkeypatch.setattr(model_eval, "_run", run)
     assert model_eval.main(["run", "--label", "t", "--out", str(tmp_path)]) == 0
-    assert seen == {"jev": False}
+    assert seen == {"jev": False, "litellm_mode": "PRODUCTION"}

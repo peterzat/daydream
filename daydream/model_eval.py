@@ -1281,6 +1281,9 @@ def _compare(args) -> int:
 def main(argv: list[str] | None = None) -> int:
     # model-eval measures the local path: Jev stays off for the run even when
     # `.env` holds its key (bin/game loads it; codereview 2026-09-30d).
+    # litellm re-reads `.env` on its first import unless it runs in production
+    # mode, which would put the key back (codereview 2026-09-30f).
+    os.environ["LITELLM_MODE"] = "PRODUCTION"
     for key in ("DAYDREAM_JEV_API_KEY", "TYPESAFE_API_KEY", "DAYDREAM_EGRESS_URL"):
         os.environ.pop(key, None)
     from daydream.jev import settings as jev_settings
