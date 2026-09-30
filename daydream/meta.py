@@ -25,7 +25,7 @@ WHO_RE = re.compile(
 WAYS_RE = re.compile(
     r"(?i)^(where can i go|where can we go|which way|which ways|what are the exits|exits|"
     r"ways( out)?|ways from here|how do i get out|go somewhere else|where to|"
-    r"where does this go)[?.!]*$")
+    r"where does this go|run|run away|walk|walk around|wander|wander off|stroll|explore)[?.!]*$")
 
 
 def kind(text: str) -> str | None:

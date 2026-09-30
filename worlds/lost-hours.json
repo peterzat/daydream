@@ -471,7 +471,7 @@
       ],
       "fail_text": "Smell what?",
       "fail_variants": [
-        "{The_thing} smells faintly of dust and time, like most things in the village.",
+        "A faint smell of dust and time comes off {the_thing}, like most things in the village.",
         "You breathe in close to {the_thing}: a whisper of something like old paper and evening air.",
         "Up close, {the_thing} keeps its smell to itself."
       ]
@@ -9477,7 +9477,20 @@
             }
           ]
         }
-      ]
+      ],
+      "properties": {
+        "glimpsed": [
+          {
+            "names": [
+              "ladder",
+              "little ladder",
+              "creaking ladder",
+              "bell's ladder"
+            ],
+            "text": "Bell's little ladder goes wherever the lanterns need it, and it's Bell's to climb. It creaks on purpose, Bell says, so nobody forgets it's there."
+          }
+        ]
+      }
     },
     {
       "id": "r-workshop",

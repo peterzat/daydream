@@ -46,6 +46,7 @@ async def _said(toon: str, line: str) -> list[str]:
     ("where am I", "where"), ("what is this place?", "where"),
     ("who am i", "who"), ("what do I look like", "who"),
     ("where can I go", "ways"), ("go somewhere else", "ways"), ("which way?", "ways"),
+    ("run", "ways"), ("wander off", "ways"),
     ("take the lantern", None), ("where is Bell", None),
 ])
 def test_the_questions_are_recognized(line, kind):

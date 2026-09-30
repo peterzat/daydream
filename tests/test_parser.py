@@ -630,3 +630,23 @@ async def test_triage_off_keeps_the_verb_without_a_name(monkeypatch):
     _mock_llm(monkeypatch, {"verb": "take", "dobj_id": None, "kind": "act"})
     lp = await parser.parse_line("t-wren", "fetch the moonstone from the high shelf")
     assert lp.commands == () and lp.clarify is not None  # "What do you want to take?"
+
+
+@pytest.mark.asyncio
+async def test_a_question_that_names_someone_here_is_theirs(monkeypatch):
+    """The model read "what is Rook working on" as the game's who-am-I
+    question; naming someone here makes it a question to them."""
+    _mock_llm(monkeypatch, {"verb": "none", "dobj_id": None, "kind": "who"})
+    lp = await parser.parse_line("t-wren", "what is rook working on these days")
+    assert [(c.verb, c.dobj_id) for c in lp.commands] == [("talk", "t-rook")]
+    _mock_llm(monkeypatch, {"verb": "none", "dobj_id": None, "kind": "who"})
+    lp = await parser.parse_line("t-wren", "tell me again who I am in this dream")
+    assert [(c.verb, c.args) for c in lp.commands] == [("meta", "who")]
+
+
+@pytest.mark.asyncio
+async def test_a_question_label_on_an_action_stays_an_action(monkeypatch):
+    objects.move("t-wren", "r-meadow")
+    _mock_llm(monkeypatch, {"verb": "examine", "dobj_id": "i-lantern", "kind": "ways"})
+    lp = await parser.parse_line("t-wren", "count the lanterns please")
+    assert [(c.verb, c.dobj_id) for c in lp.commands] == [("examine", "i-lantern")]

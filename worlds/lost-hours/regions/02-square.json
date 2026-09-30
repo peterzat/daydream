@@ -78,7 +78,20 @@
             }
           ]
         }
-      ]
+      ],
+      "properties": {
+        "glimpsed": [
+          {
+            "names": [
+              "ladder",
+              "little ladder",
+              "creaking ladder",
+              "bell's ladder"
+            ],
+            "text": "Bell's little ladder goes wherever the lanterns need it, and it's Bell's to climb. It creaks on purpose, Bell says, so nobody forgets it's there."
+          }
+        ]
+      }
     },
     {
       "id": "r-workshop",

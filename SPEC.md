@@ -170,10 +170,10 @@ decisions (Context).
 
 **Measured (criterion 3, 2026-09-30, Qwen3.5 9B AWQ on dev):** the parser
 corpus has grown to 50 cases since "47 of 48" was written; with triage off it
-scores 45/50 on the shipped model, with triage on 46/50. The triage set
-scores 31/34 (0.91) and a held-out set of 16 fresh phrasings, never used
-for tuning, 16/16. The parser call's p50 went from about 1060 ms (triage
-off) to about 690 ms: the model now writes only the fields that have a
+scores 45/50 on the shipped model, with triage on 45 or 46/50 across runs.
+The triage set scores 32/34 (0.94) and a held-out set of 16 fresh phrasings,
+never used for tuning, 16/16. The parser call's p50 went from about 1060 ms
+(triage off) to about 730 ms: the model now writes only the fields that have a
 value (about 24 output tokens instead of 40), and the prompt teaches with
 examples (input tokens, nearly free) that share no words with either case
 set or the village. A first version whose examples echoed the case sets

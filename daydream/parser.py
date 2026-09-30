@@ -181,12 +181,14 @@ TRIAGE = (
     'leave out a null "iobj_id", empty "args", and "kind" when it is "act".\n'
     "Examples:\n"
     '"how far along is the day" -> {"verb": "none", "dobj_id": null, "kind": "time"}\n'
-    '"list the exits for me" -> {"verb": "none", "dobj_id": null, "kind": "ways"}\n'
+    '"which directions can I head" -> {"verb": "none", "dobj_id": null, "kind": "ways"}\n'
     '"explain the controls" -> {"verb": "none", "dobj_id": null, "kind": "help"}\n'
     '"what\'s my goal here" -> {"verb": "none", "dobj_id": null, "kind": "next"}\n'
     '"I\'ve lost track of things" -> {"verb": "none", "dobj_id": null, "kind": "next"}\n'
     '"ask the ferryman why the tide turned" -> {"verb": "talk", "dobj_id": "<the '
     'ferryman\'s id>", "args": "why did the tide turn?", "kind": "say"}\n'
+    '"give the sailor a quick salute" -> {"verb": "gesture", "dobj_id": "<the sailor\'s '
+    'id>", "args": "salute", "kind": "gesture"}\n'
     '"pick up the anchor" (no anchor in Scope) -> {"verb": "take", "dobj_id": null, '
     '"target": "anchor"}\n'
     '"sit on the cushion by the hearth" (a stool in Scope, no cushion) -> {"verb": '
@@ -1089,16 +1091,41 @@ def _typed_target(text: str) -> str:
     return name
 
 
+def people_in(scope: list[dict]) -> dict[str, str]:
+    """The names (and aliases) of the people in a scope, to their ids."""
+    return {str(n).lower(): e["id"] for e in scope if e.get("kind") == "toon"
+            for n in [e.get("name"), *(e.get("aliases") or [])] if n}
+
+
+def _person_named(text: str, people: dict[str, str]) -> str | None:
+    low = text.lower()
+    for name in sorted(people, key=len, reverse=True):
+        if re.search(rf"(?<![a-z]){re.escape(name)}(?![a-z])", low):
+            return people[name]
+    return None
+
+
 def interpret(result, text: str, vocab_names: set[str], scope_ids: set[str], world_id: str,
-              ground=None) -> list[Parse]:
+              ground=None, people: dict[str, str] | None = None) -> list[Parse]:
     """The commands one model reply means (its triage honoured when on).
     `ground(name)` lists the in-scope ids a typed name matches; the runtime
     passes the scope's own grounding, model-eval a stand-in over its scope,
-    so the eval scores exactly what the game would do."""
+    so the eval scores exactly what the game would do. `people` (name ->
+    id, from `people_in`) keeps a question that names someone here theirs
+    to answer: "what is the clockmaker working on" is asked of them, never
+    of the game (battery 2026-09-30)."""
     if not isinstance(result, dict):
         return [NONE]
     triage = config.parser_triage_enabled()
-    if triage and result.get("kind") in QUESTIONS:
+    acts_on_something = (str(result.get("verb", "none")).lower() in vocab_names
+                         and result.get("dobj_id") in scope_ids)
+    if triage and result.get("kind") in QUESTIONS and not acts_on_something:
+        # A question about the game never acts on a thing here: a reply
+        # with a verb and an object is an action, whatever it was labelled
+        # ("count the jars" came back as a ways question; battery 2026-09-30).
+        who = _person_named(text, people or {})
+        if who is not None and "talk" in vocab_names:
+            return [Parse("talk", dobj_id=who, args=text.strip())]
         return [Parse("meta", args=QUESTIONS[result["kind"]])]
     target = result.get("target") if triage else ""
     target = _strip_article(target.strip()) if isinstance(target, str) else ""
@@ -1163,7 +1190,8 @@ async def _llm_parse(actor_id: str, text: str, room: rooms.Room | None) -> list[
     except client.LLMUnavailable as e:
         return Parse("none", error=str(e))
     return interpret(result, text, {v["name"] for v in vocab}, {e["id"] for e in scope},
-                     world_id, ground=lambda n: [o.id for o in _ground(actor_id, n)])
+                     world_id, ground=lambda n: [o.id for o in _ground(actor_id, n)],
+                     people=people_in(scope))
 
 
 # ---- vocabulary + scope for the LLM call -------------------------------

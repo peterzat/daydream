@@ -473,7 +473,8 @@ async def suite_parser(tmp: Path) -> dict:
         # The parser's own reading of the reply (parser.interpret), so the
         # score is what the game would do with it.
         cmd = parser.interpret(result, text, {v["name"] for v in vocab},
-                               {e["id"] for e in scope}, "", ground=_scope_ground(scope))[0]
+                               {e["id"] for e in scope}, "", ground=_scope_ground(scope),
+                               people=parser.people_in(scope))[0]
         verb, dobj, iobj = cmd.verb, cmd.dobj_id, cmd.iobj_id
         if verb == "meta":
             shows = _META_SHOWS.get(cmd.args, set())
@@ -524,7 +525,8 @@ async def suite_triage(tmp: Path) -> dict:
                 continue
             # Scored by where the line goes (parser.interpret, the runtime's
             # own reading), not by the label alone.
-            cmd = parser.interpret(r, text, names, ids, world_id, ground=ground)[0]
+            cmd = parser.interpret(r, text, names, ids, world_id, ground=ground,
+                                   people=parser.people_in(scope))[0]
             does = _triage_does(cmd)
             name = (cmd.dobj_name or "").lower()
             ok = does in want_kind.split("|") and (want_target is None or want_target in name)
