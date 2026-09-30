@@ -42,7 +42,11 @@ to be used for."
 | Prebake contact sheets | `prebake/<ts>/` | review aid | until removed by hand | the operator |
 | Ephemeral renders (image-test, A/B) | `images/ephemeral/` | scratch | until overwritten | anyone |
 | ComfyUI's own outputs | `external/ComfyUI/output/` (the shared engine, dev's tree) | engine scratch: a second copy of every render, without provenance | unmanaged today | nothing yet (below) |
-| Server log lines | the systemd journal | operational | journald's retention | journald |
+| Server log lines (prod, and the egress gateway's) | the systemd journal (`bin/game prod logs`; `journalctl -u daydream-egress`) | operational: accounts, dreamers, ids, timings, never a password, token, invite slug or typed text (`tests/test_logs.py`) | persistent, shared with the whole box: journald's default cap (4 GiB, oldest first), about six months as of 2026-09-30 | journald |
+| Server log lines (dev) | `$XDG_RUNTIME_DIR/daydream-dev/fastapi.log` (tmpfs) | operational | until the next `up` or `deploy` overwrites it, or a reboot | the next start |
+| Jev calls | `jev/calls.jsonl` | telemetry: purpose, outcome, status, latency, tokens, cost, model, request id; no text, no dreamer | 30 days | the server prunes hourly ([EXTERNAL.md](EXTERNAL.md)) |
+| Jev decisions | `jev/decisions.jsonl` | telemetry that holds player text: both answers, which served, the dreamer's id, and the words decided on (a typed line, drafts) | 30 days; never backed up | the hourly prune; `account delete` (the person's rows) |
+| Jev eval results (dev only) | `jev-eval/<ts>/` | review aid over the labeled sets (authored at design time, no player text) | until removed by hand | the operator |
 | Edge keepsakes | the Worker's KV | derived copy | until the next keepsakes sync | the next sync |
 
 Dev (`~/data/daydream`) and prod (`/srv/daydream/data`) each have their own
@@ -109,6 +113,10 @@ would go). It deletes:
 - the private lines in the event log, those addressed only to those
   dreamers: their words to residents told back to them, and what they
   alone were told
+- their rows in the Jev decision ledger (`jev/decisions.jsonl`): what they
+  said to residents while Jev was on, and the drafts judged for them.
+  What TypeSafe itself kept of those calls is outside the box
+  ([EXTERNAL.md](EXTERNAL.md), "What leaves the box")
 
 It keeps the shared event history (what others saw happen in the village)
 and each dreamer's portrait in the art keep, retired with its provenance

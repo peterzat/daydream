@@ -40,7 +40,9 @@ The line we hold is that the small models on the GPU are the game's reflexes, an
 - **Painted ahead:** every room and resident portrait, rendered on the local GPU at design time from Opus-written prompts and then graded ([`docs/art/`](docs/art/); `bin/game prebake`).
 - **Live on the GPU:** understanding what you type, answering in voice when you go somewhere no author went, composing a room from a player's own words, and painting what players make (their portraits and the rooms they grow).
 
-When you ask a resident about one of their topics, you get the authored answer, and only the lines nobody anticipated go to the model. The whole world can be finished with the local models switched off. The first agent playtest put numbers on this: 15% of the lines players read came from the local model, every one of the best moments was authored, and nearly every weak line was local. [`docs/REFLEXES.md`](docs/REFLEXES.md) ranks each runtime generation by what it's worth. The running game never calls a cloud model, and there's no API key anywhere in this repository.
+When you ask a resident about one of their topics, you get the authored answer, and only the lines nobody anticipated go to the model. The whole world can be finished with the local models switched off. The first agent playtest put numbers on this: 15% of the lines players read came from the local model, every one of the best moments was authored, and nearly every weak line was local. [`docs/REFLEXES.md`](docs/REFLEXES.md) ranks each runtime generation by what it's worth. There's no API key anywhere in this repository, and without one the running game calls no hosted model at all.
+
+> **Optional: Jev, a second reader for two decisions.** Given a key, the village also asks [Jev](https://typesafe.ai), TypeSafe's hosted decision model, two questions beside the local model: whether a resident's improvised reply only talks (the promise judge that stops a resident from promising what the game can't keep), and which authored answer a free line to a resident is asking about. Jev writes no text and the local path always runs beside it, so a timeout, an empty account or no key at all leaves the game exactly as it is without Jev. What it buys, measured on held-out data: the judge stops holding back good replies (5 of 114 labeled drafts instead of 14, with no failing draft let through), and paraphrased questions get the authored answer (0.925 against the word match's 0.475), for under a hundredth of a cent a decision. It's the first of the project's controlled exceptions to local-only; [`docs/EXTERNAL.md`](docs/EXTERNAL.md) has the rules, what leaves the box, the egress gateway prod reaches it through, and how to add another service.
 
 ## Dreams
 
@@ -166,6 +168,7 @@ Every arc ending has a walkthrough replayed with zero model calls, a static anal
 | Doc | What it is |
 |---|---|
 | [`docs/REFLEXES.md`](docs/REFLEXES.md) | What the local GPU does, and what it's worth |
+| [`docs/EXTERNAL.md`](docs/EXTERNAL.md) | The optional hosted services (Jev today): the rules, the registry, the egress gateway |
 | [`docs/PIVOT.md`](docs/PIVOT.md), [`SPEC.md`](SPEC.md) | The pivot's design record and its acceptance contract |
 | [`docs/canon/LOST-HOURS.md`](docs/canon/LOST-HOURS.md) | The canon bible (spoilers) |
 | [`docs/canon/AUTHORING.md`](docs/canon/AUTHORING.md) | How to write for the world |

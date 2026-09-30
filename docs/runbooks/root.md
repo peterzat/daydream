@@ -17,6 +17,8 @@ Use it when:
   privileges" (the installed units are older than the release's)
 - an allowlisted `prod.env` key should change (a log level, a feature flag,
   the operator's title)
+- a hosted service's key should be set or removed on the egress gateway
+  ([`docs/EXTERNAL.md`](../EXTERNAL.md))
 
 Look first, every time: `bin/game prod root doctor`.
 
@@ -27,14 +29,17 @@ Look first, every time: `bin/game prod root doctor`.
 | `bin/game prod root doctor` | Read-only. root.conf; the sudoers file (present, root 0440, names the helper); the service user's groups; each unit against the deployed release; drop-in directories; whether the installed helper is the repo's | no |
 | `bin/game prod root units` | Renders the deployed release's units, validates each, prints a diff against what is installed | no |
 | `bin/game prod root units --apply` | Installs the validated units that differ, `daemon-reload`, `enable --now` the three timers | yes (ask rule) |
-| `bin/game prod root start\|stop\|restart <service>` | `daydream-prod`, `cloudflared-daydream`, `daydream-backup`, `daydream-keepsakes`, `daydream-offsite` (`.service`) | no |
+| `bin/game prod root start\|stop\|restart <service>` | `daydream-prod`, `cloudflared-daydream`, `daydream-egress`, `daydream-backup`, `daydream-keepsakes`, `daydream-offsite` (`.service`) | no |
 | `bin/game prod root status <unit>` | those, and the three `.timer` units | no |
 | `bin/game prod root env show` | prints `/srv/daydream/etc/prod.env` (it holds no secrets) | no |
 | `bin/game prod root env set KEY VALUE` | one allowlisted key; the release's boot guard runs first, as `daydream` | yes (ask rule) |
+| `bin/game prod root egress show` | which keys the egress gateway has (`set` / `not set`, never a value) | no |
+| `bin/game prod root egress set KEY` | writes a key to `/etc/daydream/egress.env` (root 0600) from stdin, restarts the gateway if it runs; the value is never logged | yes (ask rule) |
+| `bin/game prod root egress unset KEY` | removes it; the gateway restarts, and the service reads the route as off within a minute | yes (ask rule) |
 | `bin/game prod root version` | the installed helper's sha256 | no |
 
-The two verbs that change what root installs or what prod runs with are
-behind ask rules in the operator's local permission settings (the template,
+The verbs that change what root installs, what prod runs with or which
+keys leave the box are behind ask rules in the operator's local permission settings (the template,
 `docs/claude-settings.local.example.json`, carries them): the agent runs
 them when the operator asked for the work, and the prompt shows the command.
 Put `--instance` nowhere in a `prod root` command: the helper has no
@@ -89,6 +94,26 @@ lives are refused: `DAYDREAM_ENV`, `DAYDREAM_ACCESS`, `DAYDREAM_PUBLIC_ORIGIN`,
 Those, and anything not on the list above, stay with the operator
 (`sudoedit /srv/daydream/etc/prod.env`).
 
+## Set a hosted service's key
+
+The egress gateway (`daydream-egress.service`) holds the keys of the hosted
+services [`docs/EXTERNAL.md`](../EXTERNAL.md) declares; the game never sees
+them. A key comes on stdin, so it never appears in a command line, `ps` or
+the journal. From this checkout, with the key in the gitignored `.env`:
+
+```sh
+bin/game prod root egress show
+grep '^DAYDREAM_JEV_API_KEY=' .env | cut -d= -f2- | bin/game prod root egress set DAYDREAM_JEV_API_KEY   # prompts
+bin/game prod check                     # the Jev line: on, funded
+```
+
+The helper refuses a key name no route reads, a value that is not one word
+of 8 to 512 printable characters, and a value typed at a terminal. To turn
+a service off, `unset` its key. The gateway's code is the one
+`sudo ops/install-prod.sh` installed at `/usr/local/lib/daydream/egress.py`;
+`bin/game prod root doctor` says when it differs from the deployed
+release's, and the operator reinstalls.
+
 ## When the helper refuses
 
 | It says | Meaning | Do |
@@ -110,6 +135,8 @@ or by hand:
 - installing or changing the helper itself and the sudoers entry
 - system packages (`cloudflared`, `age`, a browser's libraries)
 - the tunnel token (`/etc/cloudflared/daydream.env`)
+- the egress gateway's code (`/usr/local/lib/daydream/egress.py`), and a new
+  hosted service's route or key name
 - group membership (the operator's, the service user's)
 - the `prod.env` keys the helper refuses, and any drop-in
 - the Cloudflare dashboard

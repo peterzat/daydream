@@ -14,8 +14,8 @@ bin/game prod sleep --note "lent to a training run until Sunday"
 ```
 
 `sleep` warns players and waits 60 s (`--grace N` to change), flips the edge
-flag to asleep, stops the tunnel and the service, rests everyone and writes
-their journals, syncs keepsakes to the edge, and stops vLLM and ComfyUI so
+flag to asleep, stops the tunnel, the service and the egress gateway, rests
+everyone and writes their journals, syncs keepsakes to the edge, and stops vLLM and ComfyUI so
 the GPU is free. `--keep-engines` leaves the engines up (dev can keep using
 them). The note is what friends read: short, warm, and true. If the operator
 gave none, propose one.
@@ -30,8 +30,9 @@ bin/game prod wake
 bin/game prod check
 ```
 
-`wake` starts the engines if they are down (30-60 s), the tunnel, then the
-service; waits for health; flips the edge flag to awake. Open tabs reconnect
+`wake` starts the engines if they are down (30-60 s), the egress gateway
+(docs/EXTERNAL.md; a failure there is a warning, never a stop), the tunnel,
+then the service; waits for health; flips the edge flag to awake. Open tabs reconnect
 on their own. If the release is behind HEAD, say so; deploy only if asked.
 
 ## A maintenance window on the box (updates, a reboot, disk work)

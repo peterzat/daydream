@@ -119,7 +119,8 @@ missed: `DAYDREAM_DRIFT_VARY_PROB` (default 0.3), `DAYDREAM_DIRECTOR_LLM`
 (default on; off reads a plain "out of reach" line), `DAYDREAM_PARSER_TRIAGE`
 (default on; off, the parser's call returns one command and no kind),
 `DAYDREAM_PROMISE_GUARD` (default on; off shows the best draft unjudged),
-and `DAYDREAM_RETELL_ENABLED` (Zork only).
+and `DAYDREAM_RETELL_ENABLED` (Zork only). Jev (below) has no switch: it is
+on exactly when a key is reachable.
 
 One caveat on pictures: "only what players create is painted live" holds
 with the repaint tool off. `DAYDREAM_REGEN_UI` defaults on for the operator;
@@ -154,3 +155,50 @@ for a reflex, and what every local surface should follow:
 - **Give the model the closed lists.** Drafts and judge both see the
   village's people, places and the ways between them; canon contradictions
   in the canon suite went from 2 to 0.
+
+## A second reader: Jev (2026-09-30)
+
+Two of the reflexes above are decisions, not writing: the promise judge
+(does an improvised reply only talk?) and, since "select, don't write",
+which authored topic a free line is about. For those two, the village can
+ask a second reader: Jev, TypeSafe's hosted decision model
+([`EXTERNAL.md`](EXTERNAL.md); the evaluation, [`JEV-SPIKE.md`](JEV-SPIKE.md)).
+It fits the stance rather than bending it: Jev writes no text, so every word
+a player reads is still authored or the 9B's; it only chooses among
+authored answers and checks the 9B's improvisation.
+
+- **How it runs: a lookaside, not a replacement.** The local path always
+  runs, and Jev answers beside it (`daydream/jev/seam.py`). The judge serves
+  a rule over both verdicts: a draft passes when Jev is sure it only talks
+  (P(ok) 0.8 or more), or when the local judge passes it and Jev leans that
+  way (0.5 or more). A topic choice serves Jev's pick at confidence 0.8 or
+  more, else the word match's. A timeout (3 s), an error, an empty account
+  or no key serves the local answer. With no key the code takes the local
+  path and nothing else: the no-key game is the game this document
+  describes.
+- **What it measured.** The judge alone: 0.980 against the 9B's 0.857 on 98
+  labeled drafts (0.974 against 0.868 held out), and every 9B error was a
+  good reply held back, which a player meets as a canned deflection. The
+  combined rule, on 114 drafts it was never tuned on: no failing draft
+  passed, 5 good ones held (the 9B alone, 14). Topics, on a clean held-out
+  set: Jev 0.925, the 9B asked the same question 0.750, the word match
+  0.475; live, Jev was right in 25 of 27 disagreements with the word
+  match, and both of its errors fell below the 0.8 floor.
+- **What it did not earn.** The parser and its triage: about as good as the
+  9B on lines that reach the model (0.975 against 0.900 held out, not
+  significant), and only about one line in six reaches a model at all.
+  Latency was never a reason to adopt anything; Jev is about 0.3 s from
+  this box, the 9B judge about the same.
+- **What the numbers say about the 9B.** Its failures on these two
+  decisions were caution (holding back good replies) and literalness
+  (missing a paraphrase), not invention. Where a second reader is
+  calibrated, a confidence floor turns its disagreements into safe
+  improvements: every live Jev error on topics sat below the floor.
+- **Watching it.** `bin/game jev report --disagreements 20` lists the
+  decisions where the two readers differed, with both answers, for the
+  same adjudication the spike did. The dream digest's local-line list is
+  unchanged: a topic Jev picked is an authored answer, not a local line.
+
+Next experiments, in the spike's order: beat advance (a wrong `advance`
+moves the story, and a calibrated reader could gate it), and asking the
+player which they meant when the two readers disagree on a command.
