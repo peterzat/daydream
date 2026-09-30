@@ -266,6 +266,16 @@ def _resolve(st: dict, name: str | None) -> str | None:
     return None
 
 
+def _part(st: dict, name: str) -> str | None:
+    """The part's name a click sends when `name` names a part (a detail of a
+    thing, with no id of its own), as the page does; else None."""
+    n = name.strip().lower()
+    if any(t["name"].lower() == n for t in st.get("toons") or []):
+        return None
+    e = next((e for e in st.get("entities") or [] if e.get("alias", "").lower() == n), None)
+    return e["alias"] if e is not None and e.get("part") else None
+
+
 def agent_cookie(name: str) -> str:
     """A session cookie for the agent account behind play session `name`,
     minted in-process against this env's accounts DB (the shell is the admin
@@ -377,7 +387,10 @@ def main(argv: list[str] | None = None) -> int:
     if args.cmd == "click":
         st = _load(args.name)
         frame = {"kind": "command", "verb": args.verb, "args": args.text}
-        if args.target:
+        part = _part(st, args.target) if args.target else None
+        if part:
+            frame["dobj_name"] = part  # a part answers by its name, as on the page
+        elif args.target:
             frame["dobj_id"] = _resolve(st, args.target)
             if frame["dobj_id"] is None:
                 print(f"no {args.target!r} in view; try `look` first")

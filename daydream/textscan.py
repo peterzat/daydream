@@ -89,8 +89,11 @@ def gather(since_seq: int | None = None, hours: float | None = 192.0) -> dict:
     items: list[dict] = []
     per_minute: Counter = Counter()
     for r in rows:
+        # A click's name for a part it touched (`dobj_name`) is player text too.
+        clicked = [c["dobj_name"] for c in r.resolved or []
+                   if isinstance(c, dict) and isinstance(c.get("dobj_name"), str)]
         text = r.text if r.source == "text" else " ".join(
-            x for x in (r.verb, r.args) if x)
+            x for x in (r.verb, r.args, *clicked) if x)
         if not text or not text.strip():
             continue
         per_minute[(r.toon_id, (r.created_at or "")[:16])] += 1

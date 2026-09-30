@@ -498,6 +498,9 @@ async def _execute_resolved(
 
         host = glimpse.part_host(actor, room_id, dobj_name, spec.name)
         if host is not None:
+            from daydream import pronouns
+
+            pronouns.remember_it_name(actor_id, dobj_name)  # IT: the part named
             if spec.name not in objects.verbs_for(host) and not (
                     spec.universal and (not spec.valid_dobj_kinds
                                         or host.kind in spec.valid_dobj_kinds)):
@@ -533,7 +536,9 @@ async def _execute_resolved(
 
                     pronouns.remember_it_name(actor_id, dobj_name)  # "look at it" next
                     _dispatch(actor, room_id, [seen], spec)
-                    return False
+                    # A part's look (its card carries the part) is the look
+                    # asked for, not a refusal: a chain runs on after it.
+                    return "part" in (seen.get("card") or {})
                 _narrate(room_id, f"You don't see the {dobj_name} here.",
                          recipient_id=actor_id)
             else:
@@ -546,12 +551,16 @@ async def _execute_resolved(
         if spec.name not in objects.verbs_for(dobj) and not (
                 spec.universal and (not spec.valid_dobj_kinds
                                     or dobj.kind in spec.valid_dobj_kinds)):
-            # By the name the player used: "take the letters" at the
-            # pigeonholes is refused as the letters (playtest 2026-09-30).
+            # By the name the player used, as authored: "take the letters" at
+            # the pigeonholes is refused as the letters (playtest 2026-09-30),
+            # a possessive name with its capital; any other word (a pronoun)
+            # names the thing itself (codereview 2026-09-30c).
             from daydream import glimpse
 
             said = glimpse.bare_name(dobj_name or "")
-            named = f"the {said}" if said and dobj.kind == "thing" else _the(dobj)
+            own = next((n for n in [dobj.name, *dobj.aliases] if said and isinstance(n, str)
+                        and glimpse.bare_name(n) == said), None)
+            named = _the_name(own) if own and dobj.kind == "thing" else _the(dobj)
             _narrate(room_id, f"You can't {spec.name} {named}.", recipient_id=actor_id)
             return False
     elif dobj_id:

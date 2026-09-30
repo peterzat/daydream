@@ -614,6 +614,8 @@ def _fast_path(actor_id: str, text: str, room: rooms.Room | None):
                 if len(head_matches) == 1:
                     iobj_matches, for_whom = head_matches, m.group(2).strip().rstrip(".!?")
         if len(iobj_matches) == 0:
+            iobj_matches = _part_host(actor_id, iobj_name, verb)  # "on the painted clock"
+        if len(iobj_matches) == 0:
             return None  # let the LLM try a fuzzier grounding
         if len(iobj_matches) > 1:
             return _clarify(verb, "iobj", iobj_name, iobj_matches,
@@ -628,6 +630,8 @@ def _fast_path(actor_id: str, text: str, room: rooms.Room | None):
 
     name = _strip_article(dobj_part)
     matches = _ground(actor_id, name)
+    if not matches and iobj_part is not None:
+        matches = _part_host(actor_id, name, verb)  # a part, in a two-object line
     if len(matches) == 0 and iobj_part is None:
         head = _TRAILING_PHRASE.sub("", name).strip()
         if head and head != name:
@@ -663,8 +667,10 @@ def _fast_path(actor_id: str, text: str, room: rooms.Room | None):
             return None
         # Let world/room/world rules still see it? No rule can apply if the
         # verb doesn't offer on the object; refuse like the executor would,
-        # by the name the player used ("take the letters" at the pigeonholes).
-        return [Parse(verb, dobj_id=dobj.id, dobj_name=name)]
+        # by the name the player used ("take the letters" at the pigeonholes),
+        # never a pronoun ("take it" names the thing; codereview 2026-09-30c).
+        typed = None if name.lower() in ("it", "them", "him", "her") else name
+        return [Parse(verb, dobj_id=dobj.id, dobj_name=typed)]
     parses = [Parse(verb, dobj_id=dobj.id, iobj_id=iobj_id,
                     args=f"for {for_whom}" if for_whom else "")]
     if iobj_id is None:
@@ -739,7 +745,8 @@ def _gesture_fast_path(actor_id: str, text: str, world_id: str | None):
     if not who or who.lower() in ("me", "myself", "you", "yourself", "everyone", "everybody",
                                   "all"):
         return [Parse("gesture", args=gesture)]
-    matches = [o for o in _ground(actor_id, who) if o.kind in ("toon", "thing")]
+    matches = [o for o in _ground(actor_id, who) if o.kind in ("toon", "thing")] \
+        or _part_host(actor_id, who, "gesture")  # "wave at the forget-me-nots"
     if len(matches) == 1:
         return [Parse("gesture", dobj_id=matches[0].id, args=gesture)]
     if len(matches) > 1:
@@ -895,6 +902,17 @@ def _ground(actor_id: str, name: str) -> list[objects.Object]:
                     return [o]
         return []
     return objects.find_all_in_scope_by_name(actor_id, needle)
+
+
+def _part_host(actor_id: str, name: str, verb: str) -> list[objects.Object]:
+    """The thing here whose part `name` names, as a grounding for `verb`
+    (glimpse.py parts): where a line needs an object, a part stands for its
+    thing, as the alias it replaced did (codereview 2026-09-30c)."""
+    actor = objects.get(actor_id)
+    if actor is None or not actor.location_id or not name:
+        return []
+    host = glimpse.part_host(actor, actor.location_id, name, verb)
+    return [host] if host is not None else []
 
 
 def _clarify(verb, slot, name, matches, iobj_id=None, dobj_hint=None, args=""):

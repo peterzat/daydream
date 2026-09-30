@@ -433,3 +433,59 @@ async def test_a_part_links_on_the_page_and_a_click_opens_its_card(loft, llm):
     said = [e for e in events.fetch_since(before) if e.kind == "narrate"]
     assert said[0].payload["card"]["object_id"] == "o-workbench"
     assert llm.await_count == 0
+
+
+# ---- the review's fixes (codereview 2026-09-30c) -----------------------------
+
+
+async def test_a_refusal_never_says_back_a_pronoun_or_loses_a_names_capital(loft, llm):
+    """"take it" read "You can't take the it.", and "wind mott's tin" lost
+    the capital of Mott's tin: a refusal says back only a name the thing
+    carries, as authored."""
+    await _said(loft, "examine the clocks")
+    for line in ("take it", "take them"):
+        lp = await parser.parse_line(loft, line)
+        assert [p.dobj_name for p in lp.commands] == [None], line
+        said = await _said(loft, line)
+        assert [e.payload["text"] for e in said] == ["You can't take the resting clocks."], line
+    objects.move(loft, "r-workshop")
+    said = await _said(loft, "wind mott's tin")
+    assert [e.payload["text"] for e in said] == ["You can't wind Mott's tin."]
+    assert llm.await_count == 0
+
+
+async def test_a_parts_look_lets_a_chain_run_on(loft, llm):
+    """A part's look is the look asked for, not a refusal: the chain went on
+    no further than it."""
+    from daydream.api import ws
+
+    before = events.max_seq()
+    await ws._handle_input("examine the forget-me-nots. examine the workbench", loft, {})
+    said = [e.payload["text"] for e in events.fetch_since(before)
+            if e.kind == "narrate" and e.recipient_id == loft]
+    assert said[0].startswith(FMN_LOOK), said
+    assert said[-1].startswith("You examine the workbench"), said
+    assert llm.await_count == 0
+
+
+async def test_it_is_the_part_whose_verb_its_thing_did(loft, llm):
+    """"wind the painted clock" left IT on the workbench examined before it."""
+    await _said(loft, "examine the workbench")
+    await _said(loft, "wind the painted clock")
+    said = await _said(loft, "examine it")
+    assert [e.payload["text"][:len(FMN_LOOK)] for e in said] == [FMN_LOOK]
+    assert llm.await_count == 0
+
+
+async def test_a_part_stands_for_its_thing_where_a_line_needs_an_object(loft, llm):
+    """A gesture at a part, or a part as a line's second thing, reached the
+    model once the part stopped being an alias of its thing."""
+    await _said(loft, "take the pendulum")
+    for line, want in (("wave at the forget-me-nots", ("gesture", "o-resting-clocks", None)),
+                       ("put the pendulum on the painted clock",
+                        ("put", "o-brass-pendulum", "o-resting-clocks")),
+                       ("give the pendulum to the painted clock",
+                        ("give", "o-brass-pendulum", "o-resting-clocks"))):
+        lp = await parser.parse_line(loft, line)
+        assert [(p.verb, p.dobj_id, p.iobj_id) for p in lp.commands] == [want], line
+    assert llm.await_count == 0

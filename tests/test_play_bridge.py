@@ -106,3 +106,24 @@ def test_scene_rendering_lists_topics_time_and_the_book():
     assert "Bell (cheerful)  | ask about: the lanterns; the yawning stranger" in text
     assert "Book: 3/160" in text and "The First Dream" in text
     assert asyncio.iscoroutinefunction(play._session)
+
+
+def test_a_click_on_a_part_sends_its_name(monkeypatch):
+    """A part has no id of its own: `play click` sends its name, as the page
+    does, never its thing's id (codereview 2026-09-30c)."""
+    st = {"toons": [{"id": "t-tace", "name": "Tace"}], "entities": [
+        {"alias": "resting clocks", "object_id": "o-resting-clocks", "kind": "thing"},
+        {"alias": "forget-me-nots", "object_id": "o-resting-clocks", "kind": "thing",
+         "part": "o-resting-clocks#0"}]}
+    sent = []
+    monkeypatch.setattr(play, "_load", lambda name: st)
+
+    async def act(name, frame, show_scene):
+        sent.append(frame)
+        return 0
+
+    monkeypatch.setattr(play, "_act", act)
+    assert play.main(["click", "wren", "examine", "Forget-me-nots"]) == 0
+    assert play.main(["click", "wren", "examine", "resting clocks"]) == 0
+    assert sent[0]["dobj_name"] == "forget-me-nots" and "dobj_id" not in sent[0]
+    assert sent[1]["dobj_id"] == "o-resting-clocks" and "dobj_name" not in sent[1]
