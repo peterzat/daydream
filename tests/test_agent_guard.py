@@ -6,6 +6,7 @@ import importlib.util
 import json
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 import pytest
@@ -216,6 +217,122 @@ def test_folders_that_hold_credentials(cmd, want):
     ("bin/game prod deploy > /tmp/deploy.log", None),
 ])
 def test_the_raw_pass_reads_past_redirections_and_lists(cmd, want):
+    got = _bash_in(cmd)
+    assert (got[0] if got else None) == want, (cmd, got)
+
+
+GH_ALT = CONFIG + "/./" + "gh/hosts.yml"  # gh's credential, spelled so no name matches
+
+
+@pytest.mark.parametrize("head,want", [
+    ("cat " + GH_ALT, "deny"),
+    ("bin/game prod invite create --for M", "ask"),
+])
+def test_a_long_adversarial_line_is_judged_quickly(head, want):
+    """Codereview 2026-09-30b: `--git-dir=x` matched both alternatives of the
+    git-credential pattern's repeated group; seventeen of them timed the real
+    hook out, and a timeout lets the command run with no opinion."""
+    cmd = head + "; git" + " --git-dir=x" * 40 + " y"
+    assert len(cmd) >= 500
+    r = subprocess.run([sys.executable, str(ROOT / "tools/agent_guard.py")],
+                       input=json.dumps({"tool_name": "Bash", "tool_input": {"command": cmd},
+                                         "cwd": REPO}),
+                       capture_output=True, text=True, check=True, timeout=5)
+    assert json.loads(r.stdout)["hookSpecificOutput"]["permissionDecision"] == want
+    start = time.perf_counter()
+    got = _bash_in(cmd)
+    assert got[0] == want and time.perf_counter() - start < 0.05, (got, cmd)
+
+
+@pytest.mark.parametrize("cmd,want", [
+    # Codereview 2026-09-30b: the raw pass split `2>&1`, `>&f` and `&>f` on
+    # their `&` before it read them, and a redirection target holding `=`,
+    # `,` or a quoted space leaked a word into the verb.
+    ('out="$(bin/game prod 2>&1 invite create --for M)"', "ask"),
+    ('out="$(bin/game prod >&/tmp/x invite create --for M)"', "ask"),
+    ('out="$(bin/game prod &>/dev/null invite create --for M)"', "ask"),
+    ('out="$(bin/game prod > /tmp/a=b invite create --for M)"', "ask"),
+    ('out="$(bin/game prod > /tmp/a,b invite create --for M)"', "ask"),
+    ("out=\"$(bin/game prod > '/tmp/a b' invite create --for M)\"", "ask"),
+    ('out="$(bin/game prod > /tmp/"a b"c invite create --for M)"', "ask"),
+    ('out="$(bin/game prod > /tmp/a\\ b invite create --for M)"', "ask"),
+    ('out="$(bin/game prod 2>&- invite create --for M)"', "ask"),  # a lone - takes no target
+    ('out="$(bin/game prod >-x invite create --for M)"', "ask"),  # ...but -x is one
+    # `>|` was a redirection in neither pass
+    ("bin/game prod >| /tmp/x invite create --for M", "ask"),
+    ("bin/game prod >| /tmp/x world reset --yes", "ask"),
+    ('out="$(bin/game prod >| /tmp/x world reset --yes)"', "ask"),
+    # ordinary redirections stay quiet
+    ('out="$(bin/game prod deploy 2>&1)"; echo "$out" > /tmp/d.log', None),
+    ("bin/game prod status >| /tmp/status.txt", None),
+])
+def test_a_redirection_and_its_target_are_read_whole(cmd, want):
+    got = _bash_in(cmd)
+    assert (got[0] if got else None) == want, (cmd, got)
+
+
+def test_the_parser_reads_a_clobbering_redirection():
+    """`>|` and its target are not the command's arguments; the target comes
+    back as a path to judge."""
+    assert guard._split_commands("bin/game prod >| /tmp/x world reset --yes") == [
+        [">", "/tmp/x"], ["bin/game", "prod", "world", "reset", "--yes"]]
+
+
+@pytest.mark.parametrize("cmd,want", [
+    # Codereview 2026-09-30b: a cd that never takes effect (a subshell, a
+    # failed cd before `;`) moved the guard but not the shell. Every
+    # directory the line may be in is judged.
+    ("(cd /tmp/a/b); cat ../../." + "config/./" + "gh/hosts.yml", "deny"),
+    ("cd /no/such/dir/x; cat ../../." + "config/./" + "gh/hosts.yml", "deny"),
+    ("(cd /tmp/a/b/c); grep -rn token ../..", "ask"),
+    ("cd -P " + CONFIG + "; cat ./" + "gh/hosts.yml", "deny"),  # cd's option is not its target
+    ("cd " + CONFIG + " && tar czf /tmp/c.tgz gh", "ask"),  # a bare root inside a credential
+    ("".join(f"cd /d{i}; " for i in range(16)) + "cd " + CONFIG + "; cat ./" + "gh/hosts.yml",
+     "ask"),  # more directories than the guard follows: the operator confirms
+    ("cd /tmp && make && cd - && rg foo", None),  # cd - returns to a counted directory
+    ("cd daydream && rg foo", None),
+])
+def test_a_cd_that_may_not_take_effect(cmd, want):
+    got = _bash_in(cmd)
+    assert (got[0] if got else None) == want, (cmd, got)
+
+
+def test_a_long_line_of_cds_is_judged_within_the_hooks_timeout():
+    """Codereview 2026-09-30b: the old tracking folded an ever longer path
+    (`cd a; ` sixteen thousand times took 6.8 s, past the hook's 5 s), and
+    a deny after the cap still wins over its ask."""
+    cmd = "cd a; " * 16000 + "cat " + GH_ALT
+    r = subprocess.run([sys.executable, str(ROOT / "tools/agent_guard.py")],
+                       input=json.dumps({"tool_name": "Bash", "tool_input": {"command": cmd},
+                                         "cwd": REPO}),
+                       capture_output=True, text=True, check=True, timeout=5)
+    assert json.loads(r.stdout)["hookSpecificOutput"]["permissionDecision"] == "deny"
+
+
+@pytest.mark.parametrize("cmd,want", [
+    # Codereview 2026-09-30b: a glob named a credential and no name matched.
+    ("cat " + CONFIG + "/*/hosts.yml", "deny"),
+    ("head ~/.con" + "*/gh/*", "deny"),
+    ("cat ~/.s" + "?h/id_ed25519", "deny"),
+    ("cat /etc/cloudflare" + "?/*", "deny"),
+    ("cd " + CONFIG + " && cat g" + "*/hosts.yml", "deny"),
+    ("cat ~/.[s]" + "sh/id_ed25519", "deny"),
+    ("cat /srv/daydream/[e]" + "tc/prod.env", "deny"),
+    ("cat ~/.s{s,x}" + "h/id_ed25519", "deny"),  # a brace group is a spelling too
+    ("cat < " + GH_ALT, "deny"),  # ...and so is a redirection target
+    ("cat < ~/.s" + "?h/id_ed25519", "deny"),
+    ("cd " + CONFIG + "; cat < g" + "?/hosts.yml", "deny"),
+    ("cp -r ~/.con" + "* /tmp/c", "ask"),  # a folder that holds one
+    ("cd " + CONFIG + " && tar czf /tmp/c.tgz g" + "*", "ask"),
+    # ordinary globs and braces stay quiet
+    ("ls ~/.claude/projects/*/memory", None),
+    ("grep -rn foo ~/data/daydream/*.log", None),
+    ("ls /srv/daydream/releases/*", None),
+    ("rg -n foo daydream/{api,llm}/", None),
+    ("cat docs/*.md > /tmp/all.md", None),
+    ("sort < data.txt > out.txt", None),
+])
+def test_globs_braces_and_redirection_targets(cmd, want):
     got = _bash_in(cmd)
     assert (got[0] if got else None) == want, (cmd, got)
 

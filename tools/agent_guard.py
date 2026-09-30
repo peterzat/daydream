@@ -10,7 +10,11 @@ command the way the shell will, and:
 
 - DENIES any command or file read that names the credentials on this box
   (~/.ssh, ~/.config/gh, ~/.config/daydream, /srv/daydream/etc,
-  /etc/cloudflared), however the path is spelled, or prints the GitHub token;
+  /etc/cloudflared), plainly or with `..`, `./`, a glob (`*`, `?`, `[...]`)
+  or a brace group, as an argument or a redirection target, and any command
+  that prints the GitHub token. What the shell computes at run time is not
+  modeled: variables and command substitution (`D=~/.config; cat $D/gh/...`,
+  `$(echo ~)`);
 - ASKS before a search, archive or copy rooted at a folder that holds one of
   them (`grep -rn ... ~/.config`);
 - ASKS before the `bin/game prod` / `bin/game edge` verbs that mint access,
@@ -25,6 +29,7 @@ tests: tests/test_agent_guard.py. Standard library only.
 """
 from __future__ import annotations
 
+import fnmatch
 import json
 import os
 import re
@@ -51,6 +56,8 @@ TREE_BY_DEFAULT = {"rg", "ag", "ack", "find"}
 TREE_READERS = SEARCHERS | {"tar", "zip", "cp", "rsync", "scp", "7z"}
 BROAD_ROOTS = {"~", "~/", "$HOME", "$HOME/", "${HOME}", "${HOME}/", "/", "/root", "/home",
                "/etc", "/srv", "/srv/daydream", _HOME, _HOME + "/"}
+# The most working directories a line is followed into; one more asks.
+MAX_CWDS = 16
 WRAPPERS = {"timeout", "time", "nice", "nohup", "stdbuf", "command", "builtin", "env",
             "exec", "xargs", "sudo", "setsid", "ionice", "flock", "watch"}
 SHELLS = {"bash", "sh", "zsh", "dash"}
@@ -64,8 +71,10 @@ TOKEN_PRINTERS = re.compile(
     r"\bgh\s+auth\s+token\b"
     r"|\bgh\s+auth\s+status\b[^\n;|&]*(?:\s-[A-Za-z]*t[A-Za-z]*\b|--show-token)"
     r"|\bgh\s+auth\s+git-credential\b|oauth_token"
-    r"|\bgit\s+(?:(?:-[cC]|--git-dir|--work-tree)\s*=?\s*\S+\s+|--\S+\s+)*"
-    r"credential(?:-\w+)?\s+(?:fill|get)\b")
+    # One lazy run, not a repeated option group: `--git-dir=x` matched both of
+    # the old group's alternatives and backtracked past the hook's timeout
+    # (codereview 2026-09-30b).
+    r"|\bgit\b[^\n;|&]*?\bcredential(?:-\w+)?\s+(?:fill|get)\b")
 
 # (subcommand, verb[, ...]) prefixes of `bin/game prod|edge` that always ask.
 ASK_PROD = [
@@ -92,17 +101,23 @@ WRAPPER_VALUE_OPTS = {
 }
 # ...and wrappers whose first plain word is theirs, not the program's.
 WRAPPER_FIRST_WORD = {"timeout", "flock"}
-REDIRECT = re.compile(r"^\d*(>>?|<<?<?|&>>?|>&|<&)-?$")
-# A redirection word in the raw pass: the operator alone (its target is the
-# next word), or with its target or a descriptor attached (`>/dev/null`, `2>&1`).
-_RAW_REDIRECT = re.compile(r"^\d*(?:>>?|<<?<?|&>>?|>&|<&)")
+REDIRECT = re.compile(r"^\d*(>\||>>?|<<?<?|&>>?|>&|<&)-?$")  # shlex keeps `>|` whole
+# A redirection and its target (one shell word: quoted parts and `\ ` escapes
+# included), stripped from the raw text before the raw pass splits it on
+# ; & | (codereview 2026-09-30b: `2>&1`, `>&f` and `&>f` were cut apart, and a
+# target holding `=`, `,` or a quoted space leaked a word). Longer operators
+# come first; a lone `-` takes no target (`2>&- invite` keeps `invite`).
+_RAW_REDIRECTION = re.compile(
+    r"\d*(?:>\||>&|&>>?|>>?|<&|<<?<?)"
+    r"(?:-(?=[\s;&|()<>]|$)|\s*(?:\\.|\"(?:[^\"\\]|\\.)*\"|'[^']*'|[^\s;&|()<>'\"\\])+)?")
 
 
 def _split_commands(command: str) -> list[list[str]]:
     """The simple commands in a line, each as argv, across ; && || | & and
-    newlines, subshell parentheses, and $( ) / backticks, with redirections
-    and their targets left out. A `#` inside a word is a word character, as
-    in bash."""
+    newlines, subshell parentheses, and $( ) / backticks. A redirection is
+    left out of its command and its target comes back as an entry of its
+    own, `[">", target]`, judged as a path and never run. A `#` inside a
+    word is a word character, as in bash."""
     text = re.sub(r"\$\(|`|\(|\)", " ; ", command)
     lex = shlex.shlex(text, posix=True, punctuation_chars=";&|\n<>")
     lex.whitespace = " \t\r"
@@ -114,6 +129,7 @@ def _split_commands(command: str) -> list[list[str]]:
         for tok in lex:
             if skip_next:
                 skip_next = False
+                out.append([">", tok])  # `cat < ~/.s?h/key`: the target is a path
                 continue
             if tok and set(tok) <= set(";&|\n"):
                 if cur:
@@ -192,26 +208,46 @@ def _names_credentials(words: list[str]) -> str | None:
 
 def _resolve(word: str, cwd: str) -> str:
     """A path argument as the shell will see it: ~ and $HOME expanded,
-    relative to the working directory, `.` and `..` folded."""
+    relative to the working directory, `.` and `..` folded, and a brace
+    group widened to a glob (`.s{s,x}h` is `.s*h`)."""
     w = word.replace("${HOME}", _HOME).replace("$HOME", _HOME)
+    n = "{" in w
+    while n:
+        w, n = re.subn(r"\{[^{}]*\}", "*", w)
     w = os.path.expanduser(w)
     if not os.path.isabs(w):
         w = os.path.join(cwd, w)
     return os.path.normpath(w)
 
 
+_LOCATION_PARTS = tuple((loc, loc.strip("/").split("/")) for loc in CREDENTIAL_LOCATIONS)
+_GLOB = re.compile(r"[*?[]")
+
+
+def _credential_relation(path: str) -> tuple[str, str] | None:
+    """How a resolved path, literal or a glob, meets a credential location,
+    compared component by component (fnmatch for a glob: `~/.con*/gh`):
+    ("inside", loc) when every compared component matches and the path is
+    as long or longer, ("holds", loc) when it is shorter, a folder above the
+    location. Inside wins."""
+    parts = [p for p in path.split("/") if p]
+    glob = _GLOB.search(path)
+    held = None
+    for loc, loc_parts in _LOCATION_PARTS:
+        n = min(len(parts), len(loc_parts))
+        if parts[:n] == loc_parts[:n] or glob and all(
+                fnmatch.fnmatchcase(name, pat)
+                for name, pat in zip(loc_parts, parts, strict=False)):  # up to the shorter
+            if len(parts) >= len(loc_parts):
+                return "inside", loc
+            held = held or ("holds", loc)
+    return held
+
+
 def _inside_credentials(path: str) -> str | None:
     """The credential location a resolved path is, or is inside."""
-    for loc in CREDENTIAL_LOCATIONS:
-        if path == loc or path.startswith(loc + "/"):
-            return loc
-    return None
-
-
-def _holds_credentials(path: str) -> bool:
-    """Whether a resolved path is a folder that holds a credential location."""
-    prefix = path if path.endswith("/") else path + "/"
-    return any(loc.startswith(prefix) for loc in CREDENTIAL_LOCATIONS)
+    rel = _credential_relation(path)
+    return rel[1] if rel and rel[0] == "inside" else None
 
 
 def _looks_like_path(word: str) -> bool:
@@ -263,22 +299,10 @@ def _gated(argv: list[str]) -> str | None:
 def _raw_words(segment: str) -> list[str]:
     """A segment's words for the raw gated-verb pass: quotes, `$( )`,
     backticks, list brackets and commas are separators (a quoted
-    `$(bin/game ...)`, `subprocess.run(["bin/game", ...])`), and a
-    redirection drops only itself and its target, never the words after it
+    `$(bin/game ...)`, `subprocess.run(["bin/game", ...])`). Redirections
+    are already gone (`_RAW_REDIRECTION`), so none ends the words after it
     (`bin/game prod >/dev/null invite create`)."""
-    words = [w for w in re.split(r"[\s()`$\"'=,\[\]]+", segment) if w]
-    out, skip = [], False
-    for w in words:
-        if skip:
-            skip = False
-            continue
-        m = _RAW_REDIRECT.match(w)
-        if m:
-            tail = w[m.end():]
-            skip = tail in ("", "-") and not w.endswith("-")  # "> file": the next word
-            continue
-        out.append(w)
-    return out
+    return [w for w in re.split(r"[\s()`$\"'=,\[\]]+", segment) if w]
 
 
 # The guard and the permission settings: changing them asks the operator
@@ -339,7 +363,7 @@ def decide(payload: dict) -> tuple[str, str] | None:
     # Gated verbs on the raw text too: inside a quoted `$(...)` the parser
     # sees one word (`out="$(bin/game prod invite create ...)"`; security
     # WARN 2026-09-29).
-    for segment in re.split(r"[;&|\n]+", command):
+    for segment in re.split(r"[;&|\n]+", _RAW_REDIRECTION.sub(" ", command)):
         words = _raw_words(segment)
         for i, w in enumerate(words):
             if os.path.normpath(w).endswith("bin/game"):
@@ -349,7 +373,11 @@ def decide(payload: dict) -> tuple[str, str] | None:
     hit = _protected_write(command)
     if hit and ask is None:
         ask = f"{hit} guards this session's permissions; the operator confirms a change"
-    cwd = payload.get("cwd") or os.getcwd()
+    # Every directory a command may run in: a cd that never takes effect (a
+    # subshell, a failed cd before `;`) leaves the line where it was, so each
+    # is a candidate and relative words are judged from all of them
+    # (codereview 2026-09-30b).
+    cwds = [payload.get("cwd") or os.getcwd()]
     for argv in (c for part in _split_commands(command) for c in _unwrap(part)):
         if not argv:
             continue
@@ -358,16 +386,28 @@ def decide(payload: dict) -> tuple[str, str] | None:
             return "deny", _DENY_CREDENTIALS.format(p)
         for w in argv[1:]:
             if _looks_like_path(w):
-                loc = _inside_credentials(_resolve(w, cwd))
-                if loc:
-                    return "deny", _DENY_CREDENTIALS.format(loc)
+                for path in dict.fromkeys(_resolve(w, c) for c in cwds):
+                    loc = _inside_credentials(path)
+                    if loc:
+                        return "deny", _DENY_CREDENTIALS.format(loc)
         base = os.path.basename(argv[0])
         if base in ("cd", "pushd"):
-            # The rest of the line runs there (`cd ~ && grep -r token .`).
-            cwd = _resolve(argv[1], cwd) if len(argv) > 1 and argv[1] != "-" else _HOME
-            loc = _inside_credentials(cwd)
-            if loc:  # every bare file name after this is a credential's
-                return "deny", _DENY_CREDENTIALS.format(loc)
+            # The rest of the line may run there (`cd ~ && grep -r token .`);
+            # `cd -` returns to a directory already counted.
+            dirs = [a for a in argv[1:] if not a.startswith("-")]
+            if not dirs and "-" not in argv[1:]:
+                dirs = [_HOME]
+            for new in [_resolve(d, c) for d in dirs for c in cwds]:
+                if new in cwds:
+                    continue
+                loc = _inside_credentials(new)
+                if loc:  # every bare file name after this is a credential's
+                    return "deny", _DENY_CREDENTIALS.format(loc)
+                if len(cwds) < MAX_CWDS:
+                    cwds.append(new)
+                elif ask is None:
+                    ask = "the guard cannot follow this many directory changes; the " \
+                          "operator confirms it"
             continue
         if base == "gh" and (argv[1:3] == ["auth", "token"] or (
                 argv[1:2] == ["auth"] and any(
@@ -378,8 +418,8 @@ def decide(payload: dict) -> tuple[str, str] | None:
             continue  # keep reading for a deny
         if base in SEARCHERS and any(a in BROAD_ROOTS for a in argv[1:]):
             ask = f"a {base} over your home or a system directory can print credentials"
-        elif base in TREE_READERS and any(
-                _holds_credentials(_resolve(w, cwd)) for w in _tree_roots(argv)):
+        elif base in TREE_READERS and any(  # a root above a credential, or a bare one in it
+                _credential_relation(_resolve(w, c)) for w in _tree_roots(argv) for c in cwds):
             ask = f"a {base} over a folder that holds this box's credentials can print or " \
                   "copy them; the operator confirms it"
         elif base == "gh" and argv[1:2] in (["gist"], ["ssh-key"], ["secret"]):
