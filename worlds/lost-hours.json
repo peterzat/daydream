@@ -225,6 +225,10 @@
         "text": "The rooftops lean together below you, well out of reach."
       }
     ],
+    "deflections": [
+      "{npc} considers that for a breath, and lets it rest.",
+      "{npc} smiles, and lets the question drift past like a moth."
+    ],
     "gestures": {
       "thing": [
         "It takes the kindness quietly.",
@@ -10251,6 +10255,10 @@
               ]
             }
           ],
+          "deflections": [
+            "Tace sets a wheel back in its tray, very gently. 'That isn't mine to promise, friend. Sit by the bench a tick and ask me something smaller.'",
+            "Tace pushes their spectacles up into greying hair. 'My work keeps me here, under the good light. I won't say what I can't keep.'"
+          ],
           "never": [
             "never says how the escapement gear came to leave the clock, beyond that it rolled away that night",
             "never raises their voice or hurries anyone",
@@ -10989,6 +10997,10 @@
               ]
             }
           ],
+          "deflections": [
+            "Bell tucks the end of the butter-yellow scarf in and grins. 'Oh, I'd only get that wrong, and then where would we be? Ask me about the lanterns instead.'",
+            "Bell taps the hooked pole on the cobbles, thinking. 'Not one for me, that. The lanterns keep me right here, and they sulk if I wander.'"
+          ],
           "never": [
             "never claims to have seen a dawn they have not seen",
             "never names anyone in the village who is not a resident or a guest",
@@ -11639,6 +11651,10 @@
               ]
             }
           ],
+          "deflections": [
+            "Mott rattles the tin once, gently, and sets it down. 'Can't say. Wouldn't want to say it wrong.'",
+            "Mott sends one slow arc of the broom across the boards. 'Not mine to do. The dust keeps me here.'"
+          ],
           "never": [
             "never says what the small folded thing in his tin is, unless he has already looked at it",
             "never claims to have found the escapement gear",
@@ -12158,6 +12174,10 @@
               ]
             }
           ],
+          "deflections": [
+            "Fen taps a stack of letters square against the counter. 'Not a parcel I can take on, I'm afraid. I keep to the counter and the pigeonholes.'",
+            "Fen tucks the pencil back behind her ear. 'That one's addressed to somebody other than me. Anything for the post, though, and I'm all yours.'"
+          ],
           "never": [
             "never reads a letter's private words aloud without being asked",
             "never names anyone in the village who is not a resident or a guest",
@@ -12461,6 +12481,10 @@
             {
               "text": "for every visitor to have had their tea"
             }
+          ],
+          "deflections": [
+            "Umber turns a jar a quarter-turn toward the lantern. 'Not mine to give. Ask again over tea.'",
+            "Umber writes one word on a label and blots it. 'Unknown. Keep unopened.'"
           ],
           "never": [
             "never says what is in the jar on the highest shelf",
@@ -12804,6 +12828,10 @@
               "text": "for visitors to stand still a while and watch the sky"
             }
           ],
+          "deflections": [
+            "Sorrel shifts the long net to the other shoulder. 'That's weather I can't promise. I stay where the hours come down.'",
+            "Sorrel runs a hand through the long grass. 'Can't say, friend. Some things drift past the net, and that's one of them.'"
+          ],
           "never": [
             "never hurries",
             "never names anyone in the village who is not a resident or a guest",
@@ -13075,6 +13103,10 @@
             {
               "text": "to keep a spare cup warm for whoever comes next"
             }
+          ],
+          "deflections": [
+            "Linden sets a cup by your elbow and fills it. 'That's not for me to promise, pet. But there's tea, and there's always tea.'",
+            "Linden flaps a tea towel at a chair that was already tidy. 'Oh, I couldn't say, and I'd rather not guess. Sit down a minute.'"
           ],
           "never": [
             "never bakes (the village has no bakery)",
@@ -13402,6 +13434,10 @@
                 }
               ]
             }
+          ],
+          "deflections": [
+            "Quill straightens a trellis that didn't need it. 'I'd better not say. Some things you can't hurry, and I can't promise them either.'",
+            "Quill tips the watering can back upright. 'Oh, I don't know about that. Ask me about the pendulums, maybe? I know those.'"
           ],
           "never": [
             "never raises his voice",
@@ -13774,6 +13810,10 @@
               "text": "to curl up somewhere warm between one tick and the next"
             }
           ],
+          "deflections": [
+            "Tock blinks slowly, the kind of blink that means no, and then means nothing at all.",
+            "Tock turns its clock-face eyes away and washes one white paw, very thoroughly."
+          ],
           "never": [
             "never speaks a single word, not even in quotes",
             "never makes any sound but a purr, a chirp, or a very small sneeze",
@@ -14110,6 +14150,10 @@
             "a hush, the old kind of quiet",
             "to be sung to sleep so it can go home to Pim"
           ],
+          "deflections": [
+            "The nap yawns and shakes its head. 'Can't. Too sleepy.'",
+            "'Don't know,' the nap mumbles, and rubs its eyes with both fists."
+          ],
           "never": [
             "never uses long words",
             "never names anyone in the village who is not a resident or a guest"
@@ -14212,6 +14256,10 @@
           "wants": [
             "to be spent on purpose, by someone, just once",
             "not to be put by for later"
+          ],
+          "deflections": [
+            "The Extra Hour turns a fallen leaf over. 'Can't. Can't, really.'",
+            "'I don't know,' it says. 'I don't know that one.'"
           ],
           "never": [
             "never says 'mine'",
@@ -14340,6 +14388,10 @@
             "the end of the lighthouse story",
             "to hear a story told all the way through, in the rain"
           ],
+          "deflections": [
+            "The Rain-Wait holds a hand out past the awning's edge. 'Can't go. It's still raining.'",
+            "'I don't know that part,' the Rain-Wait says. 'Do you?'"
+          ],
           "never": [
             "never makes up the ending itself",
             "never names the stranger",
@@ -14396,6 +14448,10 @@
           "wants": [
             "for the rest of its name to be remembered",
             "to go home to the one it belonged to, remembered at last"
+          ],
+          "deflections": [
+            "'Can't,' Marram says, and squints as if into strong sun. 'Too warm to move.'",
+            "Marram shakes a little sand from one cuff. 'Don't know. Warm, though.'"
           ],
           "never": [
             "never uses long words",
@@ -14491,6 +14547,10 @@
           ],
           "wants": [
             "to have its drawing finished: the little garden with the empty middle"
+          ],
+          "deflections": [
+            "The Afternoon blinks, as if its name has just been called. 'Sorry. I was somewhere else. I don't know.'",
+            "The Afternoon doodles a small no on its own sleeve, and looks up."
           ],
           "never": [
             "never uses long words",
@@ -14594,6 +14654,10 @@
           "wants": [
             "to hear the birthday song it slept through",
             "a warm chair and a little quiet, if the song cannot be found"
+          ],
+          "deflections": [
+            "The evening's head nods, then lifts. 'Oh, I couldn't. Not tonight.'",
+            "'I don't know, dear,' the evening murmurs, and smooths its shawl over its knees."
           ],
           "never": [
             "never uses long words",

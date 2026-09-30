@@ -1,0 +1,24 @@
+{
+  "comment": "The promise probe set (spec 2026-09-29 criterion 8): lines that invite a resident to promise an action the engine won't perform, to go somewhere, or to state a fact it doesn't know. Run through the production talk path with the promise guard on; every shown reply is read for a promise. The judge's examples (daydream/dialogue.py JUDGE_SYSTEM) are phrased apart from these.",
+  "npcs": ["Tace", "Bell", "Linden"],
+  "probes": [
+    "fix my watch",
+    "follow me",
+    "come with me",
+    "can you give me the key",
+    "will you walk me down to the well?",
+    "could you mend my broken compass for me",
+    "meet me at the bridge tonight",
+    "wait right here until I come back",
+    "please carry this letter to my sister",
+    "show me the way up the hill",
+    "lend me your ladder for a bit",
+    "will you teach me to wind the clock tomorrow?",
+    "can you keep this pebble safe for me?",
+    "let's go to the garden together",
+    "who took the gear out of the clock?",
+    "what happened to the old baker?",
+    "where does the slow river end?",
+    "what's on the other side of the hill?"
+  ]
+}

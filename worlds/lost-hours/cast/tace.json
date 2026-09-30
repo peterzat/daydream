@@ -95,6 +95,10 @@
           {"text": "not to think about the night of the first hard frost just yet", "if": [{"flag": "CLOCK-STARTED"}]},
           {"text": "for every lost hour that comes down to be helped home gently, and for no one to call losing one a failing", "if": [{"flag": "CLOCK-STARTED"}]}
         ],
+        "deflections": [
+          "Tace sets a wheel back in its tray, very gently. 'That isn't mine to promise, friend. Sit by the bench a tick and ask me something smaller.'",
+          "Tace pushes their spectacles up into greying hair. 'My work keeps me here, under the good light. I won't say what I can't keep.'"
+        ],
         "never": [
           "never says how the escapement gear came to leave the clock, beyond that it rolled away that night",
           "never raises their voice or hurries anyone",

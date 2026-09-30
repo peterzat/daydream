@@ -478,6 +478,10 @@ def validate_story(env: dict, *, known: dict, ks: dict, room_ids: set[str],
             if "npc_default" in gest:
                 errors.extend(gestures.validate_reactions(
                     {"default": gest["npc_default"]}, "config.gestures.npc_default"))
+    defl = cfg.get("deflections")
+    if defl is not None and not (isinstance(defl, list) and defl and all(
+            isinstance(x, str) and "{npc}" in x for x in defl)):
+        errors.append("config.deflections must be a list of lines, each with {npc}")
     off = cfg.get("engine_verbs_off")
     if off is not None:
         from daydream.verbs import VERBS
@@ -510,7 +514,7 @@ def validate_toon_story(t: dict, where: str, *, known: dict, ks: dict,
             for k in ("pronouns", "sheet"):
                 if not isinstance(voice.get(k), str) or not voice[k].strip():
                     errors.append(f"{vw}.{k} must be a non-empty string")
-            for k in ("samples", "habits", "never", "pet_names"):
+            for k in ("samples", "habits", "never", "pet_names", "deflections"):
                 if k in voice and not (isinstance(voice[k], list) and all(
                         isinstance(x, str) for x in voice[k])):
                     errors.append(f"{vw}.{k} must be a list of strings")

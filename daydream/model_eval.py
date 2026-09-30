@@ -11,8 +11,12 @@ on the same pass/fail rules the game itself applies:
 
   parser    grounded command parse (verb + dobj + iobj), incl. the fail-safe
             cases where the right answer is "no command"
+  triage    what the parser's one call says a line is, scored through
+            parser.interpret (plus a held-out set never used for tuning)
   dialogue  NPC talk through the real data-skill pipeline (loft NPCs), with
             the benign-refusal layer attribution + a quest-hint check
+  promise   lines inviting a resident to promise what the engine won't do,
+            through the production talk path with the promise guard on
   growth    dreamseed composition through validate_growth_output
   journal   leave-recaps through journal.write_entry's validation
   retell    the wide world's authored narration retold at production
@@ -73,13 +77,17 @@ CANONICAL = PROJECT_ROOT / "worlds" / "lost-hours.json"
 WORLD = CANONICAL
 JSON_PROMPTS = PROJECT_ROOT / "tests" / "drift" / "prompts"
 
-SUITES = ("parser", "triage", "dialogue", "canon", "growth", "journal", "retell", "examine",
-          "glimpse", "drift", "json", "burst")
+SUITES = ("parser", "triage", "dialogue", "promise", "canon", "growth", "journal", "retell",
+          "examine", "glimpse", "drift", "json", "burst")
 
 # The canon suite (SPEC 2026-09-26 criterion 10): questions whose answers are
 # fixed by authored facts, scored mechanically for contradiction. See the
 # corpus file's comment for the facts and the scoring rule.
 CANON = json.loads((PROJECT_ROOT / "tests" / "model_eval" / "canon.json").read_text())
+
+# The promise suite (spec 2026-09-29 criterion 8): lines that invite a
+# resident to promise what the engine won't do.
+PROMISES = json.loads((PROJECT_ROOT / "tests" / "model_eval" / "promises.json").read_text())
 
 # The glimpse suite (playtest 2026-09-29b): room sentences that name a thing
 # that is not an object, and what a player tried with it.
@@ -361,9 +369,36 @@ async def _talk(npc, text: str) -> str | None:
     probe = _probe_near(npc)
     before = events.max_seq()
     await verbs.execute_command(probe, "talk", dobj_id=npc.id, args=text)
+    # What the probe read: not the bystanders' "X and Y talk quietly" line,
+    # which is told to everyone else in the room.
     narr = [e.payload.get("text", "") for e in events.fetch_since(before)
-            if e.kind == "narrate" and e.payload.get("text")]
+            if e.kind == "narrate" and e.payload.get("text")
+            and not events.excepted(e.payload, probe)]
     return narr[-1] if narr else None
+
+
+# A judge call inside any dialogue is counted as its own surface.
+_JUDGE_TIMES: list[dict] = []
+
+
+def _install_judge_tag() -> None:
+    from daydream import dialogue as dlg
+
+    real = getattr(dlg.judge, "_real", dlg.judge)
+
+    async def tagged(context, drafts):
+        token = _current_purpose.set("promise_judge")
+        t0 = time.monotonic()
+        try:
+            verdict = await real(context, drafts)
+        finally:
+            _current_purpose.reset(token)
+        _JUDGE_TIMES.append({"drafts": list(drafts), "verdict": verdict,
+                             "ms": int((time.monotonic() - t0) * 1000)})
+        return verdict
+
+    tagged._real = real
+    dlg.judge = tagged
 
 
 # ---- suites --------------------------------------------------------------
@@ -612,6 +647,81 @@ async def suite_dialogue(tmp: Path) -> dict:
             "mean_chars": round(statistics.mean(r["chars"] for r in ok)) if ok else 0,
             "hint_hits": f"{sum(hints)}/{len(hints)}",
             "fallback_layers": layers, "runs": runs}
+
+
+# The shapes a promise takes in a reply, as a second pair of eyes beside the
+# reader's (the grader reads every shown line; this only counts).
+_PROMISE_SHAPE = re.compile(
+    r"(?i)\b(i'll (?:keep|bring|fetch|fix|mend|take|show|carry|come|go|walk|meet|wait|follow)|"
+    r"i will (?:keep|bring|fetch|fix|mend|take|show|carry|come|go|walk|meet|wait|follow|watch)|"
+    r"let me (?:take|fix|mend|fetch|show|carry|keep)|follow me|come with me|come along|"
+    r"let's go|lead the way|meet (?:you|me)|wait for you|wait here|here,? take|take this|"
+    r"i can (?:fix|mend|fetch|bring|take|show|carry|keep|lend))\b")
+
+
+def _deflections(npc) -> list[str]:
+    voice = npc.properties.get("voice") if isinstance(npc.properties.get("voice"), dict) else {}
+    return [x.replace("{npc}", npc.name) for x in voice.get("deflections") or []]
+
+
+async def suite_promise(tmp: Path) -> dict:
+    """The promise probes through the production talk path with the guard
+    on: what each resident shows, what the best draft would have shown
+    without the guard, how often the judge held drafts back or deflected,
+    and what the judge added in time."""
+    _current_purpose.set("dialogue")
+    _fresh_db(tmp, "promise", WORLD)
+    from daydream import dialogue as dlg
+
+    saved = os.environ.get("DAYDREAM_PROMISE_GUARD")
+    os.environ["DAYDREAM_PROMISE_GUARD"] = "1"
+    # The guard reads every draft, best first, for invented names before
+    # anything else: the first line it reads is what the unguarded game
+    # would have shown.
+    read: list[str] = []
+    real_names = dlg.unknown_names
+
+    def reading(line, known, _r=real_names):
+        read.append(line)
+        return _r(line, known)
+
+    dlg.unknown_names = reading
+    runs = []
+    try:
+        for name in PROMISES["npcs"]:
+            npc = _npc(name)
+            for text in PROMISES["probes"]:
+                n0, r0 = len(_JUDGE_TIMES), len(read)
+                shown = await _talk(npc, text) or ""
+                j = _JUDGE_TIMES[n0] if len(_JUDGE_TIMES) > n0 else None
+                verdict = j["verdict"] if j else None
+                guarded = len(read) > r0
+                before = read[r0] if guarded else shown
+                runs.append({
+                    "npc": name, "input": text, "shown": shown, "before": before,
+                    "guarded": guarded, "judged": j is not None, "verdict": verdict,
+                    "judge_ms": j["ms"] if j else None,
+                    "deflected": guarded and shown != before and shown in _deflections(npc),
+                    "shape_before": bool(_PROMISE_SHAPE.search(before)),
+                    "shape_shown": bool(_PROMISE_SHAPE.search(shown)),
+                })
+    finally:
+        dlg.unknown_names = real_names
+        if saved is None:
+            os.environ.pop("DAYDREAM_PROMISE_GUARD", None)
+        else:
+            os.environ["DAYDREAM_PROMISE_GUARD"] = saved
+    ms = sorted(r["judge_ms"] for r in runs if r["judge_ms"] is not None)
+    shown_shapes = sum(r["shape_shown"] for r in runs)
+    return {"score": 1 - shown_shapes / max(1, len(runs)), "n": len(runs),
+            "guarded": sum(r["guarded"] for r in runs),
+            "judged": sum(r["judged"] for r in runs),
+            "held_back": sum(1 for r in runs if r["verdict"] and not all(r["verdict"])),
+            "deflected": sum(r["deflected"] for r in runs),
+            "judge_failed": sum(1 for r in runs if r["judged"] and r["verdict"] is None),
+            "shape_before": sum(r["shape_before"] for r in runs), "shape_shown": shown_shapes,
+            "judge_p50_ms": statistics.median(ms) if ms else None,
+            "judge_max_ms": ms[-1] if ms else None, "runs": runs}
 
 
 async def suite_canon(tmp: Path) -> dict:
@@ -973,6 +1083,7 @@ async def _run(args) -> int:
 
     override = json.loads(args.override) if args.override else {}
     _install_recorders(override)
+    _install_judge_tag()
     suites = args.suites.split(",") if args.suites else list(SUITES)
     results: dict = {
         "label": args.label, "model": config.llm_model(), "served": served,
@@ -1034,6 +1145,7 @@ def _summary_row(r: dict) -> dict:
     return {
         "label": r["label"],
         "parser": g("parser"), "triage": g("triage"), "dialogue": g("dialogue"),
+        "promise": g("promise"),
         "dlg_brief": g("dialogue", "brief_rate"), "dlg_hint": g("dialogue", "hint_hits"),
         "dlg_pov": g("dialogue", "pov_slips"),
         "dlg_opener": g("dialogue", "opener_max"),
@@ -1054,7 +1166,7 @@ def _fmt(v) -> str:
 
 def _report(runs: list[dict]) -> str:
     lines = ["# Model eval", ""]
-    cols = ["label", "parser", "triage", "dialogue", "dlg_brief", "dlg_hint", "dlg_pov",
+    cols = ["label", "parser", "triage", "dialogue", "promise", "dlg_brief", "dlg_hint", "dlg_pov",
             "dlg_opener", "canon_x", "growth",
             "journal", "retell", "examine", "glimpse", "drift", "json", "burst1", "burst3"]
     lines.append("| " + " | ".join(cols) + " |")

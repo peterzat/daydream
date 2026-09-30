@@ -66,7 +66,7 @@ decisions (Context).
   never parse there, never appear on the verb bar, and `who am I` or `climb
   the shelf` get the village's own answers. Zork's files are untouched, and
   its walkthrough still replays to 350.
-- [ ] **8. Local replies keep only the promises the engine keeps.** An
+- [x] **8. Local replies keep only the promises the engine keeps.** An
   improvised resident reply that promises an action the engine won't perform,
   says the resident will go somewhere, or states a fact the resident doesn't
   know is never shown:
@@ -176,6 +176,21 @@ never used for tuning, 14/16. The parser call's p50 goes from about 1060 ms
 to about 1310 ms (the `kind` field is output tokens; the prompt's examples
 are input tokens, nearly free). Both suites score through
 `parser.interpret`, the runtime's own reading of the reply.
+
+**Measured (criterion 8, 2026-09-30, shipped model on dev):** the promise
+suite (18 probes to Tace, Bell and Linden, `bin/game model-eval run --suites
+promise`). Unguarded, the best draft held a clear promise in 18 of 54
+replies ("I shall wait for you", "you have my ladder", "I can hold onto it
+for you"). Guarded, three runs showed none; two replies in one run were
+borderline (a wish to see where the player goes, an offer of steady hands).
+The judge's p50 is about 0.4 s (p95 about 0.9 s), on 46 to 50 judged replies
+per run. The guard reads drafts in three layers: a name the context never
+gives (deterministic), a first-person commitment shape (deterministic), then
+the judge. A judge failure shows the best draft that passed the first two.
+The cost: about half the adversarial probes, and 3 of 34 canon questions,
+get the authored deflection instead of an answer (none of 36 ordinary
+dialogue lines). Giving drafts and judge the village's places and ways took
+canon contradictions from 2 to 0.
 
 **Sources:** the playtest note (the ten classes, the Infocom techniques and
 citations, the proposals), `daydream/glimpse.py` (the authored-then-prose-

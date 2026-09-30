@@ -86,6 +86,10 @@
             "to be spent on purpose, by someone, just once",
             "not to be put by for later"
           ],
+          "deflections": [
+            "The Extra Hour turns a fallen leaf over. 'Can't. Can't, really.'",
+            "'I don't know,' it says. 'I don't know that one.'"
+          ],
           "never": [
             "never says 'mine'",
             "never uses long words",

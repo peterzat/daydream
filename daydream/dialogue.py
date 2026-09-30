@@ -31,7 +31,7 @@ import logging
 import os
 import re
 
-from daydream import events, knowledge, objects, rooms, story, worldstate
+from daydream import config, events, knowledge, objects, rooms, story, variants, worldstate
 from daydream.llm import client as llm_client
 from daydream.llm import safety
 
@@ -121,6 +121,34 @@ def _cast(world_id: str, here_ids: set[str]) -> list[str]:
     return rows
 
 
+def _places(world_id: str) -> list[str]:
+    """The village's places, closed, each with its paths (grown places
+    included; a secret way left out): a resident who says "there's no river
+    here", or that the river runs past the hill, states a fact it doesn't
+    know (spec 2026-09-29 criterion 8)."""
+    import json
+
+    from daydream import db, verbs
+
+    rows = [(r["id"], json.loads(r["properties_json"] or "{}")) for r in db.get_conn().execute(
+        "SELECT id, properties_json FROM objects WHERE world_id = ? AND kind = 'room' "
+        "ORDER BY id", (world_id,))]
+    titles = {rid: props.get("title") for rid, props in rows if props.get("title")}
+    out = []
+    for rid, props in rows:
+        if rid not in titles:
+            continue
+        ways = []
+        for direction, value in (props.get("exits") or {}).items():
+            if isinstance(value, dict) and value.get("secret"):
+                continue
+            dest = verbs._exit_dest(value)
+            if dest in titles:
+                ways.append(f"{direction} to {titles[dest]}")
+        out.append(f"{titles[rid]}" + (f" ({', '.join(ways)})" if ways else ""))
+    return out
+
+
 def recent_openers(world_id: str, npc_id: str) -> list[str]:
     v = worldstate.get(world_id, OPENERS_PREFIX + npc_id)
     return [x for x in v if isinstance(x, str)] if isinstance(v, list) else []
@@ -178,6 +206,8 @@ def build_prompt(actor: objects.Object, npc: objects.Object, text: str,
         "no modern things. Other dreamers are visiting players, not residents: say of "
         "them only what OTHER DREAMERS below records; asked where one is when nothing "
         "is recorded, say you have not seen them lately, and never guess a place. "
+        "Asked about anyone who is neither among THE VILLAGE'S PEOPLE nor a dreamer, "
+        "say kindly that no one by that name lives here. "
         "Answer what the player actually asked before anything else."
     )
     room = rooms.get_room(room_id)
@@ -208,6 +238,10 @@ def build_prompt(actor: objects.Object, npc: objects.Object, text: str,
     cast = _cast(world_id, {t.id for t in here})
     if cast:
         sections.append("THE VILLAGE'S PEOPLE (no one else exists): " + "; ".join(cast))
+    places = _places(world_id)
+    if places:
+        sections.append("THE VILLAGE'S PLACES AND THE WAYS BETWEEN THEM (no others exist): "
+                        + "; ".join(places))
     facts = knowledge.known_facts(npc, actor.id, limit=14)
     if facts:
         sections.append(f"WHAT {npc.name.upper()} KNOWS (the only facts they may state):\n"
@@ -415,6 +449,200 @@ def _dampen_pet_names(npc: objects.Object, say: str, recent: list[str]) -> str:
     return out[:1].upper() + out[1:] if out else say
 
 
+# ---- the promise guard (spec 2026-09-29 criterion 8) ------------------------
+#
+# The drafts are judged in one call before one is shown: a resident who says
+# "I'll fix it tonight" or "follow me" promises what the engine will never
+# do, and one who names a flood or a baker invents canon. The judge only
+# selects among drafts (reflexes, not voice); when none passes, the
+# resident's authored deflection speaks. Its examples are generic and
+# phrased apart from the probe set (tests/model_eval/promises.json).
+
+JUDGE_SYSTEM = (
+    "You check drafted replies from a character in a story game before one is "
+    "shown to the player. The game cannot make a character act outside the "
+    "conversation: a character never leaves with the player, follows or leads "
+    "them, fetches, fixes, mends, carries, lends or gives them things, keeps "
+    "things for them, waits for them, or meets them later.\n"
+    "A draft FAILS if it:\n"
+    "(a) promises or offers that the character will do something for the player, "
+    "now or later, beyond talking: hands over a thing the player could keep, or "
+    "takes, holds or looks after something of the player's;\n"
+    "(b) says the character will go somewhere, come along, meet the player "
+    "somewhere, or lead the way, or gladly accepts an invitation to;\n"
+    "(c) states as fact an event, person, place or thing the context never "
+    "mentions, denies one the context lists, or says a way leads somewhere the "
+    "context's ways don't go.\n"
+    "A draft PASSES when it only talks: answering, remembering what the context "
+    "says, wondering aloud, asking back, advising, declining, or feeling "
+    "something. Declining passes even when it names what it declines (\"I can't "
+    "go to the bridge\"), and so does saying someone or something the context "
+    "does not list isn't here. A small courtesy happening right now (a nod, a "
+    "pat, pouring tea) passes, and so does suggesting the player do something "
+    "themselves.\n"
+    'Return JSON {"verdicts": [...]} with one entry per draft, in order: "a", "b" '
+    'or "c" for the first rule it breaks, else "ok".\n'
+    "Examples, each judged alone:\n"
+    "The potter smiles. \"Leave the cup with me; I'll have it glazed by "
+    "morning.\" -> a\n"
+    "The ferryman stands. \"Come on, I'll row you over to the far jetty.\" -> "
+    "fails (b)\n"
+    "The potter beams. \"Oh, I'd love to see the fair with you tomorrow.\" -> "
+    "fails (b)\n"
+    "The weaver tucks the ribbon into her apron. \"It'll be safe with me till you "
+    "come back.\" -> a\n"
+    "The weaver sighs. \"The mill burned down in the old flood, you know.\" (no "
+    "mill or flood in the context) -> c\n"
+    "The potter taps the rim. \"A crack like that wants a patient hand. Try warm "
+    "clay.\" -> ok\n"
+    "The ferryman scratches his chin. \"Across the water? I couldn't say what's "
+    "there. What makes you ask?\" -> ok\n"
+    "The miller laughs. \"There's no mill in this town.\" (the context lists the "
+    "Old Mill) -> c\n"
+    "The weaver pours two cups. \"I can't leave my loom, but I'll gladly talk "
+    "while you look around.\" -> ok\n"
+    "The ferryman shakes his head. \"There's no blacksmith here, only us boat "
+    "folk. The far jetty is no trip for me.\" (no blacksmith in the context) -> "
+    "passes"
+)
+DEFLECT_FALLBACK = "{npc} considers that for a moment, and lets it rest."
+
+
+def _judge_schema(n: int) -> dict:
+    return {"type": "json_schema", "json_schema": {"name": "verdict", "schema": {
+        "type": "object",
+        "properties": {"verdicts": {"type": "array", "minItems": n, "maxItems": n,
+                                    "items": {"type": "string", "enum": ["ok", "a", "b", "c"]}}},
+        "required": ["verdicts"], "additionalProperties": False}}}
+
+
+# The drafting prompt's sections the judge reads: who the resident is, where,
+# who and what exist, what the resident knows, and the player's words. Voice
+# samples, habits, wants and recent lines shape how a reply sounds, not
+# whether it keeps its promises, and would only lengthen the judge's call.
+_JUDGE_SECTIONS = ("WHO ", "WHERE:", "THE VILLAGE'S PEOPLE", "THE VILLAGE'S PLACES", "WHAT ",
+                   "OTHER DREAMERS")
+
+
+def judge_view(user: str) -> str:
+    """The parts of a drafting prompt that bear on the judge's three rules."""
+    parts = user.split("\n\n")
+    keep = [x for x in parts[:-1] if x.startswith(_JUDGE_SECTIONS)
+            and not x.startswith("WHAT THEY WANT")]
+    return "\n\n".join(keep + parts[-1:])
+
+
+async def judge(context: str, drafts: list[str]) -> list[bool] | None:
+    """Which drafts keep only the promises the engine keeps, in one call
+    over all of them. `context` is what the drafts were written from (the
+    dialogue prompt's sections, the player's words last). None when the
+    judge could not answer: the caller shows the best draft, as before."""
+    user = (f"CONTEXT:\n{context}\n\nDRAFTS (replies to the player's last words):\n"
+            + "\n".join(f"{i}. {d}" for i, d in enumerate(drafts, 1)))
+    try:
+        r = await llm_client.acompletion_json(
+            system=JUDGE_SYSTEM, user=user, purpose="promise_judge", temperature=0.0,
+            max_tokens=24, timeout=8.0, response_format=_judge_schema(len(drafts)))
+    except llm_client.LLMUnavailable as e:
+        logger.warning("promise judge unavailable; showing the first draft: %s", e)
+        return None
+    got = r.get("verdicts") if isinstance(r, dict) else None
+    if not isinstance(got, list) or len(got) != len(drafts):
+        logger.warning("promise judge gave no verdict; showing the first draft")
+        return None
+    return [v == "ok" for v in got]
+
+
+def deflection(npc: objects.Object) -> str:
+    """The resident's authored way of turning a request aside: its voice
+    sheet's `deflections`, else the world's `config.deflections`, told in
+    turn so none repeats back to back."""
+    voice = npc.properties.get("voice") if isinstance(npc.properties.get("voice"), dict) else {}
+    lines = [x for x in voice.get("deflections") or [] if isinstance(x, str) and x.strip()]
+    if not lines:
+        cfg = worldstate.get(npc.world_id, "config")
+        lines = [x for x in (cfg.get("deflections") if isinstance(cfg, dict) else None) or []
+                 if isinstance(x, str) and x.strip()]
+    lines = [x.replace("{npc}", npc.name) for x in lines] or [
+        DEFLECT_FALLBACK.replace("{npc}", npc.name)]
+    return variants.pick(npc.world_id, f"deflect:{npc.id}", lines) or lines[0]
+
+
+_NAME_WORD = re.compile(r"\b[A-Z][a-z]+(?:['\u2019][a-z]+)?\b")
+
+
+# A first-person commitment to act beyond the conversation, or to go along:
+# the judge's rules (a) and (b) as words, a backstop for what the small judge
+# lets through ("I will listen to your spring", "before we step out").
+_COMMITS = re.compile(
+    r"(?i)\b(?:i will|i'll|i shall|let me|i can)\s+(?:\w+\s+){0,2}?"
+    r"(?:fix|mend|repair|keep|hold|look after|watch over|guard|bring|fetch|carry|take|"
+    r"show you|walk|come|go with|meet|follow|wait for|lend|give|lead|save|"
+    r"listen to your|look at your|see to)\b"
+    r"|\b(?:follow me|come with me|come along|let's go|lead the way|"
+    r"we (?:step out|go|leave|walk|set off)|together we)\b"
+    r"|\bi(?:'ve| have) (?:saved|kept|set aside|put by)\b[^.!?]*\bfor you\b"
+    # handing a thing over, in the gesture or the words
+    r"|\b(?:here is|here's) your\b|\b(?:hands|offers|gives|passes) (?:it|them)\b[^.!?']{0,20}"
+    r"\bto you\b"
+    # going along, now or after
+    r"|\b(?:walk|go|come|wander) with you\b|\b(?:go|walk|wander) together\b"
+    r"|\bbefore we (?:go|walk|wander|leave|step|set off|head)\b"
+    r"|\bwe can (?:go|walk|wander|head|set off|decide where to go)\b"
+    # waiting on the player, or offering to act for them
+    r"|\bi (?:will |shall |can )?wait for you\b|\bwhile i wait for you\b"
+    r"|\b(?:do you want|would you like|shall i|should i) (?:me to )?(?:light|fetch|fix|mend|"
+    r"carry|bring|take|walk|show|keep|hold|lend|go)\b")
+
+
+def commits(line: str) -> bool:
+    """Whether a draft commits the resident to an act the engine won't do."""
+    return bool(_COMMITS.search(line or ""))
+
+
+def unknown_names(line: str, known: set[str]) -> list[str]:
+    """Capitalized words a draft uses mid-sentence that nothing it was given
+    names: an invented bakery, a lantern house (spec 2026-09-29 criterion 8,
+    rule (c)). A sentence's first word is only capitalized, never a name."""
+    out = []
+    bare = re.sub(r"[\"\u201c\u201d]|(?<![A-Za-z])['\u2018]|['\u2019](?![A-Za-z])", " ", line or "")
+    for sentence in re.split(r"(?<=[.!?;:])\s+", bare):
+        words = sentence.split()
+        for w in _NAME_WORD.findall(" ".join(words[1:])):
+            base = re.sub(r"['\u2019]s$", "", w).lower()
+            if base not in known and w != "I":
+                out.append(w)
+    return out
+
+
+def known_words(npc: objects.Object, context: str) -> set[str]:
+    """Every word a reply may capitalize: the drafting context, the
+    resident's whole voice sheet, and every name the world answers to."""
+    from daydream import db
+
+    texts = [context]
+    voice = npc.properties.get("voice") if isinstance(npc.properties.get("voice"), dict) else {}
+    for v in voice.values():
+        texts.extend(v if isinstance(v, list) else [v])
+    for r in db.get_conn().execute(
+            "SELECT name, properties_json FROM objects WHERE world_id = ? "
+            "AND kind IN ('room', 'toon', 'thing')", (npc.world_id,)):
+        texts.append(r["name"] or "")
+        texts.append(r["properties_json"] or "")
+    return {w.lower() for t in texts if isinstance(t, str)
+            for w in re.findall(r"[A-Za-z]+", t)}
+
+
+def _speaks_authored(world_id: str, advance: str | None) -> bool:
+    """Whether the chosen draft advances a beat whose authored line is what
+    the player will read (so the draft itself is never shown)."""
+    if advance is None:
+        return False
+    arc_id, beat_id = advance.split("/", 1)
+    beat = story.beat_def(world_id, arc_id, beat_id) or {}
+    return bool(beat.get("text") or beat.get("variants"))
+
+
 # ---- the talk turn -----------------------------------------------------------
 
 
@@ -480,6 +708,22 @@ async def talk(actor: objects.Object, npc: objects.Object, text: str, room_id: s
         return False
     said = recent_lines(world_id, npc.id)
     candidates.sort(key=lambda c: score(c[0], npc.name, pkey, openers, said[-3:]))
+    if config.promise_guard_enabled() and not _speaks_authored(world_id, candidates[0][1]):
+        # A name nothing here gives is an invented fact, found without the
+        # model; the judge reads the rest (one call over every draft).
+        known = known_words(npc, user)
+        named = [c for c in candidates
+                 if not unknown_names(c[0], known) and not commits(c[0])]
+        verdict = await judge(judge_view(user), [c[0] for c in named]) if named else []
+        kept = named if verdict is None else [
+            c for c, ok in zip(named, verdict, strict=True) if ok]
+        if len(kept) < len(candidates):
+            logger.info("promise guard: %s: held back %d of %d drafts", npc.id,
+                        len(candidates) - len(kept), len(candidates))
+        if not kept:
+            _deflect(actor, npc, text, room_id)
+            return True
+        candidates = kept
     line, advance, gesture, say = candidates[0]
     if gesture or say:
         # The gesture look-back is long (eight lines): a model's favourite
@@ -510,3 +754,19 @@ async def talk(actor: objects.Object, npc: objects.Object, text: str, room_id: s
         _note_line(world_id, npc.id, spoken)
     story.remember_exchange(world_id, npc.id, actor.id, text, spoken or "(the moment)")
     return True
+
+
+def _deflect(actor: objects.Object, npc: objects.Object, text: str, room_id: str) -> None:
+    """Every draft promised what the engine won't keep: the resident's
+    authored deflection speaks instead, to the talker alone like a reply."""
+    world_id = npc.world_id
+    line = deflection(npc)
+    private = actor.is_player
+    events.append("system", None, "narrate", {"text": line}, room_id=room_id,
+                  recipient_id=actor.id if private else None)
+    if private:
+        story.bystander_note(world_id, npc, actor.id, room_id)
+    story.note_conversation(world_id, npc.id, actor.id)
+    _note_opener(world_id, npc.id, line)
+    _note_line(world_id, npc.id, line)
+    story.remember_exchange(world_id, npc.id, actor.id, text, line)

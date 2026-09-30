@@ -220,6 +220,10 @@
         "text": "The rooftops lean together below you, well out of reach."
       }
     ],
+    "deflections": [
+      "{npc} considers that for a breath, and lets it rest.",
+      "{npc} smiles, and lets the question drift past like a moth."
+    ],
     "gestures": {
       "thing": [
         "It takes the kindness quietly.",

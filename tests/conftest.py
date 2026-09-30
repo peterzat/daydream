@@ -69,6 +69,10 @@ os.environ["DAYDREAM_JOURNAL_ENABLED"] = "0"
 # ranking default ON in production, OFF in tests: with no loop running, every
 # command runs the deterministic catch-up itself (fake clock), so story tests
 # and walkthroughs stay LLM-free and time-pinned (SPEC 2026-09-26).
+# The promise guard adds a judge call to an improvised reply; the suite's
+# mocked dialogue counts calls, so it is off here and its tests opt in via
+# monkeypatch.setenv("DAYDREAM_PROMISE_GUARD", "1").
+os.environ["DAYDREAM_PROMISE_GUARD"] = "0"
 os.environ["DAYDREAM_VILLAGE_ENABLED"] = "0"
 os.environ["DAYDREAM_DIRECTOR_LLM"] = "0"
 

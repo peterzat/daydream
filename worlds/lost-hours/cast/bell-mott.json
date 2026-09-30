@@ -115,6 +115,10 @@
             ]
           }
         ],
+        "deflections": [
+          "Bell tucks the end of the butter-yellow scarf in and grins. 'Oh, I'd only get that wrong, and then where would we be? Ask me about the lanterns instead.'",
+          "Bell taps the hooked pole on the cobbles, thinking. 'Not one for me, that. The lanterns keep me right here, and they sulk if I wander.'"
+        ],
         "never": [
           "never claims to have seen a dawn they have not seen",
           "never names anyone in the village who is not a resident or a guest",
@@ -746,6 +750,10 @@
               }
             ]
           }
+        ],
+        "deflections": [
+          "Mott rattles the tin once, gently, and sets it down. 'Can't say. Wouldn't want to say it wrong.'",
+          "Mott sends one slow arc of the broom across the boards. 'Not mine to do. The dust keeps me here.'"
         ],
         "never": [
           "never says what the small folded thing in his tin is, unless he has already looked at it",

@@ -333,6 +333,16 @@ def parser_triage_enabled() -> bool:
     )
 
 
+def promise_guard_enabled() -> bool:
+    """Whether an improvised resident reply is judged before it is shown:
+    no promise the engine won't keep, no going somewhere, no fact the
+    resident doesn't know (daydream/dialogue.py; spec 2026-09-29 criterion
+    8). Default ON; off, the best draft is shown unjudged, as before."""
+    return os.environ.get("DAYDREAM_PROMISE_GUARD", "1").strip().lower() not in (
+        "0", "false", "no", "off",
+    )
+
+
 def glimpse_llm_enabled() -> bool:
     """Whether a thing the scene's prose names, with no authored reason, gets
     a local-model line saying why it can't be handled (daydream/glimpse.py;

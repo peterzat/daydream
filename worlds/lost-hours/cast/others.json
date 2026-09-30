@@ -71,6 +71,10 @@
             ]
           }
         ],
+        "deflections": [
+          "Fen taps a stack of letters square against the counter. 'Not a parcel I can take on, I'm afraid. I keep to the counter and the pigeonholes.'",
+          "Fen tucks the pencil back behind her ear. 'That one's addressed to somebody other than me. Anything for the post, though, and I'm all yours.'"
+        ],
         "never": [
           "never reads a letter's private words aloud without being asked",
           "never names anyone in the village who is not a resident or a guest",
@@ -355,6 +359,10 @@
           {
             "text": "for every visitor to have had their tea"
           }
+        ],
+        "deflections": [
+          "Umber turns a jar a quarter-turn toward the lantern. 'Not mine to give. Ask again over tea.'",
+          "Umber writes one word on a label and blots it. 'Unknown. Keep unopened.'"
         ],
         "never": [
           "never says what is in the jar on the highest shelf",
@@ -679,6 +687,10 @@
             "text": "for visitors to stand still a while and watch the sky"
           }
         ],
+        "deflections": [
+          "Sorrel shifts the long net to the other shoulder. 'That's weather I can't promise. I stay where the hours come down.'",
+          "Sorrel runs a hand through the long grass. 'Can't say, friend. Some things drift past the net, and that's one of them.'"
+        ],
         "never": [
           "never hurries",
           "never names anyone in the village who is not a resident or a guest",
@@ -932,6 +944,10 @@
           {
             "text": "to keep a spare cup warm for whoever comes next"
           }
+        ],
+        "deflections": [
+          "Linden sets a cup by your elbow and fills it. 'That's not for me to promise, pet. But there's tea, and there's always tea.'",
+          "Linden flaps a tea towel at a chair that was already tidy. 'Oh, I couldn't say, and I'd rather not guess. Sit down a minute.'"
         ],
         "never": [
           "never bakes (the village has no bakery)",
@@ -1241,6 +1257,10 @@
               }
             ]
           }
+        ],
+        "deflections": [
+          "Quill straightens a trellis that didn't need it. 'I'd better not say. Some things you can't hurry, and I can't promise them either.'",
+          "Quill tips the watering can back upright. 'Oh, I don't know about that. Ask me about the pendulums, maybe? I know those.'"
         ],
         "never": [
           "never raises his voice",
@@ -1589,6 +1609,10 @@
           {
             "text": "to curl up somewhere warm between one tick and the next"
           }
+        ],
+        "deflections": [
+          "Tock blinks slowly, the kind of blink that means no, and then means nothing at all.",
+          "Tock turns its clock-face eyes away and washes one white paw, very thoroughly."
         ],
         "never": [
           "never speaks a single word, not even in quotes",

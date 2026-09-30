@@ -109,6 +109,10 @@
             "the end of the lighthouse story",
             "to hear a story told all the way through, in the rain"
           ],
+          "deflections": [
+            "The Rain-Wait holds a hand out past the awning's edge. 'Can't go. It's still raining.'",
+            "'I don't know that part,' the Rain-Wait says. 'Do you?'"
+          ],
           "never": [
             "never makes up the ending itself",
             "never names the stranger",
