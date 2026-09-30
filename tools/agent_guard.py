@@ -19,7 +19,9 @@ command the way the shell will, and:
   them (`grep -rn ... ~/.config`);
 - ASKS before the `bin/game prod` / `bin/game edge` verbs that mint access,
   remove a person, replace the world, reach players, or change root or the
-  edge's secrets, however the command is spelled.
+  edge's secrets, however the command is spelled;
+- ASKS when it cannot read a command whole: one over 16 KB, one nested
+  past sixteen levels of `eval` or a shell, or one it fails on.
 
 A deny anywhere in a command wins over an ask. Everything else gets no
 opinion (the normal rules apply). It reads the hook payload on stdin and
@@ -58,6 +60,13 @@ BROAD_ROOTS = {"~", "~/", "$HOME", "$HOME/", "${HOME}", "${HOME}/", "/", "/root"
                "/etc", "/srv", "/srv/daydream", _HOME, _HOME + "/"}
 # The most working directories a line is followed into; one more asks.
 MAX_CWDS = 16
+# The most levels of `eval` and shell scripts a command is read through, and
+# the longest command the raw patterns read; past either, the operator
+# confirms it (security WARN 2026-09-30: about 500 `eval`s passed Python's
+# recursion limit, an 81 KB line took 4.7 s of the hook's 5 s, and a crash
+# or a timeout lets the command run with no decision).
+MAX_NESTING = 16
+MAX_COMMAND_CHARS = 16 * 1024
 WRAPPERS = {"timeout", "time", "nice", "nohup", "stdbuf", "command", "builtin", "env",
             "exec", "xargs", "sudo", "setsid", "ionice", "flock", "watch"}
 SHELLS = {"bash", "sh", "zsh", "dash"}
@@ -106,10 +115,12 @@ REDIRECT = re.compile(r"^\d*(>\||>>?|<<?<?|&>>?|>&|<&)-?$")  # shlex keeps `>|` 
 # included), stripped from the raw text before the raw pass splits it on
 # ; & | (codereview 2026-09-30b: `2>&1`, `>&f` and `&>f` were cut apart, and a
 # target holding `=`, `,` or a quoted space leaked a word). Longer operators
-# come first; a lone `-` takes no target (`2>&- invite` keeps `invite`).
+# come first; a lone `-` takes no target (`2>&- invite` keeps `invite`). A target
+# ends at a command substitution, which bash runs (`> "$(bin/game ...)"`, a
+# backtick), and keeps a plain variable (`> "/tmp/$x"`; security WARN 2026-09-30).
 _RAW_REDIRECTION = re.compile(
     r"\d*(?:>\||>&|&>>?|>>?|<&|<<?<?)"
-    r"(?:-(?=[\s;&|()<>]|$)|\s*(?:\\.|\"(?:[^\"\\]|\\.)*\"|'[^']*'|[^\s;&|()<>'\"\\])+)?")
+    r"(?:-(?=[\s;&|()<>]|$)|\s*(?:\\.|\"(?:[^\"\\$`]|\\.|\$(?!\())*\"|'[^']*'|[^\s;&|()<>'\"\\`])+)?")
 
 
 def _split_commands(command: str) -> list[list[str]]:
@@ -129,8 +140,12 @@ def _split_commands(command: str) -> list[list[str]]:
         for tok in lex:
             if skip_next:
                 skip_next = False
-                out.append([">", tok])  # `cat < ~/.s?h/key`: the target is a path
-                continue
+                # A separator is never the target: the `;` that stands for a
+                # backtick or `$(` (`echo x > $(cmd)`) starts the command bash
+                # runs (security WARN 2026-09-30).
+                if not (tok and set(tok) <= set(";&|\n")):
+                    out.append([">", tok])  # `cat < ~/.s?h/key`: the target is a path
+                    continue
             if tok and set(tok) <= set(";&|\n"):
                 if cur:
                     out.append(cur)
@@ -158,10 +173,16 @@ def _fallback(command: str) -> list[list[str]]:
     return runs
 
 
-def _unwrap(argv: list[str]) -> list[list[str]]:
+_TOO_DEEP = ["(nested past MAX_NESTING)"]  # what _unwrap gives past the limit
+
+
+def _unwrap(argv: list[str], depth: int = 0) -> list[list[str]]:
     """Strip env assignments and process wrappers; a shell given a script
     (`bash -lc '...'`, `sh -ec '...'`), a shell running a file, and `eval`
-    are read as the commands they run."""
+    are read as the commands they run, to MAX_NESTING levels (past them,
+    `[_TOO_DEEP]`)."""
+    if depth > MAX_NESTING:
+        return [_TOO_DEEP]
     i = 0
     while i < len(argv):
         w = argv[i]
@@ -180,18 +201,19 @@ def _unwrap(argv: list[str]) -> list[list[str]]:
                 i += 1  # timeout's duration, flock's lock file
             continue
         if base == "eval":
-            return [c for part in _split_commands(" ".join(argv[i + 1:])) for c in _unwrap(part)]
+            return [c for part in _split_commands(" ".join(argv[i + 1:]))
+                    for c in _unwrap(part, depth + 1)]
         if base in SHELLS:
             j = i + 1
             while j < len(argv) and argv[j].startswith("-"):
                 if not argv[j].startswith("--") and "c" in argv[j][1:]:
                     if j + 1 < len(argv):
                         return [c for part in _split_commands(argv[j + 1])
-                                for c in _unwrap(part)]
+                                for c in _unwrap(part, depth + 1)]
                     return []
                 j += 1
             if j < len(argv):
-                return _unwrap(argv[j:])  # `bash some/script args`: the script runs
+                return _unwrap(argv[j:], depth + 1)  # `bash some/script args`: the script runs
             return [argv[i:]]
         return [argv[i:]]
     return []
@@ -355,22 +377,30 @@ def decide(payload: dict) -> tuple[str, str] | None:
     p = _names_credentials(re.findall(r"\S+", command))
     if p:
         return "deny", _DENY_CREDENTIALS.format(p)
-    if TOKEN_PRINTERS.search(re.sub(r"['\"\\]", "", command)):  # quoting hides nothing
-        return "deny", _DENY_TOKEN
     # A deny found later still wins over an ask found here (security NOTE
     # 2026-09-29): the first ask is kept and returned only at the end.
     ask: str | None = None
+    # The raw patterns below outlast the hook's timeout on a long enough line
+    # (security WARN 2026-09-30): a line over the limit skips them and asks,
+    # and the parsed pass still reads it for a deny.
+    raw = command
+    if len(command) > MAX_COMMAND_CHARS:
+        raw = ""
+        ask = f"a command over {MAX_COMMAND_CHARS // 1024} KB is more than the guard reads " \
+              "in its time; the operator confirms it"
+    if TOKEN_PRINTERS.search(re.sub(r"['\"\\]", "", raw)):  # quoting hides nothing
+        return "deny", _DENY_TOKEN
     # Gated verbs on the raw text too: inside a quoted `$(...)` the parser
     # sees one word (`out="$(bin/game prod invite create ...)"`; security
     # WARN 2026-09-29).
-    for segment in re.split(r"[;&|\n]+", _RAW_REDIRECTION.sub(" ", command)):
+    for segment in re.split(r"[;&|\n]+", _RAW_REDIRECTION.sub(" ", raw)):
         words = _raw_words(segment)
         for i, w in enumerate(words):
             if os.path.normpath(w).endswith("bin/game"):
                 why = _gated(words[i:])
                 if why and ask is None:
                     ask = _ASK_GATED.format(why)
-    hit = _protected_write(command)
+    hit = _protected_write(raw)
     if hit and ask is None:
         ask = f"{hit} guards this session's permissions; the operator confirms a change"
     # Every directory a command may run in: a cd that never takes effect (a
@@ -379,6 +409,10 @@ def decide(payload: dict) -> tuple[str, str] | None:
     # (codereview 2026-09-30b).
     cwds = [payload.get("cwd") or os.getcwd()]
     for argv in (c for part in _split_commands(command) for c in _unwrap(part)):
+        if argv is _TOO_DEEP:  # unread; a deny in another part still wins
+            ask = ask or f"a command nested past {MAX_NESTING} levels of eval or a shell is " \
+                         "more than the guard reads; the operator confirms it"
+            continue
         if not argv:
             continue
         p = _names_credentials(argv)
@@ -436,7 +470,11 @@ def main() -> int:
         payload = json.load(sys.stdin)
     except ValueError:
         return 0
-    got = decide(payload)
+    try:
+        got = decide(payload)
+    except Exception as e:  # a crash would let the command run with no decision
+        got = ("ask", f"the guard failed on this command ({type(e).__name__}); the operator "
+                      "confirms it")
     if got:
         decision, reason = got
         print(json.dumps({"hookSpecificOutput": {

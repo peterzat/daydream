@@ -1228,6 +1228,12 @@ async def ws_endpoint(ws: WebSocket):
         logger.info("ws: %s closed after %ds", who.username, int(time.monotonic() - opened))
 
 
+# What the input log keeps for a click frame's id that names nothing in the
+# dreamer's scope: a frame's ids are whatever the client sent, and the dream
+# digest prints the log (security WARN 2026-09-30).
+OUT_OF_SCOPE_ID = "(out of scope)"
+
+
 async def _handle_command(msg: dict, toon_id: str) -> None:
     """Execute a structured UI command frame `{kind:"command", verb, dobj_id?,
     iobj_id?, args?, dobj_name?}`. This is the click path: it bypasses the
@@ -1245,10 +1251,18 @@ async def _handle_command(msg: dict, toon_id: str) -> None:
     name = msg.get("dobj_name")
     dobj_name = name.strip()[:MAX_NAME_CHARS] if isinstance(name, str) and not dobj_id else None
     args = str(msg.get("args", ""))
+    # The log keeps an id only when it names something in scope; any other
+    # string is words, not an id. Fail-soft, like the log itself.
+    try:
+        known = set(clicked_in_scope(toon_id, dobj_id, iobj_id))
+    except Exception:
+        known = set()
+    kept_dobj, kept_iobj = (i if not i or i in known else OUT_OF_SCOPE_ID
+                            for i in (dobj_id, iobj_id))
     inputs.record(
-        toon_id, "command", verb=verb, dobj_id=dobj_id, iobj_id=iobj_id,
+        toon_id, "command", verb=verb, dobj_id=kept_dobj, iobj_id=kept_iobj,
         args=args or None,
-        resolved=[{"verb": verb, "dobj_id": dobj_id, "iobj_id": iobj_id,
+        resolved=[{"verb": verb, "dobj_id": kept_dobj, "iobj_id": kept_iobj,
                    "args": args, **({"dobj_name": dobj_name} if dobj_name else {})}],
     )
     await verbs.execute_command(

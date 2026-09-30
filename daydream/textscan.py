@@ -89,11 +89,13 @@ def gather(since_seq: int | None = None, hours: float | None = 192.0) -> dict:
     items: list[dict] = []
     per_minute: Counter = Counter()
     for r in rows:
-        # A click's name for a part it touched (`dobj_name`) is player text too.
+        # A click's ids and its name for a part it touched (`dobj_name`) are
+        # player text too: a frame carries whatever the client sent, and the
+        # dream digest prints the ids (security WARN 2026-09-30).
         clicked = [c["dobj_name"] for c in r.resolved or []
                    if isinstance(c, dict) and isinstance(c.get("dobj_name"), str)]
         text = r.text if r.source == "text" else " ".join(
-            x for x in (r.verb, r.args, *clicked) if x)
+            x for x in (r.verb, r.dobj_id, r.iobj_id, r.args, *clicked) if x)
         if not text or not text.strip():
             continue
         per_minute[(r.toon_id, (r.created_at or "")[:16])] += 1

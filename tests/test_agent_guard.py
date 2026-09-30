@@ -3,6 +3,7 @@ gated prod verbs ask however they are spelled, credentials are never
 opened, and ordinary work gets no opinion."""
 
 import importlib.util
+import io
 import json
 import subprocess
 import sys
@@ -244,6 +245,9 @@ def test_a_long_adversarial_line_is_judged_quickly(head, want):
     assert got[0] == want and time.perf_counter() - start < 0.05, (got, cmd)
 
 
+GATED = "bin/game prod invite create --for M"
+
+
 @pytest.mark.parametrize("cmd,want", [
     # Codereview 2026-09-30b: the raw pass split `2>&1`, `>&f` and `&>f` on
     # their `&` before it read them, and a redirection target holding `=`,
@@ -262,6 +266,38 @@ def test_a_long_adversarial_line_is_judged_quickly(head, want):
     ("bin/game prod >| /tmp/x invite create --for M", "ask"),
     ("bin/game prod >| /tmp/x world reset --yes", "ask"),
     ('out="$(bin/game prod >| /tmp/x world reset --yes)"', "ask"),
+    # Security WARN 2026-09-30: bash runs a command substitution in a
+    # redirection's target, and the raw pass had deleted it with the target
+    # (the scan's 28 probes).
+    (f'echo x > "$({GATED})"', "ask"),
+    (f'echo x >"$({GATED})"', "ask"),
+    (f'echo x 2>"$({GATED})"', "ask"),
+    (f'echo x &>"$({GATED})"', "ask"),
+    (f'cat <<< "$({GATED})"', "ask"),
+    (f'cat < "$({GATED})"', "ask"),
+    (f'echo x > "`{GATED}`"', "ask"),
+    (f'echo x > y"$({GATED})"', "ask"),
+    (f'true >"$(cd /tmp && {GATED})"', "ask"),
+    (f'echo x >| "$({GATED})"', "ask"),
+    (f'echo x > "a b $({GATED}) c"', "ask"),
+    (f'echo x >> "$({GATED})"', "ask"),
+    (f'exec 3>"$({GATED})"', "ask"),
+    (f'echo x > "${{HOME}}$({GATED})"', "ask"),
+    (f'echo x > "$(echo; {GATED})"', "ask"),
+    (f"echo x > `{GATED}`", "ask"),
+    (f"echo '>\"' \"`{GATED}`\"", "ask"),  # a quoted > still starts the strip
+    (f"echo '>\"' \"$({GATED})\"", "ask"),
+    (f"printf '%s>' \"$({GATED})\"", "ask"),
+    (f"echo 'a>b' \"$({GATED})\"", "ask"),
+    (f"echo \"a>b $({GATED})\"", "ask"),
+    (f"echo '>' \"$({GATED})\"", "ask"),
+    (f"echo \">\" \"$({GATED})\"", "ask"),
+    (f"x='>'\"$({GATED})\"", "ask"),
+    # ...and a plain variable stays part of its target
+    ('out="$(bin/game prod > "/tmp/$x" invite create --for M)"', "ask"),
+    ('out="$(bin/game prod > "${HOME}/log" invite create --for M)"', "ask"),
+    ('out="$(bin/game prod 2> "$TMPDIR/e" world reset --yes)"', "ask"),
+    ('bin/game prod > "/tmp/$x" invite create --for M', "ask"),
     # ordinary redirections stay quiet
     ('out="$(bin/game prod deploy 2>&1)"; echo "$out" > /tmp/d.log', None),
     ("bin/game prod status >| /tmp/status.txt", None),
@@ -276,6 +312,72 @@ def test_the_parser_reads_a_clobbering_redirection():
     back as a path to judge."""
     assert guard._split_commands("bin/game prod >| /tmp/x world reset --yes") == [
         [">", "/tmp/x"], ["bin/game", "prod", "world", "reset", "--yes"]]
+
+
+@pytest.mark.parametrize("cmd", [f"echo x > `{GATED}`", f"echo x > $({GATED})"])
+def test_a_substitution_is_never_a_redirections_target(cmd):
+    """Security WARN 2026-09-30: the parser took the `;` that stands for a
+    backtick or `$(` as the target, and read the command bash runs there as
+    more of `echo`'s arguments."""
+    assert guard._split_commands(cmd) == [["echo", "x"], GATED.split()]
+
+
+KEY_GLOB = "~/.s" + "?h/id_ed25519"  # a credential no plain name matches: denied alone
+
+
+@pytest.mark.parametrize("cmd,want", [
+    # Security WARN 2026-09-30: about 500 `eval`s passed Python's recursion
+    # limit, and the hook's crash let the command run with no decision.
+    ("eval " * 1000 + "cat " + KEY_GLOB, "ask"),
+    ("eval " * 1000 + GATED, "ask"),
+    ("bash " * 1000 + "x", "ask"),  # a shell running a file nests too
+    ("eval " * 16 + "cat " + KEY_GLOB, "deny"),  # sixteen levels are read through
+    ("eval " * 17 + "cat " + KEY_GLOB, "ask"),
+    ("eval " * 20 + "true; cat " + KEY_GLOB, "deny"),  # a deny in another part still wins
+    ("eval " * 20 + "true", "ask"),
+])
+def test_a_deep_nesting_asks_and_never_crashes(cmd, want):
+    got = _bash_in(cmd)
+    assert (got[0] if got else None) == want, (cmd[-60:], got)
+
+
+def test_a_thousand_evals_get_a_decision_from_the_real_hook():
+    cmd = "eval " * 1000 + "cat " + KEY_GLOB
+    r = subprocess.run([sys.executable, str(ROOT / "tools/agent_guard.py")],
+                       input=json.dumps({"tool_name": "Bash", "tool_input": {"command": cmd},
+                                         "cwd": REPO}),
+                       capture_output=True, text=True, check=True, timeout=5)
+    assert json.loads(r.stdout)["hookSpecificOutput"]["permissionDecision"] in ("ask", "deny")
+
+
+def test_a_100_kb_line_is_decided_within_the_hooks_timeout():
+    """Security WARN 2026-09-30: `TOKEN_PRINTERS`' lazy run is quadratic over
+    one long line; `echo git` 9,000 times (81 KB) took 4.7 s of the hook's
+    5 s. A line over the limit skips the raw patterns and asks; the parsed
+    pass still reads it for a deny (the long line of cds above)."""
+    cmd = GATED + " ; " + "echo git " * 11400
+    assert len(cmd) > 100_000
+    r = subprocess.run([sys.executable, str(ROOT / "tools/agent_guard.py")],
+                       input=json.dumps({"tool_name": "Bash", "tool_input": {"command": cmd},
+                                         "cwd": REPO}),
+                       capture_output=True, text=True, check=True, timeout=5)
+    assert json.loads(r.stdout)["hookSpecificOutput"]["permissionDecision"] == "ask"
+    start = time.perf_counter()
+    assert _bash_in(cmd)[0] == "ask" and time.perf_counter() - start < 1.0
+
+
+def test_a_guard_that_fails_asks(monkeypatch, capsys):
+    """Security WARN 2026-09-30: a guard that raised exited 1, which Claude
+    Code reads as a non-blocking error: the command ran with no decision."""
+    def boom(payload):
+        raise RecursionError("maximum recursion depth exceeded")
+
+    monkeypatch.setattr(guard, "decide", boom)
+    monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps(
+        {"tool_name": "Bash", "tool_input": {"command": "ls"}})))
+    assert guard.main() == 0
+    out = json.loads(capsys.readouterr().out)["hookSpecificOutput"]
+    assert out["permissionDecision"] == "ask" and "RecursionError" in out["permissionDecisionReason"]
 
 
 @pytest.mark.parametrize("cmd,want", [
