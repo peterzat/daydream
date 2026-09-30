@@ -282,12 +282,12 @@ _SYSTEM = (
     "nothing: no names, people, places, objects, or facts the sentence doesn't "
     "give, and no hint about how to reach it. No dialogue, no urgency.\n"
     "Examples (another story, for the shape only):\n"
-    "Scene: A kettle sings on the hob. Tried: take the kettle. -> "
-    "{\"line\": \"The kettle is singing away on the hob, far too hot and busy "
-    "for your hands just now.\"}\n"
-    "Scene: Moss grows thick between the stones. Tried: take the moss. -> "
-    "{\"line\": \"You brush the moss with a fingertip, but it holds fast "
-    "between the stones, where it has always been.\"}\n"
+    "Scene: A tall mast creaks above the deck. Tried: climb the mast. -> "
+    "{\"line\": \"The mast leans and creaks with every swell of the deck, far "
+    "too restless for climbing just now.\"}\n"
+    "Scene: Hay is stacked to the rafters of the barn. Tried: take the hay. -> "
+    "{\"line\": \"The hay is packed tight all the way up to the rafters, and "
+    "not a wisp comes loose in your hands.\"}\n"
     "Return strict JSON: {\"line\": \"...\"}."
 )
 
