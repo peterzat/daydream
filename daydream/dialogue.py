@@ -642,6 +642,23 @@ def known_words(npc: objects.Object, context: str) -> set[str]:
             for w in re.findall(r"[A-Za-z]+", t)}
 
 
+def unmet_names(actor: objects.Object, line: str, heard_text: str = "") -> set[str]:
+    """The people and places a draft brings up that this player has not come
+    across (daydream.heard). The model reads the resident's whole voice sheet
+    and drops its names in passing, so a greeting can introduce someone the
+    story keeps for later (playtest 2026-09-30). The player's own words and
+    the authored grounding may name them."""
+    if not actor.is_player:
+        return set()
+    from daydream import heard
+
+    names = {k for k in heard.subjects_in(actor.world_id, line) if k.startswith("^")}
+    if names:
+        names -= heard.known_keys(actor.world_id, actor.id)
+        names -= heard.subjects_in(actor.world_id, heard_text)
+    return names
+
+
 def _speaks_authored(world_id: str, advance: str | None) -> bool:
     """Whether the chosen draft advances a beat whose authored line is what
     the player will read (so the draft itself is never shown)."""
@@ -716,7 +733,16 @@ async def talk(actor: objects.Object, npc: objects.Object, text: str, room_id: s
                           recipient_id=to_actor)
         return False
     said = recent_lines(world_id, npc.id)
-    candidates.sort(key=lambda c: score(c[0], npc.name, pkey, openers, said[-3:]))
+    heard_text = " . ".join([text, *(g for g in grounding or [] if isinstance(g, str))])
+
+    def rank(c) -> tuple[bool, int]:
+        # A draft that introduces someone the player hasn't met ranks below
+        # any that doesn't; a draft whose beat speaks its authored line is
+        # never shown, so what it names doesn't matter.
+        new = not _speaks_authored(world_id, c[1]) and bool(unmet_names(actor, c[0], heard_text))
+        return new, score(c[0], npc.name, pkey, openers, said[-3:])
+
+    candidates.sort(key=rank)
     if config.promise_guard_enabled() and not _speaks_authored(world_id, candidates[0][1]):
         # A name nothing here gives is an invented fact, found without the
         # model; the judge reads the rest (one call over every draft).

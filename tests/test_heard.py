@@ -170,3 +170,40 @@ def test_disclosure_fields_fail_loud(mutate, needle):
     mutate(env)
     with pytest.raises(format2.Format2ValidationError, match=needle):
         format2.validate_envelope2(env)
+
+
+async def test_a_draft_that_introduces_someone_ranks_last(village, monkeypatch):
+    """The same greeting, n-best: the draft that names a person this player
+    has not come across loses to one that doesn't, even when it scores
+    better on everything else; once the player has heard the name, or says
+    it themself, it competes on its merits."""
+    me = _player()
+    objects.move(me, "r-loft")
+    monkeypatch.setenv("DAYDREAM_DIALOGUE_NBEST", "2")
+    drops = {"gesture": "Tace looks up from the bench.",
+             "say": "The dusk is amber, just as Wend liked it.", "advance": "none"}
+    plain = {"gesture": "Tace nods at you over the loupe.",  # "you": a worse score
+             "say": "Come in, and mind the top step.", "advance": "none"}
+
+    async def two(**kw):
+        two.n += 1
+        return drops if two.n % 2 else plain
+    two.n = 0
+    monkeypatch.setattr("daydream.llm.client.acompletion_json", two)
+
+    async def reply(line: str) -> str:
+        before = events.max_seq()
+        await verbs.execute_command(me, "talk", dobj_id="t-tace", args=line)
+        said = [e.payload for e in events.fetch_since(before)
+                if e.kind == "narrate" and e.recipient_id == me]
+        assert said and all(p.get("src") == "local" for p in said), said  # the model's
+        return " ".join(p.get("text", "") for p in said)
+
+    assert "Wend" not in await reply("hello there")
+    assert "Wend" not in await reply("good evening to you")
+    # The player names Wend (past the topic-select length, so the model answers).
+    assert "Wend" in await reply("I keep wondering, on a dusk this amber, what Wend "
+                                 "would have made of it")
+    events.append("system", None, "narrate", {"text": "Somebody mentions Wend."},
+                  room_id="r-loft", recipient_id=me)
+    assert "Wend" in await reply("good evening")  # heard of now: on its merits
