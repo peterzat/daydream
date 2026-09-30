@@ -11,9 +11,10 @@ reachable) each is exactly the local path, and costs nothing more.
   gone.
 - topic(actor, npc, text, local_pick): which authored topic answers a free
   line to a resident, or None (improvise). On, Jev's pick serves at
-  confidence >= TOPIC_MIN, else the word match's. Only plain topics: a line
-  that names an open story beat is matched deterministically, as before,
-  and never reaches here. Measured: 0.925 against the word match's 0.475
+  confidence >= TOPIC_MIN, else the word match's. Only plain topics, and
+  none that shares a name with an open story beat: a line that names an
+  open beat is matched deterministically, as before, and never reaches
+  here. Measured: 0.925 against the word match's 0.475
   on held-out lines, and every live error below the threshold.
 """
 
@@ -62,7 +63,16 @@ async def topic(actor, npc, text: str, local_pick: dict | None) -> dict | None:
         return local_pick
     from daydream import story
 
-    plain = [t for t in story.available_topics(npc, actor.id) if t.get("kind") == "topic"]
+    def names(t):
+        return {n for n in map(story.normalize_topic, [t["label"], *t["aliases"]]) if n}
+
+    # A plain topic that shares a name with an open beat is the beat's to
+    # answer (authors list such names among the beat's aliases), so Jev is
+    # never offered it: its canned answer would take the beat's line away
+    # (codereview 2026-09-30d).
+    topics = story.available_topics(npc, actor.id)
+    beat_names = set().union(*(names(t) for t in topics if t.get("kind") == "beat"))
+    plain = [t for t in topics if t.get("kind") == "topic" and not names(t) & beat_names]
     if not plain:
         return local_pick
 

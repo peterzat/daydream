@@ -993,9 +993,11 @@ def plan(ref: str) -> int:
 
     verdict, words = ci.main_status()
     say(f"ci on main: {words}")
-    # Jev (daydream/jev), the optional hosted decision model: zero or not
-    # zero, from a paid probe with this checkout's key. Prod itself runs Jev
-    # off: prod.env holds no key, and the service may reach loopback only.
+    # Jev (daydream/jev), the optional hosted decision model, is on wherever
+    # a key is reachable. The first line is this checkout's (.env): zero or
+    # not zero, from a paid probe. Prod holds no key (prod.env has none, and
+    # the service reaches loopback only); it calls through the egress
+    # gateway, whose line says whether its jev route has one.
     from daydream.jev import cli as jev_cli
 
     say(jev_cli.status_line(probe=True) + " [this checkout's .env]")

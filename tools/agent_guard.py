@@ -32,11 +32,13 @@ rules apply).
 
 It reads a command as the shell will, and no further (playtest of the
 guard, 2026-09-30: 176 prompts over 152 sessions, two thirds of them
-false): a heredoc fed to a shell is commands; one fed to an interpreter
-(python, perl, node) is code, read for credential paths and for lines
-that run a program; one fed to anything else (`cat > file`,
-`git commit -F -`) is text. A line that also runs a script file reads
-every heredoc as commands. A file written with the Write tool is not read
+false): a heredoc, found as the shell finds it, fed only to programs that
+read text (`cat > file`, `git commit -F -`) is text; one fed to an
+interpreter (python, perl, node) is code, read for credential paths and
+for lines that run a program; any other is commands, and so is every
+heredoc of a line that also runs a script file, a body never closed, and
+every body of a command the heredoc reader does not follow (arithmetic, a
+stray parenthesis). A file written with the Write tool is not read
 either: the guard judges what runs, not what is written.
 
 The hook runs the INSTALLED copy (~/.local/share/daydream/guard/), so this
@@ -146,9 +148,19 @@ _RAW_REDIRECTION = re.compile(
     r"(?:-(?=[\s;&|()<>]|$)|\s*(?:\\.|\"(?:[^\"\\$`]|\\.|\$(?!\())*\"|'[^']*'|[^\s;&|()<>'\"\\`])+)?")
 
 
-_HEREDOC = re.compile(r"<<-?\s*(['\"]?)([A-Za-z_][A-Za-z0-9_]*)\1")
-# Programs a heredoc runs as commands, and interpreters that run it as code.
-EXECUTORS = SHELLS | {"eval", "source", ".", "ssh"}
+# A heredoc's operator and its delimiter, the whole shell word after it
+# (`<<'X-Y'`, `<<-END.1`, `<< "E O F"`), never a here-string's `<<<`
+# (codereview 2026-09-30d: an identifier prefix of the word was taken).
+_HEREDOC = re.compile(r"(?<!<)<<(?!<)(-?)[ \t]*((?:'[^'\n]*'|\"(?:[^\"\\\n]|\\.)*\"|\\.|"
+                      r"[^\s;&|()<>'\"\\])+)")
+# What the heredoc reader follows (quotes, escapes, `$( )`, `( )`,
+# backticks, `${ }`, heredocs, comments) and what stops it (arithmetic,
+# ANSI-C quoting): a command it stops on has every body read as commands.
+_SCAN = re.compile(r"\$\(\(|\(\(|\$\[|\$'|\$\{|\$\(|(?<!<)<<(?!<)|[\\'\"`()}#]")
+MAX_HEREDOCS = 32
+# A heredoc is text only when every program it feeds reads text, and code
+# when the rest are interpreters; anything else runs it as commands.
+TEXT_READERS = {"cat", "tee", "git", "gh", "head", "tail", "wc", "grep", "sort", "diff", "jq"}
 INTERPRETERS = re.compile(r"^(python[0-9.]*|perl|node|ruby|php|lua|Rscript|deno|bun)$")
 # A line of interpreter code that runs a program: the only lines of a code
 # heredoc the gated-verb passes read (`subprocess.run(["bin/game", ...])`).
@@ -162,26 +174,118 @@ _RUNS_SCRIPT = re.compile(r"(^|[;&|(\s])(bash|sh|zsh|dash|source|\.)\s+[^-\s;&|<
                           r"(^|[;&|(\s])\./[^\s;&|]")
 
 
-def _heredoc_kind(line: str, at: int, runs_script: bool) -> str:
-    """How a heredoc opened at `at` in `line` is read: "shell", "code" or
-    "text". Its program is the command it belongs to, unless its output is
-    piped into another (`cat <<EOF | bash`)."""
-    if runs_script:
+def _delimiter(word: str) -> str:
+    """A heredoc's delimiter: its word with the quotes removed."""
+    try:
+        return "".join(shlex.split(word))
+    except ValueError:
+        return re.sub(r"['\"\\]", "", word)
+
+
+def _heredoc_spans(lines: list[str]) -> list[tuple] | None:
+    """The heredocs the shell reads in a command's lines, found as the shell
+    finds them: an operator outside quotes, `${ }` and comments, a body from
+    the first newline outside quotes to the first line that is exactly its
+    delimiter (leading tabs dropped for `<<-`). Each is (its line, the
+    operator's match, whether that line begins a command afresh, whether it
+    is inside `$( )` or `( )`, its first body line, its closing line or None
+    when none closes it). None for a command this reader does not follow."""
+    spans: list[tuple] = []
+    pending: list[tuple] = []
+    stack: list[str] = []  # the open quotes, substitutions and `${`
+    n, cont = 0, False
+    while n < len(lines):
+        line, k = lines[n], 0
+        fresh, joined, cont = not stack and not cont, cont, False
+        while k < len(line):
+            top = stack[-1] if stack else ""
+            if top == "'":  # only a quote ends a single-quoted string
+                j = line.find("'", k)
+                if j < 0:
+                    break
+                stack.pop()
+                k = j + 1
+                continue
+            t = _SCAN.search(line, k)
+            if t is None:
+                break
+            tok, k = t.group(), t.end()
+            if tok == "\\":
+                cont, k = k >= len(line), k + 1  # an escaped newline goes on
+            elif tok in ("$((", "$[", "$'") or tok == "((" and top not in ('"', "{"):
+                return None  # arithmetic or ANSI-C quoting: not followed
+            elif top in ('"', "{"):
+                if tok == ('"' if top == '"' else "}"):
+                    stack.pop()
+                elif tok in ("$(", "`", "${") or top == "{" and tok in ("'", '"'):
+                    stack.append(tok[-1])
+            elif tok == "#":
+                s = t.start()
+                if s == 0 and joined or s and line[s - 1] in ";&|()<>`{}":
+                    return None  # a comment this reader might misplace
+                if s == 0 or line[s - 1] in " \t":
+                    break  # a comment, to the end of the line
+            elif tok == "<<":
+                m = _HEREDOC.match(line, t.start())
+                if m is None or top == "`" or line[m.end():m.end() + 1] == "(" \
+                        or len(spans) + len(pending) >= MAX_HEREDOCS:
+                    return None
+                pending.append((n, m, fresh, bool(stack)))
+                k = m.end()
+            elif tok == ")":
+                if top != "(":
+                    return None
+                stack.pop()
+            elif tok == "`" and top == "`":
+                stack.pop()
+            elif tok != "}":
+                stack.append(tok[-1])  # ' " ` ( $( ${
+        n += 1
+        if cont or stack and stack[-1] in ("'", '"', "{"):
+            continue  # an escaped or quoted newline: the command goes on
+        for p in pending:  # the bodies, one after another, from the next line
+            strip, delim = p[1].group(1) == "-", _delimiter(p[1].group(2))
+            closing = next((j for j in range(n, len(lines))
+                            if (lines[j].lstrip("\t") if strip else lines[j]) == delim), None)
+            spans.append((*p, n, closing))
+            n = len(lines) if closing is None else closing + 1
+        pending = []
+    return None if stack or cont else spans
+
+
+def _heredoc_kind(lines: list[str], span: tuple, runs_script: bool) -> str:
+    """How a heredoc (a `_heredoc_spans` entry) is read: "shell", "code" or
+    "text". The programs it feeds are its own command's, on either side of
+    its operator, each command its output is piped into, and each command
+    it is a substitution in (`git commit -m "$(cat <<EOF`), unwrapped as the
+    argv pass unwraps them: text only when all of them read text, code when
+    the rest are interpreters, and commands otherwise (an unknown program or
+    none, as in `done <<EOF` or `{ bash; } <<EOF`), and for a body never
+    closed or a command that began on an earlier line or goes on after the
+    body (codereview 2026-09-30d)."""
+    n, m, fresh, nested, _first, closing = span
+    line = lines[n]
+    post = _RAW_REDIRECTION.sub(" ", line[m.end():]).replace("|&", "|")
+    if runs_script or closing is None or not fresh or line.endswith("\\") \
+            or re.search(r"[(`]|\|\s*$", post):
         return "shell"
-    progs = []
-    before = re.split(r"[;&]|\|\|?", line[:at])[-1].split()
-    after = line[at:].split("|")[1:]
-    for words in [before] + [a.split() for a in after]:
-        words = [w for w in words if not re.match(r"^[A-Za-z_][A-Za-z0-9_]*=", w)]
-        while words and (os.path.basename(words[0]) in WRAPPERS or words[0].startswith("-")):
-            words = words[1:]
-        if words:
-            progs.append(os.path.basename(words[0].strip("'\"")))
-    if any(p in EXECUTORS for p in progs):
-        return "shell"
-    if any(INTERPRETERS.match(p) for p in progs):
-        return "code"
-    return "text"
+    nxt = lines[closing + 1] if closing + 1 < len(lines) else ""
+    if nested and (post.strip() or nxt.endswith("\\")
+                   or not re.match(r"\s*\)[\s\"']*(?:$|;|&&|\|\|)", nxt)):
+        return "shell"  # a word of a command that goes on after the body
+    *outer, own = re.split(r"\$?\(", _RAW_REDIRECTION.sub(" ", line[:m.start()]))
+    head, *piped = re.split(r"[;&]|\|\|", post)[0].split("|")
+    heads = [re.split(r"[;&|]", own)[-1] + head, *piped]
+    for o in outer:  # only `x=$(...)` runs its substitution's output nowhere
+        o = re.split(r"[;&|]", o)[-1]
+        if not re.fullmatch(r"(?:\s*[A-Za-z_]\w*=\S*)+", o):
+            heads.append(o)
+    progs = [os.path.basename(a[0]) if a else "" for h in heads
+             for a in _unwrap([w.strip("'\"") for w in h.split()]) or [[]]]
+    if all(p in TEXT_READERS for p in progs):
+        return "text"
+    return "code" if all(p in TEXT_READERS or INTERPRETERS.match(p) for p in progs) \
+        else "shell"
 
 
 _DASH_C = re.compile(r"\b(?:python[0-9.]*|perl|node|ruby|php)\s+(?:-\w+\s+)*-[ce]\s+"
@@ -190,80 +294,53 @@ _DASH_C = re.compile(r"\b(?:python[0-9.]*|perl|node|ruby|php)\s+(?:-\w+\s+)*-[ce
 
 def _code_bodies(command: str) -> list[str]:
     """The interpreter code a line carries: its heredocs fed to an
-    interpreter, and its `-c` / `-e` strings."""
+    interpreter, and its `-c` / `-e` strings. A body never closed, and a
+    command the heredoc reader does not follow, are read as code too."""
     out = [m.group(1)[1:-1] for m in _DASH_C.finditer(command)]
     if "<<" in command:
         lines = command.split("\n")
-        i = 0
-        while i < len(lines):
-            line = lines[i]
-            i += 1
-            for m in _HEREDOC.finditer(line):
-                if line[max(0, m.start() - 1):m.start() + 3] == "<<<":
-                    continue
-                kind = _heredoc_kind(line, m.start(), False)
-                body = []
-                while i < len(lines) and lines[i].strip() != m.group(2):
-                    body.append(lines[i])
-                    i += 1
-                if kind == "code":
-                    out.append("\n".join(body))
-                i += 1
+        spans = _heredoc_spans(lines)
+        if spans is None:
+            return [*out, command]
+        for s in spans:
+            if s[5] is None:
+                out.append("\n".join(lines[s[4]:]))
+            elif _heredoc_kind(lines, s, False) == "code":
+                out.append("\n".join(lines[s[4]:s[5]]))
     return out
 
 
-def _skeleton(command: str) -> str:
-    """The line without its heredoc bodies: the words the shell itself reads
-    (a body's prose, "the source of truth", is never a script run)."""
-    lines, out, i = command.split("\n"), [], 0
-    while i < len(lines):
-        line = lines[i]
-        out.append(line)
-        i += 1
-        for m in _HEREDOC.finditer(line):
-            if line[max(0, m.start() - 1):m.start() + 3] == "<<<":
-                continue
-            while i < len(lines) and lines[i].strip() != m.group(2):
-                i += 1
-            i += 1
-    return "\n".join(out)
+def _skeleton(lines: list[str], spans: list[tuple]) -> str:
+    """The command without its heredoc bodies (one never closed stays): the
+    words the shell itself reads (a body's prose, "the source of truth", is
+    never a script run)."""
+    body = {j for s in spans if s[5] is not None for j in range(s[4], s[5])}
+    return "\n".join(x for j, x in enumerate(lines) if j not in body)
 
 
 def _read_heredocs(command: str) -> tuple[str, str]:
     """(the line for the gated-verb, protected-file and directory passes;
     the line for the credential pass). A shell's heredoc is kept in both, an
     interpreter's whole for credentials and only its lines that run a
-    program for the rest, and text is dropped from both."""
-    if "<<" not in command:
-        return command, command
-    runs_script = bool(_RUNS_SCRIPT.search(_skeleton(command)))
+    program for the rest, and text is dropped from both. A body never
+    closed, and every body of a command the heredoc reader does not follow,
+    is commands."""
     lines = command.split("\n")
-    run, cred = [], []
-    i = 0
-    while i < len(lines):
-        line = lines[i]
-        run.append(line)
-        cred.append(line)
-        i += 1
-        for m in _HEREDOC.finditer(line):
-            if line[max(0, m.start() - 1):m.start() + 3] == "<<<":
-                continue  # a here-string: its word is on this line
-            kind = _heredoc_kind(line, m.start(), runs_script)
-            body = []
-            while i < len(lines) and lines[i].strip() != m.group(2):
-                body.append(lines[i])
-                i += 1
-            if kind == "shell":
-                run += body
-                cred += body
-            elif kind == "code":
-                run += [b for b in body if _RUNS.search(b)]
-                cred += body
-            if i < len(lines):  # the closing delimiter
-                run.append(lines[i])
-                cred.append(lines[i])
-                i += 1
-    return "\n".join(run), "\n".join(cred)
+    spans = _heredoc_spans(lines) if "<<" in command else None
+    if not spans:
+        return command, command
+    runs_script = bool(_RUNS_SCRIPT.search(_skeleton(lines, spans)))
+    drop_run: set[int] = set()
+    drop_cred: set[int] = set()
+    for s in spans:
+        kind = _heredoc_kind(lines, s, runs_script)
+        if kind == "text":
+            drop_run.update(range(s[4], s[5]))
+            drop_cred.update(range(s[4], s[5]))
+        elif kind == "code":
+            drop_run.update(j for j in range(s[4], s[5]) if not _RUNS.search(lines[j]))
+    return ("\n".join(x for j, x in enumerate(lines) if j not in drop_run),
+            "\n".join(x for j, x in enumerate(lines) if j not in drop_cred))
 
 
 def _split_commands(command: str) -> list[list[str]]:
@@ -496,45 +573,83 @@ _TO_ALL = {"tee", "rm", "truncate", "chmod", "chown", "unlink", "shred", "touch"
 _IN_PLACE = {"sed", "perl"}
 
 
+def _find_runs(argv: list[str]) -> list[list[str]]:
+    """The commands a find runs on what it finds (`-exec`, `-execdir`, `-ok`,
+    `-okdir`), with `{}` read as each path it starts from."""
+    i = 1
+    while i < len(argv) and re.fullmatch(r"-[HLP]|-O\d*|-D", argv[i]):
+        i += 2 if argv[i] == "-D" else 1
+    roots = []
+    while i < len(argv) and not argv[i].startswith("-") and argv[i] not in ("(", "!", ","):
+        roots.append(argv[i])
+        i += 1
+    runs = []
+    while i < len(argv):
+        if argv[i] in ("-exec", "-execdir", "-ok", "-okdir"):
+            j = next((k for k in range(i + 1, len(argv)) if argv[k] in (";", "+")), len(argv))
+            runs += [[w.replace("{}", r) for w in argv[i + 1:j]] for r in roots or ["."]]
+            i = j
+        i += 1
+    return [r for r in runs if r]
+
+
 def _protected_write(run: str, cred: str) -> str | None:
     """The protected file a command writes, moves or removes, if any:
     reading, testing or committing one never asks (2026-09-30: any `>` on a
     line that named one, `2>&1` included, used to ask)."""
-    words = re.findall(r"[^\s'\";|&<>()]+", cred)
+    words = re.findall(r"[^\s'\";|&<>()=]+", cred)  # `--output=PATH`, `of=PATH`
     hits = [w for w in words if PROTECTED.search(w)]
     if not hits:
         return None
     m = _WRITES_TO.search(run)
     if m:
         return m.group(0).lstrip(">|&").strip(" '\"")
-    for part in _split_commands(run):
-        for argv in _unwrap(part):
-            if not argv or argv is _TOO_DEEP:
+    argvs = [argv for part in _split_commands(run) for argv in _unwrap(part)]
+    for argv in argvs:  # it grows: what a find runs is a command of its own
+        if not argv or argv is _TOO_DEEP:
+            continue
+        base = os.path.basename(argv[0])
+        ops = [a for a in argv[1:] if not a.startswith("-")]
+        if base in _TO_LAST and ops and PROTECTED.search(ops[-1]):
+            return ops[-1]
+        if INTERPRETERS.match(base) and "-c" not in argv and "-e" not in argv:
+            # A script given a protected path may write it: it asks, as
+            # before (its own code is not read).
+            for a in ops:
+                if PROTECTED.search(a):
+                    return a
+        # In place: `-i` in any short-option cluster (`-Ei`, `-ni`, `-pi`)
+        # or `--in-place` (security WARN 2026-09-30d); a second operand is
+        # uniq's output.
+        if base in _TO_ALL or base == "uniq" and len(ops) > 1 or base in _IN_PLACE and any(
+                a.startswith("--i") or re.match(r"-[^-]", a) and "i" in a for a in argv[1:]):
+            for a in ops[1:] if base == "uniq" else ops:
+                if PROTECTED.search(a):
+                    return a
+        for i, a in enumerate(argv[1:], 1):  # sed's w and W, sort -o, any --output
+            nxt = argv[i + 1] if i + 1 < len(argv) else ""
+            m = re.search(r"[wW]\s*(" + _PROTECTED_WORD + ")", a) if base == "sed" else None
+            if m:
+                out = m.group(1)
+            elif a.partition("=")[0] in ("--out", "--outp", "--outpu", "--output"):
+                out = a.partition("=")[2] or nxt
+            elif base == "sort" and re.match(r"-[^-]*o", a):
+                out = a[a.index("o") + 1:] or nxt
+            else:
                 continue
-            base = os.path.basename(argv[0])
-            ops = [a for a in argv[1:] if not a.startswith("-")]
-            if base in _TO_LAST and ops and PROTECTED.search(ops[-1]):
-                return ops[-1]
-            if INTERPRETERS.match(base) and "-c" not in argv and "-e" not in argv:
-                # A script given a protected path may write it: it asks, as
-                # before (its own code is not read).
-                for a in ops:
-                    if PROTECTED.search(a):
-                        return a
-            if base in _TO_ALL or (base in _IN_PLACE and any(
-                    a.startswith("-i") or a.startswith("-pi") for a in argv[1:])):
-                for a in ops:
-                    if PROTECTED.search(a):
-                        return a
-            if base == "dd":
-                for a in argv[1:]:
-                    if a.startswith("of=") and PROTECTED.search(a):
-                        return a[3:]
-            if base == "git" and argv[1:2] and argv[1] in ("checkout", "restore", "rm", "mv",
-                                                           "apply", "stash"):
-                for a in argv[2:]:
-                    if PROTECTED.search(a):
-                        return a
+            if PROTECTED.search(out):
+                return out
+        if base == "dd":
+            for a in argv[1:]:
+                if a.startswith("of=") and PROTECTED.search(a[3:]):
+                    return a[3:]
+        if base == "git" and argv[1:2] and argv[1] in ("checkout", "restore", "rm", "mv",
+                                                       "apply", "stash"):
+            for a in argv[2:]:
+                if PROTECTED.search(a):
+                    return a
+        if base == "find":
+            argvs += [c for s in _find_runs(argv) for c in _unwrap(s)]
     for code in _code_bodies(cred):
         if _CODE_WRITES.search(code):
             m = _PROTECTED_LITERAL.search(code)
@@ -563,7 +678,42 @@ def decide(payload: dict) -> tuple[str, str] | None:
 # on each file it finds.
 _FIND_ACTS = {"-exec", "-execdir", "-ok", "-okdir", "-delete", "-fprint", "-fprint0",
               "-fprintf", "-fls"}
-_FIND_PIPED = re.compile(r"\bfind\b[^;&\n|]*\|\s*(?:\S*/)?(?:xargs|while\s+read|parallel)\b")
+# ...and what its names may reach and still be only listed: text filters
+# reading them on stdin (security WARN 2026-09-30d: `| timeout 5 xargs cat`,
+# `| while IFS= read`, `cat $(find ...)` and `| grep x | xargs cat` read files).
+_LIST_FILTERS = {"head", "tail", "wc", "sort", "uniq", "grep", "cut"}
+# Redirections that write no file: to /dev/null, one stream to another,
+# and the errors.
+_QUIET_REDIRECTION = re.compile(r"\d*>&\d+-?|\d*&?>>?\s*/dev/null\b|2>>?\s*[^\s;&|]+")
+
+
+def _finds_list_only(run: str) -> bool:
+    """Whether every find in a command only prints names: none inside a
+    substitution, a subshell or a group, no output of its pipeline written
+    to a file, and every later command of its pipeline a text filter."""
+    text = re.sub(r"\\[()]", "", run)  # find's own \( \)
+    if re.search(r"[()`]|(?:^|[\s;&|])[{}](?=[\s;&|]|$)", text):
+        return False
+    text = _QUIET_REDIRECTION.sub(" ", text).replace("|&", "|").replace("&>", ">") \
+        .replace(">&", ">")
+    for pipeline in re.split(r"\|\||[;&\n]", text):
+        stages = pipeline.split("|")
+        for i, stage in enumerate(stages):
+            if "find" not in stage or not any(
+                    a and os.path.basename(a[0]) == "find" for a in _unwrap(stage.split())):
+                continue
+            if ">" in "".join(stages[i:]):
+                return False
+            for later in stages[i + 1:]:
+                words = [w.strip("'\"") for w in later.split()]
+                progs = [os.path.basename(a[0]) for a in _unwrap(words) if a]
+                ops = [w for w in words[1:] if not w.startswith("-")]
+                if not progs or any(p not in _LIST_FILTERS for p in progs) \
+                        or {"xargs", "parallel"} & {os.path.basename(w) for w in words} \
+                        or "sort" in progs and any(re.match(r"-[^-]*o|--o", w) for w in words) \
+                        or "uniq" in progs and len(ops) > 1:
+                    return False
+    return True
 
 
 def _decide(payload: dict) -> tuple[str, str] | None:
@@ -665,8 +815,7 @@ def _decide(payload: dict) -> tuple[str, str] | None:
             return "deny", _DENY_TOKEN
         if ask is not None:
             continue  # keep reading for a deny
-        lists_only = base == "find" and not _FIND_ACTS & set(argv) \
-            and not _FIND_PIPED.search(run)
+        lists_only = base == "find" and not _FIND_ACTS & set(argv) and _finds_list_only(run)
         if base in SEARCHERS and not lists_only and any(a in BROAD_ROOTS for a in argv[1:]):
             ask = f"a {base} over your home or a system directory can print credentials"
         elif base in TREE_READERS and not lists_only and any(  # above a credential, or in it

@@ -81,10 +81,16 @@ judge, which takes about as long.
 
 ### What leaves the box
 
-- For the judge: the drafts, and the trimmed view of the dialogue prompt
-  they were written from (the resident's sheet, what they know, the
-  dreamer's name, the recent exchange with that dreamer, the village's
-  people and places, and the player's words).
+- For the judge: the drafts, and the parts of the dialogue prompt that
+  bear on its rules (`dialogue.judge_view`): the resident's sheet; where
+  they are (the place's name and description, the village's day and time
+  of day); who is here, by name (the dreamer talking and every other
+  resident and dreamer in the room); the village's people and places;
+  what the resident knows, which includes deeds other dreamers did, by
+  name; for any dreamer the player's line names, where and when they were
+  last seen and whether they are awake, dozing or resting; the authored
+  words of a topic the line mentions; and the player's words. Not the
+  recent exchange, the resident's voice or wants, or their last lines.
 - For a topic: the resident's name, the player's line, and the resident's
   topic names with the first words of each authored answer.
 
@@ -130,7 +136,8 @@ say so.
   ([`DATA-LIFECYCLE.md`](DATA-LIFECYCLE.md)).
 - When the account runs dry, Jev answers HTTP 402; the client pauses calls
   for ten minutes and the local path serves. A refused key pauses the
-  same way.
+  same way. A timeout, a network error, a rate limit (429) or a server
+  error (5xx) pauses calls for a minute.
 
 ## The egress gateway
 

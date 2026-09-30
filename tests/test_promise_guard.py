@@ -98,6 +98,22 @@ async def test_a_judge_that_fails_shows_the_first_draft_and_logs(monkeypatch, ca
     assert any("promise judge" in r.getMessage() for r in caplog.records)
 
 
+async def test_a_guarded_talk_under_the_model_eval_judge_tag(monkeypatch):
+    """Codereview 2026-09-30d: `bin/game model-eval` wraps the judge to time
+    it; the wrapper took no `toon`, so every guarded talk under it raised."""
+    from daydream import model_eval
+
+    monkeypatch.setattr(dlg, "judge", dlg.judge)  # restored after the test
+    monkeypatch.setattr(model_eval, "_JUDGE_TIMES", [])
+    model_eval._install_judge_tag()
+    ada = player(1, "Ada", "r-green")
+    calls = _mock(monkeypatch, [HONEST, HONEST], {"verdicts": ["ok", "ok"]})
+    said = " ".join(await talk(ada, "t-hob", "is there a river here?"))
+    assert "The lane's that way" in said
+    assert [c["purpose"] for c in calls].count("promise_judge") == 1
+    assert len(model_eval._JUDGE_TIMES) == 1
+
+
 async def test_switched_off_there_is_no_judge(monkeypatch):
     monkeypatch.setenv("DAYDREAM_PROMISE_GUARD", "0")
     ada = player(1, "Ada", "r-green")

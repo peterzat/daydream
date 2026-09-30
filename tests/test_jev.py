@@ -1,7 +1,8 @@
 """Jev, the optional hosted decision model (daydream/jev; docs/EXTERNAL.md):
 on exactly when a key is reachable (the repo's .env in dev, the egress
-gateway in prod), off otherwise; the client never raises and pauses on an
-empty account or a refused key; the funds probe says zero or not zero; the
+gateway in prod), off otherwise; the client never raises, waits at most its
+timeout, and pauses on an empty account, a refused key or an outage; the
+funds probe says zero or not zero; the
 seam runs the local path alone when off and both when on; the ledger keeps
 no text in its calls, prunes after RETAIN_DAYS and forgets a person. No
 network: a mock transport."""
@@ -9,6 +10,7 @@ network: a mock transport."""
 import asyncio
 import json
 import logging
+import time
 
 import httpx
 import pytest
@@ -107,8 +109,8 @@ def test_each_call_is_a_log_line_and_a_ledger_row_without_text(jev, caplog):
 
 
 @pytest.mark.parametrize("status,outcome,pause", [
-    (402, "empty", "empty"), (401, "bad_key", "bad_key"), (429, "http_error", None),
-    (500, "http_error", None)])
+    (402, "empty", "empty"), (401, "bad_key", "bad_key"), (429, "http_error", "unreachable"),
+    (500, "http_error", "unreachable"), (404, "http_error", None)])
 def test_a_refusal_is_none_and_an_empty_account_pauses(jev, status, outcome, pause):
     jev["status"], jev["body"] = status, {"detail": {"error_type": "billing_error"}}
     assert _ask() is None
@@ -121,8 +123,31 @@ def test_a_refusal_is_none_and_an_empty_account_pauses(jev, status, outcome, pau
 def test_a_network_error_or_a_malformed_answer_is_none(jev):
     jev["raise"] = httpx.ConnectTimeout("slow")
     assert _ask() is None and ledger.calls()[-1]["outcome"] == "error"
+    assert client.paused() == "unreachable"  # a minute of local answers
+    client.reset()
     jev["raise"], jev["body"] = None, {"answers": "nope"}
     assert _ask() is None and ledger.calls()[-1]["outcome"] == "malformed"
+    assert client.paused() is None
+
+
+def test_a_call_waits_at_most_the_timeout_in_all(jev, monkeypatch):
+    """Codereview 2026-09-30d: httpx's timeout bounds each phase, so an
+    outage cost several timeouts on every free line; the call has one
+    deadline, and after it the calls pause."""
+    monkeypatch.setenv("DAYDREAM_JEV_TIMEOUT", "0.5")
+
+    async def slow(request):
+        await asyncio.sleep(5)
+        return httpx.Response(200, json=ANSWER)
+
+    monkeypatch.setattr(client, "transport", httpx.MockTransport(slow))
+    t0 = time.monotonic()
+    assert _ask() is None
+    assert time.monotonic() - t0 < 2
+    assert ledger.calls()[-1]["error"] == "TimeoutError"
+    assert client.paused() == "unreachable"
+    _ask()
+    assert ledger.calls()[-1]["outcome"] == "paused:unreachable"
 
 
 @pytest.mark.parametrize("status,state", [(200, "funded"), (402, "empty"),

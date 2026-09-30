@@ -125,6 +125,27 @@ async def test_a_request_that_names_a_topic_is_improvised_with_its_words(world, 
     assert any("WOULD SAY ABOUT WHAT WAS MENTIONED" in u for u in prompts)  # its words ground it
 
 
+async def test_a_paraphrase_never_takes_an_open_beats_line(world, monkeypatch):
+    """Codereview 2026-09-30d: "the folded thing" and "the tin" are Mott's
+    plain topics and his open beat's aliases, so the beat wins them; Jev is
+    never offered them while it is open, and a paraphrase reaches the
+    dialogue that advances the beat."""
+    from daydream import story
+
+    me, jev = world
+    wid = objects.get(me).world_id
+    story.open_arc(wid, "mott-minute")
+    story.adjust_rel(wid, "t-mott", me, 2)
+    objects.move(me, objects.get("t-mott").location_id)
+    llm = _llm(monkeypatch, {"gesture": "Mott turns the tin over.", "say": "Well now.",
+                             "advance": "mott-minute/mott-confides"})
+    jev["answers"] = {"topic": choice("the folded thing", 0.9),
+                      "request": {"type": "noul", "noul": 0.02}}
+    await _told(me, "talk to mott: what is that little thing you keep so close?")
+    assert "dialogue" in llm
+    assert story.beat_done(wid, "mott-minute", "mott-confides")
+
+
 @pytest.mark.parametrize("local,p_ok,passes", [
     ("a", 0.97, True),    # Jev sure it only talks: a needless local hold is lifted
     ("a", 0.6, False),    # Jev leaning, local failing: held (a live miss: the jar's contents)

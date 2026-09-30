@@ -557,3 +557,115 @@ def test_a_subagent_is_denied_what_would_ask(cmd, want):
     if want == "deny" and "invite" in cmd:
         assert "subagent" in got[1]
 
+
+
+# ---- codereview 2026-09-30d --------------------------------------------------
+# The heredoc reader finds a heredoc as the shell does (its whole delimiter
+# word; an operator outside quotes, `${ }` and comments; a body from the
+# first newline outside quotes to a line that is exactly the delimiter),
+# and a heredoc is text only when every program it feeds reads text. Each
+# of these hid a command from the guard; origin/main asked.
+
+
+@pytest.mark.parametrize("cmd", [
+    # the review's probes
+    f"cat <<X-Y >/dev/null\nhello\nX-Y\n{GATED}",
+    f"cat <<END.1 >/dev/null\nhello\nEND.1\n{GATED}",
+    f"sudo -u daydream bash <<EOF\n{GATED}\nEOF",
+    f"nice -n 5 bash <<EOF\n{GATED}\nEOF",
+    f"timeout 30 bash <<EOF\n{GATED}\nEOF",
+    f'while read -r l; do eval "$l"; done <<EOF\n{GATED}\nEOF',
+    f"cat <<EOF | sudo -u daydream bash\n{GATED}\nEOF",
+    # the program on either side of the operator, or none, or a group
+    f"<<EOF bash\n{GATED}\nEOF",
+    f"{{ bash; }} <<EOF\n{GATED}\nEOF",
+    f"cat <<EOF |& bash\n{GATED}\nEOF",
+    f"cat <<A |\n{GATED}\nA\nbash",  # the pipe goes on after the body
+    f"cat <<EOF > >(bash)\n{GATED}\nEOF",
+    # a substitution whose value runs
+    f"eval \"$(echo | cat <<'EOF'\n{GATED}\nEOF\n)\"",
+    f"\"$(cat <<'EOF'\n{GATED}\nEOF\n)\"",
+    f"x=1 $(cat <<'EOF'\n{GATED}\nEOF\n)",
+    f"cat <<< \"$(cat <<'EOF'\n{GATED}\nEOF\n)\" | bash",
+    # where bash finds no heredoc, or another body
+    f'cat "<<Z"\n{GATED}\nZ',
+    f"cat <<<hi\n{GATED}",
+    f"cat <<EOF\n EOF\ncat <<Z\nEOF\n{GATED}\nZ",  # only an exact line closes a body
+    f'cat <<EOF; bash -c "true\n{GATED}"\nbody\nEOF',  # a body starts after the quote
+    f'# "\necho "\ncat <<Z\n"\n{GATED}\nZ',  # a comment's quote is no quote
+    f"cat $((1<<Z))\n{GATED}\nZ",
+    f"cat ${{x#<<Z}}\n{GATED}\nZ",
+    f"echo $'it\\'s' <<A\n{GATED}\nA",
+    f"cat <<EOF \\\n| bash\n{GATED}\nEOF",
+    f"cat <<EOF\n{GATED}",  # a body never closed is commands
+])
+def test_a_heredoc_hides_no_command(cmd):
+    got = _bash(cmd)
+    assert got and got[0] == "ask", (cmd, got)
+
+
+@pytest.mark.parametrize("cmd,want", [
+    (f"cat <<X-Y >/dev/null\nhello\nX-Y\ncat {KEY}", "deny"),
+    (f'cat "<<Z"\ncat {KEY}\nZ', "deny"),
+    ("python3 - <<'EOF'\nfrom pathlib import Path\n"
+     "Path('.claude/settings.local.json').write_text('{}')", "ask"),  # never closed
+    # Text stays text: prose, a commit message, a note after a comment.
+    (f"git commit -q -m \"$(cat <<'EOF'\nprod: {GATED} is gated\nEOF\n)\"", None),
+    (f"gh pr create --title t --body \"$(cat <<'EOF'\n{GATED}\nEOF\n)\"", None),
+    (f"x=$(cat <<'EOF'\nnotes: {GATED}\nEOF\n)", None),
+    (f"# it's a note\ncat > /tmp/n.md <<'EOF'\n{GATED}\nEOF", None),
+    (f"cat <<'EOF' | tee /tmp/n.md\n{GATED}\nEOF", None),
+    (f"cat <<-EOF > /tmp/x\n\t{GATED}\n\tEOF", None),
+])
+def test_a_heredoc_is_found_as_the_shell_finds_it(cmd, want):
+    got = _bash(cmd)
+    assert (got[0] if got else None) == want, (cmd, got)
+
+
+@pytest.mark.parametrize("cmd,want", [
+    # Security WARN 2026-09-30d: names that reach a program reading files.
+    ("find ~ -name '*.env' | timeout 5 xargs cat", "ask"),
+    ("find ~ -name '*.env' | while IFS= read -r f; do cat \"$f\"; done", "ask"),
+    ("cat $(find ~ -name '*.env')", "ask"),
+    ("find ~ -name '*.env' | grep x | xargs cat", "ask"),
+    ("find ~ -name '*.env' > /tmp/l; xargs cat < /tmp/l", "ask"),
+    ("find ~ -name '*.env' | sort -o /tmp/l", "ask"),
+    ("xargs cat < <(find ~ -name '*.env')", "ask"),
+    ("{ find ~ -name '*.env'; } | xargs cat", "ask"),
+    # ...and names that only reach text filters stay quiet.
+    ("find ~ -name '*.pyc' 2>/dev/null | wc -l", None),
+    ("find ~ -maxdepth 3 -name '*.md' 2>&1 | grep notes | sort | uniq -c | head -20", None),
+    ("find ~ \\( -name a -o -name b \\) | cut -d/ -f4 | sort -u", None),
+])
+def test_a_find_lists_only_when_its_names_reach_only_text_filters(cmd, want):
+    got = _bash(cmd)
+    assert (got[0] if got else None) == want, (cmd, got)
+
+
+SETTINGS = ".claude/settings.local.json"
+
+
+@pytest.mark.parametrize("cmd,want", [
+    # Security WARN 2026-09-30d: in place in any spelling, sed's w and W,
+    # sort -o, uniq's output, --output, and what a find runs.
+    (f"sed --in-place s/ask/allow/ {SETTINGS}", "ask"),
+    (f"sed -Ei s/ask/allow/ {SETTINGS}", "ask"),
+    (f"sed -ni s/ask/allow/p {SETTINGS}", "ask"),
+    (f"find {SETTINGS} -exec sed -i s/ask/allow/ {{}} \\;", "ask"),
+    (f"find . -maxdepth 0 -exec sed -i s/a/b/ {SETTINGS} +", "ask"),
+    (f"sed -n 'w {SETTINGS}' /tmp/x", "ask"),
+    (f"sed 'W {LIVE}' /tmp/x", "ask"),
+    (f"sort -o {SETTINGS} /tmp/x", "ask"),
+    (f"sort /tmp/x --output={SETTINGS}", "ask"),
+    (f"uniq /tmp/x {SETTINGS}", "ask"),
+    (f"git diff --output={SETTINGS}", "ask"),
+    (f"dd if=/tmp/x of={SETTINGS}", "ask"),
+    # ...and reading one stays quiet.
+    (f"sed -n 1,5p {SETTINGS}", None),
+    (f"sort {SETTINGS}", None),
+    (f"uniq -c {SETTINGS}", None),
+    (f"git diff {SETTINGS}", None),
+])
+def test_every_way_to_write_a_protected_file_asks(cmd, want):
+    got = _bash(cmd)
+    assert (got[0] if got else None) == want, (cmd, got)

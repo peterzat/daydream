@@ -199,3 +199,21 @@ def test_canon_scorer_judges_the_model_not_the_authored_gesture():
            "sits just so. 'I found one tucked in my pocket.'")
     assert model_eval.canon_contradictions(
         bad, item["contradicts"], sentence_must=item.get("sentence_must"), authored=authored)
+
+
+def test_a_run_measures_the_local_path_with_jev_off(monkeypatch, tmp_path):
+    """Codereview 2026-09-30d: `bin/game` loads `.env`, so a dev key turned
+    Jev on under model-eval and a local-model comparison was partly Jev's."""
+    from daydream.jev import settings
+
+    monkeypatch.setenv("DAYDREAM_JEV_API_KEY", "test-key")
+    assert settings.enabled()
+    seen = {}
+
+    async def run(args):
+        seen["jev"] = settings.enabled()
+        return 0
+
+    monkeypatch.setattr(model_eval, "_run", run)
+    assert model_eval.main(["run", "--label", "t", "--out", str(tmp_path)]) == 0
+    assert seen == {"jev": False}

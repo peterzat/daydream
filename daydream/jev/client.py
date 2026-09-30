@@ -2,9 +2,11 @@
 
 Never raises. Every failure (off, bad key, an empty account, a rate limit,
 a timeout, a malformed answer, the gateway down) returns None and is
-recorded, so a caller falls back to its local path. An empty account (HTTP
-402) or a refused key (401/403) pauses further calls for a while, so a
-surface does not spend a timeout on every line while Jev cannot answer.
+recorded, so a caller falls back to its local path. A call waits at most
+the timeout in all. An empty account (HTTP 402) or a refused key (401/403)
+pauses further calls for ten minutes, and a timeout, a network error, a
+rate limit (429) or a server error (5xx) for one, so a surface does not
+spend a timeout on every line while Jev cannot answer.
 
 Direct (dev) calls carry the key; calls through the egress gateway (prod)
 carry none, and the gateway adds it. Each call is one line on the
@@ -18,6 +20,7 @@ answer is `{model, answers: {id: {...}}, usage: {input_tokens, ...}}`.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import time
 from dataclasses import dataclass, field
@@ -28,7 +31,7 @@ from daydream.jev import ledger, settings
 
 logger = logging.getLogger(__name__)
 
-PAUSE_S = {"empty": 600.0, "bad_key": 600.0}
+PAUSE_S = {"empty": 600.0, "bad_key": 600.0, "unreachable": 60.0}
 _paused: dict[str, float] = {}  # reason -> monotonic time the pause ends
 # Tests put an httpx.MockTransport here; None is the network.
 transport: httpx.AsyncBaseTransport | None = None
@@ -60,7 +63,7 @@ class Result:
 
 
 def paused() -> str | None:
-    """Why calls are paused now (`empty`, `bad_key`), or None."""
+    """Why calls are paused now (`empty`, `bad_key`, `unreachable`), or None."""
     now = time.monotonic()
     for reason, until in list(_paused.items()):
         if now < until:
@@ -99,12 +102,17 @@ async def ask(state, questions: dict, *, purpose: str,
     body = {"state": state, "model": settings.model(), "questions": questions}
     t0 = time.monotonic()
     row: dict = {"purpose": purpose, "questions": len(questions)}
+    # httpx's timeout bounds each phase (connect, write, read); the whole
+    # call has one deadline (codereview 2026-09-30d).
+    deadline = timeout or settings.timeout_s()
     try:
-        async with httpx.AsyncClient(transport=transport,
-                                     timeout=timeout or settings.timeout_s()) as http:
-            r = await http.post(f"{settings.base_url()}/v1/systemone", headers=_headers(),
-                                json=body)
+        async with httpx.AsyncClient(transport=transport, timeout=deadline) as http:
+            r = await asyncio.wait_for(
+                http.post(f"{settings.base_url()}/v1/systemone", headers=_headers(), json=body),
+                deadline)
     except Exception as e:  # noqa: BLE001 - never raises
+        if isinstance(e, (httpx.TransportError, asyncio.TimeoutError, TimeoutError)):
+            _paused["unreachable"] = time.monotonic() + PAUSE_S["unreachable"]
         row.update(outcome="error", error=type(e).__name__,
                    ms=round((time.monotonic() - t0) * 1000))
         _log(row)
@@ -118,6 +126,8 @@ async def ask(state, questions: dict, *, purpose: str,
         _paused["bad_key"] = time.monotonic() + PAUSE_S["bad_key"]
         row["outcome"] = "bad_key"
     elif r.status_code != 200:
+        if r.status_code == 429 or r.status_code >= 500:
+            _paused["unreachable"] = time.monotonic() + PAUSE_S["unreachable"]
         row["outcome"] = "http_error"
     if r.status_code != 200:
         _log(row)

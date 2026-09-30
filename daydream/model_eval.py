@@ -386,11 +386,11 @@ def _install_judge_tag() -> None:
 
     real = getattr(dlg.judge, "_real", dlg.judge)
 
-    async def tagged(context, drafts):
+    async def tagged(context, drafts, toon=None):
         token = _current_purpose.set("promise_judge")
         t0 = time.monotonic()
         try:
-            verdict = await real(context, drafts)
+            verdict = await real(context, drafts, toon=toon)
         finally:
             _current_purpose.reset(token)
         _JUDGE_TIMES.append({"drafts": list(drafts), "verdict": verdict,
@@ -1279,6 +1279,13 @@ def _compare(args) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
+    # model-eval measures the local path: Jev stays off for the run even when
+    # `.env` holds its key (bin/game loads it; codereview 2026-09-30d).
+    for key in ("DAYDREAM_JEV_API_KEY", "TYPESAFE_API_KEY", "DAYDREAM_EGRESS_URL"):
+        os.environ.pop(key, None)
+    from daydream.jev import settings as jev_settings
+
+    jev_settings.forget()
     ap = argparse.ArgumentParser(prog="daydream.model_eval")
     sub = ap.add_subparsers(dest="cmd", required=True)
     run = sub.add_parser("run", help="evaluate the endpoint's model")

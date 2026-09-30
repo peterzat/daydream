@@ -103,7 +103,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$HOME/.local/share/daydream/guard/agent_guard.py\" 2>/dev/null || echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"ask\",\"permissionDecisionReason\":\"the agent guard is not installed: run ! bin/game guard install\"}}'",
+            "command": "/usr/bin/python3 -I \"$HOME/.local/share/daydream/guard/agent_guard.py\" 2>/dev/null || echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"ask\",\"permissionDecisionReason\":\"the agent guard is not installed: run ! bin/game guard install\"}}'",
             "timeout": 5
           }
         ]
