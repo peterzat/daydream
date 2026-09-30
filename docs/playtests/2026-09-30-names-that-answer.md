@@ -11,26 +11,26 @@ behind this pass was the operator's: why do we keep missing here?
 1. **Wend.** In the loft, Tace's ask-about chips offered "Wend". Asked, Tace
    answered well, but story-wise the dreamer did not know who Wend was, and
    the chip had arrived as if they should.
-2. **Forget-me-nots.** The resting clocks' card reads "...one painted with
-   forget-me-nots...", with "forget-me-nots" underlined as a link. "look at
-   forget-me-nots" answered with the resting clocks' card again, word for
-   word. "get forget-me-nots" showed the same card and then "You can't take
-   the resting clocks."
+2. **Forget-me-nots.** The resting clocks' card mentions one clock painted
+   with forget-me-nots, with the flowers underlined as a link. Asking to
+   look at them answered with the resting clocks' card again, word for
+   word. Asking to take them showed the same card and then a refusal naming
+   the resting clocks.
 
 ## What the record showed
 
 **Wend.** `bin/game prod dream digest` lists every input. Nothing authored
 that the dreamer read named Wend before the chip appeared. The only line
-that did was the one local-model line in the whole session: the reply to
-"hi Tace!" the evening before, "...Come, sit by the round window; the dusk is
-turning amber just as Wend liked to see it." The model reads Tace's whole
+that did was the one local-model line in the whole session: Tace's reply to
+the dreamer's greeting the evening before, which mentioned in passing that
+Wend liked to watch the dusk from the round window. The model reads Tace's whole
 voice sheet (apprenticed to Wend; a sample line quoting Wend) and dropped the
 name in passing. `heard.on_event` counted every line told to a player, so
 from then on Wend was a chip. (The dreamer has since asked Tace about Wend,
 which makes it a legitimate chip for them now; no prod data needs changing.)
 
-**Forget-me-nots.** The 2026-09-26 dream digest had a dead end, "examine
-the clock painted with forget-me-nots". The fix then was to add
+**Forget-me-nots.** The 2026-09-26 dream digest had a dead end: a look at
+the clock painted with forget-me-nots found nothing. The fix then was to add
 "forget-me-nots", "painted clock" and two more as aliases of the resting
 clocks. That made the name resolve, so every check passed: the parser found
 a thing, the scenery lint (2026-09-29) counted the phrase as covered, and
