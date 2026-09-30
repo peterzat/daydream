@@ -202,3 +202,49 @@ which keeps lines off the model altogether. Latency figures are this box's.
 Not proposed: a second model call per line. Triage, multi-intent and
 target passthrough all fit in the call the parser already makes, and the
 promise guard costs one call only on the improvised dialogue that needs it.
+
+## The battery, replayed (2026-09-30)
+
+The 78 lines are committed as
+[`2026-09-29-creative-break.battery.json`](2026-09-29-creative-break.battery.json)
+and replay with `tools/play_battery.py` (fresh dreamers, `bin/game play`,
+the real local model on dev). Two changes to the battery itself: the square
+group now walks east (the first run sent it up and east, so it stayed in the
+loft), and `climb the stairs` closes the Clocktower group, since it now
+climbs.
+
+| | Before (15d8c85) | After (spec 2026-09-29 built) |
+|---|---|---|
+| Dead ends ("floats away", "nothing takes that up", "drifts by") | 9 | 1 |
+| Wrong answers (the wrong resident, another world's verb, a promise, speech for a gesture, a refusal naming the wrong thing, canon contradicted) | 20 | 0 |
+| Weak answers (not dead, not right) | | 2 |
+| Typical reply time | 1.3 s deterministic, 2.3 s parsed, 4.7 to 5.1 s dialogue | 1.3 s for 60 of 78 lines, 4.4 to 6.2 s dialogue (the promise judge adds about 0.4 s) |
+
+Every example named in the ten classes above now gets an answer that fits:
+`who am I` reads the dreamer, `climb the stairs` climbs, `hug`, `wave` and
+`thank` are gestures the room sees with the resident's own reaction, `give
+Tace a hug` is a hug, `climb the shelf` and `climb the ladder` read their
+glimpses, `go somewhere else` and `run` list the ways out, `look behind the
+case` and `knock on the case` have the village's defaults, `open the low
+door` names the way down, `drink tea` pours Umber's cellar tea, `take the
+lantern and go up` stops after the lantern's refusal, `ask Tace about it`
+reads the thing just looked at, `use the lantern on the jar` reads the
+lantern's glimpse, and `take the lectern` is authored oak. The promise probes
+(`ask Tace to fix my watch`, `follow Tace`) no longer promise. `ask Bell
+about the lanterns` and `wave to Bell` from the loft read "Bell isn't here;
+Bell is in the Lantern Square just now" (checked by hand: this battery now
+meets Bell in the square).
+
+What is left:
+
+- `reach up` in the cellar is the one dead end. The first run's model happened
+  to examine the highest shelf; this prompt reads it as no command. It is not
+  one of the ten classes.
+- `help Tace` gets Tace's deflection ("I won't say what I can't keep"): the
+  drafts offered help the engine won't give, so the guard held them back,
+  and the deflection reads oddly as a reply to an offer.
+- `count the jars` reads "You can't take the jars of saved hours" (the model
+  chose take).
+- Across the promise suite, the guard gives the deflection to about half the
+  adversarial probes and to 3 of 34 canon questions, which is the cost of
+  showing no promise.

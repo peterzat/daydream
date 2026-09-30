@@ -1,0 +1,112 @@
+{
+  "comment": "The creative-break battery (playtest 2026-09-29b; spec 2026-09-29 criterion 14): 78 lines in four places, each group one fresh dreamer, played through bin/game play against a running server with the real local model (tools/play_battery.py). Moves are plain directions from the start room. The first run (at 15d8c85) sent the square group 'up, east', so it stayed in the loft; from the Clocktower the square is east. Since the parser learned that 'climb the stairs' goes up, that line closes its group (2026-09-30), so the Clocktower lines after it stay in the Clocktower.",
+  "groups": [
+    {
+      "name": "clocktower",
+      "lines": [
+        "look around",
+        "what is this place",
+        "where am I",
+        "who am I",
+        "help me",
+        "wind the great clock",
+        "look at the stairs",
+        "open the low door",
+        "read the book",
+        "read the newer book",
+        "touch the clock case",
+        "knock on the case",
+        "look behind the case",
+        "look under the lectern",
+        "take the lectern",
+        "sit on the stairs",
+        "listen to the clock",
+        "what time is it",
+        "exmaine the ledger",
+        "take it",
+        "drop everything",
+        "sing",
+        "dance",
+        "shout hello",
+        "wait",
+        "sleep",
+        "i",
+        "x ledger",
+        "climb the stairs"
+      ]
+    },
+    {
+      "name": "loft",
+      "moves": [
+        "up"
+      ],
+      "lines": [
+        "hug Tace",
+        "wave to Tace",
+        "thank Tace",
+        "ask Tace for help",
+        "ask Tace what to do",
+        "tell Tace my name is Wren",
+        "ask Tace to fix my watch",
+        "give Tace a hug",
+        "look out the round window",
+        "open the window",
+        "take a clock",
+        "wind a resting clock",
+        "listen to the clocks",
+        "take the tweezers",
+        "borrow a loupe",
+        "sit by the window",
+        "what is Tace working on",
+        "take the little brass clock",
+        "ask Tace about it",
+        "follow Tace",
+        "help Tace"
+      ]
+    },
+    {
+      "name": "cellar",
+      "moves": [
+        "down"
+      ],
+      "lines": [
+        "pick up the jar",
+        "climb the shelf",
+        "use the lantern on the jar",
+        "reach up",
+        "read the labels",
+        "take a jar",
+        "open a jar",
+        "smell the jars",
+        "ask Umber about the jar",
+        "ask Umber about the highest shelf",
+        "drink tea",
+        "count the jars",
+        "take the lantern and go up",
+        "take the jar on the top shelf",
+        "look at the hands"
+      ]
+    },
+    {
+      "name": "square",
+      "moves": [
+        "east"
+      ],
+      "lines": [
+        "light a lantern",
+        "take a lantern",
+        "look at the cobbles",
+        "sit on the cobbles",
+        "wave to Bell",
+        "ask Bell about the lanterns",
+        "climb the ladder",
+        "take the ladder",
+        "what can I do here",
+        "go somewhere else",
+        "run",
+        "look at the sky",
+        "look at the moths"
+      ]
+    }
+  ]
+}
