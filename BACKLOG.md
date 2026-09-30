@@ -496,3 +496,9 @@ kept with that deployment, not here.
 - **Why deferred:** None is one of the playtest's ten classes; each is a single parser or glimpse wording fix best made with the next battery run.
 - **Revisit criteria:** The next battery replay, or a player hitting one of them.
 - **Origin:** spec 2026-09-29 criterion 14.
+
+### repeated-things-caps
+- **One-line description:** Cap or collapse repeated objects in the parser's scope list (`parser._scope_entries`, uncapped) and in the scene snapshot, so any future way to multiply things (a spawn without a per-player gate) cannot overflow the model's 8,192-token context or stall the event loop rebuilding a scene.
+- **Why deferred:** The one known vector (Umber's cup) is gated per player (review 2026-09-30); this is defence in depth.
+- **Revisit criteria:** A new authored spawn that can repeat, a dream that adds one, or a room whose scope list passes ~60 things.
+- **Origin:** /security 2026-09-30 (the tea-cup WARN).
