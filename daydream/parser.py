@@ -177,26 +177,26 @@ TRIAGE = (
     'null and include "target": its name as they typed it. When the input asks '
     'for several actions in order, also include "then": up to two more commands '
     'of the same shape.\n'
+    'Always write "verb" and "dobj_id" (null when nothing in Scope is named); '
+    'leave out a null "iobj_id", empty "args", and "kind" when it is "act".\n'
     "Examples:\n"
-    '"is it already night" -> {"verb": "none", "dobj_id": null, "iobj_id": null, '
-    '"args": "", "kind": "time"}\n'
-    '"where does this room lead" -> {"verb": "none", "dobj_id": null, "iobj_id": null, '
-    '"args": "", "kind": "ways"}\n'
-    '"no idea what to do now" -> {"verb": "none", "dobj_id": null, "iobj_id": null, '
-    '"args": "", "kind": "next"}\n'
-    '"ask the gardener why the leaves fell" -> {"verb": "talk", "dobj_id": "<the '
-    'gardener\'s id>", "iobj_id": null, "args": "why did the leaves fall?", "kind": "say"}\n'
-    '"pick up the moon" (no moon in Scope) -> {"verb": "take", "dobj_id": null, '
-    '"iobj_id": null, "args": "", "kind": "act", "target": "moon"}\n'
+    '"how far along is the day" -> {"verb": "none", "dobj_id": null, "kind": "time"}\n'
+    '"list the exits for me" -> {"verb": "none", "dobj_id": null, "kind": "ways"}\n'
+    '"explain the controls" -> {"verb": "none", "dobj_id": null, "kind": "help"}\n'
+    '"what\'s my goal here" -> {"verb": "none", "dobj_id": null, "kind": "next"}\n'
+    '"I\'ve lost track of things" -> {"verb": "none", "dobj_id": null, "kind": "next"}\n'
+    '"ask the ferryman why the tide turned" -> {"verb": "talk", "dobj_id": "<the '
+    'ferryman\'s id>", "args": "why did the tide turn?", "kind": "say"}\n'
+    '"pick up the anchor" (no anchor in Scope) -> {"verb": "take", "dobj_id": null, '
+    '"target": "anchor"}\n'
     '"sit on the cushion by the hearth" (a stool in Scope, no cushion) -> {"verb": '
-    '"sit", "dobj_id": null, "iobj_id": null, "args": "", "kind": "act", "target": '
-    '"cushion"}\n'
+    '"sit", "dobj_id": null, "target": "cushion"}\n'
     '"pry the crate open with the crowbar" -> {"verb": "use", "dobj_id": "<the '
-    'crowbar\'s id>", "iobj_id": "<the crate\'s id>", "args": "", "kind": "act"}\n'
-    '"grab the teapot then go north" -> {"verb": "take", "dobj_id": "<the teapot\'s '
-    'id>", "iobj_id": null, "args": "", "kind": "act", "then": [{"verb": "go", '
-    '"dobj_id": null, "iobj_id": null, "args": "north"}]}'
+    'crowbar\'s id>", "iobj_id": "<the crate\'s id>"}\n'
+    '"grab the umbrella then go west" -> {"verb": "take", "dobj_id": "<the '
+    'umbrella\'s id>", "then": [{"verb": "go", "dobj_id": null, "args": "west"}]}'
 )
+
 # kind -> the question about the game it names (daydream/meta.py kinds).
 QUESTIONS = {"time": "time", "where": "where", "who": "who", "ways": "ways", "help": "help",
              "next": "what_now"}
@@ -1231,8 +1231,8 @@ def _user_prompt(text: str, vocab: list[dict], scope: list[dict]) -> str:
         f"Verbs:\n{verb_lines}\n\n"
         f"Scope (objects you can refer to):\n{scope_lines}\n\n"
         f"Player input: {text}\n\n"
-        + ('Respond with JSON: {"verb": "...", "dobj_id": ..., "iobj_id": ..., "args": "...", '
-           '"kind": "..."}'
+        + ('Respond with JSON: {"verb": "...", "dobj_id": ..., ...only the other fields '
+           'that have a value}'
            if config.parser_triage_enabled() else
            'Respond with JSON: {"verb": "...", "dobj_id": ..., "iobj_id": ..., "args": "..."}')
     )

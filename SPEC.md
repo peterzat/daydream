@@ -168,13 +168,17 @@ decisions (Context).
 - Run `ruff check .` before pushing (the pre-commit hook runs tests only).
 - Push bare, never behind a wrapper, and let the gate run `/codereview`.
 
-**Measured (criterion 3, 2026-09-29, Qwen3.5 9B AWQ on dev):** the parser
+**Measured (criterion 3, 2026-09-30, Qwen3.5 9B AWQ on dev):** the parser
 corpus has grown to 50 cases since "47 of 48" was written; with triage off it
-scores 45/50 on the shipped model today, and with triage on 45/50. The
-triage set scores 32/34 (0.94) and a held-out set of 16 fresh phrasings,
-never used for tuning, 14/16. The parser call's p50 goes from about 1060 ms
-to about 1310 ms (the `kind` field is output tokens; the prompt's examples
-are input tokens, nearly free). Both suites score through
+scores 45/50 on the shipped model, with triage on 46/50. The triage set
+scores 31/34 (0.91) and a held-out set of 16 fresh phrasings, never used
+for tuning, 16/16. The parser call's p50 went from about 1060 ms (triage
+off) to about 690 ms: the model now writes only the fields that have a
+value (about 24 output tokens instead of 40), and the prompt teaches with
+examples (input tokens, nearly free) that share no words with either case
+set or the village. A first version whose examples echoed the case sets
+scored 0.94 on them; with clean examples it fell to 0.82 until the missing
+categories got examples of their own. Both suites score through
 `parser.interpret`, the runtime's own reading of the reply.
 
 **Measured (criterion 8, 2026-09-30, shipped model on dev):** the promise
