@@ -94,6 +94,24 @@ async def test_the_cellar_pours_umbers_tea(dreamer):
                     "paper and patience, exactly as the label promised."]
 
 
+@pytest.mark.parametrize("first", ["drink tea", "ask umber about tea"])
+async def test_umbers_cup_is_poured_once_per_dreamer(dreamer, first):
+    """The first pour gives the cup; later pours, asked or drunk, are drunk in
+    the cellar and leave no cup behind (security 2026-09-30: drop, pour,
+    repeat made a cup a line without limit)."""
+    objects.move(dreamer, "r-cellar")
+    await _said(dreamer, first)
+    await _said(dreamer, "drop all")
+    said = await _said(dreamer, "drink tea")
+    assert "not to take away" in said[0]
+    said = await _said(dreamer, "ask umber about tea")
+    assert said and said[0].startswith("Umber")
+    await _said(dreamer, "drop all")
+    await _said(dreamer, "drink")
+    cups = [o for o in objects.all_of_kind("w-lost-hours", "thing") if o.name == "chipped cup"]
+    assert len(cups) == 1
+
+
 def test_a_world_verb_takes_only_known_fields():
     env = copy.deepcopy(ENV)
     env["verbs"]["smell"]["fail_variants"] = "not a list"

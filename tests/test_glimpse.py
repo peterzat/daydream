@@ -316,3 +316,15 @@ async def test_the_lectern_is_authored_not_improvised(village, llm):
     said = await _said(village, "take the lectern")
     assert "plain old oak" in said[0].payload["text"]
     assert llm.await_count == 0
+
+
+def test_a_rooms_glimpses_are_read_beside_its_exit_names():
+    """A room with exit names has its glimpses validated too (codereview
+    2026-09-30: an elif skipped them in the cellar, the Clocktower, the
+    lamphouse and the Dusk Road)."""
+    env = copy.deepcopy(ENV)
+    cellar = next(r for r in env["rooms"] if r["id"] == "r-cellar")
+    assert cellar["properties"]["exit_names"]
+    cellar["properties"]["glimpsed"][0]["verbs"] = {"exmaine": "a typo never answers"}
+    with pytest.raises(format2.Format2ValidationError, match="unknown verb"):
+        format2.validate_envelope2(env)

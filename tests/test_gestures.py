@@ -151,3 +151,46 @@ def test_gesture_words_are_matched():
     assert gestures.match("thank you, Tace") == ("thank", "Tace")
     assert gestures.match("give Mott a hug") == ("hug", "Mott")
     assert gestures.match("take the lantern") is None
+
+
+async def test_a_gesture_then_a_move_does_both(loft):
+    """A gesture opens a command of its own, so the line goes on past it
+    (codereview 2026-09-30: "You don't see Bell and go west here")."""
+    wren = loft["Wren"]
+    before = await _do(wren, "hug Tace and go down")
+    assert _seen(wren, before)[0] == "You hug Tace."
+    assert objects.get(wren).location_id == "r-clocktower"
+
+
+@pytest.mark.parametrize("line,told", [
+    ("smile warmly", "You smile."), ("wave goodbye", "You wave."), ("bow deeply", "You bow.")])
+async def test_a_word_that_says_how_is_not_a_name(loft, line, told):
+    before = await _do(loft["Wren"], line)
+    assert _seen(loft["Wren"], before) == [told]
+
+
+async def test_thanks_for_something_thanks_the_one_here(loft):
+    for other in ("Vesper", "Juniper"):
+        objects.move(loft[other], "r-cellar")
+    before = await _do(loft["Wren"], "thanks for the tea")
+    assert _seen(loft["Wren"], before)[:2] == ["(Tace)", "You thank Tace."]
+
+
+async def test_a_gesture_at_the_scenery_reads_the_scenery(loft):
+    objects.move(loft["Wren"], "r-square")
+    before = await _do(loft["Wren"], "hug the cobbles")
+    assert _seen(loft["Wren"], before) == [
+        "The cobbles are worn smooth and very much part of the square; they stay where they are."]
+
+
+async def test_a_resting_dreamer_is_not_here_for_a_gesture(loft):
+    """Criterion 2: a resting dreamer isn't here, as the target of a gesture
+    or as the one it aims at (codereview 2026-09-30)."""
+    wren = loft["Wren"]
+    toons.kick_slot(2)  # Vesper rests where she stands
+    before = await _do(wren, "hug Vesper")
+    assert _seen(wren, before) == ["Vesper isn't here; Vesper is resting, out of the dream just now."]
+    assert _seen(loft["Juniper"], before) == []
+    objects.move(loft["Juniper"], "r-cellar")
+    before = await _do(wren, "thank you")  # Tace is the one other person awake here
+    assert _seen(wren, before)[:2] == ["(Tace)", "You thank Tace."]

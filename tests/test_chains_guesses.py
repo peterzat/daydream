@@ -61,3 +61,24 @@ async def test_a_guessed_person_is_named(dreamer):
     objects.move(dreamer, "r-loft")
     said = await _said(dreamer, "ask about the loft")
     assert said[0] == "(Tace)"
+
+
+async def test_a_noun_list_runs_every_item_past_a_missing_one(dreamer):
+    """A refusal stops a chain only before its next part: the items of one
+    list all run (codereview BLOCK 2026-09-30)."""
+    objects.move(dreamer, "r-square")
+    said = await _said(dreamer, "take the moon and the paper lantern")
+    assert said[0] == "You don't see the moon here."
+    assert not any(s.startswith("(So you leave") for s in said)
+    assert any(o.name == "paper lantern" for o in objects.contents(dreamer, kind="thing"))
+
+
+@pytest.mark.parametrize("line", ["take the paper lantern and then go west",
+                                  "take the paper lantern, and then go west"])
+async def test_and_then_joins_two_actions(dreamer, line):
+    """The "and" goes with the THEN (codereview 2026-09-30: "You don't see
+    the paper lantern and here")."""
+    objects.move(dreamer, "r-square")
+    await _said(dreamer, line)
+    assert objects.get(dreamer).location_id == "r-clocktower"
+    assert any(o.name == "paper lantern" for o in objects.contents(dreamer, kind="thing"))

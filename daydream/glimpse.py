@@ -131,9 +131,10 @@ def _scenery(actor: objects.Object, room_id: str) -> list[dict]:
         if isinstance(entries, list) else []
 
 
-def exit_named(actor: objects.Object, name: str) -> str | None:
+def exit_named(actor: objects.Object, name: str, exact: bool = False) -> str | None:
     """The way out of the actor's room that `name` names (`properties.
-    exit_names` on the room: {direction: [names]}), if it is a way out now."""
+    exit_names` on the room: {direction: [names]}), if it is a way out now.
+    `exact`: the name whole, never a longer phrase that ends with it."""
     room = objects.get(actor.location_id) if actor.location_id else None
     names = room.properties.get("exit_names") if room is not None else None
     if not isinstance(names, dict):
@@ -144,7 +145,9 @@ def exit_named(actor: objects.Object, name: str) -> str | None:
     r = rooms.get_room(room.id)
     open_ways = verbs.visible_exits(r, actor) if r is not None else {}
     for direction, words in names.items():
-        if direction in open_ways and any(_name_matches(typed, w) for w in words or []):
+        if direction in open_ways and any(
+                _same(typed, _norm(w)) if exact else _name_matches(typed, w)
+                for w in words or [] if typed and _norm(w)):
             return direction
     return None
 

@@ -788,7 +788,17 @@ async def _handle_input(text: str, toon_id: str, conn: dict) -> dict | None:
         return None
     executed = False
     todo = [p for p in lp.commands if p.verb != "none"]
+    refused = False
     for i, p in enumerate(todo):
+        if refused and p.segment != todo[i - 1].segment:
+            # A chain stops at its first refusal (criterion 5), and says so;
+            # the items of one list all run ("take the moon and the lantern").
+            left = len({q.segment for q in todo[i:]})
+            events.append("system", None, "narrate", {
+                "text": "(So you leave the rest for now.)" if left > 1
+                else "(So you leave the next part for now.)"},
+                room_id=_current_room_id(toon_id), recipient_id=toon_id)
+            break
         executed = True
         if p.guess:
             # The parser filled a target itself: say which (spec 2026-09-29
@@ -796,14 +806,7 @@ async def _handle_input(text: str, toon_id: str, conn: dict) -> dict | None:
             events.append("system", None, "narrate", {"text": f"({p.guess})"},
                           room_id=_current_room_id(toon_id), recipient_id=toon_id)
         ok = await _dispatch_parsed(p, toon_id)
-        if ok is False and i < len(todo) - 1:
-            # A chain stops at its first refusal (criterion 5), and says so.
-            left = len(todo) - 1 - i
-            events.append("system", None, "narrate", {
-                "text": "(So you leave the rest for now.)" if left > 1
-                else "(So you leave the next part for now.)"},
-                room_id=_current_room_id(toon_id), recipient_id=toon_id)
-            break
+        refused = refused or ok is False
     if lp.clarify is not None:
         conn["clarify"] = lp.clarify
         # The question lands in the chat log (private), and a clarify frame

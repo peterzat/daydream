@@ -34,7 +34,7 @@ from __future__ import annotations
 
 import logging
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field, replace
 
 from daydream import absent, config, glimpse, objects, pronouns, rooms, verbs, worldverbs
 from daydream.llm import client
@@ -103,6 +103,10 @@ class Parse:
     # A target the parser filled itself (the only one that fits): named in
     # parentheses before the command runs (spec 2026-09-29 criterion 12).
     guess: str | None = None
+    # Which part of the line this came from: a chain stops at a refusal only
+    # before a later part, so one noun list's items all run (codereview BLOCK
+    # 2026-09-30).
+    segment: int = field(default=0, compare=False)
 
 
 @dataclass(frozen=True)
@@ -148,7 +152,8 @@ NONE = Parse("none")
 _MULTI_VERBS = frozenset({"take", "drop", "put"})
 
 _AND_SPLIT = re.compile(r"\s*,\s*|\s+and\s+", re.IGNORECASE)
-_THEN_SPLIT = re.compile(r"\s+then\s+|\s*\.\s*", re.IGNORECASE)
+# "X and then Y" / "X, and then Y": the "and" goes with the THEN.
+_THEN_SPLIT = re.compile(r"(?:\s*,?\s*\band)?\s+then\s+|\s*\.\s*", re.IGNORECASE)
 
 
 SYSTEM = (
@@ -268,8 +273,11 @@ async def parse_line(
             if seg.error:
                 return LineParse(commands=tuple(commands), error=seg.error)
             return LineParse(commands=tuple(commands), message=seg.message)
-        commands.extend(seg)
-    _remember(actor_id, commands)
+        base = commands[-1].segment + 1 if commands else 0
+        commands.extend(replace(p, segment=base + p.segment) for p in seg)
+        # Each part's referents as it is parsed: "take the lantern and
+        # examine it" means this lantern, not the last line's thing.
+        _remember(actor_id, seg)
     if len(commands) == 1:
         only = commands[0]
         spec = verbs.resolve(actor.world_id, only.verb)
@@ -281,6 +289,8 @@ async def parse_line(
 
 
 def _starts_like_a_command(actor_id: str, segment: str, room) -> bool:
+    from daydream import gestures
+
     words = segment.strip().split()
     if not words:
         return False
@@ -296,7 +306,8 @@ def _starts_like_a_command(actor_id: str, segment: str, room) -> bool:
             or (room is not None and first in room.exits)
             or first in ("again", "g")
             or _verb_by_word(world_id, two) is not None
-            or _verb_by_word(world_id, first) is not None)
+            or _verb_by_word(world_id, first) is not None
+            or gestures.match(segment) is not None)  # "hug her and go west"
 
 
 def _segments(actor_id: str, text: str, room) -> list[str]:
@@ -343,7 +354,8 @@ def remember_referents(actor_id: str, *ids: str | None) -> None:
     """Keep IT and the person current from what a command touched (typed or
     clicked): a thing becomes IT, a person the one HIM / HER / THEM mean."""
     for oid in ids:
-        obj = objects.get(oid) if oid else None
+        # A click frame's ids are untrusted: only a string can name something.
+        obj = objects.get(oid) if isinstance(oid, str) and oid else None
         if obj is None or obj.id == actor_id:
             continue
         if obj.kind == "toon":
@@ -506,11 +518,16 @@ def _fast_path(actor_id: str, text: str, room: rooms.Room | None):
     said = " ".join(words[:len(words) - len(rest.split())]).lower()  # the verb as typed
     if rest and verb in _MOVE_VERBS:
         # "take the stairs", "go through the gate", "climb the steps": a way
-        # out named in the room's prose (spec 2026-09-29 criterion 9).
+        # out named in the room's prose (spec 2026-09-29 criterion 9). Take and
+        # use move only by a way named whole, never by the end of a two-object
+        # line ("use the key on the cellar door"; codereview 2026-09-30).
+        exact = verb in ("take", "use")
         target = _strip_article(_THROUGH.sub("", rest.strip()))
+        if exact and (_split_prep(spec, rest)[1] is not None or " from " in f" {rest.lower()} "):
+            target = ""
         actor = objects.get(actor_id)
         if actor is not None and target and not _ground(actor_id, target):
-            way = glimpse.exit_named(actor, target)
+            way = glimpse.exit_named(actor, target, exact=exact)
             if way is not None:
                 return [Parse("go", args=way)]
     if verb == "ask":
@@ -651,6 +668,8 @@ def _fast_path(actor_id: str, text: str, room: rooms.Room | None):
 
 
 _LEAD_PUNCT = re.compile(r"^[\s,:;.!?-]+")
+# A word after a gesture that says how, not at whom ("smile warmly").
+_HOW = re.compile(r"(?i)^(?:\w+ly|good-?bye|bye|farewell|hello|hi|back|again)$")
 
 
 def _toon_prefix(actor_id: str, words: list[str]):
@@ -707,8 +726,13 @@ def _gesture_fast_path(actor_id: str, text: str, world_id: str | None):
     gesture, who = found
     if who is None:
         return [Parse("gesture", args=gesture)]
-    who = _strip_article(re.sub(r"(?i)\s+for\b.*$", "", who)).strip(",.!? ")
-    if not who or who.lower() in ("me", "myself", "yourself", "everyone", "everybody", "all"):
+    # Whom, cut where the line goes on ("hug the keeper and go west"), never a
+    # "for ..." ("thanks for the tea"; codereview 2026-09-30).
+    who = re.split(r"(?i)\s+and\s+|[.!?;]", who)[0].strip(",.!? ")
+    how = _HOW.match(who)
+    who = _strip_article(re.sub(r"(?i)(?:^|\s+)for\b.*$", "", who)).strip(",.!? ")
+    if not who or who.lower() in ("me", "myself", "you", "yourself", "everyone", "everybody",
+                                  "all"):
         return [Parse("gesture", args=gesture)]
     matches = [o for o in _ground(actor_id, who) if o.kind in ("toon", "thing")]
     if len(matches) == 1:
@@ -719,7 +743,13 @@ def _gesture_fast_path(actor_id: str, text: str, world_id: str | None):
     elsewhere = absent.elsewhere(actor, who) if actor is not None else None
     if elsewhere is not None:
         return LineParse(message=absent.line(elsewhere))
-    return LineParse(message=f"You don't see {who} here.")
+    seen = glimpse.authored(actor, actor.location_id, who, "gesture") \
+        if actor is not None and actor.location_id else None
+    if seen:
+        return LineParse(message=seen)  # scenery: "hug the cobbles"
+    # "smile warmly", "wave goodbye" say how, not at whom; anything else is
+    # the model's to read.
+    return [Parse("gesture", args=gesture)] if how else None
 
 
 def _talk_fast_path(actor_id: str, rest: str):
@@ -1083,14 +1113,27 @@ _PARTICLES = frozenset({"up", "down", "for", "at", "on", "onto", "into", "in", "
 _NAME_ENDS = re.compile(r"(?i)\s+(?:off|from|out of)\s+.*$")
 _NOT_NAMES = frozenset({"it", "them", "him", "her", "this", "that", "these", "those", "me",
                         "myself", "everything", "all", "something", "anything"})
+# Words a line opens with that are never its verb ("please take the stone",
+# "I want to pick up the stone"): the verb, if said, comes further on.
+_OPENERS = frozenset({"please", "i", "i'd", "i'll", "i'm", "we", "let", "let's", "can", "could",
+                      "would", "will", "may", "might", "just", "now", "ok", "okay", "so", "and",
+                      "then", "maybe"})
 
 
-def _typed_target(text: str) -> str:
+def _typed_target(text: str, heads: frozenset[str] | set[str] = frozenset()) -> str:
     """The name a line gives its object, for a verb the model chose without
     one: the words after the verb and its particles, without an article, cut
     where a preposition begins ("reach for the lamp on the far shelf" ->
-    "lamp"). Empty for a pronoun or a name of four words or more."""
-    words = text.strip().rstrip(".!?").split()[1:]
+    "lamp"). Empty for a pronoun or a name of four words or more. A line
+    opening with a word that is never a verb names what follows the first of
+    `heads` (the chosen verb's words), or nothing (codereview 2026-09-30)."""
+    words = text.strip().rstrip(".!?").split()
+    if words and words[0].lower().strip(",") in _OPENERS:
+        at = next((i for i, w in enumerate(words) if w.lower().strip(",") in heads), None)
+        if at is None:
+            return ""
+        words = words[at:]
+    words = words[1:]
     while words and words[0].lower() in _PARTICLES:
         words = words[1:]
     name = _strip_article(" ".join(words))
@@ -1126,9 +1169,12 @@ def interpret(result, text: str, vocab_names: set[str], scope_ids: set[str], wor
     if not isinstance(result, dict):
         return [NONE]
     triage = config.parser_triage_enabled()
+    # Model JSON is untrusted: a list where a string belongs must not raise.
     acts_on_something = (str(result.get("verb", "none")).lower() in vocab_names
+                         and isinstance(result.get("dobj_id"), str)
                          and result.get("dobj_id") in scope_ids)
-    if triage and result.get("kind") in QUESTIONS and not acts_on_something:
+    if triage and isinstance(result.get("kind"), str) and result.get("kind") in QUESTIONS \
+            and not acts_on_something:
         # A question about the game never acts on a thing here: a reply
         # with a verb and an object is an action, whatever it was labelled
         # ("count the jars" came back as a ways question; battery 2026-09-30).
@@ -1158,7 +1204,7 @@ def interpret(result, text: str, vocab_names: set[str], scope_ids: set[str], wor
             if isinstance(extra, dict):
                 cmd = _one(extra, vocab_names, scope_ids, world_id)
                 if cmd is not NONE:
-                    out.append(cmd)
+                    out.append(replace(cmd, segment=len(out)))  # a step of its own
     return out
 
 
@@ -1173,7 +1219,8 @@ def _settle_target(cmd: Parse, result: dict, text: str, world_id: str, ground) -
     spec = verbs.resolve(world_id, cmd.verb)
     if spec is None or not spec.needs_dobj:
         return cmd
-    name = cmd.dobj_name or ("" if result.get("dobj_id") else _typed_target(text))
+    heads = {w.split()[0] for w in (spec.name, *spec.aliases) if w.split()}
+    name = cmd.dobj_name or ("" if result.get("dobj_id") else _typed_target(text, heads))
     if not name:
         return cmd
     ids = ground(name) if ground is not None else []

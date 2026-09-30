@@ -495,10 +495,12 @@ async def _execute_resolved(
         if not dobj_id:
             if dobj_name:
                 # Someone of this world who is elsewhere: say where they are
-                # (spec 2026-09-29 criterion 1).
+                # (spec 2026-09-29 criterion 1), unless an authored glimpse or
+                # the scenery here names it first ("the hour" at the Dusk Road).
                 from daydream import absent, glimpse
 
-                who = absent.elsewhere(actor, dobj_name)
+                who = None if glimpse.authored(actor, room_id, dobj_name, spec.name) \
+                    else absent.elsewhere(actor, dobj_name)
                 if who is not None:
                     _narrate(room_id, absent.line(who), recipient_id=actor_id)
                     return False
@@ -1666,7 +1668,8 @@ async def _handle_gesture(actor, room_id, dobj, iobj, args, spec) -> None:
     target = dobj
     if target is None and not gestures.GESTURES[gesture][2]:
         others = [o for o in objects.in_scope(actor.id)
-                  if o.kind == "toon" and o.id != actor.id]
+                  if o.kind == "toon" and o.id != actor.id
+                  and not (o.is_player and not o.is_human_controlled)]  # resting: not here
         if len(others) == 1:
             target = others[0]
             _narrate(room_id, f"({target.name})", recipient_id=actor.id)

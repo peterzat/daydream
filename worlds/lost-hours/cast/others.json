@@ -415,6 +415,12 @@
             "have a cup",
             "take a cup"
           ],
+          "if": [
+            {
+              "pflag": "UMBER-CUP",
+              "not": true
+            }
+          ],
           "variants": [
             "Umber pours from a brown pot that was steeping all along, into a cup with a chip in its rim, and sets it at your elbow. 'Tea. Strong. Drink while warm,' she says, as if reading it off a label.",
             "Umber fills a chipped cup without asking how you take it. 'Cellar tea. Brewed slow, served warm, no sugar,' she says. 'Keep away from the jars.'"
@@ -436,8 +442,38 @@
               "properties": {
                 "cellar_tea": true
               }
+            },
+            {
+              "kind": "set_pflag",
+              "name": "UMBER-CUP"
             }
           ]
+        },
+        {
+          "label": "tea",
+          "aliases": [
+            "a cup",
+            "cup of tea",
+            "a cup of tea",
+            "some tea",
+            "umber's tea",
+            "pot of tea",
+            "tea please",
+            "cellar tea",
+            "love a cup",
+            "have a cup",
+            "take a cup"
+          ],
+          "if": [
+            {
+              "pflag": "UMBER-CUP"
+            }
+          ],
+          "variants": [
+            "Umber pours seconds from the brown pot into a cup that lives on a nail by the stair, and sets it at your elbow. 'Refill. Drink here, not to take away.'",
+            "Umber tops up a cellar cup without looking up from her labels. 'Second pot, stronger. Return cup to nail.'"
+          ],
+          "others": "Umber pours {actor} another cup of cellar tea, to drink by the stair."
         },
         {
           "label": "Wend",

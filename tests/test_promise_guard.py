@@ -9,10 +9,10 @@ import logging
 
 import pytest
 
-from daydream import db, events, worldclock
+from daydream import db, events, objects, story, village, worldclock
 from daydream import dialogue as dlg
 from daydream.llm import client, format2
-from tests.story_helpers import FIXTURE, ROOT, at, load, player, talk
+from tests.story_helpers import FIXTURE, ROOT, WORLD, at, load, player, say, talk
 
 pytestmark = pytest.mark.tier_short
 
@@ -209,6 +209,45 @@ async def test_every_draft_inventing_deflects_with_no_judge_call(monkeypatch):
     ("Hob nods. 'I can mend it for you, friend.'", True),
     ("Hob beams. 'I'll keep your pebble safe.'", True),
     ("Hob nods. 'The lane waits for you, and so do the lamps.'", False),
+    # ordinary talk, not commitments (codereview 2026-09-30)
+    ("Hob nods. 'I will keep it in mind.'", False),
+    ("Hob laughs. 'I'll take it as a compliment.'", False),
+    ("Hob smiles. 'I can give you a little advice, if you like.'", False),
+    ("Hob hums. 'We walk the lane each evening when the lamps are lit.'", False),
+    ("Hob nods. 'Together we keep the hours.'", False),
+    ("Hob squints. 'Spring will come along soon enough.'", False),
+    # leading the player somewhere stays a commitment (codereview 2026-09-30)
+    ("Hob grins. 'I'll show you the way up.'", True),
+    ("Hob nods. 'I'll take you to the well.'", True),
 ])
 def test_commitments_the_engine_wont_keep(line, hit):
     assert dlg.commits(line) is hit
+
+
+@pytest.mark.parametrize("verdict,shown", [("ok", True), ("a", False)])
+async def test_a_draft_shown_because_its_beat_went_stale_is_judged(monkeypatch, verdict, shown):
+    """A draft that advances an authored beat skips the guard (the author's
+    line speaks). When another player finishes the beat in flight, the draft
+    is what the player reads: judged then, deflected when it fails
+    (codereview 2026-09-30)."""
+    monkeypatch.setenv("DAYDREAM_DIALOGUE_NBEST", "1")
+    ada, bo = player(1, "Ada", "r-green"), player(2, "Bo", "r-lane")
+    await say(ada, "light lamp")  # the moth's hour comes at dusk
+    at("2026-10-01T18:05:00+00:00")
+    village.catch_up(WORLD)
+    objects.move(ada, "r-lane")
+    calls = []
+
+    async def racing(**kw):
+        calls.append(kw["purpose"])
+        if kw["purpose"] == "promise_judge":
+            return {"verdicts": [verdict]}
+        story.advance_beat(WORLD, "moth", "hob-notices", bo, "r-lane")  # Bo, in flight
+        return {"gesture": "Hob laughs.", "say": "Busy evening.", "advance": "moth/hob-notices"}
+
+    monkeypatch.setattr("daydream.llm.client.acompletion_json", racing)
+    said = " ".join(await talk(ada, "t-hob", "did you see anything odd tonight?"))
+    assert story.arc_state(WORLD, "moth")["beats"]["hob-notices"]["by"] == bo
+    assert calls == ["dialogue", "promise_judge"]
+    assert ("Busy evening." in said) is shown
+    assert ("Not mine to promise" in said) is not shown

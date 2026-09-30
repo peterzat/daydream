@@ -58,6 +58,23 @@ def test_fetch_since_filters_by_room():
     assert fetched[0].payload == {"text": "in meadow"}
 
 
+def test_the_replay_filter_leaves_out_one_toon_or_a_list_of_them():
+    """`except` is one toon id or a list (a gesture between two dreamers
+    leaves both out of the room's telling): the replay query's json_each
+    reads both shapes, and a private line reaches only its recipient."""
+    events.append("system", None, "narrate", {"text": "one", "except": "t-a"}, room_id="r-x")
+    events.append("system", None, "narrate", {"text": "both", "except": ["t-a", "t-b"]},
+                  room_id="r-x")
+    events.append("system", None, "narrate", {"text": "all"}, room_id="r-x")
+    events.append("system", None, "narrate", {"text": "c's"}, room_id="r-x", recipient_id="t-c")
+
+    def seen(toon):
+        return [e.payload["text"] for e in events.fetch_since(0, recipient_for=toon)]
+
+    assert seen("t-a") == ["all"]
+    assert seen("t-b") == ["one", "all"]
+    assert seen("t-c") == ["one", "both", "all", "c's"]
+
 def test_max_seq_starts_zero_then_climbs():
     assert events.max_seq() == 0
     events.append("system", None, "world_drift")

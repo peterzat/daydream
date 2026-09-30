@@ -93,3 +93,19 @@ def test_scenery_and_exit_names_fail_loud(mutate, needle):
     mutate(env)
     with pytest.raises(format2.Format2ValidationError, match=needle):
         format2.validate_envelope2(env)
+
+
+@pytest.mark.parametrize("line,end", [
+    ("use the key on the cellar door", "r-clocktower"),
+    ("take the moth from the low door", "r-clocktower"),
+    ("take the low door", "r-cellar"),
+    ("take the stairs", "r-loft"),
+])
+async def test_take_and_use_move_only_by_a_ways_whole_name(dreamer, monkeypatch, line, end):
+    """A two-object line that ends in a way's name is not a move; the name
+    said whole still is (codereview 2026-09-30)."""
+    monkeypatch.setattr("daydream.llm.client.acompletion_json",
+                        AsyncMock(return_value={"verb": "none", "kind": "act"}))
+    objects.move(dreamer, "r-clocktower")
+    await _said(dreamer, line)
+    assert objects.get(dreamer).location_id == end

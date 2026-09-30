@@ -579,11 +579,17 @@ _COMMITS = re.compile(
     # going along, which needs no object
     r"come with|come along|go with|walk with|walk you|meet (?:you|me)|follow|wait for|lead\b"
     # handling the player's things: a resident mending its own clocks is not this
-    r"|(?:fix|mend|repair|keep|hold|look after|watch over|guard|bring|fetch|carry|take|show|"
-    r"lend|give|save|see to)\s+(?:\w+\s+)?(?:you|your|yours|it|them)\b"
+    r"|(?:fix|mend|repair|hold|look after|watch over|guard|bring|fetch|carry|"
+    r"lend|save|see to)\s+(?:\w+\s+)?(?:you|your|yours|it|them)\b"
+    # keep/take/show/give only the player's thing, or it kept safe or for
+    # them: "keep it in mind", "take it as", "give you advice" are talk
+    r"|(?:keep|take|show|give)\s+(?:\w+\s+)?(?:your|yours)\b"
+    r"|(?:keep|take|show|give)\s+(?:it|them)\s+(?:safe|for you)\b"
+    # leading the player somewhere: "I'll show you the way up", "take you to"
+    r"|(?:show|take|lead|walk|bring) you (?:the way|to|there|over|across|down|up|home|along)\b"
     r"|listen to your|look at your)"
-    r"|\b(?:follow me|come with me|come along|let's go|lead the way|"
-    r"we (?:step out|go|leave|walk|set off)|together we)\b"
+    r"|\b(?:follow me|come with me|come along with (?:me|you)|let's go|lead the way|"
+    r"we (?:step out|set off))\b"
     r"|\bi(?:'ve| have) (?:saved|kept|set aside|put by)\b[^.!?]*\bfor you\b"
     # handing a thing over, in the gesture or the words
     r"|\b(?:here is|here's) your\b|\b(?:hands|offers|gives|passes) (?:it|them)\b[^.!?']{0,20}"
@@ -745,6 +751,14 @@ async def talk(actor: objects.Object, npc: objects.Object, text: str, room_id: s
                                 tell=authored)
         if ev is not None and authored:
             spoken = None  # the author wrote this moment; it has been told
+        elif authored and config.promise_guard_enabled():
+            # The beat went stale in flight, so the draft the guard skipped is
+            # what the player reads: judged now, deflected if it fails.
+            ok = not unknown_names(line, known_words(npc, user)) and not commits(line)
+            verdict = await judge(judge_view(user), [line]) if ok else [False]
+            if verdict is not None and not verdict[0]:
+                _deflect(actor, npc, text, room_id)
+                return True
     if spoken is not None:
         # The reply is the talker's; the room sees that a conversation is
         # happening, not four interleaved answers (playtest 2026-09-26).

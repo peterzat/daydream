@@ -11,7 +11,18 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from daydream import db, events, heard, objects, parser, toons, verbs, walkthrough, worldclock
+from daydream import (
+    config,
+    db,
+    events,
+    heard,
+    objects,
+    parser,
+    toons,
+    verbs,
+    walkthrough,
+    worldclock,
+)
 
 pytestmark = pytest.mark.tier_short
 
@@ -72,3 +83,32 @@ async def test_a_dreamer_elsewhere_or_resting_reads_the_same_way(loft):
 async def test_someone_here_is_still_asked(loft, llm):
     said = await _said(loft, "ask Tace about the loft")
     assert said and "isn't here" not in said[0]
+
+
+@pytest.mark.parametrize("line", ["take the hour", "touch the hour"])
+async def test_a_glimpse_here_answers_before_someone_elsewhere(loft, line):
+    """At the Dusk Road "the hour" is the drifting lights, authored, not the
+    guest of that name (codereview 2026-09-30)."""
+    objects.move(loft, "r-duskroad")
+    said = await _said(loft, line)
+    assert said == ["There are no lights just now. They drift down at dusk, the villagers say, "
+                    "like slow snow."]
+
+
+async def test_a_guest_not_yet_arrived_is_nowhere(loft):
+    said = await _said(loft, "examine the extra hour")
+    assert said == ["You don't see the extra hour here."]
+
+
+async def test_a_world_without_voiced_residents_keeps_its_own_not_here(tmp_path, llm):
+    """A character with neither voice sheet nor schedule is not placed for the
+    player (codereview 2026-09-30: another world's wandering thief was)."""
+    db.close_db()
+    events.reset_subscribers()
+    db.init_live(path=tmp_path / "bunny.db", migrations_dir=config.MIGRATIONS_DIR)
+    try:
+        said = await _said("t-wren", "examine iris")  # Iris is up in the attic
+    finally:
+        db.close_db()
+        events.reset_subscribers()
+    assert said == ["You don't see the iris here."]

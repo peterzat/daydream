@@ -48,6 +48,7 @@ async def _said(toon: str, line: str) -> list[str]:
     ("where can I go", "ways"), ("go somewhere else", "ways"), ("which way?", "ways"),
     ("run", "ways"), ("wander off", "ways"),
     ("take the lantern", None), ("where is Bell", None),
+    ("who is this", None),  # asked beside a stranger, never the dreamer's card (2026-09-30)
 ])
 def test_the_questions_are_recognized(line, kind):
     assert meta.kind(line) == kind

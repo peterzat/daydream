@@ -17,7 +17,8 @@
     "MET-BOOK",
     "MET-BELL",
     "WAITED-DUSK",
-    "QUILL-SEED"
+    "QUILL-SEED",
+    "UMBER-CUP"
   ],
   "player_counters": [],
   "time": {
@@ -231,8 +232,8 @@
     ],
     "gestures": {
       "thing": [
-        "It takes the kindness quietly.",
-        "Nothing in the dream minds, and {the_thing} seems, if anything, a little pleased.",
+        "The dream takes the kindness quietly.",
+        "Nothing in the dream minds, and something about {the_thing} seems, if anything, a little pleased.",
         "The dream lets it be, the way it lets most small kindnesses be."
       ],
       "npc_default": [
@@ -455,7 +456,7 @@
       "fail_variants": [
         "You touch {the_thing}: exactly as real as you'd hoped, and the dream seems pleased you checked.",
         "You lay a hand on {the_thing} for a moment. Nothing changes, which is its own small comfort.",
-        "You touch {the_thing}. It is exactly as real as it looks, which in a dream is a kindness."
+        "You touch {the_thing}. Real to the touch, just as the eye promised, which in a dream is a kindness."
       ]
     },
     "smell": {
@@ -510,8 +511,8 @@
       ],
       "fail_text": "Push what?",
       "fail_variants": [
-        "You push {the_thing}. It stays exactly where the dream put it.",
-        "{The_thing} doesn't budge, and doesn't seem to mind being asked."
+        "You push {the_thing}, and nothing shifts. The dream keeps things just where it likes them.",
+        "You lean your weight on {the_thing}. Nothing budges, and nothing seems to mind being asked."
       ]
     },
     "pull": {
@@ -528,7 +529,7 @@
       ],
       "fail_text": "Pull what?",
       "fail_variants": [
-        "You give {the_thing} a gentle tug. It stays where it belongs.",
+        "You give {the_thing} a gentle tug. Nothing comes loose; in the village, things stay where they belong.",
         "{The_thing} won't come any nearer, however kindly you pull."
       ]
     },
@@ -549,7 +550,7 @@
       "fail_text": "Climb what?",
       "fail_variants": [
         "You set a foot on {the_thing}, think better of it, and step down again.",
-        "{The_thing} isn't made for climbing, and the dream would rather you didn't."
+        "Nothing about {the_thing} was made for climbing, and the dream would rather you didn't."
       ]
     },
     "light": {
@@ -566,8 +567,8 @@
       ],
       "fail_text": "Light what?",
       "fail_variants": [
-        "You've nothing to light {the_thing} with, and it doesn't seem to want lighting.",
-        "Lighting things is Bell's trade, and {the_thing} isn't one of Bell's."
+        "You've nothing to light {the_thing} with, and nothing here seems to want lighting.",
+        "Lighting things is Bell's trade, and Bell's round never takes in {the_thing}."
       ]
     },
     "look behind": {
@@ -606,7 +607,7 @@
       ],
       "fail_text": "Look under what?",
       "fail_variants": [
-        "Nothing under {the_thing} but what it stands on, and a little dust.",
+        "Nothing under {the_thing} but a little dust and a little dark.",
         "You look under {the_thing}. Whatever was lost there has already been found."
       ]
     },
@@ -889,6 +890,10 @@
         },
         {
           "present": "t-umber"
+        },
+        {
+          "pflag": "UMBER-CUP",
+          "not": true
         }
       ],
       "do": [
@@ -913,6 +918,32 @@
           "properties": {
             "cellar_tea": true
           }
+        },
+        {
+          "kind": "set_pflag",
+          "name": "UMBER-CUP"
+        }
+      ]
+    },
+    {
+      "on": "drink",
+      "if": [
+        {
+          "in": "r-cellar"
+        },
+        {
+          "present": "t-umber"
+        },
+        {
+          "pflag": "UMBER-CUP"
+        }
+      ],
+      "do": [
+        {
+          "kind": "narrate",
+          "to": "@actor",
+          "text": "Umber pours you another cup from the brown pot and waits while you drink it by the stair. 'Seconds. Drink here, not to take away,' she says, and hangs the cup back on its nail.",
+          "others": "Umber pours {actor} another cup of cellar tea, to drink by the stair."
         }
       ]
     },
@@ -12558,6 +12589,12 @@
               "have a cup",
               "take a cup"
             ],
+            "if": [
+              {
+                "pflag": "UMBER-CUP",
+                "not": true
+              }
+            ],
             "variants": [
               "Umber pours from a brown pot that was steeping all along, into a cup with a chip in its rim, and sets it at your elbow. 'Tea. Strong. Drink while warm,' she says, as if reading it off a label.",
               "Umber fills a chipped cup without asking how you take it. 'Cellar tea. Brewed slow, served warm, no sugar,' she says. 'Keep away from the jars.'"
@@ -12579,8 +12616,38 @@
                 "properties": {
                   "cellar_tea": true
                 }
+              },
+              {
+                "kind": "set_pflag",
+                "name": "UMBER-CUP"
               }
             ]
+          },
+          {
+            "label": "tea",
+            "aliases": [
+              "a cup",
+              "cup of tea",
+              "a cup of tea",
+              "some tea",
+              "umber's tea",
+              "pot of tea",
+              "tea please",
+              "cellar tea",
+              "love a cup",
+              "have a cup",
+              "take a cup"
+            ],
+            "if": [
+              {
+                "pflag": "UMBER-CUP"
+              }
+            ],
+            "variants": [
+              "Umber pours seconds from the brown pot into a cup that lives on a nail by the stair, and sets it at your elbow. 'Refill. Drink here, not to take away.'",
+              "Umber tops up a cellar cup without looking up from her labels. 'Second pot, stronger. Return cup to nail.'"
+            ],
+            "others": "Umber pours {actor} another cup of cellar tea, to drink by the stair."
           },
           {
             "label": "Wend",

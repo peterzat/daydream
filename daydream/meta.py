@@ -21,7 +21,7 @@ WHERE_RE = re.compile(
     r"(?i)^(where am i|where are we|where is this|what is this place|what place is this|"
     r"what's this place)[?.!]*$")
 WHO_RE = re.compile(
-    r"(?i)^(who am i|what am i|what do i look like|who is this|what('s| is) my name)[?.!]*$")
+    r"(?i)^(who am i|what am i|what do i look like|what('s| is) my name)[?.!]*$")
 WAYS_RE = re.compile(
     r"(?i)^(where can i go|where can we go|which way|which ways|what are the exits|exits|"
     r"ways( out)?|ways from here|how do i get out|go somewhere else|where to|"

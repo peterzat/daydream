@@ -17,7 +17,8 @@
     "MET-BOOK",
     "MET-BELL",
     "WAITED-DUSK",
-    "QUILL-SEED"
+    "QUILL-SEED",
+    "UMBER-CUP"
   ],
   "player_counters": [],
   "time": {
@@ -226,8 +227,8 @@
     ],
     "gestures": {
       "thing": [
-        "It takes the kindness quietly.",
-        "Nothing in the dream minds, and {the_thing} seems, if anything, a little pleased.",
+        "The dream takes the kindness quietly.",
+        "Nothing in the dream minds, and something about {the_thing} seems, if anything, a little pleased.",
         "The dream lets it be, the way it lets most small kindnesses be."
       ],
       "npc_default": [
@@ -435,15 +436,15 @@
     }
   },
   "verbs": {
-    "touch": {"ui_hint": "Touch", "description": "Touch or feel something. Target: the thing.", "aliases": ["feel"], "needs_dobj": true, "universal": true, "valid_dobj_kinds": ["thing"], "fail_text": "Touch what?", "fail_variants": ["You touch {the_thing}: exactly as real as you'd hoped, and the dream seems pleased you checked.", "You lay a hand on {the_thing} for a moment. Nothing changes, which is its own small comfort.", "You touch {the_thing}. It is exactly as real as it looks, which in a dream is a kindness."]},
+    "touch": {"ui_hint": "Touch", "description": "Touch or feel something. Target: the thing.", "aliases": ["feel"], "needs_dobj": true, "universal": true, "valid_dobj_kinds": ["thing"], "fail_text": "Touch what?", "fail_variants": ["You touch {the_thing}: exactly as real as you'd hoped, and the dream seems pleased you checked.", "You lay a hand on {the_thing} for a moment. Nothing changes, which is its own small comfort.", "You touch {the_thing}. Real to the touch, just as the eye promised, which in a dream is a kindness."]},
     "smell": {"ui_hint": "Smell", "description": "Smell something. Target: the thing.", "aliases": ["sniff"], "needs_dobj": true, "universal": true, "valid_dobj_kinds": ["thing"], "fail_text": "Smell what?", "fail_variants": ["A faint smell of dust and time comes off {the_thing}, like most things in the village.", "You breathe in close to {the_thing}: a whisper of something like old paper and evening air.", "Up close, there's no smell to {the_thing} at all, or none the dream will share."]},
     "knock": {"ui_hint": "Knock", "description": "Knock on something. Target: the thing.", "aliases": ["knock on", "rap", "rap on"], "needs_dobj": true, "universal": true, "valid_dobj_kinds": ["thing"], "fail_text": "Knock on what?", "fail_variants": ["You knock on {the_thing}, politely. Nothing knocks back.", "Knock, knock. No answer from {the_thing}, which is an answer of sorts.", "You rap on {the_thing}. The sound goes a little way into the quiet and settles there."]},
-    "push": {"ui_hint": "Push", "description": "Push something. Target: the thing.", "aliases": ["shove", "press"], "needs_dobj": true, "universal": true, "valid_dobj_kinds": ["thing"], "fail_text": "Push what?", "fail_variants": ["You push {the_thing}. It stays exactly where the dream put it.", "{The_thing} doesn't budge, and doesn't seem to mind being asked."]},
-    "pull": {"ui_hint": "Pull", "description": "Pull something. Target: the thing.", "aliases": ["tug", "yank"], "needs_dobj": true, "universal": true, "valid_dobj_kinds": ["thing"], "fail_text": "Pull what?", "fail_variants": ["You give {the_thing} a gentle tug. It stays where it belongs.", "{The_thing} won't come any nearer, however kindly you pull."]},
-    "climb": {"ui_hint": "Climb", "description": "Climb something. Target: the thing.", "aliases": ["scale", "clamber", "climb on", "climb onto"], "needs_dobj": true, "universal": true, "valid_dobj_kinds": ["thing"], "fail_text": "Climb what?", "fail_variants": ["You set a foot on {the_thing}, think better of it, and step down again.", "{The_thing} isn't made for climbing, and the dream would rather you didn't."]},
-    "light": {"ui_hint": "Light", "description": "Light something. Target: the thing.", "aliases": ["ignite", "kindle"], "needs_dobj": true, "universal": true, "valid_dobj_kinds": ["thing"], "fail_text": "Light what?", "fail_variants": ["You've nothing to light {the_thing} with, and it doesn't seem to want lighting.", "Lighting things is Bell's trade, and {the_thing} isn't one of Bell's."]},
+    "push": {"ui_hint": "Push", "description": "Push something. Target: the thing.", "aliases": ["shove", "press"], "needs_dobj": true, "universal": true, "valid_dobj_kinds": ["thing"], "fail_text": "Push what?", "fail_variants": ["You push {the_thing}, and nothing shifts. The dream keeps things just where it likes them.", "You lean your weight on {the_thing}. Nothing budges, and nothing seems to mind being asked."]},
+    "pull": {"ui_hint": "Pull", "description": "Pull something. Target: the thing.", "aliases": ["tug", "yank"], "needs_dobj": true, "universal": true, "valid_dobj_kinds": ["thing"], "fail_text": "Pull what?", "fail_variants": ["You give {the_thing} a gentle tug. Nothing comes loose; in the village, things stay where they belong.", "{The_thing} won't come any nearer, however kindly you pull."]},
+    "climb": {"ui_hint": "Climb", "description": "Climb something. Target: the thing.", "aliases": ["scale", "clamber", "climb on", "climb onto"], "needs_dobj": true, "universal": true, "valid_dobj_kinds": ["thing"], "fail_text": "Climb what?", "fail_variants": ["You set a foot on {the_thing}, think better of it, and step down again.", "Nothing about {the_thing} was made for climbing, and the dream would rather you didn't."]},
+    "light": {"ui_hint": "Light", "description": "Light something. Target: the thing.", "aliases": ["ignite", "kindle"], "needs_dobj": true, "universal": true, "valid_dobj_kinds": ["thing"], "fail_text": "Light what?", "fail_variants": ["You've nothing to light {the_thing} with, and nothing here seems to want lighting.", "Lighting things is Bell's trade, and Bell's round never takes in {the_thing}."]},
     "look behind": {"ui_hint": "Look behind", "description": "Look behind something. Target: the thing.", "aliases": ["peer behind", "check behind", "search behind"], "needs_dobj": true, "universal": true, "valid_dobj_kinds": ["thing"], "fail_text": "Look behind what?", "fail_variants": ["There's nothing behind {the_thing} but a little dust and a little quiet.", "You peer behind {the_thing}. Only shadow, and not an interesting one."]},
-    "look under": {"ui_hint": "Look under", "description": "Look under something. Target: the thing.", "aliases": ["peer under", "check under", "search under", "look beneath", "look underneath"], "needs_dobj": true, "universal": true, "valid_dobj_kinds": ["thing"], "fail_text": "Look under what?", "fail_variants": ["Nothing under {the_thing} but what it stands on, and a little dust.", "You look under {the_thing}. Whatever was lost there has already been found."]},
+    "look under": {"ui_hint": "Look under", "description": "Look under something. Target: the thing.", "aliases": ["peer under", "check under", "search under", "look beneath", "look underneath"], "needs_dobj": true, "universal": true, "valid_dobj_kinds": ["thing"], "fail_text": "Look under what?", "fail_variants": ["Nothing under {the_thing} but a little dust and a little dark.", "You look under {the_thing}. Whatever was lost there has already been found."]},
     "dance": {"ui_hint": "Dance", "description": "Dance a few steps. No target.", "aliases": ["twirl", "spin"], "needs_dobj": false, "fail_text": "You dance a few steps. The dream keeps time for you, softly.", "fail_variants": ["You dance a few steps. The dream keeps time for you, softly.", "You twirl once. Somewhere a clock ticks along, a little behind the beat."]},
     "jump": {"ui_hint": "Jump", "description": "Jump or hop. No target.", "aliases": ["hop", "leap"], "needs_dobj": false, "fail_text": "You jump. The dream lets you land gently, as it always does.", "fail_variants": ["You jump. The dream lets you land gently, as it always does.", "You hop on the spot, and come down a little lighter."]},
     "wind": {
@@ -689,7 +690,8 @@
         }
       ]
     },
-    {"on": "drink", "if": [{"in": "r-cellar"}, {"present": "t-umber"}], "do": [{"kind": "narrate", "to": "@actor", "text": "Umber fills a chipped cup from the brown pot without asking how you take it. 'Cellar tea. Drink while warm,' she says, as if reading it off a label.", "others": "Umber pours {actor} a cup of cellar tea from the brown pot."}, {"kind": "spawn_object", "name": "chipped cup", "location_id": "@actor", "seed": "a plain teacup with a chip in its rim, holding Umber's strong cellar tea, still warm; a paper label tied to the handle says, in a small square hand, DRINK WHILE WARM", "aliases": ["cup", "chipped teacup", "cellar tea", "umber's tea"], "generated_by": "umber:tea", "properties": {"cellar_tea": true}}]},
+    {"on": "drink", "if": [{"in": "r-cellar"}, {"present": "t-umber"}, {"pflag": "UMBER-CUP", "not": true}], "do": [{"kind": "narrate", "to": "@actor", "text": "Umber fills a chipped cup from the brown pot without asking how you take it. 'Cellar tea. Drink while warm,' she says, as if reading it off a label.", "others": "Umber pours {actor} a cup of cellar tea from the brown pot."}, {"kind": "spawn_object", "name": "chipped cup", "location_id": "@actor", "seed": "a plain teacup with a chip in its rim, holding Umber's strong cellar tea, still warm; a paper label tied to the handle says, in a small square hand, DRINK WHILE WARM", "aliases": ["cup", "chipped teacup", "cellar tea", "umber's tea"], "generated_by": "umber:tea", "properties": {"cellar_tea": true}}, {"kind": "set_pflag", "name": "UMBER-CUP"}]},
+    {"on": "drink", "if": [{"in": "r-cellar"}, {"present": "t-umber"}, {"pflag": "UMBER-CUP"}], "do": [{"kind": "narrate", "to": "@actor", "text": "Umber pours you another cup from the brown pot and waits while you drink it by the stair. 'Seconds. Drink here, not to take away,' she says, and hangs the cup back on its nail.", "others": "Umber pours {actor} another cup of cellar tea, to drink by the stair."}]},
     {
       "on": "drink",
       "do": [

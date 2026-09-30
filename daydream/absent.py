@@ -28,8 +28,13 @@ def elsewhere(actor: objects.Object, name: str) -> objects.Object | None:
     if not want:
         return None
     here = {o.id for o in objects.in_scope(actor.id)}
+    # Only someone somewhere just now (a guest not yet arrived is nowhere),
+    # and one of the world's people: a dreamer, or a resident with a voice
+    # sheet or a schedule. A world whose characters have neither keeps its
+    # own "not here" (codereview 2026-09-30: a wandering thief was placed).
     found = [t for t in objects.all_of_kind(actor.world_id, "toon")
-             if t.id != actor.id and t.id not in here
+             if t.id != actor.id and t.id not in here and t.location_id
+             and (t.is_player or t.properties.get("voice") or t.properties.get("schedule"))
              and want in {t.name.lower(), *(str(a).lower() for a in t.aliases)}]
     return found[0] if len(found) == 1 else None
 

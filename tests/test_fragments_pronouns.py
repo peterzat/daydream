@@ -105,3 +105,22 @@ async def test_x_chains_like_any_command(dreamer):
     lp, said = await _run(dreamer, "x tin. south")
     assert [c.verb for c in lp.commands] == ["examine", "go"]
     assert objects.get(dreamer).location_id == "r-square"
+
+
+async def test_it_later_in_a_line_means_that_lines_thing(dreamer):
+    """IT after an earlier part of the same line means what that part
+    touched, not the last line's thing (codereview 2026-09-30)."""
+    objects.move(dreamer, "r-loft")
+    parser.remember_referents(dreamer, "o-workbench")  # an earlier line's thing
+    lp, _ = await _run(dreamer, "take the brass pendulum and examine it")
+    assert [(c.verb, c.dobj_id) for c in lp.commands] == [
+        ("take", "o-brass-pendulum"), ("examine", "o-brass-pendulum")]
+
+
+def test_a_click_frames_ids_that_are_not_strings_are_ignored(dreamer):
+    """A click frame's ids are untrusted: a list or an object names nothing
+    (codereview 2026-09-30: sqlite raised on the sender's socket)."""
+    parser.remember_referents(dreamer, "o-workbench")
+    parser.remember_referents(dreamer, ["o-brass-pendulum"], {"id": "t-tace"})
+    assert pronouns.it_referent(dreamer) == "o-workbench"
+    assert pronouns.person_referent(dreamer) is None

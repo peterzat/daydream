@@ -650,3 +650,32 @@ async def test_a_question_label_on_an_action_stays_an_action(monkeypatch):
     _mock_llm(monkeypatch, {"verb": "examine", "dobj_id": "i-lantern", "kind": "ways"})
     lp = await parser.parse_line("t-wren", "count the lanterns please")
     assert [(c.verb, c.dobj_id) for c in lp.commands] == [("examine", "i-lantern")]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("reply,verbs,asks", [
+    ({"verb": "take", "dobj_id": ["i-lantern"], "kind": "act"}, [], "Take what?"),
+    ({"verb": "none", "dobj_id": None, "kind": ["time"]}, ["none"], None),
+])
+async def test_model_json_of_the_wrong_shape_never_raises(monkeypatch, reply, verbs, asks):
+    """Model JSON is untrusted: a list where a string belongs is no target
+    and no question, never a TypeError that drops the socket (codereview
+    2026-09-30)."""
+    objects.move("t-wren", "r-meadow")
+    _mock_llm(monkeypatch, reply)
+    lp = await parser.parse_line("t-wren", "do something with that lantern thing")
+    assert lp.error is None
+    assert [c.verb for c in lp.commands] == verbs
+    assert (lp.clarify.question if lp.clarify else None) == asks
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("line", ["please take the moonstone", "I want to pick up the moonstone"])
+async def test_a_line_that_opens_before_its_verb_names_what_follows_the_verb(monkeypatch, line):
+    """The model chose a verb and named nothing: the name follows the verb
+    where the line says it, never the line's first word (codereview
+    2026-09-30: "You don't see the take the stone here")."""
+    _mock_llm(monkeypatch, {"verb": "take", "dobj_id": None, "kind": "act"})
+    lp = await parser.parse_line("t-wren", line)
+    assert [(c.verb, c.dobj_id, c.dobj_name) for c in lp.commands] == [
+        ("take", None, "moonstone")]

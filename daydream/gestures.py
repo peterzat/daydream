@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import re
 
-from daydream import events, objects, variants
+from daydream import absent, events, objects, variants
 
 # gesture -> (you-form, they-form, alone: may it be done at no one?)
 GESTURES: dict[str, tuple[str, str, bool]] = {
@@ -146,7 +146,10 @@ def perform(actor: objects.Object, room_id: str, gesture: str,
         _say(room_id, text, to=actor.id)
         _say(room_id, f"{actor.name} {they} {name}.", leave_out=[actor.id])
         return
-    # Someone.
+    # Someone. A resting dreamer is out of the dream, not here (criterion 2).
+    if target.is_player and not target.is_human_controlled:
+        _say(room_id, absent.line(target), to=actor.id)
+        return
     _say(room_id, f"You {you} {target.name}.", to=actor.id)
     if target.is_player:
         _say(room_id, f"{actor.name} {they} you.", to=target.id)

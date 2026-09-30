@@ -347,7 +347,8 @@ def validate_envelope2(env: dict) -> list[str]:
                             isinstance(n, str) and n.strip() and len(n.split()) < 4 for n in names)):
                         errors.append(f"{where}.properties.exit_names.{d} must be a list of "
                                       "names of three words or fewer")
-        elif "glimpsed" in r.get("properties", {}):
+        # Its own check: a room with exit names has its glimpses read too.
+        if isinstance(r.get("properties", {}), dict) and "glimpsed" in r.get("properties", {}):
             errors.extend(glimpse.validate_glimpsed(
                 r["properties"]["glimpsed"], f"{where}.properties.glimpsed",
                 known_flags=known_flags, known_ids=all_ids, known_story=ks,
