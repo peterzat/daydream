@@ -344,7 +344,6 @@ def _apply_narrate(
     # log, in the world's own names.
     from daydream import trace
 
-    text = trace.expand_placeholders(text, world_id)
     to = eff.get("to")
     recipient: str | None = None
     if isinstance(to, str) and to.strip():
@@ -352,6 +351,10 @@ def _apply_narrate(
             recipient = actor_id if to.strip() == "@actor" else to.strip()
     else:
         recipient = second_person_recipient(text.strip(), actor_id)
+    # Filled after routing: a line the acting player reads alone speaks to
+    # them ("just you"), and the filled clause never re-routes a line.
+    text = trace.expand_placeholders(
+        text, world_id, listener=actor_id if recipient is not None and recipient == actor_id else None)
     payload = {"text": text.strip()}
     if eff.get("src") == "local":
         # Provenance (docs/REFLEXES.md): the local model wrote this line.

@@ -219,4 +219,37 @@ async def test_an_authored_topic_fills_who_came_through_today():
     before = events.max_seq()
     await verbs.execute_command("t-wren", "ask", dobj_id="t-rook", args="who came through today")
     mine = [e.payload["text"] for e in _narrates(before) if e.recipient_id == "t-wren"]
-    assert mine == ["Rook counts: one dreamer, Wren, came through today."]
+    assert mine == ["Rook counts: just you so far today."]
+
+
+@pytest.mark.asyncio
+async def test_who_came_through_today_says_you_to_the_asker():
+    """A topic's answer is the asker's alone, so the count speaks to them
+    (prod playtest 2026-09-30: Bell counted the asker back to them by name
+    as "one dreamer", a stranger to themself). A clause that
+    opens a sentence starts with a capital; a line the room reads keeps
+    every name."""
+    from daydream.skills import effects
+
+    inputs.record("t-wren", "text", text="look")
+    ivo = _ivo(resting=True)
+    worldclock.advance(minutes=1)
+    inputs.record(ivo.id, "text", text="look")
+    objects.set_property("t-rook", "topics", [
+        {"label": "who came through today", "text": "Rook thinks. '{dreamers_today}. Near enough.'"}])
+    objects.move("t-wren", "r-forge")
+    before = events.max_seq()
+    await verbs.execute_command("t-wren", "ask", dobj_id="t-rook", args="who came through today")
+    mine = [e.payload["text"] for e in _narrates(before) if e.recipient_id == "t-wren"]
+    assert mine == ["Rook thinks. 'You and Ivo came through today. Near enough.'"]
+
+    before = events.max_seq()
+    effects.dispatch_effects(
+        [{"kind": "narrate", "text": "Rook counts: {dreamers_today}.", "to": "@actor"},
+         {"kind": "narrate", "text": "{dreamers_today}, Rook tells the lamp."}],
+        actor_id="t-wren", room_id="r-forge", world_id=W)
+    got = [(e.recipient_id, e.payload["text"]) for e in _narrates(before)]
+    assert got == [("t-wren", "Rook counts: you and Ivo came through today."),
+                   (None, "Wren and Ivo came through today, Rook tells the lamp.")]
+    # Someone who has not typed today is counted, not addressed.
+    assert trace.dreamers_today_clause(W, listener="t-rook") == "Wren and Ivo came through today"

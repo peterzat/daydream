@@ -150,9 +150,9 @@ def for_prompt(world_id: str, text: str, actor_id: str) -> list[str]:
 # ---- who walked through today ------------------------------------------------------------
 
 
-def dreamers_today(world_id: str) -> list[str]:
-    """The dreamers who typed anything today, by the village's calendar,
-    newest last."""
+def _dreamers_today(world_id: str) -> list[tuple[str, str]]:
+    """(toon id, name) for each dreamer who typed anything today, by the
+    village's calendar, newest last."""
     from datetime import datetime, time, timezone
 
     tz = _tz(world_id)
@@ -162,19 +162,34 @@ def dreamers_today(world_id: str) -> list[str]:
         "SELECT toon_id, MIN(created_at) AS first FROM inputs WHERE world_id = ? "
         "AND created_at >= ? GROUP BY toon_id ORDER BY first",
         (world_id, worldclock.iso(start))).fetchall()
-    out: list[str] = []
+    out: list[tuple[str, str]] = []
     for r in rows:
         t = objects.get(r["toon_id"])
-        if t is not None and t.is_player and t.name not in out:
-            out.append(t.name)
+        if t is not None and t.is_player and t.name not in (n for _, n in out):
+            out.append((t.id, t.name))
     return out
 
 
-def dreamers_today_clause(world_id: str) -> str:
+def dreamers_today(world_id: str) -> list[str]:
+    """The dreamers who typed anything today, by the village's calendar,
+    newest last."""
+    return [name for _, name in _dreamers_today(world_id)]
+
+
+def dreamers_today_clause(world_id: str, listener: str | None = None) -> str:
     """A clause for an authored line's {dreamers_today}: "Wren and Vex came
     through today", "one dreamer, Halloran, came through today", "no
-    dreamer came through today"."""
-    names = dreamers_today(world_id)
+    dreamer came through today". Told to one dreamer alone (`listener`, a
+    toon id: a topic's answer) who is among them, it says "you": "just you
+    so far today", "you and Vex came through today" (prod playtest
+    2026-09-30: a resident named the asker back to them as a stranger)."""
+    rows = _dreamers_today(world_id)
+    if listener is not None and any(tid == listener for tid, _ in rows):
+        others = [name for tid, name in rows if tid != listener]
+        if not others:
+            return "just you so far today"
+        return f"{_join(['you', *others])} came through today"
+    names = [name for _, name in rows]
     if not names:
         return "no dreamer came through today"
     if len(names) == 1:
@@ -182,15 +197,29 @@ def dreamers_today_clause(world_id: str) -> str:
     return f"{_join(names)} came through today"
 
 
-def expand_placeholders(text, world_id: str):
+# Where a placeholder opens a sentence: the line's start, after a sentence's
+# end, or just inside an opening quote.
+_SENTENCE_START = re.compile(r"(?:^|[.!?]\s+|(?:^|\s)['\"\u201c\u2018])$")
+
+
+def expand_placeholders(text, world_id: str, listener: str | None = None):
     """Fill an authored line's {dreamers_today}. Every path that tells an
     authored line calls this (effects._apply_narrate, effects.tell_others,
     story._tell): a topic, beat or storylet used to reach the player with
-    the literal placeholder (codereview 2026-09-29). Anything but a string
-    passes through untouched."""
-    if isinstance(text, str) and "{dreamers_today}" in text:
-        return text.replace("{dreamers_today}", dreamers_today_clause(world_id))
-    return text
+    the literal placeholder (codereview 2026-09-29). `listener` is the one
+    dreamer the line reaches, when it reaches only one. A clause that opens
+    a sentence is capitalized (a quote that opened on the placeholder read
+    "'one dreamer, ..."). Anything but a string passes through untouched."""
+    if not (isinstance(text, str) and "{dreamers_today}" in text):
+        return text
+    clause = dreamers_today_clause(world_id, listener)
+
+    def fill(m: re.Match) -> str:
+        if _SENTENCE_START.search(text[:m.start()]):
+            return clause[:1].upper() + clause[1:]
+        return clause
+
+    return re.sub(r"\{dreamers_today\}", fill, text)
 
 
 # ---- what a resident tells about a dreamer ------------------------------------------
