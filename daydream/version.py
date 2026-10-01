@@ -56,8 +56,12 @@ APP_VERSION = "1.0.0"
 # parts, playtest 2026-09-30 -- the forget-me-not clock is a part of the
 # resting clocks, with its own look and take. 1.14: playthrough 2026-10-01 --
 # the first winding knows who you have already talked with, and the
-# dreamseed says how many words it holds.)
-WORLD_VERSION = "1.14"
+# dreamseed says how many words it holds. 1.15: playthrough 2026-10-01b --
+# the gear's trail (the ledger names only the square, the resident at the
+# bench sends you to the lamplighter, the ferns at the well's foot hide it),
+# the one who carries it home sets it in, and the Ledger keeps each place a
+# player planted.)
+WORLD_VERSION = "1.15"
 
 
 @lru_cache(maxsize=1)

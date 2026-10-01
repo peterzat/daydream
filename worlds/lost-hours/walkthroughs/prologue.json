@@ -1,6 +1,6 @@
 {
   "name": "prologue",
-  "comment": "The Stopped Clock, solo: the existing quest now starts time; the early first dusk brings Pim's Nap (criterion 3).",
+  "comment": "The Stopped Clock, solo: the existing quest now starts time; the early first dusk brings Pim's Nap (criterion 3). The gear's trail (playthrough 2026-10-01b): the ledger says only the square, Tace sends you to Bell, Bell says south, the ferns at the well's foot hide it; Tace hands it back with the key, and the one who carries it home sets it in.",
   "clock": "2026-10-01T17:00:00+00:00",
   "players": [
     {
@@ -16,10 +16,31 @@
           "cmd": "read ledger",
           "expect": {
             "narrate_contains": "escapement gear",
+            "narrate_lacks": "well-court",
             "beats": [
               "prologue/read-ledger"
             ],
-            "phase": "stopped"
+            "phase": "stopped",
+            "threads_contains": "Someone in the Lantern Square"
+          }
+        },
+        {
+          "cmd": "up",
+          "expect": {
+            "room": "r-loft"
+          }
+        },
+        {
+          "cmd": "ask tace about the gear",
+          "expect": {
+            "narrate_contains": "Bell",
+            "narrate_lacks": "well-court"
+          }
+        },
+        {
+          "cmd": "down",
+          "expect": {
+            "room": "r-clocktower"
           }
         },
         {
@@ -29,9 +50,32 @@
           }
         },
         {
+          "cmd": "ask bell about the gear",
+          "expect": {
+            "pflag": {
+              "GEAR-TIP": true
+            },
+            "threads_contains": "look closely"
+          }
+        },
+        {
           "cmd": "south",
           "expect": {
-            "room": "r-well"
+            "room": "r-well",
+            "narrate_contains": "catches the light",
+            "flag": {
+              "GEAR-REVEALED": false
+            }
+          }
+        },
+        {
+          "cmd": "examine well",
+          "expect": {
+            "flag": {
+              "GEAR-REVEALED": true
+            },
+            "narrate_contains": "winks up at you",
+            "threads_contains": "where the ferns hid it"
           }
         },
         {
@@ -61,12 +105,23 @@
           "cmd": "give gear to tace",
           "expect": {
             "carrying": [
-              "case key"
+              "case key",
+              "escapement gear"
             ],
             "beats": [
               "prologue/gave-gear"
             ],
-            "narrate_contains": "You carried it all the way home."
+            "narrate_contains": "You carried it all the way home.",
+            "threads_contains": "the one who carries it home sets it in"
+          }
+        },
+        {
+          "cmd": "give gear to tace",
+          "expect": {
+            "carrying": [
+              "escapement gear"
+            ],
+            "narrate_contains": "Yours to set"
           }
         },
         {
@@ -84,6 +139,34 @@
           }
         },
         {
+          "cmd": "drop gear",
+          "expect": {
+            "not_carrying": [
+              "escapement gear"
+            ]
+          }
+        },
+        {
+          "cmd": "open case",
+          "expect": {
+            "narrate_contains": "stands empty",
+            "arc": {
+              "prologue": "open"
+            },
+            "flag": {
+              "CLOCK-STARTED": false
+            }
+          }
+        },
+        {
+          "cmd": "take gear",
+          "expect": {
+            "carrying": [
+              "escapement gear"
+            ]
+          }
+        },
+        {
           "cmd": "open case",
           "expect": {
             "ending": {
@@ -92,10 +175,19 @@
             "flag": {
               "CLOCK-STARTED": true
             },
-            "narrate_contains": "first slow tick",
+            "narrate_contains": "back where it belongs",
             "day": {
               "eq": 1
-            }
+            },
+            "not_carrying": [
+              "escapement gear"
+            ]
+          }
+        },
+        {
+          "cmd": "examine case",
+          "expect": {
+            "narrate_contains": "the escapement gear turns again"
           }
         },
         {

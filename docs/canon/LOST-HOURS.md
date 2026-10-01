@@ -423,10 +423,22 @@ Opens at world start; the village holds still at an amber almost-dusk until
 it closes.
 
 - Beats (all rule beats):
-  - `read-ledger`: read the repair ledger.
+  - `read-ledger`: read the repair ledger. It says only that the gear rolled
+    out of the tower door and away across the square.
   - `found-gear`: take the escapement gear from the moss at the well's foot.
-  - `gave-gear`: give the gear to Tace, who hands over the case key (Tace +3; deed fact `gave-gear`).
-  - `unlocked`: use the case key on the clock case.
+    The trail is short and each voice adds one piece (playthrough
+    2026-10-01b found four voices all saying "the well-court"): Tace never
+    saw where it stopped and sends you to Bell; Bell saw something bright
+    bounce south (per-player `GEAR-TIP`); in the well-court something glints
+    among the ferns, and searching them (or the old well) finds it (world
+    flag `GEAR-REVEALED`; the gear starts offstage, home `r-well`). The
+    satchel's threads follow the same steps.
+  - `gave-gear`: give the gear to Tace, who cleans it and hands it back with
+    the case key: by custom the one who carries it home sets it in (Tace +3;
+    deed fact `gave-gear`).
+  - `unlocked`: use the case key on the clock case. The case will not open
+    for a dreamer without the gear in hand; opening it sets the gear on its
+    pin, and the gear stays in the clock.
 - Endings, both on `open case`: `mended-together` (two or more helpers) and
   `mended` (one). Both start village time, drop a dreamseed from behind the
   pendulum (it lands in the clocktower), fire the `first-dusk` fuse (dusk

@@ -271,7 +271,7 @@
         "repair-ledger",
         "worn ledger"
       ],
-      "text": "The great clock has stood still since the night of the first hard frost. The fault is the escapement gear, the small brass heart of the whole mechanism, which slipped its pin that night and rolled out across the square and away south, toward the old well-court. Whoever carries it back to Tace in the loft will have earned the case-key, which hangs, by long and gentle custom, with whoever mends the clock.",
+      "text": "The great clock has stood still since the night of the first hard frost. The fault is the escapement gear, the small brass heart of the whole mechanism, which slipped its pin that night and rolled out of the tower door and away across the square. Whoever carries it back to Tace in the loft will have earned the case-key, which hangs, by long and gentle custom, with whoever mends the clock.",
       "rules": [
         {
           "on": "read",
@@ -347,10 +347,10 @@
         "state_text": {
           "locked": "A small brass lock holds the little door fast.",
           "unlocked": "The lock hangs sprung now, though the door is still gently closed.",
-          "open": "The door stands open, and behind the glass the pendulum sways bright and sure."
+          "open": "The door stands open, and behind the glass the escapement gear turns again and the pendulum sways bright and sure."
         },
         "locked_text": "The clock case is locked; its small brass lock won't give without the right key.",
-        "open_text": "The little lock gives, the case door swings wide, and behind the glass the pendulum stirs, swings, and catches the light, and high overhead the great clock takes its first slow tick in a long, long while.",
+        "open_text": "The case door swings wide. You set the escapement gear back where it belongs, and it settles with a small, sure click; behind the glass the pendulum stirs, swings, and catches the light, and high overhead the great clock takes its first slow tick in a long, long while.",
         "use": {
           "with": "case key",
           "from_state": "locked",

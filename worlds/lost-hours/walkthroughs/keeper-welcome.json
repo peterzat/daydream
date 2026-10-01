@@ -20,7 +20,7 @@
               "prologue/read-ledger"
             ],
             "phase": "stopped",
-            "threads_contains": "rolled away south, toward the old well-court",
+            "threads_contains": "rolled out of the tower and away across the square",
             "threads_lack": "Its repair ledger lies open"
           }
         },
@@ -34,6 +34,14 @@
           "cmd": "south",
           "expect": {
             "room": "r-well"
+          }
+        },
+        {
+          "cmd": "examine ferns",
+          "expect": {
+            "flag": {
+              "GEAR-REVEALED": true
+            }
           }
         },
         {
@@ -87,7 +95,7 @@
               "prologue/gave-gear"
             ],
             "narrate_contains": "You carried it all the way home.",
-            "threads_contains": "the clock case in the tower waits to be opened",
+            "threads_contains": "the one who carries it home sets it in",
             "threads_lack": "You carry the escapement gear"
           }
         },

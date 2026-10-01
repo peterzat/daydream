@@ -53,6 +53,15 @@
     },
     {
      "as": "B",
+     "cmd": "examine ferns",
+     "expect": {
+      "flag": {
+       "GEAR-REVEALED": true
+      }
+     }
+    },
+    {
+     "as": "B",
      "cmd": "take gear",
      "expect": {
       "carrying": [

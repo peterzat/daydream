@@ -146,6 +146,12 @@
             "Bell leans on the pole, eyes bright. 'The night the clock stopped I saw something small and bright roll off south, down toward the old well. Tink, tink, tink, all the way down.'",
             "'Try the well-court!' Bell points south with the hooked pole. 'Something shiny went bouncing that way the night it all went still.'",
             "Bell mimes it with the pole, a little bounce, bounce, bounce. 'South, toward the well-court. Something bright, rolling like it knew the way.'"
+          ],
+          "do": [
+            {
+              "kind": "set_pflag",
+              "name": "GEAR-TIP"
+            }
           ]
         },
         {

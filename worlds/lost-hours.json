@@ -9,7 +9,8 @@
   },
   "start_room": "r-clocktower",
   "flags": [
-    "CLOCK-STARTED"
+    "CLOCK-STARTED",
+    "GEAR-REVEALED"
   ],
   "player_flags": [
     "GIVEN-CLOCK",
@@ -17,6 +18,7 @@
     "MET-BOOK",
     "MET-BELL",
     "SPOKE-BELL",
+    "GEAR-TIP",
     "WAITED-DUSK",
     "QUILL-SEED",
     "UMBER-CUP"
@@ -1022,14 +1024,13 @@
         },
         {
           "carried": "o-escapement-gear"
+        },
+        {
+          "beat": "prologue/gave-gear",
+          "not": true
         }
       ],
       "do": [
-        {
-          "kind": "move_object",
-          "object_id": "o-escapement-gear",
-          "dest_id": "t-tace"
-        },
         {
           "kind": "set_property",
           "target_id": "t-tace",
@@ -1055,8 +1056,8 @@
         },
         {
           "kind": "narrate",
-          "text": "Tace turns the little gear over in the lamplight, and something long held eases out of their shoulders. 'You found it. You carried it all the way home.' They fold a small brass key into your hand, warm from their pocket. 'The case is yours to open now, friend.'",
-          "others": "Tace turns the little gear over in the lamplight and folds a small brass key into {actor}'s hand: the case is theirs to open now."
+          "text": "Tace turns the little gear over in the lamplight, and something long held eases out of their shoulders. 'You found it. You carried it all the way home.' A breath on its teeth, a rub with their sleeve, and they fold it back into your hand with a small brass key, warm from their pocket. 'By custom the one who carries it home sets it in. The case is yours to open, friend.'",
+          "others": "Tace turns the little gear over in the lamplight, cleans it on their sleeve, and folds it back into {actor}'s hand with a small brass key: the case is theirs to open now."
         },
         {
           "kind": "advance_beat",
@@ -1089,6 +1090,52 @@
               "after_minutes": 120
             }
           ]
+        }
+      ]
+    },
+    {
+      "on": "give",
+      "if": [
+        {
+          "dobj": "o-escapement-gear"
+        },
+        {
+          "iobj": "t-tace"
+        },
+        {
+          "carried": "o-escapement-gear"
+        }
+      ],
+      "do": [
+        {
+          "kind": "narrate",
+          "to": "@actor",
+          "text": "Tace folds your fingers gently back around the gear. 'Yours to set, friend. The case downstairs is waiting.'"
+        }
+      ]
+    },
+    {
+      "on": "open",
+      "if": [
+        {
+          "dobj": "o-clock-case"
+        },
+        {
+          "arc": "prologue"
+        },
+        {
+          "beat": "prologue/gave-gear"
+        },
+        {
+          "carried": "o-escapement-gear",
+          "not": true
+        }
+      ],
+      "do": [
+        {
+          "kind": "narrate",
+          "to": "@actor",
+          "text": "You ease the little door, then stop: the place where the escapement gear belongs stands empty, and the clock will not go without it."
         }
       ]
     },
@@ -1179,6 +1226,10 @@
           "kind": "close_arc",
           "arc": "prologue",
           "ending": "mended-together"
+        },
+        {
+          "kind": "destroy_object",
+          "object_id": "o-escapement-gear"
         }
       ]
     },
@@ -1198,6 +1249,10 @@
           "kind": "close_arc",
           "arc": "prologue",
           "ending": "mended"
+        },
+        {
+          "kind": "destroy_object",
+          "object_id": "o-escapement-gear"
         }
       ]
     },
@@ -4635,7 +4690,7 @@
     },
     {
       "id": "the-gear",
-      "text": "The repair ledger says the escapement gear slipped its pin the night of the first hard frost and rolled away south, toward the old well-court.",
+      "text": "The repair ledger says the escapement gear rolled out of the tower and away across the square. Someone in the Lantern Square might have seen where it went.",
       "if": [
         {
           "flag": "CLOCK-STARTED",
@@ -4647,6 +4702,52 @@
         {
           "beat": "prologue/found-gear",
           "not": true
+        },
+        {
+          "pflag": "GEAR-TIP",
+          "not": true
+        },
+        {
+          "flag": "GEAR-REVEALED",
+          "not": true
+        }
+      ]
+    },
+    {
+      "id": "the-gear-south",
+      "text": "Bell saw something bright go bouncing south, into the old well-court. It must be there somewhere: look closely.",
+      "if": [
+        {
+          "flag": "CLOCK-STARTED",
+          "not": true
+        },
+        {
+          "beat": "prologue/found-gear",
+          "not": true
+        },
+        {
+          "pflag": "GEAR-TIP"
+        },
+        {
+          "flag": "GEAR-REVEALED",
+          "not": true
+        }
+      ]
+    },
+    {
+      "id": "the-gear-found",
+      "text": "The escapement gear lies in the moss at the old well's foot, where the ferns hid it.",
+      "if": [
+        {
+          "flag": "CLOCK-STARTED",
+          "not": true
+        },
+        {
+          "beat": "prologue/found-gear",
+          "not": true
+        },
+        {
+          "flag": "GEAR-REVEALED"
         }
       ]
     },
@@ -4656,12 +4757,16 @@
       "if": [
         {
           "carried": "o-escapement-gear"
+        },
+        {
+          "beat": "prologue/gave-gear",
+          "not": true
         }
       ]
     },
     {
       "id": "case-key",
-      "text": "Tace has given up the case key at last: the clock case in the tower waits to be opened.",
+      "text": "Tace has given up the case key, and the gear went back with it: by custom, the one who carries it home sets it in. The clock case in the tower waits.",
       "if": [
         {
           "flag": "CLOCK-STARTED",
@@ -9676,6 +9781,86 @@
       },
       "rules": [
         {
+          "on": "enter",
+          "stop": false,
+          "if": [
+            {
+              "flag": "GEAR-REVEALED",
+              "not": true
+            },
+            {
+              "arc": "prologue"
+            }
+          ],
+          "do": [
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "Down at the well's foot the ferns stir in a breath of air, and for a moment something small among them catches the light."
+            }
+          ]
+        },
+        {
+          "on": "examine",
+          "after": true,
+          "if": [
+            {
+              "dobj": "o-well-ferns"
+            },
+            {
+              "flag": "GEAR-REVEALED",
+              "not": true
+            }
+          ],
+          "do": [
+            {
+              "kind": "move_object",
+              "object_id": "o-escapement-gear",
+              "dest_id": "r-well"
+            },
+            {
+              "kind": "set_flag",
+              "name": "GEAR-REVEALED"
+            },
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "You part the ferns. Down in the moss at the well's foot, a small brass gear winks up at you: the escapement gear, flecked with green but sound and whole.",
+              "others": "{actor} parts the ferns at the well's foot and finds something small and brass in the moss."
+            }
+          ]
+        },
+        {
+          "on": "examine",
+          "after": true,
+          "if": [
+            {
+              "dobj": "o-old-well"
+            },
+            {
+              "flag": "GEAR-REVEALED",
+              "not": true
+            }
+          ],
+          "do": [
+            {
+              "kind": "move_object",
+              "object_id": "o-escapement-gear",
+              "dest_id": "r-well"
+            },
+            {
+              "kind": "set_flag",
+              "name": "GEAR-REVEALED"
+            },
+            {
+              "kind": "narrate",
+              "to": "@actor",
+              "text": "You part the ferns. Down in the moss at the well's foot, a small brass gear winks up at you: the escapement gear, flecked with green but sound and whole.",
+              "others": "{actor} parts the ferns at the well's foot and finds something small and brass in the moss."
+            }
+          ]
+        },
+        {
           "on": "listen",
           "do": [
             {
@@ -10596,7 +10781,7 @@
                 "beat": "prologue/gave-gear"
               }
             ],
-            "text": "Tace pats the apron pocket where the little gear rests. 'Home, and sound. The key went with the one who carried it; once the case is open, the great clock can have its heart back.'"
+            "text": "Tace nods at your hand. 'Home, and sound. By custom the one who carries it home sets it in: open the case, and give the great clock its heart back.'"
           },
           {
             "label": "the gear",
@@ -10613,8 +10798,8 @@
               }
             ],
             "variants": [
-              "Tace sets the tweezers down. 'It slipped its pin that night and rolled out across the square and away south, toward the old well-court, I think. My knees and the tower stairs don't agree these days. If you found it, friend, the case-key would be yours.'",
-              "Tace sets down the loupe and looks toward the window. 'South, I think, toward the old well-court. A small brass gear, sound and whole. Bring it home to this bench, friend, and by custom the case-key is yours.'"
+              "Tace sets the tweezers down. 'It slipped its pin that night and went rolling out across the square. My knees and the tower stairs don't agree these days, so I never saw where it came to rest.' They nod toward the window. 'Bell was up the ladder that night, and Bell sees most of what crosses that square. Bring it home to this bench, friend, and by custom the case-key is yours.'",
+              "Tace sets down the loupe and looks toward the window. 'Out across the square, and then I lost the sound of it. Ask Bell; nothing rolls past that ladder unnoticed. Bring it home to this bench, friend, and by custom the case-key is yours.'"
             ]
           },
           {
@@ -11195,6 +11380,12 @@
               "Bell leans on the pole, eyes bright. 'The night the clock stopped I saw something small and bright roll off south, down toward the old well. Tink, tink, tink, all the way down.'",
               "'Try the well-court!' Bell points south with the hooked pole. 'Something shiny went bouncing that way the night it all went still.'",
               "Bell mimes it with the pole, a little bounce, bounce, bounce. 'South, toward the well-court. Something bright, rolling like it knew the way.'"
+            ],
+            "do": [
+              {
+                "kind": "set_pflag",
+                "name": "GEAR-TIP"
+              }
             ]
           },
           {
@@ -14888,7 +15079,7 @@
         "repair-ledger",
         "worn ledger"
       ],
-      "text": "The great clock has stood still since the night of the first hard frost. The fault is the escapement gear, the small brass heart of the whole mechanism, which slipped its pin that night and rolled out across the square and away south, toward the old well-court. Whoever carries it back to Tace in the loft will have earned the case-key, which hangs, by long and gentle custom, with whoever mends the clock.",
+      "text": "The great clock has stood still since the night of the first hard frost. The fault is the escapement gear, the small brass heart of the whole mechanism, which slipped its pin that night and rolled out of the tower door and away across the square. Whoever carries it back to Tace in the loft will have earned the case-key, which hangs, by long and gentle custom, with whoever mends the clock.",
       "rules": [
         {
           "on": "read",
@@ -14964,10 +15155,10 @@
         "state_text": {
           "locked": "A small brass lock holds the little door fast.",
           "unlocked": "The lock hangs sprung now, though the door is still gently closed.",
-          "open": "The door stands open, and behind the glass the pendulum sways bright and sure."
+          "open": "The door stands open, and behind the glass the escapement gear turns again and the pendulum sways bright and sure."
         },
         "locked_text": "The clock case is locked; its small brass lock won't give without the right key.",
-        "open_text": "The little lock gives, the case door swings wide, and behind the glass the pendulum stirs, swings, and catches the light, and high overhead the great clock takes its first slow tick in a long, long while.",
+        "open_text": "The case door swings wide. You set the escapement gear back where it belongs, and it settles with a small, sure click; behind the glass the pendulum stirs, swings, and catches the light, and high overhead the great clock takes its first slow tick in a long, long while.",
         "use": {
           "with": "case key",
           "from_state": "locked",
@@ -15594,8 +15785,9 @@
     {
       "id": "o-escapement-gear",
       "name": "escapement gear",
-      "location": {
-        "room": "r-well"
+      "location": "offstage",
+      "properties": {
+        "home": "r-well"
       },
       "seed": "a small brass gear, its fine teeth flecked with green moss from the well, cool from the shadow but sound and whole",
       "aliases": [
@@ -15615,6 +15807,23 @@
       "aliases": [
         "well",
         "stone well"
+      ]
+    },
+    {
+      "id": "o-well-ferns",
+      "name": "ferns",
+      "location": {
+        "room": "r-well"
+      },
+      "fixture": true,
+      "seed": "cool green ferns, nodding as if they were keeping something to themselves",
+      "aliases": [
+        "fern",
+        "moss",
+        "glint",
+        "something bright",
+        "well's foot",
+        "foot of the well"
       ]
     },
     {

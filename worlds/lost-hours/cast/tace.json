@@ -143,12 +143,12 @@
          ]},
         {"label": "the gear", "aliases": ["gear", "escapement gear", "escapement", "the escapement"],
          "if": [{"flag": "CLOCK-STARTED", "not": true}, {"beat": "prologue/gave-gear"}],
-         "text": "Tace pats the apron pocket where the little gear rests. 'Home, and sound. The key went with the one who carried it; once the case is open, the great clock can have its heart back.'"},
+         "text": "Tace nods at your hand. 'Home, and sound. By custom the one who carries it home sets it in: open the case, and give the great clock its heart back.'"},
         {"label": "the gear", "aliases": ["gear", "escapement gear", "escapement", "the escapement"],
          "if": [{"flag": "CLOCK-STARTED", "not": true}],
          "variants": [
-           "Tace sets the tweezers down. 'It slipped its pin that night and rolled out across the square and away south, toward the old well-court, I think. My knees and the tower stairs don't agree these days. If you found it, friend, the case-key would be yours.'",
-           "Tace sets down the loupe and looks toward the window. 'South, I think, toward the old well-court. A small brass gear, sound and whole. Bring it home to this bench, friend, and by custom the case-key is yours.'"
+           "Tace sets the tweezers down. 'It slipped its pin that night and went rolling out across the square. My knees and the tower stairs don't agree these days, so I never saw where it came to rest.' They nod toward the window. 'Bell was up the ladder that night, and Bell sees most of what crosses that square. Bring it home to this bench, friend, and by custom the case-key is yours.'",
+           "Tace sets down the loupe and looks toward the window. 'Out across the square, and then I lost the sound of it. Ask Bell; nothing rolls past that ladder unnoticed. Bring it home to this bench, friend, and by custom the case-key is yours.'"
          ]},
         {"label": "the gear", "aliases": ["gear", "escapement gear", "escapement", "the escapement"],
          "if": [{"flag": "CLOCK-STARTED"}],

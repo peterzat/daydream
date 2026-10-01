@@ -123,6 +123,34 @@
       },
       "rules": [
         {
+          "on": "enter",
+          "stop": false,
+          "if": [{"flag": "GEAR-REVEALED", "not": true}, {"arc": "prologue"}],
+          "do": [
+            {"kind": "narrate", "to": "@actor", "text": "Down at the well's foot the ferns stir in a breath of air, and for a moment something small among them catches the light."}
+          ]
+        },
+        {
+          "on": "examine",
+          "after": true,
+          "if": [{"dobj": "o-well-ferns"}, {"flag": "GEAR-REVEALED", "not": true}],
+          "do": [
+                {"kind": "move_object", "object_id": "o-escapement-gear", "dest_id": "r-well"},
+                {"kind": "set_flag", "name": "GEAR-REVEALED"},
+                {"kind": "narrate", "to": "@actor", "text": "You part the ferns. Down in the moss at the well's foot, a small brass gear winks up at you: the escapement gear, flecked with green but sound and whole.", "others": "{actor} parts the ferns at the well's foot and finds something small and brass in the moss."}
+              ]
+        },
+        {
+          "on": "examine",
+          "after": true,
+          "if": [{"dobj": "o-old-well"}, {"flag": "GEAR-REVEALED", "not": true}],
+          "do": [
+                {"kind": "move_object", "object_id": "o-escapement-gear", "dest_id": "r-well"},
+                {"kind": "set_flag", "name": "GEAR-REVEALED"},
+                {"kind": "narrate", "to": "@actor", "text": "You part the ferns. Down in the moss at the well's foot, a small brass gear winks up at you: the escapement gear, flecked with green but sound and whole.", "others": "{actor} parts the ferns at the well's foot and finds something small and brass in the moss."}
+              ]
+        },
+        {
           "on": "listen",
           "do": [
             {
@@ -449,8 +477,9 @@
     {
       "id": "o-escapement-gear",
       "name": "escapement gear",
-      "location": {
-        "room": "r-well"
+      "location": "offstage",
+      "properties": {
+        "home": "r-well"
       },
       "seed": "a small brass gear, its fine teeth flecked with green moss from the well, cool from the shadow but sound and whole",
       "aliases": [
@@ -470,6 +499,23 @@
       "aliases": [
         "well",
         "stone well"
+      ]
+    },
+    {
+      "id": "o-well-ferns",
+      "name": "ferns",
+      "location": {
+        "room": "r-well"
+      },
+      "fixture": true,
+      "seed": "cool green ferns, nodding as if they were keeping something to themselves",
+      "aliases": [
+        "fern",
+        "moss",
+        "glint",
+        "something bright",
+        "well's foot",
+        "foot of the well"
       ]
     },
     {

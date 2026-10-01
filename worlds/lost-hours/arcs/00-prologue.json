@@ -46,21 +46,26 @@
      "do": [{"kind": "advance_beat", "arc": "prologue", "beat": "read-ledger"}]},
     {"on": "take", "after": true, "if": [{"dobj": "o-escapement-gear"}, {"arc": "prologue"}],
      "do": [{"kind": "advance_beat", "arc": "prologue", "beat": "found-gear"}]},
-    {"on": "give", "if": [{"dobj": "o-escapement-gear"}, {"iobj": "t-tace"}, {"carried": "o-escapement-gear"}],
-     "do": [{"kind": "move_object", "object_id": "o-escapement-gear", "dest_id": "t-tace"},
-            {"kind": "set_property", "target_id": "t-tace", "key": "mood", "value": "gladdened"},
+    {"on": "give", "if": [{"dobj": "o-escapement-gear"}, {"iobj": "t-tace"}, {"carried": "o-escapement-gear"},
+                          {"beat": "prologue/gave-gear", "not": true}],
+     "do": [{"kind": "set_property", "target_id": "t-tace", "key": "mood", "value": "gladdened"},
             {"kind": "spawn_object", "name": "case key", "location_id": "@actor",
              "seed": "a small brass case-key on a loop of worn ribbon, warm as if just out of a pocket",
              "aliases": ["key", "case-key"], "verbs": ["use"], "generated_by": "give:t-tace",
              "properties": {"home": "r-loft"}},
-            {"kind": "narrate", "text": "Tace turns the little gear over in the lamplight, and something long held eases out of their shoulders. 'You found it. You carried it all the way home.' They fold a small brass key into your hand, warm from their pocket. 'The case is yours to open now, friend.'",
-             "others": "Tace turns the little gear over in the lamplight and folds a small brass key into {actor}'s hand: the case is theirs to open now."},
+            {"kind": "narrate", "text": "Tace turns the little gear over in the lamplight, and something long held eases out of their shoulders. 'You found it. You carried it all the way home.' A breath on its teeth, a rub with their sleeve, and they fold it back into your hand with a small brass key, warm from their pocket. 'By custom the one who carries it home sets it in. The case is yours to open, friend.'",
+             "others": "Tace turns the little gear over in the lamplight, cleans it on their sleeve, and folds it back into {actor}'s hand with a small brass key: the case is theirs to open now."},
             {"kind": "advance_beat", "arc": "prologue", "beat": "gave-gear"},
             {"kind": "adjust_rel", "npc": "t-tace", "delta": 3},
             {"kind": "add_fact", "id": "gave-gear", "text": "{actor} carried the escapement gear home to Tace.",
              "known_by": ["t-tace"],
              "spread": [{"to": ["t-bell", "t-mott", "t-umber"], "after_minutes": 20},
                         {"to": "all", "after_minutes": 120}]}]},
+    {"on": "give", "if": [{"dobj": "o-escapement-gear"}, {"iobj": "t-tace"}, {"carried": "o-escapement-gear"}],
+     "do": [{"kind": "narrate", "to": "@actor", "text": "Tace folds your fingers gently back around the gear. 'Yours to set, friend. The case downstairs is waiting.'"}]},
+    {"on": "open", "if": [{"dobj": "o-clock-case"}, {"arc": "prologue"}, {"beat": "prologue/gave-gear"},
+                          {"carried": "o-escapement-gear", "not": true}],
+     "do": [{"kind": "narrate", "to": "@actor", "text": "You ease the little door, then stop: the place where the escapement gear belongs stands empty, and the clock will not go without it."}]},
     {"on": "give", "if": [{"iobj": "t-tace"}, {"carried": "@dobj"}, {"flag": "CLOCK-STARTED", "not": true},
                           {"beat": "prologue/gave-gear", "not": true}],
      "do": [{"kind": "narrate", "to": "@actor", "text": "Tace considers what you're holding out, and smiles a small, tired smile. 'That's kind of you. But it isn't the little thing the clock is missing.'"}]},
@@ -70,9 +75,11 @@
      "do": [{"kind": "advance_beat", "arc": "prologue", "beat": "unlocked"}]},
     {"on": "open", "after": true, "if": [{"dobj": "o-clock-case"}, {"arc": "prologue"},
                                          {"helpers": "prologue", "gte": 2}],
-     "do": [{"kind": "close_arc", "arc": "prologue", "ending": "mended-together"}]},
+     "do": [{"kind": "close_arc", "arc": "prologue", "ending": "mended-together"},
+            {"kind": "destroy_object", "object_id": "o-escapement-gear"}]},
     {"on": "open", "after": true, "if": [{"dobj": "o-clock-case"}, {"arc": "prologue"}],
-     "do": [{"kind": "close_arc", "arc": "prologue", "ending": "mended"}]},
+     "do": [{"kind": "close_arc", "arc": "prologue", "ending": "mended"},
+            {"kind": "destroy_object", "object_id": "o-escapement-gear"}]},
 
     {"on": "ask", "after": true, "if": [{"dobj": "t-bell"}, {"pflag": "SPOKE-BELL", "not": true}],
      "do": [{"kind": "set_pflag", "name": "SPOKE-BELL"}]},
@@ -128,19 +135,32 @@
     },
     {
       "id": "the-gear",
-      "text": "The repair ledger says the escapement gear slipped its pin the night of the first hard frost and rolled away south, toward the old well-court.",
+      "text": "The repair ledger says the escapement gear rolled out of the tower and away across the square. Someone in the Lantern Square might have seen where it went.",
       "if": [
-        {
-          "flag": "CLOCK-STARTED",
-          "not": true
-        },
-        {
-          "beat": "prologue/read-ledger"
-        },
-        {
-          "beat": "prologue/found-gear",
-          "not": true
-        }
+        {"flag": "CLOCK-STARTED", "not": true},
+        {"beat": "prologue/read-ledger"},
+        {"beat": "prologue/found-gear", "not": true},
+        {"pflag": "GEAR-TIP", "not": true},
+        {"flag": "GEAR-REVEALED", "not": true}
+      ]
+    },
+    {
+      "id": "the-gear-south",
+      "text": "Bell saw something bright go bouncing south, into the old well-court. It must be there somewhere: look closely.",
+      "if": [
+        {"flag": "CLOCK-STARTED", "not": true},
+        {"beat": "prologue/found-gear", "not": true},
+        {"pflag": "GEAR-TIP"},
+        {"flag": "GEAR-REVEALED", "not": true}
+      ]
+    },
+    {
+      "id": "the-gear-found",
+      "text": "The escapement gear lies in the moss at the old well's foot, where the ferns hid it.",
+      "if": [
+        {"flag": "CLOCK-STARTED", "not": true},
+        {"beat": "prologue/found-gear", "not": true},
+        {"flag": "GEAR-REVEALED"}
       ]
     },
     {
@@ -149,12 +169,16 @@
       "if": [
         {
           "carried": "o-escapement-gear"
+        },
+        {
+          "beat": "prologue/gave-gear",
+          "not": true
         }
       ]
     },
     {
       "id": "case-key",
-      "text": "Tace has given up the case key at last: the clock case in the tower waits to be opened.",
+      "text": "Tace has given up the case key, and the gear went back with it: by custom, the one who carries it home sets it in. The clock case in the tower waits.",
       "if": [
         {
           "flag": "CLOCK-STARTED",
