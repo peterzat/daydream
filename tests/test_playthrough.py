@@ -111,9 +111,11 @@ def test_the_brief_fills_in_and_names_nothing_of_the_world():
                                     day="2026-10-01")
     assert not re.findall(r"\{[a-z]+\}", text), "an unfilled placeholder"
     for needle in ("http://127.0.0.1:1/", "robin", "pw-pw-pw-12", "a careful reader",
-                   "about 40 browser commands", "Playthrough, 2026-10-01", "notes.md",
-                   "report.md", "DISCREPANCY:", "./browser look", "Make your mark".lower()):
+                   "about 40 moves", "Playthrough, 2026-10-01", "notes.md",
+                   "report.md", "DISCREPANCY:", "./browser look", "make your mark",
+                   "only way you can see", "one move at a time", "orange"):
         assert needle.lower() in text.lower(), needle
+    assert "./browser text" not in text, "the screen is the only way to see"
     positions = [text.index(h) for h in SECTIONS]
     assert positions == sorted(positions), "the report's sections, in order"
     low = text.lower()
@@ -127,7 +129,7 @@ def test_the_wrapper_reaches_the_player_verbs_and_nothing_else(tmp_path, capsys)
     script = playthrough.wrapper_script(sdir)
     assert script.startswith("#!/bin/sh\n")
     assert f"--session-dir '{sdir}' --as-player" in script
-    for verb in ("setup", "player", "teardown", "status", "_browser"):
+    for verb in ("setup", "player", "teardown", "status", "_browser", "text"):
         assert playthrough.main(["--session-dir", str(sdir), "--as-player", verb]) == 2
     assert "unknown command" in capsys.readouterr().err
     # the options end at --as-player: the player's arguments cannot retarget the session
@@ -157,17 +159,22 @@ def test_player_verbs_parse_to_browser_requests():
 
 
 @pytest.mark.tier_short
-def test_what_the_player_reads_after_a_move():
+def test_what_the_player_reads_after_a_move_is_where_the_screen_is():
+    """The labels stay in the log: printing them let a player act without
+    looking (playthrough 2026-10-01 read 9 of 146 screenshots)."""
     out = playthrough.format_response({
         "shot": "/s/012-click.jpg", "n": 12, "url": "http://127.0.0.1:5/", "settle": "busy",
         "focus": {"editable": True, "label": 'text field showing "speak"'},
-        "marks": [{"n": 1, "label": "Talk", "new": True}, {"n": 2, "label": "up", "new": False}]})
+        "marks": [{"n": 1, "label": "Talk", "new": True}, {"n": 2, "label": "up", "new": False}],
+        "note": "your move budget is spent"})
     assert out.splitlines()[0] == "shot 12: /s/012-click.jpg"
+    assert "only way you can see the screen" in out
     assert "still looks busy" in out
     assert 'typing goes to: text field showing "speak"' in out
-    assert "   1* Talk" in out and "   2  up" in out
+    assert "2 numbered tags on the screen, 1 of them orange" in out
+    assert "browser: your move budget is spent" in out
+    assert "Talk" not in out and " up" not in out
     assert playthrough.format_response({"refused": "look first"}) == "refused: look first"
-    assert playthrough.format_response({"text": []}) == "(no readable words on the screen)"
     assert "gave no answer" in playthrough.format_response({})
 
 
@@ -188,12 +195,72 @@ def test_the_transcript_result_is_read_from_stream_json(tmp_path):
         json.dumps({"type": "system", "subtype": "init", "session_id": "abc"}),
         "not json",
         json.dumps({"type": "assistant", "message": {}}),
+        json.dumps({"type": "assistant", "message": {"content": [
+            {"type": "tool_use", "name": "Read", "input": {"file_path": "/p/shots/001-look.jpg"}},
+            {"type": "tool_use", "name": "Read", "input": {"file_path": "/p/shots/001-look.jpg"}},
+            {"type": "tool_use", "name": "Read", "input": {"file_path": "/p/notes.md"}},
+            {"type": "tool_use", "name": "Bash", "input": {"command": "./browser look"}}]}}),
+        json.dumps({"type": "assistant", "message": {"content": [
+            {"type": "tool_use", "name": "Read", "input": {"file_path": "/p/shots/002-click.jpg"}}]}}),
         json.dumps({"type": "result", "subtype": "success", "is_error": False, "num_turns": 88,
                     "duration_ms": 1000, "total_cost_usd": 4.5})]))
     assert playthrough.transcript_result(t) == {
         "session_id": "abc", "subtype": "success", "is_error": False, "num_turns": 88,
-        "duration_ms": 1000, "total_cost_usd": 4.5}
+        "duration_ms": 1000, "total_cost_usd": 4.5, "shots_read": 2}
     assert playthrough.transcript_result(tmp_path / "missing") == {}
+
+
+def _gated(tmp_path, **sess) -> playthrough.Browser:
+    sdir = tmp_path / "gated"
+    playthrough.paths(sdir)["shots"].mkdir(parents=True)
+    playthrough.paths(sdir)["notes"].write_text("# Notes\n")
+    playthrough.save_session(sdir, {"id": "gated", "base_url": "http://127.0.0.1:1", **sess})
+    return playthrough.Browser(sdir)  # no Chromium: the gates are bookkeeping
+
+
+@pytest.mark.tier_short
+def test_the_browser_keeps_a_persons_pace(tmp_path):
+    """A move sooner than the last screenshot could be looked at is refused
+    (playthrough 2026-10-01 chained up to eight moves blind per turn)."""
+    import time
+
+    b = _gated(tmp_path, min_gap_s=2.0)
+    assert b.gate({"cmd": "look"}) is None  # the first move waits on nothing
+    b.last_reply = time.monotonic()
+    assert b.gate({"cmd": "look"})[0] == "pace"
+    assert b.gate({"cmd": "click"})[0] == "pace"
+    b.last_reply = time.monotonic() - 2.5
+    assert b.gate({"cmd": "click"}) is None
+
+
+@pytest.mark.tier_short
+def test_the_notes_keep_up_with_the_acting_moves(tmp_path):
+    b = _gated(tmp_path, min_gap_s=0, note_every=3)
+    for _ in range(3):
+        assert b.gate({"cmd": "click"}) is None
+        b.unnoted += 1  # what a made move adds
+    assert b.gate({"cmd": "scroll"}) is None, "looking around needs no note"
+    assert b.gate({"cmd": "wait"}) is None
+    refused = b.gate({"cmd": "type"})
+    assert refused[0] == "notes" and "notes.md" in refused[1]
+    with open(b.p["notes"], "a") as f:
+        f.write("- shot 4: tried the door. Felt: curious. Knowledge: fine.\n")
+    assert b.gate({"cmd": "type"}) is None and b.unnoted == 0
+
+
+@pytest.mark.tier_short
+def test_the_budget_nudges_then_ends_the_session(tmp_path):
+    b = _gated(tmp_path, min_gap_s=0, note_every=99, moves=10)
+    b.moves = 7
+    assert b.budget_note() is None
+    b.moves = 8
+    assert "your mark" in b.budget_note()
+    b.moves = 10
+    assert "spent" in b.budget_note()
+    assert b.gate({"cmd": "click"}) is None, "a little grace to wrap up"
+    b.moves = 10 + playthrough.BUDGET_GRACE
+    assert b.gate({"cmd": "click"})[0] == "budget"
+    assert b.gate({"cmd": "look"}) is None, "a last look is always allowed"
 
 
 def _fake_session(sid: str, report: str | None) -> Path:
@@ -205,11 +272,14 @@ def _fake_session(sid: str, report: str | None) -> Path:
         "build": "abc123", "art": {"copied": 30, "missing": 2},
         "friend": {"name": "Robin Ash", "username": "robin", "password": "x"},
         "player": {"model": "opus", "minutes": 41.5,
-                   "result": {"subtype": "success", "num_turns": 210, "total_cost_usd": 12.3}}})
+                   "result": {"subtype": "success", "num_turns": 210, "total_cost_usd": 12.3,
+                              "shots_read": 2}}})
     p["actions"].write_text(
-        json.dumps({"t": "2026-10-01T00:00:00+00:00", "cmd": "look"}) + "\n"
-        + json.dumps({"t": "2026-10-01T00:40:00+00:00", "cmd": "click"}) + "\n"
-        + json.dumps({"t": "2026-10-01T00:41:00+00:00", "cmd": "click"}) + "\n")
+        json.dumps({"t": "2026-10-01T00:00:00+00:00", "cmd": "look", "shot": "1"}) + "\n"
+        + json.dumps({"t": "2026-10-01T00:00:01+00:00", "cmd": "click", "refused": "x",
+                      "gate": "pace"}) + "\n"
+        + json.dumps({"t": "2026-10-01T00:40:00+00:00", "cmd": "click", "shot": "2"}) + "\n"
+        + json.dumps({"t": "2026-10-01T00:41:00+00:00", "cmd": "click", "shot": "3"}) + "\n")
     p["page_errors"].write_text("2026-10-01T00:05:00+00:00 pageerror: boom\n")
     p["server_log"].write_text("INFO fine\n2026 x ERROR daydream.ws: oops\nTraceback (most recent)\n")
     p["notes"].write_text("# Notes\n\nmove 1\n")
@@ -228,7 +298,9 @@ def test_teardown_lands_the_report_with_its_session_record(reports):
     text = (reports / "2026-10-01-robin.md").read_text()
     assert text.startswith("# Playthrough, 2026-10-01: Wren")
     record = text[text.index("## Session record"):]
-    assert "Browser commands: 3 (click 2, look 1) over 41 minutes" in record
+    assert "Moves: 3 (click 2, look 1) over 41 minutes" in record
+    assert "Screenshots the player opened: 2 of 3" in record
+    assert "Moves the browser refused: pace 1" in record
     assert "210 turns, 41.5 minutes, ended success, $12.30 equivalent" in record
     assert "Page errors and failed requests: 1" in record and "pageerror: boom" in record
     assert "Server log errors: 2" in record
@@ -298,8 +370,8 @@ body { margin: 0; font: 16px sans-serif; }
 #pressme { position: absolute; left: 820px; top: 40px; width: 160px; height: 30px; }
 </style></head><body>
 <p>Visible paragraph words</p>
-<button id="pressme" onclick="document.getElementById('out').textContent = 'the button was pressed'">Visible button</button>
-<div class="ptr" onclick="document.getElementById('out').textContent = 'the chip was pressed'"><span>Pointer</span><span>chip</span></div>
+<button id="pressme" onclick="this.textContent = 'Pressed itself'">Visible button</button>
+<div class="ptr" onclick="document.getElementById('pressme').textContent = 'Pressed by the chip'"><span>Pointer</span><span>chip</span></div>
 <label for="name">Name</label> <input id="name">
 <p id="out"></p>
 <button style="display: none">Hidden by display</button>
@@ -349,7 +421,8 @@ class _QuietHandler(http.server.SimpleHTTPRequestHandler):
 def browser_session(chromium_here, fixture_site, tmp_path):
     sdir = tmp_path / "s"
     playthrough.paths(sdir)["shots"].mkdir(parents=True)
-    playthrough.save_session(sdir, {"id": "fixture", "base_url": fixture_site})
+    playthrough.save_session(sdir, {"id": "fixture", "base_url": fixture_site,
+                                    "min_gap_s": 0, "note_every": 99})
     pid = playthrough.start_browser(sdir)
     try:
         yield sdir
@@ -378,15 +451,10 @@ def test_only_what_a_person_could_see_is_marked_or_read(browser_session):
     for hidden in ("Hidden by display", "Hidden by visibility", "Hidden by opacity",
                    "Covered button", "Deep button", "Below button"):
         assert hidden not in labels, hidden
-    assert all(m["new"] for m in first["marks"])
+    assert all(m["new"] for m in first["marks"]), "everything is new on a first look (orange)"
     assert Path(first["shot"]).exists() and first["shot"].endswith("001-open.jpg")
-    words = "\n".join(send({"cmd": "text"})["text"])
-    for visible in ("Visible paragraph words", "Top of the scroller", "a plain card on top"):
-        assert visible in words, visible
-    for unseen in ("Covered words", "Deep in the scroller", "Below the fold words", "Hidden by"):
-        assert unseen not in words, unseen
-    assert not re.search(r"^\d+$", words, re.M), "the tags never stay on the page"
     again = send({"cmd": "look"})
+    assert _labels(again) == labels, "the tags never stay on the page to be marked themselves"
     assert not any(m["new"] for m in again["marks"])
 
 
@@ -395,8 +463,9 @@ def test_clicks_typing_and_scrolling_act_on_what_was_marked(browser_session):
     send = functools.partial(playthrough.send, browser_session)
     assert "look first" in send({"cmd": "click", "target": "1"})["refused"]
     page = send({"cmd": "open", "path": "/"})
-    send({"cmd": "click", "target": str(_mark(page, "Pointer chip"))})
-    assert "the chip was pressed" in send({"cmd": "text"})["text"]
+    chipped = send({"cmd": "click", "target": str(_mark(page, "Pointer chip"))})
+    assert "Pressed by the chip" in _labels(chipped)
+    assert next(m for m in chipped["marks"] if m["label"] == "Pressed by the chip")["new"]
     assert "click a text field first" in send({"cmd": "type", "text": "Ada"})["refused"]
     send({"cmd": "click", "target": str(_mark(page, 'text field "Name"'))})
     typed = send({"cmd": "type", "text": "Ada"})
@@ -404,11 +473,10 @@ def test_clicks_typing_and_scrolling_act_on_what_was_marked(browser_session):
     field = next(m for m in typed["marks"] if m["label"].startswith('text field "Name"'))
     assert field["new"] is False, "a field is the same thing whatever is typed in it"
     pressed = send({"cmd": "click", "target": "900,55"})  # the button, by its point
-    assert "the button was pressed" in send({"cmd": "text"})["text"]
+    assert "Pressed itself" in _labels(pressed)
     assert pressed["n"] == 5
     scrolled = send({"cmd": "scroll", "target": "170,370", "direction": "down", "px": 400})
     assert "Deep button" in _labels(scrolled)
-    assert "Deep in the scroller" in "\n".join(send({"cmd": "text"})["text"])
     assert "only opens the game's own pages" in send({"cmd": "open",
                                                       "path": "http://example.com/"})["refused"]
     assert "outside the window" in send({"cmd": "click", "target": "5000,5"})["refused"]
@@ -416,6 +484,8 @@ def test_clicks_typing_and_scrolling_act_on_what_was_marked(browser_session):
            .read_text().splitlines()]
     assert [e["cmd"] for e in log][:3] == ["click", "open", "click"]
     assert all("ms" in e for e in log)
+    entry = next(e for e in log if e.get("shot") == pressed["shot"])
+    assert "Pressed itself" in entry["marks"], "the log keeps what the screen offered"
 
 
 @pytest.mark.tier_medium
@@ -424,7 +494,7 @@ def test_setup_builds_a_fresh_village_the_friend_can_sign_into(chromium_here, re
     # The engines point nowhere: nothing in this test may reach the box's GPU.
     monkeypatch.setenv("DAYDREAM_LLM_BASE_URL", "http://127.0.0.1:9/v1")
     monkeypatch.setenv("DAYDREAM_COMFYUI_BASE_URL", "http://127.0.0.1:9")
-    r = playthrough.setup(name="Robin Ash", moves=20, seed=3)
+    r = playthrough.setup(name="Robin Ash", moves=20, seed=3, min_gap_s=0, note_every=99)
     sdir = Path(r["dir"])
     try:
         p = playthrough.paths(sdir)

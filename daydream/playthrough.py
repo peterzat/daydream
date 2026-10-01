@@ -22,16 +22,19 @@ background. `teardown` stops the server and the browser and copies the
 report, the notes and the screenshots into playthroughs/ (gitignored), with
 a session record appended.
 
-The player's verbs, through ./browser (each but `text` prints a new
-screenshot's path and its clickable things, numbered, a star on a label seen
-for the first time):
+The player's verbs, through ./browser. Each prints the path of a new
+screenshot and little else: the screen is the player's only way to see the
+game. Numbered tags drawn on the screenshot mark what can be clicked (orange
+on a thing the player has not seen before):
 
     look | click N | click X,Y | type "words" [--enter] | key KEY
-    scroll [N|X,Y] up|down [--px N] | text | wait SECONDS | reload | open PATH
+    scroll [N|X,Y] up|down [--px N] | wait SECONDS | reload | open PATH
 
-What the player is shown is what the window shows: marks and `text` count
-only what is inside the viewport, not clipped by a scrolling panel, not
-hidden or transparent, and not covered by something on top. Page errors and
+A tag counts only what a person could see: inside the window, not clipped by
+a scrolling panel, not hidden or transparent, not covered by something on
+top. The browser plays at a person's pace: a move that comes before the last
+screenshot could have been looked at is refused, the notes must keep up with
+the acting moves, and the move budget ends the session. Page errors and
 failed requests go to the session's log for the report, never to the player.
 """
 
@@ -70,7 +73,11 @@ IDLE_EXIT_S = 4 * 3600  # a browser nobody drives closes itself
 # The page's own "thinking..." lines: a person waits those out, and so does
 # the settle after an action.
 BUSY_SELECTOR = ".evt-pending, .evt-thinking"
-PLAYER_VERBS = ("look", "click", "type", "key", "scroll", "text", "wait", "reload", "open")
+PLAYER_VERBS = ("look", "click", "type", "key", "scroll", "wait", "reload", "open")
+ACTING_VERBS = ("click", "type", "key", "reload", "open")  # the notes keep up with these
+MIN_GAP_S = 2.0      # sooner than a screenshot can be looked at: a chained move
+NOTE_EVERY = 3       # acting moves allowed before notes.md must change again
+BUDGET_GRACE = 20    # moves past the budget before the browser stops
 DEFAULT_PERSONA = (
     "Someone who enjoys cozy games and good writing, plays on a laptop in the "
     "evening, and has never played a text adventure. Curious and patient: reads "
@@ -353,7 +360,8 @@ def engines_note() -> list[str]:
 
 
 def setup(name: str | None = None, persona: str | None = None,
-          moves: int = DEFAULT_MOVES, seed: int | None = None) -> dict:
+          moves: int = DEFAULT_MOVES, seed: int | None = None,
+          min_gap_s: float = MIN_GAP_S, note_every: int = NOTE_EVERY) -> dict:
     from daydream.images import cache
 
     friend = make_friend(random.Random(seed), name)
@@ -373,7 +381,7 @@ def setup(name: str | None = None, persona: str | None = None,
             "base_url": base, "port": port, "friend": friend,
             "persona": persona or DEFAULT_PERSONA, "moves": moves, "art": art,
             "envelope": str(ENVELOPE.relative_to(ROOT)), "build": _head_sha(),
-            "sock": str(sock_path(sdir))}
+            "sock": str(sock_path(sdir)), "min_gap_s": min_gap_s, "note_every": note_every}
     save_session(sdir, sess)
     sess["server_pid"] = start_server(sdir, port)
     save_session(sdir, sess)
@@ -383,7 +391,7 @@ def setup(name: str | None = None, persona: str | None = None,
         _stop(sess["server_pid"])
         raise
     save_session(sdir, sess)
-    send(sdir, {"cmd": "open", "path": "/", "observe": False})
+    send(sdir, {"cmd": "open", "path": "/", "internal": True})
     invite = invite_message(friend, base + "/")
     p["brief"].write_text(render_brief(invite=invite, persona=sess["persona"], moves=moves,
                                        day=day))
@@ -462,11 +470,13 @@ def run_player(sdir: Path, model: str = DEFAULT_MODEL) -> dict:
 
 
 def transcript_result(path: Path) -> dict:
-    """The final result line of a stream-json transcript, trimmed to what a
-    session record reports."""
+    """What a session record reports from a stream-json transcript: its final
+    result line, and how many distinct screenshots the player opened (the
+    honest measure of playing by sight)."""
     found: dict = {}
     if not path.exists():
         return found
+    looked: set[str] = set()
     for line in path.read_text(errors="replace").splitlines():
         try:
             msg = json.loads(line)
@@ -477,6 +487,13 @@ def transcript_result(path: Path) -> dict:
         elif msg.get("type") == "result":
             found.update({k: msg.get(k) for k in ("subtype", "is_error", "num_turns",
                                                    "duration_ms", "total_cost_usd")})
+        elif msg.get("type") == "assistant":
+            for c in (msg.get("message") or {}).get("content") or []:
+                if isinstance(c, dict) and c.get("type") == "tool_use" and c.get("name") == "Read":
+                    fp = str((c.get("input") or {}).get("file_path") or "")
+                    if "/shots/" in fp:
+                        looked.add(fp.rsplit("/", 1)[-1])
+    found["shots_read"] = len(looked)
     return found
 
 
@@ -517,8 +534,14 @@ def session_record(sdir: Path) -> str:
             with contextlib.suppress(ValueError):
                 actions.append(json.loads(line))
     by_cmd: dict[str, int] = {}
+    refused: dict[str, int] = {}
+    shots = 0
     for a in actions:
+        if "refused" in a:
+            refused[a.get("gate") or "other"] = refused.get(a.get("gate") or "other", 0) + 1
+            continue
         by_cmd[a["cmd"]] = by_cmd.get(a["cmd"], 0) + 1
+        shots += 1 if a.get("shot") else 0
     errors = p["page_errors"].read_text().splitlines() if p["page_errors"].exists() else []
     server = p["server_log"].read_text(errors="replace") if p["server_log"].exists() else ""
     server_errors = sum(1 for ln in server.splitlines() if " ERROR " in ln or ln.startswith("Traceback"))
@@ -527,15 +550,20 @@ def session_record(sdir: Path) -> str:
              f"- Session `{sess['id']}`: a fresh village from `{sess['envelope']}` at build "
              f"`{sess.get('build', 'unknown')}`; art copied from dev: "
              + (", ".join(f"{n} {k}" for k, n in sorted(sess.get("art", {}).items())) or "none")]
-    if actions:
-        span = (_parse_t(actions[-1]["t"]) - _parse_t(actions[0]["t"])).total_seconds() / 60
-        lines.append(f"- Browser commands: {len(actions)} ("
-                     + ", ".join(f"{k} {n}" for k, n in sorted(by_cmd.items(), key=lambda kv: -kv[1]))
-                     + f") over {span:.0f} minutes")
-    else:
-        lines.append("- Browser commands: none")
     player = sess.get("player") or {}
     res = player.get("result") or {}
+    if actions:
+        span = (_parse_t(actions[-1]["t"]) - _parse_t(actions[0]["t"])).total_seconds() / 60
+        lines.append(f"- Moves: {sum(by_cmd.values())} ("
+                     + ", ".join(f"{k} {n}" for k, n in sorted(by_cmd.items(), key=lambda kv: -kv[1]))
+                     + f") over {span:.0f} minutes")
+        if "shots_read" in res:
+            lines.append(f"- Screenshots the player opened: {res['shots_read']} of {shots}")
+        lines.append("- Moves the browser refused: "
+                     + (", ".join(f"{k} {n}" for k, n in sorted(refused.items())) or "none")
+                     + " (pace: sooner than a look; notes: notes behind; budget: moves spent)")
+    else:
+        lines.append("- Moves: none")
     if player:
         cost = res.get("total_cost_usd")
         lines.append(f"- Player: `claude -p --model {player.get('model')}`, "
@@ -762,7 +790,7 @@ for (const m of marks) {
   // just outside the top-left corner, so a short label stays readable
   const w = 7 * String(m.n).length + 7;
   tag.style.cssText = `position:fixed;left:${Math.max(m.box.l - w + 3, 0)}px;` +
-    `top:${Math.max(m.box.t - 11, 0)}px;background:#ffe14d;color:#111;` +
+    `top:${Math.max(m.box.t - 11, 0)}px;background:${m.new ? "#ff9a3c" : "#ffe14d"};color:#111;` +
     "font:bold 11px/13px Arial,sans-serif;padding:0 3px;border:1px solid #111;" +
     "border-radius:3px;opacity:0.92;";
   root.appendChild(tag);
@@ -771,68 +799,6 @@ document.documentElement.appendChild(root);
 }"""
 
 _UNOVERLAY_JS = "() => { const o = document.getElementById('__pt_overlay'); if (o) o.remove(); }"
-
-# The words a person can read right now, block by block in page order. A
-# text node partly scrolled out or clipped keeps only its visible words.
-_TEXT_JS = "() => {" + _JS_HELPERS + r"""
-const readable = (el, r, clip) => {
-  if (r.width <= 0 || r.height <= 0) return false;
-  const box = within(r, clip);
-  if (!box) return false;
-  const x = Math.min(Math.max((box.l + box.r) / 2, 0), vw - 1);
-  const y = Math.min(Math.max((box.t + box.b) / 2, 0), vh - 1);
-  const h = document.elementFromPoint(x, y);
-  return !!h && (h === el || el.contains(h) || h.contains(el));
-};
-const blockOf = (el) => {
-  while (el && el !== document.body && getComputedStyle(el).display.startsWith("inline"))
-    el = el.parentElement;
-  return el;
-};
-// an inline-block between here and the block reads as its own word
-const atomic = (el, blk) => {
-  for (let e = el; e && e !== blk; e = e.parentElement)
-    if (["inline-block", "inline-flex", "inline-grid"].includes(getComputedStyle(e).display)) return true;
-  return false;
-};
-const blocks = new Map();
-const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
-const range = document.createRange();
-for (let n = walker.nextNode(); n; n = walker.nextNode()) {
-  const s = n.nodeValue;
-  if (!s || !s.trim()) continue;
-  const el = n.parentElement;
-  if (!el || el.closest("#__pt_overlay, script, style, noscript, template")) continue;
-  if (!seen(el)) continue;
-  const clip = clipRect(el);
-  range.selectNodeContents(n);
-  const rects = [...range.getClientRects()].filter(r => r.width > 0 && r.height > 0);
-  const vis = rects.filter(r => readable(el, r, clip));
-  if (!vis.length) continue;
-  let text = s;
-  if (vis.length !== rects.length) {
-    const words = [];
-    const re = /\S+/g;
-    let m;
-    while ((m = re.exec(s))) {
-      range.setStart(n, m.index);
-      range.setEnd(n, m.index + m[0].length);
-      if (readable(el, range.getBoundingClientRect(), clip)) words.push(m[0]);
-    }
-    text = (/^\s/.test(s) ? " " : "") + words.join(" ") + (/\s$/.test(s) ? " " : "");
-  }
-  const blk = blockOf(el);
-  if (!blocks.has(blk)) blocks.set(blk, []);
-  text = cased(el, text);
-  blocks.get(blk).push(atomic(el, blk) ? ` ${text} ` : text);
-}
-const out = [];
-for (const parts of blocks.values()) {
-  const line = parts.join("").replace(/\s+/g, " ").trim();
-  if (line) out.push(line);
-}
-return out;
-}"""
 
 _FOCUS_JS = "() => {" + _JS_HELPERS + r"""
 const el = document.activeElement;
@@ -878,6 +844,13 @@ class Browser:
         self.origin = _origin(self.sess["base_url"])
         self.shot_n = len(list(self.p["shots"].glob("*.jpg")))
         self.seen_labels: set[str] = set()
+        self.min_gap = float(self.sess.get("min_gap_s", MIN_GAP_S))
+        self.note_every = int(self.sess.get("note_every", NOTE_EVERY))
+        self.budget = int(self.sess.get("moves", DEFAULT_MOVES))
+        self.last_reply: float | None = None  # when the player's last answer went out
+        self.moves = 0                         # the player's moves the browser made
+        self.unnoted = 0                       # acting moves since notes.md last changed
+        self.notes_seen = self._notes_sig()
 
     def start(self) -> None:
         from playwright.sync_api import sync_playwright
@@ -930,6 +903,10 @@ class Browser:
 
     def observe(self, verb: str, settle: str) -> dict:
         marks = self._eval(_MARKS_JS) or []
+        for m in marks:  # a first sighting is drawn orange, for the knowledge check
+            key = m.pop("key", None) or m["label"]
+            m["new"] = key not in self.seen_labels
+            self.seen_labels.add(key)
         self.shot_n += 1
         shot = self.p["shots"] / f"{self.shot_n:03d}-{verb}.jpg"
         self._eval(_OVERLAY_JS, marks)
@@ -938,9 +915,6 @@ class Browser:
         finally:
             self._eval(_UNOVERLAY_JS)
         for m in marks:
-            key = m.pop("key", None) or m["label"]
-            m["new"] = key not in self.seen_labels
-            self.seen_labels.add(key)
             del m["box"]
         return {"shot": str(shot), "n": self.shot_n, "url": self.page.url, "settle": settle,
                 "focus": self._eval(_FOCUS_JS), "marks": marks}
@@ -995,8 +969,6 @@ class Browser:
             self.page.mouse.wheel(0, px if req.get("direction", "down") == "down" else -px)
             self.page.wait_for_timeout(250)
             return self.observe("scroll", self.settle(long=False))
-        if cmd == "text":
-            return {"text": self._eval(_TEXT_JS) or []}
         if cmd == "wait":
             secs = max(1, min(int(req.get("seconds") or 10), MAX_WAIT_S))
             self.page.wait_for_timeout(secs * 1000)
@@ -1009,7 +981,7 @@ class Browser:
             if _origin(url) != self.origin:
                 raise Refusal(f"this browser only opens the game's own pages ({self.origin})")
             self.page.goto(url, wait_until="load")
-            if not req.get("observe", True):  # setup's page load is not the player's first look
+            if req.get("internal"):  # setup's page load is not the player's first look
                 self.settle(long=False)
                 return {"ok": True}
             return self.observe("open", self.settle())
@@ -1059,24 +1031,78 @@ class Browser:
         if req.get("cmd") == "quit":
             conn.sendall(b'{"ok": true}\n')
             return False
+        player = req.get("cmd") in PLAYER_VERBS and not req.get("internal")
         t0 = time.monotonic()
-        try:
-            resp = self.handle(req)
-        except Refusal as e:
-            resp = {"refused": str(e)}
-        except Exception as e:  # the page broke: say so, keep serving
-            resp = {"error": f"{type(e).__name__}: {str(e)[:300]}"}
-        if req.get("cmd") != "ping":
+        gate = self.gate(req) if player else None
+        if gate:
+            resp = {"refused": gate[1], "gate": gate[0]}
+        else:
+            try:
+                resp = self.handle(req)
+            except Refusal as e:
+                resp = {"refused": str(e)}
+            except Exception as e:  # the page broke: say so, keep serving
+                resp = {"error": f"{type(e).__name__}: {str(e)[:300]}"}
+            if player and "shot" in resp:
+                self.moves += 1
+                if req["cmd"] in ACTING_VERBS:
+                    self.unnoted += 1
+                note = self.budget_note()
+                if note:
+                    resp["note"] = note
+        if player:
             entry = {"t": datetime.now(timezone.utc).isoformat(timespec="seconds"),
                      "cmd": req.get("cmd"), "args": {k: v for k, v in req.items() if k != "cmd"},
                      "ms": round((time.monotonic() - t0) * 1000)}
-            for k in ("shot", "settle", "refused", "error"):
+            for k in ("shot", "settle", "refused", "gate", "error"):
                 if k in resp:
                     entry[k] = resp[k]
+            if "marks" in resp:  # what the screen offered, for the record (never printed)
+                entry["marks"] = [m["label"] for m in resp["marks"]]
             with open(self.p["actions"], "a") as f:
                 f.write(json.dumps(entry) + "\n")
         conn.sendall(json.dumps(resp).encode() + b"\n")
+        if player:
+            self.last_reply = time.monotonic()
         return True
+
+    # ---- a person's pace ----
+
+    def _notes_sig(self):
+        try:
+            st = self.p["notes"].stat()
+            return (st.st_size, st.st_mtime_ns)
+        except OSError:
+            return None
+
+    def gate(self, req: dict) -> tuple[str, str] | None:
+        """Why the browser will not make this move yet, if it will not: it
+        came sooner than the last screenshot could have been looked at, the
+        notes have fallen behind, or the moves are spent."""
+        cmd = req["cmd"]
+        if self.last_reply is not None and time.monotonic() - self.last_reply < self.min_gap:
+            return ("pace", "one move at a time: look at the screenshot from your last move, "
+                            "then decide what to do")
+        if self.moves >= self.budget + BUDGET_GRACE and cmd != "look":
+            return ("budget", "your moves are spent: write your report now")
+        if cmd in ACTING_VERBS:
+            sig = self._notes_sig()
+            if sig != self.notes_seen:
+                self.notes_seen, self.unnoted = sig, 0
+            if self.unnoted >= self.note_every:
+                return ("notes", "your notes have fallen behind: add to notes.md what you did, "
+                                 "what the screen showed, how it felt, and your knowledge "
+                                 "check, then make this move")
+        return None
+
+    def budget_note(self) -> str | None:
+        if self.moves >= self.budget:
+            return ("your move budget is spent: finish what you are doing, leave the game if "
+                    "it offers a way, and write your report")
+        if self.moves == int(self.budget * 0.8):
+            return ("about a fifth of your moves are left: if you have not yet tried making "
+                    "your mark on the game, now is the time")
+        return None
 
 
 def _origin(url: str) -> str:
@@ -1113,17 +1139,17 @@ def browser_main(sdir: Path) -> int:
 
 
 def format_response(resp: dict) -> str:
+    """What the player reads after a move: where the new screenshot is, and
+    the little a browser's own chrome would say. Never what the page holds:
+    the labels stay in the log, so the screenshot is the only way to see."""
     if "refused" in resp:
         return f"refused: {resp['refused']}"
     if "error" in resp:
         return f"the browser had a problem: {resp['error']}"
-    if "text" in resp:
-        lines = resp["text"]
-        return "\n".join(lines) if lines else "(no readable words on the screen)"
     if "shot" not in resp:
         return "the browser gave no answer (it may have closed)"
     out = [f"shot {resp['n']}: {resp['shot']}",
-           "  (Read that image: it is the screen.)",
+           "  (Read that image: it is the only way you can see the screen.)",
            f"address bar: {resp['url']}"]
     if resp.get("settle") == "busy":
         out.append("the page still looks busy (something is loading or thinking); "
@@ -1132,11 +1158,11 @@ def format_response(resp: dict) -> str:
     out.append(f"typing goes to: {focus['label']}" if focus.get("editable")
                else "typing goes nowhere (nothing that takes typing has focus)")
     marks = resp.get("marks") or []
-    if marks:
-        out.append("clickable on screen (* = a label you have not seen before):")
-        out.extend(f"  {m['n']:>2}{'*' if m.get('new') else ' '} {m['label']}" for m in marks)
-    else:
-        out.append("nothing clickable on screen")
+    new = sum(1 for m in marks if m.get("new"))
+    out.append(f"{len(marks)} numbered tags on the screen"
+               + (f", {new} of them orange (things you have not seen before)" if new else ""))
+    if resp.get("note"):
+        out.append(f"browser: {resp['note']}")
     return "\n".join(out)
 
 
@@ -1155,7 +1181,6 @@ def player_request(argv: list[str]) -> dict:
     s = sub.add_parser("scroll", help="scroll [over mark N or X,Y] up|down")
     s.add_argument("where", nargs="+", help="[N|X,Y] up|down")
     s.add_argument("--px", type=int, default=400)
-    sub.add_parser("text", help="the words visible on the screen, as text")
     w = sub.add_parser("wait", help="let SECONDS pass, then look")
     w.add_argument("seconds", type=int)
     sub.add_parser("reload", help="reload the page")

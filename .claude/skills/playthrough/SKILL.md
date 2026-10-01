@@ -54,6 +54,13 @@ settings, no hooks, no MCP), file tools confined to that folder, and in
 dontAsk mode nothing runs but `./browser` and edits to its own notes and
 report. Its transcript streams to `player.jsonl` in the session dir.
 
+The browser keeps it honest, so the run reads as a person's evening rather
+than a solver's: each move prints only the new screenshot's path (the screen
+is the only way to see the game; tags on it mark what can be clicked, orange
+for a first sighting), a move sooner than the last screenshot could be looked
+at is refused, at most three clicks or typed lines may pass without a note in
+notes.md, and the move budget nudges at four fifths and stops past it.
+
 While it plays, leave the session alone: no browser verbs of your own and
 no restarts of its server. The dev server is separate, so dev work can go
 on, but nothing that takes the GPU for long (a `test long`, a prebake): the
@@ -94,6 +101,10 @@ the evidence before relaying it:
 - The session record's page errors and server log errors are real defects
   whatever the player noticed; read the server log in the session dir for
   each server error.
+- Judge how authentic the run was from the record: screenshots opened
+  against moves (near one each is a player who looked), and refusals (a few
+  pace or notes refusals early are normal; many mean it fought the browser to
+  hurry). A run that did not look is a weak witness: say so.
 
 Then tell the operator, briefly: the report's path, whether the player
 solved it, the three to five findings that matter most (blockers first),
