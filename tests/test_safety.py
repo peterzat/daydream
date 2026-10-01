@@ -31,6 +31,10 @@ class TestFirstBanned:
     def test_sexual_category(self):
         assert safety.first_banned("a sensual encounter") == "sexual"
         assert safety.first_banned("erotic imagery") == "sexual"
+        assert safety.first_banned("a nude sleeper by the pond") == "sexual"
+        assert safety.first_banned("a woman bathing NAKED") == "sexual"
+        assert safety.first_banned("an unclothed bather") == "sexual"
+        assert safety.first_banned("the nudest of hills") is None  # whole words only
 
     def test_violence_category(self):
         assert safety.first_banned("stab the bandit") == "violence"

@@ -55,7 +55,8 @@ _BANLIST: tuple[tuple[str, re.Pattern[str]], ...] = (
      re.compile(r"\b(?:grimdark|dystopian|brutalist|horror|nightmare|"
                 r"gore|gory|corpse|bloodsoaked|blood-soaked|terror)\b", re.IGNORECASE)),
     ("sexual",
-     re.compile(r"\b(?:sexual|sensual|erotic)\b", re.IGNORECASE)),
+     re.compile(r"\b(?:sexual|sensual|erotic|nude|nudes|nudity|naked|topless|"
+                r"unclothed|undressed)\b", re.IGNORECASE)),
     ("violence",
      re.compile(r"\b(?:stab|slash|slaughter|bludgeon|murder|maim|strangle)\b", re.IGNORECASE)),
     # Soft stakes (WHIMSY "Stories: soft stakes", SPEC 2026-09-26): a

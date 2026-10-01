@@ -360,10 +360,11 @@ def _bad(overrides: dict | None = None, **kw) -> dict:
     _bad(objects="not-a-list"),
     _bad(description="A stair coils gently downward toward a grimdark "
                      "hollow of cold machines, and the air hums with it."),  # banlist
+    _bad(room_seed="a reed bed by a still pond where a nude sleeper rests"),  # kept nudity
 ], ids=["non-dict", "title-short", "title-long", "title-words",
         "seed-short", "seed-long", "desc-short", "desc-long",
         "three-objects", "obj-name-short", "obj-seed-short",
-        "objects-not-list", "banned-text"])
+        "objects-not-list", "banned-text", "unclothed-seed"])
 async def test_invalid_composition_rejects_and_preserves_seed(monkeypatch, payload):
     _mock_llm(monkeypatch, payload)
     seed = _seed()
