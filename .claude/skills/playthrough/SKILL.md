@@ -81,12 +81,17 @@ bin/game playthrough teardown
 ```
 
 Stops the server and the browser, and copies into `playthroughs/` (repo root,
-committed; its README warns of spoilers): `<id>.md` (the player's report with a session record appended:
-browser commands by kind, minutes, the player's turns, page errors and failed
-requests, server log errors) and `<id>/` (notes, screenshots, the action log,
-page errors; this copy names screenshots by their place in `shots/` and masks
-the made-up account's password). The session's data dir stays under ~/data for inspection
-(the world DB holds every input); `--purge` deletes it.
+committed; its README warns of spoilers): `<id>.md` (the player's report
+with a session record appended: browser commands by kind, minutes, the
+player's turns, page errors and failed requests, server log errors) and
+`<id>/` (notes, screenshots, the action log, page errors). The copy is made
+to share: every text file has the made-up password masked and the session's
+home path replaced by the run's folder, and the screenshots are shrunk to
+960 px wide (about two fifths of the bytes, still legible). The session's
+data dir, with the full-size screenshots, stays under ~/data for inspection
+(the world DB holds every input); `--purge` deletes it, and
+`bin/game playthrough purge` later deletes every finished session's village
+(report landed, nothing running), never the current one.
 
 ## 6. Read and report
 
@@ -107,6 +112,12 @@ the evidence before relaying it:
   pace or notes refusals early are normal; many mean it fought the browser to
   hurry). A run that did not look is a weak witness: say so.
 
+Then commit the run on its own (`playthroughs: <id>`): the report and its
+folder exactly as teardown left them, after reading them for anything of the
+instance (a playthrough never touches prod, so there should be none). They
+are spoilers by design: the folder's README says so, and README "Blind
+playthroughs" links it.
+
 Then tell the operator, briefly: the report's path, whether the player
 solved it, the three to five findings that matter most (blockers first),
 anything you could not confirm, and the page and server errors. Offer to
@@ -119,8 +130,4 @@ turn findings into fixes; do not start fixing unasked.
   only make with help is not a finding.
 - Never run a playthrough against prod or the dev server's world: setup's
   own village is the only target.
-- Never edit the player's report. Commit the report and its folder as they
-  came out of teardown, on their own (`playthroughs: <id>`), after reading
-  them for anything of the instance (a playthrough never touches prod, so
-  there should be none). They are spoilers by design: the folder's README
-  says so, and README "Blind playthroughs" links it.
+- Never edit the player's report or its folder before committing them.

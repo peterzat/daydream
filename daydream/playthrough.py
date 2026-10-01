@@ -9,6 +9,7 @@ screenshots, clicks and typing. Everything around that player lives here.
     bin/game playthrough player [--model M]
     bin/game playthrough status
     bin/game playthrough teardown [--purge]
+    bin/game playthrough purge
 
 `setup` builds a fresh village in the session's own data dir (the canonical
 envelope, art copied from dev's graded cache, nothing of dev's world or
@@ -612,6 +613,30 @@ def shareable_actions(src: Path, password: str, sdir: Path, sid: str) -> str:
     return "".join(f"{ln}\n" for ln in out)
 
 
+# The reports folder's screenshots: about two fifths of the player's bytes,
+# every tag and line still legible (measured on the first runs).
+SHARED_SHOT_WIDTH = 960
+SHARED_SHOT_QUALITY = 55
+
+
+def share_shot(src: Path, dst: Path) -> None:
+    """A screenshot as the committed reports folder keeps it: at most
+    SHARED_SHOT_WIDTH wide and re-encoded smaller. One that will not open
+    as an image is copied as it is."""
+    try:
+        from PIL import Image
+
+        with Image.open(src) as im:
+            shot = im.convert("RGB")
+        if shot.width > SHARED_SHOT_WIDTH:
+            shot = shot.resize((SHARED_SHOT_WIDTH,
+                                round(shot.height * SHARED_SHOT_WIDTH / shot.width)),
+                               Image.LANCZOS)
+        shot.save(dst, "JPEG", quality=SHARED_SHOT_QUALITY, optimize=True, progressive=True)
+    except (ImportError, OSError, ValueError):
+        shutil.copy2(src, dst)
+
+
 def teardown(sdir: Path, purge: bool = False) -> dict:
     p, sess = paths(sdir), load_session(sdir)
     with contextlib.suppress(OSError, ValueError):
@@ -632,7 +657,10 @@ def teardown(sdir: Path, purge: bool = False) -> dict:
         (extra / p["actions"].name).write_text(
             shareable_actions(p["actions"], password, sdir, sess["id"]))
     if p["shots"].is_dir():
-        shutil.copytree(p["shots"], extra / "shots", dirs_exist_ok=True)
+        (extra / "shots").mkdir(exist_ok=True)
+        for shot in sorted(p["shots"].iterdir()):
+            if shot.is_file():
+                share_shot(shot, extra / "shots" / shot.name)
     wrote_report = p["report"].exists() and p["report"].read_text().strip() != ""
     body = (p["report"].read_text().rstrip() if wrote_report else
             f"# Playthrough {sess['id']}\n\nThe player wrote no report.md; its notes are in "
@@ -645,6 +673,26 @@ def teardown(sdir: Path, purge: bool = False) -> dict:
     if purge:
         shutil.rmtree(sdir)
     return {"report": str(report), "extra": str(extra), "player_report": wrote_report}
+
+
+def purge_finished() -> list[str]:
+    """Delete the villages of finished playthroughs: each session whose report
+    has landed in the reports folder and whose server and browser are gone.
+    The current session, and one never torn down, are left alone."""
+    root, out = sessions_root(), reports_dir()
+    ptr = root / "current"
+    current = ptr.read_text().strip() if ptr.exists() else None
+    gone = []
+    for d in sorted(root.iterdir()) if root.is_dir() else ():
+        if (d.name == current or not (d / "session.json").exists()
+                or not (out / f"{d.name}.md").exists()):
+            continue
+        sess = load_session(d)
+        if any(_alive(sess.get(k)) and _ours(sess[k]) for k in ("server_pid", "browser_pid")):
+            continue
+        shutil.rmtree(d)
+        gone.append(d.name)
+    return gone
 
 
 def status(sdir: Path) -> list[str]:
@@ -1287,6 +1335,8 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("status", help="the session and the player's latest notes")
     td = sub.add_parser("teardown", help="stop it all; copy the report into playthroughs/")
     td.add_argument("--purge", action="store_true", help="also delete the session's data dir")
+    sub.add_parser("purge", help="delete finished playthroughs' villages (report landed, "
+                                 "nothing running)")
     a = ap.parse_args(argv)
 
     if a.cmd == "setup":
@@ -1300,6 +1350,10 @@ def main(argv: list[str] | None = None) -> int:
         for note in r["notes"]:
             print(note)
         print("next:     bin/game playthrough player   (in the background)")
+        return 0
+    if a.cmd == "purge":
+        gone = purge_finished()
+        print("purged: " + (", ".join(gone) if gone else "nothing finished to purge"))
         return 0
     sdir = sdir_arg or current_session_dir()
     if a.cmd == "player":

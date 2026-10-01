@@ -287,6 +287,9 @@ def _fake_session(sid: str, report: str | None) -> Path:
     p["server_log"].write_text("INFO fine\n2026 x ERROR daydream.ws: oops\nTraceback (most recent)\n")
     p["notes"].write_text("# Notes\n\nmove 1\n")
     (p["shots"] / "001-look.jpg").write_bytes(b"\xff\xd8")
+    from PIL import Image
+    Image.effect_noise((1280, 800), 40).convert("RGB").save(p["shots"] / "002-click.jpg",
+                                                            "JPEG", quality=80)
     if report is not None:
         p["report"].write_text(report)
     (playthrough.sessions_root() / "current").write_text(sid + "\n")
@@ -333,6 +336,12 @@ def test_teardown_lands_the_report_with_its_session_record(reports):
     assert "2026-10-01-robin/shots/003-click.jpg" in text
     typed = json.loads(shared.splitlines()[-1])
     assert typed["args"]["text"] == "•" * 21 and typed["shot"] == "shots/005-type.jpg"
+    from PIL import Image
+    shared_shot, own_shot = evidence / "shots" / "002-click.jpg", p["shots"] / "002-click.jpg"
+    with Image.open(shared_shot) as im:
+        assert im.size == (playthrough.SHARED_SHOT_WIDTH, 600)
+    assert shared_shot.stat().st_size < own_shot.stat().st_size / 2
+    assert (evidence / "shots" / "001-look.jpg").read_bytes() == b"\xff\xd8"  # copied as is
     assert not (playthrough.sessions_root() / "current").exists()
     assert sdir.exists()  # kept unless purged
 
@@ -347,6 +356,26 @@ def test_teardown_without_a_report_says_so_and_purge_removes_the_village(reports
 
 
 @pytest.mark.tier_short
+def test_purge_deletes_only_finished_villages(reports, monkeypatch):
+    done = _fake_session("2026-10-01-ada", "# Playthrough\n")
+    playthrough.teardown(done)
+    running = _fake_session("2026-10-01-bo", "# Playthrough\n")
+    playthrough.teardown(running)
+    sess = playthrough.load_session(running)
+    playthrough.save_session(running, {**sess, "server_pid": 424242})
+    monkeypatch.setattr(playthrough, "_alive", lambda pid: pid == 424242)
+    monkeypatch.setattr(playthrough, "_ours", lambda pid: True)
+    unlanded = _fake_session("2026-10-01-cy", "# Playthrough\n")  # never torn down
+    (playthrough.sessions_root() / "current").unlink()
+    current = _fake_session("2026-10-01-di", "# Playthrough\n")
+    playthrough.teardown(current)
+    (playthrough.sessions_root() / "current").write_text("2026-10-01-di\n")
+    assert playthrough.purge_finished() == ["2026-10-01-ada"]
+    assert not done.exists() and running.exists() and unlanded.exists() and current.exists()
+    assert (reports / "2026-10-01-ada.md").exists()  # the report stays
+
+
+@pytest.mark.tier_short
 def test_the_reports_are_shared_with_a_spoiler_warning_and_the_skill_names_real_verbs():
     assert not any("playthroughs" in ln for ln in (ROOT / ".gitignore").read_text().splitlines())
     assert "spoiler" in (ROOT / "playthroughs" / "README.md").read_text().lower()
@@ -354,7 +383,7 @@ def test_the_reports_are_shared_with_a_spoiler_warning_and_the_skill_names_real_
     skill = (ROOT / ".claude" / "skills" / "playthrough" / "SKILL.md").read_text()
     assert skill.startswith("---\nname: playthrough\n")
     named = set(re.findall(r"bin/game playthrough ([a-z_]+)", skill))
-    assert {"setup", "player", "status", "teardown"} <= named
+    assert {"setup", "player", "status", "teardown", "purge"} <= named
     for verb in named:
         with pytest.raises(SystemExit) as e:
             playthrough.main([verb, "--help"])
