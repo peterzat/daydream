@@ -1,6 +1,6 @@
 {
   "name": "keeper-welcome",
-  "comment": "Playtest 2026-09-26 fixes around a first session: Tace's gear and clock topics between the handover and the mending, a borrowed pendulum handed back, the loft's resting clocks leading a newcomer to the first winding, the W clock Tace will not talk about, and Bell meeting the new keeper once, as Tace promised.",
+  "comment": "Playtest 2026-09-26 fixes around a first session: Tace's gear and clock topics between the handover and the mending, a borrowed pendulum handed back, the loft's resting clocks leading a newcomer to the first winding, the W clock Tace will not talk about, and Bell meeting the new keeper once, as Tace promised; a newcomer who talked with Bell before winding hears Tace say so (playthrough 2026-10-01).",
   "clock": "2026-10-01T17:00:00+00:00",
   "players": [
     {
@@ -310,6 +310,89 @@
           "expect": {
             "room": "r-square",
             "narrate_lacks": "new keeper"
+          }
+        }
+      ]
+    },
+    {
+      "name": "a newcomer who talked with Bell before winding",
+      "commands": [
+        {
+          "join": {
+            "as": "C",
+            "name": "Wren"
+          }
+        },
+        {
+          "as": "C",
+          "cmd": "east",
+          "expect": {
+            "room": "r-square"
+          }
+        },
+        {
+          "as": "C",
+          "cmd": "ask bell about the lanterns",
+          "expect": {
+            "pflag": {
+              "SPOKE-BELL": true,
+              "MET-BELL": false
+            }
+          }
+        },
+        {
+          "as": "C",
+          "cmd": "west",
+          "expect": {
+            "room": "r-clocktower"
+          }
+        },
+        {
+          "as": "C",
+          "cmd": "up",
+          "expect": {
+            "room": "r-loft"
+          }
+        },
+        {
+          "as": "C",
+          "cmd": "wind resting clocks",
+          "expect": {
+            "carrying": [
+              "small clock"
+            ]
+          }
+        },
+        {
+          "as": "C",
+          "cmd": "wind small clock",
+          "expect": {
+            "pflag": {
+              "WOUND": true
+            },
+            "narrate_contains": "Bell will be glad to hear it",
+            "narrate_lacks": "Bell will want to meet you",
+            "threads_contains": "Bell will want to hear your clock",
+            "threads_lack": "Bell will want to meet you"
+          }
+        },
+        {
+          "as": "C",
+          "cmd": "down",
+          "expect": {
+            "room": "r-clocktower"
+          }
+        },
+        {
+          "as": "C",
+          "cmd": "east",
+          "expect": {
+            "room": "r-square",
+            "pflag": {
+              "MET-BELL": true
+            },
+            "narrate_contains": "You're Tace's new keeper",
+            "threads_lack": "Bell will want to hear your clock"
           }
         }
       ]

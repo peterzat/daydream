@@ -1015,6 +1015,8 @@ body.awake #chat { display: none; }
   background: linear-gradient(180deg, rgba(249,246,238,0), rgba(249,246,238,.96) 45%);
 }
 .margin-index.hidden { display: none; }
+/* The reading column's own foot tab ("more"), centred under the text. */
+.prose-index { justify-content: center; padding: 5px 16px 3px; }
 .index-tab {
   background: none; border: none; padding: 0; cursor: pointer;
   font-family: var(--sans); font-size: .6rem; letter-spacing: .2em; text-transform: uppercase;

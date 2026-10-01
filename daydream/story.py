@@ -550,7 +550,15 @@ def offered_topics(npc: objects.Object, actor_id: str,
 
     if known is None:
         known = heard.known_keys(npc.world_id, actor_id)
-    return [t for t in available_topics(npc, actor_id) if heard.knows(t, known)]
+    offered = [t for t in available_topics(npc, actor_id) if heard.knows(t, known)]
+    # A beat may claim a topic's words as an alias (the hush beat names "the
+    # tin"): asking them tells the beat, so while that beat is a chip the
+    # topic's own chip would promise one answer and give another (playthrough
+    # 2026-10-01). The topic comes back once the beat is done.
+    claimed = {normalize_topic(x) for t in offered if t["kind"] == "beat"
+               for x in [t["label"], *t["aliases"]]}
+    return [t for t in offered
+            if t["kind"] == "beat" or normalize_topic(t["label"]) not in claimed]
 
 
 def match_topic(npc: objects.Object, actor_id: str, text: str) -> dict | None:

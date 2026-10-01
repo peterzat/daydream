@@ -16,6 +16,7 @@
     "WOUND",
     "MET-BOOK",
     "MET-BELL",
+    "SPOKE-BELL",
     "WAITED-DUSK",
     "QUILL-SEED",
     "UMBER-CUP"
@@ -307,7 +308,7 @@
         "properties": {
           "growth": {
             "question": "Where does the new way lead?",
-            "question_hint": "Plant it with a few words, like this: plant dreamseed: a place you'd like to find.",
+            "question_hint": "Plant it with a short phrase, about a dozen words, like this: plant dreamseed: a place you'd like to find.",
             "theme": [
               "a clockmaker's village at the bottom of a dream, at dusk",
               "lost hours, kept and mended with patience",

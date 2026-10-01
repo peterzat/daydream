@@ -54,8 +54,10 @@ APP_VERSION = "1.0.0"
 # littlest armchair. 1.11: glimpses, playtest 2026-09-29b -- the highest
 # shelf says why its jar is out of reach, in every state of the arc. 1.13:
 # parts, playtest 2026-09-30 -- the forget-me-not clock is a part of the
-# resting clocks, with its own look and take.)
-WORLD_VERSION = "1.13"
+# resting clocks, with its own look and take. 1.14: playthrough 2026-10-01 --
+# the first winding knows who you have already talked with, and the
+# dreamseed says how many words it holds.)
+WORLD_VERSION = "1.14"
 
 
 @lru_cache(maxsize=1)

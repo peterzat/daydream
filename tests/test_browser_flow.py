@@ -422,6 +422,40 @@ def test_an_answer_rests_on_a_paragraph_top_and_the_columns_show_more(tab, engin
     _assert_quiet(tab, engines)
 
 
+def test_the_columns_name_what_lies_below_their_fold(tab, engines):
+    """A visual reader on a short window missed what sat below the columns'
+    fold: the reading column's tail and a resident's ask-about chips under
+    them (playthrough 2026-10-01). The reading column now says "more" at its
+    foot, and the margin names the resident whose chips are cut off; each
+    tab scrolls to what it names."""
+    page = tab.page
+    page.set_viewport_size({"width": 1280, "height": 600})
+    _signed_in_with_a_dreamer(tab)
+    prose = page.locator(".prose")
+    more = page.locator("#prose-index .index-tab")
+    expect(prose).to_have_class(re.compile(r"\bmore-below\b"))
+    expect(more).to_have_text("↓ more")
+    expect(more).to_be_visible()
+    more.click()
+    page.wait_for_function("() => document.querySelector('.prose').scrollTop > 0")
+
+    page.locator("#exit-bar button[data-direction=up]").click()
+    expect(page.locator("#room-title")).to_have_text(UP["title"])
+    resident = next(t["name"] for t in ENVELOPE["toons"] if t.get("room") == UP["id"])
+    ask = page.locator("#margin-index .index-tab", has_text=f"ask {resident}")
+    expect(ask).to_have_text(f"↓ ask {resident}")
+    row = page.locator("#topics .topic-row").first
+    ask.click()
+    page.wait_for_function("""() => {
+      const m = document.getElementById('scene');
+      const r = document.querySelector('#topics .topic-row').getBoundingClientRect();
+      const b = m.getBoundingClientRect();
+      return r.top >= b.top && r.top + 20 <= b.bottom;
+    }""")
+    expect(row).to_be_visible()
+    _assert_quiet(tab, engines)
+
+
 LONG_ANSWER = " ".join(["The clock ticks softly, and dust settles on its gears like snow."] * 30)
 
 

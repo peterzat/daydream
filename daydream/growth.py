@@ -87,7 +87,8 @@ _SPENT = "The husk is quiet now; whatever it held has already grown."
 _NO_GROWTH = "You press it into the earth, but nothing in it wants to grow."
 _CAP_REACHED = "The dream holds all the new places it can for now; let them settle a while."
 _NO_DIRECTION = "Every way out of this place is already taken; the seed has nowhere to open."
-_PHRASE_TOO_LONG = "The seed trembles under so many words; hold a smaller vision."
+_PHRASE_TOO_LONG = ("The seed trembles under so many words; hold a smaller vision, "
+                    "about a dozen words.")
 _OFF_TONE = "The seed stirs, but the dream won't hold that shape."
 _NOT_THIS_DREAM = ("The seed turns that vision over and lets it go; nothing of "
                    "that kind grows in this dream. Try another.")

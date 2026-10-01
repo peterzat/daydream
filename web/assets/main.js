@@ -1727,6 +1727,30 @@ function updateScrollCue(el) {
     scrollable && el.scrollTop + el.clientHeight < contentEnd(el) - gap);
   updateRail(el, scrollable);
   if (el.id === "scene") updateMarginIndex(scrollable);
+  if (el.classList.contains("prose")) updateProseIndex(scrollable);
+}
+
+// The reading column's foot: "more", a touch away, while the column holds
+// more below than it shows (playthrough 2026-10-01: on a laptop-height
+// window the fade alone went unread, and a reply's tail sat below the fold).
+function updateProseIndex(scrollable) {
+  const p = document.querySelector(".prose");
+  const idx = document.getElementById("prose-index");
+  if (!p || !idx) return;
+  const more = scrollable && p.classList.contains("more-below");
+  idx.classList.toggle("hidden", !more);
+  if (!more) return;
+  if (!idx.firstChild) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "index-tab";
+    b.textContent = "\u2193 more";
+    b.onclick = () => p.scrollBy({ top: p.clientHeight * 0.85, behavior: "smooth" });
+    idx.appendChild(b);
+  }
+  idx.style.left = p.offsetLeft + "px";
+  idx.style.width = p.offsetWidth + "px";
+  idx.style.top = (p.offsetTop + p.clientHeight - idx.offsetHeight) + "px";
 }
 
 const RAIL_MIN_THUMB = 28;
@@ -1804,18 +1828,54 @@ function updateMarginIndex(scrollable) {
     // A section counts as below until its label and first line both show.
     ? [...m.querySelectorAll(".mgroup")].filter(
       (g) => bottom - g.offsetTop < Math.min(g.offsetHeight, 52)) : [];
-  idx.classList.toggle("hidden", !below.length);
-  if (!below.length) {
+  // Inside a section the fold cuts, the eye needs a sign too (playthrough
+  // 2026-10-01: a resident's ask-about row sat under the next person, below
+  // a laptop's fold, and the last thing around you sat under the fade): who
+  // you could ask, by name, else "more".
+  const inner = [];
+  if (scrollable && m.classList.contains("more-below")) { // scrolled to its end, nothing is cut
+    const origin = m.getBoundingClientRect().top - m.scrollTop;
+    const yOf = (el) => el.getBoundingClientRect().top - origin;
+    const shown = bottom - 18; // the index band covers the margin's foot
+    for (const r of m.querySelectorAll("#topics .topic-row")) {
+      if (shown - yOf(r) < Math.min(r.offsetHeight, 26)) {
+        const who = ((r.querySelector(".topic-who") || {}).textContent || "").replace(/ about$/, "");
+        inner.push({ id: "topics-" + who, label: who,
+          go: () => m.scrollTo({ top: yOf(r) - 6, behavior: "smooth" }) });
+      }
+    }
+    // "more" only when nothing else is named: a named section below already
+    // says the margin goes on.
+    const cut = inner.length || below.length ? null : [...m.querySelectorAll(".mgroup")].find(
+      (g) => g.offsetHeight > 0 && !below.includes(g) && yOf(g) < shown &&
+        yOf(g) + g.offsetHeight > shown + 6);
+    if (cut) {
+      inner.push({ id: "more-" + cut.id, label: "more", // one band line: the section shows above
+        go: () => m.scrollBy({ top: m.clientHeight * 0.85, behavior: "smooth" }) });
+    }
+  }
+  idx.classList.toggle("hidden", !below.length && !inner.length);
+  if (!below.length && !inner.length) {
     // Forget what it drew, so the same sections falling below again redraw
     // it (playtest 2026-09-28c: the band came back empty).
     idx.innerHTML = "";
     delete idx.dataset.key;
     return;
   }
-  const key = below.map((g) => g.id).join(",") + "|" + lastInventory.length;
+  const key = [...inner.map((e) => e.id), ...below.map((g) => g.id)].join(",") +
+    "|" + lastInventory.length;
   if (idx.dataset.key !== key) {
     idx.dataset.key = key;
     idx.innerHTML = "";
+    for (const e of inner) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "index-tab";
+      b.dataset.region = e.id;
+      b.textContent = "\u2193 " + e.label;
+      b.onclick = e.go;
+      idx.appendChild(b);
+    }
     for (const g of below) {
       const b = document.createElement("button");
       b.type = "button";

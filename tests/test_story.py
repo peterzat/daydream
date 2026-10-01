@@ -602,6 +602,27 @@ def test_beats_and_endings_may_carry_others_and_to():
         format2.validate_envelope2(copy.deepcopy(env))
 
 
+def test_a_beat_chip_hides_the_topic_chip_whose_words_it_claims(monkeypatch):
+    """While a beat that lists a topic's words as an alias is a chip, asking
+    those words tells the beat, so the topic's own chip steps aside; when
+    the beat is not a chip, the topic is the way in and stays (playthrough
+    2026-10-01: a "the tin" chip told the hush)."""
+    from daydream import heard
+
+    hush = {"label": "a hush", "aliases": ["hush", "the tin"], "kind": "beat",
+            "arc": "a", "beat": "b", "open": False}
+    tin = {"label": "the tin", "aliases": ["tin"], "kind": "topic", "index": 0, "open": False}
+    book = {"label": "the book", "aliases": [], "kind": "topic", "index": 1, "open": False}
+    monkeypatch.setattr(story, "available_topics", lambda npc, actor: [hush, tin, book])
+    hob = objects.get("t-hob")
+    labels = [t["label"] for t in story.offered_topics(hob, "x", known={"hush", "tin", "book"})]
+    assert labels == ["a hush", "the book"]
+    assert story.match_topic(hob, "x", "the tin") is hush  # what the hidden chip would have told
+    labels = [t["label"] for t in story.offered_topics(hob, "x", known={"tin", "book"})]
+    assert labels == ["the tin", "the book"], "an unheard beat leaves the topic as its door"
+    assert heard.knows(tin, {"tin"})
+
+
 async def test_the_actor_condition_lets_a_callback_speak_to_its_player():
     """A dream can give one player a second-person twin of a callback topic
     ({"actor": <toon id>}) while everyone else hears the third person."""

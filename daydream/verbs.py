@@ -561,6 +561,12 @@ async def _execute_resolved(
             own = next((n for n in [dobj.name, *dobj.aliases] if said and isinstance(n, str)
                         and glimpse.bare_name(n) == said), None)
             named = _the_name(own) if own and dobj.kind == "thing" else _the(dobj)
+            if spec.name == "read" and dobj.kind == "thing":
+                # A book nobody wrote (a grown room's shelf) is not a refusal
+                # to read but a dream's book (playthrough 2026-10-01: "read the
+                # paper book" said "You can't read the paper book.").
+                _narrate(room_id, _unreadable_line(dobj, named), recipient_id=actor_id)
+                return False
             _narrate(room_id, f"You can't {spec.name} {named}.", recipient_id=actor_id)
             return False
     elif dobj_id:
@@ -1310,6 +1316,23 @@ async def _handle_read(actor, room_id, dobj, iobj, args, spec) -> None:
     _dispatch(actor, room_id, [{"kind": "narrate", "to": "@actor",
         "text": f"There's nothing written on the {dobj.name} to read."}], spec)
     return False
+
+
+_WRITTEN_RE = re.compile(
+    r"\b(books?|pages?|letters?|notes?|signs?|maps?|ledgers?|journals?|diar(?:y|ies)|"
+    r"scrolls?|cards?|labels?|poems?|papers?|newspapers?|charts?|inscriptions?|"
+    r"writing|recipes?|lists?|postcards?|volumes?|tomes?)\b", re.I)
+
+
+def _unreadable_line(dobj, named: str) -> str:
+    """`read` on a thing with no words authored: a thing that looks written
+    (by its name or its look) has words that will not hold still; anything
+    else has nothing written on it."""
+    looks = " ".join([dobj.name, *dobj.aliases, str(dobj.properties.get("seed") or "")])
+    if _WRITTEN_RE.search(looks):
+        return (f"You try to read {named}, but the words drift like a half-remembered "
+                "dream and will not hold still.")
+    return f"There's nothing written on {named} to read."
 
 
 async def _handle_plant(actor, room_id, dobj, iobj, args, spec) -> None:

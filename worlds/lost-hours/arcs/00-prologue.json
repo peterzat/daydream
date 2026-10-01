@@ -74,6 +74,19 @@
     {"on": "open", "after": true, "if": [{"dobj": "o-clock-case"}, {"arc": "prologue"}],
      "do": [{"kind": "close_arc", "arc": "prologue", "ending": "mended"}]},
 
+    {"on": "ask", "after": true, "if": [{"dobj": "t-bell"}, {"pflag": "SPOKE-BELL", "not": true}],
+     "do": [{"kind": "set_pflag", "name": "SPOKE-BELL"}]},
+    {"on": "talk", "after": true, "if": [{"dobj": "t-bell"}, {"pflag": "SPOKE-BELL", "not": true}],
+     "do": [{"kind": "set_pflag", "name": "SPOKE-BELL"}]},
+    {"on": "wind", "if": [{"prop": "own_clock", "of": "@dobj"}, {"pflag": "WOUND", "not": true},
+                          {"present": "t-tace"}, {"pflag": "SPOKE-BELL"}],
+     "do": [{"kind": "narrate", "text": "You turn the little key. The small clock hesitates, then begins to tick, soft and sure, a half-beat apart from every other clock on the shelf. Tace watches with their hands folded. 'There,' they say. 'Now there's an hour here that's yours. Bell will be glad to hear it, next time you're in the square. And Mott keeps something for every new keeper, in the workshop.'",
+             "others": "{actor} winds a small clock of their own; it ticks a half-beat apart from all the others, and Tace watches with folded hands."},
+            {"kind": "set_pflag", "name": "WOUND"},
+            {"kind": "set_property", "target_id": "@dobj", "key": "seed", "value": "a small resting clock no bigger than a teacup, brass gone soft with handling, ticking soft and sure a half-beat apart from every other clock; by custom it is yours alone to wind"},
+            {"kind": "adjust_rel", "npc": "t-tace", "delta": 2},
+            {"kind": "add_fact", "id": "first-winding", "text": "{actor} wound their own small clock in the loft, by the old custom.",
+             "known_by": ["t-tace"], "spread": [{"to": "all", "after_minutes": 60}]}]},
     {"on": "wind", "if": [{"prop": "own_clock", "of": "@dobj"}, {"pflag": "WOUND", "not": true},
                           {"present": "t-tace"}],
      "do": [{"kind": "narrate", "text": "You turn the little key. The small clock hesitates, then begins to tick, soft and sure, a half-beat apart from every other clock on the shelf. Tace watches with their hands folded. 'There,' they say. 'Now there's an hour here that's yours. Bell will want to meet you, down in the square. And Mott keeps something for every new keeper, in the workshop.'",
@@ -188,6 +201,26 @@
         {
           "pflag": "MET-BELL",
           "not": true
+        },
+        {
+          "pflag": "SPOKE-BELL",
+          "not": true
+        }
+      ]
+    },
+    {
+      "id": "bell-hears-your-clock",
+      "text": "Bell will want to hear your clock, down in the Lantern Square.",
+      "if": [
+        {
+          "pflag": "WOUND"
+        },
+        {
+          "pflag": "MET-BELL",
+          "not": true
+        },
+        {
+          "pflag": "SPOKE-BELL"
         }
       ]
     },

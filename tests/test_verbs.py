@@ -455,6 +455,27 @@ async def test_read_without_text_degrades_gently():
 
 
 @pytest.mark.asyncio
+async def test_reading_an_unreadable_thing_is_a_dream_not_a_refusal():
+    """A thing with no read verb (a grown room's book) answers `read` in the
+    dream's terms, not "You can't read the paper book" (playthrough
+    2026-10-01); a thing with no look of writing has nothing written on it."""
+    book = objects.spawn("w-bunny", "thing", "paper book", "r-meadow",
+        prototype_id=objects.PROTO_THING,
+        properties={"seed": "a worn paper book with a soft cover"})
+    stone = objects.spawn("w-bunny", "thing", "smooth stone", "r-meadow",
+        prototype_id=objects.PROTO_THING, properties={"seed": "a smooth grey stone"})
+    assert "read" not in objects.verbs_for(book)
+    assert await verbs.execute_command("t-wren", "read", dobj_id=book.id,
+                                       dobj_name="paper book") is False
+    assert _last_narrate() == ("You try to read the paper book, but the words drift like a "
+                               "half-remembered dream and will not hold still.")
+    await verbs.execute_command("t-wren", "read", dobj_id=stone.id)
+    assert _last_narrate() == "There's nothing written on the smooth stone to read."
+    await verbs.execute_command("t-wren", "open", dobj_id=stone.id)
+    assert _last_narrate() == "You can't open the smooth stone."  # other verbs refuse as before
+
+
+@pytest.mark.asyncio
 async def test_examine_appends_state_without_overwriting_seed():
     box = _spawn_clock_case("locked")
     await verbs.execute_command("t-wren", "examine", dobj_id=box)

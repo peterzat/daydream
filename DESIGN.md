@@ -126,7 +126,12 @@ of room narration takes a **drop cap** in `--amber`.
   height above a paragraph, so the fade never greys the line you read first.
 - **Margin index** (`#margin-index`): at the margin's foot, the sections below
   the fold, named ("↓ you carry · 2"), each a touch away; it glints when
-  something new lands in your hands.
+  something new lands in your hands. What the fold cuts inside a section
+  shows there too: a resident whose ask-about chips are below it ("↓ ask
+  Tace"), else a bare "↓ more" when nothing else is named.
+- **Reading index** (`#prose-index`): the reading column's foot says "↓ more"
+  while the column holds more below, a touch turning a page (playthrough
+  2026-10-01: on a laptop-height window the fade alone went unread).
 - **In-prose affordances** (`.entity-link`): in-scope object mentions become
   soft dotted-underline click targets; the staged/active target is emphasized.
   A person links only by name (capitalized), and a line quoting your own
