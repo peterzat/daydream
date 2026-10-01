@@ -661,3 +661,29 @@ def test_a_dream_reaches_prod_only_through_install(argv, ok):
     else:
         with pytest.raises(prodctl.ProdError, match="dream install"):
             prodctl._refuse_side_doors(argv)
+
+
+def test_status_edge_line_leads_with_what_friends_see():
+    """The 2026-10-01 reboot: `prod status` printed the flag (awake, the
+    operator's intent) first, while friends saw the asleep page."""
+    from daydream import edge as edge_mod
+
+    def fail(*a, **k):
+        raise edge_mod.EdgeError("Cloudflare API unreachable")
+
+    def fake(public, state):
+        return type("E", (), {"EdgeError": edge_mod.EdgeError,
+                              "describe_public": staticmethod(edge_mod.describe_public),
+                              "public_status": staticmethod(public),
+                              "describe_state": staticmethod(state)})
+
+    down = fake(lambda: {"state": "asleep", "unplanned": True, "note": ""},
+                lambda: "awake since 2026-09-28T17:20:06Z; watch: DOWN since 2026-10-01T21:16:00Z")
+    assert prodctl.edge_line(down) == ("friends see asleep (unplanned: the box does not answer); "
+                                       "flag awake since 2026-09-28T17:20:06Z; "
+                                       "watch: DOWN since 2026-10-01T21:16:00Z")
+    # Either half failing leaves the other standing.
+    no_api = prodctl.edge_line(fake(lambda: {"state": "awake"}, fail))
+    assert no_api == "friends see awake; flag unknown (Cloudflare API unreachable)"
+    no_toml = prodctl.edge_line(fake(fail, lambda: "awake"))
+    assert no_toml == "friends see unknown (Cloudflare API unreachable); flag awake"

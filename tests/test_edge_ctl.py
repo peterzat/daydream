@@ -125,3 +125,14 @@ def test_the_uptime_watch_is_described_plainly():
     assert down == "DOWN since 2026-09-28T10:05:00Z (unplanned)"
     one = {"down_since": None, "outages": [{"from": "a", "to": "b"}]}
     assert edge.describe_uptime(one) == "up; last unplanned outage a to b (1 recorded)"
+
+
+def test_describe_public_says_what_friends_see():
+    """The 2026-10-01 reboot: the flag said awake while friends saw the
+    asleep page, and the status line led with the flag."""
+    assert edge.describe_public(None) == "no answer from the public status route"
+    assert edge.describe_public({"state": "awake", "asleep": False}) == "awake"
+    assert edge.describe_public({"state": "asleep", "unplanned": True, "note": ""}) == \
+        "asleep (unplanned: the box does not answer)"
+    assert edge.describe_public({"state": "asleep", "note": "back Sunday"}) == "asleep (back Sunday)"
+    assert edge.describe_public({"state": "asleep", "note": ""}) == "asleep"

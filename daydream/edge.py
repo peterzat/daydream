@@ -197,6 +197,20 @@ def describe_state() -> str:
     return out
 
 
+def describe_public(pub: dict | None) -> str:
+    """What friends see, in words, from the Worker's public status. The flag
+    is the operator's intent and stays awake through an unplanned outage, so
+    a status line that leads with it reads awake while friends see the asleep
+    page (the 2026-10-01 reboot)."""
+    if not isinstance(pub, dict):
+        return "no answer from the public status route"
+    if pub.get("state") != "asleep":
+        return str(pub.get("state") or "?")
+    if pub.get("unplanned"):
+        return "asleep (unplanned: the box does not answer)"
+    return f"asleep ({pub['note']})" if pub.get("note") else "asleep"
+
+
 def public_status_url() -> str:
     """The Worker's public status route, from edge/wrangler.toml's PUBLIC_HOST
     and BASE vars, so a fork probes its own instance (codereview WARN

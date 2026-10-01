@@ -99,9 +99,12 @@ def test_a_socket_dropped_without_a_close_frame_fails():
 
 def test_timer_results():
     loaded = {"LoadState": "loaded"}
-    assert prodcheck.check_timer("daydream-backup.service",
-                                 {**loaded, "Result": "success", "ExecMainExitTimestamp": "n/a"},
-                                 "active").ok
+    fresh = prodcheck.check_timer("daydream-backup.service",
+                                  {**loaded, "Result": "success", "ExecMainExitTimestamp": "n/a"},
+                                  "active")
+    # systemd forgets a run at reboot: the 2026-10-01 reboot read that
+    # morning's backup as "not run yet".
+    assert fresh.ok and fresh.detail == "not run since boot"
     ok = prodcheck.check_timer("daydream-backup.service",
                                {**loaded, "Result": "success", "ExecMainExitTimestamp": "Mon 04:30"},
                                "active")

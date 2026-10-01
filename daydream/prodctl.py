@@ -895,13 +895,25 @@ def status() -> int:
         + ("" if all(c.ok for c in jobs) else "  <- FAILED: journalctl -u daydream-<job>"))
     edge = _edge()
     if edge is not None:
-        try:
-            say("edge: " + edge.describe_state())
-        except (edge.EdgeError, OSError) as e:
-            say(f"edge: unknown ({e})")
+        say("edge: " + edge_line(edge))
     else:
         say("edge: not configured (docs/CLOUDFLARE-SETUP.md)")
     return 0
+
+
+def edge_line(edge) -> str:
+    """What friends see first, then the flag (the operator's intent, which an
+    unplanned outage leaves awake) and the uptime watch. Either half failing
+    leaves the other standing: status must always print."""
+    try:
+        seen = edge.describe_public(edge.public_status())
+    except (edge.EdgeError, OSError) as e:
+        seen = f"unknown ({e})"
+    try:
+        flag = edge.describe_state()
+    except (edge.EdgeError, OSError) as e:
+        flag = f"unknown ({e})"
+    return f"friends see {seen}; flag {flag}"
 
 
 def behind(release: str, head: str) -> str:

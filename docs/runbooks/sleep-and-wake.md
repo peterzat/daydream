@@ -52,6 +52,13 @@ deploy's restart also reads as a short unplanned outage and recovers within
 seconds. When the box is back: `bin/game prod wake` (it is idempotent), then
 `bin/game prod check`. See [incident.md](incident.md) if wake fails.
 
+Reading `bin/game prod status` meanwhile: its edge line leads with what
+friends see (`friends see asleep (unplanned: the box does not answer)`); the
+flag after it still says awake, because the flag is the intent and an outage
+does not change it. After a reboot the jobs read "not run since boot" until
+their next run: systemd forgets a unit's last run at boot
+(`systemctl list-timers 'daydream-*'` and the backups folder say what ran).
+
 ## The flag alone
 
 `bin/game edge sleep "<note>"` and `bin/game edge wake` change only the

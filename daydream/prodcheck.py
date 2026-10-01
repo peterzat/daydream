@@ -162,7 +162,10 @@ def check_timer(unit: str, props: dict[str, str], timer_state: str) -> Check:
                                   "enables it)")
     ran = props.get("ExecMainExitTimestamp", "").strip()
     if ran in ("", "n/a"):
-        return Check(name, True, "not run yet")
+        # systemd keeps a unit's last run only until the box reboots, so this
+        # is "since boot", never "ever" (the 2026-10-01 reboot read a backup
+        # that ran that morning as never run).
+        return Check(name, True, "not run since boot")
     if props.get("Result") == "success":
         return Check(name, True, f"ok (last {ran})")
     return Check(name, False, f"{props.get('Result')} (last {ran}; journalctl -u {unit})")
