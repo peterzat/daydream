@@ -2,51 +2,39 @@
 
 ## Security Review — 2026-10-01 (scope: paths)
 
-**Summary:** Path-scoped review of the 18 paths the caller named, read as
-their change from the last scan (`adc00ff`) to HEAD `d57fbe3`. That covers
-four commits:
-- `32d5840`: the /codereview fixes. `art_seed` weights only the planter's
-  words the composition kept (the last entry's WARN), and the gear Tace hands
-  back goes home to the loft.
-- `a1c4bbb`: a REFLEXES heading (outside the named paths).
-- `a29ad0e`: `playthroughs/` leaves `.gitignore`. Teardown's copy of the
-  action log names screenshots by their place and masks the made-up password.
-- `d57fbe3`: the first three blind runs, committed: reports, notes, action
-  logs and 403 screenshots.
+**Summary:** Path-scoped review of the five paths the caller named, read as
+their change from the last scan (`d57fbe3`) to HEAD `2a8d93b`. That covers
+three commits:
+- `4b69ea6`: teardown scrubs every file it lands in the reports folder (the
+  made-up password, and the session's absolute folder), and the
+  `reports_dir()` docstring is fixed. This was the last entry's playthrough
+  NOTE, now resolved.
+- `9c9bad0`: the reports folder's screenshots are re-encoded at 960 px, and
+  `bin/game playthrough purge` deletes finished sessions' villages.
+- `2a8d93b`: nudity words join the banlist's content category, the first
+  half of the last entry's art NOTE.
 
-The last entry's WARN is fixed: this run's probe shows the words the gardener
-drops stay out of the painting's weighted words. No BLOCK or WARN. Two NOTEs
-are new. The first carries that WARN's open image-content follow-ups, now
-measured: the gardener itself kept a nude figure for one of four adversarial
-phrases, and `art_seed` weights what it keeps. The second is teardown's
-scrub, which covers only the action log's typed text. The committed
-playthroughs hold nothing of the instance. Register: 0 BLOCK / 0 WARN /
-10 NOTE (eight carried; their files are unchanged).
+No BLOCK or WARN. The art NOTE is carried, narrowed: the case the last entry
+measured is closed, but synonyms and inflections still reach SDXL on two
+paths (a grown room's painting and a dreamer's portrait), and the negative
+prompts are unchanged. Register: 0 BLOCK / 0 WARN / 9 NOTE (eight carried;
+their files are unchanged).
 
 ### Findings
 
-[NOTE] daydream/growth.py:364-381 (with daydream/llm/safety.py:57-58) — The fix for the last entry's WARN holds for what the dream-gardener drops. What it keeps still reaches SDXL with no content check, and is now weighted at 1.4. That WARN's other two remediations (an image-content wordlist, negative-prompt terms) are still open; this NOTE carries them.
-  Attack vector: A friend with an unspent dreamseed plants a phrase that passes the gates. The banlist's content category is three words, so "nude" and "naked" pass. When the gardener keeps the content in its `room_seed`, `art_seed` puts those words first at weight 1.4 (`growth.py:656` stores it). The first entry paints it from `Room.art_seed`, for every visitor.
-  Evidence: A text-only probe sent four adversarial phrases and a control through the production gates, `GROWTH_SYSTEM`, `_user_prompt`, `validate_growth_output` and `art_seed`, against the served model. It made 5 calls, rendered no image and wrote nothing.
-  - For an unclothed bather and for a dead man by a pool, the composition left the content out, and `art_seed` did not weight it. The fix works there.
-  - For a nude sleeper, the gardener kept "a nude sleeper whose pale skin..." in its `room_seed`. `art_seed` weighted "a nude sleeper skin pale as candle wax" at 1.4.
-  - A skull with a knife was refused. The control kept its colour words.
-  - The filter is per word. A deterministic call to `art_seed`, with a `room_seed` that uses "bathing", "naked" and "woman" in separate, harmless phrases, returns "(a woman bathing naked beneath:1.4)". The probe did not produce that case.
-  - The `room_seed` part is appended unsanitized, so weight syntax the gardener copies from a phrase reaches the prompt. No ComfyUI embeddings are installed.
-  Precedent: appearance seeds reach SDXL raw behind a cap and the same banlist. Accounts are invited, and the admin repaint tool replaces a painting. Confidence: high that the words reach the prompt; no image was rendered.
+[NOTE] daydream/llm/safety.py:57-59 (with daydream/api/slots.py:201, daydream/growth.py:286 and :364-381, and node "4" of daydream/images/workflows/painterly_room.json and painterly_portrait.json) — `2a8d93b` closes the case the last entry measured. A phrase or a dreamer's look that says nude or naked is now refused before any call, and a composition that keeps one is rejected with the seed kept. The list is per word, though, and the two paths that put a friend's words into SDXL have nothing else between them and a synonym. The workflows' negative prompts still name no content (the other half of the last entry's remediation), and `art_seed` still builds a weighted run from words scattered through the `room_seed`.
+  Attack vector: An invited friend makes a dreamer whose look is "a bare-breasted bather" or "a sexy dreamer in lingerie". `_toon_request` (slots.py:164-203) checks a 300-character cap and `first_banned`, and both pass. The portrait is painted from those words (`portrait_target`, images/client.py:313), shown on the dreamer's card to every player in the same room, and kept in the art keep with its prompt. An admin repaint replaces the cache file, not the kept copy. On the growth path, the phrase "a sleeper in her nakedness" passes the gate (growth.py:550). If the gardener keeps the word, the composition passes (growth.py:286) and `art_seed` weights it at 1.4.
+  Evidence: deterministic calls only (no model call, no render):
+  - `first_banned` returns None for sex, sexy, porn, nakedness, nudist, undressing, disrobed, bare-breasted, breasts, lingerie and "nothing but moonlight". On the gore side it returns None for blood, severed, decapitated and entrails.
+  - `validate_growth_output` now rejects a `room_seed` that says "naked" anywhere, so the last entry's "(a woman bathing naked beneath:1.4)" can no longer form. It accepts one that says "nakedness", and `art_seed` then returns "(a sleeper in her nakedness:1.4)".
+  - The combination still forms with a word the list lacks. The phrase "a woman bathing bare beneath the willow" passes the gate, a `room_seed` of "a woman's shawl on bare branches, and birds bathing beneath a willow by the pool" passes the validator, and `art_seed` returns "(a woman bathing bare beneath the willow:1.4)".
+  - Node 4 of both workflows lists style terms only (harsh edges, pixel art, neon, ..., deformed, low quality).
+  - Mitigations: accounts are invited, and a player makes at most six dreamers a day (`DREAMERS_PER_DAY`). None of the seven new words appears in `worlds/`, so nothing authored is newly dropped.
+  Confidence: high that these words reach the prompt. No image was rendered, so how explicitly SDXL draws them under the portrait framing and the watercolor LoRA is unmeasured.
   Remediation:
-  - Add nudity terms to the banlist's content category (nude, naked, unclothed, undressed, topless; "naked" also catches bare branches, an acceptable cost here). The banlist already runs over the phrase, the composition and appearance seeds. The check on the composition holds even when a phrase is spelled to dodge a wordlist.
-  - Add content terms to the workflow's negative prompt at the next workflow change. That change busts every cache key, so batch it.
-  - Optionally, weight only runs of two or more consecutive phrase words found in the same order in `room_seed`. Strip `()[]:` from the `room_seed` part, as the phrase part already is.
-
-[NOTE] daydream/playthrough.py:586-602 and :616-629 (with :1174 and :104) — Since `a29ad0e` the reports folder is committed, and teardown scrubs only the typed text in the action log. The player's notes.md and report.md, page-errors.log and each entry's `marks` labels are copied as written.
-  Attack vector: `format_response` hands the player every screenshot's absolute path, which names the operator's home directory (:1174). BRIEF.md gives it the made-up password. A future player that quotes a path or the password in its notes or report, or types the password into a plain text field, lands it in a commit. The skill's read before commit is the only control.
-  Evidence: A deterministic call to `shareable_actions` kept the password in two cases: in a `marks` label (`text field "username" containing "<password>"`), and when typed in two pieces. None of the three committed runs did either; each was checked against its session's own password, which was never printed. The password opens nothing after teardown: its account lives only in the session's data dir, and the loopback server stops. So the practical exposure is the box's username and data layout, and the username is already public as the git author. `reports_dir()`'s docstring (:104) still calls the folder gitignored.
-  Remediation:
-  - Mask the password over the whole serialized entry, `marks` included.
-  - Run notes.md, report.md and page-errors.log through the same scrub on their way into `playthroughs/`: the password masked, and the session dir rewritten to a relative path.
-  - Fix the docstring.
-  - Extend `test_teardown_lands_the_report_with_its_session_record` with both cases.
+  - Add content terms to node 4 of both workflows (for example nsfw, nudity, nude, naked, sexual, lingerie, gore, blood, corpse). The model then resists the synonyms no wordlist will hold. It changes every cache key, so batch it with the next workflow change, as the last entry said.
+  - Extend the sexual category with whole words that are safe in this world: sexy, porn, pornographic, nakedness, nudist, nudism, undressing, disrobed, lingerie, bare-breasted. Avoid stems that catch village words: `nud\w*` takes "nudge", `sex\w*` takes "sextant" and "sexton", and "breast" takes "chimney breast".
+  - In `art_seed`, weight only runs of two or more consecutive phrase words found in the same order in the `room_seed`, and strip `()[]:` from the `room_seed` part (unchanged from the last entry).
 
 Carried from the last entry (still open; none of their files changed since `adc00ff`):
 
@@ -68,41 +56,47 @@ Carried from the last entry (still open; none of their files changed since `adc0
 
 ### Traced and cleared this run (not findings)
 
-- **The committed playthroughs** (3 reports, 3 notes, 3 action logs, the
-  README and 403 screenshots).
-  - None holds a key, a token, a private-key block, an email, a box or
-    tailnet address, a home path, a URL, the operator's name or the instance
-    domain.
-  - All three logs mask the password. No session's password appears in any
-    tracked file, in any diff in the history, or in any commit message. Each
-    was checked against that session's own password, never printed. The
-    local raw logs keep it, by design.
-  - The screenshots carry only JFIF and an sRGB profile: no EXIF, no
-    comments. The three viewed (the door, the awake page, a grown room) show
-    only the page, with no browser chrome.
-  - The operator's name surfaces only in the invite card, the sleep note and
-    the "invitations are resting" line. A playthrough reaches none of them,
-    and dev's `.env` does not set it.
-  - The four session servers are stopped (nothing listens on their ports).
-    Their accounts exist only in each session's own data dir.
-- **The blind players' typed lines,** now in git, read as data: sign-in,
-  looks, greetings, asks, plant phrases and two letters. Nothing steering.
-  Their villages had no other players. The only inputs were authored data,
-  the local model and the player itself, so a report cannot carry a third
-  party's words into a later session.
-- **`shareable_actions`' paths.** `shot` becomes `shots/<name>`. A line that
-  does not parse is dropped, not copied. `sess["id"]` comes from the 0600
-  session file, built from a username reduced to `[a-z0-9]`.
-- **`art_seed`'s phrase part** is ASCII letters only (`[a-z]+`), stricter
-  than the strip it replaced, so no weights, brackets or colons come from the
-  phrase. A phrase in look-alike letters splits into fragments that match
-  nothing in `room_seed`.
-- **The prologue's new effect** is `set_property` on a fixed id with an
-  authored value, under `RULE_KINDS`.
-  `test_the_gear_tace_hands_back_goes_home_to_the_loft` pins it, and the
-  assembled artifact matches its sources.
-- **`.gitignore`** still ignores `instance/`, `.env` and
-  `.claude/settings.local.json`, and git tracks none of them.
+- **Teardown's scrub (`4b69ea6`) resolves the last entry's playthrough
+  NOTE.** All four remediations landed:
+  - each action-log line is scrubbed whole after its shot is made
+    relative, mark labels included;
+  - notes, page errors and the report with its session record pass through
+    the same scrub, which masks the password and turns the session's folder
+    and its `player/` folder (as written and resolved) into the run's id;
+  - the docstring is fixed;
+  - the test plants both cases and passes.
+
+  A probe in a scratch data dir showed the residuals: a password typed in
+  two pieces, or written in another case, is not masked. From the code, a
+  password cut short by a mark label's 72-character limit would leave its
+  prefix, and a screenshot shows whatever was typed in plain view. None of
+  this matters. The password belongs to an account that exists only in the
+  session's own data dir, whose server stops at teardown and which `purge`
+  now deletes. A path outside the session folder (the sessions root, the
+  home directory) is also kept. It adds nothing: the box's home and data
+  layout already appear in four tracked files (`docs/playtests/BRIEF.md`,
+  `tests/test_ops_units.py` and two dreams' `rehearsal.json`).
+- **`share_shot` (`9c9bad0`).** Its input is the harness's own Chromium
+  screenshots. The player can write only notes.md and report.md, so nothing
+  it controls reaches Pillow. The re-encode drops EXIF and ICC profiles. A
+  JPEG comment would survive (Pillow carries `info["comment"]` through
+  `convert` and `save`, checked), but Chromium's screenshots carry none. A
+  file that will not open is copied as it is, as the earlier `copytree` did.
+- **`purge_finished` (`9c9bad0`).** It deletes only a directory under the
+  sessions root that holds `session.json`, has a landed report of the same
+  name, is not the current session, and whose recorded server and browser
+  are not live harness processes. `shutil.rmtree` refuses a symlinked entry
+  and does not follow links inside one. The player cannot reach it:
+  `./browser purge` exits 2 (checked), like every verb outside the eight
+  player verbs. Purging also removes the raw action log and transcript that
+  hold the unmasked password.
+- **The banlist change** is additive. `first_banned` is a fixed
+  alternation with word boundaries, so it has no backtracking risk, and
+  "nudes" matches once "nude" fails its boundary. The new words appear
+  nowhere in `worlds/`, `docs/canon/` or WHIMSY.md. Every other caller
+  (letters, dreamer names, dialogue drafts, journals, drift, glimpses,
+  memories) refuses or falls back on a hit, so a false positive fails
+  closed.
 
 ### Player-text scan (CLAUDE.md "Player text is data")
 
@@ -117,33 +111,40 @@ Carried from the last entry (still open; none of their files changed since `adc0
 
 ### Secrets, PII and the instance
 
-- The unpushed range (`32d5840..d57fbe3`, three commits, every text file)
-  and `32d5840` itself hold none of these: a key, a token, a private-key
-  block, an email, a box or tailnet address, a home path, the operator's
-  name or the instance domain. A pattern scan of the added lines found
-  nothing.
-- The names in the playthroughs are the harness's made-up players and
-  village residents. The names in tests are fixtures (Robin Ash, Wren).
+- The five files' last three commits each (`git log -p --follow -3`) and
+  the unpushed range (`4b69ea6..2a8d93b`, two commits, every text file)
+  hold none of these: a key, a token, a private-key block, an email, a box
+  or tailnet address, a home path, the operator's name or the instance
+  domain.
+- The names in the tests are fixtures (Robin Ash, Wren, Ada, Bo, Cy, Di),
+  and so is the password they use.
 
 ### Coverage
 
 - All dimensions were reviewed. No dependency manifests or ops files are in
-  scope.
-- `daydream/playthrough.py` was read in full. `daydream/growth.py` was read
-  as its diff, with `art_seed`'s caller, the gardener prompt, the validator
-  and the banlist read in context, and the image client's prompt builder for
-  how `art_seed` reaches ComfyUI.
-- The ten playthrough text files were read in full. The action logs were
-  read as parsed entries, with every typed line read.
-- The 403 screenshots are outside the named paths. All were checked for
-  embedded metadata and three were viewed; the other 400 were not viewed.
-- The three test files were read as diffs and run: 137 passed, none
-  skipped. `tools/assemble_world.py --check` passes.
-- One live probe ran: five text calls to the shared vLLM while prod was
-  awake. No image was rendered and nothing was written.
-- Git history: no credential-handling files are in scope. The commits since
-  `adc00ff` were checked for key-shaped values, and the whole history for
-  the four sessions' passwords.
+  scope. Pillow, newly imported by `playthrough.py`, is a dev and test
+  dependency (12.2.0 in the dev venv, not in the prod lock), and it decodes
+  only harness-made screenshots.
+- `daydream/llm/safety.py`, `daydream/playthrough.py`,
+  `tests/test_playthrough.py` and `tests/test_safety.py` were read in full.
+  `tests/test_growth.py` was read as its diff, its test list and its
+  fixtures.
+- Read in context for the banlist's reach: growth's validator, `art_seed`
+  and phrase gate; `slots._toon_request`; `portrait_target`; both
+  workflows' negative prompts; the art keep's header.
+- The three test files ran: 124 passed, none skipped (the medium tier drove
+  Chromium).
+- Every probe was deterministic and local: teardown on a fake session in a
+  scratch data dir, `share_shot` on a JPEG carrying EXIF, ICC and a
+  comment, and the banlist, the validator and `art_seed` on chosen strings.
+  No model call, no render, and nothing written outside the scratchpad.
+- Outside the named paths, the unpushed range also changes
+  `.claude/skills/playthrough/SKILL.md`, `CLAUDE.md` and
+  `playthroughs/README.md`. They were pattern-scanned for secrets and
+  instance facts only, not reviewed.
+- Git history: no credential-handling files are in scope (`playthrough.py`
+  handles only the made-up password, stored 0600). The five files' recent
+  history was checked as above.
 
 ### Accepted Risks
 
@@ -234,6 +235,6 @@ Carried register (from prior reviews; still open, not re-flagged):
   injected instruction would want stay behind ask rules.
 
 ---
-*Prior review (2026-10-01, paths, commit `adc00ff`): 33 paths (70 files) over six commits after `6a934d1`: the fold-tab fixes, the SPA's rail and margin band, the parser's vocative talk, the Ledger's planted places, the gear trail, and the playthrough fixes with `art_seed` at WORLD_VERSION 1.15. One WARN: a grown room's painting led with the planter's raw phrase at weight 1.4, restoring what the gardener had left out (six text-only probes). `32d5840` fixed it by weighting only the words the composition kept. The register stood at 0 BLOCK / 1 WARN / 8 NOTE. The full entry is at `git show 32d5840:SECURITY.md`.*
+*Prior review (2026-10-01, paths, commit `d57fbe3`): 18 paths over four commits after `adc00ff`: the `art_seed` fix, the gear's home, and the first three blind playthroughs committed with their reports, notes, action logs and 403 screenshots. The last entry's WARN was fixed. Two NOTEs were new: the gardener kept a nude figure for one of four adversarial phrases and `art_seed` weighted it, and teardown scrubbed only the action log's typed text. The register stood at 0 BLOCK / 0 WARN / 10 NOTE. The full entry is at `git show 4b69ea6:SECURITY.md`.*
 
-<!-- SECURITY_META: {"date":"2026-10-01","commit":"d57fbe34527543fcafc12b4b3ac8013db98decb5","scope":"paths","scanned_files":[".gitignore","daydream/growth.py","daydream/playthrough.py","playthroughs/2026-10-01-noor.md","playthroughs/2026-10-01-noor/actions.log","playthroughs/2026-10-01-noor/notes.md","playthroughs/2026-10-01-priya.md","playthroughs/2026-10-01-priya/actions.log","playthroughs/2026-10-01-priya/notes.md","playthroughs/2026-10-01-silas.md","playthroughs/2026-10-01-silas/actions.log","playthroughs/2026-10-01-silas/notes.md","playthroughs/README.md","tests/test_growth.py","tests/test_playthrough.py","tests/test_walkthroughs.py","worlds/lost-hours.json","worlds/lost-hours/arcs/00-prologue.json"],"block":0,"warn":0,"note":10} -->
+<!-- SECURITY_META: {"date":"2026-10-01","commit":"2a8d93babc2eca7c4235b9684e97c7a83d8bddf7","scope":"paths","scanned_files":["daydream/llm/safety.py","daydream/playthrough.py","tests/test_growth.py","tests/test_playthrough.py","tests/test_safety.py"],"block":0,"warn":0,"note":9} -->
