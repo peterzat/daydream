@@ -367,10 +367,15 @@ def art_seed(phrase: str, room_seed: str) -> str:
     scene. The house palette (low-saturation cream and sage) washed a "pale
     blue" flower white when the colour was one detail of a whole room
     (playthrough 2026-10-01c; A/B'd on SDXL: the weights keep the colour and
-    the watercolour)."""
-    words = " ".join(re.sub(r"[()\[\]:]", " ", phrase).replace("-", " ").split())
-    colors = dict.fromkeys(" ".join(p for p in m.groups() if p).lower()
-                           for m in _COLOR.finditer(phrase))
+    the watercolour). Only the words the composition kept are weighted, in
+    the phrase's order: the gardener leaves unsafe content out of its
+    `room_seed`, and the painting must not put it back (codereview
+    2026-10-01c); a colour it dropped is not emphasised either."""
+    kept = set(re.findall(r"[a-z]+", room_seed.lower()))
+    words = " ".join(w for w in re.findall(r"[a-z]+", phrase, re.I) if w.lower() in kept)
+    colors = dict.fromkeys(c for c in (" ".join(p for p in m.groups() if p).lower()
+                                       for m in _COLOR.finditer(phrase))
+                           if all(w in kept for w in c.split()))
     parts = [f"({words}:1.4)"] if words else []
     parts += [f"({c}:1.35)" for c in colors]
     return ", ".join(parts + [room_seed.strip()])

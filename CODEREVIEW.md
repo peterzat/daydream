@@ -1,28 +1,26 @@
-## Review — 2026-10-01b (commit: 6a934d1)
+## Review — 2026-10-01c (commit: adc00ff)
 
-**Summary:** Refresh review of `origin/main..6a934d1` (all 20 files in focus): the playthrough's gameplay fixes (a beat's chip hides the topic chip whose words it claims, the SPOKE-BELL twin of the first winding, `read` on an unauthored thing, the dreamseed's word count, the reading column's "more" tab and the margin's in-section tabs, WORLD_VERSION 1.14) and the /playthrough harness's honesty (no `text`, no printed labels, orange first-sighting tags, the pace/notes/budget gates, the session record). Tests before: short+medium 2770 passed; after one /codefix cycle: 2770 passed. Security (/security, paths): 0 BLOCK / 0 WARN / 8 NOTE (the last entry's WARN and one NOTE closed).
+**Summary:** Refresh review of `origin/main..adc00ff` (all files in focus): the second and third playthroughs' fixes (rail wheel, one-line margin band, keepsake shapes, the guide's letter example; the parser's clause-in-a-list and vocative talk; the Ledger's planted places; the prologue's gear trail and setting the gear in; answers kept in view through a re-render, one-row verb bar, the plant's text note, a refusal naming its word, threads counted once read, grown rooms painted from `art_seed`, unwritten notes read as a dream's words; WORLD_VERSION 1.15). Tests before: short+medium 2783 passed; after one /codefix cycle: 2785 passed. Security (/security, paths): 0 BLOCK / 1 WARN / 8 NOTE; the WARN is the first finding below, fixed.
 
 **External reviewers:**
 None configured.
 
 ### Findings
 
-[WARN] web/assets/main.js:1842 — the margin's "↓ ask <name>" tab scrolls to a stale row after any re-render: its click handler closes over the `.topic-row` element found when the band was drawn, but `renderTopics` rebuilds every row on each snapshot (`box.innerHTML = ""`, main.js:559) while the band's key (inner ids + sections + inventory count) stays the same, so the buttons are not redrawn. Clicking then measures a detached element (a zero rect) and scrolls the margin to the wrong place.
-  Evidence: `go: () => m.scrollTo({ top: yOf(r) - 6, ... })` with `r` from the draw-time `querySelectorAll`; `if (idx.dataset.key !== key)` skips redraws; `renderTopics(others)` runs on every state_snapshot (main.js:358). The browser test clicks before any re-render, so it passes.
-  Suggested fix: resolve the row when clicked (find the `#topics .topic-row` whose `.topic-who` names that person, and scroll to it if present), and add a step to the browser test that forces a re-snapshot (or re-renders the topics) between drawing the band and clicking the tab.
+[WARN] daydream/growth.py:364 — `art_seed` puts the planter's raw phrase first, at weight 1.4, so the painting no longer follows what the dream-gardener kept: the gardener leaves unsafe content out of its `room_seed` (no people, no violence, no darkness; the validator checks it), and `art_seed` puts the player's original words back at the front of the image prompt. Only the 120-character cap and a three-word content banlist stand between a phrase and a painting every visitor sees, kept in the art keep. (security, measured with six text-only probes: an unclothed bather, a helmet with a bullet hole and a grave all passed the gates, the gardener dropped or softened them, and `art_seed` restored the original words)
+  Evidence: `parts = [f"({words}:1.4)"] if words else []` over the whole cleaned phrase; colours are taken from the phrase, not from `room_seed`.
+  Suggested fix: weight only the phrase's words that the gardener kept in `room_seed` (in order, colours included: a colour the composition dropped is not emphasised either); add a test where the composition drops a word of the phrase and `art_seed` leaves it out.
 
-[WARN] web/assets/style.css:1012 — `#prose-index` is a full-width band over the reading column's foot (it reuses `.margin-index`, which takes pointer events), so a link on the column's last visible line under the band (the arrival line's "You see: ..." names often sit there) can no longer be clicked: the click lands on the band. The new tab is the only thing in it that should take a click.
-  Evidence: `.margin-index { position: absolute; z-index: 5; ... }` with no `pointer-events` rule; `updateProseIndex` sizes the band to the column's full width (`idx.style.width = p.offsetWidth`). In the playthrough's own shot 013 the band sits across the arrival line.
-  Suggested fix: `.prose-index { pointer-events: none; } .prose-index .index-tab { pointer-events: auto; }` (and the same for `.margin-index` is reasonable but optional); a browser assertion that `document.elementFromPoint` at a point on the band beside the tab is not the band.
+[WARN] worlds/lost-hours/arcs/00-prologue.json:51 — Tace now hands the gear back with the key, but the gear's home is still the well-court (`properties.home: r-well`), so a player who rests between the handover and opening the case wakes with the key gone home to the loft and the gear gone back into the moss across the village. Before this change the gear stayed with Tace. (`toons.send_home_things` moves every carried thing with a home on rest; `config.rest_returns_things` is on.)
+  Evidence: the give rule spawns the key with `home: r-loft` and leaves the gear's `home: r-well` from 02-square.json.
+  Suggested fix: in the give rule, set the gear's home to the loft (`{"kind": "set_property", "target_id": "o-escapement-gear", "key": "home", "value": "r-loft"}`), so after the handover both go home to Tace's bench; a walkthrough step that rests (or a unit test of `toons.home_of`) holding the gear after the handover.
 
-[NOTE] daydream/verbs.py:1321 — `_WRITTEN_RE` matches common phrases in a look ("no sign of wear", "a list of chores"), so a stone so described gets the dream's drifting-words line rather than "nothing written on it". Harmless phrasing; noted only.
-
-[NOTE] daydream/playthrough.py — carried: `run_player` still launches without pinging the session's browser first; the playthrough server still inherits the dev Jev key (documented dev egress).
+[NOTE] daydream/parser.py — the vocative fast path runs before the verb fast paths, so a line that opens with a person's name and a comma is always speech to them ("<name>, take the lamp" asks them rather than taking it). Intended; noted.
 
 ### Fixes Applied
 
-- [WARN] web/assets/main.js:1842 — the "↓ ask <name>" tab finds that resident's `#topics .topic-row` when clicked and measures it then (nothing happens if the row is gone). The browser test swaps every row for a clone under an unchanged band, scrolls the margin to the top, and clicks.
-- [WARN] web/assets/style.css:1012 — `.prose-index` ignores pointer events and only its tab takes them; the browser test asserts a point on the band beside the tab reaches the column. `.margin-index` left as it was.
+- [WARN] daydream/growth.py:364 — `art_seed` weights only the phrase's words the composition kept (in the phrase's order; a colour only when all its words are in `room_seed`), so the painting never restores what the gardener left out. New test `test_a_grown_rooms_painting_weights_only_what_the_composition_kept`; the two older art-seed tests updated to the rule.
+- [WARN] worlds/lost-hours/arcs/00-prologue.json:51 — the handover sets the gear's home to the loft beside the key. New test `test_the_gear_tace_hands_back_goes_home_to_the_loft` (fails on the old world file).
 
 ### Accepted Risks
 
@@ -31,6 +29,6 @@ None configured.
 - Carried from SECURITY.md: LLM-emitted effects take an unscoped, LLM-chosen target id within each verb's allowed subset; stored prompt-injection via captured NPC memory; bootstrap `$MODEL` heredoc; `cmd_logs` path component; qpeek clone; `world reset` rm -rf operator trust; CGNAT hardcoding in tailscale mode; an account deleted mid-reply leaves the reply and its `talk:`/`rel:` records.
 
 ---
-*Prior review (2026-10-01, full, `677a903`): the /playthrough skill and harness; 3 WARN fixed in one /codefix cycle (the player's sandbox escape through an importable cwd, `--session-dir` after `--as-player`, the inherited environment), 0 BLOCK.*
+*Prior review (2026-10-01b, refresh, `6a934d1`): the playthrough fixes and the harness's honesty gates; 2 WARN fixed in one /codefix cycle (the "ask <name>" tab finds its row at click time, the reading index lets clicks through), 0 BLOCK.*
 
-<!-- REVIEW_META: {"date":"2026-10-01","commit":"6a934d1","reviewed_up_to":"6a934d10361102581de15fab0c17840a7645dee4","base":"origin/main","tier":"refresh","block":0,"warn":2,"note":2} -->
+<!-- REVIEW_META: {"date":"2026-10-01","commit":"adc00ff","reviewed_up_to":"adc00ff8048126413ce1f4a8cee46d145188d75e","base":"origin/main","tier":"refresh","block":0,"warn":2,"note":1} -->

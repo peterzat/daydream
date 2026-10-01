@@ -53,6 +53,7 @@
              "seed": "a small brass case-key on a loop of worn ribbon, warm as if just out of a pocket",
              "aliases": ["key", "case-key"], "verbs": ["use"], "generated_by": "give:t-tace",
              "properties": {"home": "r-loft"}},
+            {"kind": "set_property", "target_id": "o-escapement-gear", "key": "home", "value": "r-loft"},
             {"kind": "narrate", "text": "Tace turns the little gear over in the lamplight, and something long held eases out of their shoulders. 'You found it. You carried it all the way home.' A breath on its teeth, a rub with their sleeve, and they fold it back into your hand with a small brass key, warm from their pocket. 'By custom the one who carries it home sets it in. The case is yours to open, friend.'",
              "others": "Tace turns the little gear over in the lamplight, cleans it on their sleeve, and folds it back into {actor}'s hand with a small brass key: the case is theirs to open now."},
             {"kind": "advance_beat", "arc": "prologue", "beat": "gave-gear"},

@@ -859,10 +859,21 @@ def test_a_grown_rooms_painting_leads_with_the_planters_words_and_colours():
     was one detail of a whole room (playthrough 2026-10-01c): a grown room
     paints from the planter's words first, weighted, each colour again."""
     assert growth.art_seed("a small pale-blue flower with a brass-colored center",
-                           "A small flower blooms in moss.") == (
-        "(a small pale blue flower with a brass colored center:1.4), (pale blue:1.35), "
-        "(brass:1.35), A small flower blooms in moss.")
-    assert growth.art_seed("a quiet (hidden) room: old", "A room.") == "(a quiet hidden room old:1.4), A room."
+                           "A small pale blue flower with a brass center blooms in moss.") == (
+        "(a small pale blue flower with a brass center:1.4), (pale blue:1.35), "
+        "(brass:1.35), A small pale blue flower with a brass center blooms in moss.")
+    assert growth.art_seed("a quiet (hidden) room: old", "A quiet hidden room.") == (
+        "(a quiet hidden room:1.4), A quiet hidden room.")
+
+
+def test_a_grown_rooms_painting_weights_only_what_the_composition_kept():
+    """The gardener leaves unsafe content out of its room_seed; the painting
+    must not put the planter's dropped words (or colours) back (codereview
+    2026-10-01c)."""
+    seed = growth.art_seed("a red grave under blue lilies", "blue lilies float on a still pool")
+    assert seed == "(a blue lilies:1.4), (blue:1.35), blue lilies float on a still pool"
+    assert "grave" not in seed and "red" not in seed
+    assert growth.art_seed("graves", "a still pool") == "a still pool"
 
 
 @pytest.mark.asyncio
@@ -873,7 +884,7 @@ async def test_a_grown_room_keeps_its_painting_prompt_apart_from_its_seed(monkey
     room_id = _grown_rooms()[0][0]
     room = rooms.get_room(room_id)
     assert room.seed == VALID_COMPOSITION["room_seed"]  # the language prompts' seed
-    assert room.art_seed.startswith("(a mossy green stair into light:1.4), (green:1.35), ")
+    assert room.art_seed.startswith("(a green stair into light:1.4), (green:1.35), ")
     assert room.art_seed.endswith(VALID_COMPOSITION["room_seed"])
     meadow = rooms.get_room("r-meadow")
     assert meadow.art_seed == meadow.seed  # an authored room paints from its seed

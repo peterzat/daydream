@@ -52,3 +52,21 @@ async def test_lost_hours_walkthrough(zero_llm, tmp_path, path):
     run = await walkthrough.replay(dataset)
     assert run.steps > 0
     assert zero_llm.await_count == 0
+
+
+async def test_the_gear_tace_hands_back_goes_home_to_the_loft(zero_llm, tmp_path):
+    """Tace hands the gear back with the key; a player who rests before
+    opening the case finds both at Tace's bench, not the gear back in the
+    well-court's moss (codereview 2026-10-01c)."""
+    from daydream import objects, toons
+
+    dataset = walkthrough.load_dataset(LOST_HOURS_SETS[0].parent / "prologue.json")
+    cmds = dataset["segments"][0]["commands"]
+    upto = next(i for i, c in enumerate(cmds) if c.get("cmd") == "give gear to tace")
+    dataset["segments"] = [{**dataset["segments"][0], "commands": cmds[:upto + 1]}]
+    walkthrough.fresh_world(json.loads(LOST_HOURS.read_text()), tmp_path / "w.db")
+    run = await walkthrough.replay(dataset)
+    toons.send_home_things(run.actors["A"])
+    assert objects.get("o-escapement-gear").location_id == "r-loft"
+    key = next(o for o in objects.contents("r-loft", "thing") if o.name == "case key")
+    assert toons.home_of(key).id == "r-loft"
