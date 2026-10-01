@@ -34,7 +34,7 @@ is anything a dream adds. Only what players create is painted live. For
 pictures, the local GPU is the painter and Opus is the art director; the
 "reflexes, not voice" split is about words.
 
-## What the GPU generates at runtime, ranked by honest value
+## What the GPU generates at runtime
 
 **Useful, because the input comes from the player and cannot be prepared in
 advance:**
