@@ -1,31 +1,33 @@
-## Review — 2026-09-30f (commit: 068a34c)
+## Review — 2026-10-01 (commit: 677a903)
 
-**Summary:** Refresh review of `origin/main..068a34c`: Bell's "who came through today" speaks to the asker (`trace.dreamers_today_clause` takes a listener; `story._tell` and `effects._apply_narrate` pass the actor when the line is theirs alone; a clause opening a sentence or quote is capitalized), `jev report`'s p95 by nearest rank, and REFLEXES.md's verbatim note of Jev's first prod decision. Tests before: short 2055, medium 2747 passed; after one /codefix cycle: short 2056, medium 2748 passed. Security (/security, paths): 0 BLOCK / 0 WARN / 9 NOTE (one new, raised to a WARN below and fixed).
+**Summary:** Full-depth review of `origin/main..677a903`, the /playthrough skill: `daydream/playthrough.py` (fresh village, made-up account, loopback server, headless Chromium daemon, the sandboxed `claude -p` player, teardown), `docs/playtests/BROWSER-BRIEF.md`, `.claude/skills/playthrough/SKILL.md`, `tests/test_playthrough.py`, and the `bin/game` / `.gitignore` / CLAUDE.md wiring. Tests before: short+medium 2763 passed; after one /codefix cycle: 2764 passed. Security (/security, paths): 0 BLOCK / 1 WARN / 9 NOTE; the WARN is the first finding below, fixed.
 
 **External reviewers:**
 None configured.
 
 ### Findings
 
-[WARN] daydream/story.py:234 — `_tell` fills `{dreamers_today}` before its second-person routing, so a line opening "You ..." (a beat, arrival or storylet with no explicit recipient) reaches the actor alone yet names them in the third person.
-  Evidence: `expand_placeholders(... listener=actor_id if recipient is not None and recipient == actor_id else None)` runs while `recipient` is still None for such a line; `effects.second_person_recipient(line, actor_id)` sets it only afterwards. `effects._apply_narrate` routes first and fills after, and commit e5863f9's message promises the second-person case.
-  Suggested fix: in `_tell`, compute the second-person recipient on the unfilled line first (as `_apply_narrate` does), then fill with the listener; add a test with a "You ..." line in a topic or beat without `to`.
+[WARN] daydream/playthrough.py:193 — the player can run arbitrary code outside its sandbox: `./browser` runs `python -m daydream.playthrough` with the player's folder as cwd, `python -m` puts the cwd first on `sys.path`, and the player may Write/Edit any file in that folder (`--allowedTools "Bash(./browser *),Write,Edit"`, :414). A planted `json.py` (or `daydream/__init__.py`, or an edited `./browser`) runs as the operator's user on the next `./browser` call, outside Claude Code's permission checks and the agent guard. (security, reproduced with a harmless `json.py`)
+  Evidence: `wrapper_script` writes `exec {py} -m daydream.playthrough --session-dir ... --as-player "$@"`; `player_argv` allows `Write,Edit` unscoped; `run_player` sets `cwd=p["player"]`.
+  Suggested fix: run the wrapper's Python isolated (`exec {py} -I -m daydream.playthrough ...`), and allow edits only to the two files the brief names (`Bash(./browser *),Edit(./notes.md),Edit(./report.md)`; setup creates both, report.md empty, so the player never needs to create a file). Update `test_the_player_runs_sandboxed_to_its_browser_and_its_own_files` and add a regression test that runs the generated wrapper with a planted `json.py` beside it and asserts the planted file never runs.
 
-[WARN] daydream/trace.py:173 — `dreamers_today()` is left with no callers: the clause now reads `_dreamers_today()` directly, and nothing else in daydream/, tests/ or tools/ calls the list form.
-  Evidence: `git grep "dreamers_today("` finds only the definition and `_dreamers_today` uses.
-  Suggested fix: drop the wrapper (or rename `_dreamers_today` to `dreamers_today` returning the pairs).
+[WARN] daydream/playthrough.py:1181 — options after `--as-player` are still parsed, so the player's own arguments can retarget the session: `./browser --session-dir /other look` sets `sdir_arg` to `/other` (the loop keeps consuming `--session-dir` after the wrapper's `--as-player`). The wrapper's contract is "player verbs only" for this session.
+  Evidence: `while argv and argv[0] in ("--session-dir", "--as-player")` runs over the wrapper's fixed prefix and then over the player's arguments; checked: `--session-dir /a --as-player --session-dir /b look` resolves to `/b`.
+  Suggested fix: stop option parsing at `--as-player` (everything after it is the player's verb and its arguments); test that `--as-player --session-dir X look` is refused as an unknown verb.
 
-[WARN] daydream/model_eval.py:1281 — `main()` pops the Jev key so a model-eval run measures the local path, but the run's first `import litellm` (in `_install_recorders`, and `daydream/llm/client.py`) happens later with `LITELLM_MODE` unset, and litellm then runs `load_dotenv()` (litellm/__init__.py:19), putting the key back from the repo's `.env`: Jev is on for the whole run (spend, and a local comparison partly scored on Jev's answers). Found by /security 2026-09-30f as a NOTE; raised here because the code states the opposite.
-  Evidence: `import daydream.model_eval` leaves `litellm` out of `sys.modules` (checked), so no earlier import already consumed `.env`. `tests/test_model_eval.py:204` cannot see it: it stubs the run and conftest sets `LITELLM_MODE=PRODUCTION`.
-  Suggested fix: `os.environ["LITELLM_MODE"] = "PRODUCTION"` in `main()` before the pops (bin/game already loads `.env` into the environment, so nothing else is lost); in the test, unset `LITELLM_MODE` (monkeypatch.delenv) and assert main() sets it, or import litellm in a subprocess and assert the key stays absent.
+[WARN] daydream/playthrough.py:419 — `player_env()` hands the sandboxed player the operator's whole environment minus `DAYDREAM_*` and two API keys. `bin/game` exports everything in the project `.env` and the per-host secrets file (`set -a`), so any other secret there (e.g. `TYPESAFE_API_KEY`, which Jev accepts, per /security) and this session's own `CLAUDE_CODE_*` variables reach the player's shell, where `./browser type "$VAR"` would expand them into the game's input log and its Jev egress. (also a /security NOTE)
+  Evidence: `{k: v for k, v in os.environ.items() if not k.startswith("DAYDREAM_") and k not in (...)}`; bin/game:95-106 sources both files with `set -a`.
+  Suggested fix: an explicit allowlist (PATH, HOME, USER, LOGNAME, SHELL, LANG, LC_*, TERM, TMPDIR, XDG_RUNTIME_DIR (the wrapper finds its socket there), and the proxy/CA variables if set); extend the test to plant a non-DAYDREAM secret and a `CLAUDE_CODE_*` variable and assert neither passes.
 
-[NOTE] daydream/trace.py:219 — a clause that opens a sentence is capitalized as a whole, so a dreamer whose name is lowercase ("moss") reads "Moss" there. The page links names case-insensitively (`linkifyEntities`), so only the typography changes.
+[NOTE] daydream/playthrough.py:430 — `run_player` launches a long `claude -p` run without checking that the session's browser and server answer; a dead browser makes every move fail for the whole run. A ping before launching would fail fast.
+
+[NOTE] daydream/playthrough.py:267 — the playthrough server inherits bin/game's environment, including the dev Jev key from `.env`, so a playthrough's typed lines reach Jev the way dev's do (small spend; an agent's text, not a friend's). Consistent with dev's accepted egress (docs/EXTERNAL.md); worth knowing.
 
 ### Fixes Applied
 
-- [WARN] daydream/story.py:234 — `_tell` routes the line (second person) on the unfilled text, then fills with the listener, as `_apply_narrate` does; test `test_a_you_line_told_to_the_actor_alone_says_you`.
-- [WARN] daydream/trace.py:173 — the caller-less `dreamers_today()` wrapper removed.
-- [WARN] daydream/model_eval.py:1281 — `main()` sets `LITELLM_MODE=PRODUCTION` before dropping the Jev keys; the test clears `LITELLM_MODE` and asserts main() sets it.
+- [WARN] daydream/playthrough.py:193 — `./browser` runs `python -I` (nothing in the player's folder is importable); the player's allowed tools are `Bash(./browser *),Edit(./notes.md),Edit(./report.md)`, and setup creates an empty report.md. Regression test `test_the_wrapper_never_runs_a_file_planted_beside_it` (a planted `json.py` and `daydream/__init__.py` never run). Confirmed in a live `claude -p` probe: report.md and notes.md writable, a Write to `./json.py` and an Edit to `./browser` denied.
+- [WARN] daydream/playthrough.py:1181 — option parsing stops at `--as-player`; the player's `--session-dir` is refused as an unknown command (tested, and refused in the live probe).
+- [WARN] daydream/playthrough.py:419 — `player_env()` is an allowlist (PATH, HOME, USER, LOGNAME, SHELL, LANG, LC_*, TERM, XDG_RUNTIME_DIR, temp dirs, proxy and CA variables); the test plants a non-DAYDREAM secret and a `CLAUDE_CODE_*` variable. The live probe signed in and played with this environment.
 
 ### Accepted Risks
 
@@ -34,6 +36,6 @@ None configured.
 - Carried from SECURITY.md: LLM-emitted effects take an unscoped, LLM-chosen target id within each verb's allowed subset; stored prompt-injection via captured NPC memory; bootstrap `$MODEL` heredoc; `cmd_logs` path component; qpeek clone; `world reset` rm -rf operator trust; CGNAT hardcoding in tailscale mode; an account deleted mid-reply leaves the reply and its `talk:`/`rel:` records.
 
 ---
-*Prior review (2026-09-30e, light, `1768691`): one docs commit (EXTERNAL.md's accepted judge list, REFLEXES "Limitations"); no findings.*
+*Prior review (2026-09-30f, refresh, `068a34c`): Bell's "who came through today" and `jev report`; 3 WARN fixed in one /codefix cycle (a "You" line routed before filling, a caller-less wrapper removed, model-eval's Jev-off made real), 0 BLOCK.*
 
-<!-- REVIEW_META: {"date":"2026-09-30","commit":"068a34c","reviewed_up_to":"068a34ca19c7","base":"origin/main","tier":"refresh","block":0,"warn":3,"note":1} -->
+<!-- REVIEW_META: {"date":"2026-10-01","commit":"677a903","reviewed_up_to":"677a90384462bf1b8d1073d86542257dc2c71eed","base":"origin/main","tier":"full","block":0,"warn":3,"note":2} -->

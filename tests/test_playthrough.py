@@ -54,7 +54,9 @@ def test_the_player_runs_sandboxed_to_its_browser_and_its_own_files():
     assert "--strict-mcp-config" in argv
     assert argv[argv.index("--permission-mode") + 1] == "dontAsk"
     assert argv[argv.index("--tools") + 1] == "Bash,Read,Write,Edit"
-    assert argv[argv.index("--allowedTools") + 1] == "Bash(./browser *),Write,Edit"
+    # writes reach only the two files the brief names (an Edit rule covers Write too)
+    assert argv[argv.index("--allowedTools") + 1] == (
+        "Bash(./browser *),Edit(./notes.md),Edit(./report.md)")
     for loose in ("--dangerously-skip-permissions", "bypassPermissions", "--add-dir", "--bare"):
         assert loose not in argv
 
@@ -63,10 +65,18 @@ def test_the_player_runs_sandboxed_to_its_browser_and_its_own_files():
 def test_the_player_inherits_no_keys_and_none_of_daydreams_settings(monkeypatch):
     monkeypatch.setenv("DAYDREAM_DATA_DIR", "/somewhere")
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-nope")
+    # bin/game exports the project .env and the per-host secrets file: anything there
+    monkeypatch.setenv("TYPESAFE_API_KEY", "ts-nope")
+    monkeypatch.setenv("MAIL_RELAY_TOKEN", "tok-nope")
+    monkeypatch.setenv("CLAUDE_CODE_ENTRYPOINT", "cli")  # the operator's own session
     monkeypatch.setenv("PATH", "/usr/bin")
+    monkeypatch.setenv("XDG_RUNTIME_DIR", "/run/user/1000")
+    monkeypatch.setenv("LC_ALL", "C.UTF-8")
     env = playthrough.player_env()
-    assert env["PATH"] == "/usr/bin"
-    assert not [k for k in env if k.startswith("DAYDREAM_") or k.endswith("_API_KEY")]
+    assert env["PATH"] == "/usr/bin" and env["LC_ALL"] == "C.UTF-8"
+    assert env["XDG_RUNTIME_DIR"] == "/run/user/1000", "./browser finds its socket there"
+    assert not [k for k in env if k.startswith(("DAYDREAM_", "CLAUDE")) or k.endswith("_API_KEY")]
+    assert "MAIL_RELAY_TOKEN" not in env
 
 
 @pytest.mark.tier_short
@@ -120,6 +130,10 @@ def test_the_wrapper_reaches_the_player_verbs_and_nothing_else(tmp_path, capsys)
     for verb in ("setup", "player", "teardown", "status", "_browser"):
         assert playthrough.main(["--session-dir", str(sdir), "--as-player", verb]) == 2
     assert "unknown command" in capsys.readouterr().err
+    # the options end at --as-player: the player's arguments cannot retarget the session
+    assert playthrough.main(["--session-dir", str(sdir), "--as-player",
+                             "--session-dir", str(tmp_path / "another"), "look"]) == 2
+    assert "unknown command '--session-dir'" in capsys.readouterr().err
     assert not sdir.exists()
 
 
@@ -251,7 +265,28 @@ def test_the_reports_stay_local_and_the_skill_names_real_verbs():
 # ---- the browser (medium) -----------------------------------------------------------
 
 
-FIXTURE = """<!doctype html><html><head><meta charset="utf-8"><style>
+@pytest.mark.tier_medium
+def test_the_wrapper_never_runs_a_file_planted_beside_it(tmp_path):
+    """./browser runs from the player's folder, where the player writes: its
+    Python imports nothing from there (python -I), whatever is planted."""
+    import subprocess
+
+    folder = tmp_path / "player"
+    (folder / "daydream").mkdir(parents=True)
+    ran = tmp_path / "planted-ran"
+    plant = f"open({str(ran)!r}, 'a').write(__name__ + '\\n')\n"
+    for planted in (folder / "json.py", folder / "daydream" / "__init__.py"):
+        planted.write_text(plant)
+    wrapper = folder / "browser"
+    wrapper.write_text(playthrough.wrapper_script(tmp_path / "no session"))
+    wrapper.chmod(0o755)
+    r = subprocess.run(["./browser", "look"], cwd=folder, env=playthrough.player_env(),
+                       capture_output=True, text=True, timeout=60)
+    assert not ran.exists(), f"a planted module ran: {ran.read_text().split()}"
+    assert r.returncode == 1 and "the browser is not answering" in r.stderr, r.stderr
+
+
+FIXTURE ="""<!doctype html><html><head><meta charset="utf-8"><style>
 body { margin: 0; font: 16px sans-serif; }
 .ptr { cursor: pointer; }
 #cover { position: absolute; left: 400px; top: 100px; width: 320px; height: 140px;
@@ -399,6 +434,7 @@ def test_setup_builds_a_fresh_village_the_friend_can_sign_into(chromium_here, re
         brief = p["brief"].read_text()
         assert r["base_url"] in brief and r["friend"]["password"] in brief
         assert (p["wrapper"].stat().st_mode & 0o111) and "--as-player" in p["wrapper"].read_text()
+        assert p["notes"].exists() and p["report"].read_text() == "", "the player only edits"
         send = functools.partial(playthrough.send, sdir)
         door = send({"cmd": "look"})
         assert door["n"] == 1, "setup's own page load is not the player's first look"

@@ -192,11 +192,13 @@ def render_brief(*, invite: str, persona: str, moves: int, day: str,
 
 def wrapper_script(sdir: Path) -> str:
     """./browser: the player's only command. It reaches the player verbs and
-    nothing else (`--as-player`)."""
+    nothing else (`--as-player`). Its Python runs isolated (`-I`): its cwd is
+    the player's folder, which the player writes, so nothing there is
+    importable."""
     py = shlex.quote(sys.executable)
     return ("#!/bin/sh\n"
             "# The playthrough browser (daydream/playthrough.py). Player verbs only.\n"
-            f"exec {py} -m daydream.playthrough --session-dir {shlex.quote(str(sdir))} "
+            f"exec {py} -I -m daydream.playthrough --session-dir {shlex.quote(str(sdir))} "
             "--as-player \"$@\"\n")
 
 
@@ -388,6 +390,7 @@ def setup(name: str | None = None, persona: str | None = None,
     p["wrapper"].write_text(wrapper_script(sdir))
     p["wrapper"].chmod(0o755)
     p["notes"].write_text(f"# Notes, {day}\n\n")
+    p["report"].write_text("")  # the player only edits; it never needs to create a file
     (root / "current").write_text(sid + "\n")
     return {"id": sid, "dir": str(sdir), "base_url": base, "friend": friend, "art": art,
             "notes": engines_note()}
@@ -411,16 +414,26 @@ def player_argv(model: str = DEFAULT_MODEL, claude: str = "claude") -> list[str]
     folder as cwd, outside the repo, so no CLAUDE.md is discovered."""
     return [claude, "-p", "--restricted", "--tools", "Bash,Read,Write,Edit",
             "--strict-mcp-config", "--permission-mode", "dontAsk",
-            "--allowedTools", "Bash(./browser *),Write,Edit",
+            "--allowedTools", "Bash(./browser *),Edit(./notes.md),Edit(./report.md)",
             "--append-system-prompt-file", "BRIEF.md",
             "--model", model, "--output-format", "stream-json", "--verbose"]
 
 
+# All the player gets of the operator's environment (plus LC_*). bin/game
+# exports the project .env and the per-host secrets file, and the operator's
+# own Claude Code session sets CLAUDE_CODE_*: none of that may follow.
+PLAYER_ENV_KEYS = frozenset((
+    "PATH", "HOME", "USER", "LOGNAME", "SHELL", "LANG", "TERM",
+    "XDG_RUNTIME_DIR", "TMPDIR", "TEMP", "TMP",  # where ./browser finds its socket
+    "HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY", "ALL_PROXY",
+    "http_proxy", "https_proxy", "no_proxy", "all_proxy",
+    "SSL_CERT_FILE", "SSL_CERT_DIR", "NODE_EXTRA_CA_CERTS"))
+
+
 def player_env() -> dict[str, str]:
-    """The player needs nothing of daydream's environment: ./browser carries
-    absolute paths."""
-    return {k: v for k, v in os.environ.items()
-            if not k.startswith("DAYDREAM_") and k not in ("ANTHROPIC_API_KEY", "OPENAI_API_KEY")}
+    """An allowlist: a shell, a home, a locale, the socket's directory, and a
+    proxy if one is set. ./browser carries absolute paths."""
+    return {k: v for k, v in os.environ.items() if k in PLAYER_ENV_KEYS or k.startswith("LC_")}
 
 
 PLAYER_PROMPT = ("Begin your playthrough now. Your brief is in your instructions and in "
@@ -1182,8 +1195,8 @@ def main(argv: list[str] | None = None) -> int:
         if argv[0] == "--as-player":
             as_player = True
             argv = argv[1:]
-        else:
-            sdir_arg, argv = Path(argv[1]), argv[2:]
+            break  # everything after it is the player's verb and its arguments
+        sdir_arg, argv = Path(argv[1]), argv[2:]
     if as_player or (argv and argv[0] in PLAYER_VERBS):
         if as_player and argv and argv[0] not in PLAYER_VERBS and argv[0] not in ("-h", "--help"):
             print(f"./browser: unknown command {argv[0]!r}; try: {', '.join(PLAYER_VERBS)}",
@@ -1234,7 +1247,8 @@ def main(argv: list[str] | None = None) -> int:
         r = res.get("result") or {}
         print(f"player finished: exit {res.get('exit')}, {r.get('num_turns', '?')} turns, "
               f"{res.get('minutes')} minutes, {r.get('subtype', 'no result line')}")
-        print(f"report written: {'yes' if paths(sdir)['report'].exists() else 'NO'}")
+        rp = paths(sdir)["report"]  # setup leaves it empty
+        print(f"report written: {'yes' if rp.exists() and rp.read_text().strip() else 'NO'}")
         return 0 if res.get("exit") == 0 else 1
     if a.cmd == "status":
         print("\n".join(status(sdir)))
