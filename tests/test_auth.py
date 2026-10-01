@@ -61,6 +61,47 @@ def test_invite_path_serves_the_same_door_for_any_slug():
     assert 'id="door-invite"' in a.text
 
 
+def test_a_shared_link_unfurls_with_the_card_and_names_no_one(monkeypatch):
+    """iMessage and Slack read the door's Open Graph tags without running
+    door.js: the invite path previews as an invitation with the card, every
+    image URL absolute (a crawler may resolve a relative one against the
+    invite's path), and nothing about the slug or who it is for."""
+    import re
+    from io import BytesIO
+
+    from PIL import Image
+
+    monkeypatch.setenv("DAYDREAM_PUBLIC_BASE", "/daydream/")
+    monkeypatch.setenv("DAYDREAM_PUBLIC_ORIGIN", "https://www.example.com")
+    with TestClient(app) as client:
+        invite = client.get("/invite/amber-thimble").text
+        door = client.get("/").text
+        card = client.get("/assets/card-village.jpg")
+        icons = [client.get(f"/assets/icon-{n}.png") for n in (32, 180)]
+
+    def meta(page: str, key: str) -> str:
+        m = re.search(rf'<meta (?:property|name)="{re.escape(key)}" content="([^"]*)">', page)
+        assert m, key
+        return m.group(1)
+
+    root = "https://www.example.com/daydream/"
+    assert meta(invite, "og:title") == "An invitation to The Village of Lost Hours"
+    assert meta(door, "og:title") == "The Village of Lost Hours"
+    for page in (invite, door):
+        assert meta(page, "og:image") == meta(page, "twitter:image") == \
+            root + "assets/card-village.jpg"
+        assert meta(page, "twitter:card") == "summary_large_image"
+        assert meta(page, "og:description") == "A small storybook village, kept for friends."
+        assert f'href="{root}assets/icon-32.png"' in page
+        assert f'href="{root}assets/icon-180.png"' in page
+        assert "{{" not in page
+    assert "amber-thimble" not in invite
+    # Public without a session (the gate's /assets/ prefix), and card-shaped.
+    assert card.status_code == 200 and card.headers["content-type"] == "image/jpeg"
+    assert Image.open(BytesIO(card.content)).size == (1200, 630)
+    assert [Image.open(BytesIO(r.content)).size for r in icons] == [(32, 32), (180, 180)]
+
+
 # ---- login / logout / me ------------------------------------------------------
 
 

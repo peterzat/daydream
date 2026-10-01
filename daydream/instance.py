@@ -4,7 +4,7 @@ words.
 An instance is a complete data dir (its world, its accounts, its art, its
 backups); `instance.json` inside it names it and carries the words that
 differ between games: the place, the door's lede and plate image, the
-operator's title, the invite blurb, and the world envelope `world reset`
+link-preview card, the operator's title, the invite blurb, and the world envelope `world reset`
 loads. Every key is optional and defaults to The Village of Lost Hours'
 words, so a data dir with no file (dev, the tests, prod before `instance
 migrate`) reads exactly as before. The words are data, never engine
@@ -30,6 +30,9 @@ DEFAULTS: dict[str, str] = {
     "place": "the village",
     "lede": "A small storybook village, kept for friends.",
     "door_image": "assets/door-village.png",
+    # A link's preview image (og:image; tools/make_link_card.py). An instance
+    # that names its own door and no card shows its door painting instead.
+    "card_image": "assets/card-village.jpg",
     "operator": "",  # empty: DAYDREAM_OPERATOR_NAME, then the generic default
     "envelope": "worlds/lost-hours.json",
     "invite_blurb": "a small storybook village I keep for friends",
@@ -37,6 +40,7 @@ DEFAULTS: dict[str, str] = {
 _SHAPES = {
     "name": NAME_RE,
     "door_image": re.compile(r"^assets/[a-z0-9_-]+\.(?:png|jpg|webp)$"),
+    "card_image": re.compile(r"^assets/[a-z0-9_-]+\.(?:png|jpg)$"),
     "envelope": re.compile(r"^worlds/[a-z0-9_-]+\.json$"),
 }
 MAX_WORDS = 200
@@ -74,6 +78,8 @@ def validate(raw: object) -> dict[str, str]:
             raise InstanceError(f"{FILE}: {key} {value!r} is not an allowed value")
         if value or key in ("name", "operator"):
             words[key] = value
+    if raw.get("door_image") and not raw.get("card_image"):
+        words["card_image"] = words["door_image"]
     return words
 
 

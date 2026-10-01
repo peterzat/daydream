@@ -6,6 +6,23 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex">
   <title>daydream</title>
+  <!-- A shared link's preview (iMessage, Slack, ...): crawlers read these
+       without running door.js, so the server fills them; absolute URLs,
+       since a crawler may resolve a relative one against the invite's path
+       rather than <base>. -->
+  <meta name="description" content="{{lede}}">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="daydream">
+  <meta property="og:title" content="{{og_title}}">
+  <meta property="og:description" content="{{lede}}">
+  <meta property="og:image" content="{{card_url}}">
+  <meta property="og:image:alt" content="A watercolour of {{place}}">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="{{og_title}}">
+  <meta name="twitter:description" content="{{lede}}">
+  <meta name="twitter:image" content="{{card_url}}">
+  <link rel="icon" type="image/png" sizes="32x32" href="{{public_root}}assets/icon-32.png">
+  <link rel="apple-touch-icon" href="{{public_root}}assets/icon-180.png">
   <link rel="stylesheet" href="assets/style.css">
 </head>
 <body class="door-body" data-place="{{place}}" data-place-capital="{{Place}}">

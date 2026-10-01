@@ -214,7 +214,7 @@ async def status_build(request: Request):
     )
 
 
-def _page(name: str) -> HTMLResponse:
+def _page(name: str, *, og_title: str | None = None) -> HTMLResponse:
     """Serve a shell page from web/ with the public base injected and the
     asset URLs stamped with the build (belt-and-suspenders with the no-store
     middleware; the client's build-mismatch reload is the primary stale-tab
@@ -233,10 +233,16 @@ def _page(name: str) -> HTMLResponse:
     # This instance's words (docs/INSTANCES.md): escaped, and validated in
     # instance.json (the door image can only name an asset).
     words = instance.load()
+    # A link preview's image and icons need absolute URLs (the public origin
+    # in prod; base-absolute where none is set, as in dev).
+    root = config.public_origin() + config.public_base()
     for marker, value in (("{{place}}", words["place"]),
                           ("{{Place}}", instance.place(capital=True)),
                           ("{{lede}}", words["lede"]),
-                          ("{{door_image}}", words["door_image"])):
+                          ("{{door_image}}", words["door_image"]),
+                          ("{{og_title}}", og_title or words["title"]),
+                          ("{{card_url}}", root + words["card_image"]),
+                          ("{{public_root}}", root)):
         html = html.replace(marker, html_escape(value, quote=True))
     return HTMLResponse(html, headers={"Cache-Control": "no-store"})
 
@@ -256,8 +262,9 @@ async def login_page():
 @app.get("/invite/{slug}")
 async def invite_page(slug: str):
     # The slug is only ever checked by the peek/redeem POSTs (throttled);
-    # this GET serves the same static card for any path.
-    return _page("door.html")
+    # this GET serves the same static card for any path, so its preview
+    # names no one and says nothing about whether the slug is good.
+    return _page("door.html", og_title=f"An invitation to {instance.load()['title']}")
 
 
 @app.get("/")

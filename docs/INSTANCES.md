@@ -72,6 +72,7 @@ option could split a two-word verb past its rule, so prodctl refuses it.
   "operator": "the Dungeon Master",
   "lede": "An old underground empire, kept for friends.",
   "door_image": "assets/door-zork.png",
+  "card_image": "assets/card-zork.jpg",
   "invite_blurb": "an old text adventure I keep for friends"
 }
 ```
@@ -85,6 +86,11 @@ bare reset of a Zork instance would seed Lost Hours). The words reach:
 
 - the door: the server fills `door.html` (lede, plate image, title) the way
   it already fills `<base href>`; door.js reads `place` for its sentences
+- a shared link's preview (iMessage, Slack): the door's Open Graph tags carry
+  the title ("An invitation to ..." on an invite link), the lede and
+  `card_image`, a 1200x630 PNG or JPEG made from the door painting by
+  `tools/make_link_card.py`; an instance that names a door and no card
+  previews with its door painting
 - the game page: `index.html` carries the same values for main.js (the awake
   page, the asleep note, the help leaf's "village" lines)
 - server text: "the village is full", invites resting, the sleep warning

@@ -99,9 +99,21 @@ def test_the_words_default_to_the_village_and_refuse_what_could_point_anywhere()
     for bad in ({"door_image": "../../etc/passwd"}, {"door_image": "https://x/y.png"},
                 {"envelope": "/etc/hosts"}, {"envelope": "worlds/../x.json"},
                 {"place": 3}, {"colour": "red"}, {"name": "Not A Name"},
-                {"place": "line\nbreak"}):
+                {"place": "line\nbreak"}, {"card_image": "https://x/y.png"},
+                {"card_image": "assets/card.webp"}):
         with pytest.raises(instance.InstanceError):
             instance.validate(bad)
+
+
+def test_a_link_preview_card_follows_the_instances_own_door():
+    """An instance that paints its own door and makes no card previews with
+    its door, never the village's card."""
+    assert instance.validate({})["card_image"] == "assets/card-village.jpg"
+    zork = instance.validate({"door_image": "assets/door-zork.png"})
+    assert zork["card_image"] == "assets/door-zork.png"
+    both = instance.validate({"door_image": "assets/door-zork.png",
+                              "card_image": "assets/card-zork.jpg"})
+    assert both["card_image"] == "assets/card-zork.jpg"
 
 
 def test_the_envelope_is_the_instances_own(box, capsys):
