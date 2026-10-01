@@ -1,33 +1,28 @@
-## Review — 2026-10-01 (commit: 677a903)
+## Review — 2026-10-01b (commit: 6a934d1)
 
-**Summary:** Full-depth review of `origin/main..677a903`, the /playthrough skill: `daydream/playthrough.py` (fresh village, made-up account, loopback server, headless Chromium daemon, the sandboxed `claude -p` player, teardown), `docs/playtests/BROWSER-BRIEF.md`, `.claude/skills/playthrough/SKILL.md`, `tests/test_playthrough.py`, and the `bin/game` / `.gitignore` / CLAUDE.md wiring. Tests before: short+medium 2763 passed; after one /codefix cycle: 2764 passed. Security (/security, paths): 0 BLOCK / 1 WARN / 9 NOTE; the WARN is the first finding below, fixed.
+**Summary:** Refresh review of `origin/main..6a934d1` (all 20 files in focus): the playthrough's gameplay fixes (a beat's chip hides the topic chip whose words it claims, the SPOKE-BELL twin of the first winding, `read` on an unauthored thing, the dreamseed's word count, the reading column's "more" tab and the margin's in-section tabs, WORLD_VERSION 1.14) and the /playthrough harness's honesty (no `text`, no printed labels, orange first-sighting tags, the pace/notes/budget gates, the session record). Tests before: short+medium 2770 passed; after one /codefix cycle: 2770 passed. Security (/security, paths): 0 BLOCK / 0 WARN / 8 NOTE (the last entry's WARN and one NOTE closed).
 
 **External reviewers:**
 None configured.
 
 ### Findings
 
-[WARN] daydream/playthrough.py:193 — the player can run arbitrary code outside its sandbox: `./browser` runs `python -m daydream.playthrough` with the player's folder as cwd, `python -m` puts the cwd first on `sys.path`, and the player may Write/Edit any file in that folder (`--allowedTools "Bash(./browser *),Write,Edit"`, :414). A planted `json.py` (or `daydream/__init__.py`, or an edited `./browser`) runs as the operator's user on the next `./browser` call, outside Claude Code's permission checks and the agent guard. (security, reproduced with a harmless `json.py`)
-  Evidence: `wrapper_script` writes `exec {py} -m daydream.playthrough --session-dir ... --as-player "$@"`; `player_argv` allows `Write,Edit` unscoped; `run_player` sets `cwd=p["player"]`.
-  Suggested fix: run the wrapper's Python isolated (`exec {py} -I -m daydream.playthrough ...`), and allow edits only to the two files the brief names (`Bash(./browser *),Edit(./notes.md),Edit(./report.md)`; setup creates both, report.md empty, so the player never needs to create a file). Update `test_the_player_runs_sandboxed_to_its_browser_and_its_own_files` and add a regression test that runs the generated wrapper with a planted `json.py` beside it and asserts the planted file never runs.
+[WARN] web/assets/main.js:1842 — the margin's "↓ ask <name>" tab scrolls to a stale row after any re-render: its click handler closes over the `.topic-row` element found when the band was drawn, but `renderTopics` rebuilds every row on each snapshot (`box.innerHTML = ""`, main.js:559) while the band's key (inner ids + sections + inventory count) stays the same, so the buttons are not redrawn. Clicking then measures a detached element (a zero rect) and scrolls the margin to the wrong place.
+  Evidence: `go: () => m.scrollTo({ top: yOf(r) - 6, ... })` with `r` from the draw-time `querySelectorAll`; `if (idx.dataset.key !== key)` skips redraws; `renderTopics(others)` runs on every state_snapshot (main.js:358). The browser test clicks before any re-render, so it passes.
+  Suggested fix: resolve the row when clicked (find the `#topics .topic-row` whose `.topic-who` names that person, and scroll to it if present), and add a step to the browser test that forces a re-snapshot (or re-renders the topics) between drawing the band and clicking the tab.
 
-[WARN] daydream/playthrough.py:1181 — options after `--as-player` are still parsed, so the player's own arguments can retarget the session: `./browser --session-dir /other look` sets `sdir_arg` to `/other` (the loop keeps consuming `--session-dir` after the wrapper's `--as-player`). The wrapper's contract is "player verbs only" for this session.
-  Evidence: `while argv and argv[0] in ("--session-dir", "--as-player")` runs over the wrapper's fixed prefix and then over the player's arguments; checked: `--session-dir /a --as-player --session-dir /b look` resolves to `/b`.
-  Suggested fix: stop option parsing at `--as-player` (everything after it is the player's verb and its arguments); test that `--as-player --session-dir X look` is refused as an unknown verb.
+[WARN] web/assets/style.css:1012 — `#prose-index` is a full-width band over the reading column's foot (it reuses `.margin-index`, which takes pointer events), so a link on the column's last visible line under the band (the arrival line's "You see: ..." names often sit there) can no longer be clicked: the click lands on the band. The new tab is the only thing in it that should take a click.
+  Evidence: `.margin-index { position: absolute; z-index: 5; ... }` with no `pointer-events` rule; `updateProseIndex` sizes the band to the column's full width (`idx.style.width = p.offsetWidth`). In the playthrough's own shot 013 the band sits across the arrival line.
+  Suggested fix: `.prose-index { pointer-events: none; } .prose-index .index-tab { pointer-events: auto; }` (and the same for `.margin-index` is reasonable but optional); a browser assertion that `document.elementFromPoint` at a point on the band beside the tab is not the band.
 
-[WARN] daydream/playthrough.py:419 — `player_env()` hands the sandboxed player the operator's whole environment minus `DAYDREAM_*` and two API keys. `bin/game` exports everything in the project `.env` and the per-host secrets file (`set -a`), so any other secret there (e.g. `TYPESAFE_API_KEY`, which Jev accepts, per /security) and this session's own `CLAUDE_CODE_*` variables reach the player's shell, where `./browser type "$VAR"` would expand them into the game's input log and its Jev egress. (also a /security NOTE)
-  Evidence: `{k: v for k, v in os.environ.items() if not k.startswith("DAYDREAM_") and k not in (...)}`; bin/game:95-106 sources both files with `set -a`.
-  Suggested fix: an explicit allowlist (PATH, HOME, USER, LOGNAME, SHELL, LANG, LC_*, TERM, TMPDIR, XDG_RUNTIME_DIR (the wrapper finds its socket there), and the proxy/CA variables if set); extend the test to plant a non-DAYDREAM secret and a `CLAUDE_CODE_*` variable and assert neither passes.
+[NOTE] daydream/verbs.py:1321 — `_WRITTEN_RE` matches common phrases in a look ("no sign of wear", "a list of chores"), so a stone so described gets the dream's drifting-words line rather than "nothing written on it". Harmless phrasing; noted only.
 
-[NOTE] daydream/playthrough.py:430 — `run_player` launches a long `claude -p` run without checking that the session's browser and server answer; a dead browser makes every move fail for the whole run. A ping before launching would fail fast.
-
-[NOTE] daydream/playthrough.py:267 — the playthrough server inherits bin/game's environment, including the dev Jev key from `.env`, so a playthrough's typed lines reach Jev the way dev's do (small spend; an agent's text, not a friend's). Consistent with dev's accepted egress (docs/EXTERNAL.md); worth knowing.
+[NOTE] daydream/playthrough.py — carried: `run_player` still launches without pinging the session's browser first; the playthrough server still inherits the dev Jev key (documented dev egress).
 
 ### Fixes Applied
 
-- [WARN] daydream/playthrough.py:193 — `./browser` runs `python -I` (nothing in the player's folder is importable); the player's allowed tools are `Bash(./browser *),Edit(./notes.md),Edit(./report.md)`, and setup creates an empty report.md. Regression test `test_the_wrapper_never_runs_a_file_planted_beside_it` (a planted `json.py` and `daydream/__init__.py` never run). Confirmed in a live `claude -p` probe: report.md and notes.md writable, a Write to `./json.py` and an Edit to `./browser` denied.
-- [WARN] daydream/playthrough.py:1181 — option parsing stops at `--as-player`; the player's `--session-dir` is refused as an unknown command (tested, and refused in the live probe).
-- [WARN] daydream/playthrough.py:419 — `player_env()` is an allowlist (PATH, HOME, USER, LOGNAME, SHELL, LANG, LC_*, TERM, XDG_RUNTIME_DIR, temp dirs, proxy and CA variables); the test plants a non-DAYDREAM secret and a `CLAUDE_CODE_*` variable. The live probe signed in and played with this environment.
+- [WARN] web/assets/main.js:1842 — the "↓ ask <name>" tab finds that resident's `#topics .topic-row` when clicked and measures it then (nothing happens if the row is gone). The browser test swaps every row for a clone under an unchanged band, scrolls the margin to the top, and clicks.
+- [WARN] web/assets/style.css:1012 — `.prose-index` ignores pointer events and only its tab takes them; the browser test asserts a point on the band beside the tab reaches the column. `.margin-index` left as it was.
 
 ### Accepted Risks
 
@@ -36,6 +31,6 @@ None configured.
 - Carried from SECURITY.md: LLM-emitted effects take an unscoped, LLM-chosen target id within each verb's allowed subset; stored prompt-injection via captured NPC memory; bootstrap `$MODEL` heredoc; `cmd_logs` path component; qpeek clone; `world reset` rm -rf operator trust; CGNAT hardcoding in tailscale mode; an account deleted mid-reply leaves the reply and its `talk:`/`rel:` records.
 
 ---
-*Prior review (2026-09-30f, refresh, `068a34c`): Bell's "who came through today" and `jev report`; 3 WARN fixed in one /codefix cycle (a "You" line routed before filling, a caller-less wrapper removed, model-eval's Jev-off made real), 0 BLOCK.*
+*Prior review (2026-10-01, full, `677a903`): the /playthrough skill and harness; 3 WARN fixed in one /codefix cycle (the player's sandbox escape through an importable cwd, `--session-dir` after `--as-player`, the inherited environment), 0 BLOCK.*
 
-<!-- REVIEW_META: {"date":"2026-10-01","commit":"677a903","reviewed_up_to":"677a90384462bf1b8d1073d86542257dc2c71eed","base":"origin/main","tier":"full","block":0,"warn":3,"note":2} -->
+<!-- REVIEW_META: {"date":"2026-10-01","commit":"6a934d1","reviewed_up_to":"6a934d10361102581de15fab0c17840a7645dee4","base":"origin/main","tier":"refresh","block":0,"warn":2,"note":2} -->

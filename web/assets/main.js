@@ -1840,8 +1840,15 @@ function updateMarginIndex(scrollable) {
     for (const r of m.querySelectorAll("#topics .topic-row")) {
       if (shown - yOf(r) < Math.min(r.offsetHeight, 26)) {
         const who = ((r.querySelector(".topic-who") || {}).textContent || "").replace(/ about$/, "");
-        inner.push({ id: "topics-" + who, label: who,
-          go: () => m.scrollTo({ top: yOf(r) - 6, behavior: "smooth" }) });
+        // Find the row when clicked: renderTopics rebuilds every row on a
+        // snapshot while this band (same key) keeps its buttons.
+        inner.push({ id: "topics-" + who, label: who, go: () => {
+          const row = [...m.querySelectorAll("#topics .topic-row")].find((x) =>
+            ((x.querySelector(".topic-who") || {}).textContent || "").replace(/ about$/, "") === who);
+          if (!row) return;
+          const o = m.getBoundingClientRect().top - m.scrollTop;
+          m.scrollTo({ top: row.getBoundingClientRect().top - o - 6, behavior: "smooth" });
+        } });
       }
     }
     // "more" only when nothing else is named: a named section below already

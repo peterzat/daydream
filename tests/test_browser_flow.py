@@ -436,6 +436,12 @@ def test_the_columns_name_what_lies_below_their_fold(tab, engines):
     expect(prose).to_have_class(re.compile(r"\bmore-below\b"))
     expect(more).to_have_text("↓ more")
     expect(more).to_be_visible()
+    # The band only shows the way: a click beside its tab reaches the column.
+    assert page.evaluate("""() => {
+      const b = document.getElementById('prose-index').getBoundingClientRect();
+      const el = document.elementFromPoint(b.left + 12, b.top + b.height / 2);
+      return !!el && !el.closest('#prose-index');
+    }"""), "the prose index band takes clicks beside its tab"
     more.click()
     page.wait_for_function("() => document.querySelector('.prose').scrollTop > 0")
 
@@ -445,6 +451,12 @@ def test_the_columns_name_what_lies_below_their_fold(tab, engines):
     ask = page.locator("#margin-index .index-tab", has_text=f"ask {resident}")
     expect(ask).to_have_text(f"↓ ask {resident}")
     row = page.locator("#topics .topic-row").first
+    # A snapshot rebuilds the rows while the band keeps its buttons
+    # (codereview 2026-10-01b): the tab must find the row when clicked.
+    page.evaluate("""() => document.querySelectorAll('#topics .topic-row')
+      .forEach((r) => r.replaceWith(r.cloneNode(true)))""")
+    page.evaluate("() => { document.getElementById('scene').scrollTop = 0; }")
+    expect(ask).to_be_visible()
     ask.click()
     page.wait_for_function("""() => {
       const m = document.getElementById('scene');

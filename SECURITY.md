@@ -2,49 +2,44 @@
 
 ## Security Review — 2026-10-01 (scope: paths)
 
-**Summary:** Path-scoped review of the nine files the caller named, read as
-their change from the last scan (`068a34c`) to HEAD `677a903`. That covers
-the /playthrough harness (`daydream/playthrough.py`, its tests, the
-`bin/game playthrough` verb and the ignored `playthroughs/` folder) and the
-review fixes in `story._tell`, `trace` and `model_eval`. One new WARN: the
-blind player's sandbox does not hold. A file the player writes in its own
-folder runs as the operator through the one command it is allowed. One new
-NOTE: the player's environment is filtered by a denylist. The model-eval
-NOTE is closed. Register: 0 BLOCK / 1 WARN / 9 NOTE (one new NOTE, eight
-carried).
+**Summary:** Path-scoped review of the sixteen files the caller named, read
+as their change from the last scan (`677a903`) to HEAD `6a934d1`. That
+covers three commits:
+- `abeeb5a`: the /codereview fixes to the playthrough sandbox.
+- `0ced720`: playthrough fixes in the engine, the SPA and the village. A
+  beat chip hides the topic it claims, `read` on an unwritten thing answers
+  in the dream's terms, the columns name what lies below the fold, Tace
+  knows you already talked with Bell, the dreamseed says how many words it
+  holds, and `WORLD_VERSION` is 1.14.
+- `6a934d1`: the playthrough's screen-only player, with pace, notes and
+  budget gates.
+
+No new findings. The last entry's WARN (the player's sandbox) and its new
+NOTE (the player's environment) are fixed, and tests pin both. Register:
+0 BLOCK / 0 WARN / 8 NOTE (all eight carried; their code is unchanged).
 
 ### Scope and method
 
-- `daydream/playthrough.py` and `tests/test_playthrough.py` are new and were
-  read in full. The other seven files were read as their diffs from
-  `068a34c`, with `story._tell` and `model_eval.main` read in context.
-- Also read, outside the scope but load-bearing:
-  - `.claude/skills/playthrough/SKILL.md` and
-    `docs/playtests/BROWSER-BRIEF.md`;
-  - `claude --help` (2.1.286), for `--restricted`, `--tools`,
-    `--allowedTools` and `dontAsk`;
-  - the installed litellm's import-time `.env` load.
-- The sandbox escape was reproduced in the scratchpad. The exact wrapper
-  `setup()` writes, run as `./browser look` from a folder holding a planted
-  `json.py`, ran that file as uid 1000. The same wrapper with `-I` ignored
-  the file and still loaded the package through the editable install. No
-  `claude -p` session was started.
-- The three scoped test files pass (55 tests, the Chromium ones included).
+- `daydream/playthrough.py` was read in full at HEAD. The other fifteen
+  files were read as their diffs from `677a903`, with some code read in
+  context: the refusal branch of `verbs._execute_resolved`,
+  `story.available_topics`, and the prologue's other `wind` rules.
+- Also read, outside the scope but load-bearing: `claude --help` (2.1.286)
+  for `--restricted` and `dontAsk`. Restricted mode confines the file tools,
+  Read included, to the working directory.
+- The four scoped test files pass: 137 tests, none skipped. That includes
+  the Chromium tests and the planted-file regression.
+- `tools/assemble_world.py --check` passes: the committed
+  `worlds/lost-hours.json` matches its sources.
+- No `claude -p` session was started this run. The fix cycle's live probe
+  is recorded under "Closed".
 - The player-text scan ran (below).
 
 ### Findings
 
-[WARN] daydream/playthrough.py:193-200 (`wrapper_script`), with :407-416 (`player_argv`) and :437 (`run_player`) — The player's sandbox does not hold. `claude -p` runs with the player's folder as its working directory. It pre-approves bare `Write` and `Edit` there, and `Bash(./browser *)`. `./browser` is a shell script that runs `.venv/bin/python -m daydream.playthrough` from that same folder, and `python -m` puts the working directory first on `sys.path`. So a file the player writes there (`json.py`, or `daydream/__init__.py`) is imported before the real module. It runs as the operator, outside Claude Code, where dontAsk, restricted mode and the allow list never see it. The agent guard does not see it either: restricted mode ignores the user, project and local settings, where its hook is configured. The wrapper itself also sits in the writable folder. This run did not test whether a Write or Edit to it keeps the exec bit.
-  Attack vector: Two pre-approved actions: Write `./json.py` with any code, then run `./browser look`. Reproduced: the planted file ran as uid 1000 through the exact wrapper `setup()` writes. Nothing outside reaches the player today. The village is fresh, the server listens on loopback, the SPA links nowhere off its origin, and the operator writes the persona. Exploiting it takes the player model itself, stuck or steered by on-screen text. The local model's improvised replies are the one source on that screen the project treats as untrusted. The reach would be the operator's whole user: the docker group, the prod sudoers entries, the Cloudflare token's folder, the gh login and the operator's Claude login. The docstring, the skill and `test_the_player_runs_sandboxed_to_its_browser_and_its_own_files` all promise that nothing runs but `./browser` and edits to the notes and report.
-  Remediation: Run the wrapper's interpreter isolated: `exec {py} -I -m daydream.playthrough ...` (verified: the planted file is ignored and the package still loads). Narrow the writes to the two files the brief names: `--allowedTools "Bash(./browser *),Edit(./notes.md),Edit(./report.md)"` (Edit rules cover the Write tool). That also protects `./browser`. Check with one probe session that a Write to `./json.py` or `./browser` is refused. Pin both in the tests, and add the regression: run the generated wrapper from a folder holding a planted `json.py`, and assert the file never runs.
+No new security issues identified in the reviewed scope.
 
-  Status (2026-10-01, /codereview fix cycle): fixed as remediated. `./browser` runs `python -I`; the allow list is `Bash(./browser *),Edit(./notes.md),Edit(./report.md)` and setup creates both files; `test_the_wrapper_never_runs_a_file_planted_beside_it` plants `json.py` and `daydream/__init__.py`. A live `claude -p` probe confirmed: notes.md and report.md writable, a Write to `./json.py` and an Edit to `./browser` denied, the player's own `--session-dir` refused.
-
-[NOTE] daydream/playthrough.py:419-423 (`player_env`) — The player's environment drops only `DAYDREAM_*`, `ANTHROPIC_API_KEY` and `OPENAI_API_KEY`. `bin/game` exports everything in the repo's `.env` and the per-host secrets file (`set -a`, bin/game:95-106). So `TYPESAFE_API_KEY`, which `jev/settings.py:35` accepts as the Jev key, reaches the player's `claude -p` and every `./browser` it runs. So does any other exported secret (checked with synthetic values). `test_the_player_inherits_no_keys_and_none_of_daydreams_settings` asserts that no `*_API_KEY` remains but seeds only `ANTHROPIC_API_KEY`. Today the player could read its environment through the WARN above. It could also expand a variable inside an allowed `./browser` argument, if Claude Code permits that (not tested). Remediation: build the environment from an allowlist (`PATH`, `HOME`, `USER`, `LANG`/`LC_*`, `TERM`, `TMPDIR`, and `XDG_RUNTIME_DIR`, which `sock_path` needs for the wrapper to find the daemon's socket). In the test, seed `TYPESAFE_API_KEY` and a token-shaped name.
-
-  Status (2026-10-01): fixed. `player_env()` is an allowlist (`PLAYER_ENV_KEYS` plus `LC_*`); the test seeds `TYPESAFE_API_KEY`, a token-shaped name and a `CLAUDE_CODE_*` variable. The live probe signed in and played with this environment.
-
-Carried from the last entry (still open):
+Carried from the last entry (still open; none of their files changed since `677a903`):
 
 [NOTE] docs/claude-settings.local.example.json:8-13 — The allow list includes `.venv/bin/python *`, `python3 *`, `node *` and `timeout *`, so interpreter code runs with no prompt. The guard reads code only for literal spellings, so a computed argv or path gets neither a prompt nor a decision. Narrower rules (`.venv/bin/python -m pytest *`) cut the no-prompt paths. They cannot make the guard a boundary while the agent edits and runs repo code (BACKLOG `agent-sessions-without-root`). The template's allow list is unchanged.
 
@@ -64,82 +59,91 @@ Carried from the last entry (still open):
 
 ### Closed since the last entry
 
-- **model-eval and litellm's `.env` load.** This was the last entry's NOTE,
-  raised to a WARN in codereview 2026-09-30f. Fixed in `fa2a7c0`:
-  - `main()` sets `LITELLM_MODE=PRODUCTION` before it drops the Jev keys.
-  - The installed litellm calls `load_dotenv()` in one place on its import
-    path (`litellm/__init__.py:19-20`), and only when `LITELLM_MODE` is
-    `DEV`. `main.py` and `utils.py` import dotenv but call nothing in it.
-  - The test now clears `LITELLM_MODE` and asserts that `main()` sets it.
+- **The player's sandbox** (the WARN; fixed in `abeeb5a`).
+  - `./browser` runs `python -I`, so nothing in the player's folder is
+    importable (`playthrough.py:200-209`).
+  - The allow list is `Bash(./browser *),Edit(./notes.md),Edit(./report.md)`
+    (`:425`), and setup creates both files (`:400-401`). The player never
+    needs to create a file and cannot edit `./browser`.
+  - Option parsing stops at `--as-player` (`:1219-1224`), so a
+    `--session-dir` from the player is an unknown command.
+  - Three tests pin these fixes:
+    `test_the_player_runs_sandboxed_to_its_browser_and_its_own_files`,
+    `test_the_wrapper_reaches_the_player_verbs_and_nothing_else` and
+    `test_the_wrapper_never_runs_a_file_planted_beside_it`. The last one
+    runs the generated wrapper beside a planted `json.py` and
+    `daydream/__init__.py`, and asserts that neither runs.
+  - The fix cycle's live `claude -p` probe confirmed that notes.md and
+    report.md are writable. It also confirmed that a Write to `./json.py`,
+    an Edit to `./browser` and a second `--session-dir` are refused.
+- **The player's environment** (the NOTE; fixed in `abeeb5a`).
+  - `player_env()` is an allowlist: `PLAYER_ENV_KEYS` plus `LC_*`
+    (`:433-444`).
+  - The test seeds `TYPESAFE_API_KEY`, a token-shaped name and a
+    `CLAUDE_CODE_*` variable, and asserts that none passes.
+  - The proxy and CA variables pass so the player's own CLI can reach its
+    API. A proxy URL can carry credentials, but none of these variables is
+    set on this box.
 
 ### Traced and cleared this run (not findings)
 
-- **`story._tell`** (`a4d182e`) routes a line on its unfilled text, then
-  fills `{dreamers_today}`. A dreamer's name can no longer narrow a room
-  line to its actor, so the last entry's cleared note no longer applies. The
-  clause says "you" only when the line is the actor's alone.
-- **`trace.dreamers_today`** was removed and has no callers in daydream/,
-  tests/, tools/ or web/.
-- **The browser daemon.**
-  - `open` joins the path to the session's base and refuses any other
-    origin. The check compares Python's whole netloc after the join, so
-    spellings with `//host`, `@`, a backslash, `javascript:`, `data:` or
-    `file:` fail it.
-  - `key` accepts only `[A-Za-z0-9+]{1,24}`, and a point must lie inside the
-    1280x800 window.
-  - The socket is 0600 in `$XDG_RUNTIME_DIR` (0700). No verb evaluates
-    script the caller supplies; the page helpers are the module's own.
-  - The wrapper passes `--as-player`, so `setup`, `teardown` and `_browser`
-    are refused (tested). A second `--session-dir` from the player can reach
-    only another playthrough daemon's socket.
-  - The SPA and the door build no link off their origin, and every
-    navigation goes to `document.baseURI`. A click cannot take the player to
-    third-party content.
-- **The throwaway server.**
-  - It binds `127.0.0.1` with `DAYDREAM_ACCESS=tailscale` and the sign-in
-    gate.
-  - Its world, accounts, art cache and keep are the session's own. Only the
-    GPU lock and the engines are shared, by design.
-  - The made-up account skips the invite flow, in the session's own accounts
-    DB only.
-  - Its password (3 of 16 words plus two digits) is stored in three places:
-    `session.json` (0600), the player's brief, and the action log entry for
-    the `type` that signs in. It guards a throwaway village on loopback.
-- **Jev in a playthrough.** `server_env` copies the environment, so with the
-  dev key in `.env` the throwaway server runs with Jev on. TypeSafe then
-  sees the blind player's typed lines and the judge's context about the
-  made-up friend. All of it is agent-written, with no friend's text.
-- **Teardown.**
-  - Paths come from the session id, whose username part is reduced to
-    `[a-z0-9]`.
-  - Reports, notes, shots and the action log land in `/playthroughs/`, which
-    `git check-ignore` confirms is ignored.
-  - `copytree` follows a symlink in `shots/`, but Write and Edit make only
-    regular files. Only the WARN's escape could plant one.
-- **The persona** lands in the player's system prompt
-  (`--append-system-prompt-file BRIEF.md`). An operator session steered into
-  writing one gains nothing new, because the allow list already runs
-  interpreters with no prompt (carried NOTE).
+- **The pace, notes and budget gates** (`Browser.gate`, `:1078-1096`) keep
+  a playthrough honest. They are not a boundary.
+  - They read only clocks, counters and the notes file's size and mtime.
+  - A request marked `internal` skips the gates and the action log
+    (`:1034`). Only setup sends one: the wrapper builds requests from fixed
+    argparse keys (`player_request`, `:1169-1208`), and the player can run
+    nothing else.
+- **What the player reads** no longer carries the page's text.
+  - `format_response` prints the screenshot's path, the address bar, the
+    focused field and counts (`:1141-1166`). The `text` verb is gone.
+  - Mark labels go only to the action log. A password field reads there as
+    bullets (`fieldDesc`). The sign-in `type` was already logged (last
+    entry).
+- **`transcript_result`** counts Read calls on `/shots/` paths in the
+  player's transcript. It opens nothing by those paths.
+- **The SPA's fold tabs** (`main.js:1736` `updateProseIndex` and `:1823`
+  `updateMarginIndex`) build every new element with `textContent`,
+  `dataset` and an `onclick` property, and use `innerHTML` only to clear.
+  The resident's name from `.topic-who` reaches only `textContent` and
+  `data-region` (`:1874-1875`).
+- **`verbs._unreadable_line`** (`verbs.py:564`, `:1321-1336`) answers `read`
+  on a thing with no read verb, to the actor alone.
+  - It runs after the same in-scope resolution as the refusal it replaces,
+    and names the thing the same way.
+  - Its regex is a plain alternation over the thing's name, aliases and
+    seed, with no nested quantifiers.
+- **`story.offered_topics`** (`story.py:542`) only filters chips by
+  authored labels and aliases. Both kinds of topic always carry `aliases`.
+- **The village data.**
+  - The new `wind` rule repeats the existing rule's effects under one more
+    condition: narrate, `set_pflag`, `set_property` on an `@dobj` that must
+    carry `own_clock`, `adjust_rel` and `add_fact`.
+  - The `SPOKE-BELL` rules (`00-prologue.json:77-80`) set a flag on the
+    asking player only.
+  - The spreading fact's `{actor}` comes from the existing rule. Dreamer
+    names reaching resident prompts is an accepted risk.
 
 ### Player-text scan (CLAUDE.md "Player text is data")
 
 - Prod and dev both ran in this review. Nothing was flagged, and there were
-  no bursts. Prod had no items since the clean start. Dev's items were the
-  agents' probe dreamers and the operator's dev username, with no typed
-  lines. The counts, the verdict and the high-water marks are in the local
-  instance notes, never here (players' text stays off GitHub).
+  no bursts. Prod had no items since the clean start. Dev's items were
+  unchanged since the last scan: the agents' probe dreamers and the
+  operator's dev username, with no typed lines. The counts, the verdict and
+  the high-water marks are in the local instance notes, never here
+  (players' text stays off GitHub).
 
 ### Secrets, PII and the instance
 
-- The scoped diff, the skill and the brief hold no key, token, private-key
-  block, email, box or tailnet address, home path, operator name or instance
-  domain. Every pattern hit was a decorator. The invented names are stock
-  first and last names, and the tests use "Robin Ash".
-- The last three commits of `playthrough.py`, `bin/game`, `model_eval.py`
-  and the playthrough tests hold no key-shaped value. No `.env` was ever
-  committed, on any ref.
-- `playthroughs/`, `instance/`, `.env` and `.claude/settings.local.json` are
-  still ignored.
+- The scoped diff holds none of these: a key, a token, a private-key block,
+  an email, a box or tailnet address, a home path, the operator's name or
+  the instance domain. The only pattern hits were pytest decorators.
+- The tests' secrets are synthetic, and their names are the fixtures'
+  (Robin Ash, Wren).
+- The commits since `677a903` on the scoped files hold no key-shaped value.
+- `playthroughs/`, `instance/`, `.env` and `.claude/settings.local.json`
+  are still ignored, and git tracks nothing under `instance/` or
+  `playthroughs/`.
 
 ### Accepted Risks
 
@@ -230,6 +234,6 @@ Carried register (from prior reviews; still open, not re-flagged):
   injected instruction would want stay behind ask rules.
 
 ---
-*Prior review (2026-09-30, paths, commit `068a34c`): 17 files covering the review fixes of `d09493d`, the private telling of `{dreamers_today}` and the Jev report's p95. It closed the four WARNs of the entry before it and found one new NOTE: model-eval's switch that keeps Jev off did not survive litellm's import of `.env`. Codereview 2026-09-30f raised it to a WARN and fixed it in `fa2a7c0`. The register stood at 0 BLOCK / 0 WARN / 9 NOTE. The full entry is at `git show ae79a94:SECURITY.md`.*
+*Prior review (2026-10-01, paths, commit `677a903`): nine files covering the new /playthrough harness and the review fixes in `story._tell`, `trace` and `model_eval`. It found one WARN: the blind player's sandbox did not hold, because a file the player wrote in its own folder ran as the operator through `./browser`. It also found one NOTE: the player's environment was filtered by a denylist. Both were fixed in `abeeb5a`, and the model-eval NOTE was closed. The register stood at 0 BLOCK / 1 WARN / 9 NOTE. The full entry is at `git show abeeb5a:SECURITY.md`.*
 
-<!-- SECURITY_META: {"date":"2026-10-01","commit":"677a90384462bf1b8d1073d86542257dc2c71eed","scope":"paths","scanned_files":[".gitignore","bin/game","daydream/model_eval.py","daydream/playthrough.py","daydream/story.py","daydream/trace.py","tests/test_model_eval.py","tests/test_playthrough.py","tests/test_trace.py"],"block":0,"warn":1,"note":9} -->
+<!-- SECURITY_META: {"date":"2026-10-01","commit":"6a934d10361102581de15fab0c17840a7645dee4","scope":"paths","scanned_files":["daydream/growth.py","daydream/playthrough.py","daydream/story.py","daydream/verbs.py","daydream/version.py","tests/test_browser_flow.py","tests/test_playthrough.py","tests/test_story.py","tests/test_verbs.py","web/assets/main.js","web/assets/style.css","web/index.html","worlds/lost-hours.json","worlds/lost-hours/arcs/00-prologue.json","worlds/lost-hours/walkthroughs/keeper-welcome.json","worlds/lost-hours/world.json"],"block":0,"warn":0,"note":8} -->
