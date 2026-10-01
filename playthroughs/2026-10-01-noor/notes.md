@@ -1,0 +1,85 @@
+# Notes (Noor)
+
+- shot 1: sign-in page. Lovely watercolor village, "daydream, a small storybook village, kept for friends." Username/password, "step inside" button. Felt: charmed. Knowledge: fine.
+- shots 2-4: typed noor, clicked password. Felt: fine.
+- shot 5: signed in. A two-page "How to Dream" guide: speak line, "what you might do" ribbon, "here with you" topics, "also dreaming" other players, "ways from here" compass, satchel, stray minutes, book, leave the dream. Helpful and nicely written, though a lot to absorb at once. Felt: welcomed, slightly overwhelmed. Knowledge: examples name "Wren" and "the cog" ("give the cog to Wren") - probably just examples, but it is a person and object I have not met. DISCREPANCY (mild): shot 5 names Wren and a cog before I have met either.
+- shot 6: 'your dreamer' card: name prefilled Noor, a look field. Nice that the look might get painted. Felt: delighted.
+- shots 7-8: described my look as 'a long saffron scarf, ink-stained fingers, a sleepy smile'. Clicking begin dreaming.
+- shot 9: woke in The Clocktower, 'time stands still'. Brass clock, oak clock case with pendulum, worn repair ledger, Ledger of Returned Hours. Exits up/east/down. Lovely layout, but the text is cut off (MORE). Felt: curious.
+- shot 10: scroll over text did nothing visible. But my portrait appeared (woman with saffron scarf) - delightful!
+- shots 11-12: MORE revealed 'You see: Ledger of Returned Hours, clock case, repair ledger'. Selected Read verb (it highlights). Now clicking the ledger. Felt: curious, the verb-then-object pattern from the guide is clear.
+- shot 13: Ledger of Returned Hours: 'No hour has been returned yet... keepers who have dreamed here have signed: Noor (here now)'. Lovely touch, I am the only signer. Hints the goal is returning hours. Felt: intrigued.
+- shots 14-15: read repair ledger: clock stopped the night of first hard frost; escapement gear slipped its pin and rolled across the square, south toward the old well-court. Whoever carries it to Tace in the loft earns the case-key. A clear quest. Felt: hooked.
+- shot 16: rest: case-key hangs with whoever mends the clock. Going up to the loft to meet Tace first.
+- shot 17: Clockmaker's Loft. Warm prose (clocks that don't agree on the time). Tace (wistful) is here, with topics: little brass clock, great clock, the gear. All topics are things I saw or read about. New verb: Wind. Felt: charmed. Knowledge: fine.
+- shots 18-19: said hello in my own words. Tace: 'It isn't broken, friend, only missing one small piece. Clocks are patient... and so am I, mostly.' Natural reply, nice. Felt: warm.
+- shots 20-21: asked about little brass clock ('That one's resting... tell me what brought you up the stairs') and the gear ('South, toward the old well-court... bring it to this bench, case-key is yours'). Consistent with ledger. Peeking at the balcony up first. Felt: oriented.
+- shot 22: Winding Balcony, 'where the sky is always about to decide something' - lovely line. A cat, Tock (curious), and a telescope. Pet verb! Felt: delighted.
+- shots 23-24: petted Tock: 'a purr that keeps perfect time. Then Tock is a tick away, washing a paw.' Charming wordplay. Felt: delighted.
+- shots 25-26: examined telescope: Hill of Long Shadows to the east, one small bench on top. A teaser of a place. Felt: charmed. Going down toward the square.
+- shot 27: back in loft; Tace's topics changed to the loft, the frost, the repair ledger, Ledger of Returned Hours - all things I read. Topics seem to grow with what I know. Knowledge: fine.
+- shot 29: Lantern Square. Paper lanterns, moths. Bell (cheerful) is up a ladder. Exits: west tower, north Old Workshop, south well-court, east Lamplight Lane. Bell topics include 'the gear' and 'Tace' - things I know. Felt: happy, it's a living little village.
+- shot 30: Bell: 'Try the well-court! Something shiny went bouncing that way.' Third confirmation. Going south. Felt: confident, maybe slightly over-signposted but cozy.
+- shot 31: Mossy Well-Court. The escapement gear is simply lying in the open. Slightly anticlimactic, I expected to search. Will test the typed line with 'pick up the gear'.
+- shots 32-33: typed 'pick up the gear and wipe the moss off it'. Got: 'You take the escapement gear.' then 'You don't see the wipe the moss off it here.' The second line is a robotic parser seam that broke the storybook voice; the guide said 'the dream is good at guessing'. Felt: amused, slightly let down. Peeking south at the garden 'where something sways'.
+- shot 34: Pendulum Garden: 'the whole garden ticks once, like a great clock remembering itself' - beautiful. Quill (shy). Sees 'littlest pendulum', trellises. Give verb appears. Topics: pendulums, orchard, moss, brass bobs - all in the prose. Felt: enchanted.
+- shots 35-36: Talk + Quill opens a 'What do you say?' line, with a 'never mind'. Clear.
+- shot 37: Quill: 'Spare pendulums. Clocks outgrow them, or lose them, and they come here to swing. Each keeps its own count. None of them are wrong.' Gorgeous. Felt: moved. Now taking the gear back to Tace.
+- shots 38-39: back through well-court to the square. Heading west then up to Tace.
+- shots 40-41: up to the loft. Will type 'give the gear to Tace' as the guide's example suggested.
+- shots 42-43: 'give the gear to Tace' worked. Tace (now 'gladdened'): 'You found it. You carried it all the way home.' gave me a small brass key, 'The case is yours to open now.' Use verb appeared. Felt: warm, satisfied. Going down to open the clock case.
+- shots 44-45: in Clocktower, selected Open (ledger faded out, clock case stays lit - nice affordance). Opening clock case.
+- shot 46: case-key opens the case; pendulum swings, great clock takes its first slow tick. Header changed from TIME STANDS STILL to DAY 1 - DUSK. Wonderful payoff moment. Slight logic itch: I gave the gear to Tace, who stayed upstairs, so who put it back in the clock? Inside: a warm brass cog (now the guide's 'give the cog to Wren' makes sense). Felt: delighted.
+- shots 47-48: took the warm brass cog. Clock's hands move, 'the whole tower seems to breathe out'. A dreamseed glows and drops to the floor 'as a thank-you'. Felt: intrigued, what is a dreamseed?
+- shots 49-50: examined dreamseed: 'A seed like a tiny folded paper lantern, warm in the palm, with a light inside that beats as slow as a resting clock.' Pretty. Feels like something to plant - maybe my 'make my mark' moment. Taking it.
+- shots 51-52: took dreamseed; carry 3. New verb 'Plant' appeared - I'll save it for a special spot. Checking what I carry.
+- shot 53: carry: case key, dreamseed, warm brass cog; also 'your satchel' and 'Book of Stray Minutes' links. A 'stray minute' is listed around me (the guide mentioned these). Felt: curious.
+- shot 54: Keepsakes book. Icons seem mismatched: case key has a LEAF icon, dreamseed has a GEAR icon, warm brass cog has a sun/light icon. Confusing, looks like they got shuffled. Case key 'goes home when you rest'. Thread: 'Up in the Clockmaker's Loft, Tace keeps a small clock for every new keeper. Ask about the first winding.' Story so far: unwritten until first waking. Felt: pleased by the journal idea, puzzled by the icons.
+- shots 55-56: chose Take; carried items fade (good). The stray minute is half-hidden at the top of the side panel. Clicking it.
+- shot 57: took the stray minute: 'the snail minute. A snail crossing the garden path, and someone kneeling to wait for it.' Slips into Book of Stray Minutes. Tiny, lovely collectible. Felt: delighted. Going up to ask Tace about the first winding.
+- shot 58: back in loft at dusk. Tock appeared 'between one tick and the next' - cute. Side panel is cramped: the 'ask Tace / ask Tock / around you / you carry' links overlap Tock's name and hide the topic chips. Felt: slightly annoyed by layout. Will type the question.
+- shots 59-60: typed question understood as 'ask Tace about the first winding'. Tace hands me a small resting clock: 'every new keeper winds one clock of their own... Wind it when you're ready.' Carry 4. Felt: touched. Winding it.
+- shots 61-62: Wind + 'resting clock' was wrong; Tace kindly corrects in-character: 'Yours is the one to wind: the small clock in your pocket.' Nice way to handle a mistake. Felt: gently guided.
+- shots 63-64: wound my small clock: ticks 'a half-beat apart from every other clock'. Tace: 'Now there's an hour here that's yours. Bell will be glad to hear it... And Mott keeps something for every new keeper, in the workshop.' Mott introduced properly here. Felt: belonging. Heading to the square and the workshop.
+- shot 66: Square at dusk. Lanterns come on; Bell counts 'one dreamer, Noor, came through today'. Lovely acknowledgement. New presence: 'Pim's Nap (restless)'. Odd name - is it a person, a thing, another player's sleep? Felt: curious, a bit confused.
+- shot 67: 'Sorrel comes up the lane with the long net... walking beside something small and rumpled... yawns so wide it tilts, and cannot settle.' So Pim's Nap is a little runaway nap. Whimsical! But Sorrel and Pim are names nobody has introduced; Sorrel isn't shown as present. Mild DISCREPANCY: shot 66-67 present 'Pim's Nap' and 'Sorrel' with no setup (narrated as an event, so maybe okay). Talking to the nap.
+- shots 68-70: talked to Pim's Nap: 'Not sleepy,' it whispers. 'Very sleepy.' Adorable but it didn't answer where it belongs. Checking its ask-topics.
+- shots 71-72: asked the nap about Pim: 'Pim was seven, and there was cake and a red kite and too much singing, so Pim wouldn't sleep, and I got lost.' Utterly charming premise. Now a quest: return the nap. Asking Bell where Pim is.
+- shots 73-74: asked Bell where Pim lives. Bell: 'a birthday nap too excited to be taken... it'll want the old-fashioned kind of quiet. Mott keeps a hush in his tin, just north in the workshop, and Tace could tell you about lullaby clocks.' Two leads, nice. Going north to the workshop.
+- shot 75: Old Workshop, curls of brass and cedar shavings. Mott (content), a rattling tin, broom, another stray minute. Mott topics: a hush, the book, the gear, the Old Workshop, sweeping. All reasonable. Felt: cozy.
+- shot 76: Mott hands me 'a hush. Swept it up the night the clock stopped. Quietest thing I own.' Carry 5. Lovely image. Taking the stray minute too.
+- shots 77-78: took the 'sunbreak minute' (sunshine while rain still falling). These minutes are the best writing in the game. Back south to give the hush to Pim's Nap.
+- shot 79: Bell hears my clock: 'You're Tace's new keeper!' and names the lanterns: Pollen, Old Blue, Thimble. 'Now you know the lanterns, and that's most of knowing me.' The world reacts to what I did. Felt: delighted. Giving the hush to the nap.
+- shots 80-81: gave the hush; nap now 'drowsy': 'quieter now, but still cannot quite sleep. It needs something slow to fall asleep to.' Two-step puzzle, nice. Going to ask Tace about lullaby clocks per Bell's hint.
+- shots 82-83: back up to the loft. Asking Tace about lullaby clocks by typing.
+- shots 84-85: Tace: 'Wend made a lullaby clock once, for a colicky hour. Bring me that spare brass pendulum from the nail by the window, or from wherever it has wandered: a slow swing is most of a lullaby.' (Wend: a new name, but introduced in dialogue, fine.) I recall 'brass pendulum' listed in this room (shot 58) and a 'littlest pendulum' in the garden. Trying here first.
+- shot 86: took the brass pendulum. Giving it to Tace.
+- shot 87: Tace built a lullaby clock from the pendulum: 'Wind it where the little one can hear.' Smooth. Going down and east to the nap.
+- shots 88-89: back in the square, the drowsy nap is still here. Winding the lullaby clock.
+- shots 90-91: wound the lullaby clock: 'ticks, slow as breathing... the nap... curls up small, and is simply gone, the way a nap is gone when you wake. Somewhere in the waking world a boy named Pim finally sleeps, with a red kite leaning by his bed.' Got 'a dent in a pillow' and another dreamseed. Carry 7. Best moment so far. Felt: moved, satisfied.
+- DISCREPANCY: shot 91, Bell's topics now include 'Linden', a name no one has mentioned to me anywhere.
+- shot 92: well-court on the way to the Pendulum Garden, where I want to plant a dreamseed - feels like the right place for my mark.
+- shots 93-94: Pendulum Garden, Quill now 'absorbed'. Selected Plant; need to pick the dreamseed from my carry list.
+- shots 95-96: chose dreamseed with Plant; the line asks 'What do you see growing there?' - I get to describe what grows! Felt: thrilled.
+- shot 97: planted it. 'The dreamseed takes root, and the dream makes room. A new way opens to the south: The Saffron Tick Tree.' The game named it from my words. 'it was your hands that made the room.' A south exit appeared. Felt: genuinely thrilled, this is the best feature. Going to visit.
+- shot 98: The Saffron Tick Tree room: 'a saffron tree glows softly, its seed pods ticking in a gentle, irregular beat. The spare pendulums sway... a quiet, shared time.' Picture shows 'painting...'. Items: brass wind-chime, spent dreamseed. Felt: proud, a little giddy.
+- shot 99: picture painted: golden-leaved saplings by a lake, a spire behind. Fits, though I imagined one tree. Felt: proud. Examining the brass wind-chime.
+- shots 100-101: brass wind-chime: 'a small brass pendulum hanging from the trellis... swinging in time with the saffron tree's gentle, irregular rhythm.' Also a 'ticking seed pod'. Coherent with what I wrote. Felt: pleased.
+- shots 102-103: ticking seed pod 'with a heartbeat that is half a slow second apart from the others' - it remembered my 'half-beat apart'. Felt: seen. Going to peek at the orchard, then check the Ledger.
+- shots 104-105: Orchard of Evenings: fruit glows 'each one a small lamplit evening. Here it is always six o'clock... shadows long and kind.' Beautiful. Felt: enchanted.
+- shots 106-107: evening fruit: 'glowing like a lit window seen from far away... warm as a windowsill in the sun.' Take is greyed out. Heading back to read the Ledger of Returned Hours.
+- shot 108: back in the garden; telling Quill about my tree.
+- shots 109-111: told Quill about my tree. It printed as 'Noor: ...' (not 'Noor to Quill') and no one answered, even after waiting. Quill is 'absorbed', maybe that's why, but it felt like talking to a wall right after my proudest moment. Earlier 'Hello Quill' by name worked when I used Talk. Felt: a bit deflated. Going to the Ledger.
+- shots 112-113: back in the square. Bell still offers 'Linden' as a topic. Curious, asking.
+- shot 114: Bell: 'Linden keeps the Waiting House, and a spare cup for everyone who might turn up, which is everyone.' Sweet, but the topic was offered before I'd heard of Linden (discrepancy stands). Peeking east at Lamplight Lane.
+- shot 115: Lamplight Lane: blue doors, moss window boxes; post office north, crooked lit house east (Waiting House?), bridge south. The post office connects to the guide's letter feature. Going north.
+- shot 116: Little Post Office: pigeonholes of letters 'written, sealed, and never sent'. Fen (brisk). Verb 'Put' appears. Asking about the letters.
+- shot 117: Fen: 'Every letter wants reading by someone, even if it's not the someone on the front.' Lovely. No hint how to write, so trying the guide's 'write to X: ...' form, addressed to the next dreamer since I know no other players.
+- shots 118-119: 'write to the next dreamer: ...' refused kindly in character: 'No dreamer here goes by the next dreamer. Check the name; I can't file what I can't address.' Problem: I've never seen another dreamer, so I have no names. Only name I know is 'Wren' from the guide's example. Trying it. Felt: slightly stuck.
+- shot 120: 'write to Wren' also refused: 'No dreamer here goes by Wren.' So the guide's own example name is not a real dreamer, and I have no way to learn real dreamer names (no 'also dreaming' list has ever shown). Letter writing is a dead end for me. Felt: mildly annoyed, the guide set me up. Heading to the Ledger then leaving.
+- shot 121: back on Lamplight Lane. Heading west twice to the Clocktower.
+- shots 122-123: back in the Clocktower. Reading the Ledger again.
+- shot 124: misclick, selected Use instead of Read (my fault reading the labels).
+- shots 125-126: Ledger now reads: 'The great clock was mended by Noor, and time began again in the village. Day 1: Noor sang Pim's missing nap home with a mended lullaby clock.' A satisfying record. (My saffron tree isn't in it.) Felt: proud, content. Leaving the dream via the link.
+- shot 127: 'awake, outside the dream. You are awake. Noor is resting in the village until you step back in.' Options: step back in, your dreamer, sign out. Gentle ending. Signing out.
+- shot 128: signed out, back at the login page. Session over (128 moves). Felt: content, would come back.

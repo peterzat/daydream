@@ -1,0 +1,190 @@
+{"t": "2026-10-01T01:11:50+00:00", "cmd": "open", "args": {"path": "/", "observe": false}, "ms": 471}
+{"t": "2026-10-01T01:11:58+00:00", "cmd": "look", "args": {}, "ms": 63, "shot": "shots/001-look.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:12:04+00:00", "cmd": "click", "args": {"target": "1"}, "ms": 1075, "shot": "shots/002-click.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:12:05+00:00", "cmd": "type", "args": {"text": "priya", "enter": false}, "ms": 516, "shot": "shots/003-type.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:12:06+00:00", "cmd": "click", "args": {"target": "2"}, "ms": 1059, "shot": "shots/004-click.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:12:08+00:00", "cmd": "type", "args": {"text": "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022", "enter": true}, "ms": 1692, "shot": "shots/005-type.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:12:13+00:00", "cmd": "click", "args": {"target": "1"}, "ms": 1087, "shot": "shots/006-click.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:12:18+00:00", "cmd": "click", "args": {"target": "2"}, "ms": 1076, "shot": "shots/007-click.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:12:20+00:00", "cmd": "type", "args": {"text": "a mustard cardigan, ink-stained fingers, a braid over one shoulder", "enter": false}, "ms": 1159, "shot": "shots/008-type.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:12:21+00:00", "cmd": "click", "args": {"target": "3"}, "ms": 1357, "shot": "shots/009-click.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:12:23+00:00", "cmd": "text", "args": {}, "ms": 3}
+{"t": "2026-10-01T01:12:27+00:00", "cmd": "scroll", "args": {"direction": "down", "px": 400, "target": "1"}, "ms": 749, "shot": "shots/010-scroll.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:12:27+00:00", "cmd": "text", "args": {}, "ms": 3}
+{"t": "2026-10-01T01:12:30+00:00", "cmd": "click", "args": {"target": "13"}, "ms": 1092, "shot": "shots/011-click.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:12:32+00:00", "cmd": "type", "args": {"text": "read the repair ledger", "enter": true}, "ms": 1610, "shot": "shots/012-type.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:12:37+00:00", "cmd": "wait", "args": {"seconds": 4}, "ms": 4489, "shot": "shots/013-wait.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:12:37+00:00", "cmd": "text", "args": {}, "ms": 5}
+{"t": "2026-10-01T01:12:39+00:00", "cmd": "scroll", "args": {"direction": "down", "px": 400, "target": "3"}, "ms": 744, "shot": "shots/014-scroll.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:12:39+00:00", "cmd": "text", "args": {}, "ms": 4}
+{"t": "2026-10-01T01:12:45+00:00", "cmd": "scroll", "args": {"direction": "down", "px": 400, "target": "400,450"}, "ms": 768, "shot": "shots/015-scroll.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:12:45+00:00", "cmd": "text", "args": {}, "ms": 3}
+{"t": "2026-10-01T01:12:50+00:00", "cmd": "click", "args": {"target": "12"}, "ms": 1094, "shot": "shots/016-click.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:12:52+00:00", "cmd": "type", "args": {"text": "read the ledger of returned hours", "enter": true}, "ms": 1716, "shot": "shots/017-type.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:12:55+00:00", "cmd": "wait", "args": {"seconds": 3}, "ms": 3485, "shot": "shots/018-wait.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:12:56+00:00", "cmd": "scroll", "args": {"direction": "down", "px": 1500, "target": "400,450"}, "ms": 753, "shot": "shots/019-scroll.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:12:56+00:00", "cmd": "text", "args": {}, "ms": 3}
+{"t": "2026-10-01T01:13:00+00:00", "cmd": "click", "args": {"target": "13"}, "ms": 1087, "shot": "shots/020-click.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:13:02+00:00", "cmd": "type", "args": {"text": "examine the clock case", "enter": true}, "ms": 1616, "shot": "shots/021-type.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:13:05+00:00", "cmd": "wait", "args": {"seconds": 3}, "ms": 3482, "shot": "shots/022-wait.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:13:06+00:00", "cmd": "scroll", "args": {"direction": "down", "px": 1500, "target": "400,450"}, "ms": 762, "shot": "shots/023-scroll.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:13:06+00:00", "cmd": "text", "args": {}, "ms": 3}
+{"t": "2026-10-01T01:13:15+00:00", "cmd": "click", "args": {"target": "14"}, "ms": 1398, "shot": "shots/024-click.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:13:18+00:00", "cmd": "text", "args": {}, "ms": 4}
+{"t": "2026-10-01T01:13:23+00:00", "cmd": "click", "args": {"target": "5"}, "ms": 1390, "shot": "shots/025-click.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:13:28+00:00", "cmd": "wait", "args": {"seconds": 4}, "ms": 4482, "shot": "shots/026-wait.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:13:29+00:00", "cmd": "scroll", "args": {"direction": "down", "px": 1500, "target": "400,450"}, "ms": 764, "shot": "shots/027-scroll.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:13:29+00:00", "cmd": "text", "args": {}, "ms": 3}
+{"t": "2026-10-01T01:13:32+00:00", "cmd": "look", "args": {}, "ms": 55, "shot": "shots/028-look.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:13:33+00:00", "cmd": "click", "args": {"target": "7"}, "ms": 1388, "shot": "shots/029-click.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:13:38+00:00", "cmd": "wait", "args": {"seconds": 4}, "ms": 4485, "shot": "shots/030-wait.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:13:38+00:00", "cmd": "scroll", "args": {"direction": "down", "px": 1500, "target": "400,450"}, "ms": 754, "shot": "shots/031-scroll.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:13:38+00:00", "cmd": "text", "args": {}, "ms": 3}
+{"t": "2026-10-01T01:13:41+00:00", "cmd": "look", "args": {}, "ms": 56, "shot": "shots/032-look.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:13:45+00:00", "cmd": "click", "args": {"target": "7"}, "ms": 1385, "shot": "shots/033-click.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:13:49+00:00", "cmd": "wait", "args": {"seconds": 4}, "ms": 4478, "shot": "shots/034-wait.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:13:50+00:00", "cmd": "scroll", "args": {"direction": "down", "px": 1500, "target": "400,450"}, "ms": 761, "shot": "shots/035-scroll.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:13:50+00:00", "cmd": "text", "args": {}, "ms": 3}
+{"t": "2026-10-01T01:13:53+00:00", "cmd": "look", "args": {}, "ms": 65, "shot": "shots/036-look.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:13:56+00:00", "cmd": "click", "args": {"target": "21"}, "ms": 1388, "shot": "shots/037-click.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:13:56+00:00", "cmd": "text", "args": {}, "ms": 3}
+{"t": "2026-10-01T01:14:00+00:00", "cmd": "click", "args": {"target": "10"}, "ms": 1087, "shot": "shots/038-click.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:14:02+00:00", "cmd": "type", "args": {"text": "take the escapement gear", "enter": true}, "ms": 1630, "shot": "shots/039-type.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:14:05+00:00", "cmd": "wait", "args": {"seconds": 3}, "ms": 3478, "shot": "shots/040-wait.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:14:07+00:00", "cmd": "click", "args": {"target": "10"}, "ms": 1097, "shot": "shots/041-click.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:14:07+00:00", "cmd": "type", "args": {"text": "examine the old well", "enter": true}, "ms": 2, "refused": "nothing that takes typing has focus: click a text field first"}
+{"t": "2026-10-01T01:14:09+00:00", "cmd": "look", "args": {}, "ms": 44, "shot": "shots/042-look.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:14:09+00:00", "cmd": "text", "args": {}, "ms": 3}
+{"t": "2026-10-01T01:14:12+00:00", "cmd": "click", "args": {"target": "10"}, "ms": 1086, "shot": "shots/043-click.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:14:14+00:00", "cmd": "type", "args": {"text": "examine the old well", "enter": true}, "ms": 1595, "shot": "shots/044-type.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:14:17+00:00", "cmd": "wait", "args": {"seconds": 3}, "ms": 3475, "shot": "shots/045-wait.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:14:18+00:00", "cmd": "scroll", "args": {"direction": "down", "px": 1500, "target": "400,450"}, "ms": 745, "shot": "shots/046-scroll.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:14:18+00:00", "cmd": "text", "args": {}, "ms": 3}
+{"t": "2026-10-01T01:14:25+00:00", "cmd": "click", "args": {"target": "10"}, "ms": 1087, "shot": "shots/047-click.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:14:27+00:00", "cmd": "type", "args": {"text": "north", "enter": true}, "ms": 1452, "shot": "shots/048-type.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:14:32+00:00", "cmd": "click", "args": {"target": "11"}, "ms": 1392, "shot": "shots/049-click.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:14:35+00:00", "cmd": "wait", "args": {"seconds": 3}, "ms": 3497, "shot": "shots/050-wait.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:14:36+00:00", "cmd": "scroll", "args": {"direction": "down", "px": 1500, "target": "400,450"}, "ms": 751, "shot": "shots/051-scroll.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:14:36+00:00", "cmd": "text", "args": {}, "ms": 4}
+{"t": "2026-10-01T01:14:38+00:00", "cmd": "look", "args": {}, "ms": 49, "shot": "shots/052-look.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:14:42+00:00", "cmd": "click", "args": {"target": "19"}, "ms": 1086, "shot": "shots/053-click.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:14:43+00:00", "cmd": "type", "args": {"text": "west", "enter": true}, "ms": 1425, "shot": "shots/054-type.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:14:46+00:00", "cmd": "wait", "args": {"seconds": 2}, "ms": 2487, "shot": "shots/055-wait.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:14:47+00:00", "cmd": "type", "args": {"text": "up", "enter": true}, "ms": 1421, "shot": "shots/056-type.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:14:51+00:00", "cmd": "wait", "args": {"seconds": 3}, "ms": 3491, "shot": "shots/057-wait.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:14:51+00:00", "cmd": "text", "args": {}, "ms": 3}
+{"t": "2026-10-01T01:14:55+00:00", "cmd": "type", "args": {"text": "give the escapement gear to Tace", "enter": true}, "ms": 1710, "shot": "shots/058-type.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:14:59+00:00", "cmd": "wait", "args": {"seconds": 4}, "ms": 4491, "shot": "shots/059-wait.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:15:00+00:00", "cmd": "scroll", "args": {"direction": "down", "px": 2000, "target": "400,450"}, "ms": 739, "shot": "shots/060-scroll.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:15:00+00:00", "cmd": "text", "args": {}, "ms": 3}
+{"t": "2026-10-01T01:15:06+00:00", "cmd": "type", "args": {"text": "ask Tace about the great clock", "enter": true}, "ms": 1715, "shot": "shots/061-type.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:15:10+00:00", "cmd": "wait", "args": {"seconds": 4}, "ms": 4488, "shot": "shots/062-wait.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:15:12+00:00", "cmd": "type", "args": {"text": "ask Tace about the little brass clock", "enter": true}, "ms": 1773, "shot": "shots/063-type.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:15:16+00:00", "cmd": "wait", "args": {"seconds": 4}, "ms": 4492, "shot": "shots/064-wait.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:15:17+00:00", "cmd": "scroll", "args": {"direction": "down", "px": 2000, "target": "400,450"}, "ms": 743, "shot": "shots/065-scroll.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:15:17+00:00", "cmd": "text", "args": {}, "ms": 3}
+{"t": "2026-10-01T01:15:22+00:00", "cmd": "type", "args": {"text": "examine the little brass clock", "enter": true}, "ms": 1726, "shot": "shots/066-type.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:15:26+00:00", "cmd": "wait", "args": {"seconds": 3}, "ms": 3497, "shot": "shots/067-wait.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:15:28+00:00", "cmd": "type", "args": {"text": "examine the brass pendulum", "enter": true}, "ms": 1644, "shot": "shots/068-type.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:15:31+00:00", "cmd": "wait", "args": {"seconds": 3}, "ms": 3482, "shot": "shots/069-wait.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:15:32+00:00", "cmd": "scroll", "args": {"direction": "down", "px": 2000, "target": "400,450"}, "ms": 759, "shot": "shots/070-scroll.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:15:32+00:00", "cmd": "text", "args": {}, "ms": 4}
+{"t": "2026-10-01T01:15:35+00:00", "cmd": "scroll", "args": {"direction": "up", "px": 300, "target": "400,450"}, "ms": 752, "shot": "shots/071-scroll.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:15:35+00:00", "cmd": "text", "args": {}, "ms": 4}
+{"t": "2026-10-01T01:15:38+00:00", "cmd": "scroll", "args": {"direction": "down", "px": 120, "target": "400,450"}, "ms": 743, "shot": "shots/072-scroll.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:15:38+00:00", "cmd": "text", "args": {}, "ms": 4}
+{"t": "2026-10-01T01:15:43+00:00", "cmd": "type", "args": {"text": "wind the little brass clock", "enter": true}, "ms": 1658, "shot": "shots/073-type.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:15:47+00:00", "cmd": "wait", "args": {"seconds": 4}, "ms": 4481, "shot": "shots/074-wait.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:15:48+00:00", "cmd": "scroll", "args": {"direction": "down", "px": 2000, "target": "400,450"}, "ms": 742, "shot": "shots/075-scroll.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:15:48+00:00", "cmd": "text", "args": {}, "ms": 4}
+{"t": "2026-10-01T01:15:53+00:00", "cmd": "type", "args": {"text": "look through the round window", "enter": true}, "ms": 1699, "shot": "shots/076-type.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:15:57+00:00", "cmd": "wait", "args": {"seconds": 4}, "ms": 4482, "shot": "shots/077-wait.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:15:58+00:00", "cmd": "scroll", "args": {"direction": "down", "px": 2000, "target": "400,450"}, "ms": 749, "shot": "shots/078-scroll.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:15:58+00:00", "cmd": "text", "args": {}, "ms": 5}
+{"t": "2026-10-01T01:16:07+00:00", "cmd": "type", "args": {"text": "down", "enter": true}, "ms": 1432, "shot": "shots/079-type.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:16:11+00:00", "cmd": "wait", "args": {"seconds": 3}, "ms": 3483, "shot": "shots/080-wait.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:16:13+00:00", "cmd": "type", "args": {"text": "open the clock case with the key", "enter": true}, "ms": 1723, "shot": "shots/081-type.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:16:17+00:00", "cmd": "wait", "args": {"seconds": 4}, "ms": 4505, "shot": "shots/082-wait.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:16:18+00:00", "cmd": "scroll", "args": {"direction": "down", "px": 2000, "target": "400,450"}, "ms": 740, "shot": "shots/083-scroll.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:16:18+00:00", "cmd": "text", "args": {}, "ms": 3}
+{"t": "2026-10-01T01:16:22+00:00", "cmd": "scroll", "args": {"direction": "up", "px": 300, "target": "400,450"}, "ms": 749, "shot": "shots/084-scroll.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:16:22+00:00", "cmd": "text", "args": {}, "ms": 5}
+{"t": "2026-10-01T01:16:27+00:00", "cmd": "type", "args": {"text": "take the warm brass cog", "enter": true}, "ms": 1643, "shot": "shots/085-type.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:16:29+00:00", "cmd": "type", "args": {"text": "take the dreamseed", "enter": true}, "ms": 1575, "shot": "shots/086-type.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:16:32+00:00", "cmd": "wait", "args": {"seconds": 3}, "ms": 3488, "shot": "shots/087-wait.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:16:33+00:00", "cmd": "scroll", "args": {"direction": "down", "px": 2000, "target": "400,450"}, "ms": 725, "shot": "shots/088-scroll.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:16:33+00:00", "cmd": "text", "args": {}, "ms": 3}
+{"t": "2026-10-01T01:16:38+00:00", "cmd": "type", "args": {"text": "what now?", "enter": true}, "ms": 1496, "shot": "shots/089-type.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:16:42+00:00", "cmd": "wait", "args": {"seconds": 4}, "ms": 4482, "shot": "shots/090-wait.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:16:43+00:00", "cmd": "scroll", "args": {"direction": "down", "px": 2000, "target": "400,450"}, "ms": 751, "shot": "shots/091-scroll.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:16:43+00:00", "cmd": "text", "args": {}, "ms": 4}
+{"t": "2026-10-01T01:16:45+00:00", "cmd": "look", "args": {}, "ms": 55, "shot": "shots/092-look.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:16:49+00:00", "cmd": "click", "args": {"target": "8"}, "ms": 1589, "shot": "shots/093-click.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:16:56+00:00", "cmd": "click", "args": {"target": "18"}, "ms": 1084, "shot": "shots/094-click.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:16:58+00:00", "cmd": "type", "args": {"text": "examine the warm brass cog", "enter": true}, "ms": 1674, "shot": "shots/095-type.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:17:02+00:00", "cmd": "wait", "args": {"seconds": 3}, "ms": 3486, "shot": "shots/096-wait.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:17:02+00:00", "cmd": "scroll", "args": {"direction": "down", "px": 2000, "target": "400,450"}, "ms": 741, "shot": "shots/097-scroll.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:17:02+00:00", "cmd": "text", "args": {}, "ms": 4}
+{"t": "2026-10-01T01:17:07+00:00", "cmd": "type", "args": {"text": "up", "enter": true}, "ms": 1425, "shot": "shots/098-type.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:17:10+00:00", "cmd": "wait", "args": {"seconds": 3}, "ms": 3477, "shot": "shots/099-wait.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:17:12+00:00", "cmd": "type", "args": {"text": "ask Tace about the first winding", "enter": true}, "ms": 1731, "shot": "shots/100-type.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:17:17+00:00", "cmd": "wait", "args": {"seconds": 4}, "ms": 4484, "shot": "shots/101-wait.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:17:17+00:00", "cmd": "scroll", "args": {"direction": "down", "px": 2000, "target": "400,450"}, "ms": 743, "shot": "shots/102-scroll.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:17:17+00:00", "cmd": "text", "args": {}, "ms": 3}
+{"t": "2026-10-01T01:17:22+00:00", "cmd": "type", "args": {"text": "wind my clock", "enter": true}, "ms": 1558, "shot": "shots/103-type.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:17:26+00:00", "cmd": "wait", "args": {"seconds": 4}, "ms": 4491, "shot": "shots/104-wait.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:17:27+00:00", "cmd": "scroll", "args": {"direction": "down", "px": 2000, "target": "400,450"}, "ms": 750, "shot": "shots/105-scroll.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:17:27+00:00", "cmd": "text", "args": {}, "ms": 3}
+{"t": "2026-10-01T01:17:31+00:00", "cmd": "type", "args": {"text": "pet Tock", "enter": true}, "ms": 1464, "shot": "shots/106-type.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:17:36+00:00", "cmd": "wait", "args": {"seconds": 4}, "ms": 4480, "shot": "shots/107-wait.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:17:37+00:00", "cmd": "scroll", "args": {"direction": "down", "px": 2000, "target": "400,450"}, "ms": 756, "shot": "shots/108-scroll.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:17:37+00:00", "cmd": "text", "args": {}, "ms": 3}
+{"t": "2026-10-01T01:17:47+00:00", "cmd": "type", "args": {"text": "down", "enter": true}, "ms": 1432, "shot": "shots/109-type.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:17:48+00:00", "cmd": "type", "args": {"text": "east", "enter": true}, "ms": 1428, "shot": "shots/110-type.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:17:51+00:00", "cmd": "wait", "args": {"seconds": 2}, "ms": 2465, "shot": "shots/111-wait.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:17:52+00:00", "cmd": "type", "args": {"text": "north", "enter": true}, "ms": 1452, "shot": "shots/112-type.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:17:56+00:00", "cmd": "wait", "args": {"seconds": 3}, "ms": 3481, "shot": "shots/113-wait.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:17:56+00:00", "cmd": "text", "args": {}, "ms": 3}
+{"t": "2026-10-01T01:18:01+00:00", "cmd": "type", "args": {"text": "take the stray minute", "enter": true}, "ms": 1615, "shot": "shots/114-type.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:18:04+00:00", "cmd": "wait", "args": {"seconds": 2}, "ms": 2497, "shot": "shots/115-wait.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:18:06+00:00", "cmd": "type", "args": {"text": "ask Mott about the tin", "enter": true}, "ms": 1628, "shot": "shots/116-type.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:18:10+00:00", "cmd": "wait", "args": {"seconds": 4}, "ms": 4471, "shot": "shots/117-wait.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:18:11+00:00", "cmd": "scroll", "args": {"direction": "down", "px": 2000, "target": "400,450"}, "ms": 746, "shot": "shots/118-scroll.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:18:11+00:00", "cmd": "text", "args": {}, "ms": 3}
+{"t": "2026-10-01T01:18:15+00:00", "cmd": "scroll", "args": {"direction": "up", "px": 450, "target": "400,450"}, "ms": 759, "shot": "shots/119-scroll.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:18:15+00:00", "cmd": "text", "args": {}, "ms": 3}
+{"t": "2026-10-01T01:18:18+00:00", "cmd": "scroll", "args": {"direction": "down", "px": 200, "target": "400,450"}, "ms": 743, "shot": "shots/120-scroll.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:18:18+00:00", "cmd": "text", "args": {}, "ms": 3}
+{"t": "2026-10-01T01:18:24+00:00", "cmd": "click", "args": {"target": "9"}, "ms": 1392, "shot": "shots/121-click.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:18:29+00:00", "cmd": "wait", "args": {"seconds": 4}, "ms": 4487, "shot": "shots/122-wait.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:18:29+00:00", "cmd": "scroll", "args": {"direction": "down", "px": 2000, "target": "400,450"}, "ms": 736, "shot": "shots/123-scroll.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:18:29+00:00", "cmd": "text", "args": {}, "ms": 3}
+{"t": "2026-10-01T01:18:35+00:00", "cmd": "click", "args": {"target": "640,652"}, "ms": 1093, "shot": "shots/124-click.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:18:36+00:00", "cmd": "type", "args": {"text": "south", "enter": true}, "ms": 1452, "shot": "shots/125-type.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:18:38+00:00", "cmd": "type", "args": {"text": "south", "enter": true}, "ms": 1447, "shot": "shots/126-type.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:18:40+00:00", "cmd": "wait", "args": {"seconds": 2}, "ms": 2485, "shot": "shots/127-wait.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:18:42+00:00", "cmd": "type", "args": {"text": "south", "enter": true}, "ms": 1453, "shot": "shots/128-type.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:18:45+00:00", "cmd": "wait", "args": {"seconds": 3}, "ms": 3493, "shot": "shots/129-wait.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:18:45+00:00", "cmd": "text", "args": {}, "ms": 4}
+{"t": "2026-10-01T01:18:50+00:00", "cmd": "type", "args": {"text": "plant the dreamseed", "enter": true}, "ms": 1594, "shot": "shots/130-type.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:18:55+00:00", "cmd": "wait", "args": {"seconds": 5}, "ms": 5495, "shot": "shots/131-wait.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:18:56+00:00", "cmd": "scroll", "args": {"direction": "down", "px": 2000, "target": "400,450"}, "ms": 747, "shot": "shots/132-scroll.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:18:56+00:00", "cmd": "text", "args": {}, "ms": 5}
+{"t": "2026-10-01T01:19:03+00:00", "cmd": "type", "args": {"text": "plant dreamseed: a little reading nook under a willow, with a bench, a lamp that never goes out, and a shelf where people leave books for strangers", "enter": true}, "ms": 2965, "shot": "shots/133-type.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:19:13+00:00", "cmd": "wait", "args": {"seconds": 10}, "ms": 10508, "shot": "shots/134-wait.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:19:14+00:00", "cmd": "scroll", "args": {"direction": "down", "px": 2000, "target": "400,450"}, "ms": 755, "shot": "shots/135-scroll.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:19:14+00:00", "cmd": "text", "args": {}, "ms": 3}
+{"t": "2026-10-01T01:19:24+00:00", "cmd": "type", "args": {"text": "plant dreamseed: a willow reading nook with a book-swap shelf", "enter": true}, "ms": 7445, "shot": "shots/136-type.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:19:37+00:00", "cmd": "wait", "args": {"seconds": 12}, "ms": 12496, "shot": "shots/137-wait.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:19:38+00:00", "cmd": "scroll", "args": {"direction": "down", "px": 2000, "target": "400,450"}, "ms": 738, "shot": "shots/138-scroll.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:19:38+00:00", "cmd": "text", "args": {}, "ms": 4}
+{"t": "2026-10-01T01:19:42+00:00", "cmd": "type", "args": {"text": "south", "enter": true}, "ms": 1413, "shot": "shots/139-type.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:19:50+00:00", "cmd": "type", "args": {"text": "read the paper book", "enter": true}, "ms": 1606, "shot": "shots/140-type.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:19:55+00:00", "cmd": "wait", "args": {"seconds": 4}, "ms": 4489, "shot": "shots/141-wait.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:19:56+00:00", "cmd": "type", "args": {"text": "drop the warm brass cog", "enter": true}, "ms": 1615, "shot": "shots/142-type.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:20:03+00:00", "cmd": "wait", "args": {"seconds": 6}, "ms": 6486, "shot": "shots/143-wait.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:20:03+00:00", "cmd": "scroll", "args": {"direction": "down", "px": 2000, "target": "400,450"}, "ms": 751, "shot": "shots/144-scroll.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:20:04+00:00", "cmd": "text", "args": {}, "ms": 3}
+{"t": "2026-10-01T01:20:12+00:00", "cmd": "look", "args": {}, "ms": 47, "shot": "shots/145-look.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:20:18+00:00", "cmd": "click", "args": {"target": "19"}, "ms": 1379, "shot": "shots/146-click.jpg", "settle": "quiet"}
+{"t": "2026-10-01T01:20:18+00:00", "cmd": "text", "args": {}, "ms": 3}
