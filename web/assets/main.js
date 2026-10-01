@@ -1792,6 +1792,14 @@ function railFor(el) {
     thumb.addEventListener("pointerup", up);
     thumb.addEventListener("pointercancel", up);
   });
+  // A wheel over the rail scrolls its column, as over any scrollbar
+  // (playthrough 2026-10-01b: the rail sits beside the column, so the
+  // wheel went nowhere).
+  rail.addEventListener("wheel", (ev) => {
+    const unit = ev.deltaMode === 1 ? 16 : ev.deltaMode === 2 ? el.clientHeight : 1;
+    el.scrollBy({ top: ev.deltaY * unit });
+    ev.preventDefault();
+  }, { passive: false });
   rail.addEventListener("pointerdown", (ev) => {
     if (ev.target !== rail) return;
     const above = ev.clientY < thumb.getBoundingClientRect().top;
@@ -1842,7 +1850,7 @@ function updateMarginIndex(scrollable) {
         const who = ((r.querySelector(".topic-who") || {}).textContent || "").replace(/ about$/, "");
         // Find the row when clicked: renderTopics rebuilds every row on a
         // snapshot while this band (same key) keeps its buttons.
-        inner.push({ id: "topics-" + who, label: who, go: () => {
+        inner.push({ id: "topics-" + who, label: who, rank: inner.length ? 1 : 3, go: () => {
           const row = [...m.querySelectorAll("#topics .topic-row")].find((x) =>
             ((x.querySelector(".topic-who") || {}).textContent || "").replace(/ about$/, "") === who);
           if (!row) return;
@@ -1857,7 +1865,7 @@ function updateMarginIndex(scrollable) {
       (g) => g.offsetHeight > 0 && !below.includes(g) && yOf(g) < shown &&
         yOf(g) + g.offsetHeight > shown + 6);
     if (cut) {
-      inner.push({ id: "more-" + cut.id, label: "more", // one band line: the section shows above
+      inner.push({ id: "more-" + cut.id, label: "more", rank: 2, // the section shows above
         go: () => m.scrollBy({ top: m.clientHeight * 0.85, behavior: "smooth" }) });
     }
   }
@@ -1871,14 +1879,18 @@ function updateMarginIndex(scrollable) {
   }
   const key = [...inner.map((e) => e.id), ...below.map((g) => g.id)].join(",") +
     "|" + lastInventory.length;
-  if (idx.dataset.key !== key) {
+  idx.style.left = m.offsetLeft + "px";
+  idx.style.width = m.offsetWidth + "px";
+  if (idx.dataset.key !== key || idx.dataset.width !== String(m.offsetWidth)) {
     idx.dataset.key = key;
+    idx.dataset.width = String(m.offsetWidth);
     idx.innerHTML = "";
     for (const e of inner) {
       const b = document.createElement("button");
       b.type = "button";
       b.className = "index-tab";
       b.dataset.region = e.id;
+      b.dataset.rank = String(e.rank);
       b.textContent = "\u2193 " + e.label;
       b.onclick = e.go;
       idx.appendChild(b);
@@ -1891,15 +1903,30 @@ function updateMarginIndex(scrollable) {
       const label = (g.querySelector(".mlabel") || {}).textContent || "";
       const n = g.id === "carrying-region" ? lastInventory.length : 0;
       b.textContent = "\u2193 " + label + (n ? " \u00b7 " + n : "");
+      b.dataset.rank = g.id === "carrying-region" ? "4" : "2";
       b.onclick = () => m.scrollTo({ top: g.offsetTop - 6, behavior: "smooth" });
       idx.appendChild(b);
     }
+    fitBand(idx);
   }
   const carry = idx.querySelector('[data-region="carrying-region"]');
   if (carry) carry.classList.toggle("glint", Date.now() < carryGlintUntil);
-  idx.style.left = m.offsetLeft + "px";
-  idx.style.width = m.offsetWidth + "px";
   idx.style.top = (m.offsetTop + m.clientHeight - idx.offsetHeight) + "px";
+}
+
+// The band keeps to one line: on a short margin with two people here it grew
+// to three and covered the names above it (playthrough 2026-10-01b). The
+// least needed tabs fold away first (a second resident, a bare "more", a
+// section), never the first resident or "you carry".
+function fitBand(idx) {
+  const tabs = [...idx.querySelectorAll(".index-tab")];
+  const oneLine = () => new Set(tabs.filter((b) => !b.classList.contains("folded"))
+    .map((b) => b.offsetTop)).size <= 1;
+  const byNeed = tabs.slice().sort((a, b) => (+a.dataset.rank || 0) - (+b.dataset.rank || 0));
+  for (const b of byNeed) {
+    if (oneLine() || tabs.length - idx.querySelectorAll(".folded").length < 2) break;
+    b.classList.add("folded");
+  }
 }
 
 const scrollWatchers = new Map(); // element -> its queued update
@@ -2357,15 +2384,20 @@ function keepsakeCaption(name) {
 }
 
 function keepsakeGlyph(name) {
-  // One of a few gentle amber SVGs (generic, parameterized by the name), pressed
-  // into the mount like a specimen. Name is used only to pick a shape, never
+  // One of a few gentle amber SVGs pressed into the mount like a specimen: a
+  // cog for clockwork, a leaf for growing things, a glint for anything else
+  // (playthrough 2026-10-01b: picked by a hash of the name, the case key wore
+  // a leaf and the dreamseed a cog). Name is used only to pick a shape, never
   // interpolated into markup.
   const glyphs = [
     '<svg width="88" height="88" viewBox="0 0 120 120" aria-hidden="true"><circle cx="60" cy="60" r="40" fill="none" stroke="#c8a06e" stroke-width="14" stroke-dasharray="11 9"/><circle cx="60" cy="60" r="32" fill="#e7c791" stroke="#a97b3e" stroke-width="2.5"/><circle cx="60" cy="60" r="10" fill="#efe8d6" stroke="#a97b3e" stroke-width="2.5"/></svg>',
     '<svg width="88" height="88" viewBox="0 0 120 120" aria-hidden="true"><path d="M60 20 C 32 42, 32 82, 60 100 C 88 82, 88 42, 60 20 Z" fill="#dfe7cf" stroke="#8aa07f" stroke-width="2.5"/><path d="M60 28 L60 96" stroke="#8aa07f" stroke-width="2"/></svg>',
     '<svg width="88" height="88" viewBox="0 0 120 120" aria-hidden="true"><circle cx="60" cy="60" r="30" fill="#fbe6b6" stroke="#c8a06e" stroke-width="2.5"/><circle cx="60" cy="60" r="12" fill="#fff4d8"/><path d="M60 12 L60 30 M60 90 L60 108 M12 60 L30 60 M90 60 L108 60" stroke="#c8a06e" stroke-width="2.5" stroke-linecap="round"/></svg>',
   ];
-  return glyphs[hashName(name) % glyphs.length];
+  const n = name.toLowerCase();
+  if (/cog|gear|wheel|clock|pendulum|spring/.test(n)) return glyphs[0];
+  if (/seed|leaf|sprig|petal|flower|fern|moss|acorn|bloom/.test(n)) return glyphs[1];
+  return glyphs[2];
 }
 
 // ---- slot picker (toon-slot-management spec, 2026-05-07) -------------

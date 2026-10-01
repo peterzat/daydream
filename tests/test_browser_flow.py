@@ -450,6 +450,9 @@ def test_the_columns_name_what_lies_below_their_fold(tab, engines):
     resident = next(t["name"] for t in ENVELOPE["toons"] if t.get("room") == UP["id"])
     ask = page.locator("#margin-index .index-tab", has_text=f"ask {resident}")
     expect(ask).to_have_text(f"↓ ask {resident}")
+    lines = page.evaluate("""() => new Set([...document.querySelectorAll(
+        '#margin-index .index-tab:not(.folded)')].map((b) => b.offsetTop)).size""")
+    assert lines == 1, "the margin's band keeps to one line (playthrough 2026-10-01b)"
     row = page.locator("#topics .topic-row").first
     # A snapshot rebuilds the rows while the band keeps its buttons
     # (codereview 2026-10-01b): the tab must find the row when clicked.

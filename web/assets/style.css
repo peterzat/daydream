@@ -1015,6 +1015,7 @@ body.awake #chat { display: none; }
   background: linear-gradient(180deg, rgba(249,246,238,0), rgba(249,246,238,.96) 45%);
 }
 .margin-index.hidden { display: none; }
+.index-tab.folded { display: none; }
 /* The reading column's own foot tab ("more"), centred under the text. */
 .prose-index { justify-content: center; padding: 5px 16px 3px; }
 /* The band only shows the way: a click beside its tab reaches the line under it. */

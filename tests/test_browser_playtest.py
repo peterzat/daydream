@@ -112,6 +112,40 @@ def test_a_column_with_more_draws_its_rail_and_the_margin_names_what_is_below(ta
     _assert_quiet(tab, engines)
 
 
+def test_a_wheel_over_a_rail_scrolls_its_column(tab, engines):
+    """The rail is drawn beside its column, so a wheel over it reached
+    nothing (playthrough 2026-10-01b: "scrolling over it did nothing"). It
+    now scrolls the column, as a wheel over any scrollbar does."""
+    page = tab.page
+    page.set_viewport_size({"width": 1280, "height": 600})
+    _signed_in_with_a_dreamer(tab)
+    expect(page.locator(".prose")).to_have_class(re.compile(r"\bmore-below\b"))
+    box = page.evaluate("""() => {
+      const r = document.querySelector('.prose')._rail.getBoundingClientRect();
+      return {x: r.left + r.width / 2, y: r.top + r.height / 2};
+    }""")
+    assert page.evaluate(f"() => document.elementFromPoint({box['x']}, {box['y']})"
+                         ".closest('.scroll-rail') !== null")
+    page.mouse.move(box["x"], box["y"])
+    page.mouse.wheel(0, 300)
+    page.wait_for_timeout(300)
+    assert page.evaluate("() => document.querySelector('.prose').scrollTop") > 0
+    _assert_quiet(tab, engines)
+
+
+def test_a_keepsake_wears_the_shape_of_what_it_is(tab, engines):
+    """The satchel's mounts were picked by a hash of the name: the case key
+    wore a leaf and the dreamseed a cog (playthrough 2026-10-01b)."""
+    page = _signed_in_with_a_dreamer(tab)
+    shapes = page.evaluate("""() => Object.fromEntries(
+        ['warm brass cog', 'escapement gear', 'dreamseed', 'fern sprig', 'case key', 'letter']
+          .map((n) => [n, keepsakeGlyph(n).includes('stroke-dasharray') ? 'cog'
+            : keepsakeGlyph(n).includes('C 32 42') ? 'leaf' : 'glint']))""")
+    assert shapes == {"warm brass cog": "cog", "escapement gear": "cog", "dreamseed": "leaf",
+                      "fern sprig": "leaf", "case key": "glint", "letter": "glint"}
+    _assert_quiet(tab, engines)
+
+
 def test_a_typed_look_reads_as_the_same_card_as_a_click(tab, engines):
     """A clicked examine was a labelled card and a typed one plain prose, with
     "You examine the clock case: a tall ... clock case" doubling the noun.
