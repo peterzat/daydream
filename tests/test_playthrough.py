@@ -4,8 +4,8 @@ headless browser.
 The short tier pins what the player is given and kept from: the sandbox its
 `claude -p` runs in, a brief that names nothing of the world, a wrapper that
 reaches only the browser verbs, a made-up account the gate accepts, and a
-teardown that lands the report in the gitignored folder with its session
-record.
+teardown that lands the report, with its session record, in the committed
+folder that warns of spoilers, its action log masked for sharing.
 
 The medium tier drives the real browser daemon: against a fixture page, a
 mark or a readable word counts only when a person could see it (in the
@@ -270,7 +270,7 @@ def _fake_session(sid: str, report: str | None) -> Path:
     playthrough.save_session(sdir, {
         "id": sid, "base_url": "http://127.0.0.1:1", "envelope": "worlds/lost-hours.json",
         "build": "abc123", "art": {"copied": 30, "missing": 2},
-        "friend": {"name": "Robin Ash", "username": "robin", "password": "x"},
+        "friend": {"name": "Robin Ash", "username": "robin", "password": "amber-thimble-lark-42"},
         "player": {"model": "opus", "minutes": 41.5,
                    "result": {"subtype": "success", "num_turns": 210, "total_cost_usd": 12.3,
                               "shots_read": 2}}})
@@ -279,7 +279,10 @@ def _fake_session(sid: str, report: str | None) -> Path:
         + json.dumps({"t": "2026-10-01T00:00:01+00:00", "cmd": "click", "refused": "x",
                       "gate": "pace"}) + "\n"
         + json.dumps({"t": "2026-10-01T00:40:00+00:00", "cmd": "click", "shot": "2"}) + "\n"
-        + json.dumps({"t": "2026-10-01T00:41:00+00:00", "cmd": "click", "shot": "3"}) + "\n")
+        + json.dumps({"t": "2026-10-01T00:41:00+00:00", "cmd": "click", "shot": "3"}) + "\n"
+        + json.dumps({"t": "2026-10-01T00:41:05+00:00", "cmd": "type",
+                      "args": {"text": "amber-thimble-lark-42", "enter": True},
+                      "shot": str(sdir / "player" / "shots" / "005-type.jpg")}) + "\n")
     p["page_errors"].write_text("2026-10-01T00:05:00+00:00 pageerror: boom\n")
     p["server_log"].write_text("INFO fine\n2026 x ERROR daydream.ws: oops\nTraceback (most recent)\n")
     p["notes"].write_text("# Notes\n\nmove 1\n")
@@ -298,8 +301,8 @@ def test_teardown_lands_the_report_with_its_session_record(reports):
     text = (reports / "2026-10-01-robin.md").read_text()
     assert text.startswith("# Playthrough, 2026-10-01: Wren")
     record = text[text.index("## Session record"):]
-    assert "Moves: 3 (click 2, look 1) over 41 minutes" in record
-    assert "Screenshots the player opened: 2 of 3" in record
+    assert "Moves: 4 (click 2, look 1, type 1) over 41 minutes" in record
+    assert "Screenshots the player opened: 2 of 4" in record
     assert "Moves the browser refused: pace 1" in record
     assert "210 turns, 41.5 minutes, ended success, $12.30 equivalent" in record
     assert "Page errors and failed requests: 1" in record and "pageerror: boom" in record
@@ -308,6 +311,10 @@ def test_teardown_lands_the_report_with_its_session_record(reports):
     evidence = reports / "2026-10-01-robin"
     assert (evidence / "notes.md").exists() and (evidence / "shots" / "001-look.jpg").exists()
     assert (evidence / "actions.log").exists() and (evidence / "page-errors.log").exists()
+    shared = (evidence / "actions.log").read_text()
+    assert "amber-thimble-lark-42" not in shared and str(sdir) not in shared
+    typed = json.loads(shared.splitlines()[-1])
+    assert typed["args"]["text"] == "•" * 21 and typed["shot"] == "shots/005-type.jpg"
     assert not (playthrough.sessions_root() / "current").exists()
     assert sdir.exists()  # kept unless purged
 
@@ -322,8 +329,10 @@ def test_teardown_without_a_report_says_so_and_purge_removes_the_village(reports
 
 
 @pytest.mark.tier_short
-def test_the_reports_stay_local_and_the_skill_names_real_verbs():
-    assert "/playthroughs/" in (ROOT / ".gitignore").read_text().splitlines()
+def test_the_reports_are_shared_with_a_spoiler_warning_and_the_skill_names_real_verbs():
+    assert not any("playthroughs" in ln for ln in (ROOT / ".gitignore").read_text().splitlines())
+    assert "spoiler" in (ROOT / "playthroughs" / "README.md").read_text().lower()
+    assert "](playthroughs/)" in (ROOT / "README.md").read_text()
     skill = (ROOT / ".claude" / "skills" / "playthrough" / "SKILL.md").read_text()
     assert skill.startswith("---\nname: playthrough\n")
     named = set(re.findall(r"bin/game playthrough ([a-z_]+)", skill))

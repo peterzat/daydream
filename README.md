@@ -155,6 +155,20 @@ bin/game test long      # + real-GPU drift probes against committed goldens (~3 
 
 Every arc ending has a walkthrough replayed with zero model calls, a static analyzer proves every room reachable and every arc solvable, and Zork I still ends at exactly 350 points. A headless-browser test walks a new player from an invitation to the start room, the ops files and playbooks are tested against the code, and `bin/game prod check` verifies the live site itself. The drift probes compare the real models against git-committed baselines, so a changed golden is always a reviewed commit. The contract is [`TESTING.md`](TESTING.md).
 
+## Blind playthroughs
+
+`/playthrough` asks a model that knows nothing about the game to play it the way a new friend would. The player is a headless Claude Code session started outside this repo. It has no CLAUDE.md, no code and no world data. It gets only a short brief ([`docs/playtests/BROWSER-BRIEF.md`](docs/playtests/BROWSER-BRIEF.md)) and a browser on a fresh throwaway village with a made-up account. Every move answers with a screenshot and nothing else, with numbered tags on what can be clicked. The browser keeps a person's pace: it refuses a move made sooner than the last screen could have been looked at, it asks for think-aloud notes every few moves, and it ends the session at a move budget. At the end the player writes a report covering:
+
+- its overall impression, and whether it solved the story;
+- surprises, dead ends, and suggestions;
+- the puzzles;
+- what it made of planting a place of its own;
+- anything the page showed that it had no reason to know yet.
+
+The harness is `bin/game playthrough setup|player|status|teardown` ([`daydream/playthrough.py`](daydream/playthrough.py)).
+
+The reports are in [`playthroughs/`](playthroughs/), each with the run's notes, action log and screenshots. **A polite spoiler warning:** they walk through the village's puzzles and how they were solved. If you'd like to discover The Village of Lost Hours for yourself, you may want to play it before reading them.
+
 ## Technical choices
 
 - **SQLite per world, in WAL mode**, under `~/data/daydream/` and never in the repo. The `objects` table is the source of truth, and an append-only event log beside it gives reconnect replay (`?since=<seq>`), the raw-input log dreams read, and history. A world can be archived to a tarball, snapshotted, hot-swapped into the running process, or refreshed with new authored content while keeping play, and a git build SHA plus a `MAJOR.MINOR` world version, checked at boot, keep a stale process or world from misleading anyone.

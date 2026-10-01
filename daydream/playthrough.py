@@ -19,8 +19,9 @@ folder: BRIEF.md (docs/playtests/BROWSER-BRIEF.md, filled in) and ./browser.
 and its own files (no CLAUDE.md, no settings, no MCP, no other command),
 streaming its transcript to player.jsonl. It blocks; run it in the
 background. `teardown` stops the server and the browser and copies the
-report, the notes and the screenshots into playthroughs/ (gitignored), with
-a session record appended.
+report, the notes and the screenshots into playthroughs/ (committed, with
+its spoiler notice), with a session record appended; its copy of the action
+log masks the made-up password and names screenshots by their place there.
 
 The player's verbs, through ./browser. Each prints the path of a new
 screenshot and little else: the screen is the player's only way to see the
@@ -582,6 +583,25 @@ def _parse_t(s: str) -> datetime:
     return datetime.fromisoformat(s)
 
 
+def shareable_actions(src: Path, password: str) -> str:
+    """The action log as the reports folder keeps it, which is committed: each
+    screenshot named by its place in the copy's shots/, and the made-up
+    account's password masked where the player typed it."""
+    out = []
+    for line in src.read_text().splitlines():
+        try:
+            a = json.loads(line)
+        except ValueError:
+            continue
+        if a.get("shot"):
+            a["shot"] = f"shots/{Path(a['shot']).name}"
+        args = a.get("args") or {}
+        if password and password in str(args.get("text", "")):
+            a["args"] = {**args, "text": args["text"].replace(password, "•" * len(password))}
+        out.append(json.dumps(a))
+    return "".join(f"{ln}\n" for ln in out)
+
+
 def teardown(sdir: Path, purge: bool = False) -> dict:
     p, sess = paths(sdir), load_session(sdir)
     with contextlib.suppress(OSError, ValueError):
@@ -593,9 +613,12 @@ def teardown(sdir: Path, purge: bool = False) -> dict:
     out = reports_dir()
     extra = out / sess["id"]
     extra.mkdir(parents=True, exist_ok=True)
-    for key in ("notes", "actions", "page_errors"):
+    for key in ("notes", "page_errors"):
         if p[key].exists():
             shutil.copy2(p[key], extra / p[key].name)
+    if p["actions"].exists():
+        (extra / p["actions"].name).write_text(
+            shareable_actions(p["actions"], sess.get("friend", {}).get("password", "")))
     if p["shots"].is_dir():
         shutil.copytree(p["shots"], extra / "shots", dirs_exist_ok=True)
     wrote_report = p["report"].exists() and p["report"].read_text().strip() != ""

@@ -80,11 +80,12 @@ say so; do not write the player's report for it.
 bin/game playthrough teardown
 ```
 
-Stops the server and the browser, and copies into `playthroughs/` (gitignored,
-repo root): `<id>.md` (the player's report with a session record appended:
+Stops the server and the browser, and copies into `playthroughs/` (repo root,
+committed; its README warns of spoilers): `<id>.md` (the player's report with a session record appended:
 browser commands by kind, minutes, the player's turns, page errors and failed
 requests, server log errors) and `<id>/` (notes, screenshots, the action log,
-page errors). The session's data dir stays under ~/data for inspection
+page errors; this copy names screenshots by their place in `shots/` and masks
+the made-up account's password). The session's data dir stays under ~/data for inspection
 (the world DB holds every input); `--purge` deletes it.
 
 ## 6. Read and report
@@ -118,6 +119,8 @@ turn findings into fixes; do not start fixing unasked.
   only make with help is not a finding.
 - Never run a playthrough against prod or the dev server's world: setup's
   own village is the only target.
-- Never commit anything from `playthroughs/`. A finding worth keeping goes
-  into docs/playtests/ as a written summary (describe what players typed,
-  do not quote it), like the other playtest write-ups.
+- Never edit the player's report. Commit the report and its folder as they
+  came out of teardown, on their own (`playthroughs: <id>`), after reading
+  them for anything of the instance (a playthrough never touches prod, so
+  there should be none). They are spoilers by design: the folder's README
+  says so, and README "Blind playthroughs" links it.
