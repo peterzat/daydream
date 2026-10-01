@@ -247,10 +247,10 @@ def present(actor_id: str) -> set[str]:
         return set()
     if actor.location_id and not lighting.room_lit(actor.location_id):
         return set()  # a dark room shows nothing, so names nothing
-    from daydream import story
-
-    # The satchel's threads are read too: "Ask about the first winding."
-    parts: list[str] = list(story.threads_for(actor_id))
+    # The satchel's threads are not in front of anyone until they are read:
+    # opening the satchel says so (ws "seen"), and "what now" tells them as a
+    # line (playthrough 2026-10-01c: an unopened satchel made a name a chip).
+    parts: list[str] = []
     for o in objects.in_scope(actor_id):
         if o.id == actor_id or o.kind == "prototype":
             continue

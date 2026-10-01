@@ -341,6 +341,10 @@ def test_main_js_plant_prompts_for_vision_and_sends_command():
     # Plant's prompt is authored on its VerbSpec and rides the verb_bar.
     assert verbs.VERBS["plant"].needs_text
     assert verbs.VERBS["plant"].text_prompt
+    # Its limit is said before the first try, not only as a refusal
+    # (playthrough 2026-10-01c).
+    assert "spec.text_note" in r.text.split("function askForText")[1].split("\n}\n")[0]
+    assert "dozen words" in verbs.VERBS["plant"].text_note
 
 
 def test_main_js_room_change_veils_stale_art():

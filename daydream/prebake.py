@@ -45,10 +45,11 @@ def _targets(world_id: str, only: str | None, every_toon: bool = False):
         for r in conn.execute("SELECT * FROM objects WHERE world_id = ? AND kind = 'room' "
                               "ORDER BY id", (world_id,)):
             o = objects.Object.from_row(r)
-            if not o.seed.strip():
+            art = o.properties.get("art_seed") or o.seed
+            if not art.strip():
                 continue
             out.append(("room", o.id, o.properties.get("title") or o.name, client.PersistentTarget(
-                world_id=world_id, target_kind="room", target_id=o.id, seed=o.seed,
+                world_id=world_id, target_kind="room", target_id=o.id, seed=art,
                 prompt_suffix=client.WHIMSY_PROMPT_SUFFIX)))
     if only in (None, "toons"):
         for r in conn.execute("SELECT * FROM objects WHERE world_id = ? AND kind = 'toon' "

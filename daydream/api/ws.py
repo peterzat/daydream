@@ -310,7 +310,7 @@ def _state_snapshot(
     if room is not None and lit:
         workflow = image_client.load_workflow()
         path = image_cache.cache_path(
-            room.world_id, "room", room.id, room.seed, workflow
+            room.world_id, "room", room.id, room.art_seed, workflow
         )
         if path.exists():
             # Versioned (?v=<mtime>) so a repainted room busts the browser +
@@ -373,6 +373,7 @@ def _state_snapshot(
                 # staging hint ("put the coal in...").
                 "needs_text": v.needs_text,
                 "text_prompt": v.text_prompt,
+                "text_note": v.text_note,
                 "preps": list(v.preps),
                 # Where its direct object must be ("carried" / "here" /
                 # "any"), so the page can say why nothing lights.
@@ -658,7 +659,7 @@ def enqueue_room_regen(room_id: str, prompt_override: str | None = None) -> str:
     room = rooms.get_room(room_id)
     if room is None:
         return "no_room"
-    target = _room_target(room.world_id, room.id, room.seed)
+    target = _room_target(room.world_id, room.id, room.art_seed)
     key = image_client.target_dedup_key(target)
     if key in _generating:
         return "in_flight"
@@ -1195,7 +1196,7 @@ async def ws_endpoint(ws: WebSocket):
         # standing here (self included) enqueue the same way.
         room = rooms.get_room(_current_room_id(toon_id))
         if room is not None:
-            _maybe_enqueue_image_gen(room.world_id, room.id, room.seed)
+            _maybe_enqueue_image_gen(room.world_id, room.id, room.art_seed)
             _maybe_enqueue_toon_portraits(room.id)
         token = auth.token_from_cookie_header(ws.headers.get("cookie"))
         heard = {"at": time.monotonic()}  # when the page last sent a frame
@@ -1377,6 +1378,11 @@ async def _receive_loop(ws: WebSocket, toon_id: str, token: str | None = None,
                     if frame is not None:
                         await ws.send_json(frame)
                     await _send_threads_if_changed(ws, toon_id, conn)
+            elif kind == "seen":
+                # The page opened the satchel: its threads are read now, and
+                # what they name may be asked about (heard.present skips them).
+                if msg.get("what") == "threads":
+                    saw_threads(toon_id)
             elif kind == "command":
                 if len(str(msg.get("args", ""))) > MAX_INPUT_CHARS \
                         or len(str(msg.get("verb", ""))) > MAX_VERB_CHARS:
@@ -1397,6 +1403,13 @@ async def _receive_loop(ws: WebSocket, toon_id: str, token: str | None = None,
         pass  # a binary frame: this socket speaks JSON text only
     finally:
         live.unregister(toon_id, _send_live)
+
+
+def saw_threads(toon_id: str) -> None:
+    """The player read their satchel's threads: what those name is known."""
+    toon = objects.get(toon_id)
+    if toon is not None:
+        heard.note(toon.world_id, [toon_id], " . ".join(story.threads_for(toon_id)))
 
 
 @contextlib.contextmanager
@@ -1540,7 +1553,7 @@ async def _broadcast_loop(
                     new_room = rooms.get_room(_current_room_id(toon_id))
                     if new_room is not None:
                         _maybe_enqueue_image_gen(
-                            new_room.world_id, new_room.id, new_room.seed
+                            new_room.world_id, new_room.id, new_room.art_seed
                         )
                         _maybe_enqueue_toon_portraits(new_room.id)
                     # Greet any co-located NPCs (SPEC 2026-04-24). This

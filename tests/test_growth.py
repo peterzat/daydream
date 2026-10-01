@@ -854,6 +854,31 @@ async def test_the_ledger_keeps_a_planted_place_in_the_seeds_words(monkeypatch):
     assert len(story.chronicle("w-bunny")) == 1
 
 
+def test_a_grown_rooms_painting_leads_with_the_planters_words_and_colours():
+    """The house palette washed a "pale blue" flower white when the colour
+    was one detail of a whole room (playthrough 2026-10-01c): a grown room
+    paints from the planter's words first, weighted, each colour again."""
+    assert growth.art_seed("a small pale-blue flower with a brass-colored center",
+                           "A small flower blooms in moss.") == (
+        "(a small pale blue flower with a brass colored center:1.4), (pale blue:1.35), "
+        "(brass:1.35), A small flower blooms in moss.")
+    assert growth.art_seed("a quiet (hidden) room: old", "A room.") == "(a quiet hidden room old:1.4), A room."
+
+
+@pytest.mark.asyncio
+async def test_a_grown_room_keeps_its_painting_prompt_apart_from_its_seed(monkeypatch):
+    _mock_llm(monkeypatch, dict(VALID_COMPOSITION))
+    seed = _seed()
+    await _plant(seed, "a mossy green stair into light")
+    room_id = _grown_rooms()[0][0]
+    room = rooms.get_room(room_id)
+    assert room.seed == VALID_COMPOSITION["room_seed"]  # the language prompts' seed
+    assert room.art_seed.startswith("(a mossy green stair into light:1.4), (green:1.35), ")
+    assert room.art_seed.endswith(VALID_COMPOSITION["room_seed"])
+    meadow = rooms.get_room("r-meadow")
+    assert meadow.art_seed == meadow.seed  # an authored room paints from its seed
+
+
 def test_a_ledger_text_names_only_known_placeholders():
     from daydream.llm import bootstrap
 
@@ -893,7 +918,8 @@ async def test_a_never_word_in_the_vision_is_refused_before_any_call(monkeypatch
     seed = _seed(growth_block=dict(GROWTH_BLOCK, never_words=["bakery"]))
     await _plant(seed, "a warm Bakery under the stair")
     assert spy.call_count == 0
-    assert _last_narrate() == growth._NOT_THIS_DREAM
+    assert _last_narrate() == growth._NOT_THIS_DREAM.format(word="bakery")
+    assert "\"bakery\" is not something this dream will grow" in _last_narrate()
     _assert_nothing_grew(seed.id)
 
 

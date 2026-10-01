@@ -70,7 +70,7 @@ async def get_image_prompt(room_id: str, request: Request) -> dict:
     return {
         "room_id": room.id,
         "prompt": image_client.canonical_prompt(
-            room.seed, image_client.WHIMSY_PROMPT_SUFFIX
+            room.art_seed, image_client.WHIMSY_PROMPT_SUFFIX
         ),
     }
 

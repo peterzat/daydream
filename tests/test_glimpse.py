@@ -105,6 +105,23 @@ async def test_a_name_the_room_says_gets_one_local_line_then_the_same_one(cellar
     assert llm.await_args.kwargs["user"] == glimpse.user_prompt(WALLS, "take", "brick walls")
 
 
+async def test_writing_the_scene_only_mentions_reads_as_a_dreams_words(cellar, llm):
+    """A grown room's label "holds a handwritten note in careful script", and
+    "read the note" repeated the description (playthrough 2026-10-01c)."""
+    objects.spawn("w-lost-hours", "thing", "paper time label", "r-cellar",
+                  prototype_id=objects.PROTO_THING,
+                  properties={"seed": "a paper time label that holds a handwritten note in careful script"})
+    said = await _said(cellar, "read the handwritten note")
+    assert [e.payload["text"] for e in said] == [
+        "You try to read the handwritten note, but the words drift like a half-remembered "
+        "dream and will not hold still."]
+    looked = await _said(cellar, "examine the handwritten note")
+    assert "careful script" in looked[0].payload["text"]  # a look still reads the scene
+    said = await _said(cellar, "read the paper time label")
+    assert "will not hold still" in said[0].payload["text"]
+    assert llm.await_count == 0
+
+
 async def test_a_line_that_fails_or_a_quiet_model_reads_plainly(cellar, llm):
     llm.return_value = {"line": "Bell took them to the square."}  # a name the scene never said
     said = await _said(cellar, "take the brick walls")

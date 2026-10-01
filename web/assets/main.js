@@ -266,6 +266,19 @@ function connect(isReconnect) {
   };
 }
 
+// The verb bar keeps to one row: a full bar wrapped onto a second line and
+// moved every button under the cursor (playthrough 2026-10-01c: a click
+// meant for Talk landed on Use). A crowded bar tightens, then tightens
+// again, before it wraps; on a narrow phone it may still wrap.
+function fitVerbBar(bar) {
+  if (!bar) return;
+  bar.classList.remove("crowded", "snug");
+  const rows = () => new Set([...bar.children].map((b) => b.offsetTop)).size;
+  if (rows() > 1) bar.classList.add("crowded");
+  if (rows() > 1) bar.classList.add("snug");
+}
+window.addEventListener("resize", () => fitVerbBar(document.getElementById("verb-bar")));
+
 function renderSnapshot(snap) {
   // Feature flags the server gates optional surfaces on. regen_ui governs
   // the dev plate tools; when the server says off, the click handlers
@@ -458,7 +471,13 @@ function renderSnapshot(snap) {
     scroller.scrollTop = keptTop;
     const fresh = [...chat.children].filter((el) => Number(el.dataset.seq) > shownSeq);
     if (fresh.length) followLog(fresh[fresh.length - 1], fresh[0]);
-    else trimSpacer(scroller);
+    else if (answerFrom && Date.now() - actedAt < ACT_FOLLOW_MS) {
+      // The answer to what you just did came ahead of this re-render, and the
+      // rebuilt log can hold more above it than before, so the old offset no
+      // longer shows it: keep the answer in view, not the pixel offset
+      // (playthrough 2026-10-01c: a give's answer sat below the fold).
+      followLog(chat.lastElementChild, answerFrom);
+    } else trimSpacer(scroller);
   }
   if (arrivalRoomId !== lastArrivalRoomId) requestAnimationFrame(showRoomTop);
   lastArrivalRoomId = arrivalRoomId;
@@ -481,6 +500,7 @@ function renderSnapshot(snap) {
   // A verb with nothing here to act on reads quiet, and a touch says why
   // instead of staging a dead end (playtest 2026-09-29).
   markVerbReadiness();
+  fitVerbBar(verbBar);
   // Affordance buttons: room-anchored DATA skills only (e.g. forge). Core
   // verbs (look/say/examine/take/drop/talk/go) are NOT rendered as buttons —
   // the verb bar, clickable objects, text input, and exits cover them.
@@ -1024,7 +1044,11 @@ function askForText(verb, objectId, spec) {
   const what = document.createElement("b");
   what.textContent = (spec.ui_hint || verb) + " \u00b7 " + nameForObject(objectId);
   hint.appendChild(what);
-  hint.appendChild(document.createTextNode(": your words go on the line below. "));
+  // A verb with a limit says it before the first try (plant: "a short phrase,
+  // about a dozen words"), not only as a refusal (playthrough 2026-10-01c).
+  hint.appendChild(document.createTextNode(spec.text_note
+    ? ": " + spec.text_note + ", on the line below. "
+    : ": your words go on the line below. "));
   const never = document.createElement("button");
   never.type = "button";
   never.className = "hint-cancel";
@@ -2186,6 +2210,9 @@ function renderThreads(threads) {
 function openBackpack() {
   renderKeepsakes(lastInventory);
   renderThreads(lastThreads);
+  // Read now: what the threads name may be asked about (playthrough
+  // 2026-10-01c: unread threads had already made their names chips).
+  if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ kind: "seen", what: "threads" }));
   renderCollection(lastJournal);
   document.getElementById("backpack-panel").classList.remove("hidden");
 }

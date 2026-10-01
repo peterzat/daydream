@@ -124,6 +124,23 @@ async def test_typing_reaches_an_unmet_topic_and_then_it_is_a_chip(village):
     assert "Wend" in _labels("t-tace", me)
 
 
+async def test_a_thread_names_its_subject_only_once_the_satchel_is_read(village):
+    """An unopened satchel made its threads' names chips: Tace offered "the
+    first winding" and Bell "Linden" to a player who had read neither
+    (playthrough 2026-10-01c). A thread counts once its player reads it."""
+    from daydream.api import ws
+
+    me = _player()
+    objects.move(me, "r-loft")
+    from daydream import worldstate
+
+    worldstate.set(WORLD, "flag:CLOCK-STARTED", True)
+    assert any("first winding" in t for t in story.threads_for(me))
+    assert "the first winding" not in _labels("t-tace", me)
+    ws.saw_threads(me)
+    assert "the first winding" in _labels("t-tace", me)
+
+
 def test_every_talk_beat_is_an_invitation_or_named_somewhere():
     """A beat's chip waits until the fiction names its topic, so every beat
     must be `topic_open` (the story reaching out) or named in some line a

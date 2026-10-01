@@ -90,8 +90,10 @@ _NO_DIRECTION = "Every way out of this place is already taken; the seed has nowh
 _PHRASE_TOO_LONG = ("The seed trembles under so many words; hold a smaller vision, "
                     "about a dozen words.")
 _OFF_TONE = "The seed stirs, but the dream won't hold that shape."
-_NOT_THIS_DREAM = ("The seed turns that vision over and lets it go; nothing of "
-                   "that kind grows in this dream. Try another.")
+# Says which word, the player's own (playthrough 2026-10-01c: a vision
+# naming someone of the story was turned down "for no reason I could see").
+_NOT_THIS_DREAM = ("The seed turns that vision over and lets it go: \"{word}\" is not "
+                   "something this dream will grow. Try another, without it.")
 _WONT_HOLD_YET = "The seed stirs, but the dream won't hold that shape yet."
 _FOGGY = client.FOGGY_TEXT
 _HUSK_DEFAULT = "a spent dreamseed, its light gone soft; something of it lives on in this place"
@@ -352,6 +354,28 @@ def _direction_phrase_room(direction: str) -> str:
     return {"up": "overhead", "down": "underfoot"}.get(direction, f"to the {direction}")
 
 
+_COLOR = re.compile(
+    r"\b(?:(pale|light|dark|deep|soft|bright|dusky|dusk)[ -])?"
+    r"(red|crimson|scarlet|rose|pink|orange|amber|gold|golden|yellow|green|sage|teal|"
+    r"turquoise|blue|navy|indigo|violet|purple|lilac|lavender|white|ivory|cream|grey|gray|"
+    r"silver|black|brown|copper|brass|bronze|rust)(?:-colou?red)?\b", re.I)
+
+
+def art_seed(phrase: str, room_seed: str) -> str:
+    """The painting's prompt for a grown room: the planter's own words first
+    and weighted, each colour they name weighted again, then the composed
+    scene. The house palette (low-saturation cream and sage) washed a "pale
+    blue" flower white when the colour was one detail of a whole room
+    (playthrough 2026-10-01c; A/B'd on SDXL: the weights keep the colour and
+    the watercolour)."""
+    words = " ".join(re.sub(r"[()\[\]:]", " ", phrase).replace("-", " ").split())
+    colors = dict.fromkeys(" ".join(p for p in m.groups() if p).lower()
+                           for m in _COLOR.finditer(phrase))
+    parts = [f"({words}:1.4)"] if words else []
+    parts += [f"({c}:1.35)" for c in colors]
+    return ", ".join(parts + [room_seed.strip()])
+
+
 def _where_grown(direction: str, from_title: str) -> str:
     """Where a grown place lies, told in the Ledger: "south of the Pendulum
     Garden", "above the loft"."""
@@ -521,9 +545,10 @@ async def execute_plant(
     if safety.first_banned(phrase) is not None:
         _narrate(room_id, _OFF_TONE, to=actor.id)
         return False
-    if _never_word_hit(growth, phrase) is not None:
+    never = _never_word_hit(growth, phrase)
+    if never is not None:
         # The composition would be rejected for it anyway (after two calls).
-        _narrate(room_id, _NOT_THIS_DREAM, to=actor.id)
+        _narrate(room_id, _NOT_THIS_DREAM.format(word=never), to=actor.id)
         return False
 
     # ---- compose: one LLM call (a second only if the first is rejected) ----
@@ -622,7 +647,8 @@ def _commit_growth(
         {"kind": "spawn_room", "room_id": new_room_id, "slug": slug,
          "title": composition["title"], "seed": composition["room_seed"],
          "description": composition["description"],
-         "properties": {"generated_by": provenance, "grown": grown}},
+         "properties": {"generated_by": provenance, "grown": grown,
+                        "art_seed": art_seed(phrase, composition["room_seed"])}},
         {"kind": "link_exit", "from_room_id": current_room_id,
          "to_room_id": new_room_id, "direction": direction,
          "reverse_direction": _REVERSE[direction]},

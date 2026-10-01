@@ -468,6 +468,15 @@ async def answer(actor: objects.Object, room_id: str, name: str, verb: str) -> d
     if seen is None:
         return None
     noun, sentence = seen
+    if verb == "read":
+        from daydream import verbs
+
+        if verbs.looks_written(noun):
+            # Writing the scene only mentions ("a handwritten note" on a grown
+            # room's label) reads as a dream's words, not the description
+            # again (playthrough 2026-10-01c).
+            return {"kind": "narrate", "text": verbs.dream_words_line(f"the {noun}"),
+                    "to": "@actor"}
     if verb in LOOK_VERBS:
         return {"kind": "narrate", "text": _terminated(_sentence_case(sentence)), "to": "@actor"}
     way = _way(actor, room_id, noun, sentence)

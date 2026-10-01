@@ -133,6 +133,27 @@ def test_a_wheel_over_a_rail_scrolls_its_column(tab, engines):
     _assert_quiet(tab, engines)
 
 
+def test_a_full_verb_bar_keeps_to_one_row(tab, engines):
+    """Ten verbs wrapped the bar onto a second line and moved every button
+    (playthrough 2026-10-01c: a click meant for Talk landed on Use)."""
+    page = tab.page
+    page.set_viewport_size({"width": 1280, "height": 800})
+    _signed_in_with_a_dreamer(tab)
+    rows = page.evaluate("""() => {
+      const bar = document.getElementById('verb-bar');
+      bar.innerHTML = '';
+      for (const w of ['Examine', 'Take', 'Drop', 'Ask', 'Give', 'Pet', 'Plant', 'Talk',
+                       'Use', 'Wind', 'Listen']) {
+        const b = document.createElement('button'); b.type = 'button'; b.textContent = w;
+        bar.appendChild(b);
+      }
+      fitVerbBar(bar);
+      return new Set([...bar.children].map((b) => b.offsetTop)).size;
+    }""")
+    assert rows == 1
+    _assert_quiet(tab, engines)
+
+
 def test_a_keepsake_wears_the_shape_of_what_it_is(tab, engines):
     """The satchel's mounts were picked by a hash of the name: the case key
     wore a leaf and the dreamseed a cog (playthrough 2026-10-01b)."""

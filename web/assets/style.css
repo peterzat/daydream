@@ -375,6 +375,10 @@ body::before {
   cursor: pointer; transition: transform .15s ease, box-shadow .15s ease;
 }
 #verb-bar button:hover, .skill-ribbon button:hover { transform: translateY(-1px); }
+/* A full bar tightens before it wraps (main.js fitVerbBar). */
+#verb-bar.crowded { gap: 5px; }
+#verb-bar.crowded button { padding: 7px 11px; letter-spacing: .02em; }
+#verb-bar.snug button { padding: 6px 8px; font-size: .76rem; }
 /* A verb with nothing here to act on: quiet, still there (the bar does not
  * jump), and a touch says why (playtest 2026-09-29). */
 #verb-bar button.verb-idle { opacity: .5; box-shadow: none; background: transparent; }

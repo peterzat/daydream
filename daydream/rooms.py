@@ -17,6 +17,10 @@ class Room:
     description_cached: str | None
     exits: dict
     parent_id: str | None
+    # What its painting is made from: an authored or grown `art_seed` when
+    # there is one (a grown room leads with its planter's words), else the
+    # seed. The seed alone feeds the language prompts.
+    art_seed: str = ""
 
     @classmethod
     def from_object(cls, obj: "objects.Object") -> "Room":
@@ -31,6 +35,7 @@ class Room:
             description_cached=p.get("description_cached"),
             exits=exits if isinstance(exits, dict) else {},
             parent_id=p.get("parent_id"),
+            art_seed=p.get("art_seed") or p.get("seed", ""),
         )
 
 

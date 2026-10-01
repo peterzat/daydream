@@ -72,6 +72,9 @@ class VerbSpec:
     # today; world verbs author their own — no verb-name hardcode in main.js).
     needs_text: bool = False
     text_prompt: str = ""
+    # A note the prompt shows beside it on how much to write, when the verb
+    # has a limit (plant: playthrough 2026-10-01c met it only as a refusal).
+    text_note: str = ""
     # World verbs only: narrated to the actor when no rule matches anywhere.
     fail_text: str = ""
     # GWIM slot-default filters ({"key": ..., "eq"/...}): when the player
@@ -203,6 +206,7 @@ VERBS: dict[str, VerbSpec] = {
                                    "set_property", "narrate"}),
         free_text=True,
         needs_text=True, text_prompt="What do you see growing there?",
+        text_note="a short phrase, about a dozen words",
     ),
     "attack": VerbSpec(
         name="attack", ui_hint="Attack",
@@ -1324,14 +1328,23 @@ _WRITTEN_RE = re.compile(
     r"writing|recipes?|lists?|postcards?|volumes?|tomes?)\b", re.I)
 
 
+def looks_written(text: str) -> bool:
+    """Does this name or look suggest writing (a book, a sign, a note)?"""
+    return _WRITTEN_RE.search(text or "") is not None
+
+
+def dream_words_line(named: str) -> str:
+    """Reading what nobody wrote: the words are a dream's."""
+    return (f"You try to read {named}, but the words drift like a half-remembered "
+            "dream and will not hold still.")
+
+
 def _unreadable_line(dobj, named: str) -> str:
     """`read` on a thing with no words authored: a thing that looks written
     (by its name or its look) has words that will not hold still; anything
     else has nothing written on it."""
-    looks = " ".join([dobj.name, *dobj.aliases, str(dobj.properties.get("seed") or "")])
-    if _WRITTEN_RE.search(looks):
-        return (f"You try to read {named}, but the words drift like a half-remembered "
-                "dream and will not hold still.")
+    if looks_written(" ".join([dobj.name, *dobj.aliases, str(dobj.properties.get("seed") or "")])):
+        return dream_words_line(named)
     return f"There's nothing written on {named} to read."
 
 

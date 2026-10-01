@@ -471,6 +471,52 @@ def test_the_columns_name_what_lies_below_their_fold(tab, engines):
     _assert_quiet(tab, engines)
 
 
+def test_an_answer_stays_in_view_through_a_rerender_that_adds_lines_above(tab, engines):
+    """A give's answer sat below the fold behind "more": the room's
+    re-render after the give rebuilt the log with more above the answer and
+    put the reader back at the old pixel offset (playthrough 2026-10-01c).
+    The answer to what you just did stays in view instead."""
+    page = tab.page
+    page.set_viewport_size({"width": 1280, "height": 600})
+    snaps: list = []
+    later: list = []
+
+    def on_frame(f):
+        if '"state_snapshot"' in str(f):
+            snaps.append(f)
+        elif '"kind": "event"' in str(f) or '"kind":"event"' in str(f):
+            later.append(json.loads(f)["event"])
+
+    def on_ws(ws):
+        ws.on("framereceived", on_frame)
+
+    page.on("websocket", on_ws)
+    _signed_in_with_a_dreamer(tab)
+    page.locator("#things .obj").first.click()  # examine: an answer to your own act
+    card = page.locator("#chat .detail-inset").last
+    expect(card).to_be_visible()
+    snap = json.loads(snaps[-1])
+    # What the server's own re-render would hold: every line since, the answer too.
+    snap["events"] += [e for e in later if e["seq"] > snap["last_seq"]]
+    snap["last_seq"] = max([snap["last_seq"]] + [e["seq"] for e in later])
+    low = min([e["seq"] for e in snap["events"]] or [1000])
+    earlier = [{"seq": low - 40 + i, "kind": "narrate", "actor_type": "system", "actor_id": None,
+                "room_id": snap["room"]["id"], "created_at": "2026-10-01T16:00:00+00:00",
+                "payload": {"text": f"An earlier line, the {i}th, about the quiet of the tower."}}
+               for i in range(1, 30)]
+    snap["events"] = earlier + snap["events"]
+    page.evaluate("(s) => renderSnapshot(s)", snap)
+    page.wait_for_timeout(100)
+    shown = page.evaluate("""() => {
+      const sc = document.querySelector('.prose');
+      const c = [...document.querySelectorAll('#chat .detail-inset')].pop().getBoundingClientRect();
+      const b = sc.getBoundingClientRect();
+      return c.top >= b.top - 2 && c.top < b.bottom - 20;
+    }""")
+    assert shown, "the answer card fell out of view on the re-render"
+    _assert_quiet(tab, engines)
+
+
 LONG_ANSWER = " ".join(["The clock ticks softly, and dust settles on its gears like snow."] * 30)
 
 
