@@ -516,6 +516,45 @@ async def test_a_quantified_and_list_takes_each_named_thing(monkeypatch, text):
 
 
 @pytest.mark.asyncio
+async def test_a_clause_after_and_is_not_a_name_in_the_list(monkeypatch):
+    """"pick up the gear and wipe the moss off it" took the gear, then read
+    "You don't see the wipe the moss off it here" (playthrough 2026-10-01b):
+    a clause is left out of the list; a short missing name still answers."""
+    spy = _mock_llm(monkeypatch, {"verb": "none"})
+    gear = objects.spawn("w-bunny", "thing", "gear", location_id="r-forge",
+                         prototype_id=objects.PROTO_THING, properties={"seed": "a gear"})
+    lp = await parser.parse_line("t-wren", "pick up the gear and wipe the moss off it")
+    assert [(c.verb, c.dobj_id, c.dobj_name) for c in lp.commands] == [("take", gear.id, None)]
+    lp = await parser.parse_line("t-wren", "take the gear and the moon")
+    assert [(c.verb, c.dobj_id, c.dobj_name) for c in lp.commands] == [
+        ("take", gear.id, None), ("take", None, "moon")]
+    assert spy.await_count == 0
+
+
+@pytest.mark.asyncio
+async def test_a_line_that_opens_with_someones_name_is_talking_to_them(monkeypatch):
+    """"Quill, I planted a saffron tree..." went to the room as speech and
+    nobody answered (playthrough 2026-10-01b)."""
+    spy = _mock_llm(monkeypatch, {"verb": "none"})
+    lp = await parser.parse_line("t-wren", "Rook, I planted a saffron tree. Its pods tick.")
+    assert [(c.verb, c.dobj_id, c.args) for c in lp.commands] == [
+        ("talk", "t-rook", "I planted a saffron tree. Its pods tick.")]
+    lp = await parser.parse_line("t-wren", "Rook: is the forge hot?")
+    assert [(c.verb, c.dobj_id) for c in lp.commands] == [("talk", "t-rook")]
+    assert spy.await_count == 0
+
+
+@pytest.mark.asyncio
+async def test_words_the_model_reads_as_said_to_someone_are_talking_to_them(monkeypatch):
+    spy = _mock_llm(monkeypatch, {"verb": "say", "dobj_id": "t-rook", "kind": "say",
+                                  "args": "my tree ticks like your hammer"})
+    lp = await parser.parse_line("t-wren", "honestly my tree ticks like your hammer, old friend")
+    assert [(c.verb, c.dobj_id, c.args) for c in lp.commands] == [
+        ("talk", "t-rook", "my tree ticks like your hammer")]
+    assert spy.await_count == 1
+
+
+@pytest.mark.asyncio
 async def test_a_no_target_verb_carries_the_thing_it_names(monkeypatch):
     """"look at the lantern" style: a verb that needs no target still carries
     the one thing here it names, so the thing's own rules can answer (beta

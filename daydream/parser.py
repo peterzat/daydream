@@ -443,6 +443,10 @@ def _fast_path(actor_id: str, text: str, room: rooms.Room | None):
     if gesture is not None:
         return gesture
 
+    vocative = _vocative_fast_path(actor_id, text)
+    if vocative is not None:
+        return vocative
+
     words = text.split()
     # Longest-prefix verb-word match: two-word heads ("turn on", "blow out")
     # beat one-word heads ("turn"). Engine names/aliases + world vocabulary.
@@ -719,6 +723,20 @@ def _say_fast_path(actor_id: str, rest: str):
         if who is not None and not isinstance(who, list) and k == len(tail.split()):
             return [Parse("talk", dobj_id=who.id, args=rest[:idx].strip())]
     return [Parse("say", args=rest)]
+
+
+def _vocative_fast_path(actor_id: str, text: str):
+    """"<someone here>, <words>" (or "<someone>: <words>") is talking to
+    them: in playthrough 2026-10-01b a line that greeted a resident by name
+    went to the room as speech and nobody answered. The name must close
+    with the comma or colon, and words must follow."""
+    words = text.split()
+    who, k = _toon_prefix(actor_id, words[:4])
+    if who is None or isinstance(who, list) or k >= len(words):
+        return None
+    if not words[k - 1].endswith((",", ":")):
+        return None
+    return [Parse("talk", dobj_id=who.id, args=" ".join(words[k:]).strip())]
 
 
 def _gesture_fast_path(actor_id: str, text: str, world_id: str | None):
@@ -1036,6 +1054,13 @@ def _expand_multi(
             continue
         matches = _ground(actor_id, name)
         if not matches:
+            # A clause is not a name: "pick up the gear and wipe the moss off
+            # it" took the gear, then read "You don't see the wipe the moss off
+            # it here" (playthrough 2026-10-01b). Four words or more, or a
+            # closing pronoun, is a clause and is left out of the list.
+            words = name.split()
+            if len(words) >= 4 or words[-1].lower().strip(".!?") in _NOT_NAMES:
+                continue
             out.append(Parse(verb, dobj_name=name, iobj_id=iobj_id))
         else:
             grounded += 1
@@ -1220,6 +1245,7 @@ def interpret(result, text: str, vocab_names: set[str], scope_ids: set[str], wor
             if word is not None:
                 who = first.dobj_id if first.verb not in ("none", "meta") else None
                 first = Parse("gesture", dobj_id=who, args=word)
+    first = _said_to_someone(first, set((people or {}).values()), vocab_names, text)
     out = [first]
     more = result.get("then") if triage else None
     if isinstance(more, list) and first is not NONE:
@@ -1229,6 +1255,16 @@ def interpret(result, text: str, vocab_names: set[str], scope_ids: set[str], wor
                 if cmd is not NONE:
                     out.append(replace(cmd, segment=len(out)))  # a step of its own
     return out
+
+
+def _said_to_someone(cmd: Parse, person_ids: set[str], vocab_names: set[str],
+                     text: str) -> Parse:
+    """Words the model read as `say` aimed at someone here are talking to
+    them, as `say ... to <someone>` already is: said to the room, nobody
+    answered (playthrough 2026-10-01b)."""
+    if cmd.verb == "say" and cmd.dobj_id in person_ids and "talk" in vocab_names:
+        return Parse("talk", dobj_id=cmd.dobj_id, args=cmd.args or text.strip())
+    return cmd
 
 
 def _settle_target(cmd: Parse, result: dict, text: str, world_id: str, ground) -> Parse:
