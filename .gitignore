@@ -29,6 +29,10 @@ web/node_modules/
 *.swp
 .DS_Store
 
+# /playthrough reports, notes and screenshots (daydream/playthrough.py): what a
+# blind player saw and typed in a throwaway village. Local only.
+/playthroughs/
+
 # This instance's local record (CLAUDE.md "This repo and this instance"):
 # what exists only on this box and in its Cloudflare account. Never pushed.
 /instance/

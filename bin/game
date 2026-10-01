@@ -951,6 +951,15 @@ cmd_play() {
     "$VENV_PY" -m daydream.play "$@"
 }
 
+cmd_playthrough() {
+    # A blind new player in a real (headless) browser, for the /playthrough
+    # skill: a fresh village on its own port, a made-up account, and a
+    # context-free player that sees screenshots and clicks. See
+    # daydream/playthrough.py.
+    _require_venv
+    "$VENV_PY" -m daydream.playthrough "$@"
+}
+
 cmd_prebake() {
     _refuse_gpu_work_while_prod_runs
     # Design-time art pre-bake (SPEC 2026-09-26 criterion 20): render every
@@ -996,6 +1005,7 @@ case "${1:-}" in
     world)         shift; cmd_world "$@" ;;
     dream)         shift; cmd_dream "$@" ;;
     play)          shift; cmd_play "$@" ;;
+    playthrough)   shift; cmd_playthrough "$@" ;;
     prebake)       shift; cmd_prebake "$@" ;;
     test)          shift; cmd_test "$@" ;;
     voice-samples) shift; cmd_voice_samples "$@" ;;
@@ -1010,6 +1020,6 @@ case "${1:-}" in
     ci)            shift; _require_venv; exec "$VENV_PY" -m daydream.ci "$@" ;;
     guard)         shift; cmd_guard "$@" ;;
     jev)           shift; _require_venv; exec "$VENV_PY" -m daydream.jev.cli "$@" ;;
-    "")            echo "usage: bin/game {up|up-all|deploy|down|status|logs|image-test|comfyui-up|comfyui-down|vllm-up|vllm-down|world|dream|play|prebake|account|invite|prod|edge|test|voice-samples|drift-samples|review|model-eval|text-scan|ci|guard|jev}" >&2; exit 2 ;;
-    *)             echo "usage: bin/game {up|up-all|deploy|down|status|logs|image-test|comfyui-up|comfyui-down|vllm-up|vllm-down|world|dream|play|prebake|account|invite|prod|edge|test|voice-samples|drift-samples|review|model-eval|text-scan|ci|guard|jev} (got: $1)" >&2; exit 2 ;;
+    "")            echo "usage: bin/game {up|up-all|deploy|down|status|logs|image-test|comfyui-up|comfyui-down|vllm-up|vllm-down|world|dream|play|playthrough|prebake|account|invite|prod|edge|test|voice-samples|drift-samples|review|model-eval|text-scan|ci|guard|jev}" >&2; exit 2 ;;
+    *)             echo "usage: bin/game {up|up-all|deploy|down|status|logs|image-test|comfyui-up|comfyui-down|vllm-up|vllm-down|world|dream|play|playthrough|prebake|account|invite|prod|edge|test|voice-samples|drift-samples|review|model-eval|text-scan|ci|guard|jev} (got: $1)" >&2; exit 2 ;;
 esac
