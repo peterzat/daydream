@@ -101,7 +101,7 @@ class Refusal(Exception):
 
 
 def reports_dir() -> Path:
-    """The gitignored folder the reports land in."""
+    """The folder the reports land in (committed, behind a spoiler README)."""
     return Path(os.environ.get("DAYDREAM_PLAYTHROUGHS_DIR") or ROOT / "playthroughs")
 
 
@@ -583,10 +583,23 @@ def _parse_t(s: str) -> datetime:
     return datetime.fromisoformat(s)
 
 
-def shareable_actions(src: Path, password: str) -> str:
+def scrub(text: str, password: str, sdir: Path, sid: str) -> str:
+    """Text as the committed reports folder keeps it: the made-up account's
+    password masked, and the session's absolute folder (and its player/
+    folder, where the player sees its screenshots) named as the run's own
+    folder in the reports, so no path under the operator's home lands."""
+    if password:
+        text = text.replace(password, "•" * len(password))
+    for d in (sdir / "player", sdir):
+        for form in sorted({str(d.resolve()), str(d)}, key=len, reverse=True):
+            text = text.replace(form, sid)
+    return text
+
+
+def shareable_actions(src: Path, password: str, sdir: Path, sid: str) -> str:
     """The action log as the reports folder keeps it, which is committed: each
-    screenshot named by its place in the copy's shots/, and the made-up
-    account's password masked where the player typed it."""
+    screenshot named by its place in the copy's shots/, and every line
+    scrubbed whole (the password wherever it shows, a mark label included)."""
     out = []
     for line in src.read_text().splitlines():
         try:
@@ -595,10 +608,7 @@ def shareable_actions(src: Path, password: str) -> str:
             continue
         if a.get("shot"):
             a["shot"] = f"shots/{Path(a['shot']).name}"
-        args = a.get("args") or {}
-        if password and password in str(args.get("text", "")):
-            a["args"] = {**args, "text": args["text"].replace(password, "•" * len(password))}
-        out.append(json.dumps(a))
+        out.append(scrub(json.dumps(a, ensure_ascii=False), password, sdir, sid))
     return "".join(f"{ln}\n" for ln in out)
 
 
@@ -613,12 +623,14 @@ def teardown(sdir: Path, purge: bool = False) -> dict:
     out = reports_dir()
     extra = out / sess["id"]
     extra.mkdir(parents=True, exist_ok=True)
+    password = sess.get("friend", {}).get("password", "")
     for key in ("notes", "page_errors"):
         if p[key].exists():
-            shutil.copy2(p[key], extra / p[key].name)
+            (extra / p[key].name).write_text(
+                scrub(p[key].read_text(errors="replace"), password, sdir, sess["id"]))
     if p["actions"].exists():
         (extra / p["actions"].name).write_text(
-            shareable_actions(p["actions"], sess.get("friend", {}).get("password", "")))
+            shareable_actions(p["actions"], password, sdir, sess["id"]))
     if p["shots"].is_dir():
         shutil.copytree(p["shots"], extra / "shots", dirs_exist_ok=True)
     wrote_report = p["report"].exists() and p["report"].read_text().strip() != ""
@@ -626,7 +638,7 @@ def teardown(sdir: Path, purge: bool = False) -> dict:
             f"# Playthrough {sess['id']}\n\nThe player wrote no report.md; its notes are in "
             f"`{sess['id']}/notes.md`.")
     report = out / f"{sess['id']}.md"
-    report.write_text(body + "\n\n" + session_record(sdir))
+    report.write_text(scrub(body + "\n\n" + session_record(sdir), password, sdir, sess["id"]))
     ptr = sessions_root() / "current"
     if ptr.exists() and ptr.read_text().strip() == sess["id"]:
         ptr.unlink()

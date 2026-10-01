@@ -296,6 +296,19 @@ def _fake_session(sid: str, report: str | None) -> Path:
 @pytest.mark.tier_short
 def test_teardown_lands_the_report_with_its_session_record(reports):
     sdir = _fake_session("2026-10-01-robin", "# Playthrough, 2026-10-01: Wren\n\n## 1. Overall impression\n\nlovely\n")
+    p, secret = playthrough.paths(sdir), "amber-thimble-lark-42"
+    shot = str(sdir / "player" / "shots" / "003-click.jpg")
+    with p["report"].open("a") as fh:
+        fh.write(f"\nI signed in with {secret}; see {shot}.\n")
+    with p["notes"].open("a") as fh:
+        fh.write(f"typed {secret} into the door, looked at {shot}\n")
+    p["page_errors"].write_text(
+        f"2026-10-01T00:05:00+00:00 pageerror: boom {secret} at {sdir}/server.log\n")
+    acts = p["actions"].read_text().splitlines()
+    first = json.loads(acts[0])
+    acts[0] = json.dumps({**first, "marks": [f"[3] text field Password: {secret}"],
+                          "label": f"saved {shot}"})
+    p["actions"].write_text("\n".join(acts) + "\n")
     r = playthrough.teardown(sdir)
     assert r["player_report"] is True
     text = (reports / "2026-10-01-robin.md").read_text()
@@ -313,6 +326,11 @@ def test_teardown_lands_the_report_with_its_session_record(reports):
     assert (evidence / "actions.log").exists() and (evidence / "page-errors.log").exists()
     shared = (evidence / "actions.log").read_text()
     assert "amber-thimble-lark-42" not in shared and str(sdir) not in shared
+    for landed in (text, (evidence / "notes.md").read_text(),
+                   (evidence / "page-errors.log").read_text(), shared):
+        assert secret not in landed and str(sdir) not in landed
+        assert str(sdir.resolve()) not in landed and "•" * 21 in landed
+    assert "2026-10-01-robin/shots/003-click.jpg" in text
     typed = json.loads(shared.splitlines()[-1])
     assert typed["args"]["text"] == "•" * 21 and typed["shot"] == "shots/005-type.jpg"
     assert not (playthrough.sessions_root() / "current").exists()
