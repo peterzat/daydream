@@ -382,6 +382,7 @@
               "max_generation": 2,
               "seed_text": "a new dreamseed, paper-lantern thin and barely warm, its slow light only just learning to beat"
             },
+            "ledger_text": "{planter} planted a dreamseed, and {title} grew {where}.",
             "first_planting_text": "Far off in the tower, the great clock gives one soft, deliberate tick. The dream has more room in it than it did a breath ago, and it was your hands that made the room. Down in the square, a lantern comes alight early, the way a house does when someone dear is coming home."
           }
         }

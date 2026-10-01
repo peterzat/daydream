@@ -730,6 +730,20 @@ def _chronicle_append(world_id: str, arc_id: str, arc: dict, ending_id: str,
     worldstate.set(world_id, CHRONICLE_KEY, log)
 
 
+def chronicle_note(world_id: str, kind: str, text: str, **extra) -> None:
+    """A chronicle line for something other than an arc's ending (a place a
+    player planted): the Ledger of Returned Hours reads it with the rest."""
+    from daydream import village
+
+    if not text.strip():
+        return
+    log = worldstate.get(world_id, CHRONICLE_KEY)
+    log = log if isinstance(log, list) else []
+    log.append({"kind": kind, "day": village.day(world_id), "at": worldclock.iso(),
+                "text": text.strip(), **extra})
+    worldstate.set(world_id, CHRONICLE_KEY, log)
+
+
 def _join_names(names: list[str]) -> str:
     names = [n for n in names if n]
     if not names:
@@ -746,8 +760,8 @@ def chronicle(world_id: str) -> list[dict]:
 
 def chronicle_text(world_id: str, holder: objects.Object) -> str:
     """The readable text of a chronicle book: its authored header, then one
-    line per closed arc in the order they closed (day + the authored ledger
-    line naming who helped), or its authored empty text."""
+    line per closed arc or planted place, in order (day + the authored ledger
+    line naming who helped or planted), or its authored empty text."""
     header = holder.properties.get("chronicle_header")
     empty = holder.properties.get("chronicle_empty")
     entries = chronicle(world_id)

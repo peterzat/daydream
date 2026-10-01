@@ -352,6 +352,14 @@ def _direction_phrase_room(direction: str) -> str:
     return {"up": "overhead", "down": "underfoot"}.get(direction, f"to the {direction}")
 
 
+def _where_grown(direction: str, from_title: str) -> str:
+    """Where a grown place lies, told in the Ledger: "south of the Pendulum
+    Garden", "above the loft"."""
+    near = toons.in_sentence(from_title) if from_title else "here"
+    way = {"up": "above", "down": "below"}.get(direction)
+    return f"{way} {near}" if way else f"{direction} of {near}"
+
+
 def _slugify(title: str) -> str:
     s = re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-")
     return s or "grown-place"
@@ -694,6 +702,20 @@ def _commit_growth(
         consume, actor_id=actor_id, room_id=current_room_id,
         world_id=world_id, allowed=allowed,
     )
+
+    # The Ledger keeps the place too, in the seed's own words (playthrough
+    # 2026-10-01b: a planted tree was missing from the book of what players
+    # did). No template, no line: the engine writes no story of its own.
+    ledger = growth.get("ledger_text")
+    if isinstance(ledger, str) and ledger.strip():
+        from daydream import story
+
+        planter = objects.get(actor_id)
+        story.chronicle_note(world_id, "planted", ledger.strip()
+                             .replace("{planter}", planter.name if planter else "someone")
+                             .replace("{title}", composition["title"])
+                             .replace("{where}", _where_grown(direction, room.title)),
+                             room_id=new_room_id, planter_id=actor_id)
 
     # The one-time first-planting chapter close (SPEC 2026-07-07 criterion 7):
     # when THIS plant grew the world's very first room and the seed authors

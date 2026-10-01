@@ -78,6 +78,9 @@ def test_the_note_names_who_came_what_closed_what_grew_and_the_post():
          "helpers": ["Ivo"], "text": "Ivo lit a lamp for the moth hour."},
         {"arc": "old", "ending": "kept", "day": 0, "at": "2026-09-01T00:00:00+00:00",
          "helpers": [], "text": "Long ago, something else."},
+        # The Ledger's line for the planted place: told once, below, with its seed.
+        {"kind": "planted", "day": 1, "at": worldclock.iso(),
+         "text": "Ivo planted a dreamseed, and the Moss Stair grew north of the meadow."},
     ])
     # A guest came.
     guest = objects.spawn(W, "toon", "the Moth Hour", "r-meadow", prototype_id=objects.PROTO_NPC)

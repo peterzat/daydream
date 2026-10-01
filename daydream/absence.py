@@ -91,8 +91,10 @@ def _arrived_since(world_id: str, since: str) -> list[str]:
 
 
 def _chronicle_since(world_id: str, since: str) -> list[str]:
+    # A planted place is told by _grown_since, with whose seed it was.
     return [str(e.get("text", "")).strip() for e in story.chronicle(world_id)
-            if _after(e.get("at"), since) and str(e.get("text", "")).strip()]
+            if _after(e.get("at"), since) and str(e.get("text", "")).strip()
+            and e.get("kind") != "planted"]
 
 
 def take_note(toon_id: str) -> dict | None:

@@ -416,6 +416,15 @@ def _validate_growth(growth: object, where: str) -> None:
         raise BootstrapValidationError(
             f"{where}.first_planting_text must be a non-empty string"
         )
+    ledger = growth.get("ledger_text")
+    if ledger is not None:
+        if not isinstance(ledger, str) or not ledger.strip():
+            raise BootstrapValidationError(f"{where}.ledger_text must be a non-empty string")
+        unknown = set(re.findall(r"\{(\w+)\}", ledger)) - {"planter", "title", "where"}
+        if unknown:
+            raise BootstrapValidationError(
+                f"{where}.ledger_text names unknown placeholders {sorted(unknown)} "
+                "(it may use {planter}, {title}, {where})")
 
 
 def _validate_growth_keys(props: dict, where: str) -> None:

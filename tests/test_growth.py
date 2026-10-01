@@ -12,7 +12,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from daydream import config, db, events, growth, objects, rooms, verbs
+from daydream import config, db, events, growth, objects, rooms, toons, verbs
 from daydream.llm import client
 
 pytestmark = pytest.mark.tier_short
@@ -827,6 +827,39 @@ async def test_first_planting_beat_fires_once(monkeypatch):
              if e.kind == "narrate"]
     assert not any("deliberate tick" in t for t in later)
     assert len(objects.get_property("t-wren", "journal")) == 1
+
+
+@pytest.mark.asyncio
+async def test_the_ledger_keeps_a_planted_place_in_the_seeds_words(monkeypatch):
+    """A planted place goes into the chronicle the Ledger reads, from the
+    seed's authored `ledger_text` (playthrough 2026-10-01b: a planted tree
+    was missing from the book of what players did); no template, no line."""
+    from daydream import story
+
+    _mock_llm(monkeypatch, dict(VALID_COMPOSITION))
+    seed = _seed(growth_block=dict(GROWTH_BLOCK, ledger_text=(
+        "{planter} planted a dreamseed, and {title} grew {where}.")))
+    await _plant(seed)
+    meadow = toons.in_sentence(objects.get("r-meadow").properties.get("title"))
+    entries = story.chronicle("w-bunny")
+    assert [(e["kind"], e["text"]) for e in entries] == [
+        ("planted", f"Wren planted a dreamseed, and The Moss Stair grew south of {meadow}.")]
+    holder = objects.spawn("w-bunny", "thing", "ledger", "r-meadow",
+                           prototype_id=objects.PROTO_READABLE,
+                           properties={"text_source": "chronicle", "chronicle_header": "THE BOOK."})
+    assert "Wren planted a dreamseed" in story.chronicle_text("w-bunny", holder)
+
+    seed2 = _seed()  # no ledger_text: the engine writes no line of its own
+    await _plant(seed2)
+    assert len(story.chronicle("w-bunny")) == 1
+
+
+def test_a_ledger_text_names_only_known_placeholders():
+    from daydream.llm import bootstrap
+
+    with pytest.raises(bootstrap.BootstrapValidationError, match="unknown placeholders"):
+        bootstrap._validate_growth(dict(GROWTH_BLOCK, ledger_text="{who} planted {title}."),
+                                   "seed")
 
 
 @pytest.mark.asyncio
