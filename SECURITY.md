@@ -2,41 +2,35 @@
 
 ## Security Review — 2026-10-01 (scope: paths)
 
-**Summary:** Path-scoped review of the five paths the caller named, read as
-their change from the last scan (`d57fbe3`) to HEAD `2a8d93b`. That covers
-three commits:
-- `4b69ea6`: teardown scrubs every file it lands in the reports folder (the
-  made-up password, and the session's absolute folder), and the
-  `reports_dir()` docstring is fixed. This was the last entry's playthrough
-  NOTE, now resolved.
-- `9c9bad0`: the reports folder's screenshots are re-encoded at 960 px, and
-  `bin/game playthrough purge` deletes finished sessions' villages.
-- `2a8d93b`: nudity words join the banlist's content category, the first
-  half of the last entry's art NOTE.
+**Summary:** Path-scoped review of the 16 paths the caller named, read in
+full and as their change from the last scan (`2a8d93b`) to HEAD `d03a48a`.
+Two unpushed commits touch them:
+- `113b1df`: `prod status` leads its edge line with what friends see (the
+  Worker's public status), then the flag; a timer job with no run since
+  boot reads "not run since boot".
+- `d03a48a`: the door carries Open Graph and Twitter tags filled by the
+  server, a 1200x630 link card and two icons (made by the new
+  `tools/make_link_card.py`), and a new `card_image` instance word.
 
-No BLOCK or WARN. The art NOTE is carried, narrowed: the case the last entry
-measured is closed, but synonyms and inflections still reach SDXL on two
-paths (a grown room's painting and a dreamer's portrait), and the negative
-prompts are unchanged. Register: 0 BLOCK / 0 WARN / 9 NOTE (eight carried;
-their files are unchanged).
+No new finding. Every value the new tags carry is escaped and comes from
+instance.json or the environment, never the request; the invite preview is
+the same page for any slug; the new images carry no metadata. Register:
+0 BLOCK / 0 WARN / 9 NOTE, all carried; their files are unchanged.
 
 ### Findings
 
-[NOTE] daydream/llm/safety.py:57-59 (with daydream/api/slots.py:201, daydream/growth.py:286 and :364-381, and node "4" of daydream/images/workflows/painterly_room.json and painterly_portrait.json) — `2a8d93b` closes the case the last entry measured. A phrase or a dreamer's look that says nude or naked is now refused before any call, and a composition that keeps one is rejected with the seed kept. The list is per word, though, and the two paths that put a friend's words into SDXL have nothing else between them and a synonym. The workflows' negative prompts still name no content (the other half of the last entry's remediation), and `art_seed` still builds a weighted run from words scattered through the `room_seed`.
-  Attack vector: An invited friend makes a dreamer whose look is "a bare-breasted bather" or "a sexy dreamer in lingerie". `_toon_request` (slots.py:164-203) checks a 300-character cap and `first_banned`, and both pass. The portrait is painted from those words (`portrait_target`, images/client.py:313), shown on the dreamer's card to every player in the same room, and kept in the art keep with its prompt. An admin repaint replaces the cache file, not the kept copy. On the growth path, the phrase "a sleeper in her nakedness" passes the gate (growth.py:550). If the gardener keeps the word, the composition passes (growth.py:286) and `art_seed` weights it at 1.4.
-  Evidence: deterministic calls only (no model call, no render):
-  - `first_banned` returns None for sex, sexy, porn, nakedness, nudist, undressing, disrobed, bare-breasted, breasts, lingerie and "nothing but moonlight". On the gore side it returns None for blood, severed, decapitated and entrails.
-  - `validate_growth_output` now rejects a `room_seed` that says "naked" anywhere, so the last entry's "(a woman bathing naked beneath:1.4)" can no longer form. It accepts one that says "nakedness", and `art_seed` then returns "(a sleeper in her nakedness:1.4)".
-  - The combination still forms with a word the list lacks. The phrase "a woman bathing bare beneath the willow" passes the gate, a `room_seed` of "a woman's shawl on bare branches, and birds bathing beneath a willow by the pool" passes the validator, and `art_seed` returns "(a woman bathing bare beneath the willow:1.4)".
-  - Node 4 of both workflows lists style terms only (harsh edges, pixel art, neon, ..., deformed, low quality).
-  - Mitigations: accounts are invited, and a player makes at most six dreamers a day (`DREAMERS_PER_DAY`). None of the seven new words appears in `worlds/`, so nothing authored is newly dropped.
-  Confidence: high that these words reach the prompt. No image was rendered, so how explicitly SDXL draws them under the portrait framing and the watercolor LoRA is unmeasured.
-  Remediation:
-  - Add content terms to node 4 of both workflows (for example nsfw, nudity, nude, naked, sexual, lingerie, gore, blood, corpse). The model then resists the synonyms no wordlist will hold. It changes every cache key, so batch it with the next workflow change, as the last entry said.
-  - Extend the sexual category with whole words that are safe in this world: sexy, porn, pornographic, nakedness, nudist, nudism, undressing, disrobed, lingerie, bare-breasted. Avoid stems that catch village words: `nud\w*` takes "nudge", `sex\w*` takes "sextant" and "sexton", and "breast" takes "chimney breast".
-  - In `art_seed`, weight only runs of two or more consecutive phrase words found in the same order in the `room_seed`, and strip `()[]:` from the `room_seed` part (unchanged from the last entry).
+No new security issues identified in the reviewed paths.
 
-Carried from the last entry (still open; none of their files changed since `adc00ff`):
+Carried from the last entry (still open; none of their files changed since `2a8d93b`):
+
+[NOTE] daydream/llm/safety.py:57-59 (with daydream/api/slots.py:201, daydream/growth.py:286 and :364-381, and node "4" of daydream/images/workflows/painterly_room.json and painterly_portrait.json) — The content banlist is per word, and the two paths that put a friend's words into SDXL (a dreamer's portrait and a grown room's painting) have nothing else between them and a synonym. Unchanged since the last entry, which narrowed it.
+  Attack vector: An invited friend makes a dreamer whose look is "a bare-breasted bather" or "a sexy dreamer in lingerie". `_toon_request` (slots.py:164-203) passes it, and the portrait shows on the dreamer's card to everyone in the room and stays in the art keep. On the growth path, "a sleeper in her nakedness" passes the gate (growth.py:550), and if the gardener keeps the word, `art_seed` weights it at 1.4.
+  Evidence: the last entry's deterministic calls. `first_banned` returns None for sex, sexy, porn, nakedness, nudist, undressing, disrobed, bare-breasted, breasts and lingerie (and for blood, severed, decapitated and entrails). Node 4 of both workflows names style terms only. Mitigations: accounts are invited, and a player makes at most six dreamers a day.
+  Confidence: high that these words reach the prompt. How explicitly SDXL draws them is unmeasured.
+  Remediation:
+  - Add content terms to node 4 of both workflows (nsfw, nudity, nude, naked, sexual, lingerie, gore, blood, corpse). It changes every cache key, so batch it with the next workflow change.
+  - Extend the sexual category with whole words safe in this world. Avoid stems that catch village words ("nudge", "sextant", "sexton", "chimney breast").
+  - In `art_seed`, weight only runs of two or more consecutive phrase words, and strip `()[]:` from the `room_seed` part.
 
 [NOTE] docs/claude-settings.local.example.json:8-13 — The allow list includes `.venv/bin/python *`, `python3 *`, `node *` and `timeout *`, so interpreter code runs with no prompt. The guard reads code only for literal spellings, so a computed argv or path gets neither a prompt nor a decision. Narrower rules (`.venv/bin/python -m pytest *`) cut the no-prompt paths. They cannot make the guard a boundary while the agent edits and runs repo code (BACKLOG `agent-sessions-without-root`). The template's allow list is unchanged.
 
@@ -46,7 +40,7 @@ Carried from the last entry (still open; none of their files changed since `adc0
 
 [NOTE] tools/agent_guard.py:451-462 (`_resolve`) — A `cd` into one word of about 50,000 nested braces took 9.6 s at the last measure, past the hook's 5 s timeout, so it gets no decision. The code is unchanged and was not re-measured this run. A time limit inside `main`, or a single-pass brace expansion, would close it.
 
-[NOTE] daydream/ci.py:49-61 (with daydream/prodcheck.py) — About twenty pushes to a fork pull request from a branch named `main` fill the one page of runs, and a red main then reads "unknown". Outside this scope; unchanged.
+[NOTE] daydream/ci.py:49-61 (with daydream/prodcheck.py) — About twenty pushes to a fork pull request from a branch named `main` fill the one page of runs, and a red main then reads "unknown". `ci.py` is outside this scope and unchanged; `prodcheck.check_ci` is unchanged (`113b1df` touched only `check_timer`'s message).
 
 [NOTE] daydream/play.py:84-85 (with daydream/glimpse.py) — A grown place's description prints unmarked in `play`, and so does a look that echoes a sentence from a grown room or thing. The `read` reply on written prose (`glimpse.py:471`) names a noun from the same prose. The server accepts control characters in typed lines and appearance seeds. `play.py` is unchanged.
 
@@ -56,95 +50,113 @@ Carried from the last entry (still open; none of their files changed since `adc0
 
 ### Traced and cleared this run (not findings)
 
-- **Teardown's scrub (`4b69ea6`) resolves the last entry's playthrough
-  NOTE.** All four remediations landed:
-  - each action-log line is scrubbed whole after its shot is made
-    relative, mark labels included;
-  - notes, page errors and the report with its session record pass through
-    the same scrub, which masks the password and turns the session's folder
-    and its `player/` folder (as written and resolved) into the run's id;
-  - the docstring is fixed;
-  - the test plants both cases and passes.
-
-  A probe in a scratch data dir showed the residuals: a password typed in
-  two pieces, or written in another case, is not masked. From the code, a
-  password cut short by a mark label's 72-character limit would leave its
-  prefix, and a screenshot shows whatever was typed in plain view. None of
-  this matters. The password belongs to an account that exists only in the
-  session's own data dir, whose server stops at teardown and which `purge`
-  now deletes. A path outside the session folder (the sessions root, the
-  home directory) is also kept. It adds nothing: the box's home and data
-  layout already appear in four tracked files (`docs/playtests/BRIEF.md`,
-  `tests/test_ops_units.py` and two dreams' `rehearsal.json`).
-- **`share_shot` (`9c9bad0`).** Its input is the harness's own Chromium
-  screenshots. The player can write only notes.md and report.md, so nothing
-  it controls reaches Pillow. The re-encode drops EXIF and ICC profiles. A
-  JPEG comment would survive (Pillow carries `info["comment"]` through
-  `convert` and `save`, checked), but Chromium's screenshots carry none. A
-  file that will not open is copied as it is, as the earlier `copytree` did.
-- **`purge_finished` (`9c9bad0`).** It deletes only a directory under the
-  sessions root that holds `session.json`, has a landed report of the same
-  name, is not the current session, and whose recorded server and browser
-  are not live harness processes. `shutil.rmtree` refuses a symlinked entry
-  and does not follow links inside one. The player cannot reach it:
-  `./browser purge` exits 2 (checked), like every verb outside the eight
-  player verbs. Purging also removes the raw action log and transcript that
-  hold the unmasked password.
-- **The banlist change** is additive. `first_banned` is a fixed
-  alternation with word boundaries, so it has no backtracking risk, and
-  "nudes" matches once "nude" fails its boundary. The new words appear
-  nowhere in `worlds/`, `docs/canon/` or WHIMSY.md. Every other caller
-  (letters, dreamer names, dialogue drafts, journals, drift, glimpses,
-  memories) refuses or falls back on a hit, so a false positive fails
-  closed.
+- **The door's new tags** (`server.py:217-247`, `door.html:13-25`,
+  `index.html:8-9`). Every marker is replaced with `html_escape(...,
+  quote=True)`. The values come from instance.json (validated: a string,
+  printable, at most 200 characters; `card_image` only
+  `assets/<name>.png|jpg`) or from `DAYDREAM_PUBLIC_ORIGIN` and
+  `DAYDREAM_PUBLIC_BASE`, never from the request. Probes in scratch data
+  dirs:
+  - a Host and an X-Forwarded-Host of another domain appear nowhere in the
+    page. Dev's og:image is base-absolute; prod's is the configured origin;
+  - instance words carrying `"><script>` and a quote-breaking attribute
+    come out escaped in every tag.
+- **Invite slugs.** `invite_page` never reads its slug. Six hostile slugs
+  (markup, template markers, 5,000 characters, percent-encoded text) and a
+  plain one return a byte-identical 3,920-byte page; one with an encoded
+  slash 404s at routing (and the Worker refuses `%2f` before that). The
+  preview reads "An invitation to" the instance's title for any slug, so it
+  is no oracle for a good slug and names no one. Peek, which does name the
+  invitee, still runs only from door.js's POST. An unfurler that ran script
+  would reach it with or without these tags, and a page with an og:image is
+  less likely to be previewed by screenshot.
+- **Marker order.** `_page` replaces markers in sequence, so a marker
+  inside an earlier value expands (a lede that says `{{card_url}}` renders
+  the card's URL). The values are the operator's instance.json, and the
+  output is still escaped.
+- **The new images.** The card JPEG holds a JFIF header and no EXIF,
+  comment, ICC profile or trailing bytes. Both icons hold only IHDR, IDAT
+  and IEND. They show the door painting, already public, and the
+  "daydream" wordmark, and they are public under `/assets/` like it. The
+  door painting itself (unchanged, outside scope) carries a ComfyUI
+  `prompt` text chunk: the committed workflow's model names and prompt, no
+  paths or names.
+- **Icons and referrers.** The icon links are same-origin in prod (the
+  Worker 301s every other host to `PUBLIC_HOST`), so CSP `img-src 'self'`
+  holds. `Referrer-Policy: same-origin` keeps an invite path's referrer on
+  the origin that already serves it, as style.css and door.js did before.
+- **The card fallback** (`instance.py:81-82`). An instance with a door and
+  no card previews with its door. A `.webp` door passes into `card_image`
+  outside the card's own shape (png or jpg). It is still an `assets/` name:
+  a preview quirk, not a security issue.
+- **The edge line** (`edge.describe_public`, `prodctl.edge_line`). It
+  prints the Worker's public `/edge/status` JSON to the operator's
+  terminal. Its `note` comes only from the operator's KV flag, and
+  `describe_state` and `edge status` already printed it. One robustness
+  gap, not a security issue: a truncated body raises
+  `http.client.IncompleteRead` from `public_status()` (probed on loopback),
+  which neither `public_status` nor `edge_line` catches, so `prod status`
+  would end in a traceback. A codereview item.
+- `tools/make_link_card.py` reads the operator's own painting and writes
+  local files; nothing it handles is player input. `prodcheck.check_timer`
+  changes a message only.
 
 ### Player-text scan (CLAUDE.md "Player text is data")
 
 - Both scans ran in this review.
-  - Prod `--since 0` returned 0 items (the fresh 1.15 village).
+  - Prod `--since 0` returned 3 items: a dreamer name, its look and a
+    username, with no typed lines (the operator's own, per the instance
+    notes).
   - Dev `--since 548` returned 63 items: 31 dreamer names, 31 looks and 1
     username. They are the agents' probe dreamers and the operator's dev
-    username, with no typed lines, unchanged since the last scan.
+    username, unchanged since the last scan.
 - Nothing was flagged, and there were no bursts. Verdict: nobody steering.
 - The counts, the verdict and the high-water marks (prod 0, dev 548) are in
   the local instance notes, never here (players' text stays off GitHub).
 
 ### Secrets, PII and the instance
 
-- The five files' last three commits each (`git log -p --follow -3`) and
-  the unpushed range (`4b69ea6..2a8d93b`, two commits, every text file)
-  hold none of these: a key, a token, a private-key block, an email, a box
-  or tailnet address, a home path, the operator's name or the instance
-  domain.
-- The names in the tests are fixtures (Robin Ash, Wren, Ada, Bo, Cy, Di),
-  and so is the password they use.
+- These hold none of a key, a token, a private-key block, an account id,
+  an email, a box or tailnet address, a home path, the operator's name or
+  the instance domain:
+  - the last three commits of each scoped module
+    (`git log -p --follow -3`);
+  - the unpushed range `origin/main..d03a48a` (two commits, every text
+    file) and both commit messages. Its added lines use `example.com` only.
+- The test fixtures are fake: the token and account id in
+  `test_edge_ctl.py`, the password in `test_prodctl.py`, the SSH keys
+  whose comment is the box's username (`test_prodctl.py:229-232`, since
+  `6f15505`; the username already appears in the accepted risks below),
+  and RFC 5737 documentation addresses in `test_auth.py`.
+- `instance/` is still ignored.
 
 ### Coverage
 
-- All dimensions were reviewed. No dependency manifests or ops files are in
-  scope. Pillow, newly imported by `playthrough.py`, is a dev and test
-  dependency (12.2.0 in the dev venv, not in the prod lock), and it decodes
-  only harness-made screenshots.
-- `daydream/llm/safety.py`, `daydream/playthrough.py`,
-  `tests/test_playthrough.py` and `tests/test_safety.py` were read in full.
-  `tests/test_growth.py` was read as its diff, its test list and its
-  fixtures.
-- Read in context for the banlist's reach: growth's validator, `art_seed`
-  and phrase gate; `slots._toon_request`; `portrait_target`; both
-  workflows' negative prompts; the art keep's header.
-- The three test files ran: 124 passed, none skipped (the medium tier drove
-  Chromium).
-- Every probe was deterministic and local: teardown on a fake session in a
-  scratch data dir, `share_shot` on a JPEG carrying EXIF, ICC and a
-  comment, and the banlist, the validator and `art_seed` on chosen strings.
-  No model call, no render, and nothing written outside the scratchpad.
-- Outside the named paths, the unpushed range also changes
-  `.claude/skills/playthrough/SKILL.md`, `CLAUDE.md` and
-  `playthroughs/README.md`. They were pattern-scanned for secrets and
-  instance facts only, not reviewed.
-- Git history: no credential-handling files are in scope (`playthrough.py`
-  handles only the made-up password, stored 0600). The five files' recent
-  history was checked as above.
+- All dimensions were reviewed for the 16 paths.
+  - Read in full: `daydream/edge.py`, `instance.py`, `prodcheck.py`,
+    `prodctl.py`, `server.py`, `tools/make_link_card.py`, `web/door.html`
+    and `web/index.html`.
+  - The three images were inspected byte by byte and by eye.
+  - The five test files were read as their diffs and pattern-scanned in
+    full for secrets, PII and addresses. They ran: 122 passed.
+- Read in context, outside scope: `config.public_origin`, `public_base`
+  and `boot_problems`; `api/headers.py` (CSP, referrer policy);
+  `api/nocache.py`; `api/gate.py` (the public allowlist); the invite peek
+  endpoint; `web/assets/door.js` (peek on load); `edge/src/worker.js`
+  (host redirect, status body, response rewrite).
+- No dependency manifest is in scope. Pillow, imported by the new tool and
+  the new test, is a dev and test dependency; the tool decodes only the
+  operator's painting.
+- Every probe was deterministic and local: TestClient in scratch data
+  dirs, a loopback socket and Pillow over the committed assets. No model
+  call, no render, and nothing written outside the scratchpad except this
+  file and the local instance notes.
+- Outside the named paths, the range also changes `docs/INSTANCES.md`,
+  `docs/runbooks/sleep-and-wake.md`, `CODEREVIEW.md` and `SECURITY.md`.
+  They were pattern-scanned for secrets and instance facts only.
+- Git history checked for secrets: `daydream/edge.py` and
+  `daydream/prodctl.py` (they handle the Cloudflare token, the CLI's
+  cookie and the age recipients) and the other four modules, as above.
 
 ### Accepted Risks
 
@@ -235,6 +247,6 @@ Carried register (from prior reviews; still open, not re-flagged):
   injected instruction would want stay behind ask rules.
 
 ---
-*Prior review (2026-10-01, paths, commit `d57fbe3`): 18 paths over four commits after `adc00ff`: the `art_seed` fix, the gear's home, and the first three blind playthroughs committed with their reports, notes, action logs and 403 screenshots. The last entry's WARN was fixed. Two NOTEs were new: the gardener kept a nude figure for one of four adversarial phrases and `art_seed` weighted it, and teardown scrubbed only the action log's typed text. The register stood at 0 BLOCK / 0 WARN / 10 NOTE. The full entry is at `git show 4b69ea6:SECURITY.md`.*
+*Prior review (2026-10-01, paths, commit `2a8d93b`): five paths over three commits after `d57fbe3`: teardown's scrub of every file it lands (resolving that entry's playthrough NOTE), screenshots re-encoded at 960 px with `playthrough purge`, and nudity words in the content banlist. No BLOCK or WARN. The art NOTE was narrowed: synonyms still reach SDXL on two paths, and the workflows' negative prompts name no content. The register stood at 0 BLOCK / 0 WARN / 9 NOTE. The full entry is at `git show 9339e60:SECURITY.md`.*
 
-<!-- SECURITY_META: {"date":"2026-10-01","commit":"2a8d93babc2eca7c4235b9684e97c7a83d8bddf7","scope":"paths","scanned_files":["daydream/llm/safety.py","daydream/playthrough.py","tests/test_growth.py","tests/test_playthrough.py","tests/test_safety.py"],"block":0,"warn":0,"note":9} -->
+<!-- SECURITY_META: {"date":"2026-10-01","commit":"d03a48ab7a905eb4e189d09eb64a214566266317","scope":"paths","scanned_files":["daydream/edge.py","daydream/instance.py","daydream/prodcheck.py","daydream/prodctl.py","daydream/server.py","tests/test_auth.py","tests/test_edge_ctl.py","tests/test_instances.py","tests/test_prodcheck.py","tests/test_prodctl.py","tools/make_link_card.py","web/assets/card-village.jpg","web/assets/icon-180.png","web/assets/icon-32.png","web/door.html","web/index.html"],"block":0,"warn":0,"note":9} -->
