@@ -114,6 +114,15 @@ def test_a_link_preview_card_follows_the_instances_own_door():
     both = instance.validate({"door_image": "assets/door-zork.png",
                               "card_image": "assets/card-zork.jpg"})
     assert both["card_image"] == "assets/card-zork.jpg"
+    # A webp door has no card's shape: the default card stays.
+    webp = instance.validate({"door_image": "assets/door-zork.webp"})
+    assert webp["card_image"] == "assets/card-village.jpg"
+    # Whitespace decides nothing: a blank card beside a door still follows it,
+    # and a blank door does not become the card.
+    blank_card = instance.validate({"door_image": "assets/door-zork.png", "card_image": "  "})
+    assert blank_card["card_image"] == "assets/door-zork.png"
+    blank_door = instance.validate({"door_image": "  "})
+    assert blank_door["card_image"] == "assets/card-village.jpg"
 
 
 def test_the_envelope_is_the_instances_own(box, capsys):

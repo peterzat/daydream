@@ -101,6 +101,25 @@ def test_public_status_names_its_user_agent(monkeypatch):
     assert seen["ua"] and not seen["ua"].startswith("Python-urllib")
 
 
+def test_a_truncated_public_status_reads_as_no_answer(monkeypatch):
+    """A truncated body raises IncompleteRead (an HTTPException), which
+    `prod status` must not turn into a traceback."""
+    import http.client
+
+    class Resp:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        def read(self):
+            raise http.client.IncompleteRead(b'{"sta', 10)
+
+    monkeypatch.setattr(edge.urllib.request, "urlopen", lambda req, timeout: Resp())
+    assert edge.public_status() is None
+
+
 def test_node_is_found_under_nvm_when_path_lacks_it(tmp_path, monkeypatch):
     """Codereview WARN 2026-09-28: the weekly offsite timer's PATH has no
     ~/.nvm, so npx went unfound. The newest nvm install goes first on PATH."""

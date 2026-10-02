@@ -26,6 +26,7 @@ Verbs:
 from __future__ import annotations
 
 import argparse
+import http.client
 import json
 import os
 import re
@@ -231,7 +232,9 @@ def public_status() -> dict | None:
     try:
         with urllib.request.urlopen(req, timeout=10) as r:
             return json.loads(r.read())
-    except (urllib.error.URLError, OSError, ValueError):
+    except (urllib.error.URLError, OSError, ValueError, http.client.HTTPException):
+        # HTTPException: a truncated body (IncompleteRead) is neither of the
+        # others, and `prod status` must not end in a traceback.
         return None
 
 

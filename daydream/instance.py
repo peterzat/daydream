@@ -78,7 +78,12 @@ def validate(raw: object) -> dict[str, str]:
             raise InstanceError(f"{FILE}: {key} {value!r} is not an allowed value")
         if value or key in ("name", "operator"):
             words[key] = value
-    if raw.get("door_image") and not raw.get("card_image"):
+    # Decide on the validated (stripped) values: a door the file set, and no
+    # card it set, previews with the door, but only when the door has the
+    # card's shape (png/jpg); otherwise the default card stays.
+    set_door = bool(raw.get("door_image", "").strip())
+    set_card = bool(raw.get("card_image", "").strip())
+    if set_door and not set_card and _SHAPES["card_image"].match(words["door_image"]):
         words["card_image"] = words["door_image"]
     return words
 

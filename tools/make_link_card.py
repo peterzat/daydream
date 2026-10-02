@@ -4,11 +4,12 @@
 A link shared in iMessage, Slack and the like unfurls from the door page's
 Open Graph tags (web/door.html, filled by daydream/server.py:_page): the card
 is og:image, shown large above the page's title. Platforms want about
-1200x630 (1.91:1) and a PNG; the door paintings are wider than that, so the
-card sets the painting as a plate on the page's paper, the way the door does,
-with the hand-lettered wordmark beneath. The icons (the tab, a phone's home
-screen, the small mark beside a Slack unfurl) are a square crop of the same
-painting.
+1200x630 (1.91:1); the card is written as a JPEG (the --card path). The
+door paintings are wider than that, so the card sets the painting as a plate
+on the page's paper, the way the door does, with the hand-lettered wordmark
+beneath. The icons: icon-180.png (a phone's home screen) is a square crop of
+the same painting; icon-32.png (the tab, the small mark beside a Slack
+unfurl) is the drawn mark.
 
     .venv/bin/python tools/make_link_card.py web/assets/door-village.png \\
         --card web/assets/card-village.jpg --icons web/assets

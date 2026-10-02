@@ -56,8 +56,9 @@ Reading `bin/game prod status` meanwhile: its edge line leads with what
 friends see (`friends see asleep (unplanned: the box does not answer)`); the
 flag after it still says awake, because the flag is the intent and an outage
 does not change it. After a reboot the jobs read "not run since boot" until
-their next run: systemd forgets a unit's last run at boot
-(`systemctl list-timers 'daydream-*'` and the backups folder say what ran).
+their next run: systemd forgets a unit's last run at boot. The backups
+folder and `journalctl -u daydream-<job>` say what ran; a timer's LAST in
+`systemctl list-timers` may be the time it was installed, not a run.
 
 ## The flag alone
 
