@@ -97,15 +97,40 @@ def describe(run: dict) -> str:
             f"({str(run.get('displayTitle', ''))[:70]})")
 
 
+_SHA = re.compile(r"^[0-9a-f]{40}$")
+
+
+def branch_head(branch: str = "main") -> str | None:
+    """The branch's tip as GitHub has it, or None when it cannot be read."""
+    out = _gh("api", f"repos/{{owner}}/{{repo}}/git/ref/heads/{branch}")
+    try:
+        got = json.loads(out or "null")
+    except ValueError:
+        return None
+    sha = (got.get("object") or {}).get("sha") if isinstance(got, dict) else None
+    return sha if isinstance(sha, str) and _SHA.match(sha) else None
+
+
 def main_status(branch: str = "main") -> tuple[str, str]:
     """(verdict, words) for the branch: verdict is "passed", "failed",
     "running" or "unknown". A run in progress on top of a failed one says
-    both, so a red main is never hidden behind a new push."""
+    both, so a red main is never hidden behind a new push. The verdict is
+    the branch tip's own run: GitHub's list of runs can lag (2026-10-03 it
+    named a July run as main's newest), so when its newest is not for the
+    tip, the tip's runs are asked for by commit, and with none listed the
+    verdict is "unknown", never an older commit's "passed"."""
     got = runs(branch, limit=5)
     if got is None:
         return "unknown", "GitHub not reachable (is `gh` installed and signed in?)"
     if not got:
         return "unknown", f"no runs on {branch}"
+    head = branch_head(branch)
+    if head and got[0].get("headSha") != head:
+        tip = runs(branch, limit=5, sha=head)
+        if not tip:
+            return "unknown", (f"no run listed for {branch}'s tip {head[:7]} (just pushed, or "
+                               f"GitHub's list is stale); the newest listed is {describe(got[0])}")
+        got = tip + [r for r in got if r.get("headSha") != head]
     newest = got[0]
     if state(newest) != "running":
         return state(newest), describe(newest)

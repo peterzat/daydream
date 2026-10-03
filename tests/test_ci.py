@@ -105,3 +105,56 @@ def test_a_forks_run_never_counts_as_mains(monkeypatch):
     assert [r["databaseId"] for r in got] == [1]
     assert ci.main_status()[0] == "failed"
     assert "ignore previous" not in json.dumps(got)
+
+
+TIP = "b" * 40
+
+
+def _by_url(monkeypatch, *, listed, tip_runs, head=TIP):
+    """gh answering by URL: main's list of runs, the tip's own runs (by
+    head_sha), and the branch ref (None: GitHub could not say)."""
+    calls = []
+
+    def gh(*args, timeout=30.0):
+        url = args[-1]
+        calls.append(url)
+        if "/git/ref/heads/" in url:
+            return None if head is None else json.dumps({"object": {"sha": head}})
+        return json.dumps(tip_runs if "head_sha=" in url else listed)
+
+    monkeypatch.setattr(ci, "_gh", gh)
+    return calls
+
+
+def test_a_stale_list_never_passes_for_main(monkeypatch):
+    """2026-10-03: GitHub's list named a July run as main's newest. A run
+    that is not for the branch's tip says nothing about main."""
+    july = _run(sha="a" * 40)
+    _by_url(monkeypatch, listed=[july], tip_runs=[])
+    verdict, words = ci.main_status()
+    assert verdict == "unknown"
+    assert "bbbbbbb" in words and "stale" in words and "aaaaaaa" in words
+    c = prodcheck.check_ci(verdict, words)
+    assert c.ok and c.warn_only  # a note, never a green "passed"
+
+
+def test_a_red_tip_behind_a_stale_list_is_red(monkeypatch):
+    _by_url(monkeypatch, listed=[_run(sha="a" * 40)],
+            tip_runs=[_run(sha=TIP, conclusion="failure")])
+    verdict, words = ci.main_status()
+    assert verdict == "failed" and words.startswith("failed at bbbbbbb")
+    _by_url(monkeypatch, listed=[_run(sha="a" * 40, conclusion="failure")],
+            tip_runs=[_run(sha=TIP, status="in_progress", conclusion=None)])
+    verdict, words = ci.main_status()
+    assert verdict == "running" and "last finished run failed at aaaaaaa" in words
+
+
+def test_the_tips_run_is_read_from_the_list_when_it_is_there(monkeypatch):
+    calls = _by_url(monkeypatch, listed=[_run(sha=TIP), _run(sha="a" * 40)], tip_runs=[])
+    assert ci.main_status() == ("passed", "passed at bbbbbbb (a change)")
+    assert not any("head_sha=" in u for u in calls)
+
+
+def test_an_unreadable_tip_leaves_the_list_to_speak(monkeypatch):
+    _by_url(monkeypatch, listed=[_run(sha="a" * 40)], tip_runs=[], head=None)
+    assert ci.main_status()[0] == "passed"
