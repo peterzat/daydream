@@ -123,6 +123,23 @@ def place(data_dir: Path | None = None, *, capital: bool = False) -> str:
     return p[:1].upper() + p[1:] if capital else p
 
 
+# The door's icons by link rel, the same for every instance (web/door.html
+# links them).
+ICONS = {"icon": "assets/icon-32.png", "apple-touch-icon": "assets/icon-180.png"}
+
+
+def preview(data_dir: Path | None = None) -> dict[str, str]:
+    """What a shared link's preview says (og:title, og:description, the card
+    and its alt text): the door's page fills it in, and the keepsakes sync
+    carries it to the edge so the asleep page says the same."""
+    words = load(data_dir)
+    return {"title": words["title"],
+            "invite_title": f"An invitation to {words['title']}",
+            "lede": words["lede"],
+            "card": words["card_image"],
+            "card_alt": f"A watercolour of {words['place']}"}
+
+
 # ---- the box's instances (run as the service user by `bin/game prod instance`) ----
 
 # What stays in the box's data dir when a flat layout becomes instances: the

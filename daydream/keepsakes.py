@@ -16,6 +16,11 @@ cookie with WebCrypto and looks it up, so it recognizes them without a
 signing key, without password hashes ever leaving the box, and with
 revocation taking effect at the next sync.
 
+And it exports the door's link preview (`door`: the title, lede and card
+alt text, with the card and the icons inline): a link shared while the
+village sleeps is fetched from the edge, and a phone keeps the first preview
+it builds for a URL, so the asleep page must unfurl like the door.
+
 Run by `bin/game prod sleep` and hourly, always with the prod release's own
 code against prod data:
 
@@ -35,6 +40,7 @@ from pathlib import Path
 
 JOURNAL_ENTRIES = 10
 CHRONICLE_LINES = 12
+DOOR_ASSET_MAX = 1024 * 1024
 
 
 def _book(world_id: str, toon_id: str) -> dict | None:
@@ -90,6 +96,28 @@ def _portrait_bytes(world_id: str, toon) -> bytes | None:
         return f.read(4 * 1024 * 1024)
 
 
+def _door() -> dict:
+    """The door's link preview for the edge: its words, its icons by link
+    rel, and the card and icons as base64 by their path under the base (each
+    a release file named by a validated asset path; one missing or oversized
+    is left out)."""
+    import base64
+
+    from daydream import config, instance
+
+    words = instance.preview()
+    assets: dict[str, str] = {}
+    for rel in (words["card"], *instance.ICONS.values()):
+        f = config.WEB_DIR / rel
+        try:
+            data = f.read_bytes() if f.stat().st_size <= DOOR_ASSET_MAX else b""
+        except OSError:
+            data = b""
+        if data:
+            assets[rel] = base64.b64encode(data).decode()
+    return {"words": words, "icons": dict(instance.ICONS), "assets": assets}
+
+
 def build() -> dict:
     """The keepsakes document, portraits inline as base64 (`portraits`)."""
     import base64
@@ -122,7 +150,7 @@ def build() -> dict:
     passes = {r["token_hash"]: {"account": r["account_id"], "expires": r["expires_at"]}
               for r in accounts.live_passes() if r["account_id"] in people}
     return {"world": world_id, "chronicle": chronicle, "accounts": people, "passes": passes,
-            "portraits": portraits}
+            "portraits": portraits, "door": _door()}
 
 
 def export(out: Path) -> dict:

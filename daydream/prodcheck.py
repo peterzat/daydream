@@ -25,6 +25,8 @@ from urllib.parse import urlsplit
 
 REPO = Path(__file__).resolve().parent.parent
 UA = "daydream-prod-check"  # Cloudflare refuses urllib's default User-Agent (1010)
+# A link-preview fetcher, as iMessage announces itself to the edge.
+PREVIEW_UA = "facebookexternalhit/1.1 Facebot Twitterbot/1.0 (daydream-prod-check)"
 TIMERS = ("daydream-backup.service", "daydream-keepsakes.service", "daydream-offsite.service")
 
 
@@ -101,6 +103,28 @@ def check_front_door(r: Reply, awake: bool, base: str) -> Check:
         return Check("front door", ok, f"{r.status}" + ("" if ok else f", expected 200 with <base href=\"{base}\">"))
     ok = r.status == 503 and "asleep" in body
     return Check("front door", ok, f"{r.status} asleep page" if ok else f"{r.status}, expected the 503 asleep page")
+
+
+def preview_image(r: Reply) -> str:
+    """The og:image a shared link's preview would show, or ""."""
+    m = re.search(rb'<meta property="og:image" content="([^"]+)"', r.body)
+    return m.group(1).decode("utf-8", "replace").replace("&amp;", "&") if m else ""
+
+
+def check_link_preview(page: Reply, image_url: str, image: Reply | None, root: str) -> Check:
+    """A link shared now unfurls: a phone keeps the first preview it builds
+    for a URL, so a bare one (asleep, an outage) stays bare."""
+    if page.status != 200:
+        return Check("link preview", False, f"{page.status} to a link-preview fetcher (expected 200)")
+    if not image_url.startswith(root):
+        return Check("link preview", False, "no og:image under the public base"
+                     + ("" if not image_url else f" ({image_url})"))
+    ctype = image.header("content-type") if image else ""
+    if image is None or image.status != 200 or ctype not in ("image/jpeg", "image/png"):
+        return Check("link preview", False,
+                     f"the card {image_url.removeprefix(root)} answers "
+                     f"{image.status if image else 'nothing'} {ctype}".rstrip())
+    return Check("link preview", True, f"200, card {image_url.removeprefix(root)} ({ctype})")
 
 
 def check_api_signed_out(r: Reply, awake: bool) -> Check:
@@ -336,6 +360,14 @@ def run(target: Target, *, awake: bool, flag: str | None, cookie: str | None,
                                                            flag))]
     out.append(_probe("front door", lambda: check_front_door(
         request("GET", root, {"Accept": "text/html"}), awake, target.base)))
+    def link_preview() -> Check:
+        hdrs = {"User-Agent": PREVIEW_UA, "Accept": "*/*"}
+        page = request("GET", root, hdrs)
+        url = preview_image(page)
+        image = request("GET", url, hdrs) if url.startswith(root) else None
+        return check_link_preview(page, url, image, root)
+
+    out.append(_probe("link preview", link_preview))
     out.append(_probe("api signed out", lambda: check_api_signed_out(
         request("GET", root + "api/me", {"Accept": "application/json"}), awake)))
     if awake:

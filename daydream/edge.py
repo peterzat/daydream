@@ -239,7 +239,12 @@ def public_status() -> dict | None:
 
 
 MANIFEST = Path.home() / ".local" / "state" / "daydream" / "keepsakes-manifest.json"
-KEEPSAKE_PREFIXES = ("keepsakes:", "portrait:")
+KEEPSAKE_PREFIXES = ("keepsakes:", "portrait:", "asset:")
+# Keys a sync owns outright: an export without one (an older release's)
+# removes it, so the Worker never serves a preview nothing vouches for.
+KEEPSAKE_KEYS = ("door",)
+# The door images the Worker serves while asleep (worker.js ASSET_PATH).
+DOOR_ASSET = re.compile(r"^assets/[a-z0-9_-]+\.(?:png|jpg)$")
 
 
 def _kv_bulk_put(items: list[dict]) -> None:
@@ -261,6 +266,16 @@ def desired_keys(doc: dict) -> dict[str, tuple[str, bool]]:
         out[f"keepsakes:{acct}"] = (json.dumps(entry, sort_keys=True), False)
         if entry.get("portrait") and portraits.get(acct):
             out[f"portrait:{acct}"] = (portraits[acct], True)
+    door = doc.get("door") or {}
+    assets = {p: b for p, b in (door.get("assets") or {}).items()
+              if isinstance(p, str) and DOOR_ASSET.match(p) and isinstance(b, str)}
+    if door.get("words"):
+        # The asleep page's link preview: the words, and which of its images
+        # the edge holds (`asset:<path>`, served while the box is down).
+        out["door"] = (json.dumps({**door["words"], "icons": door.get("icons") or {},
+                                   "assets": sorted(assets)}, sort_keys=True), False)
+        for path, b64 in assets.items():
+            out[f"asset:{path}"] = (b64, True)
     return out
 
 
@@ -273,7 +288,8 @@ def plan_sync(desired: dict[str, tuple[str, bool]],
 
     new = {k: hashlib.sha256(v.encode()).hexdigest() for k, (v, _) in desired.items()}
     write = sorted(k for k, h in new.items() if manifest.get(k) != h)
-    delete = sorted(k for k in manifest if k not in new and k.startswith(KEEPSAKE_PREFIXES))
+    delete = sorted(k for k in manifest if k not in new
+                    and (k.startswith(KEEPSAKE_PREFIXES) or k in KEEPSAKE_KEYS))
     return new, write, delete
 
 

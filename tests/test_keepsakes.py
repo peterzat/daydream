@@ -79,6 +79,51 @@ def test_the_sync_writes_only_what_changed_and_deletes_what_went(tmp_path):
     assert delete3 == ["keepsakes:a-gone", "portrait:a-gone"]
 
 
+def test_the_door_preview_rides_to_the_edge(tmp_path):
+    """A link shared while the village sleeps unfurls from the edge, so the
+    sync carries the door's preview words and its card and icons."""
+    import base64
+
+    from daydream import config, instance
+
+    _two_players()
+    doc = keepsakes.export(tmp_path / "k")
+    door = doc["door"]
+    assert door["words"] == instance.preview()
+    assert door["words"]["invite_title"] == "An invitation to The Village of Lost Hours"
+    assert set(door["assets"]) == {"assets/card-village.jpg", *instance.ICONS.values()}
+    assert door["icons"] == instance.ICONS
+    for rel, b64 in door["assets"].items():
+        assert base64.b64decode(b64) == (config.WEB_DIR / rel).read_bytes()
+    desired = edge.desired_keys(doc)
+    words = json.loads(desired["door"][0])
+    assert words["card"] == "assets/card-village.jpg"
+    assert words["assets"] == sorted(door["assets"])
+    assert words["icons"] == instance.ICONS
+    assert desired["asset:assets/card-village.jpg"] == (door["assets"]["assets/card-village.jpg"],
+                                                        True)
+    # Only door-image paths become keys (the shape the Worker serves).
+    odd = {**doc, "door": {**door, "assets": {**door["assets"], "../x.png": "eA==",
+                                              "assets/a.svg": "eA=="}}}
+    assert not any(k in edge.desired_keys(odd) for k in ("asset:../x.png", "asset:assets/a.svg"))
+    # An older release's export carries no door: the edge forgets the preview.
+    manifest, _, _ = edge.plan_sync(desired, {})
+    old = {k: v for k, v in doc.items() if k != "door"}
+    _, _, delete = edge.plan_sync(edge.desired_keys(old), manifest)
+    assert delete == sorted(["door", *(f"asset:{p}" for p in door["assets"])])
+
+
+def test_a_missing_door_image_is_left_out(tmp_path, monkeypatch):
+    from daydream import config
+
+    web = tmp_path / "web"
+    (web / "assets").mkdir(parents=True)
+    (web / "assets" / "icon-32.png").write_bytes(b"\x89PNG")
+    monkeypatch.setattr(config, "WEB_DIR", web)
+    door = keepsakes._door()
+    assert set(door["assets"]) == {"assets/icon-32.png"}
+
+
 
 def test_a_planted_symlink_never_becomes_a_friends_portrait(tmp_path):
     """SECURITY WARN 2026-09-27: code running as the service user could point

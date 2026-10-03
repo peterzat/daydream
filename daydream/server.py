@@ -214,7 +214,7 @@ async def status_build(request: Request):
     )
 
 
-def _page(name: str, *, og_title: str | None = None) -> HTMLResponse:
+def _page(name: str, *, invite: bool = False) -> HTMLResponse:
     """Serve a shell page from web/ with the public base injected and the
     asset URLs stamped with the build (belt-and-suspenders with the no-store
     middleware; the client's build-mismatch reload is the primary stale-tab
@@ -233,6 +233,7 @@ def _page(name: str, *, og_title: str | None = None) -> HTMLResponse:
     # This instance's words (docs/INSTANCES.md): escaped, and validated in
     # instance.json (the door image can only name an asset).
     words = instance.load()
+    card = instance.preview()
     # A link preview's image and icons need absolute URLs (the public origin
     # in prod; base-absolute where none is set, as in dev).
     root = config.public_origin() + config.public_base()
@@ -240,8 +241,9 @@ def _page(name: str, *, og_title: str | None = None) -> HTMLResponse:
                           ("{{Place}}", instance.place(capital=True)),
                           ("{{lede}}", words["lede"]),
                           ("{{door_image}}", words["door_image"]),
-                          ("{{og_title}}", og_title or words["title"]),
-                          ("{{card_url}}", root + words["card_image"]),
+                          ("{{og_title}}", card["invite_title" if invite else "title"]),
+                          ("{{card_url}}", root + card["card"]),
+                          ("{{card_alt}}", card["card_alt"]),
                           ("{{public_root}}", root)):
         html = html.replace(marker, html_escape(value, quote=True))
     return HTMLResponse(html, headers={"Cache-Control": "no-store"})
@@ -264,7 +266,7 @@ async def invite_page(slug: str):
     # The slug is only ever checked by the peek/redeem POSTs (throttled);
     # this GET serves the same static card for any path, so its preview
     # names no one and says nothing about whether the slug is good.
-    return _page("door.html", og_title=f"An invitation to {instance.load()['title']}")
+    return _page("door.html", invite=True)
 
 
 @app.get("/")

@@ -14,12 +14,21 @@ T = Target("https://www.example.org", "/daydream/", "daydream-origin.example.org
 ROOT = "https://www.example.org/daydream/"
 
 
+CARD = ROOT + "assets/card-village.jpg"
+
+
 def fake_edge(*, awake=True, leak=False, origin_open=False, door_base="/daydream/",
-              unplanned=False):
+              unplanned=False, preview=True):
     """A request() standing in for the network: the edge as it should behave,
     with one thing broken on demand."""
     def request(method, url, headers=None, body=None):
         headers = headers or {}
+        unfurl = "facebookexternalhit" in headers.get("User-Agent", "")
+        if unfurl and url == ROOT:
+            tag = f'<meta property="og:image" content="{CARD}">' if preview else ""
+            return Reply(200, [], f"<head>{tag}</head>".encode())
+        if unfurl and url == CARD:
+            return Reply(200, [("Content-Type", "image/jpeg")], b"\xff\xd8")
         if url == ROOT + "edge/status":
             state = "awake" if awake else "asleep"
             return Reply(200, [], json.dumps({"state": state, "note": "",
@@ -56,7 +65,8 @@ def test_a_healthy_awake_village_passes_everything():
     checks = prodcheck.run(T, awake=True, flag="awake", cookie="dd_session_prod=t",
                            cookie_name="dd_session_prod", request=fake_edge(), session=session())
     assert failed(checks) == []
-    assert {c.name for c in checks} >= {"edge status", "front door", "api signed out",
+    assert {c.name for c in checks} >= {"edge status", "front door", "link preview",
+                                        "api signed out",
                                         "cross-origin login", "no-slash redirect", "apex redirect",
                                         "origin locked", "anonymous ws upgrade", "session ws"}
 
@@ -89,6 +99,31 @@ def test_awake_prod_that_the_edge_calls_asleep_names_the_likely_cause():
                            request=fake_edge(awake=False, unplanned=True))
     status = next(c for c in checks if c.name == "edge status")
     assert not status.ok and "tunnel or service" in status.detail
+
+
+def test_an_asleep_village_whose_link_does_not_unfurl_fails():
+    """A phone keeps the first preview it builds for a URL, so a link shared
+    while the village sleeps must unfurl like the door."""
+    checks = prodcheck.run(T, awake=False, flag="asleep", cookie=None,
+                           cookie_name="dd_session_prod",
+                           request=fake_edge(awake=False, preview=False))
+    assert failed(checks) == ["link preview"]
+
+
+def test_link_preview_reads_the_page_and_the_card():
+    ok = prodcheck.check_link_preview(Reply(200), CARD,
+                                      Reply(200, [("Content-Type", "image/jpeg")]), ROOT)
+    assert ok.ok and "assets/card-village.jpg" in ok.detail
+    for page, url, image, why in (
+            (Reply(503), CARD, None, "503"),
+            (Reply(200), "", None, "no og:image"),
+            (Reply(200), "https://elsewhere.example/c.jpg", None, "no og:image"),
+            (Reply(200), CARD, Reply(503, [("Content-Type", "application/json")]), "503"),
+            (Reply(200), CARD, Reply(200, [("Content-Type", "text/html")]), "text/html")):
+        c = prodcheck.check_link_preview(page, url, image, ROOT)
+        assert not c.ok and why in c.detail, (url, c.detail)
+    assert prodcheck.preview_image(Reply(200, [], b'<meta property="og:image" content="'
+                                               + CARD.encode() + b'">')) == CARD
 
 
 def test_a_socket_dropped_without_a_close_frame_fails():
@@ -153,7 +188,7 @@ def test_a_probe_that_raises_fails_alone_and_the_rest_still_run():
                            cookie_name="dd_session_prod", request=request, session=session_fails)
     assert failed(checks) == ["origin locked", "session ws"]
     assert next(c for c in checks if c.name == "origin locked").detail == "TimeoutError: timed out"
-    assert len(checks) == 9
+    assert len(checks) == 10
 
 
 def test_an_asleep_flag_over_a_running_service_fails():

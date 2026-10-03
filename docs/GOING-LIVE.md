@@ -169,6 +169,15 @@ while the box is down. The design needs no signing key and no new crypto:
 - **A device not signed in within 30 days** sees only the notice, and the
   page says so.
 
+**A shared link still unfurls.** A phone builds a link's preview once and
+keeps it for that URL, so a link sent while the village sleeps would stay a
+bare URL. The same sync carries the door's preview to KV (its title, lede,
+card and icons); the asleep page carries the door's Open Graph tags (an
+invite link previews as an invitation), the Worker serves the card and icons
+from KV while the box is down, and a link-preview fetcher gets the page with
+a 200 rather than the 503 a person gets. `bin/game prod check` fetches the
+door and its card the way iMessage does.
+
 ## 7. Prod on the box
 
 - **A `daydream` system user** runs `daydream-prod.service`: no shell, no

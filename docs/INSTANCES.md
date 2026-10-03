@@ -90,7 +90,9 @@ bare reset of a Zork instance would seed Lost Hours). The words reach:
   the title ("An invitation to ..." on an invite link), the lede and
   `card_image`, a 1200x630 PNG or JPEG made from the door painting by
   `tools/make_link_card.py`; an instance that names a door and no card
-  previews with its door painting
+  previews with its door painting. The keepsakes sync carries the same
+  preview (`instance.preview()`) and the card to the edge, so a link shared
+  while the attached instance sleeps unfurls the same way
 - the game page: `index.html` carries the same values for main.js (the awake
   page, the asleep note, the help leaf's "village" lines)
 - server text: "the village is full", invites resting, the sleep warning

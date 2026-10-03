@@ -10,7 +10,9 @@
 //   with /daydream stripped, unless the village is asleep: the KV flag says
 //   so (a planned sleep), or the origin cannot answer (a crash, the box off).
 //   Asleep means the storybook page for a navigation, 503 JSON for the API,
-//   and a refused WebSocket.
+//   and a refused WebSocket. A shared link still unfurls like the door: the
+//   page carries the door's preview tags (a 200 to a link-preview fetcher),
+//   and the card and icons are served from KV.
 //
 // A 503 from the app itself is the app's own answer, not sleep.
 
@@ -296,10 +298,12 @@ export function rewriteLocation(loc, env, prefix) {
 
 // ---- asleep ----------------------------------------------------------------------
 
+function apiPath(rest) {
+  return rest.startsWith("/api/") || rest.startsWith("/cache/") || rest.startsWith("/status/");
+}
+
 function wantsHtml(request, rest) {
-  if (rest.startsWith("/api/") || rest.startsWith("/cache/") || rest.startsWith("/status/")) {
-    return false;
-  }
+  if (apiPath(rest)) return false;
   return request.method === "GET" && (request.headers.get("accept") || "").includes("text/html");
 }
 
@@ -308,7 +312,15 @@ async function asleep(request, env, state, rest, isWS) {
   if (isWS) {
     return new Response(`${body.place} is asleep`, { status: 503, headers: noStore() });
   }
-  if (!wantsHtml(request, rest)) {
+  if (ASSET_PATH.test(rest) && ["GET", "HEAD"].includes(request.method)) {
+    const img = await edgeAsset(request, env, rest);
+    if (img) return img;
+  }
+  // A link-preview fetcher may ask for */* and may skip a page that is not a
+  // 200; a person keeps the 503 (prod check and the SPA read it as asleep).
+  const unfurl = isLinkPreview(request) && request.method === "GET" && !apiPath(rest) &&
+    !rest.startsWith("/assets/");
+  if (!wantsHtml(request, rest) && !unfurl) {
     return json(body, 503, { "retry-after": "300" });
   }
   const tpl = await env.ASSETS.fetch(new Request(new URL((env.BASE || "/daydream/") +
@@ -325,13 +337,92 @@ async function asleep(request, env, state, rest, isWS) {
     "{{BASE}}": escapeHtml(env.BASE || "/daydream/"),
     "{{PLACE}}": escapeHtml(capital(body.place)),
     "{{place}}": escapeHtml(body.place),
+    // Last, so nothing after it reads its words as placeholders.
+    "{{PREVIEW}}": previewHtml(await doorPreview(env), env, rest),
   };
   for (const [k, v] of Object.entries(fill)) html = html.replaceAll(k, () => v);
   return new Response(html, {
-    status: 503,
+    status: unfurl ? 200 : 503,
     headers: { ...noStore(), "content-type": "text/html; charset=utf-8", "retry-after": "300",
                ...pageHeaders() },
   });
+}
+
+// ---- a shared link's preview while asleep -------------------------------------------
+//
+// A phone builds a link's preview once and keeps it, so a link shared while
+// the village sleeps must unfurl like the door. The keepsakes sync
+// (daydream/keepsakes.py, daydream/edge.py) carries the door's preview to KV:
+// "door" holds its words and which images the edge has, "asset:<path>" each
+// image's bytes.
+
+const ASSET_PATH = /^\/assets\/[a-z0-9_-]+\.(?:png|jpg)$/;
+// iMessage's fetcher says facebookexternalhit (and Facebot, Twitterbot).
+const PREVIEW_AGENTS = new RegExp("facebookexternalhit|facebot|twitterbot|slackbot|discordbot|" +
+  "whatsapp|telegrambot|linkedinbot|skypeuripreview|iframely|embedly|redditbot|mastodon", "i");
+const ICON_RELS = ["icon", "apple-touch-icon"];
+
+export function isLinkPreview(request) {
+  return PREVIEW_AGENTS.test(request.headers.get("user-agent") || "");
+}
+
+async function edgeAsset(request, env, rest) {
+  let buf = null;
+  try {
+    buf = await env.STATE.get("asset:" + rest.slice(1), { type: "arrayBuffer" });
+  } catch (e) {
+    return null;
+  }
+  if (!buf) return null;
+  return new Response(request.method === "HEAD" ? null : buf, {
+    headers: { ...noStore(), "content-type": rest.endsWith(".png") ? "image/png" : "image/jpeg",
+               "x-content-type-options": "nosniff" },
+  });
+}
+
+// The door's preview as the sync left it, or null (nothing synced yet, or
+// anything malformed): words trimmed, and images only those the edge holds.
+export async function doorPreview(env) {
+  let d;
+  try {
+    d = JSON.parse((await env.STATE.get("door")) || "null");
+  } catch (e) {
+    return null;
+  }
+  if (!d || typeof d !== "object") return null;
+  const str = (v) => (typeof v === "string" ? v.trim().slice(0, 200) : "");
+  const held = new Set((Array.isArray(d.assets) ? d.assets : [])
+    .filter((p) => typeof p === "string" && ASSET_PATH.test("/" + p)));
+  const title = str(d.title);
+  if (!title) return null;
+  const icons = {};
+  for (const rel of ICON_RELS) {
+    const p = d.icons && d.icons[rel];
+    if (held.has(p)) icons[rel] = p;
+  }
+  return { title, invite_title: str(d.invite_title) || title, lede: str(d.lede),
+    card: held.has(d.card) ? d.card : "", card_alt: str(d.card_alt), icons };
+}
+
+export function previewHtml(door, env, rest) {
+  if (!door) return "";
+  const root = `https://${env.PUBLIC_HOST}${env.BASE || "/daydream/"}`;
+  const title = rest.startsWith("/invite/") ? door.invite_title : door.title;
+  const meta = [["property", "og:type", "website"], ["property", "og:site_name", "daydream"],
+    ["property", "og:title", title], ["name", "twitter:title", title],
+    ["name", "description", door.lede], ["property", "og:description", door.lede],
+    ["name", "twitter:description", door.lede]];
+  if (door.card) {
+    meta.push(["property", "og:image", root + door.card],
+      ["property", "og:image:alt", door.card_alt],
+      ["name", "twitter:card", "summary_large_image"], ["name", "twitter:image", root + door.card]);
+  }
+  const out = meta.filter(([, , v]) => v)
+    .map(([attr, key, v]) => `<meta ${attr}="${key}" content="${escapeHtml(v)}">`);
+  for (const [rel, p] of Object.entries(door.icons)) {
+    out.push(`<link rel="${rel}" href="${escapeHtml(root + p)}">`);
+  }
+  return out.join("\n  ");
 }
 
 // ---- keepsakes (criterion 16) ------------------------------------------------------

@@ -10,7 +10,7 @@ import pytest
 from fastapi.testclient import TestClient
 from starlette.websockets import WebSocketDisconnect
 
-from daydream import accounts, config
+from daydream import accounts, config, instance
 from daydream.server import app
 from tests import authhelp
 
@@ -92,8 +92,10 @@ def test_a_shared_link_unfurls_with_the_card_and_names_no_one(monkeypatch):
             root + "assets/card-village.jpg"
         assert meta(page, "twitter:card") == "summary_large_image"
         assert meta(page, "og:description") == "A small storybook village, kept for friends."
-        assert f'href="{root}assets/icon-32.png"' in page
-        assert f'href="{root}assets/icon-180.png"' in page
+        assert meta(page, "og:image:alt") == "A watercolour of the village"
+        # The icons the keepsakes sync carries to the edge (instance.ICONS).
+        for rel, path in instance.ICONS.items():
+            assert re.search(rf'<link rel="{rel}"[^>]* href="{re.escape(root + path)}">', page)
         assert "{{" not in page
     assert "amber-thimble" not in invite
     # Public without a session (the gate's /assets/ prefix), and card-shaped.
