@@ -119,7 +119,9 @@ test("the API stays 503 JSON for a link-preview fetcher", async () => {
 
 test("nothing synced, or a malformed record: the page as before, no preview tags", async () => {
   for (const door of [null, "not json", JSON.stringify({ lede: "no title" })]) {
-    const html = await (await handle(get("/", { ua: IMESSAGE }), env({ door }))).text();
+    const r = await handle(get("/", { ua: IMESSAGE }), env({ door }));
+    assert.equal(r.status, 503, String(door));
+    const html = await r.text();
     assert.equal(meta(html, "og:title"), null, String(door));
     assert.match(html, /is asleep/);
     assert.doesNotMatch(html, /\{\{/);

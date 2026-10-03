@@ -318,8 +318,11 @@ async function asleep(request, env, state, rest, isWS) {
   }
   // A link-preview fetcher may ask for */* and may skip a page that is not a
   // 200; a person keeps the 503 (prod check and the SPA read it as asleep).
-  const unfurl = isLinkPreview(request) && request.method === "GET" && !apiPath(rest) &&
-    !rest.startsWith("/assets/");
+  // With no door preview synced, the fetcher gets the 503 too, so its phone
+  // keeps a bare link rather than an "is asleep" preview.
+  const door = await doorPreview(env);
+  const unfurl = Boolean(door) && isLinkPreview(request) && request.method === "GET" &&
+    !apiPath(rest) && !rest.startsWith("/assets/");
   if (!wantsHtml(request, rest) && !unfurl) {
     return json(body, 503, { "retry-after": "300" });
   }
@@ -338,7 +341,7 @@ async function asleep(request, env, state, rest, isWS) {
     "{{PLACE}}": escapeHtml(capital(body.place)),
     "{{place}}": escapeHtml(body.place),
     // Last, so nothing after it reads its words as placeholders.
-    "{{PREVIEW}}": previewHtml(await doorPreview(env), env, rest),
+    "{{PREVIEW}}": previewHtml(door, env, rest),
   };
   for (const [k, v] of Object.entries(fill)) html = html.replaceAll(k, () => v);
   return new Response(html, {

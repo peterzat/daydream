@@ -1,63 +1,61 @@
-## Review — 2026-10-01f (commit: 62d77ef)
+## Review — 2026-10-03 (commit: 968da2b)
 
-**Summary:** Refresh review of `origin/main..d03a48a` (all files in focus): `prod status` leads its edge line with what friends see and reads a timer job with no run since boot as "not run since boot" (113b1df, from the first reboot of the live system); the door page carries Open Graph and Twitter tags with a 1200x630 card and site icons, `card_image` is a new instance word, `tools/make_link_card.py` makes the card (d03a48a). Tests: short+medium 2791 passed before the fixes, 2792 after (one new test). One /codefix cycle fixed all four WARNs (62d77ef). Security (/security, paths): 0 BLOCK / 0 WARN / 9 NOTE, all carried.
+**Summary:** Refresh review of `origin/main..968da2b` (every file in focus): the keepsakes sync carries the door's link preview (words, card, icons) to KV; while asleep the Worker puts the door's Open Graph tags on its page, serves the card and icons from KV, and answers a link-preview fetcher with a 200; `prod check` gains "link preview". Tests: short 2089 passed, medium 2796 passed, edge 48 passed, the same after the fix. One /codefix cycle fixed the WARN (uncommitted: edge/src/worker.js, edge/test/preview.test.js). Security (/security, paths, then post-fix): 0 BLOCK / 0 WARN / 10 NOTE (9 carried, 1 new in the uptime watch, older than this change).
 
 **External reviewers:**
 None configured.
 
 **Built-in review:**
-`/code-review high`: 8 findings, 8 kept after Step 6 (2 merged into WARNs, 6 NOTEs).
+`/code-review high`: 9 findings, 9 kept after Step 6 (merged into 1 WARN and 6 NOTEs).
 
 ### Findings
 
-[WARN, fixed] (security) daydream/edge.py:227 — `public_status()` catches `URLError`, `OSError` and `ValueError`, but a truncated body raises `http.client.IncompleteRead` (an `HTTPException`, neither of those); `edge_line` (daydream/prodctl.py:904) catches only `EdgeError`/`OSError`, so `prod status`, which now calls `public_status()`, ends in a traceback. (high)
-  Evidence: `with urllib.request.urlopen(req, timeout=10) as r: return json.loads(r.read())` / `except (urllib.error.URLError, OSError, ValueError)`; reproduced on loopback by the security pass.
-  Suggested fix: also catch `http.client.HTTPException` in `public_status()`, with a test that a truncated read returns None.
+[WARN, fixed] (also claude-code) edge/src/worker.js:345 — a link-preview fetcher gets a 200 even when the edge holds no door preview, so in that case the phone builds and keeps a preview titled "daydream is asleep" (the template's `<title>`), with no card, for that URL. Before this change it got a 503 and kept a bare link, which is less misleading. The windows are real: the door reaches KV only at the hourly sync or at `prod sleep`, and `prod sleep` flips the flag to asleep (daydream/prodctl.py:724) and then rests everyone and writes journals before it syncs (prodctl.py:742), so the first sleep after a deploy serves the page without a preview for tens of seconds; an unplanned outage in the first hour after a deploy; a rollback to a release whose export has no door (the sync then deletes the key); a failing sync. The test "nothing synced, or a malformed record: the page as before" says "as before" but does not check the status, which changed from 503 to 200. (medium)
+  Evidence: `const unfurl = isLinkPreview(request) && request.method === "GET" && ...` is decided before `doorPreview(env)` is read; `status: unfurl ? 200 : 503`.
+  Suggested fix: read the door preview first and treat the request as an unfurl only when a preview exists (`unfurl && door`), so with nothing synced the fetcher gets what it got before (the 503 page for text/html, the 503 JSON for `*/*`). Assert the 503 in the "nothing synced" test.
 
-[WARN, fixed] (also claude-code) daydream/instance.py:81 — the `card_image` fallback reads the raw, unstripped values and copies the door into the card without the card's own shape: a `.webp` door becomes a `.webp` card (a value `validate` refuses when written directly, and one previews may not render); `"card_image": "  "` beside a custom door skips the fallback and previews with the village's card; `"door_image": "  "` sets the card to the village's door painting. (high)
-  Evidence: `if raw.get("door_image") and not raw.get("card_image"): words["card_image"] = words["door_image"]`.
-  Suggested fix: decide on the validated values (did the file set a door, did it set a card, after stripping), and fall back to the door only when it matches the card's shape (png/jpg); otherwise keep the default card. Test the webp and whitespace cases.
+[NOTE] edge/src/worker.js:323 — after the fix, every asleep request reads the `door` key before deciding, including the 503 JSON answers that never use it: a tab left on the asleep page now costs three KV reads per 30 s retry instead of two (the security pass's arithmetic: about a dozen all-day tabs exhaust the free tier's daily reads, against about seventeen before). Reading `door` only when the page renders or a fetcher could unfurl keeps the JSON answers at one read. (low)
 
-[WARN, fixed] docs/runbooks/sleep-and-wake.md:58 — says "`systemctl list-timers 'daydream-*'` and the backups folder say what ran", but a timer's LAST can be the time it was installed: on this box the offsite timer shows 2026-09-27 21:55 while its job has never run (no journal entries in any boot). The playbook would lead a reader to the same misreading this change set out to remove. (high)
-  Evidence: `systemctl list-timers` LAST for daydream-offsite.timer vs `journalctl -u daydream-offsite.service` empty across boots.
-  Suggested fix: point at the backups folder and `journalctl -u daydream-<job>` for what ran, and say a timer's LAST may be its install time.
+[NOTE] (security) edge/src/worker.js:45 — older than this change: when the uptime watch's read of `uptime` throws, it treats the record as empty and writes that back, erasing the outage history, and while reads keep failing no outage opens; `prod status`'s watch line then says "no unplanned outage recorded" through a real one (its live public status still tells the truth). Skip the run on a thrown read. (low)
 
-[WARN, fixed] (also claude-code) tools/make_link_card.py:6 — the module docstring says platforms want "a PNG" and that the icons "are a square crop of the same painting"; the tool writes a JPEG card and icon-32 is the drawn mark (`mark()`). (high)
-  Evidence: docstring lines 6-11 vs `card(door).save(args.card, optimize=True, quality=88)` and `icons()` returning `mark(32)`.
-  Suggested fix: make the docstring say what the tool writes.
+[NOTE] (also claude-code) edge/src/worker.js:321 — only a GET unfurls; a fetcher that sends HEAD to the page first gets the 503 JSON and may give up. The card and icons do answer HEAD. (low)
 
-[NOTE] (also claude-code) web/door.html:13 — the preview tags live only on the origin's door: while the village sleeps the Worker answers an invite link with asleep.html (no Open Graph tags) or 503 JSON, so a link sent then unfurls bare, and iMessage keeps that at send time. Send invites while awake; Worker-side tags and a card under `_edge/` would close it (an edge deploy). (medium)
+[NOTE] (claude-code) edge/src/worker.js:409 — `previewHtml` builds its URLs from `env.PUBLIC_HOST` with no fallback, while `handle()` treats it as optional; a fork without it would publish `https://undefined/...` card and icon URLs. The request's own host would do. (low)
 
-[NOTE] (claude-code) daydream/server.py:240 — markers are replaced one after another, so an instance word containing a later marker (`{{card_url}}` in a lede) is expanded again; pre-existing for the first four markers, and instance words are operator-authored. (low)
+[NOTE] (also claude-code) daydream/edge.py:247 — `DOOR_ASSET` repeats `instance._SHAPES["card_image"]` and worker.js `ASSET_PATH`; widening the card's shape in instance.py would let an instance name a card the sync then silently leaves out (prod check would catch it while asleep). (low)
 
-[NOTE] (claude-code) daydream/prodcheck.py:168 — "not run since boot" also describes a just-installed timer that has never run (true, but it hints at an earlier run); a job that failed before a reboot reads ok until its next run (as before this change). (low)
+[NOTE] (claude-code) edge/src/worker.js:407 — `previewHtml` rewrites door.html's preview tag set by hand, and `instance.ICONS` mirrors door.html's icon links; a tag or icon rel added to door.html is not mirrored at the edge and no test fails (a renamed icon is caught by test_auth). (low)
 
-[NOTE] (claude-code) daydream/prodctl.py:909 — `prod status` now makes a 10 s-timeout HTTPS probe before the Cloudflare API calls; a slow route stalls status. (low)
+[NOTE] (also claude-code) daydream/keepsakes.py:153 — the door rides in the same export and bulk put as the passes, so a failure in the door path (an `InstanceError` from `instance.preview()`, a malformed `door` shape, invalid base64 rejected by the bulk API) stops the whole sync, pass revocations included. Only a bad instance.json (which also breaks the server) or a hostile service user (which can already break the sync) gets there. (low)
 
-[NOTE] (claude-code) tools/make_link_card.py:101 — `icons()` crops a square of the painting's height without checking the painting is that wide; a portrait door pads the icon with black. `card()` refuses tall paintings; `icons()` does not. (low)
+[NOTE] edge/src/worker.js:393 — the Worker caps each word at 200 characters, but `invite_title` and `card_alt` add a prefix to words instance.json allows at 200, so a long title or place is cut mid-word on the asleep page only. (low)
 
-[NOTE] (claude-code) tools/make_link_card.py:60 — the shadow is blurred twice (paste source and mask). (low)
+[NOTE] (claude-code) edge/src/worker.js:341 — every asleep page now waits for the `door` read after the keepsakes reads; reading both at once (Promise.all) saves a KV round trip. (low)
 
-[NOTE] web/index.html:8 — the game page's icons are absolute URLs; browsers honor `<base>`, so base-relative would do there and could not fall foul of `img-src 'self'` where `DAYDREAM_PUBLIC_ORIGIN` differs from the host a browser uses. (low)
+[NOTE] (claude-code) daydream/prodcheck.py:363 — the probe sends the iMessage user agent from the box's own address; a Cloudflare fake-bot rule would fail it on a healthy village. Real iMessage fetches also come from the sender's device, not Facebook's addresses, so such a failure probably reflects what phones see. Unverified until the deploy. (low)
 
-[NOTE] daydream/server.py:267 — a password-reset link is also `/invite/<slug>`, so it previews as "An invitation to ..." (the GET deliberately never reads the slug). (low)
+Carried from 2026-10-01f (files unchanged or the finding still present; the door.html NOTE about previews while asleep is resolved by this change):
 
-[NOTE] web/assets/card-village.jpg — nothing ties the committed card to the door painting it was made from; a repainted door leaves a stale card until someone reruns the tool. Crawler access through Cloudflare (bot checks, rate limits) is unverified until the deploy. (low)
+[NOTE] daydream/server.py:240 and edge/src/worker.js:343 — markers are replaced one after another, so a value containing a later marker is expanded again; on the asleep page, keepsake text containing `{{PREVIEW}}` expands into the Worker's escaped tags (harmless; the security pass confirmed nothing a player writes becomes markup). (low)
+[NOTE] daydream/prodcheck.py:168 — "not run since boot" also describes a just-installed timer; a job that failed before a reboot reads ok until its next run. (low)
+[NOTE] daydream/prodctl.py:909 — `prod status` makes a 10 s-timeout HTTPS probe before the Cloudflare API calls. (low)
+[NOTE] tools/make_link_card.py:101 — `icons()` does not check the painting is wide enough for its square crop. (low)
+[NOTE] tools/make_link_card.py:60 — the shadow is blurred twice. (low)
+[NOTE] web/index.html:8 — the game page's icons are absolute URLs where base-relative would do. (low)
+[NOTE] daydream/server.py:267 — a password-reset link is also `/invite/<slug>`, so it previews as an invitation (now at the edge too). (low)
+[NOTE] web/assets/card-village.jpg — nothing ties the committed card to the door painting; crawler access through Cloudflare is unverified until the deploy. (low)
 
 ### Fixes Applied
 
-- [WARN] (security) daydream/edge.py — `public_status()` also catches `http.client.HTTPException`; a test feeds it a truncated read.
-- [WARN] daydream/instance.py — the card follows the door only when the file set a door and no card (stripped) and the door is png/jpg; tests for a webp door, a blank card and a blank door.
-- [WARN] docs/runbooks/sleep-and-wake.md — what ran: the backups folder and `journalctl -u daydream-<job>`; a timer's LAST may be its install time.
-- [WARN] tools/make_link_card.py — the docstring says the card is a JPEG, icon-180 a crop, icon-32 the drawn mark.
+- [WARN] edge/src/worker.js — the door preview is read first and a link-preview fetcher gets the 200 only when one exists; with nothing synced it gets the 503 page (text/html) or the 503 JSON (`*/*`), as before this change. edge/test/preview.test.js asserts the 503 for no record, an unparseable one and one without a title.
 
 ### Accepted Risks
 
-- The guard is a pattern check over command text, not a sandbox: what it does not model (above) is covered by the permission prompts and the operator.
+- The guard is a pattern check over command text, not a sandbox: what it does not model is covered by the permission prompts and the operator.
 - **A thing with a `home` handed to a DOZING dreamer** waits in their satchel until they rest (BACKLOG `dozing-handover-of-village-things`; also in SECURITY.md).
 - Carried from SECURITY.md: LLM-emitted effects take an unscoped, LLM-chosen target id within each verb's allowed subset; stored prompt-injection via captured NPC memory; bootstrap `$MODEL` heredoc; `cmd_logs` path component; qpeek clone; `world reset` rm -rf operator trust; CGNAT hardcoding in tailscale mode; an account deleted mid-reply leaves the reply and its `talk:`/`rel:` records.
 
 ---
-*Prior review (2026-10-01e, refresh, `2a8d93b`): shrunk screenshots, playthrough purge and the nudity banlist; 0 BLOCK / 0 WARN / 3 NOTE (a corrupt session.json stops purge; "naked" refuses innocent phrases; the content banlist is short and the workflows' negative prompts name no content).*
+*Prior review (2026-10-01f, refresh, `62d77ef`): prod status leads with what friends see, link-preview cards and icons; 0 BLOCK / 4 WARN (all fixed in 62d77ef) / 9 NOTE.*
 
-<!-- REVIEW_META: {"date":"2026-10-01","commit":"62d77ef","reviewed_up_to":"62d77ef0943565ce4b21c6ba0216c5b0d8959105","base":"origin/main","tier":"refresh","block":0,"warn":4,"note":9} -->
+<!-- REVIEW_META: {"date":"2026-10-03","commit":"968da2b","reviewed_up_to":"968da2b5ca90848daa4df44122fe93f73e265dc8","base":"origin/main","tier":"refresh","block":0,"warn":1,"note":18} -->
