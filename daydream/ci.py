@@ -125,6 +125,9 @@ def main_status(branch: str = "main") -> tuple[str, str]:
     if not got:
         return "unknown", f"no runs on {branch}"
     head = branch_head(branch)
+    if head is None and state(got[0]) == "passed":
+        return "unknown", (f"{branch}'s tip could not be read from GitHub; "
+                           f"the newest listed is {describe(got[0])}")
     if head and got[0].get("headSha") != head:
         tip = runs(branch, limit=5, sha=head)
         if not tip:

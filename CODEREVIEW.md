@@ -1,53 +1,44 @@
-## Review — 2026-10-03 (commit: 968da2b)
+## Review — 2026-10-03b (commit: 97a1f4e)
 
-**Summary:** Refresh review of `origin/main..968da2b` (every file in focus): the keepsakes sync carries the door's link preview (words, card, icons) to KV; while asleep the Worker puts the door's Open Graph tags on its page, serves the card and icons from KV, and answers a link-preview fetcher with a 200; `prod check` gains "link preview". Tests: short 2089 passed, medium 2796 passed, edge 48 passed, the same after the fix. One /codefix cycle fixed the WARN (uncommitted: edge/src/worker.js, edge/test/preview.test.js). Security (/security, paths, then post-fix): 0 BLOCK / 0 WARN / 10 NOTE (9 carried, 1 new in the uptime watch, older than this change).
+**Summary:** Refresh review of `origin/main..97a1f4e`, with all three files in focus. `ci.main_status` now reads main's tip from the ref API. When the list's newest run is not for the tip, it asks GitHub for the tip's runs by commit, and if none are listed it says "unknown". verify.md gains a row for the CI check. Tests before and after the fix: short 2093 passed, medium 2800 passed. One /codefix cycle fixed the WARN; the fix is uncommitted (daydream/ci.py, tests/test_ci.py, docs/runbooks/verify.md). Security: 0 BLOCK / 0 WARN / 10 NOTE, both from the /security paths scan and from the post-fix re-check; nothing new.
 
 **External reviewers:**
 None configured.
 
 **Built-in review:**
-`/code-review high`: 9 findings, 9 kept after Step 6 (merged into 1 WARN and 6 NOTEs).
+`/code-review high`: 8 findings, all 8 kept after Step 6. One became the WARN, one was folded into the WARN's fix, and 6 are NOTEs.
 
 ### Findings
 
-[WARN, fixed] (also claude-code) edge/src/worker.js:345 — a link-preview fetcher gets a 200 even when the edge holds no door preview, so in that case the phone builds and keeps a preview titled "daydream is asleep" (the template's `<title>`), with no card, for that URL. Before this change it got a 503 and kept a bare link, which is less misleading. The windows are real: the door reaches KV only at the hourly sync or at `prod sleep`, and `prod sleep` flips the flag to asleep (daydream/prodctl.py:724) and then rests everyone and writes journals before it syncs (prodctl.py:742), so the first sleep after a deploy serves the page without a preview for tens of seconds; an unplanned outage in the first hour after a deploy; a rollback to a release whose export has no door (the sync then deletes the key); a failing sync. The test "nothing synced, or a malformed record: the page as before" says "as before" but does not check the status, which changed from 503 to 200. (medium)
-  Evidence: `const unfurl = isLinkPreview(request) && request.method === "GET" && ...` is decided before `doorPreview(env)` is read; `status: unfurl ? 200 : 503`.
-  Suggested fix: read the door preview first and treat the request as an unfurl only when a preview exists (`unfurl && door`), so with nothing synced the fetcher gets what it got before (the 503 page for text/html, the 503 JSON for `*/*`). Assert the 503 in the "nothing synced" test.
+[WARN, fixed] (also claude-code) daydream/ci.py:127. When the tip could not be read (`branch_head` returns None after a rate limit, a 5xx, or a timeout in `_gh`), `main_status` fell back to the newest run in the list. A stale list, as in the 2026-10-03 incident, could then still show an older commit's "passed" as main's. That is the hole this change exists to close. The new verify.md row said the line never reports an older commit's run, and `test_an_unreadable_tip_leaves_the_list_to_speak` asserted the "passed". The older main_status tests passed through the unreadable-tip path without exercising it, because the call-ordered `_fake` fed run-list JSON to `branch_head` (claude-code, tests/test_ci.py:20). (medium)
 
-[NOTE] edge/src/worker.js:323 — after the fix, every asleep request reads the `door` key before deciding, including the 503 JSON answers that never use it: a tab left on the asleep page now costs three KV reads per 30 s retry instead of two (the security pass's arithmetic: about a dozen all-day tabs exhaust the free tier's daily reads, against about seventeen before). Reading `door` only when the page renders or a fetcher could unfurl keeps the JSON answers at one read. (low)
+[NOTE] docs/runbooks/verify.md:30 (after the fix). The row says "a tip GitHub cannot name ... is a note" and "The line never reports an older commit's run as main's". When the tip cannot be read and the newest listed run failed or is running, the line still reports that listed run. It may be an older commit's run. It reads red (failed) or as a note (running), never green, so any error is loud. "Never ... green" would be exact. (low)
 
-[NOTE] (security) edge/src/worker.js:45 — older than this change: when the uptime watch's read of `uptime` throws, it treats the record as empty and writes that back, erasing the outage history, and while reads keep failing no outage opens; `prod status`'s watch line then says "no unplanned outage recorded" through a real one (its live public status still tells the truth). Skip the run on a thrown read. (low)
+[NOTE] (claude-code) daydream/ci.py:133. If no run is listed for the tip and the newest listed run is red, the line reads "unknown" (a warn-only note), not "failed". The words still name it ("the newest listed is failed at ..."), but `prod plan` prints its "CI is RED" banner only for a "failed" verdict. Before this change, the first few seconds after a push read "failed", then "running" (also warn-only) once the tip's run appeared. (low)
 
-[NOTE] (also claude-code) edge/src/worker.js:321 — only a GET unfurls; a fetcher that sends HEAD to the page first gets the 503 JSON and may give up. The card and icons do answer HEAD. (low)
+[NOTE] (also claude-code) daydream/ci.py:136. When the tip's run is in progress, "the last finished run" comes from the possibly stale list. It can therefore name an old failure as main's last finished run, or miss the parent commit's failure. `test_a_red_tip_behind_a_stale_list_is_red` codifies this. The verdict is "running" either way. (low)
 
-[NOTE] (claude-code) edge/src/worker.js:409 — `previewHtml` builds its URLs from `env.PUBLIC_HOST` with no fallback, while `handle()` treats it as optional; a fork without it would publish `https://undefined/...` card and icon URLs. The request's own host would do. (low)
+[NOTE] daydream/ci.py:133. If the query for the tip's runs itself fails (`runs` returns None), the words say "no run listed for main's tip (just pushed, or GitHub's list is stale)". The verdict ("unknown") is right; the stated reason is wrong. (low)
 
-[NOTE] (also claude-code) daydream/edge.py:247 — `DOOR_ASSET` repeats `instance._SHAPES["card_image"]` and worker.js `ASSET_PATH`; widening the card's shape in instance.py would let an instance name a card the sync then silently leaves out (prod check would catch it while asleep). (low)
+[NOTE] (claude-code) daydream/ci.py:132. The tip query sends `branch=main` along with `head_sha`. If the branch index is the one that lagged, this query may also come back empty, which reads "unknown" (the safe direction). Querying by `head_sha` alone, keeping the push-event and `_ours` filters, would avoid that index. Which index lagged is unverified. (low)
 
-[NOTE] (claude-code) edge/src/worker.js:407 — `previewHtml` rewrites door.html's preview tag set by hand, and `instance.ICONS` mirrors door.html's icon links; a tag or icon rel added to door.html is not mirrored at the edge and no test fails (a renamed icon is caught by test_auth). (low)
+[NOTE] (claude-code) daydream/ci.py:196. `bin/game ci` prints the tip-aware verdict, then lists `runs(limit=8)` from the raw list. When that list is stale, the listing can have no row for the tip and contradict the verdict. (low)
 
-[NOTE] (also claude-code) daydream/keepsakes.py:153 — the door rides in the same export and bulk put as the passes, so a failure in the door path (an `InstanceError` from `instance.preview()`, a malformed `door` shape, invalid base64 rejected by the bulk API) stops the whole sync, pass revocations included. Only a bad instance.json (which also breaks the server) or a hostile service user (which can already break the sync) gets there. (low)
+[NOTE] (also claude-code) bin/game:573. `main_status` now makes two or three `gh` calls in sequence, each with a 30 s timeout, where it made one. `bin/game status` runs it under `timeout 20 ... || true`, so a slow GitHub drops the CI line silently more often. Measured live today: 1.3 s. (low)
 
-[NOTE] edge/src/worker.js:393 — the Worker caps each word at 200 characters, but `invite_title` and `card_alt` add a prefix to words instance.json allows at 200, so a long title or place is cut mid-word on the asleep page only. (low)
+[NOTE] (claude-code) daydream/ci.py:59. `runs()` shapes every filtered run, forking one `git log` each, before slicing to `limit`. This predates the change, but the tip query adds another such call. (low)
 
-[NOTE] (claude-code) edge/src/worker.js:341 — every asleep page now waits for the `door` read after the keepsakes reads; reading both at once (Promise.all) saves a KV round trip. (low)
+[NOTE] (security) daydream/ci.py:122-126. This predates the change. About twenty fork pull-request runs on a branch named `main` fill the single page of results. A red main then reads "unknown" (a note), because the `not got` check returns before the new tip read is reached. `ci watch` asks by commit and still sees red. Reading the tip before giving up on an empty list, and asking by commit, would close it. (low)
 
-[NOTE] (claude-code) daydream/prodcheck.py:363 — the probe sends the iMessage user agent from the box's own address; a Cloudflare fake-bot rule would fail it on a healthy village. Real iMessage fetches also come from the sender's device, not Facebook's addresses, so such a failure probably reflects what phones see. Unverified until the deploy. (low)
+[NOTE] (security) daydream/ci.py:100. `_SHA` uses `^...$`, which accepts a trailing newline; `fullmatch` is exact. `_subject` passes GitHub's `head_sha` to `git log` as a positional argument; validating it with `_SHA` in `_shape`, or passing `--end-of-options`, would close that. No security effect found. (low)
 
-Carried from 2026-10-01f (files unchanged or the finding still present; the door.html NOTE about previews while asleep is resolved by this change):
-
-[NOTE] daydream/server.py:240 and edge/src/worker.js:343 — markers are replaced one after another, so a value containing a later marker is expanded again; on the asleep page, keepsake text containing `{{PREVIEW}}` expands into the Worker's escaped tags (harmless; the security pass confirmed nothing a player writes becomes markup). (low)
-[NOTE] daydream/prodcheck.py:168 — "not run since boot" also describes a just-installed timer; a job that failed before a reboot reads ok until its next run. (low)
-[NOTE] daydream/prodctl.py:909 — `prod status` makes a 10 s-timeout HTTPS probe before the Cloudflare API calls. (low)
-[NOTE] tools/make_link_card.py:101 — `icons()` does not check the painting is wide enough for its square crop. (low)
-[NOTE] tools/make_link_card.py:60 — the shadow is blurred twice. (low)
-[NOTE] web/index.html:8 — the game page's icons are absolute URLs where base-relative would do. (low)
-[NOTE] daydream/server.py:267 — a password-reset link is also `/invite/<slug>`, so it previews as an invitation (now at the edge too). (low)
-[NOTE] web/assets/card-village.jpg — nothing ties the committed card to the door painting; crawler access through Cloudflare is unverified until the deploy. (low)
+[NOTE] (security) edge/src/worker.js:45. Carried and unchanged: a thrown read of the `uptime` record erases the outage history. (low)
 
 ### Fixes Applied
 
-- [WARN] edge/src/worker.js — the door preview is read first and a link-preview fetcher gets the 200 only when one exists; with nothing synced it gets the 503 page (text/html) or the 503 JSON (`*/*`), as before this change. edge/test/preview.test.js asserts the 503 for no record, an unparseable one and one without a title.
+- [WARN] daydream/ci.py. When the tip cannot be read and the newest listed run passed, the line now reads "unknown". Its words say main's tip could not be read from GitHub and name that listed run. A failed or running newest run still speaks.
+- tests/test_ci.py. `test_an_unreadable_tip_never_passes_for_main` expects "unknown" for a listed pass and "failed" for a listed red. The three older verdict tests patch `ci.branch_head` to return their newest run's sha, so they exercise a readable tip and keep their assertions.
+- docs/runbooks/verify.md. The CI row lists "a tip GitHub cannot name" among the cases that read as a note.
 
 ### Accepted Risks
 
@@ -56,6 +47,6 @@ Carried from 2026-10-01f (files unchanged or the finding still present; the door
 - Carried from SECURITY.md: LLM-emitted effects take an unscoped, LLM-chosen target id within each verb's allowed subset; stored prompt-injection via captured NPC memory; bootstrap `$MODEL` heredoc; `cmd_logs` path component; qpeek clone; `world reset` rm -rf operator trust; CGNAT hardcoding in tailscale mode; an account deleted mid-reply leaves the reply and its `talk:`/`rel:` records.
 
 ---
-*Prior review (2026-10-01f, refresh, `62d77ef`): prod status leads with what friends see, link-preview cards and icons; 0 BLOCK / 4 WARN (all fixed in 62d77ef) / 9 NOTE.*
+*Prior review (2026-10-03, refresh, `968da2b`): the asleep link preview at the edge; 0 BLOCK / 1 WARN (fixed in 7efca17) / 18 NOTE.*
 
-<!-- REVIEW_META: {"date":"2026-10-03","commit":"968da2b","reviewed_up_to":"968da2b5ca90848daa4df44122fe93f73e265dc8","base":"origin/main","tier":"refresh","block":0,"warn":1,"note":18} -->
+<!-- REVIEW_META: {"date":"2026-10-03","commit":"97a1f4e","reviewed_up_to":"97a1f4e26bc3a08d32527bb73513d20b1b796010","base":"origin/main","tier":"refresh","block":0,"warn":1,"note":11} -->

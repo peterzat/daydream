@@ -32,6 +32,7 @@ def _fake(monkeypatch, *batches):
 
 
 def test_green_red_and_a_new_run_over_a_red_one(monkeypatch):
+    monkeypatch.setattr(ci, "branch_head", lambda branch="main": "abc1234def")
     _fake(monkeypatch, [_run()])
     assert ci.main_status()[0] == "passed"
     _fake(monkeypatch, [_run(conclusion="failure")])
@@ -81,6 +82,7 @@ def test_the_rest_api_shape_is_read_newest_first(monkeypatch):
            "head_commit": {"message": "new change\n\nbody"},
            "created_at": "2026-09-29T00:00:00Z", "html_url": "u2"}
     monkeypatch.setattr(ci, "_gh", lambda *a, **k: json.dumps({"workflow_runs": [old, new]}))
+    monkeypatch.setattr(ci, "branch_head", lambda branch="main": "b" * 40)
     got = ci.runs()
     assert [r["databaseId"] for r in got] == [2, 1]
     assert ci.state(got[0]) == "failed"
@@ -101,6 +103,7 @@ def test_a_forks_run_never_counts_as_mains(monkeypatch):
             "created_at": "2026-09-29T01:00:00Z", "html_url": "u2",
             "repository": ours, "head_repository": {"full_name": "stranger/daydream"}}
     monkeypatch.setattr(ci, "_gh", lambda *a, **k: json.dumps({"workflow_runs": [fork, red]}))
+    monkeypatch.setattr(ci, "branch_head", lambda branch="main": "a" * 40)
     got = ci.runs()
     assert [r["databaseId"] for r in got] == [1]
     assert ci.main_status()[0] == "failed"
@@ -155,6 +158,11 @@ def test_the_tips_run_is_read_from_the_list_when_it_is_there(monkeypatch):
     assert not any("head_sha=" in u for u in calls)
 
 
-def test_an_unreadable_tip_leaves_the_list_to_speak(monkeypatch):
+def test_an_unreadable_tip_never_passes_for_main(monkeypatch):
+    """A tip GitHub cannot name leaves a listed "passed" unconfirmed; a red
+    or running newest run still speaks."""
     _by_url(monkeypatch, listed=[_run(sha="a" * 40)], tip_runs=[], head=None)
-    assert ci.main_status()[0] == "passed"
+    verdict, words = ci.main_status()
+    assert verdict == "unknown" and "could not be read" in words and "aaaaaaa" in words
+    _by_url(monkeypatch, listed=[_run(sha="a" * 40, conclusion="failure")], tip_runs=[], head=None)
+    assert ci.main_status()[0] == "failed"

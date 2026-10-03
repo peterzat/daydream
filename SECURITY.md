@@ -2,47 +2,56 @@
 
 ## Security Review — 2026-10-03 (scope: paths)
 
-**Summary:** Path-scoped review of the 15 paths the caller named, read in
-full and as their change from the last scan (`d03a48a`) to HEAD `968da2b`.
+**Summary:** Path-scoped review of the four paths the caller named, read in
+full and as their change from the last scan (`968da2b`) to HEAD `97a1f4e`.
 Two commits touch them:
-- `62d77ef`: the last review's fixes. `public_status()` also catches
-  `http.client.HTTPException`, which closes the truncated-read traceback the
-  last scan noted, and the card follows only a png/jpg door.
-- `968da2b` (unpushed): a link shared while the village sleeps unfurls like
-  the door. The keepsakes sync carries the door's preview words, card and
-  icons to KV (`door`, `asset:<path>`). While asleep, the Worker puts the
-  same tags on its page, serves the card and icons from KV, and answers a
-  link-preview user agent with a 200 instead of the 503. `prod check` gains
-  a "link preview" check.
+- `7efca17`: the last review's WARN fix, now committed. The Worker reads the
+  door preview first and gives a link-preview fetcher the 200 only when one
+  is synced. It is the change the last entry's post-fix pass checked.
+- `97a1f4e` (unpushed): main's CI verdict is its tip's own run.
+  `main_status` reads the branch tip from GitHub's ref API. When the list's
+  newest run belongs to another commit, it asks for the tip's runs by
+  commit, and with none listed it says "unknown".
 
-No new finding. The tags are escaped. The images are the release's public
-assets, named by a validated path. The 200 changes only the status. A
-hostile export gains nothing the service user does not already have while
-awake. Register: 0 BLOCK / 0 WARN / 9 NOTE, all carried; their files are
-unchanged.
+No new finding. The tip must be a 40-hex commit id before it reaches a
+query, and the new words carry only our own run's state, a short sha and
+the local commit subject. Both NOTEs in these files are still present: the
+uptime watch erases its history on a failed read, and a fork's runs can
+still fill the one page of runs (the new tip read is not reached when that
+page filters to empty). Register: 0 BLOCK / 0 WARN / 10 NOTE, 2 re-checked
+and 8 carried.
 
-**Post-fix re-check** (`edge/src/worker.js`, `edge/test/preview.test.js`;
-the uncommitted fix of CODEREVIEW's WARN). The Worker now reads the door
-preview before it decides, and a link-preview fetcher gets the 200 only when
-a preview is synced. With nothing synced, or a malformed record, it gets the
-503 as before, and the test now asserts that status. The fix adds no
-finding. It adds one KV read to the asleep JSON answers (see "KV reads while
-asleep"). Re-reading the whole Worker found one older issue, a NOTE: the
-uptime watch erases its outage history when a read of it fails (`watch`,
-shaped in `03a5b08`). Register: 0 BLOCK / 0 WARN / 10 NOTE.
+**Post-fix re-check** (`/codereview` Step 7, uncommitted over `97a1f4e`):
+`daydream/ci.py` and `tests/test_ci.py` after `/codefix`'s change for the
+code review's WARN. When GitHub cannot name main's tip, a listed "passed"
+now reads "unknown" (a note in `prod check`) instead of standing as main's.
+A failed, running or other newest run still speaks. The tests that read a
+verdict now answer the tip read themselves. Nothing resolved and nothing
+new: the change only turns a green into a note, makes no extra `gh` call,
+and its words carry only our own run's state, short sha and local subject.
+The fork-flood NOTE is still present (probed again). Register unchanged:
+0 BLOCK / 0 WARN / 10 NOTE.
 
 ### Findings
 
-No new security issue in the range's changes or in the post-fix change. The
-post-fix re-read of the whole Worker found one older issue:
+No new security issue in the range. Two older NOTEs in the scoped files
+were re-checked and are still present:
 
 [NOTE] edge/src/worker.js:45-54 and :85 (`watch`) — A failed read of the `uptime` record is taken as an empty record and written back. The recorded outages are erased, and while reads keep failing no unplanned outage can open. It predates this range (the record's shape is from `03a5b08`, 2026-09-28).
   Attack vector: An anonymous client floods the asleep pages (two to four KV reads a request) until the Workers Free plan's 100,000 daily KV reads run out. Friends' tabs left on the asleep note get there too: about a dozen through a whole day of sleep since the fix (three reads per 30 s cycle), about seventeen before. Until the quota resets, each five-minute run (`*/5` cron) reads the flag as awake (`:45`, fail-open by design). The probe fails because the tunnel is down, the `uptime` read fails (`:46-51`), and the run writes `{suspect_since, outages: []}` (`:85`). The history is gone for good, and the "watch:" part of `prod status` (`daydream/edge.py:175-182`) reads "up; no unplanned outage recorded" through a real outage. One transient read error during an outage erases the history the same way.
   Evidence: a local probe of `watch` over a record holding two outages, in three stores: reads that throw (flag asleep), an `uptime` read that throws (origin down), and reads that return null. Every run returned "down"; the record kept 0 outages and never set `down_since`. Mitigation: `prod status` leads with the live public status, which still says the village does not answer.
   Confidence: high for the mechanism. How Cloudflare signals an exhausted read quota (an error or an empty read) is unverified. Both erase; skipping on a thrown read fixes only the first.
   Remediation: when the `uptime` read throws, skip the run and write nothing (return "unknown"), and reset only a value that parses badly. Optionally read the flag strictly in `watch`, so an unreadable flag skips the run instead of probing as awake. Add a throwing-`get` case to `edge/test/worker.test.js`.
+  Re-checked this run: `watch` is unchanged since `165c5df` (2026-09-29). A local probe on HEAD, over a throwing `uptime` read with the origin down, again returned "down", kept 0 of 2 outages and set no `down_since`.
 
-Carried (still open; their files are outside this scope and unchanged since `d03a48a`):
+[NOTE] daydream/ci.py:49-61 and :122-126 (with daydream/prodcheck.py:227-234) — A run of a pull request from a fork's branch named `main` is listed under `branch=main`. About twenty of them fill the one page `runs()` reads, the push-only, same-repository filter leaves it empty, and `main_status` returns "unknown" ("no runs on main") before it reads the tip. `prod check` then passes a red main with a note. First found in the 2026-09-29 scan; re-checked this run.
+  Attack vector: A stranger forks the public repo and pushes about twenty times to a pull request from their `main`. Each push lists a `pull_request` run, one waiting for approval included (as the 2026-09-29 scan found). Until our next push, `prod check`, `prod plan`, `bin/game ci` and `bin/game status` read main as "unknown" instead of red. `bin/game ci watch`, the publish's gate, asks by commit and still sees the red run.
+  Evidence: a local probe of `main_status` with GitHub's paging honored (newest first, `per_page`, and the `branch` and `head_sha` filters). 19 fork runs over a red tip read "failed". 20 and 40 read "unknown" ("no runs on main"), while `runs(sha=<tip>)` alone returned the red run. The tip read of `97a1f4e` is never reached in that case, because `:125-126` returns first.
+  Confidence: high for the mechanism; medium that every push of an unapproved first-time contributor lists a run.
+  Remediation: read the tip before giving up on an empty list, and ask by commit (`runs(branch, sha=head)`) whenever the filtered list is empty or its newest is not the tip. A fork's runs carry their own head commits, so they cannot fill that page.
+  Re-checked post-fix: the `/codefix` change sits after the empty-list return, so a full page of fork runs still reads "unknown" before the tip is read (probed again: 20 and 40 fork runs over a red tip, one `gh` call each; 19 still read "failed"). With the page only partly filled, an old green of ours and the tip unreadable, the verdict is now "unknown" where it was "passed"; with the tip readable it was and is "failed".
+
+Carried (still open; their files are outside this scope and unchanged since `968da2b`):
 
 [NOTE] daydream/llm/safety.py:57-59 (with daydream/api/slots.py:201, daydream/growth.py:286 and :364-381, and node "4" of daydream/images/workflows/painterly_room.json and painterly_portrait.json) — The content banlist is per word, and the two paths that put a friend's words into SDXL (a dreamer's portrait and a grown room's painting) have nothing else between them and a synonym. (carried from the 2026-10-01 scan, not re-checked)
   Attack vector: An invited friend makes a dreamer whose look is "a bare-breasted bather" or "a sexy dreamer in lingerie". `_toon_request` (slots.py:164-203) passes it, and the portrait shows on the dreamer's card to everyone in the room and stays in the art keep. On the growth path, "a sleeper in her nakedness" passes the gate (growth.py:550), and if the gardener keeps the word, `art_seed` weights it at 1.4.
@@ -61,8 +70,6 @@ Carried (still open; their files are outside this scope and unchanged since `d03
 
 [NOTE] tools/agent_guard.py:451-462 (`_resolve`) — A `cd` into one word of about 50,000 nested braces took 9.6 s at the last measure, past the hook's 5 s timeout, so it gets no decision. A time limit inside `main`, or a single-pass brace expansion, would close it. (carried from the 2026-09-30 scan, not re-checked)
 
-[NOTE] daydream/ci.py:49-61 (with daydream/prodcheck.py) — About twenty pushes to a fork pull request from a branch named `main` fill the one page of runs, and a red main then reads "unknown". (carried from the 2026-09-29 scan, not re-checked) Its prodcheck half is in this scope and was re-read: `check_ci` (prodcheck.py:227-234) and its call (:446) are unchanged; `968da2b` added only the link-preview check.
-
 [NOTE] daydream/play.py:84-85 (with daydream/glimpse.py) — A grown place's description prints unmarked in `play`, and so does a look that echoes a sentence from a grown room or thing. The `read` reply on written prose (`glimpse.py:471`) names a noun from the same prose. The server accepts control characters in typed lines and appearance seeds. (carried from the 2026-09-29 scan, not re-checked)
 
 [NOTE] daydream/skills/effects.py:356-357 — The placeholder expander still runs over a letter's body and a dreamer's looks. It fills after routing, and a line its actor reads alone may say "you". It still fills only `{dreamers_today}`. BACKLOG `placeholders-over-player-text`. (carried from the 2026-09-29 scan, not re-checked)
@@ -71,85 +78,58 @@ Carried (still open; their files are outside this scope and unchanged since `d03
 
 ### Traced and cleared this run (not findings)
 
-- **The 200 for a link-preview fetcher** (`worker.js:319-328`, `:347-348`).
-  It keys on the User-Agent, which anyone can send, but it changes only the
-  status. The body is the page a person gets with a 503: `no-store`,
-  `noindex`, the same CSP. API paths, `/cache/`, `/status/` and `/assets/`
-  keep the 503 JSON. The keepsakes block appears only for a request that
-  carries a live pass cookie. A server-side fetcher carries none, and the
-  preview tags lead the page either way. Since the post-fix change it also
-  needs a synced door preview. With none, an unparseable record, or one
-  with no usable title (blank, a number, an array, a string), the fetcher
-  gets the 503 for `*/*` and for `text/html` (probed). HEAD and POST keep
-  the 503 JSON.
-- **The preview tags** (`worker.js:388-429`). The KV words are trimmed to
-  200 characters and escaped. Attribute names and link rels are constants.
-  Each image URL is the configured host and base plus a path the record
-  lists and `ASSET_PATH` matches. A probe with a hostile record (markup,
-  quote breaks, a `javascript:` card, an unknown rel, traversal and
-  upper-case paths) came out escaped or dropped. Markers inside the door's
-  words are not expanded, since `{{PREVIEW}}` is filled last. An invite
-  path previews as "An invitation to" the title and never echoes the slug.
-  The same hostile record, re-probed through the post-fix gate, came out
-  the same (the `stylesheet` link on the page is the template's own).
-- **Markers inside player text** (`worker.js:334-346`). The asleep page
-  fills its markers in sequence, so a keepsakes line or a dreamer's name
-  that says `{{PREVIEW}}` expands into the Worker's own preview markup.
-  A dreamer's name may be any 24 printable characters, and the chronicle
-  can carry a planter's name. `{{BASE}}`, `{{PLACE}}` and `{{place}}`
-  already expanded the same way. Every marker's value is escaped and fixed
-  in shape, and player text sits in text context, so nothing a player
-  writes becomes markup (probed). A single-pass fill would make the page
-  exact. The operator's note sits in an attribute, and a note that says
-  `{{PREVIEW}}` breaks that attribute harmlessly. Notes are operator-only.
-- **Images served from the edge** (`worker.js:315-318`, `:362`,
-  `:372-384`). Only `^/assets/[a-z0-9_-]+\.(?:png|jpg)$` on the normalized
-  path qualifies (an encoded slash is refused before this), read from an
-  `asset:`-prefixed key, so no other KV key is reachable. Responses are
-  `image/png` or `image/jpeg` with `nosniff` and `no-store`. Query
-  strings, dot segments, `%2e%2e`, case and `%0a` variants were probed.
-  They are the same public files the origin serves under `/assets/`.
-- **The sync's trust boundary** (`keepsakes.py:99-118`,
-  `edge.py:258-293`). The export runs as the service user, and the
-  operator pushes what it prints. `_door()` reads the release's read-only
-  `web/` (no symlinks are committed there) by a validated instance path or
-  the fixed icon paths, each at most 1 MiB. A hostile export could now also
-  set the door's words and image bytes. The Worker escapes the words and
-  serves the bytes only as images, and the same user already controls the
-  whole door page while awake, so nothing escalates. The manifest removes
-  `door` and `asset:` keys a later export leaves out. Two small edges, no
-  security effect: `DOOR_ASSET` uses `$`, which admits a trailing newline,
-  so a hostile export could write an `asset:` key the Worker never serves
-  (`fullmatch` would tidy it); and a malformed `door` ends the sync with a
-  traceback before any write.
-- **KV reads while asleep.** An anonymous page render now reads two keys
-  (`state`, `door`), and an image request one or two. A flood reaches the
-  free plan's daily KV read quota at about half the requests it took
-  before. On exhaustion every read fails soft: the flag reads awake, the
-  origin probe still shows the asleep page, without its note, keepsakes or
-  preview. This is the accepted daily-quota risk below, reached sooner.
-  Post-fix, the JSON answers read `door` too: two keys, or three at a path
-  shaped like an image the edge lacks. The most one anonymous request costs
-  is unchanged at four (such a path as a page, with a session cookie). A
-  friend's tab on the asleep note now costs three reads per 30 s cycle
-  instead of two (the refused WebSocket, then the `api/me` probe), so the
-  read quota now binds before the request quota for that traffic. Reading
-  `door` only when the page renders or a fetcher could unfurl would keep
-  the JSON answers at one read. On exhaustion every path still fails soft
-  (probed: a 503, no exception, no note, no preview). The lasting effect is
-  the `watch` NOTE above.
-- **`prod check`'s link preview** (`prodcheck.py:108-127`, `:363-370`). It
-  fetches the card only when `og:image` starts with the configured public
-  root, follows no redirect, caps the body at 200 KB and sends no cookie.
-  Not an SSRF.
-- **The door page** (`server.py:217-249`, `door.html:13-25`). The new
-  `{{card_alt}}` is escaped and built from instance.json's validated place.
-  The preview words now come from one function (`instance.preview()`) and
-  are unchanged in substance. The invite page still never reads its slug.
-- **`62d77ef`** changes exception handling, the card fallback and a
-  docstring: no security effect. `tools/make_link_card.py` reads the
-  operator's painting and writes local files; nothing it handles is player
-  input.
+- **The tip read** (`ci.py:100-111`). Every caller passes the default
+  branch, `main`, so nothing variable reaches the ref path. The reply must
+  be an object whose `object.sha` is 40 lowercase hex characters. A list, a
+  null object, upper case, a leading dash, 64 hex characters, or a reply
+  that is not JSON each read as an unreadable tip (below; probed, and
+  again post-fix with an empty reply too: over a stale green, each reads
+  "unknown"). `_SHA` uses `^...$`, which also admits a trailing newline.
+  GitHub never sends one, and such a sha would only make the next query
+  fail and read "unknown". `fullmatch` would be exact.
+- **The query by commit** (`ci.py:49`, `:131-136` post-fix). Only the
+  validated tip reaches `head_sha=`, so the query string holds nothing but
+  hex. What comes back passes the same push-only and same-repository
+  filters (probed: a tip with only a fork's run listed reads "unknown").
+  The merge puts the tip's runs first, and a run in progress over a failed
+  one still says both.
+- **The new words** (`ci.py:134-135` post-fix, and the fix's own at
+  `:129-130`). The branch is a constant, the tip is hex, and `describe`
+  prints our own run's state, seven characters of its sha and the local
+  git subject. Nothing a stranger writes reaches the operator's terminal or
+  the agent's context through them.
+- **An unreadable tip** (`ci.py:127-130` post-fix). At `97a1f4e` the list
+  spoke, so a stale green list could stand over a red main while GitHub
+  refused the ref call. Since the post-fix change a listed "passed" reads
+  "unknown"; a failed, running or other newest still speaks, and none of
+  those reads as green (probed: a stale green, a red, a run over a red, a
+  run over a green, a cancelled). A stranger cannot cause an unreadable tip:
+  the call runs on the operator's own `gh` credentials and rate budget.
+- **Older code in `ci.py`, unchanged and unreachable** (noted for
+  completeness):
+  - `runs()` returns a list-shaped reply as it is (`:57-58`, for the tests'
+    fakes), past the push-only, same-repository and control-character
+    filters. GitHub's list-runs endpoint always answers an object. Moving
+    the adapter into the tests would make it exact.
+  - `_subject()` hands a run's `head_sha` to `git log` as a positional
+    argument (`:73-74`), where a value starting with `-` would be read as an
+    option (`--output=<file>` writes a file). GitHub's `head_sha` is always
+    a 40-hex commit id, and only our own push runs reach `_shape`. Checking
+    it with `_SHA` in `_shape`, or passing `--end-of-options`, would close
+    it.
+- **The Worker** (`7efca17`). The committed change is the one the last
+  entry's post-fix pass checked, and its line references hold. Re-read in
+  full:
+  - The 200 needs a synced door preview, a GET, a link-preview user agent,
+    and a path outside the API and `/assets/`.
+  - The door's words are escaped and filled last, so markers in them stay
+    literal text.
+  - Markers in keepsakes text expand only into the Worker's own values: the
+    base, the place, and the fixed-shape preview markup (probed again, with
+    a hostile door record and a pass).
+  - Images are served only for `ASSET_PATH`, from `asset:` keys.
+  - The extra `door` read on each asleep JSON answer is as the last entry
+    traced it: the accepted daily-quota risk, reached sooner.
 
 ### Player-text scan (CLAUDE.md "Player text is data")
 
@@ -158,70 +138,75 @@ Carried (still open; their files are outside this scope and unchanged since `d03
     username, with no typed lines (the operator's own, per the instance
     notes).
   - Dev `--since 548` returned 63 items: 31 dreamer names, 31 looks and 1
-    username. They are the agents' probe dreamers and the operator's dev
     username, unchanged since the last scan.
 - Nothing was flagged, and there were no bursts. Verdict: nobody steering.
-- Re-run in the post-fix pass: prod `--since 0` (3 items) and dev
-  `--since 548` (63 items), both unchanged, nothing flagged, no bursts.
-  Verdict unchanged.
+- Re-run for the post-fix pass: both unchanged (prod 3 items, dev 63),
+  nothing flagged, no bursts, the same high-water marks. Verdict: nobody
+  steering.
 - The counts, the verdict and the high-water marks (prod 0, dev 548) are in
   the local instance notes, never here (players' text stays off GitHub).
 
 ### Secrets, PII and the instance
 
-- These hold none of a key, a token, a private-key block, an account id,
-  an email, a box or tailnet address, a home path, the operator's name, a
-  friend's name, an invite slug or the instance domain:
-  - the last three commits of each scoped module and template
+- These hold none of a key, a token, a private-key block, an account id, an
+  email, a box or tailnet address, a home path, the operator's name, a
+  friend's name or an invite slug:
+  - the four files as they stand, and the last three commits of each
     (`git log -p --follow -3`);
-  - the unpushed range `origin/main..968da2b` (one commit, every text file)
-    and its commit message. Its added lines use `example.com` only.
-- The test fixtures are fake: `example.com` and `example.org` hosts, RFC
-  5737 addresses in `test_auth.py`, placeholder invitee names, and the
-  documented example slug `amber-thimble`.
-- `edge/wrangler.toml`'s instance values are committed by design (CLAUDE.md)
-  and unchanged in this range. `instance/` is still ignored.
+  - the range `968da2b..97a1f4e` (every text file) and its two commit
+    messages, the unpushed `97a1f4e` included;
+  - the post-fix diff of the two files and of `docs/runbooks/verify.md`'s
+    CI row.
+- One removed line in that history (`5a40e58`, in `worker.js`) names the
+  instance's domain: that commit took it out of a comment. The domain is
+  committed by design in `edge/wrangler.toml` (CLAUDE.md), so this is not a
+  leak.
+- The fixtures are fake: `example.com` hosts, GitHub repositories named
+  `x/y`, `me/daydream` and `stranger/daydream`, the documented example slug
+  `amber-thimble`, and the operator's public title.
+- `instance/` is still ignored.
 
 ### Coverage
 
-- All dimensions were reviewed for the 15 paths.
-  - Read in full: `daydream/edge.py`, `instance.py`, `keepsakes.py`,
-    `prodcheck.py`, `server.py`, `edge/src/worker.js`, the asleep template,
-    `web/door.html`, `tools/make_link_card.py` and
-    `edge/test/preview.test.js`.
-  - The five Python test files were read as their diffs and
-    pattern-scanned in full for secrets, PII and addresses.
-  - Tests ran: the Worker's suite (48 passed) and the five Python files
-    (89 passed).
-- Probes, all deterministic and local: a Node harness over the Worker's
-  `handle` with hostile KV records, markers in keepsakes text and path
-  variants; `edge.desired_keys` over malformed exports. No model call, no
-  render, no network beyond the two text scans.
-- Post-fix pass: `edge/src/worker.js` and `edge/test/preview.test.js` were
-  re-read in full and as the uncommitted diff, and the Worker's suite ran
-  (48 passed). A local harness compared HEAD's `handle` with the fixed one:
-  - KV reads per request class;
-  - nothing-synced and malformed records under both `accept` values;
-  - HEAD, POST, `/api/`, `/cache/`, `/status/`, `/assets/` and an invite
-    path with a door present;
-  - every KV read throwing, and the hostile record.
-  A second probe drove `watch` over failing reads. Both files' git history
-  was re-checked (`git log -p --follow -3`). The diff adds no secret,
-  address, name or instance fact.
-- Read in context, outside scope: `config.WEB_DIR`, `public_origin` and
-  `public_base`; `prodctl.run_release_python` and the read-only release
-  build; `edge/wrangler.toml`; `asleep.js` (textContent only); the dreamer
-  name check in `api/slots.py`.
-- No dependency manifest is in scope; `edge/package*.json` is unchanged in
-  the range.
-- Outside the named paths, the range also changes `docs/GOING-LIVE.md`,
-  `docs/INSTANCES.md`, `docs/runbooks/sleep-and-wake.md`,
-  `docs/runbooks/verify.md`, `CODEREVIEW.md` and `SECURITY.md`. They were
-  pattern-scanned for secrets and instance facts only.
-- Git history checked for secrets: `daydream/edge.py` (the Cloudflare
-  token), `daydream/keepsakes.py` (the pass list), `daydream/prodcheck.py`
-  (the CLI's cookie), `edge/src/worker.js` (the Access service token, by
-  binding), and the other scoped modules and templates, as above.
+- All dimensions were reviewed for the four paths, read in full and as
+  their diff from `968da2b`.
+- Tests ran: the Worker's suite (48 passed) and `tests/test_ci.py` (11
+  passed).
+- Probes, all deterministic and local:
+  - a Python harness over `ci.main_status` with fake GitHub replies: paging
+    honored, fork floods of 19, 20 and 40 runs, odd ref replies, a tip with
+    only a fork's run, a red tip behind a stale green list, and an
+    unreadable tip;
+  - a Node harness over the Worker's `watch` with a throwing `uptime` read,
+    and over the asleep page with a hostile door record and markers in a
+    pass's keepsakes.
+- No `gh` call reached GitHub, and nothing else used the network beyond the
+  two text scans.
+- Read in context, outside scope: `prodcheck.check_ci` and its call,
+  `prod plan`'s CI line, `bin/game status`'s CI line, the conftest fixture
+  that keeps the suite off GitHub, the CI workflow's triggers (`push` to
+  main and `pull_request`; no `pull_request_target`, no schedule), and the
+  asleep template.
+- No dependency manifest is in scope.
+- Outside the named paths, the range also changes `docs/runbooks/verify.md`,
+  `CODEREVIEW.md` and `SECURITY.md`. They were pattern-scanned for secrets
+  and instance facts only.
+- Git history checked for secrets: `edge/src/worker.js` (the Access service
+  token, by binding, and session cookies, hashed), `daydream/ci.py` (the
+  operator's `gh` credentials, which the module never reads), and the two
+  test files.
+- Post-fix pass: `daydream/ci.py` and `tests/test_ci.py` re-read in full
+  with `/codefix`'s diff, all dimensions. `tests/test_ci.py`: 11 passed. The
+  `main_status` harness ran again over the fixed code, with GitHub's paging
+  honored: unreadable tips under a stale green, a red, a run over a red or
+  a green and a cancelled run; seven odd ref replies; fork floods of 19, 20
+  and 40; a partial flood with the tip readable and unreadable. Every case
+  read as expected except the open fork-flood NOTE's two. No `gh` call
+  reached GitHub (the suite's conftest blanks `ci._gh`). The diff's
+  `docs/runbooks/verify.md` row (a doc, outside scope) was read and
+  pattern-scanned for secrets and instance facts only. Git history of
+  both files re-checked with `git log -p --follow -3`; HEAD is unchanged,
+  and the fix is uncommitted.
 
 ### Accepted Risks
 
@@ -312,6 +297,6 @@ Carried register (from prior reviews; still open, not re-flagged):
   injected instruction would want stay behind ask rules.
 
 ---
-*Prior review (2026-10-01, paths, commit `d03a48a`): sixteen paths over two commits after `2a8d93b`: `prod status`'s edge line read from the Worker's public status with "not run since boot" for timer jobs, and the door's Open Graph tags with a link card, icons and the `card_image` instance word. No new finding; the register stood at 0 BLOCK / 0 WARN / 9 NOTE, all carried. The full entry is at `git show 114cd38:SECURITY.md`.*
+*Prior review (2026-10-03, paths, commit `968da2b`, with a post-fix pass over the fix later committed as `7efca17`): fifteen paths over `62d77ef` and `968da2b`, the asleep page's link preview (the door's words, card and icons synced to KV, and a 200 for a link-preview fetcher once a preview is synced). No new finding in the range; the post-fix re-read of the Worker found the uptime watch NOTE. The register stood at 0 BLOCK / 0 WARN / 10 NOTE. The full entry is at `git show 7efca17:SECURITY.md`.*
 
-<!-- SECURITY_META: {"date":"2026-10-03","commit":"968da2b5ca90848daa4df44122fe93f73e265dc8","scope":"paths","scanned_files":["daydream/edge.py","daydream/instance.py","daydream/keepsakes.py","daydream/prodcheck.py","daydream/server.py","edge/public/daydream/_edge/asleep.html","edge/src/worker.js","edge/test/preview.test.js","tests/test_auth.py","tests/test_edge_ctl.py","tests/test_instances.py","tests/test_keepsakes.py","tests/test_prodcheck.py","tools/make_link_card.py","web/door.html"],"block":0,"warn":0,"note":10} -->
+<!-- SECURITY_META: {"date":"2026-10-03","commit":"97a1f4e26bc3a08d32527bb73513d20b1b796010","scope":"paths","scanned_files":["daydream/ci.py","edge/src/worker.js","edge/test/preview.test.js","tests/test_ci.py"],"block":0,"warn":0,"note":10} -->
