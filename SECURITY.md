@@ -1,135 +1,167 @@
 # SECURITY.md
 
-## Security Review — 2026-10-03 (scope: paths)
+## Security Review — 2026-11-26 (scope: paths)
 
-**Summary:** Path-scoped review of the four paths the caller named, read in
-full and as their change from the last scan (`968da2b`) to HEAD `97a1f4e`.
+**Summary:** Path-scoped review of the seven paths the caller named, read in
+full and as their change from the last scan (`97a1f4e`) to HEAD `c22f58a`.
 Two commits touch them:
-- `7efca17`: the last review's WARN fix, now committed. The Worker reads the
-  door preview first and gives a link-preview fetcher the 200 only when one
-  is synced. It is the change the last entry's post-fix pass checked.
-- `97a1f4e` (unpushed): main's CI verdict is its tip's own run.
-  `main_status` reads the branch tip from GitHub's ref API. When the list's
-  newest run belongs to another commit, it asks for the tip's runs by
-  commit, and with none listed it says "unknown".
+- `8327427`: the CI fix the last entry's post-fix pass checked, now
+  committed (an unreadable tip turns a listed "passed" into "unknown").
+- `c22f58a`: `bin/game prod offsite-bucket [--create]` says whether the R2
+  bucket exists, is private and how long copies stay, and with `--create`
+  makes a missing one with a 60-day expiry rule. `sudo ops/install-prod.sh`
+  runs it as the operator, and the weekly offsite now stops before any work
+  when the bucket is missing.
 
-No new finding. The tip must be a 40-hex commit id before it reaches a
-query, and the new words carry only our own run's state, a short sha and
-the local commit subject. Both NOTEs in these files are still present: the
-uptime watch erases its history on a failed read, and a fork's runs can
-still fill the one page of runs (the new tip read is not reached when that
-page filters to empty). Register: 0 BLOCK / 0 WARN / 10 NOTE, 2 re-checked
-and 8 carried.
+The new code opens no exploitable path. The installer drops to the operator
+before it runs repo code, a bucket that exists is never changed, and the
+printed errors leave out the request line that names the account. Reading
+`prodctl.py` in full found a WARN in older code: the offsite copies are
+sealed to commented-out and expired keys in `authorized_keys`, so revoking a
+key there never reaches the encryption. One new NOTE: the bucket check
+treats a missing or ineffective expiry rule as information, so the 60-day
+offsite retention that docs/DATA-LIFECYCLE.md promises can fail without a
+sign. The fork-flood NOTE in `ci.py` is still present. Register: 0 BLOCK /
+1 WARN / 11 NOTE, 3 in scope and 9 carried.
 
-**Post-fix re-check** (`/codereview` Step 7, uncommitted over `97a1f4e`):
-`daydream/ci.py` and `tests/test_ci.py` after `/codefix`'s change for the
-code review's WARN. When GitHub cannot name main's tip, a listed "passed"
-now reads "unknown" (a note in `prod check`) instead of standing as main's.
-A failed, running or other newest run still speaks. The tests that read a
-verdict now answer the tip read themselves. Nothing resolved and nothing
-new: the change only turns a green into a note, makes no extra `gh` call,
-and its words carry only our own run's state, short sha and local subject.
-The fork-flood NOTE is still present (probed again). Register unchanged:
-0 BLOCK / 0 WARN / 10 NOTE.
+**Post-fix re-check** (`/codereview` Step 7, uncommitted over `c22f58a`):
+`daydream/prodctl.py` and `tests/test_prodctl.py` after `/codefix`'s change
+for the WARN. `age_recipients` now reads each line through
+`_authorized_key`, which skips comment lines, scans a quoted options field
+and leaves out a key whose `expiry-time` has passed. The WARN is resolved:
+a commented-out key, an expired key and key-like text inside a quoted
+option no longer reach `age -R` (probed; the new test covers each). One new
+NOTE: the parser still reads some lines differently from sshd (an option
+sshd refuses, a second `expiry-time`, the backslash rule inside quotes,
+line breaks other than `\n`) and keeps a key pinned to a do-nothing forced
+command, so a key retired in one of those less common ways stays a
+recipient, and an impossible expiry date stops every offsite run. The retention NOTE is still present (probed again). Register: 0 BLOCK /
+0 WARN / 12 NOTE, 3 in scope and 9 carried.
 
 ### Findings
 
-No new security issue in the range. Two older NOTEs in the scoped files
-were re-checked and are still present:
+[NOTE] daydream/prodctl.py:780-801 (`_authorized_key`) and :812 — The recipient parser follows sshd for comment lines, a quoted options field and one well-formed `expiry-time`, but it still takes a key from some lines sshd refuses or splits differently, so a key retired in a less common way stays a recipient of every later offsite copy. It accepts any options field, where sshd refuses a line with an unknown option (a `DISABLED` prefix, say) or an `expiry-time` it cannot read (`2020-01-01`, or a `UTC` suffix on this box's OpenSSH 8.9). It reads only the first `expiry-time` (:794), where sshd keeps the earliest. Inside quotes it lets `\` escape any character (:789), where sshd escapes only `\"`, in quotes or out, so `\\"` ends a quoted value here and not in sshd. `splitlines()` (:812) also breaks at `\r`, form feed, vertical tab and a few Unicode separators, where sshd breaks only at `\n`, so text after one of these inside a commented-out line is read as a line of its own. A key pinned to a forced command (a soft disable such as `restrict,command="/bin/false"`, or a single-purpose key for a backup puller) is a recipient too, since sshd still accepts it.
+  Attack vector: The operator retires a key by putting a word sshd rejects in front of its line, by adding an earlier `expiry-time` in front of the one the line already carries, or by pinning it to a command that does nothing. The key no longer opens a shell, but each weekly run (`offsite()` at :944) still seals to it, and its holder can read any later copy they can fetch (the R2 and copy paths in the retention NOTE below). The quote and line-break cases need unusual text in the operator's own file, and anyone who can write that file can already add a key, so they are correctness gaps, not a way in. Separately, an impossible date in `expiry-time` (month 13, 30 February) raises ValueError, which `main()` does not catch (:1546): every offsite run stops at that line, before any upload, until the line is fixed.
+  Evidence: a probe of `_authorized_key` over the working tree. The fix's own cases hold: `# ...`, `#...` and indented comment lines and a past `expiry-time` return None, and the escaped-quote decoy returns the line's real key. These return a key: `DISABLED ssh-ed25519 K`; `no-such-option,no-pty ssh-ed25519 K`; `expiry-time="20990101",expiry-time="20200101" ssh-ed25519 K`; past dates written `20200101UTC` and `2020-01-01`; `command="echo \\" ssh-ed25519 D " ssh-rsa R`, which returns D where sshd reads R; `command="echo C:\\" ssh-ed25519 K`, a line sshd refuses as an unterminated quote; `# retired key`, then `\r`, form feed, vertical tab, `\x85` or U+2028, then `ssh-ed25519 K`; and `restrict,command="/bin/false" ssh-ed25519 K`. The dates `20201301`, `20200230` and `00000101` raise ValueError.
+  Confidence: high for the parser (probed). Medium for sshd's side: it comes from OpenSSH's parsing code (`sshkey_advance_past_options`, `sshauthopt_parse`, the line reader) and the box's 8.9 man page, not from a running sshd. Low that this box's file holds any of these forms (the agent guard denies reading `~/.ssh`).
+  Remediation: split on `\n` only; skip a line whose options do not all parse as sshd options, or whose `expiry-time` does not parse; take the earliest `expiry-time`; let `\` escape only `"`, in quotes or out; treat a bad date as a refused line and say so; decide forced-command keys deliberately. Or seal to an explicit recipients file the operator keeps, and print the recipients' fingerprints on each run, which ends the parsing question. Add a test case for each.
+  Status: found 2026-11-26 at c22f58a; last checked 2026-11-26 at c22f58a
 
-[NOTE] edge/src/worker.js:45-54 and :85 (`watch`) — A failed read of the `uptime` record is taken as an empty record and written back. The recorded outages are erased, and while reads keep failing no unplanned outage can open. It predates this range (the record's shape is from `03a5b08`, 2026-09-28).
-  Attack vector: An anonymous client floods the asleep pages (two to four KV reads a request) until the Workers Free plan's 100,000 daily KV reads run out. Friends' tabs left on the asleep note get there too: about a dozen through a whole day of sleep since the fix (three reads per 30 s cycle), about seventeen before. Until the quota resets, each five-minute run (`*/5` cron) reads the flag as awake (`:45`, fail-open by design). The probe fails because the tunnel is down, the `uptime` read fails (`:46-51`), and the run writes `{suspect_since, outages: []}` (`:85`). The history is gone for good, and the "watch:" part of `prod status` (`daydream/edge.py:175-182`) reads "up; no unplanned outage recorded" through a real outage. One transient read error during an outage erases the history the same way.
-  Evidence: a local probe of `watch` over a record holding two outages, in three stores: reads that throw (flag asleep), an `uptime` read that throws (origin down), and reads that return null. Every run returned "down"; the record kept 0 outages and never set `down_since`. Mitigation: `prod status` leads with the live public status, which still says the village does not answer.
-  Confidence: high for the mechanism. How Cloudflare signals an exhausted read quota (an error or an empty read) is unverified. Both erase; skipping on a thrown read fixes only the first.
-  Remediation: when the `uptime` read throws, skip the run and write nothing (return "unknown"), and reset only a value that parses badly. Optionally read the flag strictly in `watch`, so an unreadable flag skips the run instead of probing as awake. Add a throwing-`get` case to `edge/test/worker.test.js`.
-  Re-checked this run: `watch` is unchanged since `165c5df` (2026-09-29). A local probe on HEAD, over a throwing `uptime` read with the origin down, again returned "down", kept 0 of 2 outages and set no `down_since`.
+[NOTE] daydream/prodctl.py:880-885 and :895-911 (with ops/install-prod.sh:185, and docs/DATA-LIFECYCLE.md:40 and :136-137) — The bucket check treats retention as information only. A bucket with no expiry rule passes `offsite-bucket` with a note and exit 0. A rule that is disabled, scoped to another prefix, or longer than 60 days reads as "copies expire after N days". `--create` never adds the rule to a bucket that exists. DATA-LIFECYCLE.md promises 60 days offsite, and says a deleted account's records leave the backups as they age out (14 days local, 60 offsite).
+  Attack vector: not attacker-driven; a privacy control that can fail without a sign. A bucket made by hand keeps every weekly copy until someone deletes it, and each copy holds the accounts DB and every typed line. CLOUDFLARE-SETUP.md's by-hand path adds the expiry rule in the dashboard as a separate step, and buckets made before this change had to do the same. `account delete` then never ages out of R2, and every copy stays readable by each key that was a recipient when it was sealed, a key since retired included. Copies leave R2 through a read of the bucket (a dashboard session or wrangler login on a retired laptop, a leaked R2 token, a bucket made public by mistake) or as a copy fetched to another machine, as docs/runbooks/backups.md describes. The installer's check passes, so nothing warns.
+  Evidence: a probe of `bucket_findings` with private, domain-free answers and four lifecycle answers: no rule, a disabled 60-day rule, a 1-day rule scoped to `scratch/` and a 365-day rule. All four returned no problems (exit 0). The notes read "no expiry rule: every copy stays until deleted", "copies expire after 60 days", "copies expire after 1 days" and "copies expire after 365 days".
+  Confidence: high for the code. The disabled and prefixed cases assume wrangler prints `enabled:` and `prefix:` lines beside `action:`, as the committed fixtures suggest.
+  Remediation: report a missing rule, a disabled one, or one that does not expire the `prod-` objects within `OFFSITE_EXPIRE_DAYS` as a problem (exit 1). Add the rule to an existing bucket only through an explicit flag (for example `offsite-bucket --set-expiry`), so `--create` keeps its promise never to change what exists. `prod check` could carry the same line.
+  Status: found 2026-11-26 at c22f58a; last checked 2026-11-26 at c22f58a
 
-[NOTE] daydream/ci.py:49-61 and :122-126 (with daydream/prodcheck.py:227-234) — A run of a pull request from a fork's branch named `main` is listed under `branch=main`. About twenty of them fill the one page `runs()` reads, the push-only, same-repository filter leaves it empty, and `main_status` returns "unknown" ("no runs on main") before it reads the tip. `prod check` then passes a red main with a note. First found in the 2026-09-29 scan; re-checked this run.
-  Attack vector: A stranger forks the public repo and pushes about twenty times to a pull request from their `main`. Each push lists a `pull_request` run, one waiting for approval included (as the 2026-09-29 scan found). Until our next push, `prod check`, `prod plan`, `bin/game ci` and `bin/game status` read main as "unknown" instead of red. `bin/game ci watch`, the publish's gate, asks by commit and still sees the red run.
-  Evidence: a local probe of `main_status` with GitHub's paging honored (newest first, `per_page`, and the `branch` and `head_sha` filters). 19 fork runs over a red tip read "failed". 20 and 40 read "unknown" ("no runs on main"), while `runs(sha=<tip>)` alone returned the red run. The tip read of `97a1f4e` is never reached in that case, because `:125-126` returns first.
+[NOTE] daydream/ci.py:49-61 and :122-126 (with daydream/prodcheck.py:227-234) — A run of a pull request from a fork's branch named `main` is listed under `branch=main`. About twenty of them fill the one page `runs()` reads, the push-only, same-repository filter leaves it empty, and `main_status` returns "unknown" ("no runs on main") before it reads the tip. `prod check` then passes a red main with a note.
+  Attack vector: A stranger forks the public repo and pushes about twenty times to a pull request from their `main`. Each push lists a `pull_request` run, one waiting for approval included. Until our next push, `prod check`, `prod plan`, `bin/game ci` and `bin/game status` read main as "unknown" instead of red. `bin/game ci watch`, the publish's gate, asks by commit and still sees the red run.
+  Evidence: `ci.py` is unchanged since `8327427`. A probe of `main_status` with GitHub's paging honored (newest first, `per_page`, and the `branch` and `head_sha` filters): 19 fork runs over a red tip read "failed" after two `gh` calls; 20 and 40 read "unknown" ("no runs on main") after one, so the tip read at :127 is never reached.
   Confidence: high for the mechanism; medium that every push of an unapproved first-time contributor lists a run.
   Remediation: read the tip before giving up on an empty list, and ask by commit (`runs(branch, sha=head)`) whenever the filtered list is empty or its newest is not the tip. A fork's runs carry their own head commits, so they cannot fill that page.
-  Re-checked post-fix: the `/codefix` change sits after the empty-list return, so a full page of fork runs still reads "unknown" before the tip is read (probed again: 20 and 40 fork runs over a red tip, one `gh` call each; 19 still read "failed"). With the page only partly filled, an old green of ours and the tip unreadable, the verdict is now "unknown" where it was "passed"; with the tip readable it was and is "failed".
+  Status: found 2026-09-29 at d2f7538; last checked 2026-11-26 at c22f58a
 
-Carried (still open; their files are outside this scope and unchanged since `968da2b`):
+Carried (still open; their files are outside this scope and unchanged since `97a1f4e`):
 
-[NOTE] daydream/llm/safety.py:57-59 (with daydream/api/slots.py:201, daydream/growth.py:286 and :364-381, and node "4" of daydream/images/workflows/painterly_room.json and painterly_portrait.json) — The content banlist is per word, and the two paths that put a friend's words into SDXL (a dreamer's portrait and a grown room's painting) have nothing else between them and a synonym. (carried from the 2026-10-01 scan, not re-checked)
-  Attack vector: An invited friend makes a dreamer whose look is "a bare-breasted bather" or "a sexy dreamer in lingerie". `_toon_request` (slots.py:164-203) passes it, and the portrait shows on the dreamer's card to everyone in the room and stays in the art keep. On the growth path, "a sleeper in her nakedness" passes the gate (growth.py:550), and if the gardener keeps the word, `art_seed` weights it at 1.4.
-  Evidence: the 2026-10-01 entry's deterministic calls. `first_banned` returns None for sex, sexy, porn, nakedness, nudist, undressing, disrobed, bare-breasted, breasts and lingerie (and for blood, severed, decapitated and entrails). Node 4 of both workflows names style terms only. Mitigations: accounts are invited, and a player makes at most six dreamers a day.
-  Confidence: high that these words reach the prompt. How explicitly SDXL draws them is unmeasured.
-  Remediation:
-  - Add content terms to node 4 of both workflows (nsfw, nudity, nude, naked, sexual, lingerie, gore, blood, corpse). It changes every cache key, so batch it with the next workflow change.
-  - Extend the sexual category with whole words safe in this world. Avoid stems that catch village words ("nudge", "sextant", "sexton", "chimney breast").
-  - In `art_seed`, weight only runs of two or more consecutive phrase words, and strip `()[]:` from the `room_seed` part.
+[NOTE] edge/src/worker.js:45-54 and :85 (`watch`) — A failed read of the `uptime` record is taken as an empty record and written back, which erases the recorded outages.
+  Status: found 2026-10-03 at 968da2b; last checked 2026-10-03 at 97a1f4e; carried, not re-checked
 
-[NOTE] docs/claude-settings.local.example.json:8-13 — The allow list includes `.venv/bin/python *`, `python3 *`, `node *` and `timeout *`, so interpreter code runs with no prompt. The guard reads code only for literal spellings, so a computed argv or path gets neither a prompt nor a decision. Narrower rules (`.venv/bin/python -m pytest *`) cut the no-prompt paths. They cannot make the guard a boundary while the agent edits and runs repo code (BACKLOG `agent-sessions-without-root`). (carried from the 2026-09-30 scan, not re-checked)
+[NOTE] daydream/llm/safety.py:57-59 (with daydream/api/slots.py:201, daydream/growth.py:286 and :364-381, and node "4" of daydream/images/workflows/painterly_room.json and painterly_portrait.json) — The content banlist is per word, and the two paths that put a friend's words into SDXL (a dreamer's portrait and a grown room's painting) have nothing else between them and a synonym.
+  Status: found 2026-10-01 at adc00ff; last checked 2026-10-01 at 2a8d93b; carried, not re-checked
 
-[NOTE] daydream/jev/settings.py:33-37, with tools/agent_guard.py:61-62 — The dev Jev key lives in the repo's `.env`, which is not on the guard's credential list. `cat .env` and a Read of it get no decision, while the Cloudflare token's folder is denied. Either move the dev key under `~/.config/daydream/` (already denied) and have `bin/game` load it, or add the repo's `.env` to `CREDENTIAL_PATHS`. (carried from the 2026-09-30 scan, not re-checked)
+[NOTE] docs/claude-settings.local.example.json:8-13 — The allow list includes `.venv/bin/python *`, `python3 *`, `node *` and `timeout *`, so interpreter code runs with no prompt.
+  Status: found 2026-09-30 at 68125c8; last checked 2026-09-30 at 068a34c; carried, not re-checked
 
-[NOTE] daydream/jev/runtime.py:34 and :61 (called once per free line and once per improvised reply from `daydream/verbs.py` and `daydream/dialogue.py`), with daydream/jev/client.py:34 — There is still no spend ceiling. Since `d09493d` the client pauses for a minute after a timeout, a network error, a 429 or a 5xx. That caps what an outage costs in time, not what a busy player spends. The parser change of `b2b112d` sends more lines to residents (`<name>, <words>`), and so, with a key set, to Jev. Remediation: a daily ceiling from the ledger, past which `enabled()` reads off. (carried from the 2026-09-30 scan, not re-checked)
+[NOTE] daydream/jev/settings.py:33-37, with tools/agent_guard.py:61-62 — The dev Jev key lives in the repo's `.env`, which is not on the guard's credential list.
+  Status: found 2026-09-30 at 68125c8; last checked 2026-09-30 at 68125c8; carried, not re-checked
 
-[NOTE] tools/agent_guard.py:451-462 (`_resolve`) — A `cd` into one word of about 50,000 nested braces took 9.6 s at the last measure, past the hook's 5 s timeout, so it gets no decision. A time limit inside `main`, or a single-pass brace expansion, would close it. (carried from the 2026-09-30 scan, not re-checked)
+[NOTE] daydream/jev/runtime.py:34 and :61 (called once per free line and once per improvised reply from `daydream/verbs.py` and `daydream/dialogue.py`), with daydream/jev/client.py:34 — There is still no spend ceiling on Jev calls.
+  Status: found 2026-09-30 at 68125c8; last checked 2026-09-30 at 068a34c; carried, not re-checked
 
-[NOTE] daydream/play.py:84-85 (with daydream/glimpse.py) — A grown place's description prints unmarked in `play`, and so does a look that echoes a sentence from a grown room or thing. The `read` reply on written prose (`glimpse.py:471`) names a noun from the same prose. The server accepts control characters in typed lines and appearance seeds. (carried from the 2026-09-29 scan, not re-checked)
+[NOTE] tools/agent_guard.py:451-462 (`_resolve`) — A `cd` into one word of about 50,000 nested braces took 9.6 s at the last measure, past the hook's 5 s timeout, so it gets no decision.
+  Status: found 2026-09-30 at 6981ba7; last checked 2026-09-30 at 068a34c; carried, not re-checked
 
-[NOTE] daydream/skills/effects.py:356-357 — The placeholder expander still runs over a letter's body and a dreamer's looks. It fills after routing, and a line its actor reads alone may say "you". It still fills only `{dreamers_today}`. BACKLOG `placeholders-over-player-text`. (carried from the 2026-09-29 scan, not re-checked)
+[NOTE] daydream/play.py:84-85 (with daydream/glimpse.py) — A grown place's description prints unmarked in `play`, and so does a look that echoes a sentence from a grown room or thing.
+  Status: found 2026-09-29 at c50460e; last checked 2026-09-30 at 68125c8; carried, not re-checked
 
-[NOTE] daydream/accounts_cli.py:131-142 — `account delete --yes` run during a resident's reply leaves that reply, its `talk:`/`rel:` records and, with a key set, its Jev decision row (pruned after 30 days). (carried from the 2026-09-28 scan, not re-checked)
+[NOTE] daydream/skills/effects.py:356-357 — The placeholder expander still runs over a letter's body and a dreamer's looks.
+  Status: found 2026-09-29 at 69760f7; last checked 2026-09-30 at 068a34c; carried, not re-checked
+
+[NOTE] daydream/accounts_cli.py:131-142 — `account delete --yes` run during a resident's reply leaves that reply, its `talk:`/`rel:` records and, with a key set, its Jev decision row (pruned after 30 days).
+  Status: found 2026-09-28 at 4cef786; last checked 2026-09-30 at 68125c8; carried, not re-checked
 
 ### Traced and cleared this run (not findings)
 
-- **The tip read** (`ci.py:100-111`). Every caller passes the default
-  branch, `main`, so nothing variable reaches the ref path. The reply must
-  be an object whose `object.sha` is 40 lowercase hex characters. A list, a
-  null object, upper case, a leading dash, 64 hex characters, or a reply
-  that is not JSON each read as an unreadable tip (below; probed, and
-  again post-fix with an empty reply too: over a stale green, each reads
-  "unknown"). `_SHA` uses `^...$`, which also admits a trailing newline.
-  GitHub never sends one, and such a sha would only make the next query
-  fail and read "unknown". `fullmatch` would be exact.
-- **The query by commit** (`ci.py:49`, `:131-136` post-fix). Only the
-  validated tip reaches `head_sha=`, so the query string holds nothing but
-  hex. What comes back passes the same push-only and same-repository
-  filters (probed: a tip with only a fork's run listed reads "unknown").
-  The merge puts the tip's runs first, and a run in progress over a failed
-  one still says both.
-- **The new words** (`ci.py:134-135` post-fix, and the fix's own at
-  `:129-130`). The branch is a constant, the tip is hex, and `describe`
-  prints our own run's state, seven characters of its sha and the local
-  git subject. Nothing a stranger writes reaches the operator's terminal or
-  the agent's context through them.
-- **An unreadable tip** (`ci.py:127-130` post-fix). At `97a1f4e` the list
-  spoke, so a stale green list could stand over a red main while GitHub
-  refused the ref call. Since the post-fix change a listed "passed" reads
-  "unknown"; a failed, running or other newest still speaks, and none of
-  those reads as green (probed: a stale green, a red, a run over a red, a
-  run over a green, a cancelled). A stranger cannot cause an unreadable tip:
-  the call runs on the operator's own `gh` credentials and rate budget.
-- **Older code in `ci.py`, unchanged and unreachable** (noted for
-  completeness):
-  - `runs()` returns a list-shaped reply as it is (`:57-58`, for the tests'
-    fakes), past the push-only, same-repository and control-character
-    filters. GitHub's list-runs endpoint always answers an object. Moving
-    the adapter into the tests would make it exact.
-  - `_subject()` hands a run's `head_sha` to `git log` as a positional
-    argument (`:73-74`), where a value starting with `-` would be read as an
-    option (`--output=<file>` writes a file). GitHub's `head_sha` is always
-    a 40-hex commit id, and only our own push runs reach `_shape`. Checking
-    it with `_SHA` in `_shape`, or passing `--end-of-options`, would close
-    it.
-- **The Worker** (`7efca17`). The committed change is the one the last
-  entry's post-fix pass checked, and its line references hold. Re-read in
-  full:
-  - The 200 needs a synced door preview, a GET, a link-preview user agent,
-    and a path outside the API and `/assets/`.
-  - The door's words are escaped and filled last, so markers in them stay
-    literal text.
-  - Markers in keepsakes text expand only into the Worker's own values: the
-    base, the place, and the fixed-shape preview markup (probed again, with
-    a hostile door record and a pass).
-  - Images are served only for `ASSET_PATH`, from `asset:` keys.
-  - The extra `door` read on each asleep JSON answer is as the last entry
-    traced it: the accepted daily-quota risk, reached sooner.
+- **The installer's new step** (`ops/install-prod.sh:184-188`). Root drops to
+  the operator with `sudo -u "$OPERATOR" -H`, so no repo code runs as root.
+  sudo resets the environment, and `-H` points the run at the operator's own
+  token file. It runs after the sudoers install, and a failure only warns.
+  What it runs (`bin/game`, `prodctl`, wrangler and its npm tree) already
+  runs as the operator whenever the edge verbs do. Nothing after it reads
+  the terminal, so when the script is started as documented, input the
+  child pushes into the terminal lands in the operator's own shell. Started
+  from a root shell instead, that shell would read it as root; the
+  operator's user is already root-equivalent (Accepted Risks). If a tunnel
+  token was typed earlier in
+  the same run, the `umask 077` at :113 carries into the child, which only
+  tightens what it creates. Without `XDG_RUNTIME_DIR` under sudo, `bin/game`
+  makes its run dir under `/tmp`, and the `prod` verb writes nothing there.
+- **The bucket itself.** R2 bucket names are per account, so there is
+  nothing to squat. A create against a bucket that exists fails before the
+  rule is added, and `--create` never touches an existing bucket. The
+  privacy checks fail closed: anything other than "is disabled" and "no
+  custom domains" is a problem. They cover the r2.dev URL and custom
+  domains, not every way a bucket can be read (an R2 API token, a presigned
+  URL, a Worker binding); the copies are age ciphertext in every case.
+- **What the new verb prints.** `_wrangler_read` keeps stdout and stderr,
+  but only `_cf_error`'s one Cloudflare line, or a fixed sentence, is
+  printed. The request line that names the account is dropped. A Cloudflare
+  message that itself names an account path (a 7003 "Could not route to
+  ...") would still print, to the operator's terminal or the agent's context
+  only. The wrangler debug logs the fixed sentence points to hold no
+  authorization header (counted, not read: 49 files, none matching `Bearer`,
+  `authorization` or the token's variable names).
+- **The offsite pre-check** (`prodctl.py:898`). It is one read-only wrangler
+  call with the operator's token before any backup. Any error other than a
+  missing bucket falls through to the old path.
+- **`DAYDREAM_R2_BUCKET`** steers both verbs (it already steered `offsite`).
+  Under the standing grant, an injected instruction could make the agent
+  create a private, empty bucket under another name, or send ciphertext to
+  another bucket in the same account. Neither mints a credential or exposes
+  plaintext. `offsite-bucket` is not on the guard's ask list, and needs no
+  place there.
+- **`ci.py`**, unchanged since `8327427`. The last entry's cleared items
+  still hold: the tip must be 40 hex before any query, `_SHA`'s `^...$`
+  admits only a trailing newline GitHub never sends, `_subject` passes a
+  `head_sha` that only our own push runs supply, and the list passthrough
+  serves only the tests' fakes.
+- **The rest of `prodctl.py`**, re-read in full. The operator-side reads of
+  the service-writable data dir (the `active` link in `instance_dir`, the
+  path `_backup` parses from the service's output, `offsite()`'s walk of
+  `instances/`, `pull()`) hand paths only to commands run as the service
+  user. Those commands run outside the unit's sandbox, but the operator's
+  home is 0750 (checked), so they still cannot read it.
+- **The fix's own shape** (post-fix, `prodctl.py:777-816`). Only the key
+  type and blob reach the recipients file, so no option text reaches
+  `age -R`. `split()[0]` runs only on a non-empty stripped line, and the
+  scan and the expiry regex are linear in the line. The file sits in a 0700
+  temporary directory and holds public keys only. A malformed blob still
+  makes `age -R` fail, which `main()` reports before any upload.
+- **`cert-authority` lines** (post-fix) stay recipients. sshd accepts
+  them, and a CA key's holder can already mint a certificate that logs in
+  as the operator, so this widens nothing while the line stands.
+- **The `Z` suffix** (post-fix). The box's OpenSSH 8.9 man page gives
+  `expiry-time` as `YYYYMMDD` or `YYYYMMDDHHMM[SS]` in the system time
+  zone, with no `Z`, so sshd there likely refuses such a line. The parser
+  reads it as UTC, and the new test asserts that. Until the stated time the
+  key stays a recipient, which is what the line asks for; after it, the
+  parser drops it.
+- **sshd's configuration** (post-fix). The box's sshd_config and its one
+  drop-in set no `RevokedKeys`, `AuthorizedKeysFile` or
+  `AuthorizedKeysCommand` (keywords grepped), so `~/.ssh/authorized_keys`
+  is a file sshd reads and no revocation list sits beside it. The default
+  also reads `authorized_keys2`, which the parser does not: a key kept there
+  would only be missing from the recipients.
 
 ### Player-text scan (CLAUDE.md "Player text is data")
 
@@ -149,64 +181,76 @@ Carried (still open; their files are outside this scope and unchanged since `968
 ### Secrets, PII and the instance
 
 - These hold none of a key, a token, a private-key block, an account id, an
-  email, a box or tailnet address, a home path, the operator's name, a
-  friend's name or an invite slug:
-  - the four files as they stand, and the last three commits of each
+  email, a box or tailnet address, the operator's surname, a friend's name
+  or an invite slug:
+  - the seven paths as they stand, and the last three commits of each
     (`git log -p --follow -3`);
-  - the range `968da2b..97a1f4e` (every text file) and its two commit
-    messages, the unpushed `97a1f4e` included;
-  - the post-fix diff of the two files and of `docs/runbooks/verify.md`'s
-    CI row.
-- One removed line in that history (`5a40e58`, in `worker.js`) names the
-  instance's domain: that commit took it out of a comment. The domain is
-  committed by design in `edge/wrangler.toml` (CLAUDE.md), so this is not a
-  leak.
-- The fixtures are fake: `example.com` hosts, GitHub repositories named
-  `x/y`, `me/daydream` and `stranger/daydream`, the documented example slug
-  `amber-thimble`, and the operator's public title.
+  - the range `97a1f4e..c22f58a` (every text file) and its two commit
+    messages.
+- The operator's Unix user name (a first name, and the commit author's
+  public handle) appears as the sudoers template's placeholder
+  (`ops/install-prod.sh:173`), in `tests/test_ops_units.py` (with a
+  `/home/<user>/src/daydream` path) and in the fake key comments of
+  `tests/test_prodctl.py:229-232`. All of it predates this range, and
+  earlier reviews treated only the surname as sensitive. Not re-flagged.
+  The post-fix test adds one more fake key comment of the same kind
+  (`tests/test_prodctl.py:247`); its other comments are generic, and every
+  key in it is a placeholder.
+- The fixtures are fake: account `0123abcd`, `backups.example.com`, and
+  repositories named `x/y`, `me/daydream` and `stranger/daydream`. The R2
+  info fixture carries the real bucket's location hint, a continent-scale
+  region code that names no address.
+- The range records the instance's offsite outage, by date, in CLAUDE.md,
+  the docs, BACKLOG, CHANGELOG and test docstrings. Incident history of that
+  kind is the repo's style and names nothing on CLAUDE.md's separation list.
 - `instance/` is still ignored.
 
 ### Coverage
 
-- All dimensions were reviewed for the four paths, read in full and as
-  their diff from `968da2b`.
-- Tests ran: the Worker's suite (48 passed) and `tests/test_ci.py` (11
-  passed).
-- Probes, all deterministic and local:
-  - a Python harness over `ci.main_status` with fake GitHub replies: paging
-    honored, fork floods of 19, 20 and 40 runs, odd ref replies, a tip with
-    only a fork's run, a red tip behind a stale green list, and an
-    unreadable tip;
-  - a Node harness over the Worker's `watch` with a throwing `uptime` read,
-    and over the asleep page with a hostile door record and markers in a
-    pass's keepsakes.
-- No `gh` call reached GitHub, and nothing else used the network beyond the
-  two text scans.
-- Read in context, outside scope: `prodcheck.check_ci` and its call,
-  `prod plan`'s CI line, `bin/game status`'s CI line, the conftest fixture
-  that keeps the suite off GitHub, the CI workflow's triggers (`push` to
-  main and `pull_request`; no `pull_request_target`, no schedule), and the
-  asleep template.
+- All dimensions were reviewed for the seven paths, read in full and as
+  their diff from `97a1f4e`. CLAUDE.md was read in full; its one changed
+  line was checked against the code.
+- No suite ran (this skill reads code). Probes, all deterministic and local:
+  - `age_recipients` over a scratch authorized_keys (commented-out keys, an
+    expired key, an option-quoted decoy);
+  - `bucket_findings` over four lifecycle answers;
+  - `ci.main_status` with GitHub's paging honored (19, 20 and 40 fork runs
+    over a red tip).
+- No wrangler, Cloudflare or GitHub call was made. The two text scans read
+  local DBs. Nothing was written outside the scratchpad except this file
+  and the local instance notes.
+- Not checked: whether this box's authorized_keys holds a commented-out or
+  expired key (the agent guard denies reading `~/.ssh`), and the live
+  bucket's lifecycle rules (no Cloudflare call).
+- Read in context, outside scope: `daydream/edge.py` (`_creds`,
+  `_wrangler_env`, `_ensure_node_modules`, `_node_env`), `bin/game`'s
+  preamble and `prod` dispatch, `ops/systemd/daydream-offsite.service`,
+  `docs/runbooks/backups.md`, `docs/DATA-LIFECYCLE.md`, step 13 of
+  `docs/CLOUDFLARE-SETUP.md`, `prodcheck.check_ci`, and the guard's ask
+  list for the offsite verbs.
 - No dependency manifest is in scope.
-- Outside the named paths, the range also changes `docs/runbooks/verify.md`,
-  `CODEREVIEW.md` and `SECURITY.md`. They were pattern-scanned for secrets
-  and instance facts only.
-- Git history checked for secrets: `edge/src/worker.js` (the Access service
-  token, by binding, and session cookies, hashed), `daydream/ci.py` (the
-  operator's `gh` credentials, which the module never reads), and the two
-  test files.
-- Post-fix pass: `daydream/ci.py` and `tests/test_ci.py` re-read in full
-  with `/codefix`'s diff, all dimensions. `tests/test_ci.py`: 11 passed. The
-  `main_status` harness ran again over the fixed code, with GitHub's paging
-  honored: unreadable tips under a stale green, a red, a run over a red or
-  a green and a cancelled run; seven odd ref replies; fork floods of 19, 20
-  and 40; a partial flood with the tip readable and unreadable. Every case
-  read as expected except the open fork-flood NOTE's two. No `gh` call
-  reached GitHub (the suite's conftest blanks `ci._gh`). The diff's
-  `docs/runbooks/verify.md` row (a doc, outside scope) was read and
-  pattern-scanned for secrets and instance facts only. Git history of
-  both files re-checked with `git log -p --follow -3`; HEAD is unchanged,
-  and the fix is uncommitted.
+- Outside the named paths, the range also changes `BACKLOG.md`,
+  `CHANGELOG.md`, `docs/CLOUDFLARE-SETUP.md`, `docs/GOING-LIVE.md`,
+  `docs/runbooks/backups.md`, `docs/runbooks/verify.md`, `CODEREVIEW.md`
+  and `SECURITY.md`. They were pattern-scanned for secrets and instance
+  facts only.
+- Post-fix pass: the uncommitted diff of `daydream/prodctl.py` and
+  `tests/test_prodctl.py` over `c22f58a`, the recipient code and its one
+  caller (`offsite()`) in full, and `main()`'s error handling. Probes,
+  deterministic and local: `_authorized_key` over 26 inputs (the fix's own
+  cases, options sshd refuses, two expiry times, the backslash rule,
+  `cert-authority` and forced-command lines, five line separators, five
+  impossible dates), and `bucket_findings` over the
+  same four lifecycle answers. Read on the box: the OpenSSH version, the
+  sshd man page's `expiry-time` entry, and sshd_config keywords. Not
+  checked: what the new parser returns for this box's authorized_keys (the
+  guard denies `~/.ssh`), so whether the next run's recipients match the
+  keys the operator means to hold is unverified.
+- Git history checked for secrets: `daydream/prodctl.py` (the Cloudflare
+  token through `edge`, the CLI's cookie, the age recipients),
+  `ops/install-prod.sh` (the tunnel token prompt), `daydream/ci.py` (the
+  operator's `gh` credentials, which it never reads), `CLAUDE.md`, and the
+  three test files.
 
 ### Accepted Risks
 
@@ -297,6 +341,6 @@ Carried register (from prior reviews; still open, not re-flagged):
   injected instruction would want stay behind ask rules.
 
 ---
-*Prior review (2026-10-03, paths, commit `968da2b`, with a post-fix pass over the fix later committed as `7efca17`): fifteen paths over `62d77ef` and `968da2b`, the asleep page's link preview (the door's words, card and icons synced to KV, and a 200 for a link-preview fetcher once a preview is synced). No new finding in the range; the post-fix re-read of the Worker found the uptime watch NOTE. The register stood at 0 BLOCK / 0 WARN / 10 NOTE. The full entry is at `git show 7efca17:SECURITY.md`.*
+*Prior review (2026-10-03, paths, commit `97a1f4e`, with a post-fix pass over the fix later committed as `8327427`): `daydream/ci.py`, `edge/src/worker.js`, `edge/test/preview.test.js` and `tests/test_ci.py` over `968da2b..97a1f4e`, main's CI verdict read from its tip (a 40-hex tip from the ref API, the tip's runs by commit when the list's newest belongs to another commit, "unknown" when none is listed or when an unreadable tip sits under a listed pass) and the asleep link preview's committed fix. No new finding; the uptime-watch and fork-flood NOTEs were re-checked and still present. The register stood at 0 BLOCK / 0 WARN / 10 NOTE. The full entry is at `git show 8327427:SECURITY.md`.*
 
-<!-- SECURITY_META: {"date":"2026-10-03","commit":"97a1f4e26bc3a08d32527bb73513d20b1b796010","scope":"paths","scanned_files":["daydream/ci.py","edge/src/worker.js","edge/test/preview.test.js","tests/test_ci.py"],"block":0,"warn":0,"note":10} -->
+<!-- SECURITY_META: {"date":"2026-11-26","commit":"c22f58ab52f0798f79e9ec9a4291e471fa49b134","scope":"paths","scanned_files":["CLAUDE.md","daydream/ci.py","daydream/prodctl.py","ops/install-prod.sh","tests/test_ci.py","tests/test_ops_units.py","tests/test_prodctl.py"],"block":0,"warn":0,"note":12} -->

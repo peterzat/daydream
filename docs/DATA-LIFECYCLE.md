@@ -134,7 +134,13 @@ text), whether they are awake, dozing or resting, and, at dusk, that they
 came through today. The door's note says so. What they typed stays private
 to them and to the dream digest.
 Backups made before the delete still hold the old records until they age
-out (14 days local, 60 offsite).
+out (14 days local, 60 offsite). The 60 days is the R2 bucket's expiry rule,
+which `bin/game prod offsite-bucket --create` sets on a bucket it makes; a
+bucket without one keeps every offsite copy, and so a deleted person's
+records, until someone deletes the copies by hand (`bin/game prod
+offsite-bucket` says which kind a bucket is). Keeping them is the safer
+choice while a box is set aside, since an age rule empties the bucket 60 days
+after the last upload, but then the 60-day promise above does not hold.
 
 ## Not built yet (designed here, built when needed)
 

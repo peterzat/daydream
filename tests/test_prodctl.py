@@ -236,6 +236,20 @@ def test_age_recipients_take_bare_keys_from_authorized_keys(tmp_path, monkeypatc
         "ssh-ed25519 AAAAC3box", "ssh-ed25519 AAAAC3laptop", "ssh-rsa AAAAB3phone"]
 
 
+def test_age_recipients_read_authorized_keys_as_sshd_does(tmp_path, monkeypatch):
+    ssh = tmp_path / ".ssh"
+    ssh.mkdir()
+    (ssh / "authorized_keys").write_text(
+        "# ssh-ed25519 AAAAC3revoked old@laptop\n"
+        "#ssh-rsa AAAAB3revoked old@phone\n"
+        'expiry-time="20200101" ssh-ed25519 AAAAC3expired gone@tablet\n'
+        'no-pty,expiry-time="209901011200Z" ssh-ed25519 AAAAC3later friend@desk\n'
+        'command="echo \\"hi there\\" ssh-rsa AAAAdecoy",no-pty ssh-rsa AAAAB3real peter@work\n')
+    monkeypatch.setattr(prodctl, "SSH_DIR", ssh)
+    out = prodctl.age_recipients(tmp_path / "r")
+    assert out.read_text().splitlines() == ["ssh-ed25519 AAAAC3later", "ssh-rsa AAAAB3real"]
+
+
 def test_age_recipients_refuse_when_there_are_no_keys(tmp_path, monkeypatch):
     monkeypatch.setattr(prodctl, "SSH_DIR", tmp_path)
     with pytest.raises(prodctl.ProdError, match="no SSH public keys"):
@@ -300,9 +314,10 @@ def test_a_missing_bucket_is_a_problem_that_names_its_fix():
 def test_a_private_bucket_passes_and_says_how_long_copies_stay():
     assert prodctl.bucket_findings((0, BUCKET_INFO), (0, PRIVATE), (0, NO_DOMAINS),
                                    (0, EXPIRING)) == ([], ["copies expire after 60 days"])
-    problems, notes = prodctl.bucket_findings((0, BUCKET_INFO), (0, PRIVATE), (0, NO_DOMAINS),
-                                              (0, ABORT_ONLY))
-    assert problems == [] and notes == ["no expiry rule: every copy stays until deleted"]
+    problems, (note,) = prodctl.bucket_findings((0, BUCKET_INFO), (0, PRIVATE), (0, NO_DOMAINS),
+                                                (0, ABORT_ONLY))
+    assert problems == [] and note.startswith("no expiry rule: every copy stays until deleted")
+    assert "the design is 60 days" in note
 
 
 def test_a_public_bucket_is_a_problem():
@@ -346,6 +361,37 @@ def test_offsite_bucket_creates_only_what_is_missing(monkeypatch, capsys):
     assert prodctl.main(["offsite-bucket", "--create"]) == 0
     assert made == [], "a bucket that exists is never changed"
     assert "copies expire after 60 days" in capsys.readouterr().out
+
+
+def test_a_bucket_made_without_its_rule_says_how_to_add_it(monkeypatch):
+    """The next --create sees a bucket that exists and changes nothing, so the
+    failure must name the by-hand step now."""
+    monkeypatch.setattr(prodctl, "_wrangler_read", lambda args: (1, NO_BUCKET))
+
+    def write(args):
+        if "lifecycle" in args:
+            raise prodctl.ProdError("wrangler r2 bucket lifecycle failed")
+
+    monkeypatch.setattr(prodctl, "_wrangler", write)
+    with pytest.raises(prodctl.ProdError, match="not its expiry rule.*CLOUDFLARE-SETUP.md step 13"):
+        prodctl.offsite_bucket(create=True)
+
+
+def test_a_stalled_wrangler_read_is_an_answer_not_a_hang(monkeypatch):
+    from daydream import edge
+
+    monkeypatch.setattr(edge, "_wrangler_env", lambda: {})
+    monkeypatch.setattr(edge, "_ensure_node_modules", lambda: None)
+
+    def stall(cmd, **kw):
+        assert kw["timeout"] == prodctl.WRANGLER_READ_TIMEOUT
+        raise __import__("subprocess").TimeoutExpired(cmd, kw["timeout"])
+
+    monkeypatch.setattr(prodctl.subprocess, "run", stall)
+    rc, words = prodctl._wrangler_read(["r2", "bucket", "info", "daydream-backups"])
+    assert rc == 1 and not prodctl.bucket_missing((rc, words))
+    (problem,), _ = prodctl.bucket_findings((rc, words), (1, ""), (1, ""), (1, ""))
+    assert "no answer" in problem
 
 
 def test_offsite_without_its_bucket_stops_before_any_backup(srv, monkeypatch):

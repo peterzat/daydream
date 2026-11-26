@@ -774,20 +774,42 @@ R2_BUCKET = os.environ.get("DAYDREAM_R2_BUCKET", "daydream-backups")
 SSH_DIR = Path.home() / ".ssh"
 
 
+_KEY_KINDS = ("ssh-ed25519", "ssh-rsa")
+
+
+def _authorized_key(line: str) -> str | None:
+    """The key on one authorized_keys line, read as sshd reads it: comment lines
+    skipped, an options field scanned with its quotes, an expired key left out."""
+    line, i, quoted = line.strip(), 0, False
+    if not line or line.startswith("#"):
+        return None
+    if line.split()[0] not in _KEY_KINDS:
+        while i < len(line) and (quoted or not line[i].isspace()):
+            c = line[i]
+            i += 2 if quoted and c == "\\" else 1
+            quoted ^= c == '"'
+    fields = line[i:].split()
+    if len(fields) < 2 or fields[0] not in _KEY_KINDS:
+        return None
+    m = re.search(r'(?:^|,)expiry-time="(\d{8}(?:\d{4}(?:\d{2})?)?)(Z?)"', line[:i], re.I)
+    if m:
+        from datetime import datetime, timezone
+        when = datetime.strptime(m.group(1).ljust(14, "0"), "%Y%m%d%H%M%S")
+        when = when.replace(tzinfo=timezone.utc) if m.group(2) else when.astimezone()
+        if when < datetime.now(timezone.utc):
+            return None
+    return " ".join(fields[:2])
+
+
 def age_recipients(out: Path) -> Path:
     """A recipients file for age: every SSH key allowed into this box (their
     private halves live on the operator's own machines, so a backup survives
     the box) plus the box's own key (so a restore can be proven here). Only
-    bare `ssh-ed25519`/`ssh-rsa` lines: authorized_keys options would trip age."""
+    the `ssh-ed25519`/`ssh-rsa` key itself, never its options (they would trip age)."""
     keys = []
     for src in (SSH_DIR / "authorized_keys", SSH_DIR / "id_ed25519.pub"):
         if src.exists():
-            for line in src.read_text().splitlines():
-                line = line.strip()
-                for kind in ("ssh-ed25519 ", "ssh-rsa "):
-                    i = line.find(kind)
-                    if i >= 0:
-                        keys.append(" ".join(line[i:].split()[:2]))
+            keys += [k for k in map(_authorized_key, src.read_text().splitlines()) if k]
     if not keys:
         raise ProdError("no SSH public keys to encrypt to (~/.ssh/authorized_keys)")
     out.write_text("\n".join(sorted(set(keys))) + "\n")
@@ -806,6 +828,7 @@ def _wrangler(args: list[str]) -> None:
 
 OFFSITE_EXPIRE_DAYS = 60  # a new bucket's lifecycle rule (docs/runbooks/backups.md)
 BUCKET_FIX = "bin/game prod offsite-bucket --create"
+WRANGLER_READ_TIMEOUT = 120  # seconds
 
 
 def _wrangler_read(args: list[str]) -> tuple[int, str]:
@@ -817,8 +840,12 @@ def _wrangler_read(args: list[str]) -> tuple[int, str]:
     except edge.EdgeError as e:
         raise ProdError(str(e)) from e
     edge._ensure_node_modules()
-    r = subprocess.run(["npx", "--no-install", "wrangler", *args], cwd=edge.EDGE, env=env,
-                       capture_output=True, text=True)
+    try:
+        r = subprocess.run(["npx", "--no-install", "wrangler", *args], cwd=edge.EDGE, env=env,
+                           capture_output=True, text=True, timeout=WRANGLER_READ_TIMEOUT)
+    except subprocess.TimeoutExpired:
+        # A stalled Cloudflare call must not hang the installer or the weekly job.
+        return 1, f"wrangler gave no answer in {WRANGLER_READ_TIMEOUT} s [code: timeout]"
     return r.returncode, r.stdout + r.stderr
 
 
@@ -860,7 +887,8 @@ def bucket_findings(info: tuple[int, str], dev_url: tuple[int, str], domains: tu
     else:
         days = re.findall(r"Expire objects after (\d+) days?", lifecycle[1])
         notes.append(f"copies expire after {min(map(int, days))} days" if days
-                     else "no expiry rule: every copy stays until deleted")
+                     else f"no expiry rule: every copy stays until deleted (the design is "
+                          f"{OFFSITE_EXPIRE_DAYS} days; docs/DATA-LIFECYCLE.md)")
     return problems, notes
 
 
@@ -872,8 +900,13 @@ def offsite_bucket(create: bool = False) -> int:
     info = _wrangler_read(["r2", "bucket", "info", R2_BUCKET])
     if bucket_missing(info) and create:
         _wrangler(["r2", "bucket", "create", R2_BUCKET])
-        _wrangler(["r2", "bucket", "lifecycle", "add", R2_BUCKET, "offsite-expiry",
-                   "--expire-days", str(OFFSITE_EXPIRE_DAYS), "--force"])
+        try:
+            _wrangler(["r2", "bucket", "lifecycle", "add", R2_BUCKET, "offsite-expiry",
+                       "--expire-days", str(OFFSITE_EXPIRE_DAYS), "--force"])
+        except ProdError as e:
+            # The bucket exists now, and this verb never changes one that does.
+            raise ProdError(f"made {R2_BUCKET}, but not its expiry rule; add it in the "
+                            "dashboard (docs/CLOUDFLARE-SETUP.md step 13)") from e
         say(f"offsite bucket: created {R2_BUCKET}, copies expire after "
             f"{OFFSITE_EXPIRE_DAYS} days")
         info = _wrangler_read(["r2", "bucket", "info", R2_BUCKET])
