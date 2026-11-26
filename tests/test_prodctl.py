@@ -44,6 +44,15 @@ def fake_repo(tmp_path, monkeypatch):
     return repo
 
 
+@pytest.fixture(autouse=True)
+def _no_installed_root_helper(tmp_path, monkeypatch):
+    """No test here reaches the box's installed root helper. Through `sudo -n`
+    the sleep and wake tests really stopped and started prod's egress gateway
+    on every run from 2026-10-01, and started it while the village slept
+    (found 2026-11-26). A test that wants a helper sets its own stand-in."""
+    monkeypatch.setattr(prodctl, "ROOT_HELPER", tmp_path / "no-daydream-root")
+
+
 @pytest.fixture
 def srv(tmp_path, monkeypatch, fake_repo):
     root = tmp_path / "srv"
@@ -499,6 +508,7 @@ def _sleep_fakes(srv, monkeypatch, *, active, edge=None):
     calls = []
     monkeypatch.setattr(prodctl, "unit_active", lambda unit: active)
     monkeypatch.setattr(prodctl, "systemctl", lambda a, u: calls.append((a, u)))
+    monkeypatch.setattr(prodctl, "egress", lambda action: calls.append((action, prodctl.EGRESS)))
     monkeypatch.setattr(prodctl, "run_release_python",
                         lambda rel, args, check=True, capture=False, **k:
                         subprocess.CompletedProcess(args, 0, stdout="", stderr=""))
@@ -527,11 +537,16 @@ def test_a_cloudflare_error_does_not_abort_sleep_or_wake(srv, monkeypatch):
                                "sync_keepsakes": staticmethod(lambda rel: None)})
     calls = _sleep_fakes(srv, monkeypatch, active=True, edge=fake_edge)
     assert prodctl.sleep_("", 0, keep_engines=True) == 0
-    assert ("stop", prodctl.UNIT) in calls
+    assert ("stop", prodctl.UNIT) in calls and ("stop", prodctl.EGRESS) in calls
     monkeypatch.setattr(prodctl, "engines_reachable", lambda: {"vllm": True, "comfyui": True})
     monkeypatch.setattr(prodctl, "wait_healthy", lambda seconds=45.0: True)
     assert prodctl.wake() == 0
-    assert ("start", prodctl.UNIT) in calls
+    assert ("start", prodctl.UNIT) in calls and ("start", prodctl.EGRESS) in calls
+
+
+def test_no_test_here_can_reach_the_installed_root_helper():
+    assert prodctl.ROOT_HELPER != Path("/usr/local/sbin/daydream-root")
+    assert prodctl.egress("start") is False
 
 
 def test_pull_leaves_the_friends_toons_adoptable_in_dev(srv, monkeypatch, tmp_path):
