@@ -471,10 +471,17 @@ kept with that deployment, not here.
 - **Revisit criteria:** Now, for any live instance; and whenever a new credential is placed on the box.
 - **Origin:** security review 2026-09-29 (H1).
 
+### timer-job-alerts
+- **One-line description:** Send a failed timer job (offsite, backup, keepsakes) to the operator rather than waiting for someone to read `prod status` or `prod check`. The offsite job failed every week for seven weeks (2026-10-04 to 2026-11-22) with the failure visible in both, and two maintenance sessions noted it without anyone being told. The box has no working mail. Two routes were weighed on 2026-11-26: `OnFailure=` on the daydream units pointing at a small unit that pushes the job's name (no player data) to an ntfy topic, which needs a root-helper validator change and an installer re-run; or the host's own alerting treating any failed systemd unit as an alert condition, which belongs to whatever watches the box, not to this repo.
+- **Why deferred:** Daydream is mothballed (2026-11-26: prod asleep, to be woken later); the operator chose no alert channel for now. Setup now makes the missing bucket that caused the seven weeks, and the job names its fix.
+- **Revisit criteria:** When daydream wakes for players again, or when any timer job fails a second run in a row.
+- **Origin:** the offsite correction, 2026-11-26.
+
 ## Carried from specs
 
 ### launch-demonstrations
-- **One-line description:** Demonstrate the nine going-live criteria that were built but not yet shown end to end: prod sandboxed as its own user (9), pinned and reversible releases including a rollback drill (10), dev and prod coexisting (11), each content path reaching prod (12), a backup restored into dev (13), the village sleeping visibly (15), keepsakes while asleep (16), the launch with a first friend's full flow from a phone (17), and an offsite backup restored (22). Full text: SPEC.md at d121a16.
+- **One-line description:** Demonstrate the going-live criteria that were built but not yet shown end to end: prod sandboxed as its own user (9), pinned and reversible releases including a rollback drill (10), dev and prod coexisting (11), each content path reaching prod (12), a backup restored into dev (13), the village sleeping visibly (15), keepsakes while asleep (16), and the launch with a first friend's full flow from a phone (17). Full text: SPEC.md at d121a16.
+- **Criterion 22 (an offsite backup restored): demonstrated 2026-11-26.** It had been described as working since going live, but the R2 bucket was never created and every weekly run failed from 2026-10-04 to 2026-11-22. The operator created the bucket on 2026-11-26; a restore from R2 matched the local backup byte for byte and both DBs pass `integrity_check` (docs/GOING-LIVE.md section 10).
 - **Why deferred:** The 2026-09-29 spec turned to play quality; these are operational drills, most of whose machinery already runs in prod.
 - **Revisit criteria:** Before inviting the second wave of friends, or at the next maintenance window, or when an incident exercises one of these paths.
 - **Origin:** spec 2026-09-27 (Going live), closed 14/23 on 2026-09-29.

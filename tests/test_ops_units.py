@@ -178,3 +178,15 @@ def test_the_prod_service_keeps_its_sandbox():
                  "ProtectHome=yes", "NoNewPrivileges=yes"):
         assert line in tunnel, line
     assert "[Install]" in unit and "WantedBy" in unit  # installable, but never enabled
+
+
+def test_the_installer_makes_the_offsite_bucket_as_the_operator_and_never_stops_on_it():
+    """Every weekly offsite failed from 2026-10-04 to 2026-11-22 against an R2
+    bucket nobody had made. The installer now checks it and makes a missing
+    one, as the operator (whose Cloudflare token it takes, never root), and a
+    failure there is a warning: before the Cloudflare setup there is no token."""
+    script = (OPS / "install-prod.sh").read_text()
+    call = 'sudo -u "$OPERATOR" -H "$REPO/bin/game" prod offsite-bucket --create'
+    (line,) = [ln for ln in script.splitlines() if "offsite-bucket --create" in ln and "sudo" in ln]
+    assert line.strip() == f"if ! {call}; then"
+    assert script.index(call) > script.index('install -o root -g root -m 0440 "$tmp" /etc/sudoers.d/daydream')

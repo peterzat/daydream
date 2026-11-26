@@ -300,19 +300,33 @@ reset; toons and world progress do not).
 
 ## 13. Offsite backups (can wait)
 
-Enable R2 for the account (a payment method on file; 10 GB free), then create
-the bucket with the token loaded (a bare `npx wrangler` would try a browser
-login):
+Enable R2 for the account (a payment method on file; 10 GB free), then make
+the bucket, private, with its 60-day expiry rule:
+
+```sh
+bin/game prod offsite-bucket --create
+```
+
+`sudo ops/install-prod.sh` runs the same step once the API token from step 3
+is on the box, and warns when it cannot. Without `--create` the verb only
+reports: whether the bucket exists, that it has no r2.dev URL and no custom
+domain, and how long copies stay. It never changes a bucket that exists. Skip
+this step and every weekly offsite fails: this instance's did, from
+2026-10-04 to 2026-11-22, because nobody had made the bucket.
+
+By hand instead, with the token loaded (a bare `npx wrangler` would try a
+browser login):
 
 ```sh
 (set -a; . ~/.config/daydream/cloudflare.env; cd edge && npx wrangler r2 bucket create daydream-backups)
 ```
 
-In the dashboard, R2 > daydream-backups > Settings > Object lifecycle rules:
-delete objects older than 60 days. The bucket stays private (no public
-access, no custom domain). Backups are encrypted with `age` to the SSH keys in
-`~/.ssh/authorized_keys` plus the box's own key before they leave, so R2 only
-ever holds ciphertext. Prove the round trip once:
+and in the dashboard, R2 > daydream-backups > Settings > Object lifecycle
+rules: delete objects older than 60 days. Either way the bucket stays private
+(no public access, no custom domain). Backups are encrypted with `age` to the
+SSH keys in `~/.ssh/authorized_keys` plus the box's own key before they leave,
+so R2 only ever holds ciphertext. An offsite copy counts only once a restore
+has been tried, so prove the round trip once:
 
 ```sh
 bin/game prod offsite

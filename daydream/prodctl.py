@@ -32,6 +32,8 @@ Verbs:
 - `backup`
 - `keepsakes` (sync keepsakes to the edge; hourly by timer)
 - `offsite` / `offsite-restore NAME DEST` (age-encrypted backups in R2; weekly)
+- `offsite-bucket [--create]` (is the R2 bucket there and private; `--create`
+  makes a missing one with its expiry rule; `sudo ops/install-prod.sh` runs it)
 - `pull` (a prod backup into dev)
 - `root <verb>` (the root-owned helper, /usr/local/sbin/daydream-root: units
   from the release, the timer jobs, allowlisted prod.env keys;
@@ -802,12 +804,100 @@ def _wrangler(args: list[str]) -> None:
         raise ProdError("wrangler " + " ".join(args[:3]) + " failed")
 
 
+OFFSITE_EXPIRE_DAYS = 60  # a new bucket's lifecycle rule (docs/runbooks/backups.md)
+BUCKET_FIX = "bin/game prod offsite-bucket --create"
+
+
+def _wrangler_read(args: list[str]) -> tuple[int, str]:
+    """wrangler's exit status and words, for the queries whose answers are read."""
+    from daydream import edge
+
+    try:
+        env = edge._wrangler_env()  # first: without a token there is nothing to ask
+    except edge.EdgeError as e:
+        raise ProdError(str(e)) from e
+    edge._ensure_node_modules()
+    r = subprocess.run(["npx", "--no-install", "wrangler", *args], cwd=edge.EDGE, env=env,
+                       capture_output=True, text=True)
+    return r.returncode, r.stdout + r.stderr
+
+
+def _cf_error(words: str) -> str:
+    """Cloudflare's own sentence from a failed wrangler call ("... [code: N]"),
+    never the request line, which names the account."""
+    line = next((ln.strip() for ln in words.splitlines() if "[code:" in ln), "")
+    return line or "wrangler failed (its log is under ~/.config/.wrangler/logs)"
+
+
+def bucket_missing(info: tuple[int, str]) -> bool:
+    """`wrangler r2 bucket info`'s answer for a bucket that was never created
+    (2026-10-04 to 2026-11-22: every weekly offsite failed on this)."""
+    rc, words = info
+    return rc != 0 and ("[code: 10006]" in words or "bucket does not exist" in words)
+
+
+def bucket_findings(info: tuple[int, str], dev_url: tuple[int, str], domains: tuple[int, str],
+                    lifecycle: tuple[int, str]) -> tuple[list[str], list[str]]:
+    """What keeps the offsite bucket from serving (problems) and what is worth
+    knowing about it (notes), from wrangler's answers. Pure, for the tests."""
+    if bucket_missing(info):
+        return [f"{R2_BUCKET} does not exist, so every offsite run fails ({BUCKET_FIX})"], []
+    if info[0] != 0:
+        return [f"{R2_BUCKET} could not be read: {_cf_error(info[1])}"], []
+    problems, notes = [], []
+    if dev_url[0] != 0:
+        problems.append(f"its r2.dev access could not be read: {_cf_error(dev_url[1])}")
+    elif "is disabled" not in dev_url[1]:
+        problems.append("it is public through its r2.dev URL (dashboard: R2 > "
+                        f"{R2_BUCKET} > Settings > Public access)")
+    if domains[0] != 0:
+        problems.append(f"its custom domains could not be read: {_cf_error(domains[1])}")
+    elif "no custom domains" not in domains[1]:
+        problems.append("a custom domain serves it (dashboard: R2 > "
+                        f"{R2_BUCKET} > Settings > Custom domains)")
+    if lifecycle[0] != 0:
+        notes.append(f"its lifecycle rules could not be read: {_cf_error(lifecycle[1])}")
+    else:
+        days = re.findall(r"Expire objects after (\d+) days?", lifecycle[1])
+        notes.append(f"copies expire after {min(map(int, days))} days" if days
+                     else "no expiry rule: every copy stays until deleted")
+    return problems, notes
+
+
+def offsite_bucket(create: bool = False) -> int:
+    """Is the offsite bucket there and private? With `create`, make a missing
+    one, with its expiry rule. Never changes a bucket that exists. Run by
+    `sudo ops/install-prod.sh`, so a fresh install cannot repeat seven weeks
+    of failed offsite runs against a bucket nobody made."""
+    info = _wrangler_read(["r2", "bucket", "info", R2_BUCKET])
+    if bucket_missing(info) and create:
+        _wrangler(["r2", "bucket", "create", R2_BUCKET])
+        _wrangler(["r2", "bucket", "lifecycle", "add", R2_BUCKET, "offsite-expiry",
+                   "--expire-days", str(OFFSITE_EXPIRE_DAYS), "--force"])
+        say(f"offsite bucket: created {R2_BUCKET}, copies expire after "
+            f"{OFFSITE_EXPIRE_DAYS} days")
+        info = _wrangler_read(["r2", "bucket", "info", R2_BUCKET])
+    answers = [_wrangler_read(["r2", "bucket", *q, R2_BUCKET])
+               for q in (["dev-url", "get"], ["domain", "list"], ["lifecycle", "list"])] \
+        if info[0] == 0 else [(1, "")] * 3
+    problems, notes = bucket_findings(info, *answers)
+    for p in problems:
+        say(f"offsite bucket: {p}")
+    if not problems:
+        say(f"offsite bucket: {R2_BUCKET} exists, private (no r2.dev URL, no custom domain); "
+            + "; ".join(notes))
+    return 1 if problems else 0
+
+
 def offsite() -> int:
     """A fresh consistent backup, tarred, age-encrypted to the operator's SSH
     keys, uploaded to the private R2 bucket. Weekly by timer; retention is the
     bucket's lifecycle rule (docs/CLOUDFLARE-SETUP.md)."""
     if shutil.which("age") is None:
         raise ProdError("age is not installed (sudo ops/install-prod.sh installs it)")
+    if bucket_missing(_wrangler_read(["r2", "bucket", "info", R2_BUCKET])):
+        raise ProdError(f"the R2 bucket {R2_BUCKET} does not exist ({BUCKET_FIX}; "
+                        "docs/runbooks/backups.md)")
     rel = _require_current()
     # Every instance, attached or not (docs/INSTANCES.md), each under its own
     # name; a box without instances seals its one data dir as before.
@@ -1361,6 +1451,9 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("pull")
     sub.add_parser("keepsakes", help="sync keepsakes to the edge now (the hourly timer runs this)")
     sub.add_parser("offsite", help="encrypted backup to R2 (weekly by timer)")
+    ob = sub.add_parser("offsite-bucket", help="is the R2 bucket there and private?")
+    ob.add_argument("--create", action="store_true",
+                    help="make a missing bucket and its expiry rule (never changes one that exists)")
     orr = sub.add_parser("offsite-restore", help="fetch + decrypt one offsite backup into a new dir")
     orr.add_argument("name", help="object name, e.g. prod-20261004-043000.tar.gz.age")
     orr.add_argument("dest", type=Path, help="a directory that does not exist yet")
@@ -1412,6 +1505,8 @@ def main(argv: list[str] | None = None) -> int:
             return keepsakes()
         if args.cmd == "offsite":
             return offsite()
+        if args.cmd == "offsite-bucket":
+            return offsite_bucket(args.create)
         if args.cmd == "offsite-restore":
             return offsite_restore(args.name, args.dest)
         if args.cmd == "instance":

@@ -11,6 +11,10 @@
 # already right. Design and reasons: docs/GOING-LIVE.md section 7 and
 # docs/ADMIN-ROOT.md; the Cloudflare side: docs/CLOUDFLARE-SETUP.md.
 #
+# It also checks, as the operator, that the offsite bucket exists in R2 and
+# creates it when it does not (the weekly offsite failed for seven weeks in
+# 2026 against a bucket nobody had made).
+#
 # After the first run, unit refreshes, the timer jobs and the allowlisted
 # prod.env keys go through the helper (`bin/game prod root`,
 # docs/runbooks/root.md). This script is still how the helper itself, the
@@ -171,6 +175,17 @@ visudo -cf "$tmp" >/dev/null
 install -o root -g root -m 0440 "$tmp" /etc/sudoers.d/daydream
 rm -f "$tmp"
 echo "installed /etc/sudoers.d/daydream"
+
+# ---- the offsite bucket ------------------------------------------------------
+# The weekly offsite uploads to an R2 bucket that exists only once someone makes
+# it. Checked as the operator, whose Cloudflare token it takes; created with its
+# expiry rule when missing; never changed when it exists. Not fatal: before the
+# Cloudflare setup (docs/CLOUDFLARE-SETUP.md) there is no token to check with.
+say "the offsite bucket in R2 (checked as $OPERATOR)"
+if ! sudo -u "$OPERATOR" -H "$REPO/bin/game" prod offsite-bucket --create; then
+    echo "warning: the offsite bucket is not ready (above), and the weekly offsite job fails" >&2
+    echo "  until  bin/game prod offsite-bucket --create  passes (docs/runbooks/backups.md)" >&2
+fi
 
 say "sandbox score"
 systemd-analyze security daydream-prod.service --no-pager | tail -1 || true

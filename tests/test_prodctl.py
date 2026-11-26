@@ -270,6 +270,7 @@ def test_offsite_encrypts_before_anything_leaves(srv, monkeypatch, tmp_path):
     monkeypatch.setattr(prodctl.subprocess, "run", fake_run)
     uploaded = []
     monkeypatch.setattr(prodctl, "_wrangler", lambda args: uploaded.append(args))
+    monkeypatch.setattr(prodctl, "_wrangler_read", lambda args: (0, BUCKET_INFO))
     assert prodctl.offsite() == 0
     assert calls == ["tar", "age"]
     (put,) = uploaded
@@ -277,6 +278,84 @@ def test_offsite_encrypts_before_anything_leaves(srv, monkeypatch, tmp_path):
     assert put[3] == "daydream-backups/prod-20261004-043000.tar.gz.age"
     assert put[put.index("--file") + 1].endswith(".tar.gz.age")
 
+
+
+# wrangler's words, as 4.130 prints them (2026-11-26, against the real bucket).
+BUCKET_INFO = "name:                   daydream-backups\nlocation:               WNAM\n"
+NO_BUCKET = ("A request to the Cloudflare API (/accounts/0123abcd/r2/buckets/daydream-backups) "
+             "failed.\n\n  The specified bucket does not exist. [code: 10006]\n")
+PRIVATE = "Public access via the r2.dev URL is disabled.\n"
+NO_DOMAINS = "There are no custom domains connected to this bucket.\n"
+ABORT_ONLY = ("name:     Default Multipart Abort Rule\nenabled:  Yes\n"
+              "action:   Abort incomplete multipart uploads after 7 days\n")
+EXPIRING = ABORT_ONLY + "name:     offsite-expiry\naction:   Expire objects after 60 days\n"
+
+
+def test_a_missing_bucket_is_a_problem_that_names_its_fix():
+    problems, _ = prodctl.bucket_findings((1, NO_BUCKET), (1, ""), (1, ""), (1, ""))
+    assert len(problems) == 1
+    assert "does not exist" in problems[0] and "offsite-bucket --create" in problems[0]
+
+
+def test_a_private_bucket_passes_and_says_how_long_copies_stay():
+    assert prodctl.bucket_findings((0, BUCKET_INFO), (0, PRIVATE), (0, NO_DOMAINS),
+                                   (0, EXPIRING)) == ([], ["copies expire after 60 days"])
+    problems, notes = prodctl.bucket_findings((0, BUCKET_INFO), (0, PRIVATE), (0, NO_DOMAINS),
+                                              (0, ABORT_ONLY))
+    assert problems == [] and notes == ["no expiry rule: every copy stays until deleted"]
+
+
+def test_a_public_bucket_is_a_problem():
+    problems, _ = prodctl.bucket_findings(
+        (0, BUCKET_INFO), (0, "Public access via the r2.dev URL is enabled.\n"),
+        (0, "Listing custom domains connected to bucket 'daydream-backups'...\n"
+            "domain: backups.example.com\n"), (0, EXPIRING))
+    assert len(problems) == 2
+    assert "r2.dev" in problems[0] and "custom domain" in problems[1]
+
+
+def test_an_unreadable_bucket_reports_cloudflares_words_not_the_account():
+    words = ("A request to the Cloudflare API (/accounts/0123abcd/r2/buckets) failed.\n"
+             "  Please enable R2 through the Cloudflare Dashboard. [code: 10042]\n")
+    (problem,), _ = prodctl.bucket_findings((1, words), (1, ""), (1, ""), (1, ""))
+    assert "[code: 10042]" in problem and "0123abcd" not in problem
+
+
+def test_offsite_bucket_creates_only_what_is_missing(monkeypatch, capsys):
+    made, state = [], {"exists": False}
+
+    def read(args):
+        if args[2] == "info":
+            return (0, BUCKET_INFO) if state["exists"] else (1, NO_BUCKET)
+        return (0, {"dev-url": PRIVATE, "domain": NO_DOMAINS, "lifecycle": EXPIRING}[args[2]])
+
+    def write(args):
+        made.append(args)
+        state["exists"] = True
+
+    monkeypatch.setattr(prodctl, "_wrangler_read", read)
+    monkeypatch.setattr(prodctl, "_wrangler", write)
+    assert prodctl.main(["offsite-bucket"]) == 1
+    assert made == [] and "does not exist" in capsys.readouterr().out
+    assert prodctl.main(["offsite-bucket", "--create"]) == 0
+    create, rule = made
+    assert create == ["r2", "bucket", "create", "daydream-backups"]
+    assert rule[:4] == ["r2", "bucket", "lifecycle", "add"]
+    assert rule[rule.index("--expire-days") + 1] == "60" and "--force" in rule
+    made.clear()
+    assert prodctl.main(["offsite-bucket", "--create"]) == 0
+    assert made == [], "a bucket that exists is never changed"
+    assert "copies expire after 60 days" in capsys.readouterr().out
+
+
+def test_offsite_without_its_bucket_stops_before_any_backup(srv, monkeypatch):
+    """Seven weekly runs (2026-10-04 to 11-22) tarred and encrypted a backup,
+    then failed the upload; now the run names the fix before doing anything."""
+    monkeypatch.setattr(prodctl.shutil, "which", lambda name: "/usr/bin/" + name)
+    monkeypatch.setattr(prodctl, "_wrangler_read", lambda args: (1, NO_BUCKET))
+    monkeypatch.setattr(prodctl, "_backup", lambda *a, **k: pytest.fail("backed up"))
+    with pytest.raises(prodctl.ProdError, match="offsite-bucket --create"):
+        prodctl.offsite()
 
 
 def test_prod_commands_run_as_the_service_user(srv, monkeypatch):

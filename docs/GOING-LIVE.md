@@ -215,6 +215,10 @@ door and its card the way iMessage does.
 - **Backups.** Nightly online backups (14 days) on the box, and a weekly copy
   encrypted with `age` to the operator's SSH keys in a private R2 bucket (60-day
   lifecycle), so a dead box can be restored from any machine holding those keys.
+  Correction (2026-11-26): the weekly copy never left the box until that day.
+  The bucket had never been created, so every run from 2026-10-04 to 2026-11-22
+  failed; the operator created it on 2026-11-26 (without the expiry rule), and
+  the first restore from it was tried the same day (section 10).
 
 ## 8. Generation elsewhere, later
 
@@ -261,10 +265,20 @@ The bring-up also proved that prod listens only on loopback. `prod check`
 does not probe that: the service refuses to boot with any other bind
 (`config.boot_problems`).
 
-**Still to demonstrate (criteria 9-13, 15-17, 22):** a live dialogue and
+**Still to demonstrate (criteria 9-13, 15-17):** a live dialogue and
 portrait under the sandbox, a rollback drill, a backup restored into dev,
-`prod sleep`/`wake` with keepsakes, the first friend's full flow from a
-phone, and the R2 offsite bucket.
+`prod sleep`/`wake` with keepsakes, and the first friend's full flow from a
+phone.
+
+**Criterion 22 (backups leave the box), demonstrated 2026-11-26, and not
+before.** It was never checked off, but this document and the changelog
+described the weekly offsite as working, and it never was: the R2 bucket did
+not exist, and all seven weekly runs (2026-10-04 to 2026-11-22) failed with
+"The specified bucket does not exist". The local nightly backups ran
+throughout. On 2026-11-26 the operator created the bucket and ran the job; a
+restore from R2 (`prod offsite-restore`: fetched, decrypted with the box's
+key, unpacked) gave a world DB and an accounts DB that pass
+`integrity_check` and match the local backup of the same run byte for byte.
 
 ## 11. What bringing it up taught us
 
@@ -297,6 +311,15 @@ first connection after a wake. A 1000 close makes every hop flush.
 drop to the service user (`NoNewPrivileges` blocks setuid sudo), and a hand
 run succeeded, so a demonstration would have passed. Job results now show in
 `prod status` and `prod check`.
+
+**A result someone must look up is not an alert.** Showing job results in
+`prod status` and `prod check` was not enough: the offsite job then failed
+every week for seven weeks, because the R2 bucket had never been made. Two
+maintenance sessions saw the failure in `prod status`, recorded it, and moved
+on; nothing told the operator. Setup now checks for the bucket and makes it
+(`bin/game prod offsite-bucket --create`, run by `sudo ops/install-prod.sh`),
+and the job names the fix before it backs anything up. A push for a failed
+job is still unbuilt (BACKLOG `timer-job-alerts`).
 
 **Review in layers.** A security audit, fresh-eyes code reviewers per area,
 and live probes each caught things the others missed. The pre-push review of
