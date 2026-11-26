@@ -2,66 +2,71 @@
 
 ## Security Review — 2026-11-26 (scope: paths)
 
-**Summary:** Path-scoped review of the seven paths the caller named, read in
-full and as their change from the last scan (`97a1f4e`) to HEAD `c22f58a`.
-Two commits touch them:
-- `8327427`: the CI fix the last entry's post-fix pass checked, now
-  committed (an unreadable tip turns a listed "passed" into "unknown").
-- `c22f58a`: `bin/game prod offsite-bucket [--create]` says whether the R2
-  bucket exists, is private and how long copies stay, and with `--create`
-  makes a missing one with a 60-day expiry rule. `sudo ops/install-prod.sh`
-  runs it as the operator, and the weekly offsite now stops before any work
-  when the bucket is missing.
+**Summary:** Path-scoped review of `daydream/prodctl.py` and
+`tests/test_prodctl.py` at HEAD `02cf070`, read in full and as their change
+from the last scan (`c22f58a`). `02cf070` commits the `_authorized_key` fix
+the last post-fix pass checked, and adds three things since:
+- a 120 s timeout on wrangler's reads;
+- a named by-hand step when a new bucket's expiry rule cannot be added;
+- a no-rule note that names the 60-day design (retention stays information
+  only, by the decision recorded in that commit).
 
-The new code opens no exploitable path. The installer drops to the operator
-before it runs repo code, a bucket that exists is never changed, and the
-printed errors leave out the request line that names the account. Reading
-`prodctl.py` in full found a WARN in older code: the offsite copies are
-sealed to commented-out and expired keys in `authorized_keys`, so revoking a
-key there never reaches the encryption. One new NOTE: the bucket check
-treats a missing or ineffective expiry rule as information, so the 60-day
-offsite retention that docs/DATA-LIFECYCLE.md promises can fail without a
-sign. The fork-flood NOTE in `ci.py` is still present. Register: 0 BLOCK /
-1 WARN / 11 NOTE, 3 in scope and 9 carried.
+The new code opens no path. Both in-scope NOTEs are still present. The
+recipient parser's divergences from sshd are unchanged. The bucket check now
+names a missing rule, but still reads a disabled or off-prefix rule as
+expiring (wrangler's output format is now confirmed from its own source).
+One new NOTE in older code: an offsite copy carries no proof of origin, so a
+restore trusts whatever decrypts, and the restore joins the object's name to
+a temporary directory unchecked. Register: 0 BLOCK / 0 WARN / 13 NOTE, 3 in
+scope and 10 carried.
 
-**Post-fix re-check** (`/codereview` Step 7, uncommitted over `c22f58a`):
+**Post-fix re-check** (`/codereview` Step 7, uncommitted over `02cf070`):
 `daydream/prodctl.py` and `tests/test_prodctl.py` after `/codefix`'s change
-for the WARN. `age_recipients` now reads each line through
-`_authorized_key`, which skips comment lines, scans a quoted options field
-and leaves out a key whose `expiry-time` has passed. The WARN is resolved:
-a commented-out key, an expired key and key-like text inside a quoted
-option no longer reach `age -R` (probed; the new test covers each). One new
-NOTE: the parser still reads some lines differently from sshd (an option
-sshd refuses, a second `expiry-time`, the backslash rule inside quotes,
-line breaks other than `\n`) and keeps a key pinned to a do-nothing forced
-command, so a key retired in one of those less common ways stays a
-recipient, and an impossible expiry date stops every offsite run. The retention NOTE is still present (probed again). Register: 0 BLOCK /
-0 WARN / 12 NOTE, 3 in scope and 9 carried.
+for the code review's WARN (a weekly copy sealed to the box's own key
+alone). `age_recipients` now reads `authorized_keys` and the box's
+`id_ed25519.pub` apart, and refuses when `authorized_keys` yields no key
+but the box's own; a new test covers it. The change opens no path. When the
+check passes, the recipients are the same union as before. The refusal
+comes before `age` runs, inside `offsite()`'s temporary directory, so the
+plaintext tarball goes with it, and its message names no key. Probed over
+eleven scratch key files, it refuses the box's key alone (whatever its
+options or comment), a missing file, and only ecdsa or `sk-` keys. It
+passes on a key the parser misreads as live (a `DISABLED` prefix, a
+do-nothing forced command, a key after `\r` inside a commented-out line),
+now part of the parser NOTE, and on any other key whose private half lives
+only on this box, since it knows the box by `id_ed25519.pub` alone. No
+security finding was resolved (the WARN was the code review's). The three
+in-scope NOTEs are still present, re-probed and rewritten at the working
+tree's line numbers. Register unchanged: 0 BLOCK / 0 WARN / 13 NOTE, 3 in
+scope and 10 carried.
 
 ### Findings
 
-[NOTE] daydream/prodctl.py:780-801 (`_authorized_key`) and :812 — The recipient parser follows sshd for comment lines, a quoted options field and one well-formed `expiry-time`, but it still takes a key from some lines sshd refuses or splits differently, so a key retired in a less common way stays a recipient of every later offsite copy. It accepts any options field, where sshd refuses a line with an unknown option (a `DISABLED` prefix, say) or an `expiry-time` it cannot read (`2020-01-01`, or a `UTC` suffix on this box's OpenSSH 8.9). It reads only the first `expiry-time` (:794), where sshd keeps the earliest. Inside quotes it lets `\` escape any character (:789), where sshd escapes only `\"`, in quotes or out, so `\\"` ends a quoted value here and not in sshd. `splitlines()` (:812) also breaks at `\r`, form feed, vertical tab and a few Unicode separators, where sshd breaks only at `\n`, so text after one of these inside a commented-out line is read as a line of its own. A key pinned to a forced command (a soft disable such as `restrict,command="/bin/false"`, or a single-purpose key for a backup puller) is a recipient too, since sshd still accepts it.
-  Attack vector: The operator retires a key by putting a word sshd rejects in front of its line, by adding an earlier `expiry-time` in front of the one the line already carries, or by pinning it to a command that does nothing. The key no longer opens a shell, but each weekly run (`offsite()` at :944) still seals to it, and its holder can read any later copy they can fetch (the R2 and copy paths in the retention NOTE below). The quote and line-break cases need unusual text in the operator's own file, and anyone who can write that file can already add a key, so they are correctness gaps, not a way in. Separately, an impossible date in `expiry-time` (month 13, 30 February) raises ValueError, which `main()` does not catch (:1546): every offsite run stops at that line, before any upload, until the line is fixed.
-  Evidence: a probe of `_authorized_key` over the working tree. The fix's own cases hold: `# ...`, `#...` and indented comment lines and a past `expiry-time` return None, and the escaped-quote decoy returns the line's real key. These return a key: `DISABLED ssh-ed25519 K`; `no-such-option,no-pty ssh-ed25519 K`; `expiry-time="20990101",expiry-time="20200101" ssh-ed25519 K`; past dates written `20200101UTC` and `2020-01-01`; `command="echo \\" ssh-ed25519 D " ssh-rsa R`, which returns D where sshd reads R; `command="echo C:\\" ssh-ed25519 K`, a line sshd refuses as an unterminated quote; `# retired key`, then `\r`, form feed, vertical tab, `\x85` or U+2028, then `ssh-ed25519 K`; and `restrict,command="/bin/false" ssh-ed25519 K`. The dates `20201301`, `20200230` and `00000101` raise ValueError.
+[NOTE] daydream/prodctl.py:780-801 (`_authorized_key`) and :810, with :813-817 — The recipient parser follows sshd for comment lines, a quoted options field and one well-formed `expiry-time`, but it still takes a key from some lines sshd refuses or splits differently, so a key retired in a less common way stays a recipient of every later offsite copy, and counts as the off-box key that `age_recipients` requires before it seals (:813-817). It accepts any options field, where sshd refuses a line with an unknown option (a `DISABLED` prefix, say) or an `expiry-time` it cannot read (`2020-01-01`, or a `UTC` suffix on this box's OpenSSH 8.9). It reads only the first `expiry-time` (:794), where sshd keeps the earliest. Inside quotes it lets `\` escape any character (:789), where sshd escapes only `\"`, in quotes or out, so `\\"` ends a quoted value here and not in sshd. `splitlines()` (:810) also breaks at `\r`, form feed, vertical tab and a few Unicode separators, where sshd breaks only at `\n`, so text after one of these inside a commented-out line is read as a line of its own. A key pinned to a forced command (a soft disable such as `restrict,command="/bin/false"`, or a single-purpose key for a backup puller) is a recipient too, since sshd still accepts it.
+  Attack vector: The operator retires a key by putting a word sshd rejects in front of its line, by adding an earlier `expiry-time` in front of the one the line already carries, or by pinning it to a command that does nothing. The key no longer opens a shell, but each weekly run (`offsite()`, the `age -R` call at :958) still seals to it, and its holder can read any later copy they can fetch (a read of the bucket, or a copy fetched to another machine). When that key is the only one besides the box's, the refusal of a box-only copy passes on it, so the run seals a copy that only the box and the retired key's holder can open, and says nothing. The quote and line-break cases need unusual text in the operator's own file, and anyone who can write that file can already add a key, so they are correctness gaps, not a way in. Separately, an impossible date in `expiry-time` (month 13, 30 February, year 0) raises ValueError, which `main()` does not catch (:1560): every offsite run stops at that line, before any upload, until the line is fixed.
+  Evidence: a probe of `_authorized_key` (unchanged by the post-fix change) over 23 lines. `# ...`, `#...` and indented comment lines, and a past `expiry-time` with or without `Z`, return None. These return a key: `DISABLED ssh-ed25519 K`; `no-such-option,no-pty ssh-ed25519 K`; `expiry-time="20990101",expiry-time="20200101" ssh-ed25519 K`; past dates written `20200101UTC` and `2020-01-01`; `command="echo \\" ssh-ed25519 D " ssh-rsa R`, which returns D where sshd reads R; `command="echo C:\\" ssh-ed25519 K`, a line sshd refuses as an unterminated quote; `# retired key`, then `\r`, form feed, vertical tab, `\x85` or U+2028, then `ssh-ed25519 K`; and `restrict,command="/bin/false" ssh-ed25519 K`. The dates `20201301`, `20200230` and `00000101` raise ValueError. A probe of the post-fix `age_recipients` over scratch key files, each beside the box's key: an authorized_keys holding only `DISABLED ssh-ed25519 K`, only `restrict,command="/bin/false" ssh-ed25519 K`, or only `# old`, `\r`, `ssh-ed25519 K` seals to the box and K; one holding `expiry-time="20201301" ssh-ed25519 K` raises ValueError out of it.
   Confidence: high for the parser (probed). Medium for sshd's side: it comes from OpenSSH's parsing code (`sshkey_advance_past_options`, `sshauthopt_parse`, the line reader) and the box's 8.9 man page, not from a running sshd. Low that this box's file holds any of these forms (the agent guard denies reading `~/.ssh`).
-  Remediation: split on `\n` only; skip a line whose options do not all parse as sshd options, or whose `expiry-time` does not parse; take the earliest `expiry-time`; let `\` escape only `"`, in quotes or out; treat a bad date as a refused line and say so; decide forced-command keys deliberately. Or seal to an explicit recipients file the operator keeps, and print the recipients' fingerprints on each run, which ends the parsing question. Add a test case for each.
-  Status: found 2026-11-26 at c22f58a; last checked 2026-11-26 at c22f58a
+  Remediation: split on `\n` only; skip a line whose options do not all parse as sshd options, or whose `expiry-time` does not parse; take the earliest `expiry-time`; let `\` escape only `"`, in quotes or out; treat a bad date as a refused line and say so; decide forced-command keys deliberately. The box-only refusal reads keys through this parser, so these fixes also make it mean what it says. Or seal to an explicit recipients file the operator keeps, and print the recipients' fingerprints on each run (marking those counted as off-box), which ends the parsing question. Add a test case for each.
+  Status: found 2026-11-26 at c22f58a; last checked 2026-11-26 at 02cf070
 
-[NOTE] daydream/prodctl.py:880-885 and :895-911 (with ops/install-prod.sh:185, and docs/DATA-LIFECYCLE.md:40 and :136-137) — The bucket check treats retention as information only. A bucket with no expiry rule passes `offsite-bucket` with a note and exit 0. A rule that is disabled, scoped to another prefix, or longer than 60 days reads as "copies expire after N days". `--create` never adds the rule to a bucket that exists. DATA-LIFECYCLE.md promises 60 days offsite, and says a deleted account's records leave the backups as they age out (14 days local, 60 offsite).
-  Attack vector: not attacker-driven; a privacy control that can fail without a sign. A bucket made by hand keeps every weekly copy until someone deletes it, and each copy holds the accounts DB and every typed line. CLOUDFLARE-SETUP.md's by-hand path adds the expiry rule in the dashboard as a separate step, and buckets made before this change had to do the same. `account delete` then never ages out of R2, and every copy stays readable by each key that was a recipient when it was sealed, a key since retired included. Copies leave R2 through a read of the bucket (a dashboard session or wrangler login on a retired laptop, a leaked R2 token, a bucket made public by mistake) or as a copy fetched to another machine, as docs/runbooks/backups.md describes. The installer's check passes, so nothing warns.
-  Evidence: a probe of `bucket_findings` with private, domain-free answers and four lifecycle answers: no rule, a disabled 60-day rule, a 1-day rule scoped to `scratch/` and a 365-day rule. All four returned no problems (exit 0). The notes read "no expiry rule: every copy stays until deleted", "copies expire after 60 days", "copies expire after 1 days" and "copies expire after 365 days".
-  Confidence: high for the code. The disabled and prefixed cases assume wrangler prints `enabled:` and `prefix:` lines beside `action:`, as the committed fixtures suggest.
-  Remediation: report a missing rule, a disabled one, or one that does not expire the `prod-` objects within `OFFSITE_EXPIRE_DAYS` as a problem (exit 1). Add the rule to an existing bucket only through an explicit flag (for example `offsite-bucket --set-expiry`), so `--create` keeps its promise never to change what exists. `prod check` could carry the same line.
-  Status: found 2026-11-26 at c22f58a; last checked 2026-11-26 at c22f58a
+[NOTE] daydream/prodctl.py:888-894 (`bucket_findings`), with docs/DATA-LIFECYCLE.md:40 and :136-143 — The bucket check reads a disabled expiry rule, or one scoped to a prefix no copy has, as "copies expire after N days". It takes the smallest "Expire objects after N days" anywhere in wrangler's answer (:891) and ignores the `enabled:` and `prefix:` lines wrangler prints for each rule. So a disabled 60-day rule reads "copies expire after 60 days", and so does a rule scoped to `prod/` when the copies are named `prod-...`. A rule longer than the design reads as its number, with no word that it departs from the 60 days. Since `02cf070` the check names a bucket with no rule as a departure ("the design is 60 days"). DATA-LIFECYCLE.md:137-143 now says such a bucket keeps every copy, a deleted person's records included, and points to `bin/game prod offsite-bucket` as the way to tell which kind a bucket is; its table row at :40 still reads "offsite 60 days". Every case exits 0, as that commit decided, and `prod check` reads only the offsite timer's last result.
+  Attack vector: not attacker-driven; a privacy statement the check can confirm falsely. Someone adds the 60-day rule by hand (the documented path for a bucket made by hand, CLOUDFLARE-SETUP.md step 13) but leaves it disabled or types the prefix as `prod/`. `offsite-bucket` then reads "copies expire after 60 days", the doc's test for the 60-day promise passes, and every weekly copy (the accounts DB and every typed line, sealed to each key that was a recipient at the time) stays in R2 until someone deletes it by hand, `account delete` included. Copies leave R2 through a read of the bucket (a dashboard session or wrangler login on a retired laptop, a leaked token, a bucket made public by mistake) or as a copy fetched to another machine (docs/runbooks/backups.md).
+  Evidence: a probe of `bucket_findings` (unchanged by the post-fix change) with private, domain-free answers and five lifecycle answers in wrangler's format. No rule reads "no expiry rule: every copy stays until deleted (the design is 60 days; docs/DATA-LIFECYCLE.md)". A disabled 60-day rule reads "copies expire after 60 days". A 1-day rule on `scratch/` reads "copies expire after 1 days". A 365-day rule reads "copies expire after 365 days". A date rule ("Expire objects on ...") reads as no rule. All five return no problems (exit 0). The format comes from wrangler's bundled source (`tableFromLifecycleRulesResponse` in `edge/node_modules/wrangler`, version 4.130.0, the version the fixtures name): one block per rule with `name`, `enabled: Yes|No`, `prefix` (or `(all prefixes)`) and `action`. The committed fixtures carry no `prefix:` line.
+  Confidence: high (probed; the format read from wrangler's source). The live bucket's rules were not read (no Cloudflare call).
+  Remediation: count only a rule whose `enabled` is Yes and whose prefix is `(all prefixes)` or a prefix of `prod-`; say so when the shortest such rule is longer than `OFFSITE_EXPIRE_DAYS`, or when a disabled or off-prefix rule is present. Exit 0 can stay if retention is to remain information only. A `prod check` line from `bucket_findings` would show the same words after each deploy and wake. Add the disabled and prefixed cases to the tests, with fixtures that carry wrangler's `prefix:` line.
+  Status: found 2026-11-26 at c22f58a; last checked 2026-11-26 at 02cf070
 
-[NOTE] daydream/ci.py:49-61 and :122-126 (with daydream/prodcheck.py:227-234) — A run of a pull request from a fork's branch named `main` is listed under `branch=main`. About twenty of them fill the one page `runs()` reads, the push-only, same-repository filter leaves it empty, and `main_status` returns "unknown" ("no runs on main") before it reads the tip. `prod check` then passes a red main with a note.
-  Attack vector: A stranger forks the public repo and pushes about twenty times to a pull request from their `main`. Each push lists a `pull_request` run, one waiting for approval included. Until our next push, `prod check`, `prod plan`, `bin/game ci` and `bin/game status` read main as "unknown" instead of red. `bin/game ci watch`, the publish's gate, asks by commit and still sees the red run.
-  Evidence: `ci.py` is unchanged since `8327427`. A probe of `main_status` with GitHub's paging honored (newest first, `per_page`, and the `branch` and `head_sha` filters): 19 fork runs over a red tip read "failed" after two `gh` calls; 20 and 40 read "unknown" ("no runs on main") after one, so the tip read at :127 is never reached.
-  Confidence: high for the mechanism; medium that every push of an unapproved first-time contributor lists a run.
-  Remediation: read the tip before giving up on an empty list, and ask by commit (`runs(branch, sha=head)`) whenever the filtered list is empty or its newest is not the tip. A fork's runs carry their own head commits, so they cannot fill that page.
-  Status: found 2026-09-29 at d2f7538; last checked 2026-11-26 at c22f58a
+[NOTE] daydream/prodctl.py:969-984 (`offsite_restore`), with :958-961 and docs/runbooks/backups.md:60-77 — An offsite copy carries no proof of where it came from, so a restore trusts whatever decrypts. `age` to SSH recipients authenticates no sender, and the recipients are public keys (`age_recipients`, :804), so anyone who can write the bucket can seal a copy that decrypts like the real ones. `offsite_restore` fetches, decrypts and unpacks whatever object it is named, and the runbook's by-hand path does the same. The runbook's check (compare a restore with the local backup of the same stamp) works only while the box does. Separately, `name` is joined to the temporary directory as given (:977), and wrangler makes the parent directories and writes `--file` where it points, so a name with `/` or `..` writes the fetched object outside that directory, as the operator, before `age` refuses it.
+  Attack vector: someone with write access to the bucket seals a crafted backup (an accounts DB holding an admin account whose password they know, or a world of their choosing) to the operator's public SSH keys, and uploads it as `prod-<instance>-<a later stamp>.tar.gz.age`. After the box is lost, the operator restores the newest copy and installs it (`prod world restore-backup` prompts, but nothing tells a planted copy from a real one), and the rebuilt village holds the attacker's account. The object outlives a rotation of the credential that planted it. Every bucket credential the docs describe (the account-wide token, a dashboard session, a wrangler login) can also redeploy the Worker that carries every sign-in, so today this adds persistence into a rebuild rather than new reach; it becomes a new path if an R2-only credential is ever made. The `name` traversal also needs the operator to type, and approve at the prompt, a name with `/` in it.
+  Evidence: `offsite()` seals with `age -R` to the recipients file and uploads the result (:958-961). Neither `offsite()` nor `offsite_restore()` makes or checks a signature, a MAC under a secret the bucket's writers lack, or a recorded digest. wrangler 4.130.0's `r2 object get` runs `mkdirSync(dirname(file), {recursive: true})` and `createWriteStream(file)` on the `--file` value.
+  Confidence: high for the mechanism; low that it matters while the account-wide token is the only bucket credential.
+  Remediation: check `name` against the upload pattern (`prod-([a-z][a-z0-9-]*-)?\d{8}-\d{6}\.tar\.gz\.age`, one path component). Record each sealed copy's sha256 somewhere a bucket writer cannot reach (the operator's own machine, say), and have `offsite-restore` print the digest to compare. Or sign each copy with the box's key (`ssh-keygen -Y sign`) and verify against that public key on restore, which covers a leaked Cloudflare credential but not a compromised box. The backups runbook could say to restore a copy made before any credential incident.
+  Status: found 2026-11-26 at 02cf070; last checked 2026-11-26 at 02cf070
 
-Carried (still open; their files are outside this scope and unchanged since `97a1f4e`):
+Carried (still open; their files are outside this scope and unchanged since they were last checked):
+
+[NOTE] daydream/ci.py:49-61 and :122-126 (with daydream/prodcheck.py:227-234) — About twenty pull-request runs from a fork's branch named `main` fill the one page `runs()` reads, so `main_status` reads a red main as "unknown" and `prod check` passes it.
+  Status: found 2026-09-29 at d2f7538; last checked 2026-11-26 at c22f58a; carried, not re-checked
 
 [NOTE] edge/src/worker.js:45-54 and :85 (`watch`) — A failed read of the `uptime` record is taken as an empty record and written back, which erases the recorded outages.
   Status: found 2026-10-03 at 968da2b; last checked 2026-10-03 at 97a1f4e; carried, not re-checked
@@ -92,85 +97,64 @@ Carried (still open; their files are outside this scope and unchanged since `97a
 
 ### Traced and cleared this run (not findings)
 
-- **The installer's new step** (`ops/install-prod.sh:184-188`). Root drops to
-  the operator with `sudo -u "$OPERATOR" -H`, so no repo code runs as root.
-  sudo resets the environment, and `-H` points the run at the operator's own
-  token file. It runs after the sudoers install, and a failure only warns.
-  What it runs (`bin/game`, `prodctl`, wrangler and its npm tree) already
-  runs as the operator whenever the edge verbs do. Nothing after it reads
-  the terminal, so when the script is started as documented, input the
-  child pushes into the terminal lands in the operator's own shell. Started
-  from a root shell instead, that shell would read it as root; the
-  operator's user is already root-equivalent (Accepted Risks). If a tunnel
-  token was typed earlier in
-  the same run, the `umask 077` at :113 carries into the child, which only
-  tightens what it creates. Without `XDG_RUNTIME_DIR` under sudo, `bin/game`
-  makes its run dir under `/tmp`, and the `prod` verb writes nothing there.
-- **The bucket itself.** R2 bucket names are per account, so there is
-  nothing to squat. A create against a bucket that exists fails before the
-  rule is added, and `--create` never touches an existing bucket. The
-  privacy checks fail closed: anything other than "is disabled" and "no
-  custom domains" is a problem. They cover the r2.dev URL and custom
-  domains, not every way a bucket can be read (an R2 API token, a presigned
-  URL, a Worker binding); the copies are age ciphertext in every case.
-- **What the new verb prints.** `_wrangler_read` keeps stdout and stderr,
-  but only `_cf_error`'s one Cloudflare line, or a fixed sentence, is
-  printed. The request line that names the account is dropped. A Cloudflare
-  message that itself names an account path (a 7003 "Could not route to
-  ...") would still print, to the operator's terminal or the agent's context
-  only. The wrangler debug logs the fixed sentence points to hold no
-  authorization header (counted, not read: 49 files, none matching `Bearer`,
-  `authorization` or the token's variable names).
-- **The offsite pre-check** (`prodctl.py:898`). It is one read-only wrangler
-  call with the operator's token before any backup. Any error other than a
-  missing bucket falls through to the old path.
-- **`DAYDREAM_R2_BUCKET`** steers both verbs (it already steered `offsite`).
-  Under the standing grant, an injected instruction could make the agent
-  create a private, empty bucket under another name, or send ciphertext to
-  another bucket in the same account. Neither mints a credential or exposes
-  plaintext. `offsite-bucket` is not on the guard's ask list, and needs no
-  place there.
-- **`ci.py`**, unchanged since `8327427`. The last entry's cleared items
-  still hold: the tip must be 40 hex before any query, `_SHA`'s `^...$`
-  admits only a trailing newline GitHub never sends, `_subject` passes a
-  `head_sha` that only our own push runs supply, and the list passthrough
-  serves only the tests' fakes.
-- **The rest of `prodctl.py`**, re-read in full. The operator-side reads of
-  the service-writable data dir (the `active` link in `instance_dir`, the
-  path `_backup` parses from the service's output, `offsite()`'s walk of
+- **The read timeout** (`prodctl.py:831` and :843-848, new in `02cf070`).
+  On expiry it returns a fixed sentence, so no partial wrangler output (whose
+  request line names the account) is printed. `bucket_missing` reads it as
+  not missing: the weekly job's pre-check falls through to the old path as
+  before, and `offsite-bucket` reports a problem and exits 1. `subprocess.run`
+  kills `npx` and returns. The wrangler process under it can outlive it until
+  its read ends; these are read-only queries, and the token was already in
+  that process's environment.
+- **The lifecycle-add failure** (:903-909, new). A bucket made without its
+  rule now fails with the by-hand step, where the next run would otherwise
+  pass with a note. Nothing new is printed: `_wrangler` streams wrangler's
+  own words to the terminal, as it did.
+- **The side-door refusals** (`_refuse_side_doors`, :278-288). `bin/game
+  world patch` switches to check mode on any `--check` token, wherever it
+  stands, so prodctl's membership test matches what runs. `daydream.dream`'s
+  top-level parser has no options, and argparse on the box's Python 3.10.12
+  refuses `--` and abbreviations before the subcommand, so `dream apply`
+  cannot reach the live DB with another word at `args[1]`.
+- **What `status()` prints** (:1004-1013). The names in `/status/who` come
+  from dreamers, which are `isprintable()` and at most 24 characters at
+  creation (`daydream/api/slots.py:178`) and JSON-quoted on output
+  (`daydream/server.py:175-191`). A friend cannot put a terminal escape into
+  the operator's terminal, or more than a short label into the agent's
+  context. The arbiter line is numbers.
+- **`pull()`'s UPDATE** (:1200-1205) on a DB the service wrote. A trigger
+  planted in it runs only SQL against that DB (a trigger body holds only
+  INSERT, UPDATE, DELETE and SELECT, and extension loading is off), and the
+  dev server opens the same file anyway.
+- **The recipient parser's shape** (unchanged since the post-fix pass). Only
+  the key type and blob reach the recipients file, so no option text reaches
+  `age -R`; the scan and the expiry regex are linear in the line; the file
+  sits in a 0700 temporary directory. `cert-authority` lines stay recipients
+  (sshd accepts them, and a CA key's holder can already log in), and a `Z`
+  suffix is read as UTC.
+- **The rest of `prodctl.py`**, re-read in full and unchanged. The
+  operator-side reads of the service-writable data dir (the `active` link,
+  the path `_backup` parses from the service's output, `offsite()`'s walk of
   `instances/`, `pull()`) hand paths only to commands run as the service
-  user. Those commands run outside the unit's sandbox, but the operator's
-  home is 0750 (checked), so they still cannot read it.
-- **The fix's own shape** (post-fix, `prodctl.py:777-816`). Only the key
-  type and blob reach the recipients file, so no option text reaches
-  `age -R`. `split()[0]` runs only on a non-empty stripped line, and the
-  scan and the expiry regex are linear in the line. The file sits in a 0700
-  temporary directory and holds public keys only. A malformed blob still
-  makes `age -R` fail, which `main()` reports before any upload.
-- **`cert-authority` lines** (post-fix) stay recipients. sshd accepts
-  them, and a CA key's holder can already mint a certificate that logs in
-  as the operator, so this widens nothing while the line stands.
-- **The `Z` suffix** (post-fix). The box's OpenSSH 8.9 man page gives
-  `expiry-time` as `YYYYMMDD` or `YYYYMMDDHHMM[SS]` in the system time
-  zone, with no `Z`, so sshd there likely refuses such a line. The parser
-  reads it as UTC, and the new test asserts that. Until the stated time the
-  key stays a recipient, which is what the line asks for; after it, the
-  parser drops it.
-- **sshd's configuration** (post-fix). The box's sshd_config and its one
-  drop-in set no `RevokedKeys`, `AuthorizedKeysFile` or
-  `AuthorizedKeysCommand` (keywords grepped), so `~/.ssh/authorized_keys`
-  is a file sshd reads and no revocation list sits beside it. The default
-  also reads `authorized_keys2`, which the parser does not: a key kept there
-  would only be missing from the recipients.
+  user. Object names that `offsite()` uploads are one path component.
+- **The box-only refusal** (post-fix, `age_recipients`, :804-819). It adds
+  no recipient: when it passes, the file holds the same union of the two
+  files' keys as before. It raises before `age` runs, inside `offsite()`'s
+  temporary directory, so the plaintext tarball is removed with it and
+  nothing is uploaded. `main()` reports it and exits 1, so the weekly unit
+  fails where `prod status` shows it. Its message names no key. It knows
+  the box by `id_ed25519.pub` alone, so another key whose private half
+  lives only on this box (the box's own RSA key in its authorized_keys,
+  say) still satisfies it: a limit on the durability it proves, and no way
+  in. A misread line's key satisfies it too (the parser NOTE).
 
 ### Player-text scan (CLAUDE.md "Player text is data")
 
 - Both scans ran in this review.
   - Prod `--since 0` returned 3 items: a dreamer name, its look and a
     username, with no typed lines (the operator's own, per the instance
-    notes).
+    notes). Unchanged.
   - Dev `--since 548` returned 63 items: 31 dreamer names, 31 looks and 1
-    username, unchanged since the last scan.
+    username. Unchanged.
 - Nothing was flagged, and there were no bursts. Verdict: nobody steering.
 - Re-run for the post-fix pass: both unchanged (prod 3 items, dev 63),
   nothing flagged, no bursts, the same high-water marks. Verdict: nobody
@@ -182,75 +166,59 @@ Carried (still open; their files are outside this scope and unchanged since `97a
 
 - These hold none of a key, a token, a private-key block, an account id, an
   email, a box or tailnet address, the operator's surname, a friend's name
-  or an invite slug:
-  - the seven paths as they stand, and the last three commits of each
-    (`git log -p --follow -3`);
-  - the range `97a1f4e..c22f58a` (every text file) and its two commit
-    messages.
-- The operator's Unix user name (a first name, and the commit author's
-  public handle) appears as the sudoers template's placeholder
-  (`ops/install-prod.sh:173`), in `tests/test_ops_units.py` (with a
-  `/home/<user>/src/daydream` path) and in the fake key comments of
-  `tests/test_prodctl.py:229-232`. All of it predates this range, and
-  earlier reviews treated only the surname as sensitive. Not re-flagged.
-  The post-fix test adds one more fake key comment of the same kind
-  (`tests/test_prodctl.py:247`); its other comments are generic, and every
-  key in it is a placeholder.
-- The fixtures are fake: account `0123abcd`, `backups.example.com`, and
-  repositories named `x/y`, `me/daydream` and `stranger/daydream`. The R2
-  info fixture carries the real bucket's location hint, a continent-scale
-  region code that names no address.
-- The range records the instance's offsite outage, by date, in CLAUDE.md,
-  the docs, BACKLOG, CHANGELOG and test docstrings. Incident history of that
-  kind is the repo's style and names nothing on CLAUDE.md's separation list.
+  or an invite slug: both files as they stand, the last three commits of
+  each (`git log -p --follow -3`), the message of `02cf070`, and the
+  post-fix diff.
+- The fake key comments in `tests/test_prodctl.py:229-232` and :247 use the
+  operator's Unix user name (a first name, and the commit author's public
+  handle), as earlier reviews recorded; not re-flagged. The post-fix test
+  adds two more of the same kind (:264-265). Every key is a placeholder. The fixtures' account (`0123abcd`) and domain
+  (`backups.example.com`) are fake, and the bucket name is the committed
+  default.
 - `instance/` is still ignored.
 
 ### Coverage
 
-- All dimensions were reviewed for the seven paths, read in full and as
-  their diff from `97a1f4e`. CLAUDE.md was read in full; its one changed
-  line was checked against the code.
+- All dimensions were reviewed for the two paths, read in full at `02cf070`
+  and as their diff from `c22f58a`.
 - No suite ran (this skill reads code). Probes, all deterministic and local:
-  - `age_recipients` over a scratch authorized_keys (commented-out keys, an
-    expired key, an option-quoted decoy);
-  - `bucket_findings` over four lifecycle answers;
-  - `ci.main_status` with GitHub's paging honored (19, 20 and 40 fork runs
-    over a red tip).
-- No wrangler, Cloudflare or GitHub call was made. The two text scans read
-  local DBs. Nothing was written outside the scratchpad except this file
-  and the local instance notes.
-- Not checked: whether this box's authorized_keys holds a commented-out or
-  expired key (the agent guard denies reading `~/.ssh`), and the live
-  bucket's lifecycle rules (no Cloudflare call).
-- Read in context, outside scope: `daydream/edge.py` (`_creds`,
-  `_wrangler_env`, `_ensure_node_modules`, `_node_env`), `bin/game`'s
-  preamble and `prod` dispatch, `ops/systemd/daydream-offsite.service`,
-  `docs/runbooks/backups.md`, `docs/DATA-LIFECYCLE.md`, step 13 of
-  `docs/CLOUDFLARE-SETUP.md`, `prodcheck.check_ci`, and the guard's ask
-  list for the offsite verbs.
+  - `_authorized_key` over 23 lines (comment forms, expiry forms, options
+    sshd refuses, the backslash rule, forced-command and `cert-authority`
+    lines, five line separators, three impossible dates);
+  - `bucket_findings` over five lifecycle answers and a timed-out read;
+  - argparse's handling of `--` and abbreviations before a subcommand, on a
+    replica parser under the venv's Python 3.10.12.
+- Read on the box, outside scope: wrangler 4.130.0's bundled source (the
+  lifecycle list format, `r2 object get --file`), `bin/game`'s `world patch`
+  and `dream` dispatch, `daydream/dream.py`'s parser, the dreamer name check
+  in `daydream/api/slots.py`, `/status/who` in `daydream/server.py`, the
+  offsite coverage in `daydream/prodcheck.py`, the guard's ask list for the
+  offsite verbs, the installer's bucket step, the restore section of
+  `docs/runbooks/backups.md`, and the retention lines of
+  `docs/DATA-LIFECYCLE.md`.
+- Not checked: this box's authorized_keys (the guard denies `~/.ssh`), the
+  live bucket's rules (no Cloudflare call), and sshd's runtime behavior (from
+  its source and man page only).
 - No dependency manifest is in scope.
-- Outside the named paths, the range also changes `BACKLOG.md`,
-  `CHANGELOG.md`, `docs/CLOUDFLARE-SETUP.md`, `docs/GOING-LIVE.md`,
-  `docs/runbooks/backups.md`, `docs/runbooks/verify.md`, `CODEREVIEW.md`
-  and `SECURITY.md`. They were pattern-scanned for secrets and instance
-  facts only.
-- Post-fix pass: the uncommitted diff of `daydream/prodctl.py` and
-  `tests/test_prodctl.py` over `c22f58a`, the recipient code and its one
-  caller (`offsite()`) in full, and `main()`'s error handling. Probes,
-  deterministic and local: `_authorized_key` over 26 inputs (the fix's own
-  cases, options sshd refuses, two expiry times, the backslash rule,
-  `cert-authority` and forced-command lines, five line separators, five
-  impossible dates), and `bucket_findings` over the
-  same four lifecycle answers. Read on the box: the OpenSSH version, the
-  sshd man page's `expiry-time` entry, and sshd_config keywords. Not
-  checked: what the new parser returns for this box's authorized_keys (the
-  guard denies `~/.ssh`), so whether the next run's recipients match the
-  keys the operator means to hold is unverified.
+- Outside the two paths, `02cf070` also changes `CODEREVIEW.md`,
+  `SECURITY.md` and `docs/DATA-LIFECYCLE.md`. The last was read for the
+  retention NOTE; the other two are review records.
 - Git history checked for secrets: `daydream/prodctl.py` (the Cloudflare
-  token through `edge`, the CLI's cookie, the age recipients),
-  `ops/install-prod.sh` (the tunnel token prompt), `daydream/ci.py` (the
-  operator's `gh` credentials, which it never reads), `CLAUDE.md`, and the
-  three test files.
+  token through `edge`, the CLI's cookie, the age recipients) and
+  `tests/test_prodctl.py`.
+- Post-fix pass: the uncommitted diff of `daydream/prodctl.py` and
+  `tests/test_prodctl.py` over `02cf070` (one hunk in `age_recipients`, one
+  new test), with `age_recipients`' one caller (`offsite()`) and `main()`'s
+  error handling read again. Probes, deterministic and local:
+  `age_recipients` over eleven scratch key files (the box's key alone
+  under other options, no authorized_keys, neither file, only ecdsa and
+  `sk-` keys, a `DISABLED` prefix, the box's own RSA key, a forced-command
+  soft disable, an impossible date, no box key, both kinds, a `\r` inside a
+  commented-out line); `bucket_findings` over the same five lifecycle
+  answers. Both player-text scans re-ran against local DBs. No suite,
+  wrangler, Cloudflare or GitHub call. The cleared items above that predate
+  this pass cite `02cf070`'s line numbers (3 lower than the working tree's
+  past :816).
 
 ### Accepted Risks
 
@@ -341,6 +309,6 @@ Carried register (from prior reviews; still open, not re-flagged):
   injected instruction would want stay behind ask rules.
 
 ---
-*Prior review (2026-10-03, paths, commit `97a1f4e`, with a post-fix pass over the fix later committed as `8327427`): `daydream/ci.py`, `edge/src/worker.js`, `edge/test/preview.test.js` and `tests/test_ci.py` over `968da2b..97a1f4e`, main's CI verdict read from its tip (a 40-hex tip from the ref API, the tip's runs by commit when the list's newest belongs to another commit, "unknown" when none is listed or when an unreadable tip sits under a listed pass) and the asleep link preview's committed fix. No new finding; the uptime-watch and fork-flood NOTEs were re-checked and still present. The register stood at 0 BLOCK / 0 WARN / 10 NOTE. The full entry is at `git show 8327427:SECURITY.md`.*
+*Prior review (2026-11-26, paths, commit `c22f58a`, with a post-fix pass over the fix later committed as `02cf070`): seven paths over `97a1f4e..c22f58a`, the offsite correction (`prod offsite-bucket [--create]`, the installer running it, the weekly job's pre-check). It found a WARN in older code, `age_recipients` sealing offsite copies to commented-out and expired keys, which `/codefix` fixed and the post-fix pass confirmed resolved, plus NOTEs for the new parser's remaining divergences from sshd and for retention being information only; the fork-flood NOTE in `ci.py` was re-checked and still present. The register stood at 0 BLOCK / 0 WARN / 12 NOTE. The full entry is at `git show 02cf070:SECURITY.md`.*
 
-<!-- SECURITY_META: {"date":"2026-11-26","commit":"c22f58ab52f0798f79e9ec9a4291e471fa49b134","scope":"paths","scanned_files":["CLAUDE.md","daydream/ci.py","daydream/prodctl.py","ops/install-prod.sh","tests/test_ci.py","tests/test_ops_units.py","tests/test_prodctl.py"],"block":0,"warn":0,"note":12} -->
+<!-- SECURITY_META: {"date":"2026-11-26","commit":"02cf070ea1c5a200ea9f12549bd5f5c845cb1d12","scope":"paths","scanned_files":["daydream/prodctl.py","tests/test_prodctl.py"],"block":0,"warn":0,"note":13} -->

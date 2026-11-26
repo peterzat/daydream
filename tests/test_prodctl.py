@@ -256,6 +256,18 @@ def test_age_recipients_refuse_when_there_are_no_keys(tmp_path, monkeypatch):
         prodctl.age_recipients(tmp_path / "r")
 
 
+def test_age_recipients_refuse_when_only_the_box_can_open(tmp_path, monkeypatch):
+    ssh = tmp_path / ".ssh"
+    ssh.mkdir()
+    (ssh / "authorized_keys").write_text(
+        'expiry-time="20200101" ssh-ed25519 AAAAC3expired gone@tablet\n'
+        "ssh-ed25519 AAAAC3box peter@dev\n")
+    (ssh / "id_ed25519.pub").write_text("ssh-ed25519 AAAAC3box peter@dev\n")
+    monkeypatch.setattr(prodctl, "SSH_DIR", ssh)
+    with pytest.raises(prodctl.ProdError, match="not offsite"):
+        prodctl.age_recipients(tmp_path / "r")
+
+
 def test_offsite_encrypts_before_anything_leaves(srv, monkeypatch, tmp_path):
     """The upload only ever sees the age output; the plaintext tarball never
     reaches wrangler."""

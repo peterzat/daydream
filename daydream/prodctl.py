@@ -806,13 +806,16 @@ def age_recipients(out: Path) -> Path:
     private halves live on the operator's own machines, so a backup survives
     the box) plus the box's own key (so a restore can be proven here). Only
     the `ssh-ed25519`/`ssh-rsa` key itself, never its options (they would trip age)."""
-    keys = []
-    for src in (SSH_DIR / "authorized_keys", SSH_DIR / "id_ed25519.pub"):
-        if src.exists():
-            keys += [k for k in map(_authorized_key, src.read_text().splitlines()) if k]
-    if not keys:
-        raise ProdError("no SSH public keys to encrypt to (~/.ssh/authorized_keys)")
-    out.write_text("\n".join(sorted(set(keys))) + "\n")
+    def read(src: Path) -> set[str]:
+        lines = src.read_text().splitlines() if src.exists() else []
+        return {k for k in map(_authorized_key, lines) if k}
+
+    box, allowed = read(SSH_DIR / "id_ed25519.pub"), read(SSH_DIR / "authorized_keys")
+    if not allowed - box:
+        # A copy only this box can open is no offsite copy: refuse, never seal it so.
+        raise ProdError("no SSH public keys to encrypt to from ~/.ssh/authorized_keys "
+                        "other than this box's own: a copy only this box can open is not offsite")
+    out.write_text("\n".join(sorted(allowed | box)) + "\n")
     return out
 
 
